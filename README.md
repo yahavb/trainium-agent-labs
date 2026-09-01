@@ -140,11 +140,35 @@ gives identical output, always. Good for reproducibility. But: no sampling diver
 self-consistency voting, no "retry with higher temperature" — those patterns silently do nothing
 here. `probe.py` check 7 demonstrates this.
 
-**Four concurrent sequences, and throughput tops out around 2 requests/sec.** The server runs
-`max_num_seqs=4`. Measured on `/agg`: 0.43 req/s at 1 concurrent request, 1.08 at 4, 2.10 at 16 —
-and p50 time-to-first-token degrades from 0.59s to 3.46s as you pile on. Nothing errors; it queues.
-Plan around ~4 in flight, and understand that **one endpoint comfortably serves a handful of
-simultaneous users, not a roomful.**
+**Four concurrent sequences per endpoint. Two endpoints. ~4 req/s in total.** Each server runs
+`max_num_seqs=4`, so beyond four in flight your request queues rather than failing.
+
+The two endpoints are **fully independent capacity** — separate Trainium devices, and measured at
+104% scaling efficiency when hammered simultaneously, with no degradation from sharing the load
+balancer. So use both: point half your team at `/agg` and half at `/disagg` and you get double.
+
+Measured with both endpoints loaded at once:
+
+| in flight (total) | `/agg` | `/disagg` | **combined** | p50 latency | p95 latency | p50 TTFT | failures |
+|---|---|---|---|---|---|---|---|
+| 8 | 1.06 | 0.99 | **1.97 req/s** | 3.7s | 3.7s | 1.2s | 0 |
+| 16 | 1.26 | 1.63 | **2.53 req/s** | 4.1s | 4.9s | 1.6s | 0 |
+| 32 | 1.63 | 2.18 | **3.27 req/s** | 5.3s | 7.6s | 2.9s | 0 |
+| 64 | 1.91 | 2.57 | **3.82 req/s** | 8.1s | 14.6s | 5.9s | 0 |
+| 96 | 1.98 | 2.65 | **3.97 req/s** | 11.1s | 21.5s | 9.0s | 0 |
+
+Two things to take from this. **Throughput saturates near 4 req/s** — past ~32 in flight you're
+buying latency, not work. And **nothing ever failed**, even at 96 concurrent: it degrades by queueing,
+so your code will see slow responses rather than errors. Set a client timeout accordingly (the server
+allows 900s).
+
+Also note `/disagg` overtakes `/agg` under load (2.65 vs 1.98 req/s at saturation) despite being
+slower on a single request. That's the disaggregation paying off — prefill and decode stop contending
+— and it only shows up when you push it.
+
+**Budget your request count, not just your tokens.** A 5-step agent loop is 5 serialised requests; at
+p50 5s each that's 25s per iteration before you've done anything clever. Parallelise across the two
+endpoints where you can.
 
 **gpt-oss thinks before it answers, on a separate channel.** In this vLLM build the field is called
 **`reasoning`** (not `reasoning_content`, which is what other builds and most docs use — the kit
@@ -196,9 +220,9 @@ care about:
 
 | | `/agg` (TP32, one server) | `/disagg` (prefill + decode, TP16 each) |
 |---|---|---|
-| TTFT, short prompt | 1.06s | **0.85s** — faster to first token |
-| generation rate | **114 tok/s** | 83–89 tok/s — slower to finish |
-| peak throughput | 1.9 req/s @ n=8 | 2.2 req/s @ n=16 |
+| TTFT, short prompt, unloaded | 1.06s | **0.85s** — faster to first token |
+| generation rate, unloaded | **114 tok/s** | 83–89 tok/s — slower to finish |
+| throughput at saturation | 1.98 req/s | **2.65 req/s** — better under load |
 
 So `/disagg` starts answering sooner but generates more slowly. Which one "wins" depends entirely on
 what you're building: a chat UI that feels responsive wants low TTFT, a batch job that emits long

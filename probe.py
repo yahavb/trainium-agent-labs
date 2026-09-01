@@ -602,6 +602,75 @@ def check_concurrency(client, path, api, quick):
     results[path]["concurrency"] = out
 
 
+def check_combined_capacity(client_unused, base, paths, quick):
+    """Do the two endpoints ADD capacity, or share a bottleneck?
+
+    Easy mistake (I made it): measure each endpoint alone, quote the bigger number, and
+    call it the room's capacity. But /agg and /disagg sit on different Trainium devices,
+    so if the ALB and the nginx prefix-stripping proxy in front of them are not the
+    constraint, their throughput ADDS. That doubles what the room can support, and it is
+    only visible if you load both AT THE SAME TIME.
+    """
+    hdr(f"[10] both endpoints under SIMULTANEOUS load — do they add up?")
+    if len(paths) < 2:
+        say("  skipped (needs two endpoint paths)")
+        return
+    prompt = "Explain how a hash table handles collisions, in about 150 words."
+    levels = (4, 16) if quick else (4, 8, 16, 32)
+
+    def one(path):
+        c = httpx.Client(base_url=base, **HTTP)
+        try:
+            ok, p, dt, ttft = post(c, f"{path}/chat/completions",
+                                   dict(model=MODEL,
+                                        messages=[{"role": "user", "content": prompt}],
+                                        max_tokens=220), stream=True)
+            return (dt, ttft) if ok else (None, None)
+        finally:
+            c.close()
+
+    def burst(path, n):
+        t0 = time.perf_counter()
+        with ThreadPoolExecutor(max_workers=n) as ex:
+            rows = list(ex.map(lambda _: one(path), range(n)))
+        return time.perf_counter() - t0, rows
+
+    out = {}
+    say(f"  {'n each':>7} {'total':>6} " + " ".join(f"{p.split('/')[1][:6]:>8}" for p in paths)
+        + f" {'SUM r/s':>8} {'p50':>7} {'p95':>7} {'ttft':>7} {'fail':>5}")
+    for n in levels:
+        t0 = time.perf_counter()
+        with ThreadPoolExecutor(max_workers=len(paths)) as ex:
+            futs = {p: ex.submit(burst, p, n) for p in paths}
+            per = {p: f.result() for p, f in futs.items()}
+        wall = time.perf_counter() - t0
+        rows = [r for w, rr in per.values() for r in rr]
+        lat = sorted(r[0] for r in rows if r[0])
+        tts = [r[1] for r in rows if r[1]]
+        fails = sum(1 for r in rows if not r[0])
+        rps = {p: sum(1 for r in rr if r[0]) / w for p, (w, rr) in per.items()}
+        p95 = lat[int(len(lat) * 0.95) - 1] if lat else float("nan")
+        say(f"  {n:>7} {n*len(paths):>6} "
+            + " ".join(f"{rps[p]:>8.2f}" for p in paths)
+            + f" {(len(lat)/wall):>8.2f} {statistics.median(lat) if lat else 0:>7.2f} "
+              f"{p95:>7.2f} {statistics.median(tts) if tts else 0:>7.2f} {fails:>5}")
+        out[n] = {"per_endpoint_rps": rps, "combined_rps": len(lat) / wall,
+                  "p50": statistics.median(lat) if lat else None, "p95": p95,
+                  "p50_ttft": statistics.median(tts) if tts else None, "failures": fails}
+        time.sleep(3)
+
+    if out:
+        best = max(v["combined_rps"] for v in out.values())
+        anyfail = sum(v["failures"] for v in out.values())
+        say(f"\n  Combined ceiling: {best:.2f} req/s across both endpoints.")
+        say(f"  Total failures across the whole sweep: {anyfail}."
+            + ("  It queues rather than erroring — expect slow, not broken."
+               if anyfail == 0 else ""))
+        say("  Divide by your per-user request rate to size a room. And remember an agent loop "
+            "is N serialised requests per iteration, not one.")
+    results["combined_capacity"] = out
+
+
 def run(base, path, quick):
     results[path] = {}
     with httpx.Client(base_url=base, **HTTP) as client:
@@ -677,6 +746,11 @@ def main():
             break
         except Exception as e:
             say(f"\n{p} blew up: {type(e).__name__}: {e}")
+    if len(paths) > 1:
+        try:
+            check_combined_capacity(None, args.base, paths, args.quick)
+        except Exception as e:
+            say(f"\ncombined-capacity check failed: {type(e).__name__}: {e}")
     verdict()
     with open(args.out, "w") as f:
         json.dump(results, f, indent=2, default=str)
