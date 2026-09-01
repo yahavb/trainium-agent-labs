@@ -4,7 +4,7 @@ A 20-billion-parameter open-weight model (`openai/gpt-oss-20b`) running on AWS T
 OpenAI-compatible HTTP API. This repo is the shortest path from "I have the URL" to "I am talking to
 it and measuring it."
 
-Five files, no framework, no build step:
+No framework, no build step:
 
 | file | what it is |
 |---|---|
@@ -13,6 +13,8 @@ Five files, no framework, no build step:
 | `probe.py` | measures what the endpoint can actually do: real context limit, long-document recall, format adherence under long generation, concurrency ceiling, determinism. |
 | `loadtest.py` | closed-loop load test: how many simultaneous users this actually supports. |
 | `mockserver.py` | a fake endpoint so you can build while offline or while the real one is busy. |
+| `CHALLENGE-kernel-agent.md` | **a challenge to attempt**: build an agent that writes kernels through an 8192-token window. |
+| `kernelbench.py` | the verification harness for that challenge — 10 reference ops, hostile shapes, rule checking. |
 
 ## Setup
 
@@ -33,6 +35,8 @@ python chat.py --think                      # show the hidden reasoning channel
 python web.py                               # browser UI on :8080
 python probe.py                             # measure what the endpoint can do
 python loadtest.py                          # how many people can share it
+python kernelbench.py --list                # the kernel-agent challenge ladder
+python kernelbench.py --selftest            # prove the harness catches planted bugs
 ```
 
 In-chat commands: `/agg` `/disagg` `/auto` `/new` `/system <text>` `/effort low|medium|high`
