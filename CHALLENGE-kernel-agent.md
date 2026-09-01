@@ -187,9 +187,22 @@ help; it just thought for longer. Reading the reasoning shows why:
 > fancy indexing. We used no whole-array ops. We used tile loops..."*
 
 It was **auditing itself against every rule we gave it, one at a time.** Our carefully specified
-prompt was the cause. We tried rephrasing the rules positively instead of as prohibitions: same
-result, 13,700 chars of reasoning, no answer. Across eight attempts the pattern held — every
-one-sentence prompt produced code in 300–700 tokens; every structured multi-rule prompt spiralled.
+prompt was the cause. Rephrasing the rules positively instead of as prohibitions did not help either:
+13,700 chars of reasoning, no answer.
+
+**Why it never recovers: sampling is greedy.** There is no randomness in the decoding, so once the
+model enters a repeating state nothing perturbs it out. Caught mid-loop:
+
+```
+We used loops over columns for max. Good.
+We used loops over columns for sum. Good.
+We used loops over columns for max. Good.
+We used loops over columns for sum. Good.
+```
+
+That is not slow progress, it is a closed cycle. **You cannot buy your way out of it with a bigger
+budget** — which is exactly why 7000 tokens failed identically to 2500. Across eight attempts every
+one-sentence prompt produced code in 300–700 tokens and every prohibition-carrying prompt spiralled.
 
 **Attempt 2 — drop the rules entirely.** One sentence: "compute a numerically-stable softmax over the
 last axis, at most 128 rows at a time." Clean code in 617 tokens. And it used `np.max` and `np.sum` —
@@ -209,6 +222,11 @@ one change:
 
 897 output tokens. **32/32 cases passed, verified.** Two calls, ~1,900 tokens total, for the rung
 with the overflow trap in it.
+
+**And the near-miss that proves the point.** Feeding the verifier's report back *verbatim* — the
+literal text `line 16: calls banned max` — produced **the same violation again**. The report says what
+is wrong; it never says what to do. Rewriting it as the instruction above fixed it in one round. That
+translation, from verdict to instruction, is the single most valuable thing your agent does.
 
 The lesson generalises: **constraints belong in your verifier, not in your generation prompt.** The
 model is bad at holding ten rules in mind and good at making one named change. Your agent's job is to

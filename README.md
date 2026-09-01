@@ -134,10 +134,26 @@ and never began the answer:
 | 2500 | 10,194 chars | **0** |
 | 7000 | 26,401 chars | **0** |
 
-Nearly 3× the budget bought 2.6× the thinking and still no answer. The fix is not a bigger budget, it
-is a **simpler prompt**: the same task asked in one sentence returned working code in 617 tokens.
-Across eight attempts, every one-sentence prompt produced an answer and every structured multi-rule
-prompt spiralled. If you get empty content, **shorten the prompt before you raise `max_tokens`.**
+Nearly 3× the budget bought 2.6× the thinking and still no answer.
+
+**The mechanism is greedy decoding, and it matters.** Sampling here is greedy, so there is no
+randomness to break a repeating state. Tell the model what *not* to do and it starts verifying itself;
+the verification text becomes self-similar; and it locks into a groove it cannot escape. Caught in the
+act:
+
+```
+We used loops over columns for max. Good.
+We used loops over columns for sum. Good.
+We used loops over columns for max. Good.
+We used loops over columns for sum. Good.
+```
+
+...until the budget died. **You cannot outspend an infinite loop**, which is why 7000 tokens failed the
+same way 2500 did.
+
+So: if you get empty content, **shorten the prompt and remove prohibitions — do not raise
+`max_tokens`.** The same task asked in one sentence returned working code in 617 tokens. And prefer
+phrasing that names one change to make over a list of things to avoid.
 
 **Note that `Reasoning: low` in the system prompt does not help.** We measured it: on the coding
 task it produced *more* reasoning (7080 chars vs 4525), not less. Don't rely on it to control the
