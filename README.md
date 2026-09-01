@@ -4,13 +4,14 @@ A 20-billion-parameter open-weight model (`openai/gpt-oss-20b`) running on AWS T
 OpenAI-compatible HTTP API. This repo is the shortest path from "I have the URL" to "I am talking to
 it and measuring it."
 
-Four files, no framework, no build step:
+Five files, no framework, no build step:
 
 | file | what it is |
 |---|---|
 | `chat.py` | terminal chat client — streaming, history, timings. Start here. |
 | `web.py` | the same thing in a browser tab, for demos. Zero deps beyond `httpx`. |
 | `probe.py` | measures what the endpoint can actually do: real context limit, long-document recall, format adherence under long generation, concurrency ceiling, determinism. |
+| `loadtest.py` | closed-loop load test: how many simultaneous users this actually supports. |
 | `mockserver.py` | a fake endpoint so you can build while offline or while the real one is busy. |
 
 ## Setup
@@ -25,16 +26,41 @@ python chat.py
 That's it. No API key, no auth, no SDK.
 
 ```bash
-python chat.py                              # interactive
+python chat.py                              # interactive; uses BOTH endpoints, with failover
 python chat.py --ask "explain a B-tree"     # one shot
-python chat.py --endpoint disagg            # the other deployment (see below)
+python chat.py --endpoint agg               # pin to one deployment (see below)
 python chat.py --think                      # show the hidden reasoning channel
 python web.py                               # browser UI on :8080
-python probe.py                             # measure the endpoint
+python probe.py                             # measure what the endpoint can do
+python loadtest.py                          # how many people can share it
 ```
 
-In-chat commands: `/agg` `/disagg` `/new` `/system <text>` `/effort low|medium|high` `/think`
-`/budget <n>` `/stats` `/save <file>` `/quit`.
+In-chat commands: `/agg` `/disagg` `/auto` `/new` `/system <text>` `/effort low|medium|high`
+`/think` `/budget <n>` `/stats` `/save <file>` `/quit`.
+
+### One URL, two endpoints, automatic failover
+
+`GPTOSS_BASE_URL` is a single base URL, and the two deployments are **paths underneath it** —
+`/agg/v1` and `/disagg/v1`. So one environment variable gives you both; you do not need two.
+
+`chat.py` and `web.py` default to **auto** mode, which:
+
+* **round-robins across both endpoints**, starting at a random one so that a room full of clients
+  spreads out instead of everyone landing on the same deployment;
+* **fails over** to the other endpoint if one times out, refuses the connection, or returns a 5xx —
+  you get a `(retrying on ...)` line and an answer instead of a stack trace;
+* **does not fail over on a 4xx**, because a bad request will be rejected identically by both;
+* **does not fail over once tokens have started arriving** — retrying mid-stream would splice two
+  half-answers together;
+* marks a failed endpoint unhealthy for 60s so every subsequent turn does not pay the timeout again.
+
+Since the two endpoints are independent hardware, auto mode is also how you get the full ~4 req/s
+rather than half of it. Pin with `--endpoint agg` or `/disagg` when you are deliberately comparing
+the two — `/stats` then breaks timings down per endpoint.
+
+This matters more than it sounds: these are single-replica demo deployments, so a pod restart takes
+one of them away for minutes at a time. Auto mode means that is a hiccup rather than the end of your
+afternoon.
 
 ## Talking to it directly
 
@@ -169,6 +195,65 @@ slower on a single request. That's the disaggregation paying off — prefill and
 **Budget your request count, not just your tokens.** A 5-step agent loop is 5 serialised requests; at
 p50 5s each that's 25s per iteration before you've done anything clever. Parallelise across the two
 endpoints where you can.
+
+### How many people can share this at once?
+
+The burst table above measures raw throughput. What you probably want to know is how many *humans*
+it supports, which is a different question, because a person spends most of their time reading and
+typing rather than waiting. Measured with a closed-loop simulation — each simulated student asks a
+question, waits for the whole answer, then pauses to "read and type" before asking again:
+
+| load | throughput | p50 | p95 | errors |
+|---|---|---|---|---|
+| 100 students, 40s between messages | 1.54 req/s | 3.5s | **4.7s** | 0 |
+| 100 students, 20s between messages | 3.23 req/s | 3.8s | **7.9s** | 0 |
+| 100 students, 8s between messages | 4.43 req/s | 8.6s | 17.6s | 0 |
+| 150 students, 15s between messages | 4.28 req/s | 10.2s | 22.1s | 0 |
+| 200 students, 20s between messages | 4.19 req/s | 13.1s | 26.4s | 0 |
+| **25 agent loops, no human pauses** | **5.17 req/s** | 4.0s | 8.5s | 0 |
+
+**Rule of thumb: capacity is ~4.3 req/s, so people supported ≈ 4.3 × (think time + latency).** At a
+realistic 20s between messages that's about 100 people with p95 under 8s. Past ~4.3 req/s of demand
+nothing fails — latency just inflates as the queue grows. One error in roughly 3,000 requests across
+every run here, and that was a timeout, not a rejection.
+
+Three numbers people conflate, all true at once:
+
+* **8 requests are actually being served** at any instant (4 per endpoint × 2 endpoints).
+* **~16–25 in flight** is the efficient zone. Past ~32 you buy latency, not work.
+* **100–200 humans** can have the app open, because they're mostly not waiting on it.
+
+**One agent loop costs about the same as 4–5 students.** Twenty-five agent loops saturate the whole
+thing — and that's one call at a time each; a 5-step agent iteration multiplies it again. If you're
+building something agentic, assume you are the load.
+
+### What would change these numbers
+
+Read the above as a starting point, not a specification. Everything here was measured:
+
+* **from a single client machine**, over the load balancer, from one network location. A different
+  client, or many clients spread out, will not behave identically.
+* **with 220-token answers.** This is the biggest factor you control, and it hits *latency* harder
+  than throughput. Measured, same 12 users and same think time, only `max_tokens` changed:
+
+  | `max_tokens` | throughput | p50 | p95 |
+  |---|---|---|---|
+  | 220 | 0.66 req/s | 3.3s | 3.5s |
+  | 1000 | 0.42 req/s | 10.4s | **12.2s** |
+
+  4.5× the answer length cost 3.5× the p95 wait but only 36% of the request rate. So if your users
+  care about waiting, cap your answer length — it buys more than any other single change.
+* **with short prompts and varied questions.** Identical prompts at high concurrency actually measured
+  *worse* than varied ones (4.0 vs 5.2 req/s), so synthetic benchmarks that repeat one prompt will
+  mislead you in both directions.
+* **on shared demo capacity**, with no guarantee nobody else was using it. If a number looks wrong,
+  it might be someone else's traffic.
+* **at one moment in time.** The server config can change; a restart with different flags moves all
+  of this.
+
+So: **re-measure with your own workload before you trust any of it.** `probe.py` check 9 does the
+burst version and check 10 does both endpoints at once. Your generation length and your request
+pattern are what decide your numbers, not ours.
 
 **gpt-oss thinks before it answers, on a separate channel.** In this vLLM build the field is called
 **`reasoning`** (not `reasoning_content`, which is what other builds and most docs use — the kit

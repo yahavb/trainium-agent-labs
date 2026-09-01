@@ -13,6 +13,7 @@ a dumb streaming proxy plus one HTML page — no framework, no build step, no np
 import argparse
 import json
 import os
+import random
 import sys
 import warnings
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -56,7 +57,8 @@ PAGE = """<!doctype html>
 </style>
 <header>
   <b>gpt-oss-20b</b><span style=color:#7d8896>on AWS Trainium</span>
-  <select id=ep><option value=agg>aggregated (TP32, 1 server)</option>
+  <select id=ep><option value=auto selected>auto (both, with failover)</option>
+                <option value=agg>aggregated (TP32, 1 server)</option>
                 <option value=disagg>disaggregated (prefill+decode, TP16)</option></select>
   <select id=effort><option>low</option><option selected>medium</option><option>high</option></select>
   <label style=color:#7d8896><input type=checkbox id=showthink> show reasoning</label>
@@ -151,7 +153,14 @@ class Handler(BaseHTTPRequestHandler):
             return
         req = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         msgs = req.get("messages", [])
-        path = f"/{req.get('endpoint', 'agg')}/v1/chat/completions"
+        want = req.get("endpoint", "auto")
+        # auto: try both, in random order, so a room of browsers spreads across the two
+        # endpoints instead of all landing on the same one.
+        if want == "auto":
+            order = ["agg", "disagg"]
+            random.shuffle(order)
+        else:
+            order = [want]
         system = ("You are a concise, accurate assistant.\n"
                   f"Reasoning: {req.get('effort', 'medium')}")
 
@@ -166,8 +175,8 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(f"data: {json.dumps(obj)}\n\n".encode())
             self.wfile.flush()
 
-        # Trim history to fit: max_model_len is 8192 for prompt + completion together,
-        # and there is no prefix caching, so old turns cost full price every time.
+        # Trim history to fit. NOT for speed -- long prompts are cheap here. The 8192
+        # ceiling is enforced on INPUT, so approaching it silently truncates the ANSWER.
         budget, kept, used = 6000, [], 0
         for m in reversed(msgs):
             t = max(1, len(m["content"]) // 4)
@@ -184,41 +193,58 @@ class Handler(BaseHTTPRequestHandler):
 
         in_tok = out_tok = None
         fingerprint, finish = None, None
-        try:
-            with httpx.Client(base_url=BASE, verify=False,
-                              timeout=httpx.Timeout(900.0, connect=20.0)) as c:
-                with c.stream("POST", path, json=body) as r:
-                    if r.status_code != 200:
-                        emit({"error": f"HTTP {r.status_code}: "
-                                       f"{r.read()[:400].decode(errors='replace')}"})
-                        emit({"done": True})
-                        return
-                    for line in r.iter_lines():
-                        if not line.startswith("data: "):
+        streamed = False
+        last_err = None
+
+        for attempt, ep in enumerate(order):
+            path = f"/{ep}/v1/chat/completions"
+            try:
+                with httpx.Client(base_url=BASE, verify=False,
+                                  timeout=httpx.Timeout(900.0, connect=20.0)) as c:
+                    with c.stream("POST", path, json=body) as r:
+                        if r.status_code != 200:
+                            last_err = (f"HTTP {r.status_code} from /{ep}: "
+                                        f"{r.read()[:300].decode(errors='replace')}")
+                            # 4xx is the request's fault and will fail the same way on the
+                            # other endpoint; only fail over on server-side faults.
+                            if r.status_code < 500:
+                                break
                             continue
-                        data = line[6:]
-                        if data.strip() == "[DONE]":
-                            break
-                        try:
-                            ev = json.loads(data)
-                        except json.JSONDecodeError:
-                            continue
-                        fingerprint = ev.get("system_fingerprint") or fingerprint
-                        u = ev.get("usage") or {}
-                        in_tok = u.get("prompt_tokens") or in_tok
-                        out_tok = u.get("completion_tokens") or out_tok
-                        ch = (ev.get("choices") or [{}])[0]
-                        finish = ch.get("finish_reason") or finish
-                        d = ch.get("delta", {}) or {}
-                        think = next((d[k] for k in REASONING_KEYS if d.get(k)), "")
-                        if think:
-                            emit({"think": think})
-                        if d.get("content"):
-                            emit({"text": d["content"]})
-        except Exception as e:
-            emit({"error": f"{type(e).__name__}: {e}  "
-                           "(a hang with no response usually means your network is not "
-                           "allowlisted for the endpoint)"})
+                        for line in r.iter_lines():
+                            if not line.startswith("data: "):
+                                continue
+                            data = line[6:]
+                            if data.strip() == "[DONE]":
+                                break
+                            try:
+                                ev = json.loads(data)
+                            except json.JSONDecodeError:
+                                continue
+                            fingerprint = ev.get("system_fingerprint") or fingerprint
+                            u = ev.get("usage") or {}
+                            in_tok = u.get("prompt_tokens") or in_tok
+                            out_tok = u.get("completion_tokens") or out_tok
+                            ch = (ev.get("choices") or [{}])[0]
+                            finish = ch.get("finish_reason") or finish
+                            d = ch.get("delta", {}) or {}
+                            think = next((d[k] for k in REASONING_KEYS if d.get(k)), "")
+                            if think:
+                                emit({"think": think})
+                            if d.get("content"):
+                                streamed = True
+                                emit({"text": d["content"]})
+                last_err = None
+                break
+            except Exception as e:
+                last_err = (f"{type(e).__name__} from /{ep}: {e}")
+                if streamed:      # committed mid-answer; do not restart on the other one
+                    break
+                if attempt < len(order) - 1:
+                    emit({"think": f"[{ep} failed, retrying on {order[attempt+1]}] "})
+                    continue
+        if last_err and not streamed:
+            emit({"error": last_err + "  (a hang with no response usually means your "
+                                      "network is not allowlisted for the endpoint)"})
         emit({"done": True, "in_tok": in_tok or used, "out_tok": out_tok,
               "fingerprint": fingerprint, "truncated": finish == "length"})
 

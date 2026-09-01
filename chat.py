@@ -9,7 +9,8 @@ You should not have to hand-write curl to talk to a model. Run this instead.
     python chat.py
 
 Commands inside the chat:
-    /agg /disagg      switch which Trainium deployment answers you
+    /agg /disagg      pin to one Trainium deployment
+    /auto             use both, failing over automatically (the default)
     /new              clear the conversation
     /system <text>    set the system prompt
     /effort low|medium|high    gpt-oss reasoning effort (measured: has little/no
@@ -26,6 +27,7 @@ Deliberately one file, no framework, stdlib + httpx. Read it, change it, break i
 import argparse
 import json
 import os
+import random
 import re
 import statistics
 import sys
@@ -37,6 +39,10 @@ import httpx
 warnings.filterwarnings("ignore")  # the demo endpoint's TLS cert does not match its hostname
 
 MODEL = "gpt-oss-20b"
+# The two deployments live under one base URL as path prefixes. They are separate Trainium
+# devices with independent capacity (measured: they add, at ~104% scaling efficiency), so
+# spreading across both doubles headroom AND survives one of them going away.
+ENDPOINTS = ("/agg/v1", "/disagg/v1")
 # gpt-oss streams its chain of thought on a separate channel. This vLLM build names the
 # field `reasoning`; other builds name it `reasoning_content`. Accept either.
 REASONING_KEYS = ("reasoning", "reasoning_content")
@@ -62,7 +68,11 @@ def est_tokens(s):
 class Chat:
     def __init__(self, base, path, system, effort, budget, show_think):
         self.base = base.rstrip("/")
-        self.path = path
+        self.path = path          # None = auto/failover across ENDPOINTS
+        # Random start, not 0: every client process would otherwise pick the same
+        # endpoint on its first turn and a whole room would land on one of the two.
+        self.rr = random.randrange(len(ENDPOINTS))
+        self.sick = {}            # path -> time it may be retried
         self.system = system
         self.effort = effort
         self.budget = budget
@@ -75,13 +85,25 @@ class Chat:
 
     # ---------------------------------------------------------------- wire
 
-    def url(self, suffix):
-        return f"{self.base}{self.path}{suffix}"
+    def candidates(self):
+        """Endpoints to try, best first. Pinned mode returns exactly one."""
+        if self.path:
+            return [self.path]
+        now = time.time()
+        live = [p for p in ENDPOINTS if self.sick.get(p, 0) < now]
+        if not live:                       # everything is cooling down; try anyway
+            self.sick.clear()
+            live = list(ENDPOINTS)
+        self.rr += 1                       # round-robin so load spreads across both
+        return live[self.rr % len(live):] + live[:self.rr % len(live)]
 
-    def probe_api(self):
+    def url(self, path, suffix):
+        return f"{self.base}{path}{suffix}"
+
+    def probe_api(self, path):
         """Prefer /chat/completions; fall back to /completions if it isn't there."""
         try:
-            r = self.client.post(self.url("/chat/completions"), json={
+            r = self.client.post(self.url(path, "/chat/completions"), json={
                 "model": MODEL, "messages": [{"role": "user", "content": "hi"}], "max_tokens": 4})
             self.use_chat_api = (r.status_code == 200)
         except Exception:
@@ -104,8 +126,22 @@ class Chat:
         to whatever room is left. Trimming protects the answer, not the clock.
         """
         budget = self.budget - est_tokens(self.system_prompt())
-        kept, used = [], 0
-        for m in reversed(self.history):
+        if not self.history:
+            return [], 0, 0
+
+        # The newest message is the question being asked right now. It is never dropped:
+        # dropping it leaves the model answering an empty conversation, which it will
+        # happily do ("How can I help you?") while the user wonders where their text went.
+        newest = dict(self.history[-1])
+        if est_tokens(newest["content"]) > budget:
+            keep_chars = max(200, budget * CHARS_PER_TOKEN)
+            print(f"{C['yellow']}(your message is ~{est_tokens(newest['content'])} tokens, "
+                  f"over the {budget}-token budget — truncating it to fit; raise it with "
+                  f"/budget){C['off']}")
+            newest["content"] = newest["content"][:keep_chars]
+
+        kept, used = [newest], est_tokens(newest["content"])
+        for m in reversed(self.history[:-1]):
             t = est_tokens(m["content"])
             if used + t > budget:
                 break
@@ -133,15 +169,45 @@ class Chat:
                 "stop": ["\nUser:", "\n\nUser:"]}
 
     def send(self, user_text):
-        if self.use_chat_api is None:
-            self.probe_api()
+        """Try each candidate endpoint until one starts streaming an answer.
 
+        Failover only happens BEFORE the first token. Once tokens are arriving we are
+        committed — retrying mid-stream would duplicate half an answer, and the endpoint
+        is clearly alive anyway.
+        """
         self.history.append({"role": "user", "content": user_text})
         msgs, used, dropped = self.trimmed_history()
         max_tokens = max(2500, min(4096, CTX_TOTAL - used - 256))
         if dropped:
             print(f"{C['yellow']}(dropped {dropped} older message(s) to stay under "
                   f"{self.budget} tokens){C['off']}")
+
+        tried = self.candidates()
+        for attempt, path in enumerate(tried):
+            if attempt:
+                print(f"{C['yellow']}(retrying on {path}){C['off']}")
+            ok = self._attempt(path, msgs, used, max_tokens,
+                               last=(attempt == len(tried) - 1))
+            if ok:
+                return
+            # Don't hammer a sick endpoint on every turn; give it 60s to recover.
+            self.sick[path] = time.time() + 60
+        self.history.pop()
+
+    def _give_up(self):
+        """Abort without failing over: the other endpoint would reject this identically.
+
+        Returns True so send() stops trying, and drops the user turn so the conversation
+        does not carry a question that was never answered.
+        """
+        if self.history and self.history[-1]["role"] == "user":
+            self.history.pop()
+        return True
+
+    def _attempt(self, path, msgs, used, max_tokens, last):
+        """One endpoint, one try. Returns True if it produced a reply."""
+        if self.use_chat_api is None:
+            self.probe_api(path)
 
         t0 = time.perf_counter()
         ttft = None
@@ -150,12 +216,14 @@ class Chat:
 
         try:
             with self.client.stream("POST", self.url(
-                    "/chat/completions" if self.use_chat_api else "/completions"),
+                    path, "/chat/completions" if self.use_chat_api else "/completions"),
                     json=self.body(msgs, max_tokens)) as r:
                 if r.status_code != 200:
-                    print(f"{C['red']}HTTP {r.status_code}: {r.read()[:500].decode(errors='replace')}{C['off']}")
-                    self.history.pop()
-                    return
+                    body = r.read()[:400].decode(errors="replace")
+                    print(f"{C['red']}HTTP {r.status_code} from {path}: {body}{C['off']}")
+                    # A 400 is our fault (too many input tokens, bad request) and will fail
+                    # identically on the other endpoint. Only fail over on server-side faults.
+                    return False if r.status_code >= 500 else self._give_up()
                 print(f"{C['green']}", end="", flush=True)
                 for line in r.iter_lines():
                     if not line.startswith("data: "):
@@ -191,13 +259,16 @@ class Chat:
                         print(piece, end="", flush=True)
         except KeyboardInterrupt:
             print(f"\n{C['yellow']}(interrupted){C['off']}")
+            return self._give_up()
         except Exception as e:
             print(f"{C['red']}\n{type(e).__name__}: {e}{C['off']}")
-            if "timed out" in str(e).lower() or "ConnectError" in type(e).__name__:
-                print(f"{C['dim']}If this hangs with no response at all, your network is probably "
-                      f"not allowlisted for the endpoint. Ask the organisers.{C['off']}")
-            self.history.pop()
-            return
+            if last and ("timed out" in str(e).lower()
+                         or "Connect" in type(e).__name__):
+                print(f"{C['dim']}Every endpoint failed the same way. If it hangs with no "
+                      f"response at all, your network is probably not allowlisted. Ask the "
+                      f"organisers.{C['off']}")
+            # Nothing streamed, so it is safe to try the other endpoint.
+            return False
         finally:
             print(C["off"], end="")
 
@@ -219,7 +290,7 @@ class Chat:
         in_tok = usage.get("prompt_tokens") or used
         tps = out_tok / dt if dt else 0
         self.turns.append(dict(seconds=dt, ttft=ttft, in_tok=in_tok, out_tok=out_tok,
-                              tps=tps, path=self.path, measured=measured))
+                              tps=tps, path=path, measured=measured))
 
         bits = [f"{dt:.1f}s"]
         if ttft:
@@ -232,7 +303,8 @@ class Chat:
             bits.append(f"{C['yellow']}TRUNCATED{C['off']}")
         if fingerprint:
             bits.append(f"{C['dim']}{fingerprint}{C['off']}")
-        print(f"\n{C['dim']}[{self.path}] {'  '.join(bits)}{C['off']}\n")
+        print(f"\n{C['dim']}[{path}] {'  '.join(bits)}{C['off']}\n")
+        return True
 
     # ---------------------------------------------------------------- repl
 
@@ -247,13 +319,22 @@ class Chat:
                       f"min={min(vals):8.1f}  max={max(vals):8.1f}")
         print(f"  turns    {len(self.turns)}   total in={sum(t['in_tok'] for t in self.turns)} "
               f"out={sum(t['out_tok'] for t in self.turns)}")
+        by = {}
+        for t in self.turns:
+            by.setdefault(t["path"], []).append(t)
+        if len(by) > 1:
+            for p, rows in by.items():
+                print(f"  {p:<12} {len(rows):>3} turns  "
+                      f"p50 {statistics.median([r['seconds'] for r in rows]):.1f}s  "
+                      f"p50 {statistics.median([r['tps'] for r in rows]):.0f} tok/s")
         print(f"  {C['dim']}input tokens climb every turn because history is re-sent in full — "
               f"there is no prefix cache.{C['off']}")
 
     def repl(self):
-        print(f"{C['b']}gpt-oss-20b on AWS Trainium{C['off']}  {C['dim']}{self.base}{self.path}{C['off']}")
-        print(f"{C['dim']}/agg /disagg /new /system /effort /think /budget /stats /save /quit"
-              f"   ctx {CTX_TOTAL}, budget {self.budget}{C['off']}\n")
+        where = self.path or f"auto ({' + '.join(ENDPOINTS)}, with failover)"
+        print(f"{C['b']}gpt-oss-20b on AWS Trainium{C['off']}  {C['dim']}{self.base} → {where}{C['off']}")
+        print(f"{C['dim']}/agg /disagg /auto /new /system /effort /think /budget /stats /save "
+              f"/quit   ctx {CTX_TOTAL}, budget {self.budget}{C['off']}\n")
         while True:
             try:
                 line = input(f"{C['cyan']}you ›{C['off']} ").strip()
@@ -270,7 +351,13 @@ class Chat:
                 elif cmd in ("agg", "disagg"):
                     self.path = f"/{cmd}/v1"
                     self.use_chat_api = None
-                    print(f"{C['dim']}→ {self.path}{C['off']}")
+                    print(f"{C['dim']}→ pinned to {self.path}{C['off']}")
+                elif cmd == "auto":
+                    self.path = None
+                    self.sick.clear()
+                    self.use_chat_api = None
+                    print(f"{C['dim']}→ auto: round-robin across "
+                          f"{', '.join(ENDPOINTS)} with failover{C['off']}")
                 elif cmd == "new":
                     self.history.clear()
                     print(f"{C['dim']}conversation cleared{C['off']}")
@@ -308,7 +395,8 @@ class Chat:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", default=os.environ.get("GPTOSS_BASE_URL"))
-    ap.add_argument("--endpoint", default="agg", choices=["agg", "disagg"])
+    ap.add_argument("--endpoint", default="auto", choices=["auto", "agg", "disagg"],
+                    help="auto (default) round-robins across both and fails over")
     ap.add_argument("--system", default="")
     ap.add_argument("--effort", default="medium", choices=["low", "medium", "high"])
     ap.add_argument("--budget", type=int, default=DEFAULT_BUDGET)
@@ -319,7 +407,8 @@ def main():
     if not a.base:
         sys.exit("Set GPTOSS_BASE_URL (or pass --base). Ask the organisers for the URL.")
 
-    c = Chat(a.base, f"/{a.endpoint}/v1", a.system, a.effort, a.budget, a.think)
+    path = None if a.endpoint == "auto" else f"/{a.endpoint}/v1"
+    c = Chat(a.base, path, a.system, a.effort, a.budget, a.think)
     if a.ask:
         c.send(a.ask)
     else:
