@@ -7,3 +7,9 @@ probe-results*.json
 transcript*.md
 LOCAL-NOTES.md
 .DS_Store
+
+# editor swap/backup files — a vim session got one of these committed once
+*.swp
+*.swo
+*~
+.*.swp
