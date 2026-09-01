@@ -24,6 +24,9 @@ warnings.filterwarnings("ignore")
 
 MODEL = "gpt-oss-20b"
 BASE = os.environ.get("GPTOSS_BASE_URL", "")
+# gpt-oss streams its chain of thought on a separate channel. This vLLM build names the
+# field `reasoning`; other builds name it `reasoning_content`. Accept either.
+REASONING_KEYS = ("reasoning", "reasoning_content")
 
 PAGE = """<!doctype html>
 <meta charset=utf-8><title>gpt-oss-20b on Trainium</title>
@@ -207,8 +210,9 @@ class Handler(BaseHTTPRequestHandler):
                         ch = (ev.get("choices") or [{}])[0]
                         finish = ch.get("finish_reason") or finish
                         d = ch.get("delta", {}) or {}
-                        if d.get("reasoning_content"):
-                            emit({"think": d["reasoning_content"]})
+                        think = next((d[k] for k in REASONING_KEYS if d.get(k)), "")
+                        if think:
+                            emit({"think": think})
                         if d.get("content"):
                             emit({"text": d["content"]})
         except Exception as e:

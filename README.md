@@ -4,7 +4,7 @@ A 20-billion-parameter open-weight model (`openai/gpt-oss-20b`) running on AWS T
 OpenAI-compatible HTTP API. This repo is the shortest path from "I have the URL" to "I am talking to
 it and measuring it."
 
-Three files, no framework, no build step:
+Four files, no framework, no build step:
 
 | file | what it is |
 |---|---|
@@ -28,7 +28,7 @@ That's it. No API key, no auth, no SDK.
 python chat.py                              # interactive
 python chat.py --ask "explain a B-tree"     # one shot
 python chat.py --endpoint disagg            # the other deployment (see below)
-python chat.py --effort high --think        # more reasoning, and show it
+python chat.py --think                      # show the hidden reasoning channel
 python web.py                               # browser UI on :8080
 python probe.py                             # measure the endpoint
 ```
@@ -76,29 +76,101 @@ print(client.chat.completions.create(
 These are real properties of how the servers are configured, not bugs, and several will look like
 model problems if you don't know about them.
 
-**8192 tokens of context, total — prompt *and* completion together.** Asking for 2000 output tokens
-leaves you 6000 for everything else. Long conversations, accumulated tool output, and big pasted
-documents hit this fast. Over the limit, the request is rejected outright.
+**Ask for at least ~2500 `max_tokens`. This is the number one trap.** gpt-oss writes to a hidden
+`reasoning` channel *before* it writes any answer, and if it runs out of budget while thinking you
+get **empty `content`** with `finish_reason="length"` — which looks exactly like the model failing
+your task. It isn't. You never gave it room to answer.
 
-**No prefix caching.** Disabled on purpose. Every turn re-processes the entire conversation from
-scratch — a long system prompt costs full price on every single message. So the cost of a chat grows
-roughly with the *square* of its length. This is the single biggest cost factor in a chat loop, and
-it's why `chat.py` trims history to a budget instead of sending everything. Watch `in` climb in the
-per-turn stats line.
+Measured on this endpoint:
+
+| task | `max_tokens` | result |
+|---|---|---|
+| "what is 17 × 23?" | 16, 32 | empty content, `finish=length` |
+| "what is 17 × 23?" | 64+ | `391` |
+| needle in a 4600-token document | 32 | empty content |
+| needle in a 4600-token document | 800 | correct, used only 59 tokens |
+| write `merge_intervals` + 6 asserts | 900 | **empty content**, 3791 chars of reasoning |
+| write `merge_intervals` + 6 asserts | 2500 | correct, used 1442 tokens |
+
+Easy questions need ~64. Hard ones burned through 900 and still had nothing to show. Budget
+generously — you're charged for what it uses, not what you allow.
+
+**Note that `Reasoning: low` in the system prompt does not help.** We measured it: on the coding
+task it produced *more* reasoning (7080 chars vs 4525), not less. Don't rely on it to control the
+budget.
+
+**8192 tokens, checked against your INPUT — and the output is then silently truncated.** This is not
+the usual "prompt + completion" ceiling. Send 7435 tokens of prompt with `max_tokens=2000` and the
+request is *accepted*; you get 757 tokens of output, `total_tokens=8192`, and
+`finish_reason="length"` with no error. So a long prompt doesn't fail loudly — it quietly amputates
+your answer. Check `finish_reason` on every response you care about. Past ~8192 input you do get a
+clean 400: `Input length (8607) exceeds model's maximum context length (8192)`.
+
+**Long prompts are cheap, and the cost comes in steps rather than proportionally.** Measured
+time-to-first-token, 5 reps per size in randomised order:
+
+| prompt | `/agg` median TTFT | `/disagg` median TTFT |
+|---|---|---|
+| ~200 tok | 1.062s | 0.853s |
+| ~2000 tok | 1.064s | 0.857s |
+| ~4000 tok | 1.218s | 1.027s |
+| ~6000 tok | 1.226s | 1.029s |
+| ~7500 tok | 1.224s | 1.041s |
+
+A **37× longer prompt costs about 15–22% more** time to first token. And notice the shape: flat from
+200→2000, a jump between 2000 and 4000, then flat again to 7500. That's compiled shape buckets —
+within a bucket the prefill is padded to the bucket size, so extra tokens are genuinely free. Two
+consequences:
+
+* **Context is cheap. Use it.** Examples, retrieved documents, and history cost you very little
+  latency.
+* Trim history to stay under the input ceiling and to leave room for the answer — **not** to go
+  faster. Trimming for speed buys almost nothing. (`chat.py`'s budget exists for the former reason.)
+
+Measure this yourself in randomised order if you re-run it. Sweeping 200→7500 in sequence confounds
+prompt length with warm-up and with whatever else is hitting this shared server, and produces a
+tidy rising line that is partly an artifact — we made exactly that mistake first.
+
+**No prefix caching**, so there's no discount for a repeated prefix across turns. Given the padding
+above this matters less than you'd expect for latency, but the server does full work every turn,
+which is part of why throughput is what it is.
 
 **Sampling is greedy, server-side. `temperature`, `top_p`, and `seed` are ignored.** Identical input
 gives identical output, always. Good for reproducibility. But: no sampling diversity, no
 self-consistency voting, no "retry with higher temperature" — those patterns silently do nothing
 here. `probe.py` check 7 demonstrates this.
 
-**Four concurrent sequences.** The server is built for `max_num_seqs=4`. A fan-out of 20 parallel
-calls doesn't scale — it queues, and you see latency rather than errors. Plan for ~4 in flight per
-endpoint. `probe.py` check 9 finds the actual ceiling.
+**Four concurrent sequences, and throughput tops out around 2 requests/sec.** The server runs
+`max_num_seqs=4`. Measured on `/agg`: 0.43 req/s at 1 concurrent request, 1.08 at 4, 2.10 at 16 —
+and p50 time-to-first-token degrades from 0.59s to 3.46s as you pile on. Nothing errors; it queues.
+Plan around ~4 in flight, and understand that **one endpoint comfortably serves a handful of
+simultaneous users, not a roomful.**
 
-**gpt-oss thinks before it answers, on a separate channel.** Responses can carry a
-`reasoning_content` field alongside `content`. On a hard question at `--effort high`, the model can spend
-its whole token budget reasoning and return an *empty answer*. If that happens, use `/effort low` or
-narrow the question. Both clients handle and surface this.
+**gpt-oss thinks before it answers, on a separate channel.** In this vLLM build the field is called
+**`reasoning`** (not `reasoning_content`, which is what other builds and most docs use — the kit
+accepts both). It's present on both the non-streaming `message` and the streaming `delta`. See the
+`max_tokens` warning above: this channel is what eats your budget.
+
+**The standard `tools=` parameter does not work. If you're building an agent, read this.** Passing
+OpenAI-style function definitions with `tool_choice="auto"` returns `tool_calls: []` *and* empty
+content — it silently does nothing. You have to hand-roll tool calls as JSON in the prompt.
+
+And when you do, **the phrasing decides whether you get anything back at all**:
+
+```
+"...Emit the call."                    → content: ''   (nothing!)
+"...Your FINAL ANSWER must be exactly one JSON object... Do not explain."
+                                       → content: '{"tool":"get_time","args":{"tz":"Asia/Tokyo"}}'
+```
+
+Both `finish_reason: "stop"`. In the first case the model settled the whole thing inside its
+reasoning channel and ended its turn without writing an answer. Explicitly demand a **final answer**
+in your prompt. This one behaviour will cost an agent-building team hours if they don't know it.
+
+**`/disagg` omits `usage` on streamed responses; `/agg` includes it.** If you're computing tokens/sec
+from a stream, you'll silently fall back to guessing on one endpoint and not the other — which makes
+the two look different for a reason that has nothing to do with the hardware. `chat.py` prints a `~`
+in front of any number it had to estimate. Do something equivalent, or compare non-streaming.
 
 **The TLS certificate does not match the hostname.** Use `verify=False` in Python or `-k` in curl.
 Every script here already does.
@@ -119,13 +191,24 @@ time. Check before drawing conclusions.
 
 Start with `/agg` — fewer moving parts. Then run the same workload against `/disagg` and compare.
 
-The interesting comparison is **under concurrency**. In the disaggregated deployment, prefill and
-decode don't contend for the same devices, so time-to-first-token and tokens/sec should respond
-differently as you add load. One request at a time will not show you much. `probe.py` runs both and
-prints them side by side.
+There is already a measured difference, and it goes in **opposite directions** for the two things you
+care about:
 
-If you measure a real difference between them, tell us — that comparison is genuinely useful and it's
-the kind of result that wins here.
+| | `/agg` (TP32, one server) | `/disagg` (prefill + decode, TP16 each) |
+|---|---|---|
+| TTFT, short prompt | 1.06s | **0.85s** — faster to first token |
+| generation rate | **114 tok/s** | 83–89 tok/s — slower to finish |
+| peak throughput | 1.9 req/s @ n=8 | 2.2 req/s @ n=16 |
+
+So `/disagg` starts answering sooner but generates more slowly. Which one "wins" depends entirely on
+what you're building: a chat UI that feels responsive wants low TTFT, a batch job that emits long
+documents wants tokens/sec. Say which you optimised for and why — that reasoning is worth more than
+the number.
+
+The comparison gets more interesting **under concurrency**, where prefill and decode no longer
+contend for the same devices in the disaggregated setup. `probe.py` check 9 runs both at n=1…16.
+
+If you find a result we haven't, tell us. That's genuinely useful to the team that built this.
 
 ## Measuring, not guessing
 
@@ -138,18 +221,25 @@ python probe.py --path /agg/v1  # one endpoint
 It answers, with numbers:
 
 1. Is the endpoint reachable at all?
-2. Which API surfaces work, and does streaming work?
-3. What's the real usable context, and what does exceeding it look like?
+2. Which API surfaces work, does streaming work, and what is the reasoning field called?
+2b. How much `max_tokens` before you get an answer instead of only reasoning?
+3. The real context ceiling, whether it applies to input or input+output, and how it fails.
 4. Can the model find a fact planted at various depths in a ~5000-token document?
 5. Can it hold a JSON schema across a 40-record generation, and at what tokens/sec?
 6. Five harder tasks with auto-checkable answers (multi-constraint code, stateful probability,
    instruction-following under pressure, a refactor with a trap, tool-call formatting).
+6b. Tool calling: the native `tools=` parameter, and two hand-rolled prompt phrasings.
 7. Is sampling really greedy?
-8. Does a repeated long prefix get any cheaper? (It should not.)
+8. Does prompt length change time-to-first-token? (Randomised order, repeated.)
 9. Where does throughput stop rising as you add concurrency?
 
 The string-based graders in check 6 are crude. **Read the failures before you believe them** — that
-habit is worth more than the score.
+habit is worth more than the score, and it is exactly how the two worst bugs in this very script were
+found. Check 6 prints `<NO CONTENT — only reasoning>` when the model never produced an answer, so you
+can tell "got it wrong" apart from "was never given room to reply."
+
+Every number in this README came out of this script. If you disagree with one, re-measure it and tell
+us — that's the point.
 
 ## Working offline, or while the endpoint is busy
 

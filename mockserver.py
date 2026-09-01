@@ -113,7 +113,7 @@ class H(BaseHTTPRequestHandler):
             if not body.get("stream"):
                 time.sleep(0.15 + out_tok * 0.004)
                 ch = ({"index": 0, "message": {"role": "assistant", "content": text,
-                                               "reasoning_content": think},
+                                               "reasoning": think},
                        "finish_reason": "stop"}
                       if is_chat else
                       {"index": 0, "text": text, "finish_reason": "stop"})
@@ -148,7 +148,7 @@ class H(BaseHTTPRequestHandler):
             time.sleep(0.2)  # stand-in for prefill / time-to-first-token
             if is_chat and think:
                 for w in re.findall(r"\S+\s*", think):
-                    sse(frame(delta={"reasoning_content": w}))
+                    sse(frame(delta={"reasoning": w}))
                     time.sleep(0.01)
             for w in re.findall(r"\S+\s*|\s+", text):
                 sse(frame(delta={"content": w}, text_piece=w))

@@ -12,9 +12,10 @@ Commands inside the chat:
     /agg /disagg      switch which Trainium deployment answers you
     /new              clear the conversation
     /system <text>    set the system prompt
-    /effort low|medium|high    gpt-oss reasoning effort
+    /effort low|medium|high    gpt-oss reasoning effort (measured: has little/no
+                              effect on this build -- kept so you can test it yourself)
     /think            show the model's hidden reasoning for the last turn
-    /budget <n>       change the context budget (default 6000 tokens)
+    /budget <n>       change the input budget (default 4500 tokens)
     /stats            per-turn timings for this session
     /save <file>      write the transcript to a file
     /quit
@@ -36,9 +37,16 @@ import httpx
 warnings.filterwarnings("ignore")  # the demo endpoint's TLS cert does not match its hostname
 
 MODEL = "gpt-oss-20b"
-# max_model_len is 8192 for prompt + completion TOGETHER. Leave room to generate.
+# gpt-oss streams its chain of thought on a separate channel. This vLLM build names the
+# field `reasoning`; other builds name it `reasoning_content`. Accept either.
+REASONING_KEYS = ("reasoning", "reasoning_content")
+# MEASURED: max_model_len 8192 is enforced against INPUT length. Overlong input gets a
+# clean 400; input that merely leaves no room silently truncates the ANSWER instead
+# (finish_reason=length, no error). So keep input well under this.
 CTX_TOTAL = 8192
-DEFAULT_BUDGET = 6000
+# Leave room for the answer: the 8192 ceiling is enforced on INPUT, and anything
+# left over is all the output gets before it is silently truncated.
+DEFAULT_BUDGET = 4500
 CHARS_PER_TOKEN = 4  # crude estimate, only used to decide what to trim
 
 C = dict(dim="\033[2m", b="\033[1m", cyan="\033[36m", green="\033[32m",
@@ -89,9 +97,11 @@ class Chat:
     def trimmed_history(self):
         """Keep the most recent turns that fit the budget.
 
-        Prefix caching is DISABLED on these servers, so every token of history is
-        re-processed from scratch on every turn. History is not free — it is the
-        dominant cost of a long conversation. Hence the budget.
+        NOT for speed. Measured on this endpoint, a 37x longer prompt costs only ~15-20%
+        more time to first token, because prefills are padded to compiled shape buckets.
+        The budget exists because the 8192 ceiling is enforced on INPUT: overrun it and
+        the request is rejected, approach it and the model's ANSWER is silently truncated
+        to whatever room is left. Trimming protects the answer, not the clock.
         """
         budget = self.budget - est_tokens(self.system_prompt())
         kept, used = [], 0
@@ -128,7 +138,7 @@ class Chat:
 
         self.history.append({"role": "user", "content": user_text})
         msgs, used, dropped = self.trimmed_history()
-        max_tokens = max(256, min(2048, CTX_TOTAL - used - 256))
+        max_tokens = max(2500, min(4096, CTX_TOTAL - used - 256))
         if dropped:
             print(f"{C['yellow']}(dropped {dropped} older message(s) to stay under "
                   f"{self.budget} tokens){C['off']}")
@@ -164,7 +174,7 @@ class Chat:
                     if self.use_chat_api:
                         d = ch.get("delta", {}) or {}
                         piece = d.get("content") or ""
-                        think = d.get("reasoning_content") or ""
+                        think = next((d[k] for k in REASONING_KEYS if d.get(k)), "")
                     else:
                         piece, think = ch.get("text") or "", ""
                     if think:
@@ -174,6 +184,9 @@ class Chat:
                     if piece:
                         if ttft is None:
                             ttft = time.perf_counter() - t0
+                            if reasoning and self.show_think:
+                                print(f"\n{C['dim']}{'-' * 40} answer {'-' * 40}{C['off']}\n",
+                                      end="", flush=True)
                         shown.append(piece)
                         print(piece, end="", flush=True)
         except KeyboardInterrupt:
@@ -199,16 +212,20 @@ class Chat:
 
         self.history.append({"role": "assistant", "content": text})
 
+        # The server does not always send `usage` on streamed responses; fall back to a
+        # char/4 estimate, but mark it so nobody quotes a guess as a measurement.
+        measured = bool(usage.get("completion_tokens"))
         out_tok = usage.get("completion_tokens") or est_tokens(text)
         in_tok = usage.get("prompt_tokens") or used
         tps = out_tok / dt if dt else 0
         self.turns.append(dict(seconds=dt, ttft=ttft, in_tok=in_tok, out_tok=out_tok,
-                              tps=tps, path=self.path))
+                              tps=tps, path=self.path, measured=measured))
 
         bits = [f"{dt:.1f}s"]
         if ttft:
             bits.append(f"ttft {ttft:.1f}s")
-        bits += [f"{tps:.0f} tok/s", f"in {in_tok}", f"out {out_tok}"]
+        tilde = "" if measured else "~"
+        bits += [f"{tilde}{tps:.0f} tok/s", f"in {tilde}{in_tok}", f"out {tilde}{out_tok}"]
         if self.last_reasoning and not self.show_think:
             bits.append(f"thought {est_tokens(self.last_reasoning)} tok (/think to see)")
         if finish == "length":
