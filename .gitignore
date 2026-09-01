@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+probe-results*.json
+transcript*.md
+LOCAL-NOTES.md
+.DS_Store

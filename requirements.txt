@@ -1,0 +1,3 @@
+httpx>=0.27
+# Optional — only if you want to use the OpenAI SDK instead of raw HTTP:
+# openai>=1.40
