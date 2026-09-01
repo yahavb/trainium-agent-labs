@@ -121,6 +121,20 @@ Measured on this endpoint:
 Easy questions need ~64. Hard ones burned through 900 and still had nothing to show. Budget
 generously — you're charged for what it uses, not what you allow.
 
+**But more budget does not always rescue you, and this is the sharp edge.** On a code-generation task
+with an enumerated list of rules, the model audited itself against each rule in its reasoning channel
+and never began the answer:
+
+| `max_tokens` | reasoning produced | answer produced |
+|---|---|---|
+| 2500 | 10,194 chars | **0** |
+| 7000 | 26,401 chars | **0** |
+
+Nearly 3× the budget bought 2.6× the thinking and still no answer. The fix is not a bigger budget, it
+is a **simpler prompt**: the same task asked in one sentence returned working code in 617 tokens.
+Across eight attempts, every one-sentence prompt produced an answer and every structured multi-rule
+prompt spiralled. If you get empty content, **shorten the prompt before you raise `max_tokens`.**
+
 **Note that `Reasoning: low` in the system prompt does not help.** We measured it: on the coding
 task it produced *more* reasoning (7080 chars vs 4525), not less. Don't rely on it to control the
 budget.
