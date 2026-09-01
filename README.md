@@ -380,6 +380,35 @@ Things that work well within 8192 tokens, 4 concurrent sequences, and greedy dec
 Things that will fight you: long-context work, big parallel fan-out, sampling-diversity tricks
 (self-consistency, best-of-n), and chatty agents that accumulate context without trimming.
 
+## Documents bigger than 8192 tokens
+
+You will hit this immediately. A single design document is often well past the limit — the one that
+prompted this note was 46 KB, about 11,600 tokens, so it cannot go in at all.
+
+The model also **cannot fetch URLs**. Ask it to read a link and it will tell you so. There is no
+browsing tool, and the standard `tools=` parameter doesn't work here (see above), so don't plan
+around it.
+
+What to do instead, in increasing order of effort:
+
+1. **Condense it elsewhere first.** Paste the document into ChatGPT or Claude, get it down to a few
+   thousand tokens, bring that in. Completely legitimate, costs nothing, and is the right answer under
+   time pressure.
+2. **Chunk it yourself.** Split into ~4000-token pieces, extract from each, then answer from the
+   extracts. Note this costs 4+ requests per question instead of 1 — against the ~4 req/s shared
+   ceiling that is roughly what 4–5 chat users cost. And **retrying a bad extract is pointless**:
+   sampling is greedy, so you get a byte-identical result. Fix the prompt, never the dice.
+3. **Retrieve rather than summarise.** Index the document, pull only the passages a question needs.
+   More work, and the honest win: it scales past one document.
+
+Whichever you pick, **hand in the condensed or chunked text as an artifact.** Two reasons. Your result
+isn't reproducible without it. And if a frontier model produced the text your system reasons over,
+then your reported number is partly measuring *that* model rather than yours — a judge who can't
+separate them can't credit either.
+
+The interesting part isn't the mechanics, it's **what you chose to throw away.** A team that can
+defend how it got 46 KB down to 6 K has done real work on the actual constraint.
+
 ## License / use
 
 Sample code, provided as-is for the event, free to reuse. The model is
