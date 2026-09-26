@@ -292,6 +292,90 @@ Not yet verified: `simulate_and_count()` imports `nki`, so it has never run outs
 environment. Its byte counting patches `nisa.dma_copy`, which is an assumption about how the
 kernels call it. **The cluster job above is what confirms it**, and its selftest says so out loud.
 
+## The suboptimalities, in the order the agent meets them
+
+Each one has a **signal** the harness prints, a **fix**, and a **next** suboptimality that the fix
+exposes. That last column is the point: fixing one does not finish the job, it moves the bottleneck.
+
+> **Measured vs expected.** Rows 1 to 4 are measured on a trn2 node. Rows 5 onward are **expected**
+> from the tutorial's structure — nobody has run an agent on this ladder yet, and there are no
+> reference kernels for rungs 5 to 7 in this repo. Treat them as the map, not the territory.
+
+### 1. It does not compile or run at all — *measured*
+
+**Signal:** the rule scan fires, or the simulator raises. `line 5: partition dimension 256 exceeds
+the maximum of 128`, or `no function named nki_matmul_tiled_ is defined`.
+**Fix:** tile to 128 partitions, name the entry point, decorate with `@nki.jit`.
+**Exposes:** whether it is correct, which is a different question.
+
+### 2. It is correct in the middle and wrong at the edge — *expected, and the harness is built for it*
+
+**Signal:** `NUMERICAL MISMATCH ... this is in the final partial PARTITION tile — the ragged edge is
+the likely cause, not the core arithmetic`.
+**Fix:** handle the last, partial tile separately.
+**Exposes:** performance, once the thing is finally right.
+
+### 3. One tile only — it does not scale — *measured, rung 3*
+
+**Signal:** correct on `K=128 M=64 N=512` and nothing larger, at **19.7 Flops/Byte, 9% of the
+ridge**.
+**Fix:** loop over tiles in all three dimensions.
+**Exposes:** redundant loads, which tiling introduces.
+
+### 4. The same bytes crossing the bus repeatedly — *measured, rung 4*
+
+**Signal:** intensity rises with shape but stays far under the ridge. Measured: **28.4, 36.6, 42.7,
+28.4 Flops/Byte — 13% to 19% of the ridge**, every shape still `MEMORY BOUND`, with
+`3.0x to 3.9x more reuse needed`.
+**Fix:** hoist the loads out of the innermost loop — the same tiles are being re-read every pass.
+**Exposes:** that hoisting only reuses one row of tiles while SBUF holds far more.
+
+### 5. SBUF underused — reuse limited to one row of tiles — *expected, rung 5 → 6*
+
+**Signal:** intensity up from row 4 but still `MEMORY BOUND`, and the byte count still far above
+what the operands themselves weigh.
+**Fix:** block the M and N dimensions to keep more tiles resident.
+**Exposes:** a **search space** rather than a derivation — block sizes bounded by SBUF capacity. The
+agent has to explore now, and the log's `Nx more reuse needed` is what tells it when to stop.
+
+### 6. K still streamed — *expected, rung 6 → 7*
+
+**Signal:** intensity close to but under the ridge, and shape-dependent.
+**Fix:** block K as well.
+**Exposes:** the ridge, and with it the end of the throughput story.
+
+### 7. At the ridge and still slow on one call — *expected, and invisible to layer 1*
+
+**Signal:** nothing in this harness. Arithmetic intensity is at the ridge and the kernel is still
+slow per invocation. **Only a profile shows it**: DMA busy and the Tensor Engine idle at the same
+moment, meaning loads and compute take turns instead of overlapping.
+**Fix:** double-buffer, so a load for the next tile is in flight during the current compute.
+**Exposes:** that the blocked kernel may now be *slower on small shapes* than rung 5 was, because it
+pays for reuse it never gets to exploit. That is the latency-versus-throughput tension, and it is a
+finding to report, not a regression to hide.
+
+### 8. Fast and wrong — *the gate, at every rung*
+
+**Signal:** numerics fail while the intensity looks good.
+**Fix:** none — it scores zero. Re-verify every candidate automatically, before its timing counts.
+
+---
+
+### And the suboptimalities of the *agent*, which are the ones that cost the day
+
+Every one of these was measured in [Project 1](../01-heat-rod-pde/) or in the earlier kernel work
+in this repo. They are not hypothetical.
+
+| the agent's failure | what the log looks like | the fix that worked |
+|---|---|---|
+| Answers in notation, not code | `Could not read the expression 'X(x)T(t)'` | a **worked example** of an acceptable answer, not a list of prohibitions |
+| Audits itself against your rules and never answers | empty content, more thinking at a bigger budget | move the constraints **out of the prompt and into the verifier** |
+| Retries identically and expects a different result | byte-identical answers | change the **prompt**, not the dice — sampling may be greedy |
+| Guesses instead of computing | plausible patterns that do not converge; the same answer twice | give it a **tool** it aims itself |
+| Copies the answer out of your feedback | it "solves" it, having derived nothing | report **direction only**, never the target value |
+| Reports "verified" on a kernel that fails | — | scored as worse than an honest failure |
+| Fixes one thing and breaks another | the score **drops** while understanding rises | expect it; weight your reward knowing it happens |
+
 ## Hints, in the order they will save you time
 
 1. **Put the simulator in the inner loop.** Correctness to layer 1, performance to layers 2 and 3.
