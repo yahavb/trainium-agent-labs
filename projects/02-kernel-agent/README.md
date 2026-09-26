@@ -210,6 +210,61 @@ It answers three questions in order, and stops at the first failure:
 The tutorials are public, so hiding them buys nothing, and a harness whose reference nobody can read
 is a harness nobody should trust. Use them to confirm the harness works, then write your own.
 
+### How suboptimality shows up in the log
+
+This is what a `--check` prints, from a real run on a trn2 node:
+
+```
+rung 4: matmul, tiled
+  rules      clean
+  numerics   4/4 shapes passed
+
+  K=128 M=128 N=512: 294,912 HBM bytes in 3 transfers
+    MEMORY BOUND: 56.9 Flops/Byte against a ridge of 222, so 26% of what the engine
+    could sustain. The engine is idle waiting for data. Find reuse -- make the same
+    bytes do more work -- rather than tuning the arithmetic. 3.9x more reuse needed.
+
+  K=256 M=256 N=1024: 1,835,008 HBM bytes in 20 transfers
+    MEMORY BOUND: 73.1 Flops/Byte against a ridge of 222, so 33% of what the engine
+    could sustain. ... 3.0x more reuse needed.
+```
+
+**Four numbers per shape carry the diagnosis, and none of them is a timing:**
+
+* **Bytes moved, and the transfer count** — `294,912 HBM bytes in 3 transfers`. Bytes catch a
+  kernel re-reading the same data. The count catches the opposite failure: many tiny moves, where
+  the bytes are trivial and the per-transfer issue cost is everything. Rung 2 exists to teach that
+  those are different problems. The count is also a correctness check on the instrumentation
+  itself — 20 transfers for `K=256 M=256 N=1024` is exactly 8 inner iterations × 2 loads + 4
+  result stores, so if that number is wrong, nothing below it means anything.
+* **Arithmetic intensity against the ridge** — `56.9 Flops/Byte against a ridge of 222`. The
+  suboptimality as a ratio rather than an opinion.
+* **Fraction of the ceiling** — `26% of what the engine could sustain`. The line that reads as a
+  score: three quarters of the machine is idle.
+* **The remaining gap as a factor** — `3.9x more reuse needed`. This turns a verdict into a
+  target, so an agent knows **when to stop** instead of optimizing forever.
+
+**The instrumentation is the trend across rungs, not any single line.** In that run rung 3 sits at
+18% of the ceiling and rung 4's shapes at 26%, 33% and 38%. Tiling is visibly buying reuse, and
+every rung is still memory bound, so the ladder has not finished paying out. *That progression is
+the measurement* — hand in the table, not one number.
+
+Two caveats that run also taught us, both worth repeating to a team:
+
+* **A silent factor of two in the byte count is worse than no measurement.** The first run
+  undercounted bytes by exactly 2x (it assumed 2 bytes per element on float32 inputs), which
+  *doubled* every intensity. Rung 3 read 39.4 Flops/Byte when the float32 figure is 14.2. That
+  error runs in the dangerous direction: it makes a starved kernel look closer to compute bound
+  than it is, and sends you to optimize the wrong half. Check your instrumentation against a
+  number you worked out by hand before you trust it.
+* **Match the dtype to the ridge.** 222 Flops/Byte is the published *bfloat16* figure. The shapes
+  here are float32, so the tool labels its own verdict indicative rather than quoting it. A
+  measurement compared against a ceiling for a different dtype is not a like-for-like number.
+
+**What is deliberately absent: latency.** Everything above is throughput reasoning and needs no
+device. Wall time, and whether loads overlap compute, are layers 2 and 3 — and no amount of
+arithmetic intensity can see them.
+
 ### Run it on the cluster
 
 Layer 1 claims **no Neuron device**, so it can run beside a model server without fighting it:
@@ -236,6 +291,42 @@ against the ridge of 222 — which is the check that matters, since the whole di
 Not yet verified: `simulate_and_count()` imports `nki`, so it has never run outside a Neuron
 environment. Its byte counting patches `nisa.dma_copy`, which is an assumption about how the
 kernels call it. **The cluster job above is what confirms it**, and its selftest says so out loud.
+
+## Hints, in the order they will save you time
+
+1. **Put the simulator in the inner loop.** Correctness to layer 1, performance to layers 2 and 3.
+   An agent that compiles on every attempt gets a handful of iterations all day; one that simulates
+   gets hundreds. This is the single biggest design decision here.
+2. **Run `--selftest` and read what it proves before you trust a score.** It caught a mislabelled
+   reference, a rule that rejected correct kernels, and a 2x byte error — all in this harness,
+   before it graded anything of yours.
+3. **Compute the arithmetic intensity before you change code.** Memory bound means find reuse.
+   Compute bound means the loads already keep up and tuning them buys nothing. Guessing this is the
+   most common way to lose a day.
+4. **Diagnose the transfer count and the byte count separately.** They are different failures with
+   different fixes, and rung 2's cost is the count.
+5. **Constraints belong in your verifier, not in your generation prompt.** Measured, twice, in this
+   repo: a model given a list of rules audits itself and returns nothing; a model given none writes
+   something confident and illegal. Generate freely, let the checker catch it, then send back **one
+   named change**.
+6. **A verdict is not an instruction.** "It is slow" and "off by 341 percent" are both true and both
+   useless. "The sin(pi\*x) term should not be there at all" names the fix. Project 1 hit this three
+   separate times, and each time the fix was a better error message rather than a better model.
+7. **Do not print the answer in your feedback.** Project 1 measured this: told the target
+   coefficients, the model copied them verbatim and derived nothing. Say *which* thing is wrong and
+   in *which direction*, not what it should be.
+8. **Give the model a tool instead of a hint.** It could not do the integrals, and directional
+   feedback alone just made it guess. A calculator it aims itself fixed that — the model decides
+   *what* to compute, which is the reasoning worth measuring, and sympy does the arithmetic.
+9. **Expect the failure to move rather than vanish.** When the coefficients came right, the decay
+   rates broke. A score can even go **down** while understanding goes up, if the newly-broken part
+   carries more weight than the newly-fixed one.
+10. **Check the ragged edge first.** Most generated kernels are correct in the interior and wrong in
+    the final partial tile. The harness tells you which of the two you are looking at — believe it.
+11. **One run is not a result.** At four samples these numbers move between runs. Report how many
+    runs, and what the spread was.
+12. **Say which numbers came from the simulator and which from the device.** A judge will ask, and
+    "we did not get it onto the chip" is a fine answer *if you say it first*.
 
 ## What still has to be built
 
