@@ -18,27 +18,51 @@ on-chip memory, root access. Yours. If you break it we hand you another one.
 
 **Access:** «TODO — organisers: instance id, SSM command, per-team card»
 
-Everything is pre-installed and pre-compiled, so nothing needs building before you start.
-
-### Serving a model on your chip
-
-The tested path is Kubernetes, which is also how this was developed:
+Three commands from a fresh instance to a model answering on `localhost`:
 
 ```bash
-kubectl apply -f k8s/qwen3-8b-vllm.yaml
-kubectl wait --for=condition=ready pod -l app=qwen3-8b --timeout=30m
+git clone https://github.com/yahavb/nyu-gptoss-kit.git && cd nyu-gptoss-kit
+./install-docker.sh
+./serve.sh
 ```
 
-That serves **Qwen3-8B** on one chip behind an OpenAI-compatible API on port 8000. First start
-downloads the weights and compiles; measured at **102 s of compile, live about 4 minutes after
-start**. Two flags in that manifest are not optional and both were found by reading a failure:
+`serve.sh` starts **Qwen3-8B** on your chip in a container, behind an OpenAI-compatible API on port
+8000, and waits until it answers. The first run downloads the weights and compiles the model —
+measured at **102 seconds of compile, answering about 4 minutes after start**. Later runs reuse the
+cache and are quick.
 
-* `NEURON_SKIP_EFA_AFFINITY=1` — without it the workers abort with `No EFA device found`. It skips
-  a CPU-placement optimization that assumes networking hardware a single chip does not have.
+```bash
+./serve.sh --logs      # follow it
+./serve.sh --stop      # stop it
+curl -s localhost:8000/v1/models
+```
+
+### Then run a project inside that container
+
+The model is on `localhost` in there, and this repo is mounted at `/workspace`:
+
+```bash
+docker exec -it vllm bash
+cd /workspace/projects/01-heat-rod-pde
+pip install sympy
+export HEATROD_BASE_URL=http://localhost:8000/v1
+python agent.py --level 1 --all
+```
+
+### Three settings that are not optional
+
+All three were found by reading a failure, and two of them stop the server dead:
+
+* `NEURON_SKIP_EFA_AFFINITY=1` — without it the workers abort with `No EFA device found`. It skips a
+  CPU-placement optimization that assumes networking hardware a single chip does not have.
 * `--no-enable-prefix-caching` — prefix caching demands a segmented-prefill size of 512 or more.
+* `--num-gpu-blocks-override` — required, or you get out-of-bounds errors. `serve.sh` computes it
+  from the context length, so it stays correct if you change that.
 
-A plain shell script that does the same thing directly on the instance, without Kubernetes, is
-«TODO».
+`--tensor-parallel-size 2` matches the hardware: one chip at LNC=2 is two logical NeuronCores.
+
+`k8s/` holds the same configuration as Kubernetes manifests, which is how this was developed. You do
+not need them on the instance.
 
 ---
 

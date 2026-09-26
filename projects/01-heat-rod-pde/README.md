@@ -38,29 +38,37 @@ last step of the loop with a trainer and the model improves instead of just retr
 
 ## Run it
 
-Serve the model first (see the top-level README), then:
+Start the model first, from the repo root on your instance:
 
 ```bash
-pip install sympy numpy httpx
-export HEATROD_BASE_URL="http://localhost:8000/v1"
+./serve.sh
+```
 
-python level0_heatrod.py --selftest        # prove the checker before trusting it
+Then work inside that container, where the model is on `localhost` and this repo is at
+`/workspace`:
+
+```bash
+docker exec -it vllm bash
+cd /workspace/projects/01-heat-rod-pde
+pip install sympy
+export HEATROD_BASE_URL=http://localhost:8000/v1
+
+python level0_heatrod.py --selftest             # prove the checker before trusting it
 python level1_heatrod.py --selftest
 python agent.py --level 1 --all
 python agent.py --level 1 --sub 3 --no-tools    # the controlled comparison
-python agent.py --offline --level 1 --all       # no model needed, exercises the loop
 ```
 
-On Kubernetes, as a pod:
+`--offline` needs no model at all and exercises the whole loop against a canned generator, so you can
+write code while the server is still compiling. Never report a number from it.
 
 ```bash
-kubectl create configmap heatrod-code \
-  --from-file=pdecheck.py --from-file=tool_calc.py \
-  --from-file=level0_heatrod.py --from-file=level1_heatrod.py --from-file=agent.py \
-  --dry-run=client -o yaml | kubectl apply -f -
-kubectl apply -f ../../k8s/heatrod-agent.yaml
-kubectl logs -f job/heatrod-agent
+pip install sympy numpy
+python agent.py --offline --level 1 --all
 ```
+
+There is also a Kubernetes job in [`../../k8s/heatrod-agent.yaml`](../../k8s/heatrod-agent.yaml),
+which is how this was developed. You do not need it on the instance.
 
 ## The levels
 
