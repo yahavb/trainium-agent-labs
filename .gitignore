@@ -6,6 +6,13 @@ venv/
 probe-results*.json
 transcript*.md
 LOCAL-NOTES.md
+# Facilitator ops doc — contains held-back judging answers. Never publish.
+RUN-OF-DAY.md
+# Generated artifacts from evalkit.py
+heldout*.json
+floor.lock.json
+levers.json
+runs/
 .DS_Store
 
 # editor swap/backup files — a vim session got one of these committed once

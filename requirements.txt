@@ -1,3 +1,7 @@
 httpx>=0.27
+# Needed by kernelbench.py and by the pde/ checker.
+numpy>=1.26
+# Needed by pde/ only: the checker plugs a candidate answer back into the equation.
+sympy>=1.13
 # Optional — only if you want to use the OpenAI SDK instead of raw HTTP:
 # openai>=1.40

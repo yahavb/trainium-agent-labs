@@ -1,0 +1,45 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: heatrod-agent
+  namespace: default
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: agent
+          image: python:3.12-slim
+          env:
+            - name: HEATROD_BASE_URL
+              value: http://qwen3-8b:8000/v1
+            - name: HEATROD_MODEL
+              value: Qwen/Qwen3-8B
+            - name: PYTHONUNBUFFERED
+              value: "1"
+          resources:
+            requests:
+              cpu: 1
+              memory: 2Gi
+          volumeMounts:
+            - name: code
+              mountPath: /app
+          workingDir: /app
+          command:
+            - /bin/bash
+            - -ec
+            - |
+              pip -q install sympy numpy httpx
+              python level0_heatrod.py --selftest
+              python level1_heatrod.py --selftest
+              for level in 0 1; do
+                python agent.py --level $level --all --samples 4 --rounds 4 \
+                  --max-tokens 1200 --log /tmp/attempts.jsonl
+              done
+              echo "total attempts: $(wc -l < /tmp/attempts.jsonl)"
+      volumes:
+        - name: code
+          configMap:
+            name: heatrod-code
