@@ -171,19 +171,41 @@ CODE_BLOCK = re.compile(r"```(?:python)?\s*(.*?)```", re.S)
 
 
 def extract_code(text):
-    blocks = CODE_BLOCK.findall(text or "")
+    """Pull out the code, and return NOTHING rather than prose.
+
+    The old fallback returned the whole reply whenever it contained "def ", so a numbered list
+    or a sentence reached the compiler and produced "invalid decimal literal on line 2" -- a
+    parse error that blamed the model for the extractor's mistake.
+    """
+    text = text or ""
+    blocks = CODE_BLOCK.findall(text)
     if blocks:
         return max(blocks, key=len).strip()
-    # No fence. If it looks like a kernel anyway, take it.
-    return (text or "").strip() if "def " in (text or "") else ""
+    # No fence: start at the first line that can legally begin a module and keep the rest.
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        if re.match(r"^\s*(import |from |@nki|def )", line):
+            return "\n".join(lines[i:]).strip()
+    return ""
 
 
 # ---------------------------------------------------------------- the model
 
 def ask(a, prompt):
     import httpx
+    # enable_thinking=False matters. Qwen3 reasons before answering, and with thinking on it
+    # spent the whole budget there: the first cluster run returned "No code came back" at 54.7s
+    # over and over, plus truncated fragments (invalid decimal literal, unterminated string).
+    # Keep prompt + answer inside the server's context, or the answer is silently cut off and
+    # every parse error below is really a budget error. Repair prompts grow with the kernel.
+    est_prompt = len(prompt) // 4
+    budget = min(a.max_tokens, max(256, a.context - est_prompt - 64))
+    if budget < a.max_tokens:
+        print(f"    (prompt is ~{est_prompt} tokens, so the answer budget is capped at {budget} "
+              f"to stay inside the {a.context}-token context)")
     body = dict(model=a.model, messages=[{"role": "user", "content": prompt}],
-                max_tokens=a.max_tokens)
+                max_tokens=budget, temperature=0.6, top_p=0.95,
+                chat_template_kwargs={"enable_thinking": a.think})
     r = httpx.post(f"{a.base.rstrip('/')}/chat/completions", json=body,
                    timeout=900, verify=False)
     if r.status_code != 200:
@@ -193,6 +215,12 @@ def ask(a, prompt):
     msg = ch.get("message", {})
     reasoning = next((msg[k] for k in REASONING_KEYS if msg.get(k)), "")
     content = msg.get("content") or ""
+    finish = ch.get("finish_reason")
+    if finish == "length":
+        # Do not let a budget problem look like a model failure.
+        print(f"    (TRUNCATED: finish_reason=length after {len(content)} chars. The answer was "
+              f"cut off, so any parse error below is the budget, not the model. Prompt is "
+              f"{len(prompt)} chars; server context is the ceiling.)")
     if not content.strip() and reasoning:
         # The single most common surprise on this endpoint, so name it rather than reporting
         # an empty answer as a model failure.
@@ -264,6 +292,10 @@ def main():
                     or os.environ.get("GPTOSS_BASE_URL"))
     ap.add_argument("--path", default="", help="path to append, e.g. /agg/v1 for gpt-oss")
     ap.add_argument("--log", default="attempts.jsonl")
+    ap.add_argument("--context", type=int, default=4096,
+                    help="the server's max-model-len; prompt + answer must fit inside it")
+    ap.add_argument("--think", action="store_true",
+                    help="let the model reason first; costs budget, and it ran out")
     ap.add_argument("--offline", action="store_true")
     a = ap.parse_args()
 
