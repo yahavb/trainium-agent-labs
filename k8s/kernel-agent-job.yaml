@@ -18,13 +18,10 @@ spec:
           env:
             - name: PYTHONUNBUFFERED
               value: "1"
-            - name: GPTOSS_BASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: gptoss-url
-                  key: GPTOSS_BASE_URL
+            - name: KERNEL_AGENT_BASE_URL
+              value: http://qwen3-8b:8000/v1
             - name: KERNEL_AGENT_MODEL
-              value: gpt-oss-20b
+              value: Qwen/Qwen3-8B
           resources:
             requests:
               cpu: 8
@@ -46,7 +43,9 @@ spec:
               echo
               python agent.py --offline --rung 1 --rounds 2 --samples 1 --log /tmp/offline.jsonl
               echo
-              echo "=============== the agent, against the shared endpoint ==============="
+              echo "=============== the agent, against qwen3-8b ==============="
+              curl -sf "$KERNEL_AGENT_BASE_URL/models" >/dev/null \
+                || { echo "qwen3-8b is not answering at $KERNEL_AGENT_BASE_URL"; exit 1; }
               python agent.py --all --rounds 4 --samples 2 --log /tmp/attempts.jsonl
               echo
               echo "attempts: $(wc -l < /tmp/attempts.jsonl)"

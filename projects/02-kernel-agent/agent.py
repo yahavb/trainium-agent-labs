@@ -31,7 +31,7 @@ import time
 
 import nkibench
 
-MODEL = os.environ.get("KERNEL_AGENT_MODEL", "gpt-oss-20b")
+MODEL = os.environ.get("KERNEL_AGENT_MODEL", "Qwen/Qwen3-8B")
 
 # The model writes to a hidden reasoning channel before it writes any answer. Measured on this
 # endpoint: a coding task burned 900 tokens thinking and returned EMPTY content. See gptoss/README.
@@ -260,16 +260,30 @@ def main():
     ap.add_argument("--samples", type=int, default=2)
     ap.add_argument("--max-tokens", type=int, default=MIN_ANSWER_TOKENS)
     ap.add_argument("--model", default=MODEL)
-    ap.add_argument("--base", default=os.environ.get("GPTOSS_BASE_URL"))
-    ap.add_argument("--path", default="/agg/v1", help="endpoint path under the base URL")
+    ap.add_argument("--base", default=os.environ.get("KERNEL_AGENT_BASE_URL")
+                    or os.environ.get("GPTOSS_BASE_URL"))
+    ap.add_argument("--path", default="", help="path to append, e.g. /agg/v1 for gpt-oss")
     ap.add_argument("--log", default="attempts.jsonl")
     ap.add_argument("--offline", action="store_true")
     a = ap.parse_args()
 
     if not a.offline:
-        if not a.base:
-            sys.exit("set GPTOSS_BASE_URL, or pass --offline to exercise the loop with no model")
-        a.base = a.base.rstrip("/") + a.path
+        # Validate before the first request. An empty or scheme-less value produces a hostname
+        # starting with "." and 30 lines of httpx/idna traceback that say nothing about the cause.
+        raw = (a.base or "").strip()
+        if not raw:
+            sys.exit("KERNEL_AGENT_BASE_URL is empty or unset. Point it at a model, e.g.\n"
+                     "  http://qwen3-8b:8000/v1   (the in-cluster Qwen3-8B service)\n"
+                     "or pass --offline to exercise the loop with no model.\n"
+                     "For the shared gpt-oss endpoint instead, set GPTOSS_BASE_URL and pass "
+                     "--path /agg/v1.")
+        from urllib.parse import urlparse
+        u = urlparse(raw)
+        if u.scheme not in ("http", "https") or not u.netloc:
+            sys.exit(f"base URL {raw!r} is not usable. It needs a scheme and a host, e.g. "
+                     f"http://qwen3-8b:8000/v1.")
+        a.base = raw.rstrip("/") + a.path
+        print(f"endpoint {a.base}  model {a.model}")
     else:
         print("*** OFFLINE: replaying the reference kernel. Numbers are meaningless. ***")
 
