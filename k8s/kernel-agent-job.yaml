@@ -1,0 +1,69 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kernel-agent
+  namespace: default
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      nodeSelector:
+        node-type: trn2
+      containers:
+        - name: agent
+          image: public.ecr.aws/neuron/pytorch-inference-vllm-neuronx:0.24.0.1.1.0-neuronx-py313-sdk2.32.0-ubuntu24.04
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: GPTOSS_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: gptoss-url
+                  key: GPTOSS_BASE_URL
+            - name: KERNEL_AGENT_MODEL
+              value: gpt-oss-20b
+          resources:
+            requests:
+              cpu: 8
+              memory: 32Gi
+            limits:
+              cpu: 8
+              memory: 32Gi
+          volumeMounts:
+            - name: code
+              mountPath: /app
+          workingDir: /app
+          command:
+            - /bin/bash
+            - -ec
+            - |
+              python -c "import nki; print('nki', getattr(nki,'__version__','?'), '| simulate:', hasattr(nki,'simulate'))"
+              echo
+              python nkibench.py --selftest
+              echo
+              python agent.py --offline --rung 1 --rounds 2 --samples 1 --log /tmp/offline.jsonl
+              echo
+              echo "=============== the agent, against the shared endpoint ==============="
+              python agent.py --all --rounds 4 --samples 2 --log /tmp/attempts.jsonl
+              echo
+              echo "attempts: $(wc -l < /tmp/attempts.jsonl)"
+              python - <<'PY'
+              import json, collections
+              rows = [json.loads(l) for l in open('/tmp/attempts.jsonl')]
+              per = collections.defaultdict(list)
+              for r in rows:
+                  per[r['rung']].append(r['reward'])
+              print('reward by rung:')
+              for rung in sorted(per):
+                  v = per[rung]
+                  print(f'  rung {rung}: best {max(v):.2f}  mean {sum(v)/len(v):.2f}  n={len(v)}')
+              stuck = [r for r in rows if r['reward'] == 0.0]
+              print(f'attempts scoring zero: {len(stuck)}/{len(rows)}')
+              PY
+      volumes:
+        - name: code
+          configMap:
+            name: kernel-agent-code
