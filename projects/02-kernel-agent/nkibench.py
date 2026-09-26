@@ -46,7 +46,9 @@ GEMM_MOVING_FMAX = 512        # nl.tile_size.gemm_moving_fmax
 # The roofline ridge point: the arithmetic intensity at which the memory ceiling and the
 # compute ceiling meet. Below it a kernel is memory bound, above it compute bound. The
 # tutorial states 222 Flops/Byte for bfloat16 on NeuronCore-v2.
-RIDGE_FLOPS_PER_BYTE = {"bfloat16": 222.0, "float16": 222.0, "float32": 55.5}
+# Only the bfloat16 figure is published (NKI matmul tutorial). The others are NOT invented
+# here: a made-up ridge silently flips every memory-bound / compute-bound verdict.
+RIDGE_FLOPS_PER_BYTE = {"bfloat16": 222.0}
 
 DTYPE_BYTES = {"bfloat16": 2, "float16": 2, "float32": 4}
 
@@ -359,6 +361,33 @@ class NkiMissing(RuntimeError):
     pass
 
 
+def itemsize_of(obj, default=4):
+    """Bytes per element, without guessing.
+
+    The first cluster run reported exactly half the true byte count for every matmul rung,
+    because the fallback here assumed 2 bytes while the test inputs are float32. Half the bytes
+    doubles the arithmetic intensity, which would have turned a memory-bound kernel into a
+    plausible-looking compute-bound one. So resolve the dtype properly and only fall back as a
+    last resort.
+    """
+    dt = getattr(obj, "dtype", None)
+    for candidate in (dt, str(dt) if dt is not None else None):
+        if candidate is None:
+            continue
+        got = getattr(candidate, "itemsize", None)
+        if isinstance(got, int) and got > 0:
+            return got
+        try:
+            return int(np.dtype(candidate).itemsize)
+        except Exception:
+            pass
+    name = str(dt).lower().replace("nki.", "") if dt is not None else ""
+    for key, size in DTYPE_BYTES.items():
+        if key in name:
+            return size
+    return default
+
+
 def _simulator(nki_mod, kernel):
     """Return a callable that runs `kernel` on the CPU.
 
@@ -396,18 +425,18 @@ def simulate_and_count(kernel, args):
         ) from e
 
     run, api = _simulator(nki, kernel)
-    counter = dict(bytes=0, transfers=0, api=api)
+    counter = dict(bytes=0, transfers=0, api=api, dtypes=set())
     original = nisa.dma_copy
 
     def counting_dma_copy(dst=None, src=None, **kw):
         try:
             nbytes = getattr(src, "nbytes", None)
-            if nbytes is None:
-                itemsize = getattr(getattr(src, "dtype", None), "itemsize", 2)
-                nbytes = int(np.prod(src.shape)) * itemsize
+            if not isinstance(nbytes, int) or nbytes <= 0:
+                nbytes = int(np.prod(src.shape)) * itemsize_of(src)
             counter["bytes"] += int(nbytes)
+            counter["dtypes"].add(str(getattr(src, "dtype", "?")))
         except Exception:
-            pass
+            counter["unmeasured"] = counter.get("unmeasured", 0) + 1
         counter["transfers"] += 1
         return original(dst=dst, src=src, **kw)
 
@@ -482,7 +511,16 @@ def verify(path, rung_n, tol=2e-2, seed=0):
         return 1
 
     for lbl, r, counted in intensities:
-        print(f"\n  {lbl}: {counted['bytes']:,} HBM bytes in {counted['transfers']} transfers")
+        dts = ",".join(sorted(counted["dtypes"])) or "?"
+        print(f"\n  {lbl}: {counted['bytes']:,} HBM bytes in {counted['transfers']} transfers "
+              f"(via {counted['api']}, dtype {dts})")
+        if counted.get("unmeasured"):
+            print(f"    WARNING: {counted['unmeasured']} transfers could not be sized, so the "
+                  f"byte count is a LOWER bound and the intensity an UPPER one.")
+        if not any(("bfloat16" in d) or ("bf16" in d) for d in counted["dtypes"]):
+            print(f"    NOTE: the {RIDGE_FLOPS_PER_BYTE['bfloat16']:g} Flops/Byte ridge is the "
+                  f"published bfloat16 figure, and this ran in {dts}. Treat the verdict as "
+                  f"indicative and re-measure in bfloat16 before quoting a number.")
         print(textwrap.indent(explain_roofline(r), "    "))
     return 0
 
@@ -569,6 +607,28 @@ def selftest():
     print(f"  accepts a plausible kernel         -> {'ok' if not v else 'FAIL: ' + str(v)}")
     rc |= 0 if not v else 1
 
+    # Byte sizing. A 2x error here silently doubles every arithmetic intensity and can turn a
+    # memory-bound kernel into a plausible-looking compute-bound one -- which is exactly what
+    # the first cluster run did before itemsize_of existed.
+    print()
+    class _Fake:
+        def __init__(self, dtype):
+            self.dtype, self.shape = dtype, (128, 512)
+    cases = [("a numpy float32 array", np.zeros(8, np.float32), 4),
+             ("dtype as an object", _Fake(np.dtype("float32")), 4),
+             ("dtype as a string", _Fake("float32"), 4),
+             ("an nki-style name", _Fake("nki.bfloat16"), 2)]
+    for what, obj, want in cases:
+        got = itemsize_of(obj)
+        ok = got == want
+        rc |= 0 if ok else 1
+        print(f"  itemsize of {what:<24} -> {got} bytes {'ok' if ok else 'FAIL want ' + str(want)}")
+    lhsT = np.zeros((128, 128), np.float32)
+    rhs = np.zeros((128, 512), np.float32)
+    want_bytes = lhsT.nbytes + rhs.nbytes + 128 * 512 * 4
+    print(f"  rung 3 should move {want_bytes:,} bytes, giving an intensity of "
+          f"{matmul_flops(64, 128, 512) / want_bytes:.1f} in float32")
+
     # Failure messages have to localise, not just complain.
     print()
     want = np.zeros((300, 1100), np.float32) + 1.0
@@ -621,7 +681,8 @@ def main():
     ap.add_argument("--check", metavar="FILE.py")
     ap.add_argument("--roofline", nargs=3, type=int, metavar=("M", "K", "N"),
                     help="what the tiled matmul's roofline says for this shape")
-    ap.add_argument("--dtype", default="bfloat16", choices=sorted(DTYPE_BYTES))
+    ap.add_argument("--dtype", default="bfloat16",
+                    choices=sorted(RIDGE_FLOPS_PER_BYTE))
     ap.add_argument("--tol", type=float, default=2e-2)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--selftest", action="store_true")
