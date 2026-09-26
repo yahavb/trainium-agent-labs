@@ -74,6 +74,23 @@ Teaches the machine: results land in **PSUM** and have to be copied to **SBUF**;
 arrives **already transposed** (`lhsT`) because of how the engine consumes partitions; tiles have hard
 shape limits. Mostly a correctness rung, but one where the layout rules bite.
 
+#### The roofline, in one paragraph
+
+A chip can only do two things: move bytes and do arithmetic. Each has a ceiling — a peak memory
+bandwidth and a peak Flops rate — and **whichever ceiling you hit first is the one that limits you**.
+So for any kernel, ask how much arithmetic it does per byte it reads from memory. That ratio is its
+**arithmetic intensity**, in Flops per byte. Low intensity means the kernel is starved: the engine sits
+idle waiting for data, and it is **memory bound**. High intensity means the data keeps up and the
+engine is the limit, so it is **compute bound**. The crossover is a property of the hardware, not of
+your code: divide peak Flops by peak bandwidth and you get the intensity at which the two ceilings
+meet. Plot achievable performance against arithmetic intensity and you get a line rising with slope
+equal to bandwidth, then flattening at peak Flops — the shape is why it is called a roofline.
+
+Why it matters for an agent: **it tells you which half of the kernel to fix, before you change
+anything.** Memory bound means find reuse, so the same bytes do more work. Compute bound means the
+loads are already keeping up and tuning them is wasted effort. Guessing this wrong is the most common
+way to spend a day optimizing the wrong thing.
+
 **Rung 4. Tiled matrix multiplication.** Now it works for matrices larger than one tile — and it is
 **measurably memory bound**. This is the most important rung in the ladder, because the diagnosis is
 *derivable rather than guessed*:
@@ -158,6 +175,67 @@ wrong output scores zero.**
 > performance questions to layers 2 and 3. An agent that compiles on every attempt will manage a
 > handful of iterations all day; one that simulates will manage hundreds. **This is the single biggest
 > design decision in the project.**
+
+## Layer 1 is built: `nkibench.py`
+
+Everything in it runs on a CPU and needs **no Trainium device**, which is the point — it is where
+the agent should spend its iterations.
+
+```bash
+python nkibench.py --selftest                              # prove the harness first
+python nkibench.py --list                                  # the ladder
+python nkibench.py --rung 4 --show                          # what this rung wants
+python nkibench.py --rung 4 --check reference_rung4.py      # verify a kernel
+python nkibench.py --roofline 4096 4096 4096                # the verdict before you write code
+```
+
+It answers three questions in order, and stops at the first failure:
+
+1. **Does it break the rules?** A static scan: framework calls that hand over the whole
+   operation (`np.mean`, `torch.matmul`, the `@` operator, `.T` on an argument), a partition
+   dimension over 128, a missing `@nki.jit`, the wrong entry-point name. **NKI's own primitives
+   are never flagged** — `nl.sum` over a strided view is how the pooling tutorial does it, and
+   `nisa.nc_matmul` is the whole point of the matmul rungs. Rejecting a correct kernel is worse
+   than missing a cheat.
+2. **Does it compute the right thing?** `nki.simulate_kernel` against a NumPy reference, on
+   hostile shapes including ones that do not divide evenly by the tile size. The failure message
+   names the element, says what fraction of the output is wrong, and says whether the error sits
+   in a **ragged edge tile** or in the core arithmetic — those have different causes.
+3. **Is it memory bound or compute bound?** HBM bytes are counted by wrapping `nisa.dma_copy`
+   for the duration of the simulation, flops come from the shapes, and the ratio is compared
+   against the ridge. So **an arithmetic intensity is measurable without a device**, which is
+   what makes rung 4's diagnosis available in the inner loop rather than after a compile.
+
+`reference_rung1.py` … `reference_rung4.py` are the tutorial's own kernels, shipped deliberately.
+The tutorials are public, so hiding them buys nothing, and a harness whose reference nobody can read
+is a harness nobody should trust. Use them to confirm the harness works, then write your own.
+
+### Run it on the cluster
+
+Layer 1 claims **no Neuron device**, so it can run beside a model server without fighting it:
+
+```bash
+kubectl create configmap nkibench-code \
+  --from-file=nkibench.py --from-file=reference_rung1.py --from-file=reference_rung2.py \
+  --from-file=reference_rung3.py --from-file=reference_rung4.py \
+  --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -f ../../k8s/nkibench-job.yaml
+kubectl logs -f job/nkibench
+```
+
+That job prints the SDK's own tile-size constants, runs the selftest, and puts all four reference
+kernels through the harness.
+
+### What is verified, and what is not
+
+The rule checker, the references, the shape generators, the failure messages and the roofline
+arithmetic are all exercised by `--selftest` on any machine. **The roofline model reproduces the
+tutorial's published figures exactly** — 160 KB per 16.8 MFlops, an arithmetic intensity of 102.4
+against the ridge of 222 — which is the check that matters, since the whole diagnosis rests on it.
+
+Not yet verified: `simulate_and_count()` imports `nki`, so it has never run outside a Neuron
+environment. Its byte counting patches `nisa.dma_copy`, which is an assumption about how the
+kernels call it. **The cluster job above is what confirms it**, and its selftest says so out loud.
 
 ## What still has to be built
 
