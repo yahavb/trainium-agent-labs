@@ -359,6 +359,25 @@ class NkiMissing(RuntimeError):
     pass
 
 
+def _simulator(nki_mod, kernel):
+    """Return a callable that runs `kernel` on the CPU.
+
+    The API moved. nki 0.6.0 exposes `nki.simulate(kernel)(*args)`, while the tutorial examples
+    and older docs use `nki.simulate_kernel(kernel, *args)`. Support both rather than pinning a
+    version, and say clearly which one was found -- this exact mismatch is what the first
+    cluster run caught, with every reference kernel reporting "module 'nki' has no attribute
+    'simulate_kernel'".
+    """
+    if hasattr(nki_mod, "simulate"):
+        return lambda *args: nki_mod.simulate(kernel)(*args), "nki.simulate"
+    if hasattr(nki_mod, "simulate_kernel"):
+        return lambda *args: nki_mod.simulate_kernel(kernel, *args), "nki.simulate_kernel"
+    raise NkiMissing(
+        f"this nki ({getattr(nki_mod, '__version__', 'unknown')}) exposes neither "
+        f"`simulate` nor `simulate_kernel`. Available: "
+        f"{sorted(n for n in dir(nki_mod) if not n.startswith('_'))}")
+
+
 def simulate_and_count(kernel, args):
     """Run the kernel on the CPU and count the HBM traffic it asked for.
 
@@ -376,13 +395,17 @@ def simulate_and_count(kernel, args):
             "this layer."
         ) from e
 
-    counter = dict(bytes=0, transfers=0)
+    run, api = _simulator(nki, kernel)
+    counter = dict(bytes=0, transfers=0, api=api)
     original = nisa.dma_copy
 
     def counting_dma_copy(dst=None, src=None, **kw):
         try:
-            counter["bytes"] += int(np.prod(src.shape)) * DTYPE_BYTES.get(
-                str(getattr(src, "dtype", "bfloat16")).replace("nki.", ""), 2)
+            nbytes = getattr(src, "nbytes", None)
+            if nbytes is None:
+                itemsize = getattr(getattr(src, "dtype", None), "itemsize", 2)
+                nbytes = int(np.prod(src.shape)) * itemsize
+            counter["bytes"] += int(nbytes)
         except Exception:
             pass
         counter["transfers"] += 1
@@ -390,7 +413,7 @@ def simulate_and_count(kernel, args):
 
     nisa.dma_copy = counting_dma_copy
     try:
-        out = nki.simulate_kernel(kernel, *args)
+        out = run(*args)
     finally:
         nisa.dma_copy = original
     return out, counter
@@ -574,7 +597,11 @@ def selftest():
     print()
     try:
         import nki  # noqa: F401
-        print("  the Neuron SDK IS importable here, so run a real --check to exercise layer 1c")
+        api = ("nki.simulate" if hasattr(nki, "simulate")
+               else "nki.simulate_kernel" if hasattr(nki, "simulate_kernel") else None)
+        print(f"  nki {getattr(nki, '__version__', '?')} is importable; simulation API: "
+              f"{api or 'NEITHER — see _simulator()'}")
+        rc |= 0 if api else 1
     except ImportError:
         print("  NEEDS DEVICE VERIFICATION: simulate_and_count() imports nki and cannot run")
         print("    here. Its byte counting wraps nisa.dma_copy, which is unverified until")

@@ -35,7 +35,8 @@ spec:
             - |
               echo "=============== environment ==============="
               python -c "import nki; print('nki', getattr(nki, '__version__', 'unknown'))"
-              python -c "import nki; print('simulate_kernel present:', hasattr(nki, 'simulate_kernel'))"
+              python -c "import nki; print('simulate:', hasattr(nki,'simulate'), '| simulate_kernel:', hasattr(nki,'simulate_kernel'))"
+              python -c "import nki; print('public names:', sorted(n for n in dir(nki) if not n.startswith('_')))"
               python -c "import nki.language as nl; print('pmax', nl.tile_size.pmax, '| gemm stationary fmax', nl.tile_size.gemm_stationary_fmax, '| gemm moving fmax', nl.tile_size.gemm_moving_fmax)"
               python -c "import nki.isa as nisa; print('dma_copy is patchable:', callable(getattr(nisa, 'dma_copy', None)))"
 
