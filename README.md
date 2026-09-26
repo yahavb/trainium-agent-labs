@@ -447,3 +447,14 @@ defend how it got 46 KB down to 6 K has done real work on the actual constraint.
 
 Sample code, provided as-is for the event, free to reuse. The model is
 [openai/gpt-oss-20b](https://huggingface.co/openai/gpt-oss-20b) under its own license.
+
+## Labs
+
+Each lab is self-contained and has its own README-in-the-file docstrings.
+
+| lab | what it is | needs |
+|---|---|---|
+| `pde/` | **The agent loop.** A small model (Qwen3-8B) on one Trainium chip solves heat-equation problems: it proposes an answer, a checker grades it, and the grade plus the reason go into the next attempt. Two difficulty levels, a calculator tool, and a reward an RL trainer can consume. | `k8s/qwen3-8b-vllm.yaml` |
+| `CHALLENGE-kernel-agent.md` + `kernelbench.py` | Build an agent that writes chip-level kernels through an 8192-token window. | laptop only |
+
+`k8s/` holds the two manifests: one serves the model, one runs the lab against it.

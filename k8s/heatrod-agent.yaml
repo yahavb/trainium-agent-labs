@@ -36,8 +36,10 @@ spec:
               python level1_heatrod.py --selftest
               for level in 0 1; do
                 python agent.py --level $level --all --samples 4 --rounds 4 \
-                  --max-tokens 1200 --log /tmp/attempts.jsonl
+                  --max-tokens 1000 --log /tmp/attempts.jsonl
               done
+              python agent.py --level 1 --sub 3 --samples 4 --rounds 4 \
+                --max-tokens 1000 --no-tools --log /tmp/notools.jsonl
               echo "total attempts: $(wc -l < /tmp/attempts.jsonl)"
       volumes:
         - name: code

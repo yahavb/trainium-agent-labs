@@ -78,10 +78,10 @@ spec:
               vllm serve \
                 --model "Qwen/Qwen3-8B" \
                 --tensor-parallel-size 2 \
-                --max-model-len 2048 \
+                --max-model-len 4096 \
                 --max-num-seqs 4 \
                 --block-size 32 \
-                --num-gpu-blocks-override 256 \
+                --num-gpu-blocks-override 512 \
                 --no-enable-prefix-caching \
                 --port 8000
       volumes:

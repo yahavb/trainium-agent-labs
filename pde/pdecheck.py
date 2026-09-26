@@ -167,6 +167,51 @@ def _coeff_report(p, ug, f0, grid, L, n_max=8, rel=0.02):
     return " Term by term: " + "; ".join(parts) + "."
 
 
+def _decay_report(p, u, grid, L, k, n_max=8):
+    """Say WHICH term decays at the wrong rate.
+
+    The third time this lesson turned up. Given the calculator the model gets the
+    coefficients exactly right -- 32/pi**3, 32/(27*pi**3), 32/(125*pi**3) on the parabola --
+    and then pairs them with the wrong exponents: exp(-2*pi**2*t) against sin(pi*x/2), using
+    frequency pi where the wave it multiplies uses pi/2. "u_t - 2*u_xx = -8.739 instead of 0"
+    is true and says nothing about which of four terms is at fault. Each term is independent,
+    so each one's rate can be measured on its own and named.
+    """
+    lam = p.get("lam")
+    if lam is None:
+        return ""
+    lam1 = float(lam(1))
+    t1 = 0.5 / max(float(k) * lam1 * lam1, 1e-12)
+    try:
+        u0 = _num(u, grid, 0 * grid)
+        u1 = _num(u, grid, t1 + 0 * grid)
+    except Exception:
+        return ""
+    if not (np.all(np.isfinite(u0)) and np.all(np.isfinite(u1))):
+        return ""
+
+    parts = []
+    for i in range(1, n_max + 1):
+        b = _num(p["basis"](i), grid, 0 * grid)
+        norm = float(np.trapezoid(b * b, grid)) or 1.0
+        c0 = float(np.trapezoid(u0 * b, grid)) / norm
+        c1 = float(np.trapezoid(u1 * b, grid)) / norm
+        if abs(c0) < 1e-6 or c1 / c0 <= 0:
+            continue
+        got = -np.log(c1 / c0) / t1
+        want = float(k) * float(lam(i)) ** 2
+        if abs(got - want) > 0.02 * max(abs(want), 1e-12):
+            name = sp.sstr(p["basis"](i))
+            parts.append(f"the {name} term decays too "
+                         f"{'fast' if got > want else 'slowly'}")
+    if not parts:
+        return ""
+    return (" Term by term: " + "; ".join(parts[:4]) + ". Each term decays at "
+            "its own rate, and that rate is k times the square of the frequency in that "
+            "same term's sine. Check that the frequency in each exponent matches the "
+            "frequency of the wave it multiplies.")
+
+
 def _num(expr, X, T):
     fn = sp.lambdify((x, t), expr, "numpy")
     out = np.asarray(fn(X, T), dtype=float)
@@ -258,7 +303,8 @@ def check(problem, answer_text, n_points=24):
         i = int(np.argmax(np.abs(resid)))
         feedback.append(f"The equation u_t = {sp.sstr(k)}*u_xx does not hold: at "
                         f"x={xs[i]:.3f}, t={ts[i]:.4f}, u_t - {sp.sstr(k)}*u_xx = "
-                        f"{resid[i]:+.4g} instead of 0.")
+                        f"{resid[i]:+.4g} instead of 0."
+                        + _decay_report(p, u, grid, L, k))
     for side, name, vals, at in (("left", p["left"], left, 0.0),
                                  ("right", p["right"], right, L)):
         if not parts[f"{side}_bc"]:

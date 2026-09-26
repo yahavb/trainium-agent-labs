@@ -49,7 +49,8 @@ def make(sub, seed=0):
     return dict(name=f"level0.{sub}", level=0, sub=sub, seed=seed,
                 L=L, k=k, left="dirichlet", right="dirichlet",
                 f=f, exact=exact, tol=1e-6,
-                basis=lambda n, L=L: sp.sin(n * sp.pi * x / L))
+                basis=lambda n, L=L: sp.sin(n * sp.pi * x / L),
+                lam=lambda n, L=L: n * sp.pi / L)
 
 
 def selftest():

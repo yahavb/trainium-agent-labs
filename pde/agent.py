@@ -29,31 +29,57 @@ import time
 import sympy as sp
 
 import pdecheck
+import tool_calc
 import level0_heatrod
 import level1_heatrod
 
 LEVELS = {0: level0_heatrod, 1: level1_heatrod}
 
 
-def ask_model(base, model, prompt, n, max_tokens, think):
-    """n separate requests in parallel, rather than one request asking for n answers, which
-    is not supported on every backend."""
-    import concurrent.futures as cf
+def ask_once(a, prompt):
     import httpx
-    body = dict(model=model, messages=[{"role": "user", "content": prompt}],
-                max_tokens=max_tokens, temperature=0.6, top_p=0.95,
-                chat_template_kwargs={"enable_thinking": think})
+    body = dict(model=a.model, messages=[{"role": "user", "content": prompt}],
+                max_tokens=a.max_tokens, temperature=0.6, top_p=0.95,
+                chat_template_kwargs={"enable_thinking": a.think})
+    r = httpx.post(f"{a.base.rstrip('/')}/chat/completions", json=body,
+                   timeout=900, verify=False)
+    if r.status_code != 200:
+        raise SystemExit(f"the server returned HTTP {r.status_code}:\n{r.text[:800]}\n\n"
+                         f"request was: {json.dumps(body)[:400]}")
+    return r.json()["choices"][0]["message"].get("content") or ""
 
-    def one(_):
-        r = httpx.post(f"{base.rstrip('/')}/chat/completions", json=body,
-                       timeout=900, verify=False)
-        if r.status_code != 200:
-            raise SystemExit(f"the server returned HTTP {r.status_code}:\n{r.text[:800]}\n\n"
-                             f"request was: {json.dumps(body)[:400]}")
-        return r.json()["choices"][0]["message"].get("content") or ""
 
-    with cf.ThreadPoolExecutor(max_workers=n) as ex:
-        return list(ex.map(one, range(n)))
+def one_attempt(a, problem, prompt, rnd):
+    """One sample, including its tool exchanges.
+
+    The model may ask for exact values with COMPUTE: lines; we evaluate them and hand the
+    numbers back, then ask for the final answer. The model chooses which integral to set up,
+    which is the part worth measuring, and sympy does the arithmetic it cannot do reliably.
+    """
+    if a.offline:
+        return fake_model(problem, 1, rnd)[0], 0
+    convo = prompt if a.no_tools else f"{prompt}\n\n{tool_calc.INSTRUCTIONS}"
+    used = 0
+    for step in range(a.tool_steps + 1):
+        reply = ask_once(a, convo)
+        asks = [] if a.no_tools else tool_calc.requests_in(reply)
+        if not asks or step == a.tool_steps:
+            return reply, used
+        used += len(asks)
+        convo = (f"{convo}\n\n{reply}\n\n"
+                 f"{tool_calc.answer_block(asks)}\n\n"
+                 f"Use those values and give the final answer now, as one line "
+                 f"u(x, t) = <expression> with every number filled in.")
+    return reply, used
+
+
+def ask_round(a, problem, prompt, rnd):
+    """a.samples independent attempts, run at the same time."""
+    import concurrent.futures as cf
+    with cf.ThreadPoolExecutor(max_workers=a.samples) as ex:
+        futures = [ex.submit(one_attempt, a, problem, prompt, rnd)
+                   for _ in range(a.samples)]
+        return [f.result() for f in futures]
 
 
 def fake_model(problem, n, rnd):
@@ -79,20 +105,23 @@ def solve(problem, a, log):
     prompt, best_ever = base_prompt, 0.0
     for rnd in range(a.rounds):
         t0 = time.perf_counter()
-        answers = (fake_model(problem, a.samples, rnd) if a.offline else
-                   ask_model(a.base, a.model, prompt, a.samples, a.max_tokens, a.think))
+        attempts = ask_round(a, problem, prompt, rnd)
+        answers = [ans for ans, _ in attempts]
+        tool_calls = sum(used for _, used in attempts)
         graded = [pdecheck.check(problem, ans) for ans in answers]
-        for ans, g in zip(answers, graded):
+        for (ans, used), g in zip(attempts, graded):
             log.write(json.dumps(dict(problem=problem["name"], seed=problem["seed"],
                                       round=rnd, prompt=prompt, answer=ans,
-                                      reward=g["reward"], parts=g["parts"],
+                                      tool_calls=used, reward=g["reward"],
+                                      parts=g["parts"],
                                       start_error=g["start_error"])) + "\n")
         log.flush()
         rewards = [g["reward"] for g in graded]
         best = max(graded, key=lambda g: g["reward"])
         best_ever = max(best_ever, best["reward"])
         print(f"\nround {rnd}: rewards {rewards}  mean {sum(rewards) / len(rewards):.2f}  "
-              f"best {best['reward']:.1f}  ({time.perf_counter() - t0:.1f}s)")
+              f"best {best['reward']:.1f}  {tool_calls} tool call(s)  "
+              f"({time.perf_counter() - t0:.1f}s)")
         if best["reward"] == 1.0:
             print(f"SOLVED: u(x, t) = {best['expr']}")
             return 1.0, rnd + 1
@@ -115,6 +144,10 @@ def main():
     ap.add_argument("--rounds", type=int, default=4)
     ap.add_argument("--max-tokens", type=int, default=1200)
     ap.add_argument("--think", action="store_true")
+    ap.add_argument("--tool-steps", type=int, default=1,
+                    help="rounds of COMPUTE: exchanges allowed per attempt")
+    ap.add_argument("--no-tools", action="store_true",
+                    help="withhold the calculator, to measure what it buys")
     ap.add_argument("--model", default=os.environ.get("HEATROD_MODEL", "Qwen/Qwen3-8B"))
     ap.add_argument("--base", default=os.environ.get("HEATROD_BASE_URL"))
     ap.add_argument("--log", default="attempts.jsonl")

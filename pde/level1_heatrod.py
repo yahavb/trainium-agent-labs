@@ -60,6 +60,7 @@ def make(sub, seed=0):
         f, exact = _insulated(L, k, [(r.choice([1, 2]), 1)])
         left, right, tol = "dirichlet", "neumann", 1e-6
         basis = lambda n, L=L: sp.sin((2 * n - 1) * sp.pi * x / (2 * L))
+        lam = lambda n, L=L: (2 * n - 1) * sp.pi / (2 * L)
     elif sub == 2:
         L = sp.Integer(r.choice([1, 2, 3]))
         k = sp.Rational(r.choice([1, 2, 3]), r.choice([1, 2, 4]))
@@ -67,6 +68,7 @@ def make(sub, seed=0):
         f, exact = _insulated(L, k, [(j, r.choice([1, 2, -1])) for j in sorted(js)])
         left, right, tol = "dirichlet", "neumann", 1e-6
         basis = lambda n, L=L: sp.sin((2 * n - 1) * sp.pi * x / (2 * L))
+        lam = lambda n, L=L: (2 * n - 1) * sp.pi / (2 * L)
     elif sub == 3:
         # A parabola, zero at both ends so it is compatible with the boundaries. Its sine
         # coefficients are 8*L^2/(n^3*pi^3) for odd n and zero for even n.
@@ -75,12 +77,13 @@ def make(sub, seed=0):
         f, exact = x * (L - x), None
         left, right, tol = "dirichlet", "dirichlet", SERIES_TOL
         basis = lambda n, L=L: sp.sin(n * sp.pi * x / L)
+        lam = lambda n, L=L: n * sp.pi / L
     else:
         raise ValueError(f"level 1 has sub-problems {SUBS}")
 
     return dict(name=f"level1.{sub}", level=1, sub=sub, seed=seed,
                 L=L, k=k, left=left, right=right, f=sp.expand(f), exact=exact, tol=tol,
-                basis=basis)
+                basis=basis, lam=lam)
 
 
 def series_answer(p, n_terms):
