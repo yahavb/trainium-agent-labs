@@ -66,9 +66,19 @@ def grade(source, level):
 
     violations = nkibench.check_rules(source, level)
     if violations:
+        extra = ""
+        if any("no function named" in v for v in violations):
+            # Measured: this repeated 15 rounds running, because "there is no function named X"
+            # never said what the function should look like. Hand over the exact line.
+            import inspect
+            ref = nkibench.LEVELS[level]["ref"]
+            args = ", ".join(inspect.signature(ref).parameters)
+            extra = (f" Start the function with exactly this line:  "
+                     f"def {nkibench.LEVELS[level]['entry']}({args}):  "
+                     f"and put @nki.jit on the line above it.")
         return (sum(WEIGHTS[k] for k, v in parts.items() if v), parts,
                 "Rule violations, which score zero however fast the kernel is. Fix exactly "
-                "these: " + " ".join(violations))
+                "these: " + " ".join(violations) + extra)
     parts["rules"] = True
 
     spec = nkibench.LEVELS[level]
@@ -382,7 +392,7 @@ def solve(a, level, log):
     terse = a.terse
     prompt = first_prompt(level, terse)
     best = (0.0, None, "")
-    tried = []
+    tried, streak = [], 0
     for rnd in range(a.rounds):
         t0 = time.perf_counter()
         replies = (offline_answers(level, a.samples, rnd) if a.offline
@@ -400,19 +410,30 @@ def solve(a, level, log):
         top = graded[0]
         if top[0] > best[0]:
             best = (top[0], top[1], top[2])
-        print(f"round {rnd}: rewards {[round(g[0], 2) for g in graded]}  "
-              f"best {top[0]:.2f}  ({time.perf_counter() - t0:.1f}s)")
-        print(f"  {top[2][:300]}")
+        same = top[2] == (tried[-1] if tried else None)
+        if same:
+            # Collapse. Fifteen identical multi-line blocks is noise, not information.
+            print(f"round {rnd}: same failure again ({top[0]:.2f})")
+        else:
+            print(f"round {rnd}: rewards {[round(g[0], 2) for g in graded]}  "
+                  f"best {top[0]:.2f}  ({time.perf_counter() - t0:.1f}s)")
+            print(f"  {top[2][:400]}")
         if top[0] >= sum(WEIGHTS.values()) - 1e-9:
             print(f"  SOLVED on round {rnd}")
             return top[0], rnd + 1
-        tried.append(top[2][:120])
-        repeats = sum(1 for t in tried if t == tried[-1])
+        streak = streak + 1 if same else 1
+        if streak >= a.give_up_after:
+            print(f"  STOPPING this level: the identical failure {streak} rounds running. The "
+                  f"prompt is no longer changing, and sampling here is greedy, so the answer "
+                  f"cannot change either. This is where a human has to change the approach.")
+            return best[0], rnd + 1
+        tried.append(top[2])
+        repeats = streak
         if repeats >= 2 and (best[1] or "").strip():
             # Sampling on this endpoint is greedy, so an unchanged prompt returns an unchanged
             # answer. Measured: the same TypeError 19 rounds running. Changing the prompt is the
             # only thing that can change the answer, so say what has already been tried.
-            ledger = "\n".join(f"- attempt {i}: {t}" for i, t in enumerate(dict.fromkeys(tried)))
+            ledger = "\n".join(f"- {t[:160]}" for t in dict.fromkeys(tried))
             prompt = (repair_prompt(level, best[1], best[2])
                       + f"\n\nThese approaches have already failed, so do something different:\n"
                         f"{ledger}")
@@ -444,6 +465,9 @@ def main():
                     or os.environ.get("GPTOSS_BASE_URL"))
     ap.add_argument("--path", default="", help="path to append, e.g. /agg/v1 for gpt-oss")
     ap.add_argument("--log", default="attempts.jsonl")
+    ap.add_argument("--give-up-after", type=int, default=4,
+                    help="stop a level after this many identical failures in a row. Measured: 15 "
+                         "was pure waste, because the prompt had stopped changing.")
     ap.add_argument("--terse", type=int, default=0, choices=(0, 1, 2),
                     help="starting prompt length. Measured on gpt-oss-20b: 0 produced 13,245 "
                          "chars of hidden reasoning and no answer, while 1 answered with code. "
