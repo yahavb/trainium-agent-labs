@@ -78,12 +78,24 @@ def grade(source, rung):
     try:
         kernel = nkibench.load_kernel(path, spec["entry"])
     except ModuleNotFoundError as e:
-        # An environment problem, not a kernel problem. Feeding this back as kernel feedback
-        # would burn every round on a bug the model cannot fix.
-        raise SystemExit(
-            f"cannot import {e.name!r}, so no NKI kernel can be loaded here. Run this where the "
-            f"Neuron SDK exists -- k8s/kernel-agent-job.yaml does that -- or use --offline to "
-            f"exercise the loop without a kernel ever running.") from e
+        # Two very different causes, and conflating them aborted a whole run: either the SDK is
+        # absent (an environment problem the model cannot fix), or the model imported a module it
+        # invented -- observed: `import nki.nl`. Tell them apart by asking whether nki itself is
+        # importable.
+        try:
+            import nki  # noqa: F401
+            sdk_present = True
+        except ImportError:
+            sdk_present = False
+        if not sdk_present:
+            raise SystemExit(
+                f"cannot import {e.name!r}, so no NKI kernel can be loaded here. Run this where "
+                f"the Neuron SDK exists -- k8s/kernel-agent-job.yaml does that -- or use "
+                f"--offline to exercise the loop without a kernel ever running.") from e
+        return (sum(WEIGHTS[k] for k, v in parts.items() if v), parts,
+                f"There is no module named {e.name!r}. The only imports that exist are: "
+                f"`import nki`, `import nki.language as nl`, and `import nki.isa as nisa`. "
+                f"Use exactly those three.")
     except Exception as e:
         return (sum(WEIGHTS[k] for k, v in parts.items() if v), parts,
                 f"The file imports but {spec['entry']} could not be loaded: "
