@@ -3,8 +3,18 @@
 **A small model on your chip solves heat-equation problems it cannot solve in one shot. The checker
 does the work.**
 
-Status: **worked end to end on real hardware. The solution is in this folder.** Read it, run it, then
-break it — a harder level or a different physics is a better use of your day than reproducing this.
+> ## STATUS: SOLVED
+>
+> **All six problems solved**, Qwen3-8B on one Trainium chip. Levels 0.1 to 0.3 on the first round;
+> level 1.1 and 1.2 on the first; level 1.3 — the hard one — on the second, after the checker told it
+> what was wrong. Transcript below.
+>
+> **The solution is in this folder.** So read it, run it, then break it: a harder level, different
+> physics, or an RL trainer on the attempt log is a better use of your day than reproducing this.
+>
+> One caveat that is the most interesting thing here: that transcript was produced while the checker
+> still printed the target values, and the model **copied them** rather than deriving anything. The
+> checker is now directional only, so your run will be harder than the one shown.
 
 ---
 
