@@ -79,7 +79,7 @@ spec:
                 | head -c 300
               echo
               echo "(if nothing printed above, the endpoint is unreachable from this pod)"
-              python agent.py --all --rounds 6 --samples 1 --context 8192 --terse 1 --log /tmp/attempts.jsonl
+              python agent.py --all --rounds 20 --samples 1 --context 8192 --terse 1 --log /tmp/attempts.jsonl
               echo
               echo "attempts: $(wc -l < /tmp/attempts.jsonl)"
               python - <<'PY'
