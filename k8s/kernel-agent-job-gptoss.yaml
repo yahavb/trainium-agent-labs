@@ -19,7 +19,10 @@ spec:
             - name: PYTHONUNBUFFERED
               value: "1"
             - name: KERNEL_AGENT_BASE_URL
-              value: http://agg:8000/v1
+              valueFrom:
+                secretKeyRef:
+                  name: gptoss-url
+                  key: KERNEL_AGENT_BASE_URL
             - name: KERNEL_AGENT_MODEL
               value: gpt-oss-20b
           resources:
@@ -58,7 +61,7 @@ spec:
 
               echo
               echo "=============== the agent, against gpt-oss-20b (greedy, so one sample per round) ==============="
-              curl -sf "$KERNEL_AGENT_BASE_URL/models" >/dev/null \
+              curl -skf "$KERNEL_AGENT_BASE_URL/models" >/dev/null \
                 || { echo "the gpt-oss service is not answering at $KERNEL_AGENT_BASE_URL"; exit 1; }
               python agent.py --all --rounds 6 --samples 1 --context 8192 --log /tmp/attempts.jsonl
               echo
