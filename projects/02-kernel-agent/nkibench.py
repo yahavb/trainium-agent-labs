@@ -161,6 +161,24 @@ def ref_transpose2d(x, shape2D):
         x.reshape(P, F1, F2).transpose(0, 2, 1)).reshape(P, F)
 
 
+def ref_attention(q, k, v):
+    """Single-head attention: softmax(Q Kt / sqrt(d)) V, with q, k, v all [seq, dim].
+
+    This level exists to show that the harness is not about matmul. It was added by writing this
+    reference and one input builder -- nothing else in the file changed. Do the same for whatever you
+    care about.
+
+    Note the trap, which is the whole reason attention is interesting on a chip: a naive exp()
+    overflows. The reference subtracts the row max first, and a kernel that does not will return
+    plausible numbers on friendly data and NaN on real data.
+    """
+    d = q.shape[1]
+    scores = (q.astype(np.float32) @ k.astype(np.float32).T) / np.sqrt(d)
+    scores = scores - scores.max(axis=-1, keepdims=True)
+    e = np.exp(scores)
+    return ((e / e.sum(axis=-1, keepdims=True)) @ v.astype(np.float32)).astype(q.dtype)
+
+
 def ref_matmul(lhsT, rhs):
     """lhsT: [K, M] (left operand arrives TRANSPOSED), rhs: [K, N] -> [M, N]
 
@@ -173,12 +191,56 @@ def ref_matmul(lhsT, rhs):
 
 # ---------------------------------------------------------------- the ladder
 
+# Each level owns how its inputs are built and labelled, so ADDING AN OPERATION TOUCHES NOTHING
+# ELSE. That matters more than elegance: the point of this harness is that a team can point it at
+# attention, or a convolution, or whatever they care about, by writing one reference and one input
+# generator. See "Adding your own operation" in the README.
+
+def _args_pool(spec, r):
+    return (r.standard_normal(spec["shape"]).astype(np.float32), spec["pool_size"])
+
+
+def _args_transpose(spec, r):
+    return (r.standard_normal(spec["shape"]).astype(np.float32), spec["shape2D"])
+
+
+def _args_matmul(spec, r):
+    return (r.standard_normal((spec["K"], spec["M"])).astype(np.float32),
+            r.standard_normal((spec["K"], spec["N"])).astype(np.float32))
+
+
+def _args_attention(spec, r):
+    n, d = spec["seq"], spec["dim"]
+    return tuple(r.standard_normal((n, d)).astype(np.float32) for _ in range(3))
+
+
+def make_inputs(spec, level_n, seed=0):
+    r = np.random.default_rng(seed + level_n)
+    return LEVELS[level_n]["make_args"](spec, r), {}
+
+
+def label(spec, level_n):
+    return LEVELS[level_n]["label"](spec)
+
+
 LEVELS = {}
 
 
-def level(n, op, entry, teaches, optimization, ref, shapes, banned, notes=""):
+def level(n, op, entry, teaches, optimization, ref, shapes, banned, notes="", max_waste=None,
+          make_args=None, label=None):
+    """max_waste: the most HBM traffic this level may move, as a multiple of the byte floor.
+
+    Levels 5 to 7 are optimization levels, so correctness alone cannot tell them apart from level 4 --
+    the reference and the shapes are identical, so a level-4 kernel would score 1.0 on all three and
+    the ladder would stop meaning anything past 4. A traffic bar is what makes them levels.
+
+    The thresholds come from the shipped tiled kernel, which models at 2.00x the floor on the largest
+    test shape: level 5 must beat that, level 6 must beat level 5, level 7 must be near the floor.
+    """
     LEVELS[n] = dict(n=n, op=op, entry=entry, teaches=teaches, optimization=optimization,
-                     ref=ref, shapes=shapes, banned=banned, notes=notes)
+                     ref=ref, shapes=shapes, banned=banned, notes=notes, max_waste=max_waste,
+                     make_args=make_args or _args_matmul,
+                     label=label or (lambda sp: f"K={sp['K']} M={sp['M']} N={sp['N']}"))
 
 
 level(1, "average pooling 2D", "tensor_avgpool_kernel",
@@ -191,7 +253,9 @@ level(1, "average pooling 2D", "tensor_avgpool_kernel",
       dict(shape=(8, 24, 24), pool_size=3), dict(shape=(64, 8, 8), pool_size=2)],
      {"mean", "average", "avg_pool2d", "avg_pool", "adaptive_avg_pool2d"},
      "nl.sum and nl.mean over a strided access-pattern view are the intended NKI route; "
-     "what is banned is handing the whole reduction to numpy or torch.")
+     "what is banned is handing the whole reduction to numpy or torch.",
+     make_args=_args_pool,
+     label=lambda sp: f"C,H,W={sp['shape']} pool={sp['pool_size']}")
 
 level(2, "2D transpose", "tensor_transpose2D_kernel_",
      "layout: a transpose has to cross partitions, and the partition axis is the constrained "
@@ -202,7 +266,9 @@ level(2, "2D transpose", "tensor_transpose2D_kernel_",
      ref_transpose2d,
      [dict(shape=(32, 12), shape2D=(3, 4)), dict(shape=(128, 64), shape2D=(8, 8)),
       dict(shape=(64, 128), shape2D=(4, 32)), dict(shape=(8, 35), shape2D=(5, 7))],
-     {"transpose", "swapaxes", "moveaxis", "rollaxis", "permute"})
+     {"transpose", "swapaxes", "moveaxis", "rollaxis", "permute"},
+     make_args=_args_transpose,
+     label=lambda sp: f"shape={sp['shape']} as {sp['shape2D'][0]}x{sp['shape2D'][1]}")
 
 level(3, "matmul, single tile", "nki_matmul_basic_",
      "the machine: results land in PSUM and must be copied to SBUF, the left operand arrives "
@@ -232,43 +298,44 @@ level(5, "matmul, loads hoisted", "nki_matmul_hoist_load_",
      "hoist the redundant loads out of the innermost loop. Cheap, mechanical, and the first "
      "measurable win. Arithmetic intensity rises.",
      ref_matmul, _MM_SHAPES,
-     {"matmul", "dot", "einsum", "tensordot", "inner", "vdot"})
+     {"matmul", "dot", "einsum", "tensordot", "inner", "vdot"}, max_waste=1.6)
 
 level(6, "matmul, M and N blocked", "nki_matmul_block_free_dimension_",
      "spending SBUF capacity to buy reuse",
      "hoisting reuses one row of tiles; SBUF holds far more. Now there is a SEARCH SPACE -- "
      "block sizes bounded by SBUF capacity -- so the agent has to explore rather than derive.",
      ref_matmul, _MM_SHAPES,
-     {"matmul", "dot", "einsum", "tensordot", "inner", "vdot"})
+     {"matmul", "dot", "einsum", "tensordot", "inner", "vdot"}, max_waste=1.25)
 
 level(7, "matmul, M, N and K blocked", "nki_matmul_fully_optimized_",
      "the full blocking scheme",
      "the top of the ladder. Hard, and a fine place to stop short of.",
      ref_matmul, _MM_SHAPES,
-     {"matmul", "dot", "einsum", "tensordot", "inner", "vdot"})
+     {"matmul", "dot", "einsum", "tensordot", "inner", "vdot"}, max_waste=1.05)
 
 
 # ---------------------------------------------------------------- inputs
 
-def make_inputs(spec, level_n, seed=0):
-    r = np.random.default_rng(seed + level_n)
-    if level_n == 1:
-        x = r.standard_normal(spec["shape"]).astype(np.float32)
-        return (x, spec["pool_size"]), dict(pool_size=spec["pool_size"])
-    if level_n == 2:
-        return (r.standard_normal(spec["shape"]).astype(np.float32), spec["shape2D"]), {}
-    K, M, N = spec["K"], spec["M"], spec["N"]
-    lhsT = r.standard_normal((K, M)).astype(np.float32)
-    rhs = r.standard_normal((K, N)).astype(np.float32)
-    return (lhsT, rhs), {}
+# ---------------------------------------------------------------- extending the ladder
+#
+# Level 8 is here as a WORKED EXAMPLE of adding an operation. Everything it needed: the reference
+# above, the _args_attention builder, and this one call. No other part of the harness knows it
+# exists -- the rule checker, the simulator, the numerics, the traffic measurement and the agent all
+# pick it up automatically.
 
-
-def label(spec, level_n):
-    if level_n == 1:
-        return f"C,H,W={spec['shape']} pool={spec['pool_size']}"
-    if level_n == 2:
-        return f"shape={spec['shape']} as {spec['shape2D'][0]}x{spec['shape2D'][1]}"
-    return f"K={spec['K']} M={spec['M']} N={spec['N']}"
+level(8, "single-head attention", "nki_attention_",
+      "composition: a matmul, a numerically stable softmax, and a second matmul, with the "
+      "intermediate never leaving the chip",
+      "the intermediate scores matrix is seq x seq, so writing it out to HBM and reading it back is "
+      "the mistake that dominates. Keeping it on-chip is the whole game, and it is why fused "
+      "attention kernels exist at all.",
+      ref_attention,
+      [dict(seq=128, dim=64), dict(seq=64, dim=128), dict(seq=96, dim=32)],
+      {"softmax", "scaled_dot_product_attention", "attention", "matmul", "dot", "einsum"},
+      "nl.max and nl.sum over tiles are the intended route. Subtract the row maximum before exp() "
+      "or large scores overflow: a kernel that skips it looks correct on small test data.",
+      make_args=_args_attention,
+      label=lambda sp: f"seq={sp['seq']} dim={sp['dim']}")
 
 
 # ---------------------------------------------------------------- layer 1a: static rules
@@ -498,6 +565,32 @@ def reuse_report(counted, args, want):
             f"contraction loop and copying each partial product out: allocate one PSUM tile "
             f"OUTSIDE that loop and let nisa.nc_matmul accumulate into it across every step, then "
             f"copy out once. Hoisting the operand loads out of the innermost loop cuts the rest.")
+
+
+def check_traffic_bar(level_n, counted, args, want):
+    """Levels 5 to 7 must MOVE FEWER BYTES, not merely be correct.
+
+    Returns None if the bar is met or there is no bar. Otherwise a message that says how far over it
+    is and what buys the difference -- which is the only thing separating these levels from level 4.
+    """
+    bar = LEVELS[level_n].get("max_waste")
+    if not bar or not counted.get("bytes"):
+        return None
+    floor = minimum_hbm_bytes(args, want)
+    if not floor:
+        return None
+    waste = counted["bytes"] / floor
+    if waste <= bar:
+        return None
+    hint = {5: "Hoist the operand loads out of the innermost loop; the same tiles are being re-read "
+               "on every pass.",
+            6: "Block the M and N dimensions so more tiles stay resident in SBUF and are reused "
+               "across iterations, rather than reloaded.",
+            7: "Block K as well, and accumulate in one PSUM tile across the whole contraction so "
+               "nothing partial is written out."}.get(level_n, "")
+    return (f"CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving {waste:.2f}x the byte floor, "
+            f"and level {level_n} requires {bar:.2f}x or better. Correctness alone is level 4; this "
+            f"level is about the bytes. {hint}")
 
 
 def check_inputs_untouched(before, args):
@@ -838,10 +931,16 @@ def main():
 
     print("THE LEVELS — difficulty and optimization headroom rise together.\n")
     for n, s in LEVELS.items():
-        tier = "A correctness" if n <= 2 else "B roofline" if n <= 4 else "C search"
-        print(f"  {n}. [{tier:<13}] {s['op']}")
+        tier = ("A correctness" if n <= 2 else "B roofline" if n <= 4
+                else "C search" if n <= 7 else "D your own")
+        bar = s.get("max_waste")
+        print(f"  {n}. [{tier:<13}] {s['op']}"
+              + (f"   (needs HBM traffic <= {bar:.2f}x the floor)" if bar else ""))
     print(f"\n  ridge point: {RIDGE_FLOPS_PER_BYTE['bfloat16']:g} Flops/Byte for bfloat16 on "
           f"NeuronCore-v2.\n  Below it a kernel is memory bound; above it, compute bound.")
+    print("\n  Levels 5-7 are graded on BYTES, not only correctness: the reference and shapes are")
+    print("  identical to level 4, so a traffic bar is what makes them levels at all.")
+    print("  Level 8 is a worked example of adding your own operation -- see the README.")
     print("\n  python nkibench.py --level 4 --show")
     print("  python nkibench.py --level 4 --check my_matmul.py")
     print("  python nkibench.py --roofline 512 1024 2048")

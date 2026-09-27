@@ -467,6 +467,58 @@ in this repo. They are not hypothetical.
 | Reports "verified" on a kernel that fails | — | scored as worse than an honest failure |
 | Fixes one thing and breaks another | the score **drops** while understanding rises | expect it; weight your reward knowing it happens |
 
+## Adding your own operation
+
+**The ladder is a starting point, not the assignment.** The matmul levels exist because the tutorial
+supplies reference answers for them, which makes the harness verifiable. Once you trust it, point it at
+whatever you actually care about.
+
+Adding an operation is **one reference, one input builder, and one `level(...)` call.** Nothing else in
+the harness needs to know. Level 8 in `nkibench.py` is that worked example — single-head attention — and
+it was added by writing exactly these three things:
+
+```python
+def ref_attention(q, k, v):                    # 1. the truth, in NumPy
+    d = q.shape[1]
+    scores = (q @ k.T) / np.sqrt(d)
+    scores = scores - scores.max(axis=-1, keepdims=True)   # or exp() overflows
+    e = np.exp(scores)
+    return (e / e.sum(axis=-1, keepdims=True)) @ v
+
+def _args_attention(spec, r):                  # 2. how to build inputs
+    n, d = spec["seq"], spec["dim"]
+    return tuple(r.standard_normal((n, d)).astype(np.float32) for _ in range(3))
+
+level(8, "single-head attention", "nki_attention_",       # 3. register it
+      "what it teaches", "what there is to optimize",
+      ref_attention,
+      [dict(seq=128, dim=64), dict(seq=64, dim=128), dict(seq=96, dim=32)],
+      {"softmax", "attention", "matmul", "einsum"},        # framework calls that would cheat
+      make_args=_args_attention,
+      label=lambda sp: f"seq={sp['seq']} dim={sp['dim']}")
+```
+
+You immediately get, for free: the static rule scan, CPU simulation against your reference, hostile
+shapes, the input-mutation check, HBM bytes and transfer counts, traffic against the byte floor, the
+intensity ceiling, and the agent loop. `python agent.py --level 8` works with no further changes.
+
+**Three things to get right when you write one:**
+
+* **Ban the framework call that does the whole job**, or the model will just call it. Ban `softmax` and
+  `matmul`, not the NKI primitives — banning `nl.sum` would reject correct kernels.
+* **Include a shape that does not divide evenly** by 128. Most generated kernels are right in the
+  interior and wrong on the last partial tile.
+* **Make the reference obviously correct, and say where the trap is.** Attention's is that a naive
+  `exp()` overflows: a kernel that skips the max subtraction looks fine on small test data and returns
+  NaN on real data. That property — wrong but plausible — is what makes an operation worth putting in
+  this harness at all.
+
+**Why attention is the natural next one.** It is a matmul, then a numerically stable softmax, then a
+second matmul, and the intermediate scores matrix is `seq × seq`. Writing that intermediate out to HBM
+and reading it back is the mistake that dominates everything else, which is exactly why fused attention
+kernels exist. The traffic measurement already in the harness will show it: compare bytes moved against
+the floor and the fused version separates from the naive one immediately.
+
 ## Hints, in the order they will save you time
 
 1. **Put the simulator in the inner loop.** Correctness to layer 1, performance to layers 2 and 3.
