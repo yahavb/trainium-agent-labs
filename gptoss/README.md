@@ -23,7 +23,7 @@ The kernel-writing challenge that used to live here moved to
 ## Setup
 
 ```bash
-git clone <this repo> && cd nyu-gptoss-kit
+git clone <this repo> && cd trainium-agent-labs
 pip install httpx
 export GPTOSS_BASE_URL="https://..."      # the organisers will give you this
 python gptoss/chat.py

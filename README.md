@@ -21,7 +21,7 @@ on-chip memory, root access. Yours. If you break it we hand you another one.
 Three commands from a fresh instance to a model answering on `localhost`:
 
 ```bash
-git clone https://github.com/yahavb/nyu-gptoss-kit.git && cd nyu-gptoss-kit
+git clone https://github.com/yahavb/trainium-agent-labs.git && cd trainium-agent-labs
 ./install-docker.sh
 ./serve.sh
 ```
