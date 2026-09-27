@@ -172,6 +172,12 @@ API_CARD = """Available NKI functions:
   nisa.tensor_scalar(dst=, data=, op0=nl.multiply, operand0=0.5)   scale by a constant
   tile.ap([[stride, count], ...])           a strided view, for reductions
 
+nisa.nc_matmul has strict memory rules: dst must live in nl.psum, while stationary and moving must
+both live in nl.sbuf. So the pattern is: dma_copy both operands from HBM into sbuf tiles, allocate a
+psum tile for the result, call nc_matmul(dst=psum_tile, stationary=..., moving=...), then
+tensor_copy from psum into an sbuf tile, then dma_copy that out to the shared_hbm output.
+The left operand arrives already transposed, with K on the partition axis.
+
 Slice tiles with ranges, e.g. a[0:128, 0:64]. A complete kernel looks like this:
 
 import nki
@@ -247,6 +253,16 @@ def enrich(error_text):
                 "nl.ndarray(shape, nl.float32, buffer=nl.psum) and letting nisa.nc_matmul add into "
                 "it across the loop, or combine two tiles with a nisa op rather than a Python "
                 "operator.")
+    m = re.search(r"(\w+) must be in \['(\w+)'\], got (\w+)", error_text)
+    if m:
+        which, needed, got = m.groups()
+        place = {"psum": "nl.psum", "sbuf": "nl.sbuf"}.get(needed, needed)
+        return (error_text + f" Allocate the `{which}` tile with buffer={place} instead of "
+                f"nl.{got}. For nisa.nc_matmul: dst must be in nl.psum, and stationary and moving "
+                f"must both be in nl.sbuf. Copy between them with nisa.tensor_copy.")
+    if "got multiple values for argument" in error_text:
+        return (error_text + " Pass every argument by keyword, e.g. "
+                "nisa.nc_matmul(dst=..., stationary=..., moving=...), so none is bound twice.")
     if "cannot reshape array of size" in error_text:
         return (error_text + " Do not reshape. Work with the shapes you were given and slice "
                 "them into tiles, e.g. src=a[0:128, 0:64].")
@@ -277,12 +293,20 @@ def first_prompt(level, terse=0):
                 f"{inspect.getsource(s['ref'])}\n"
                 f"Reply with one python code block.")
     if terse >= 1:
+        # The matmul memory rules are the substance of levels 3 and 4, and the short prompt has to
+        # carry them: measured, the agent cycled between "dst must be in ['psum']" and "moving must
+        # be in ['sbuf']" because nothing told it where the operands live.
+        mm = ("nisa.nc_matmul(dst=, stationary=, moving=) needs dst in nl.psum and both operands "
+              "in nl.sbuf. So: dma_copy the operands HBM->sbuf, allocate a psum tile, nc_matmul "
+              "into it, tensor_copy psum->sbuf, then dma_copy sbuf->the shared_hbm output you "
+              "return. The left operand is already transposed, with K on the partition axis.\n"
+              if level >= 3 else "")
         return (f"Write an AWS Neuron NKI kernel: a function `{s['entry']}` decorated with "
                 f"@nki.jit that computes what this reference computes.\n\n"
                 f"{inspect.getsource(s['ref'])}\n"
                 f"Allocate with nl.ndarray(shape, dtype=..., buffer=nl.sbuf), move data with "
                 f"nisa.dma_copy(dst=, src=), loop with nl.affine_range(n). A tile's partition "
-                f"dimension is at most {nkibench.PMAX}.\n\n"
+                f"dimension is at most {nkibench.PMAX}.\n{mm}\n"
                 f"Reply with one python code block.")
     return (
         f"Write an AWS Neuron NKI kernel.\n\n"
