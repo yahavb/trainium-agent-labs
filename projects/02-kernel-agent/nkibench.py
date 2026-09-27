@@ -175,8 +175,12 @@ level(3, "matmul, single tile", "nki_matmul_basic_",
      [dict(K=128, M=64, N=512)],
      {"matmul", "dot", "einsum", "tensordot", "inner", "vdot"})
 
+# The last shape exists to expose redundant HBM traffic, which only appears with several tiles in
+# each dimension: measured against the floor, the shipped tiled kernel is 1.00x on a single-tile
+# shape and 2.0x here. A level-4 kernel can look optimal on small shapes and be badly wasteful on
+# real ones, so at least one shape has to be big enough to tell.
 _MM_SHAPES = [dict(K=128, M=128, N=512), dict(K=256, M=256, N=1024),
-              dict(K=512, M=128, N=512), dict(K=128, M=512, N=1536)]
+              dict(K=512, M=128, N=512), dict(K=256, M=512, N=1024)]
 
 level(4, "matmul, tiled", "nki_matmul_tiled_",
      "tiling a matmul beyond one tile, in all three dimensions",
@@ -428,6 +432,37 @@ def _simulator(nki_mod, kernel):
         f"{sorted(n for n in dir(nki_mod) if not n.startswith('_'))}")
 
 
+def minimum_hbm_bytes(args, want):
+    """The least HBM traffic the operation can possibly need: read each input once, write the
+    output once. Anything above this is re-reading, and re-reading is the whole subject of
+    levels 4 to 7."""
+    total = sum(int(np.prod(a.shape)) * itemsize_of(a) for a in args
+                if hasattr(a, "shape"))
+    return total + int(np.prod(np.shape(want))) * itemsize_of(np.asarray(want))
+
+
+def reuse_report(counted, args, want):
+    """Name redundant HBM traffic directly, instead of leaving it implied by the intensity.
+
+    A tiled matmul that allocates its PSUM tile INSIDE the contraction loop writes each partial
+    product out and reads it back, instead of letting nc_matmul accumulate in PSUM across the whole
+    loop. The arithmetic intensity drops, but 'memory bound' does not say why. This does.
+    """
+    floor = minimum_hbm_bytes(args, want)
+    if not floor or not counted.get("bytes"):
+        return ""
+    ratio = counted["bytes"] / floor
+    if ratio < 1.15:
+        return (f"    HBM traffic is {counted['bytes']:,} bytes against a floor of {floor:,} "
+                f"({ratio:.2f}x) -- essentially optimal. Every byte is read about once.")
+    return (f"    HBM traffic is {counted['bytes']:,} bytes against a floor of {floor:,}, so "
+            f"{ratio:.1f}x MORE THAN NECESSARY. The same bytes are crossing the bus repeatedly. "
+            f"For a tiled matmul the usual cause is allocating the PSUM tile inside the "
+            f"contraction loop and copying each partial product out: allocate one PSUM tile "
+            f"OUTSIDE that loop and let nisa.nc_matmul accumulate into it across every step, then "
+            f"copy out once. Hoisting the operand loads out of the innermost loop cuts the rest.")
+
+
 def check_inputs_untouched(before, args):
     """A kernel must not write into the tensor it was given.
 
@@ -538,6 +573,11 @@ def verify(path, level_n, tol=2e-2, seed=0):
                   f"{counted['transfers']:,} transfers for {elements:,} output elements, "
                   f"{counted['bytes'] / max(counted['transfers'], 1):.0f} bytes each. The cost here "
                   f"is the NUMBER of transfers, not the bytes. Move whole tiles, not elements.")
+        if counted.get("bytes"):
+            rep = reuse_report(counted, args, want)
+            if rep:
+                print(f"\n  case {label(case, level_n)}:")
+                print(rep)
         if level_n >= 3 and counted["bytes"]:
             f = matmul_flops(case["M"], case["K"], case["N"])
             intensities.append((label(case, level_n), roofline(f, counted["bytes"]),
