@@ -196,6 +196,24 @@ def available_names(dotted):
             f"{', '.join(sorted(names)[:25])}.")
 
 
+def real_signature(func_name):
+    """The actual signature of an NKI function, for when the model invents arguments."""
+    import inspect
+    for mod_name in ("nki.language", "nki.isa", "nki"):
+        try:
+            mod = __import__(mod_name, fromlist=["x"])
+        except Exception:
+            continue
+        fn = getattr(mod, func_name, None)
+        if fn is None:
+            continue
+        try:
+            return f"{mod_name.split('.')[-1]}.{func_name}{inspect.signature(fn)}"
+        except (TypeError, ValueError):
+            return f"{mod_name.split('.')[-1]}.{func_name}"
+    return ""
+
+
 def enrich(error_text):
     """Add the real names when the failure is an invented API call."""
     if "'MemoryRegion' object is not callable" in error_text:
@@ -203,6 +221,17 @@ def enrich(error_text):
                 "functions. Do not call them. Allocate with "
                 "nl.ndarray(shape, dtype=nl.float32, buffer=nl.sbuf) and pass the region as the "
                 "buffer= argument.")
+    m = re.search(r"(\w+)\(\) got an unexpected keyword argument '(\w+)'", error_text)
+    if m:
+        sig = real_signature(m.group(1))
+        return (error_text + f" Remove the `{m.group(2)}=` argument."
+                + (f" The real signature is {sig}." if sig else ""))
+    if "unsupported operand type(s) for" in error_text and "NkiTensor" in error_text:
+        return (error_text + " A tile is not a number, so Python operators like += do not work on "
+                "one. Accumulate by allocating a PSUM tile with "
+                "nl.ndarray(shape, nl.float32, buffer=nl.psum) and letting nisa.nc_matmul add into "
+                "it across the loop, or combine two tiles with a nisa op rather than a Python "
+                "operator.")
     if "cannot reshape array of size" in error_text:
         return (error_text + " Do not reshape. Work with the shapes you were given and slice "
                 "them into tiles, e.g. src=a[0:128, 0:64].")
@@ -353,6 +382,7 @@ def solve(a, level, log):
     terse = a.terse
     prompt = first_prompt(level, terse)
     best = (0.0, None, "")
+    tried = []
     for rnd in range(a.rounds):
         t0 = time.perf_counter()
         replies = (offline_answers(level, a.samples, rnd) if a.offline
@@ -376,6 +406,19 @@ def solve(a, level, log):
         if top[0] >= sum(WEIGHTS.values()) - 1e-9:
             print(f"  SOLVED on round {rnd}")
             return top[0], rnd + 1
+        tried.append(top[2][:120])
+        repeats = sum(1 for t in tried if t == tried[-1])
+        if repeats >= 2 and (best[1] or "").strip():
+            # Sampling on this endpoint is greedy, so an unchanged prompt returns an unchanged
+            # answer. Measured: the same TypeError 19 rounds running. Changing the prompt is the
+            # only thing that can change the answer, so say what has already been tried.
+            ledger = "\n".join(f"- attempt {i}: {t}" for i, t in enumerate(dict.fromkeys(tried)))
+            prompt = (repair_prompt(rung, best[1], best[2])
+                      + f"\n\nThese approaches have already failed, so do something different:\n"
+                        f"{ledger}")
+            print(f"  same failure {repeats}x — adding a ledger of {len(set(tried))} failed "
+                  f"attempts to break the repeat")
+            continue
         if not (best[1] or "").strip():
             # Nothing came back to repair. Asking it to "fix" an empty code block produced a
             # 202-character prompt and, under greedy sampling, the identical non-answer six
