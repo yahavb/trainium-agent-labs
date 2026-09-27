@@ -413,7 +413,7 @@ def solve(a, level, log):
             # answer. Measured: the same TypeError 19 rounds running. Changing the prompt is the
             # only thing that can change the answer, so say what has already been tried.
             ledger = "\n".join(f"- attempt {i}: {t}" for i, t in enumerate(dict.fromkeys(tried)))
-            prompt = (repair_prompt(rung, best[1], best[2])
+            prompt = (repair_prompt(level, best[1], best[2])
                       + f"\n\nThese approaches have already failed, so do something different:\n"
                         f"{ledger}")
             print(f"  same failure {repeats}x — adding a ledger of {len(set(tried))} failed "

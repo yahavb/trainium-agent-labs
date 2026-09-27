@@ -1,0 +1,267 @@
+=============== mounted code ===============
+agent.py       1946d55bc5a9  15 bytes
+nkibench.py    c9c01d6f3c0c  18 bytes
+
+nki 0.6.0+31049202112.g85070674 | simulate: True
+
+Proving the parts that need no device. Run this on the instance too, for the rest.
+
+  roofline model vs the tutorial     -> 160 KB per 16.8 MFlops = 102.4 Flops/Byte (matches the published 160 KB / 16 MFlops / 102)
+  the tiled matmul is classified     -> memory_bound ok  (2.2x more reuse needed)
+  4x the reuse is classified         -> compute_bound ok
+
+  ref_avgpool2d                      -> ok
+  ref_transpose2d (tutorial example) -> ok
+  ref_matmul (transposed left)       -> ok
+
+  catches the @ operator                 -> caught: line 4: uses `a.T`, which transposes the input on the host. 
+  catches .T on an argument              -> caught: line 4: uses `in_tensor.T`, which transposes the input on th
+  catches np.mean                        -> caught: line 5: calls `np.mean`, which hands the whole operation to 
+  catches a 256-partition tile           -> caught: line 5: partition dimension 256 exceeds the maximum of 128. 
+  catches a missing @nki.jit             -> caught: `nki_matmul_tiled_` is not decorated with `@nki.jit`, so it 
+  catches the wrong entry-point name     -> caught: no function named `nki_matmul_tiled_` is defined; that is th
+  accepts a plausible kernel         -> ok
+
+  itemsize of a numpy float32 array    -> 4 bytes ok
+  itemsize of dtype as an object       -> 4 bytes ok
+  itemsize of dtype as a string        -> 4 bytes ok
+  itemsize of an nki-style name        -> 2 bytes ok
+  level 3 should move 589,824 bytes, giving an intensity of 14.2 in float32
+
+  mismatch names the element         -> ok
+  mismatch spots the ragged edge     -> ok
+  a correct result passes            -> ok
+  wrong shape is named as such       -> ok
+
+  nki 0.6.0+31049202112.g85070674 is importable; simulation API: nki.simulate
+
+SELFTEST PASSED
+
+*** OFFLINE: replaying the reference kernel. Numbers are meaningless. ***
+
+=========== level 1: average pooling 2D ===========
+round 0: rewards [0.1]  best 0.10  (0.0s)
+  Rule violations, which score zero however fast the kernel is. Fix exactly these: `tensor_avgpool_kernel` is not decorated with `@nki.jit`, so it will run as plain Python rather than compiling for the device.
+round 1: rewards [1.0]  best 1.00  (1.0s)
+  Correct on every shape.
+  SOLVED on round 1
+
+=========== summary ===========
+  level 1  reward 1.00 after 2 round(s)  SOLVED
+  solved 1/1
+
+attempts logged to /tmp/offline.jsonl
+
+=============== is the prompt's worked example real? ===============
+the worked example in the prompt RUNS and is correct
+
+=============== the agent, against gpt-oss-20b (greedy, so one sample per round) ===============
+{"id":"chatcmpl-87509b6fb39fcef1","object":"chat.completion","created":1790470725,"prompt_routed_experts":null,"model":"gpt-oss-20b","choices":[{"index":0,"message":{"role":"assistant","content":"ok","refusal":null,"annotations":null,"audio":null,"function_call":null,"tool_calls":[],"reasoning":"The
+(if nothing printed above, the endpoint is unreachable from this pod)
+endpoint https://ai-infra-summit-443935001.ap-southeast-4.elb.amazonaws.com/agg/v1  model gpt-oss-20b
+
+=========== level 1: average pooling 2D ===========
+round 0: rewards [0.3]  best 0.30  (18.9s)
+  There is no module named 'nki.nl'. The only imports that exist are: `import nki`, `import nki.language as nl`, and `import nki.isa as nisa`. Use exactly those three.
+round 1: rewards [0.3]  best 0.30  (6.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: unsupported operand type(s) for +=: 'float' and 'NkiTensor'
+round 2: rewards [0.3]  best 0.30  (5.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: unsupported operand type(s) for +=: 'float' and 'NkiTensor'
+round 3: rewards [0.3]  best 0.30  (5.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: unsupported operand type(s) for +=: 'float' and 'NkiTensor'
+round 4: rewards [0.3]  best 0.30  (5.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: unsupported operand type(s) for +=: 'float' and 'NkiTensor'
+round 5: rewards [0.3]  best 0.30  (5.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: unsupported operand type(s) for +=: 'float' and 'NkiTensor'
+round 6: rewards [0.3]  best 0.30  (5.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: unsupported operand type(s) for +=: 'float' and 'NkiTensor'
+round 7: rewards [0.3]  best 0.30  (5.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: unsupported operand type(s) for +=: 'float' and 'NkiTensor'
+round 8: rewards [0.3]  best 0.30  (5.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: unsupported operand type(s) for +=: 'float' and 'NkiTensor'
+round 9: rewards [0.3]  best 0.30  (5.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: unsupported operand type(s) for +=: 'float' and 'NkiTensor'
+round 10: rewards [0.3]  best 0.30  (5.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: unsupported operand type(s) for +=: 'float' and 'NkiTensor'
+round 11: rewards [0.3]  best 0.30  (5.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: unsupported operand type(s) for +=: 'float' and 'NkiTensor'
+round 12: rewards [0.3]  best 0.30  (5.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: unsupported operand type(s) for +=: 'float' and 'NkiTensor'
+round 13: rewards [0.3]  best 0.30  (5.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: unsupported operand type(s) for +=: 'float' and 'NkiTensor'
+round 14: rewards [0.3]  best 0.30  (5.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: unsupported operand type(s) for +=: 'float' and 'NkiTensor'
+round 15: rewards [0.3]  best 0.30  (5.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: unsupported operand type(s) for +=: 'float' and 'NkiTensor'
+round 16: rewards [0.3]  best 0.30  (5.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: unsupported operand type(s) for +=: 'float' and 'NkiTensor'
+round 17: rewards [0.3]  best 0.30  (5.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: unsupported operand type(s) for +=: 'float' and 'NkiTensor'
+round 18: rewards [0.3]  best 0.30  (5.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: unsupported operand type(s) for +=: 'float' and 'NkiTensor'
+round 19: rewards [0.3]  best 0.30  (5.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: unsupported operand type(s) for +=: 'float' and 'NkiTensor'
+  not solved in 20 rounds; best reward 0.30
+
+=========== level 2: 2D transpose ===========
+round 0: rewards [0.3]  best 0.30  (19.5s)
+  There is no module named 'nki.lib'. The only imports that exist are: `import nki`, `import nki.language as nl`, and `import nki.isa as nisa`. Use exactly those three.
+round 1: rewards [0.3]  best 0.30  (6.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised TypeError: affine_range() got an unexpected keyword argument 'tile'
+round 2: rewards [0.3]  best 0.30  (6.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised TypeError: affine_range() got an unexpected keyword argument 'tile'
+round 3: rewards [0.3]  best 0.30  (6.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised TypeError: affine_range() got an unexpected keyword argument 'tile'
+round 4: rewards [0.3]  best 0.30  (6.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised TypeError: affine_range() got an unexpected keyword argument 'tile'
+round 5: rewards [0.3]  best 0.30  (6.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised TypeError: affine_range() got an unexpected keyword argument 'tile'
+round 6: rewards [0.3]  best 0.30  (6.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised TypeError: affine_range() got an unexpected keyword argument 'tile'
+round 7: rewards [0.3]  best 0.30  (6.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised TypeError: affine_range() got an unexpected keyword argument 'tile'
+round 8: rewards [0.3]  best 0.30  (6.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised TypeError: affine_range() got an unexpected keyword argument 'tile'
+round 9: rewards [0.3]  best 0.30  (6.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised TypeError: affine_range() got an unexpected keyword argument 'tile'
+round 10: rewards [0.3]  best 0.30  (6.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised TypeError: affine_range() got an unexpected keyword argument 'tile'
+round 11: rewards [0.3]  best 0.30  (6.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised TypeError: affine_range() got an unexpected keyword argument 'tile'
+round 12: rewards [0.3]  best 0.30  (6.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised TypeError: affine_range() got an unexpected keyword argument 'tile'
+round 13: rewards [0.3]  best 0.30  (6.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised TypeError: affine_range() got an unexpected keyword argument 'tile'
+round 14: rewards [0.3]  best 0.30  (6.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised TypeError: affine_range() got an unexpected keyword argument 'tile'
+round 15: rewards [0.3]  best 0.30  (6.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised TypeError: affine_range() got an unexpected keyword argument 'tile'
+round 16: rewards [0.3]  best 0.30  (6.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised TypeError: affine_range() got an unexpected keyword argument 'tile'
+round 17: rewards [0.3]  best 0.30  (6.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised TypeError: affine_range() got an unexpected keyword argument 'tile'
+round 18: rewards [0.3]  best 0.30  (6.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised TypeError: affine_range() got an unexpected keyword argument 'tile'
+round 19: rewards [0.3]  best 0.30  (6.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised TypeError: affine_range() got an unexpected keyword argument 'tile'
+  not solved in 20 rounds; best reward 0.30
+
+=========== level 3: matmul, single tile ===========
+    (TRUNCATED: finish_reason=length after 1400 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 734 chars; server context is the ceiling.)
+round 0: rewards [0.0]  best 0.00  (21.0s)
+  The code does not parse: expected ':' on line 44. Send one complete python code block.
+  no code yet, so re-asking with a shorter prompt (terseness 2)
+round 1: rewards [0.3]  best 0.30  (11.5s)
+  The file imports but nki_matmul_basic_ could not be loaded: AttributeError: module 'nki.isa' has no attribute 'sse2'
+    (TRUNCATED: finish_reason=length after 0 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 1304 chars; server context is the ceiling.)
+    (empty answer, 7305 chars of hidden reasoning, finish=length — shorten the prompt rather than raising the budget)
+round 2: rewards [0.0]  best 0.00  (21.0s)
+  No code came back. Reply with one python code block containing the kernel and nothing else.
+    (TRUNCATED: finish_reason=length after 0 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 1304 chars; server context is the ceiling.)
+    (empty answer, 7305 chars of hidden reasoning, finish=length — shorten the prompt rather than raising the budget)
+round 3: rewards [0.0]  best 0.00  (21.0s)
+  No code came back. Reply with one python code block containing the kernel and nothing else.
+    (TRUNCATED: finish_reason=length after 0 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 1304 chars; server context is the ceiling.)
+    (empty answer, 7305 chars of hidden reasoning, finish=length — shorten the prompt rather than raising the budget)
+round 4: rewards [0.0]  best 0.00  (21.0s)
+  No code came back. Reply with one python code block containing the kernel and nothing else.
+    (TRUNCATED: finish_reason=length after 0 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 1304 chars; server context is the ceiling.)
+    (empty answer, 7305 chars of hidden reasoning, finish=length — shorten the prompt rather than raising the budget)
+round 5: rewards [0.0]  best 0.00  (21.0s)
+  No code came back. Reply with one python code block containing the kernel and nothing else.
+    (TRUNCATED: finish_reason=length after 0 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 1304 chars; server context is the ceiling.)
+    (empty answer, 7305 chars of hidden reasoning, finish=length — shorten the prompt rather than raising the budget)
+round 6: rewards [0.0]  best 0.00  (21.0s)
+  No code came back. Reply with one python code block containing the kernel and nothing else.
+    (TRUNCATED: finish_reason=length after 0 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 1304 chars; server context is the ceiling.)
+    (empty answer, 7305 chars of hidden reasoning, finish=length — shorten the prompt rather than raising the budget)
+round 7: rewards [0.0]  best 0.00  (21.0s)
+  No code came back. Reply with one python code block containing the kernel and nothing else.
+    (TRUNCATED: finish_reason=length after 0 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 1304 chars; server context is the ceiling.)
+    (empty answer, 7305 chars of hidden reasoning, finish=length — shorten the prompt rather than raising the budget)
+round 8: rewards [0.0]  best 0.00  (21.0s)
+  No code came back. Reply with one python code block containing the kernel and nothing else.
+    (TRUNCATED: finish_reason=length after 0 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 1304 chars; server context is the ceiling.)
+    (empty answer, 7305 chars of hidden reasoning, finish=length — shorten the prompt rather than raising the budget)
+round 9: rewards [0.0]  best 0.00  (21.0s)
+  No code came back. Reply with one python code block containing the kernel and nothing else.
+    (TRUNCATED: finish_reason=length after 0 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 1304 chars; server context is the ceiling.)
+    (empty answer, 7305 chars of hidden reasoning, finish=length — shorten the prompt rather than raising the budget)
+round 10: rewards [0.0]  best 0.00  (21.0s)
+  No code came back. Reply with one python code block containing the kernel and nothing else.
+    (TRUNCATED: finish_reason=length after 0 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 1304 chars; server context is the ceiling.)
+    (empty answer, 7305 chars of hidden reasoning, finish=length — shorten the prompt rather than raising the budget)
+round 11: rewards [0.0]  best 0.00  (21.0s)
+  No code came back. Reply with one python code block containing the kernel and nothing else.
+    (TRUNCATED: finish_reason=length after 0 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 1304 chars; server context is the ceiling.)
+    (empty answer, 7305 chars of hidden reasoning, finish=length — shorten the prompt rather than raising the budget)
+round 12: rewards [0.0]  best 0.00  (21.0s)
+  No code came back. Reply with one python code block containing the kernel and nothing else.
+    (TRUNCATED: finish_reason=length after 0 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 1304 chars; server context is the ceiling.)
+    (empty answer, 7305 chars of hidden reasoning, finish=length — shorten the prompt rather than raising the budget)
+round 13: rewards [0.0]  best 0.00  (21.1s)
+  No code came back. Reply with one python code block containing the kernel and nothing else.
+    (TRUNCATED: finish_reason=length after 0 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 1304 chars; server context is the ceiling.)
+    (empty answer, 7305 chars of hidden reasoning, finish=length — shorten the prompt rather than raising the budget)
+round 14: rewards [0.0]  best 0.00  (21.0s)
+  No code came back. Reply with one python code block containing the kernel and nothing else.
+    (TRUNCATED: finish_reason=length after 0 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 1304 chars; server context is the ceiling.)
+    (empty answer, 7305 chars of hidden reasoning, finish=length — shorten the prompt rather than raising the budget)
+round 15: rewards [0.0]  best 0.00  (21.0s)
+  No code came back. Reply with one python code block containing the kernel and nothing else.
+    (TRUNCATED: finish_reason=length after 0 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 1304 chars; server context is the ceiling.)
+    (empty answer, 7305 chars of hidden reasoning, finish=length — shorten the prompt rather than raising the budget)
+round 16: rewards [0.0]  best 0.00  (21.0s)
+  No code came back. Reply with one python code block containing the kernel and nothing else.
+    (TRUNCATED: finish_reason=length after 0 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 1304 chars; server context is the ceiling.)
+    (empty answer, 7305 chars of hidden reasoning, finish=length — shorten the prompt rather than raising the budget)
+round 17: rewards [0.0]  best 0.00  (21.0s)
+  No code came back. Reply with one python code block containing the kernel and nothing else.
+    (TRUNCATED: finish_reason=length after 0 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 1304 chars; server context is the ceiling.)
+    (empty answer, 7305 chars of hidden reasoning, finish=length — shorten the prompt rather than raising the budget)
+round 18: rewards [0.0]  best 0.00  (21.0s)
+  No code came back. Reply with one python code block containing the kernel and nothing else.
+    (TRUNCATED: finish_reason=length after 0 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 1304 chars; server context is the ceiling.)
+    (empty answer, 7305 chars of hidden reasoning, finish=length — shorten the prompt rather than raising the budget)
+round 19: rewards [0.0]  best 0.00  (21.0s)
+  No code came back. Reply with one python code block containing the kernel and nothing else.
+  not solved in 20 rounds; best reward 0.30
+
+=========== level 4: matmul, tiled ===========
+    (TRUNCATED: finish_reason=length after 1051 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 734 chars; server context is the ceiling.)
+round 0: rewards [0.3]  best 0.30  (21.0s)
+  There is no module named 'nki.lang'. The only imports that exist are: `import nki`, `import nki.language as nl`, and `import nki.isa as nisa`. Use exactly those three.
+round 1: rewards [0.5]  best 0.50  (47.7s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: WRONG SHAPE: returned (), reference is (128, 512). Check the output-size arithmetic, not the values.
+round 2: rewards [0.5]  best 0.50  (51.5s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: OUTPUT IS 100% ZEROS while the reference is not. The kernel ran but its results never reached the output tensor, so the arithmetic is probably not the problem. Check that every computed tile is copied all the way out: PSUM to SBUF with nisa.tensor_copy, th
+round 3: rewards [0.5]  best 0.50  (51.1s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: OUTPUT IS 100% ZEROS while the reference is not. The kernel ran but its results never reached the output tensor, so the arithmetic is probably not the problem. Check that every computed tile is copied all the way out: PSUM to SBUF with nisa.tensor_copy, th
+round 4: rewards [0.5]  best 0.50  (51.0s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: OUTPUT IS 100% ZEROS while the reference is not. The kernel ran but its results never reached the output tensor, so the arithmetic is probably not the problem. Check that every computed tile is copied all the way out: PSUM to SBUF with nisa.tensor_copy, th
+round 5: rewards [0.5]  best 0.50  (50.8s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: OUTPUT IS 100% ZEROS while the reference is not. The kernel ran but its results never reached the output tensor, so the arithmetic is probably not the problem. Check that every computed tile is copied all the way out: PSUM to SBUF with nisa.tensor_copy, th
+round 6: rewards [0.5]  best 0.50  (50.7s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: OUTPUT IS 100% ZEROS while the reference is not. The kernel ran but its results never reached the output tensor, so the arithmetic is probably not the problem. Check that every computed tile is copied all the way out: PSUM to SBUF with nisa.tensor_copy, th
+round 7: rewards [0.5]  best 0.50  (50.3s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: OUTPUT IS 100% ZEROS while the reference is not. The kernel ran but its results never reached the output tensor, so the arithmetic is probably not the problem. Check that every computed tile is copied all the way out: PSUM to SBUF with nisa.tensor_copy, th
+round 8: rewards [0.5]  best 0.50  (50.7s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: OUTPUT IS 100% ZEROS while the reference is not. The kernel ran but its results never reached the output tensor, so the arithmetic is probably not the problem. Check that every computed tile is copied all the way out: PSUM to SBUF with nisa.tensor_copy, th
+round 9: rewards [0.5]  best 0.50  (50.4s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: OUTPUT IS 100% ZEROS while the reference is not. The kernel ran but its results never reached the output tensor, so the arithmetic is probably not the problem. Check that every computed tile is copied all the way out: PSUM to SBUF with nisa.tensor_copy, th
+round 10: rewards [0.5]  best 0.50  (50.5s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: OUTPUT IS 100% ZEROS while the reference is not. The kernel ran but its results never reached the output tensor, so the arithmetic is probably not the problem. Check that every computed tile is copied all the way out: PSUM to SBUF with nisa.tensor_copy, th
+round 11: rewards [0.5]  best 0.50  (50.1s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: OUTPUT IS 100% ZEROS while the reference is not. The kernel ran but its results never reached the output tensor, so the arithmetic is probably not the problem. Check that every computed tile is copied all the way out: PSUM to SBUF with nisa.tensor_copy, th
+round 12: rewards [0.5]  best 0.50  (50.6s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: OUTPUT IS 100% ZEROS while the reference is not. The kernel ran but its results never reached the output tensor, so the arithmetic is probably not the problem. Check that every computed tile is copied all the way out: PSUM to SBUF with nisa.tensor_copy, th
+round 13: rewards [0.5]  best 0.50  (50.6s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: OUTPUT IS 100% ZEROS while the reference is not. The kernel ran but its results never reached the output tensor, so the arithmetic is probably not the problem. Check that every computed tile is copied all the way out: PSUM to SBUF with nisa.tensor_copy, th
+round 14: rewards [0.5]  best 0.50  (50.8s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: OUTPUT IS 100% ZEROS while the reference is not. The kernel ran but its results never reached the output tensor, so the arithmetic is probably not the problem. Check that every computed tile is copied all the way out: PSUM to SBUF with nisa.tensor_copy, th
+round 15: rewards [0.5]  best 0.50  (50.9s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: OUTPUT IS 100% ZEROS while the reference is not. The kernel ran but its results never reached the output tensor, so the arithmetic is probably not the problem. Check that every computed tile is copied all the way out: PSUM to SBUF with nisa.tensor_copy, th
+round 16: rewards [0.5]  best 0.50  (50.5s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: OUTPUT IS 100% ZEROS while the reference is not. The kernel ran but its results never reached the output tensor, so the arithmetic is probably not the problem. Check that every computed tile is copied all the way out: PSUM to SBUF with nisa.tensor_copy, th
+round 17: rewards [0.5]  best 0.50  (50.6s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: OUTPUT IS 100% ZEROS while the reference is not. The kernel ran but its results never reached the output tensor, so the arithmetic is probably not the problem. Check that every computed tile is copied all the way out: PSUM to SBUF with nisa.tensor_copy, th
