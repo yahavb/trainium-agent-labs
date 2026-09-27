@@ -146,7 +146,24 @@ API_CARD = """These are the only NKI functions you may use. Do not invent others
   nisa.tensor_scalar(dst=, data=, op0=nl.multiply, operand0=0.5)   scale by a constant
   tile.ap([[stride, count], ...])           a strided view, for reductions
 
-Tiles are not numpy arrays: they have no .mean, .sum, .T or .reshape."""
+Tiles are not numpy arrays: they have no .mean, .sum, .T or .reshape.
+nl.sbuf, nl.psum and nl.shared_hbm are NOT functions. Never call them. They are only ever
+passed as the buffer= argument to nl.ndarray.
+
+A complete, correct kernel, to copy the shape of:
+
+import nki
+import nki.isa as nisa
+import nki.language as nl
+
+@nki.jit
+def copy_kernel(a):
+    out = nl.ndarray(a.shape, dtype=a.dtype, buffer=nl.shared_hbm)
+    tile = nl.ndarray(a.shape, dtype=a.dtype, buffer=nl.sbuf)
+    nisa.dma_copy(dst=tile, src=a)
+    nisa.dma_copy(dst=out, src=tile)
+    return out
+"""
 
 
 def available_names(dotted):
@@ -174,6 +191,14 @@ def available_names(dotted):
 
 def enrich(error_text):
     """Add the real names when the failure is an invented API call."""
+    if "'MemoryRegion' object is not callable" in error_text:
+        return (error_text + " nl.sbuf, nl.psum and nl.shared_hbm are memory regions, not "
+                "functions. Do not call them. Allocate with "
+                "nl.ndarray(shape, dtype=nl.float32, buffer=nl.sbuf) and pass the region as the "
+                "buffer= argument.")
+    if "cannot reshape array of size" in error_text:
+        return (error_text + " Do not reshape. Work with the shapes you were given and slice "
+                "them into tiles, e.g. src=a[0:128, 0:64].")
     m = re.search(r"module '([\w.]+)' has no attribute '(\w+)'", error_text)
     if m:
         return error_text + available_names(f"{m.group(1)}.{m.group(2)}")

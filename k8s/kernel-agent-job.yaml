@@ -43,6 +43,20 @@ spec:
               echo
               python agent.py --offline --rung 1 --rounds 2 --samples 1 --log /tmp/offline.jsonl
               echo
+              echo "=============== is the prompt's worked example real? ==============="
+              python - <<'PY'
+              import re, numpy as np, nki, nki.language as nl, nki.isa as nisa, agent
+              block = agent.API_CARD[agent.API_CARD.index("import nki"):]
+              ns = {}
+              exec(compile(block, "<api_card_example>", "exec"), ns)
+              a = np.arange(12, dtype=np.float32).reshape(3, 4)
+              out = nki.simulate(ns["copy_kernel"])(a)
+              ok = np.array_equal(np.asarray(out), a)
+              print("the worked example in the prompt", "RUNS and is correct" if ok else "IS WRONG")
+              raise SystemExit(0 if ok else 1)
+              PY
+
+              echo
               echo "=============== the agent, against qwen3-8b ==============="
               curl -sf "$KERNEL_AGENT_BASE_URL/models" >/dev/null \
                 || { echo "qwen3-8b is not answering at $KERNEL_AGENT_BASE_URL"; exit 1; }
