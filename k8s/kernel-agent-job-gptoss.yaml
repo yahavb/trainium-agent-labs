@@ -1,0 +1,82 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kernel-agent-gptoss
+  namespace: default
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      nodeSelector:
+        node-type: trn2
+      containers:
+        - name: agent
+          image: public.ecr.aws/neuron/pytorch-inference-vllm-neuronx:0.24.0.1.1.0-neuronx-py313-sdk2.32.0-ubuntu24.04
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: KERNEL_AGENT_BASE_URL
+              value: http://agg:8000/v1
+            - name: KERNEL_AGENT_MODEL
+              value: gpt-oss-20b
+          resources:
+            requests:
+              cpu: 8
+              memory: 32Gi
+            limits:
+              cpu: 8
+              memory: 32Gi
+          volumeMounts:
+            - name: code
+              mountPath: /app
+          workingDir: /app
+          command:
+            - /bin/bash
+            - -ec
+            - |
+              python -c "import nki; print('nki', getattr(nki,'__version__','?'), '| simulate:', hasattr(nki,'simulate'))"
+              echo
+              python nkibench.py --selftest
+              echo
+              python agent.py --offline --rung 1 --rounds 2 --samples 1 --log /tmp/offline.jsonl
+              echo
+              echo "=============== is the prompt's worked example real? ==============="
+              python - <<'PY'
+              import re, numpy as np, nki, nki.language as nl, nki.isa as nisa, agent
+              block = agent.API_CARD[agent.API_CARD.index("import nki"):]
+              ns = {}
+              exec(compile(block, "<api_card_example>", "exec"), ns)
+              a = np.arange(12, dtype=np.float32).reshape(3, 4)
+              out = nki.simulate(ns["copy_kernel"])(a)
+              ok = np.array_equal(np.asarray(out), a)
+              print("the worked example in the prompt", "RUNS and is correct" if ok else "IS WRONG")
+              raise SystemExit(0 if ok else 1)
+              PY
+
+              echo
+              echo "=============== the agent, against gpt-oss-20b (greedy, so one sample per round) ==============="
+              curl -sf "$KERNEL_AGENT_BASE_URL/models" >/dev/null \
+                || { echo "the gpt-oss service is not answering at $KERNEL_AGENT_BASE_URL"; exit 1; }
+              python agent.py --all --rounds 6 --samples 1 --context 8192 --log /tmp/attempts.jsonl
+              echo
+              echo "attempts: $(wc -l < /tmp/attempts.jsonl)"
+              python - <<'PY'
+              import json, collections
+              rows = [json.loads(l) for l in open('/tmp/attempts.jsonl')]
+              per = collections.defaultdict(list)
+              for r in rows:
+                  per[r['rung']].append(r['reward'])
+              print('reward by rung:')
+              for rung in sorted(per):
+                  v = per[rung]
+                  print(f'  rung {rung}: best {max(v):.2f}  mean {sum(v)/len(v):.2f}  n={len(v)}')
+              stuck = [r for r in rows if r['reward'] == 0.0]
+              print(f'attempts scoring zero: {len(stuck)}/{len(rows)}')
+              PY
+      volumes:
+        - name: code
+          configMap:
+            name: kernel-agent-code
