@@ -73,8 +73,12 @@ spec:
 
               echo
               echo "=============== the agent, against gpt-oss-20b (greedy, so one sample per round) ==============="
-              curl -skf "$KERNEL_AGENT_BASE_URL/models" >/dev/null \
-                || { echo "the gpt-oss service is not answering at $KERNEL_AGENT_BASE_URL"; exit 1; }
+              curl -sk --max-time 120 "$KERNEL_AGENT_BASE_URL/chat/completions" \
+                -H 'Content-Type: application/json' \
+                -d "{\"model\":\"$KERNEL_AGENT_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"say ok\"}],\"max_tokens\":800}" \
+                | head -c 300
+              echo
+              echo "(if nothing printed above, the endpoint is unreachable from this pod)"
               python agent.py --all --rounds 6 --samples 1 --context 8192 --terse 1 --log /tmp/attempts.jsonl
               echo
               echo "attempts: $(wc -l < /tmp/attempts.jsonl)"

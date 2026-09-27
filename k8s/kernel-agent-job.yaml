@@ -70,8 +70,11 @@ spec:
 
               echo
               echo "=============== the agent, against qwen3-8b ==============="
-              curl -sf "$KERNEL_AGENT_BASE_URL/models" >/dev/null \
-                || { echo "qwen3-8b is not answering at $KERNEL_AGENT_BASE_URL"; exit 1; }
+              curl -s --max-time 120 "$KERNEL_AGENT_BASE_URL/chat/completions" \
+                -H 'Content-Type: application/json' \
+                -d "{\"model\":\"$KERNEL_AGENT_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"say ok\"}],\"max_tokens\":200}" \
+                | head -c 300
+              echo
               python agent.py --all --rounds 4 --samples 2 --log /tmp/attempts.jsonl
               echo
               echo "attempts: $(wc -l < /tmp/attempts.jsonl)"
