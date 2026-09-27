@@ -69,6 +69,43 @@ def roofline(flops, hbm_bytes, dtype="bfloat16"):
                 headroom=f"{ridge / ai:.1f}x more reuse needed" if ai < ridge else "at or above the ridge")
 
 
+def explain_with_ceiling(flops, measured_bytes, floor_bytes, dtype="bfloat16"):
+    """Separate what the KERNEL wastes from what the SHAPE cannot reach.
+
+    Flops are fixed by the problem, so arithmetic intensity is just flops divided by bytes. The byte
+    floor -- read each input once, write the output once -- therefore sets a CEILING on intensity that
+    no kernel can beat. If that ceiling is already under the ridge, the operation is memory bound at
+    this shape no matter how good the kernel is.
+
+    This matters because the previous message was misleading: it told the agent 'memory bound, 2.2x
+    more reuse needed' on shapes whose ceiling is 28-73 Flops/Byte against a ridge of 222. The reuse
+    it was being asked for did not exist.
+    """
+    ridge = RIDGE_FLOPS_PER_BYTE[dtype]
+    measured = flops / measured_bytes if measured_bytes else float("inf")
+    ceiling = flops / floor_bytes if floor_bytes else float("inf")
+    waste = measured_bytes / floor_bytes if floor_bytes else 1.0
+    lines = [f"arithmetic intensity {measured:.1f} Flops/Byte. "
+             f"Ceiling at this shape is {ceiling:.1f} (every byte read once); "
+             f"the hardware ridge is {ridge:g}."]
+    if waste > 1.15:
+        lines.append(f"YOUR KERNEL: moving {waste:.1f}x the necessary bytes, which divides your "
+                     f"intensity by {waste:.1f}. Recovering that is entirely in your hands and is "
+                     f"the whole of levels 4 to 7.")
+    else:
+        lines.append("YOUR KERNEL: at the byte floor already, so there is no reuse left to find.")
+    if ceiling < ridge:
+        lines.append(f"THIS SHAPE: even a perfect kernel reaches only {ceiling:.1f}, which is "
+                     f"{ridge / ceiling:.1f}x under the ridge, so the operation is memory bound "
+                     f"here however it is written. Do not chase compute-bound at this size -- for a "
+                     f"square {dtype} matmul you need about n >= {int(3 * ridge) + 1} before the "
+                     f"ceiling clears the ridge.")
+    else:
+        lines.append(f"THIS SHAPE: the ceiling of {ceiling:.1f} clears the ridge, so a good enough "
+                     f"kernel CAN become compute bound here.")
+    return "\n".join("    " + l for l in lines)
+
+
 def explain_roofline(r):
     if r["bound"] == "memory_bound":
         return (f"MEMORY BOUND: {r['arithmetic_intensity']} Flops/Byte against a ridge of "
@@ -581,7 +618,7 @@ def verify(path, level_n, tol=2e-2, seed=0):
         if level_n >= 3 and counted["bytes"]:
             f = matmul_flops(case["M"], case["K"], case["N"])
             intensities.append((label(case, level_n), roofline(f, counted["bytes"]),
-                                counted))
+                                counted, f, minimum_hbm_bytes(args, want)))
 
     print(f"  numerics   {passed}/{len(spec['shapes'])} shapes passed")
     for lbl, m in failures[:3]:
@@ -592,7 +629,7 @@ def verify(path, level_n, tol=2e-2, seed=0):
         print("    improve THIS message before you touch the prompt.")
         return 1
 
-    for lbl, r, counted in intensities:
+    for lbl, r, counted, flops, floor in intensities:
         dts = ",".join(sorted(counted["dtypes"])) or "?"
         print(f"\n  {lbl}: {counted['bytes']:,} HBM bytes in {counted['transfers']} transfers "
               f"(via {counted['api']}, dtype {dts})")
@@ -603,7 +640,7 @@ def verify(path, level_n, tol=2e-2, seed=0):
             print(f"    NOTE: the {RIDGE_FLOPS_PER_BYTE['bfloat16']:g} Flops/Byte ridge is the "
                   f"published bfloat16 figure, and this ran in {dts}. Treat the verdict as "
                   f"indicative and re-measure in bfloat16 before quoting a number.")
-        print(textwrap.indent(explain_roofline(r), "    "))
+        print(explain_with_ceiling(flops, counted["bytes"], floor))
     return 0
 
 

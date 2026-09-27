@@ -100,6 +100,30 @@ anything.** Memory bound means find reuse, so the same bytes do more work. Compu
 loads are already keeping up and tuning them is wasted effort. Guessing this wrong is the most common
 way to spend a day optimizing the wrong thing.
 
+#### HBM traffic and arithmetic intensity are the same number
+
+Arithmetic intensity is flops divided by HBM bytes, and **the flops are fixed by the problem** — a
+matmul is 2·M·K·N operations whatever you do. So intensity is nothing but a measure of your traffic:
+halve the bytes and you double the intensity. "Raise arithmetic intensity" and "move fewer bytes" are
+one instruction.
+
+That gives two numbers worth separating, and the harness prints both:
+
+* **The byte floor** — read each input once, write the output once. Divide your measured traffic by it
+  and you get the multiple you are wasting. This is **yours**, and recovering it is the whole of
+  levels 4 to 7.
+* **The intensity ceiling** — flops divided by that floor. No kernel can exceed it. This belongs to
+  **the shape**, not to you.
+
+The consequence is sharp: **if the ceiling is already below the ridge, the operation is memory bound
+at that shape no matter how well it is written.** Chasing compute-bound there is wasted effort. For a
+square `bfloat16` matmul the ceiling is about `n/3`, so `n` has to reach roughly **667** before it
+clears the ridge of 222 — a 512³ matmul tops out at 171 and can never saturate the engine.
+
+Every test shape in this project is deliberately below that. They are sized so the CPU simulator stays
+quick, which means **the win available here is entirely in removing redundant traffic, not in reaching
+the ridge.** The harness says so explicitly rather than telling you to find reuse that does not exist.
+
 **Level 4. Tiled matrix multiplication.** Now it works for matrices larger than one tile — and it is
 **measurably memory bound**. This is the most important level in the ladder, because the diagnosis is
 *derivable rather than guessed*:
