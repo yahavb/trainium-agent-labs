@@ -70,6 +70,59 @@ python agent.py --offline --level 1 --all
 There is also a Kubernetes job in [`../../k8s/heatrod-agent.yaml`](../../k8s/heatrod-agent.yaml),
 which is how this was developed. You do not need it on the instance.
 
+## What it looks like when you run it
+
+Real output, Qwen3-8B on one Trainium chip, four attempts per round. **Read this before running
+anything** — it is what a working loop looks like, so you can tell progress from flailing.
+
+The easy levels are solved on the first round, which is what level 0 is for:
+
+```
+=========== level0.1 ===========
+round 0: rewards [1.0, 1.0, 1.0, 1.0]  mean 1.00  best 1.0  (8.7s)
+SOLVED: u(x, t) = exp(-(3*pi)**2*t)*sin(3*pi*x)
+```
+
+The interesting one is the parabola, where the first attempt is wrong and the checker's reason is
+what fixes it:
+
+```
+=========== level1.3 ===========
+round 0: rewards [0.0, 0.0, 0.4, 0.4]  mean 0.20  best 0.4  (28.7s)
+  checker: The equation u_t = 2*u_xx does not hold: at x=1.087, t=0.0270,
+  u_t - 2*u_xx = -14.88 instead of 0. At t=0 the answer differs from the required
+  starting shape by 103.71 percent, and it must be under 0.5 percent. Term by term:
+  the coefficient of sin(pi*x) should be 0 but yours is -0.8 ... The terms
+  sin(pi*x), sin(2*pi*x) should not be there at all.
+
+round 1: rewards [0.0, 1.0, 0.4, 0.0]  mean 0.35  best 1.0  (25.4s)
+SOLVED: u(x, t) = 1.032*exp(-2*(pi/2)**2*t)*sin(pi*x/2)
+              + 0.03822*exp(-2*(3*pi/2)**2*t)*sin(3*pi*x/2)
+              + 0.00656*exp(-2*(5*pi/2)**2*t)*sin(5*pi*x/2)
+```
+
+```
+=========== summary: level 1 ===========
+  level1.1     reward 1.0 after 1 round(s)  SOLVED
+  level1.2     reward 1.0 after 1 round(s)  SOLVED
+  level1.3     reward 1.0 after 2 round(s)  SOLVED
+  solved 3/3
+```
+
+**Four things to notice, because they are the whole point:**
+
+* **The rewards in a round differ** — `[0.0, 1.0, 0.4, 0.0]`. Sampling is on, so the attempts are
+  genuinely different. If every number in a round is identical, sampling is off and there is
+  nothing for the loop to choose between.
+* **0.4 means the equation and the boundaries are right and the starting shape is wrong.** Partial
+  credit tells you *which part* is broken, which is why the reward is graded rather than pass/fail.
+* **Round 0 fails and round 1 succeeds.** That is the loop working. A level solved on round 0 taught
+  the agent nothing.
+* **That transcript was produced with the target values printed in the feedback**, and the model
+  copied `1.032` and `0.03822` straight out of the message. The checker is now directional only, so
+  your run will look harder than this one. See "What we learned" below — this is the single most
+  important thing in the project.
+
 ## The levels
 
 **Level 0** — both ends at zero, starting shape built from sine waves. Exact closed forms. Qwen3-8B

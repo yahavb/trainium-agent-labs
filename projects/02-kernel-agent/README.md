@@ -210,6 +210,64 @@ It answers three questions in order, and stops at the first failure:
 The tutorials are public, so hiding them buys nothing, and a harness whose reference nobody can read
 is a harness nobody should trust. Use them to confirm the harness works, then write your own.
 
+### What it looks like when you run the agent
+
+Real output from `agent.py` against Qwen3-8B, two attempts per round. **Read this before running
+anything.** Nothing here is solved yet, and that is the honest state of the project — but the wall
+moved on every fix, and watching *which* wall you are at is the skill.
+
+**Run 1 — nothing loadable came back.**
+
+```
+round 0: rewards [0.0, 0.0]  best 0.00  (54.8s)
+  The code does not parse: invalid decimal literal on line 2.
+round 3: rewards [0.1, 0.1]  best 0.10  (13.3s)
+  Rule violations: `tensor_avgpool_kernel` is not decorated with `@nki.jit`
+```
+
+Two bugs, both in the harness rather than the model. Thinking mode was on, so the model spent its
+whole token budget reasoning and returned a fragment — note the 54.8s rounds. And the code extractor
+handed prose to the compiler, so a numbered list became "invalid decimal literal".
+
+**Run 2 — code runs, but every NKI function is invented.**
+
+```
+round 0: rewards [0.3, 0.3]  best 0.30  (9.0s)
+  raised AttributeError: module 'nki.language' has no attribute 'dot'
+round 1: raised AttributeError: module 'nki.language' has no attribute 'value'
+round 2: raised AttributeError: module 'nki.language' has no attribute 'sbuf_scalar'
+```
+
+Rounds dropped to 5–12 seconds, so the truncation was fixed. `nl.dot`, `nl.value`,
+`nl.sbuf_scalar`, `tile.mean` — none exist. **And it guessed a different fake name every round**,
+because the feedback named the mistake and never the fix. That is this repo's recurring lesson,
+arriving for the fourth time.
+
+**Run 3 — the names are real, one specific misuse remains.**
+
+```
+round 0: rewards [0.3, 0.3]  best 0.30  (9.0s)
+  raised TypeError: 'MemoryRegion' object is not callable
+round 3: rewards [0.3, 0.3]  best 0.30  (7.8s)
+  raised TypeError: 'MemoryRegion' object is not callable
+```
+
+The API card fixed the invented names. Now it writes `nl.sbuf(shape, dtype)` — calling a memory
+region as if it were a function — instead of `nl.ndarray(..., buffer=nl.sbuf)`. The prompt described
+the right call and the model read past it, so the prompt now carries a **complete worked kernel**
+instead, which is what fixed the same class of problem in Project 1.
+
+**How to read your own run:**
+
+| you see | it means |
+|---|---|
+| `0.0` and rounds near 55s | the answer was truncated — check for the TRUNCATED notice |
+| `0.1` | it parses but breaks a rule; read exactly which |
+| `0.3` | rules clean and it ran, but the numbers are wrong — now you are doing real work |
+| `1.0` | correct on every shape, and the roofline verdict prints |
+| the **same** error three rounds running | your feedback is a verdict, not an instruction. Fix the message, not the prompt. |
+| identical rewards within a round | sampling is off, so there is nothing to choose between |
+
 ### How suboptimality shows up in the log
 
 This is what a `--check` prints, from a real run on a trn2 node:
