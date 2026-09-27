@@ -132,25 +132,20 @@ def grade(source, rung):
 # model does not know this API and guesses plausible names -- nl.scalar, nl.value, nl.dot,
 # tile.mean -- none of which exist. A short card of what IS real costs ~200 tokens and is
 # documentation rather than the answer.
-API_CARD = """These are the only NKI functions you may use. Do not invent others.
+API_CARD = """Available NKI functions:
 
   @nki.jit                                  decorate the entry point
   nl.ndarray(shape, dtype=..., buffer=b)    allocate; b is nl.sbuf, nl.psum or nl.shared_hbm
-  nl.affine_range(n)                        the loop to use
-  nl.sum(view, axis=[i, j])                 reduce; axis is a LIST
-  nl.float32, nl.bfloat16                   dtypes (never numpy dtypes)
-  nl.tile_size.pmax                         128
+  nl.affine_range(n)                        the loop
+  nl.sum(view, axis=[i, j])                 reduce; axis is a list
+  nl.float32, nl.bfloat16                   dtypes
   nisa.dma_copy(dst=, src=)                 move data between HBM and SBUF
   nisa.nc_matmul(dst=, stationary=, moving=)   matmul into a PSUM tile
   nisa.tensor_copy(dst=, src=)              copy, e.g. PSUM to SBUF
   nisa.tensor_scalar(dst=, data=, op0=nl.multiply, operand0=0.5)   scale by a constant
   tile.ap([[stride, count], ...])           a strided view, for reductions
 
-Tiles are not numpy arrays: they have no .mean, .sum, .T or .reshape.
-nl.sbuf, nl.psum and nl.shared_hbm are NOT functions. Never call them. They are only ever
-passed as the buffer= argument to nl.ndarray.
-
-A complete, correct kernel, to copy the shape of:
+Slice tiles with ranges, e.g. a[0:128, 0:64]. A complete kernel looks like this:
 
 import nki
 import nki.isa as nisa
@@ -208,7 +203,7 @@ def enrich(error_text):
                 f"`{m.group(2)}`. Use the nl/nisa functions instead.")
     return error_text
 
-def first_prompt(rung):
+def first_prompt(rung, terse=0):
     """Deliberately short, and it does NOT list the rules.
 
     Measured twice in this repo: hand a model an enumerated list of prohibitions and it audits
@@ -218,6 +213,21 @@ def first_prompt(rung):
     """
     s = nkibench.LADDER[rung]
     import inspect
+    if terse >= 2:
+        # Last resort. Measured on this endpoint: one-sentence prompts answered in 300-700
+        # tokens while every structured, rule-carrying prompt spiralled.
+        return (f"Write a Python function `{s['entry']}` decorated with @nki.jit that computes "
+                f"the same thing as this, using nki.language as nl and nki.isa as nisa:\n\n"
+                f"{inspect.getsource(s['ref'])}\n"
+                f"Reply with one python code block.")
+    if terse >= 1:
+        return (f"Write an AWS Neuron NKI kernel: a function `{s['entry']}` decorated with "
+                f"@nki.jit that computes what this reference computes.\n\n"
+                f"{inspect.getsource(s['ref'])}\n"
+                f"Allocate with nl.ndarray(shape, dtype=..., buffer=nl.sbuf), move data with "
+                f"nisa.dma_copy(dst=, src=), loop with nl.affine_range(n). A tile's partition "
+                f"dimension is at most {nkibench.PMAX}.\n\n"
+                f"Reply with one python code block.")
     return (
         f"Write an AWS Neuron NKI kernel.\n\n"
         f"Operation: {s['op']}\n"
@@ -328,7 +338,8 @@ def offline_answers(rung, n, rnd):
 
 def solve(a, rung, log):
     print(f"\n=========== rung {rung}: {nkibench.LADDER[rung]['op']} ===========")
-    prompt = first_prompt(rung)
+    terse = a.terse
+    prompt = first_prompt(rung, terse)
     best = (0.0, None, "")
     for rnd in range(a.rounds):
         t0 = time.perf_counter()
@@ -353,7 +364,15 @@ def solve(a, rung, log):
         if top[0] >= sum(WEIGHTS.values()) - 1e-9:
             print(f"  SOLVED on round {rnd}")
             return top[0], rnd + 1
-        prompt = repair_prompt(rung, best[1] or "", best[2])
+        if not (best[1] or "").strip():
+            # Nothing came back to repair. Asking it to "fix" an empty code block produced a
+            # 202-character prompt and, under greedy sampling, the identical non-answer six
+            # rounds running. Shorten and re-ask instead.
+            terse = min(terse + 1, 2)
+            prompt = first_prompt(rung, terse)
+            print(f"  no code yet, so re-asking with a shorter prompt (terseness {terse})")
+        else:
+            prompt = repair_prompt(rung, best[1], best[2])
     print(f"  not solved in {a.rounds} rounds; best reward {best[0]:.2f}")
     return best[0], a.rounds
 
@@ -370,6 +389,10 @@ def main():
                     or os.environ.get("GPTOSS_BASE_URL"))
     ap.add_argument("--path", default="", help="path to append, e.g. /agg/v1 for gpt-oss")
     ap.add_argument("--log", default="attempts.jsonl")
+    ap.add_argument("--terse", type=int, default=0, choices=(0, 1, 2),
+                    help="starting prompt length. Measured on gpt-oss-20b: 0 produced 13,245 "
+                         "chars of hidden reasoning and no answer, while 1 answered with code. "
+                         "Qwen3-8B is fine at 0.")
     ap.add_argument("--context", type=int, default=4096,
                     help="the server's max-model-len; prompt + answer must fit inside it")
     ap.add_argument("--think", action="store_true",

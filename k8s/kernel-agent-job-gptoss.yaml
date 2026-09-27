@@ -75,7 +75,7 @@ spec:
               echo "=============== the agent, against gpt-oss-20b (greedy, so one sample per round) ==============="
               curl -skf "$KERNEL_AGENT_BASE_URL/models" >/dev/null \
                 || { echo "the gpt-oss service is not answering at $KERNEL_AGENT_BASE_URL"; exit 1; }
-              python agent.py --all --rounds 6 --samples 1 --context 8192 --log /tmp/attempts.jsonl
+              python agent.py --all --rounds 6 --samples 1 --context 8192 --terse 1 --log /tmp/attempts.jsonl
               echo
               echo "attempts: $(wc -l < /tmp/attempts.jsonl)"
               python - <<'PY'
