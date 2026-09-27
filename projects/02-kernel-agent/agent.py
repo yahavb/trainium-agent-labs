@@ -398,6 +398,7 @@ def solve(a, level, log):
     prompt = first_prompt(level, terse)
     best = (0.0, None, "")
     tried, streak, seen = [], 0, {}
+    latest = ("", "")
     for rnd in range(a.rounds):
         t0 = time.perf_counter()
         replies = (offline_answers(level, a.samples, rnd) if a.offline
@@ -415,13 +416,19 @@ def solve(a, level, log):
         top = graded[0]
         if top[0] > best[0]:
             best = (top[0], top[1], top[2])
+        # Repair the LATEST attempt, not the best one. Rebuilding from the best attempt with the
+        # best attempt's feedback is a fixed point: once a round scores worse, the prompt stops
+        # changing, and a greedy model then returns the same answer forever. Measured: level 2
+        # stuck at 0.10 for four rounds while the prompt still carried the 0.50 code.
+        if (top[1] or "").strip():
+            latest = (top[1], top[2])
         same = top[2] == (tried[-1] if tried else None)
         if same:
             # Collapse. Fifteen identical multi-line blocks is noise, not information.
-            print(f"round {rnd}: same failure again ({top[0]:.2f})")
+            print(f"round {rnd}: same failure again ({top[0]:.2f}, best so far {best[0]:.2f})")
         else:
-            print(f"round {rnd}: rewards {[round(g[0], 2) for g in graded]}  "
-                  f"best {top[0]:.2f}  ({time.perf_counter() - t0:.1f}s)")
+            print(f"round {rnd}: this round {top[0]:.2f}  best so far {best[0]:.2f}  "
+                  f"({time.perf_counter() - t0:.1f}s)")
             print(f"  {top[2][:400]}")
         if top[0] >= sum(WEIGHTS.values()) - 1e-9:
             print(f"  SOLVED on round {rnd}. {top[2]}")
@@ -447,13 +454,13 @@ def solve(a, level, log):
             # answer. Measured: the same TypeError 19 rounds running. Changing the prompt is the
             # only thing that can change the answer, so say what has already been tried.
             ledger = "\n".join(f"- {t[:160]}" for t in dict.fromkeys(tried))
-            prompt = (repair_prompt(level, best[1], best[2])
+            prompt = (repair_prompt(level, latest[0], latest[1])
                       + f"\n\nThese approaches have already failed, so do something different:\n"
                         f"{ledger}")
             print(f"  same failure {repeats}x — adding a ledger of {len(set(tried))} failed "
                   f"attempts to break the repeat")
             continue
-        if not (best[1] or "").strip():
+        if not (latest[0] or "").strip():
             # Nothing came back to repair. Asking it to "fix" an empty code block produced a
             # 202-character prompt and, under greedy sampling, the identical non-answer six
             # rounds running. Shorten and re-ask instead.
@@ -461,7 +468,7 @@ def solve(a, level, log):
             prompt = first_prompt(level, terse)
             print(f"  no code yet, so re-asking with a shorter prompt (terseness {terse})")
         else:
-            prompt = repair_prompt(level, best[1], best[2])
+            prompt = repair_prompt(level, latest[0], latest[1])
     print(f"  not solved in {a.rounds} rounds; best reward {best[0]:.2f}")
     return best[0], a.rounds
 
