@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-try_rung.py — you are the agent. Type a prompt, see if the kernel passes.
+try_level.py — you are the agent. Type a prompt, see if the kernel passes.
 
     export GPTOSS_BASE_URL="https://..."
-    python try_rung.py 2                          # uses a default prompt
-    python try_rung.py 2 "write it with two nested loops and no numpy reductions"
-    python try_rung.py 5 --repair                 # send the last failure back to the model
+    python try_level.py 2                          # uses a default prompt
+    python try_level.py 2 "write it with two nested loops and no numpy reductions"
+    python try_level.py 5 --repair                 # send the last failure back to the model
 
 That's the whole loop an agent automates. Do it by hand a few times and you will feel
 exactly where the difficulty is.
@@ -21,19 +21,19 @@ if not BASE:
 
 args = [a for a in sys.argv[1:] if not a.startswith("--")]
 repair = "--repair" in sys.argv
-rung = int(args[0]) if args else 2
+level = int(args[0]) if args else 2
 extra = args[1] if len(args) > 1 else ""
-spec = kb.LADDER[rung]
+spec = kb.LEVELS[level]
 
 if repair:
     # Do NOT silently fall back to a fresh attempt: you would think you were testing a
     # repair loop while actually testing first-shot generation, and draw wrong conclusions.
-    if not os.path.exists(f"/tmp/rung{rung}.py"):
-        sys.exit(f"--repair has nothing to repair: no previous attempt at rung {rung}.\n"
-                 f"Run `python try_rung.py {rung}` first, then --repair.")
-    prev = open(f"/tmp/rung{rung}.py").read()
-    fail = open(f"/tmp/rung{rung}.fail").read() if os.path.exists(f"/tmp/rung{rung}.fail") else ""
-    print(f"(repairing the previous attempt at rung {rung})")
+    if not os.path.exists(f"/tmp/level{level}.py"):
+        sys.exit(f"--repair has nothing to repair: no previous attempt at level {level}.\n"
+                 f"Run `python try_level.py {level}` first, then --repair.")
+    prev = open(f"/tmp/level{level}.py").read()
+    fail = open(f"/tmp/level{level}.fail").read() if os.path.exists(f"/tmp/level{level}.fail") else ""
+    print(f"(repairing the previous attempt at level {level})")
     # The naive version pastes the failure verbatim, which says WHAT is wrong but never
     # WHAT TO DO -- and the model then reproduces the same violation. Passing a
     # prescriptive instruction is the whole difference. That translation step is the
@@ -48,7 +48,7 @@ else:
               f"Loop over tiles of at most 128 rows and 512 columns. "
               f"{extra}\nOutput only one ```python block.")
 
-print(f"RUNG {rung}: {spec['name']}\n  trap: {spec['trap']}")
+print(f"LEVEL {level}: {spec['name']}\n  trap: {spec['trap']}")
 print(f"\n--- prompt ({len(prompt)//4} est tokens) ---")
 print(textwrap.indent(prompt.strip(), "  "))
 
@@ -68,14 +68,14 @@ if not content.strip():
 
 m = re.search(r"```(?:python)?\s*(.*?)```", content, re.S)
 src = m.group(1) if m else content
-open(f"/tmp/rung{rung}.py", "w").write(src)
+open(f"/tmp/level{level}.py", "w").write(src)
 print(textwrap.indent(src.strip()[:800], "  "))
 
-out = subprocess.run([sys.executable, "kernelbench.py", "--rung", str(rung),
-                      "--check", f"/tmp/rung{rung}.py"], capture_output=True, text=True)
+out = subprocess.run([sys.executable, "kernelbench.py", "--level", str(level),
+                      "--check", f"/tmp/level{level}.py"], capture_output=True, text=True)
 print("\n--- verdict ---")
 print(out.stdout or out.stderr)
-open(f"/tmp/rung{rung}.fail", "w").write(out.stdout)
+open(f"/tmp/level{level}.fail", "w").write(out.stdout)
 if out.returncode:
-    print(f"  try again:  python try_rung.py {rung} \"<a hint>\"")
-    print(f"  or:         python try_rung.py {rung} --repair")
+    print(f"  try again:  python try_level.py {level} \"<a hint>\"")
+    print(f"  or:         python try_level.py {level} --repair")

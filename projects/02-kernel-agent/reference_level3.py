@@ -1,5 +1,5 @@
 """
-Reference kernel for rung 3 of the ladder in nkibench.py.
+Reference kernel for level 3 of the ladder in nkibench.py.
 
 Adapted from the AWS Neuron NKI tutorial example
   matrix_multiplication/matrix_multiplication_nki_kernels.py
@@ -9,7 +9,7 @@ This is the ANSWER, and it is shipped on purpose: the tutorials are public, so h
 nothing, and a harness whose reference implementation nobody can read is a harness nobody
 should trust. Use it to check the harness works, then write your own.
 
-    python nkibench.py --rung 3 --check reference_rung3.py
+    python nkibench.py --level 3 --check reference_level3.py
 """
 
 import nki

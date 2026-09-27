@@ -51,7 +51,7 @@ spec:
               echo
               python nkibench.py --selftest
               echo
-              python agent.py --offline --rung 1 --rounds 2 --samples 1 --log /tmp/offline.jsonl
+              python agent.py --offline --level 1 --rounds 2 --samples 1 --log /tmp/offline.jsonl
               echo
               echo "=============== is the prompt's worked example real? ==============="
               python - <<'PY'
@@ -83,11 +83,11 @@ spec:
               rows = [json.loads(l) for l in open('/tmp/attempts.jsonl')]
               per = collections.defaultdict(list)
               for r in rows:
-                  per[r['rung']].append(r['reward'])
-              print('reward by rung:')
-              for rung in sorted(per):
-                  v = per[rung]
-                  print(f'  rung {rung}: best {max(v):.2f}  mean {sum(v)/len(v):.2f}  n={len(v)}')
+                  per[r['level']].append(r['reward'])
+              print('reward by level:')
+              for level in sorted(per):
+                  v = per[level]
+                  print(f'  level {level}: best {max(v):.2f}  mean {sum(v)/len(v):.2f}  n={len(v)}')
               stuck = [r for r in rows if r['reward'] == 0.0]
               print(f'attempts scoring zero: {len(stuck)}/{len(rows)}')
               PY

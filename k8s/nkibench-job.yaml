@@ -53,11 +53,11 @@ spec:
               echo
               echo "=============== reference kernels through the harness ==============="
               rc=0
-              for rung in 1 2 3 4; do
-                echo "--------------- rung $rung ---------------"
-                python nkibench.py --rung "$rung" --show
+              for level in 1 2 3 4; do
+                echo "--------------- level $level ---------------"
+                python nkibench.py --level "$level" --show
                 echo
-                python nkibench.py --rung "$rung" --check "reference_rung${rung}.py" || rc=$?
+                python nkibench.py --level "$level" --check "reference_level${level}.py" || rc=$?
                 echo
               done
               echo "last non-zero check exit: $rc"

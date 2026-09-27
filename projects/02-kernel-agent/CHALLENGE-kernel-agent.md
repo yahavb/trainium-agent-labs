@@ -168,7 +168,7 @@ All measured; see the README for how.
 
 ## A worked example, and the trap that eats the day
 
-We ran rung 5 (softmax) against the endpoint before writing this, to check the challenge is fair.
+We ran level 5 (softmax) against the endpoint before writing this, to check the challenge is fair.
 Here is what actually happened, because you will hit the same wall within the hour.
 
 **Attempt 1 — the obvious prompt.** Reference implementation, the tiling rules, the banned-function
@@ -220,7 +220,7 @@ one change:
 > *"Replace the np.max and np.sum calls with explicit python loops over the columns that compute the
 > row maximum and the row sum. Keep everything else identical."*
 
-897 output tokens. **32/32 cases passed, verified.** Two calls, ~1,900 tokens total, for the rung
+897 output tokens. **32/32 cases passed, verified.** Two calls, ~1,900 tokens total, for the level
 with the overflow trap in it.
 
 **And the near-miss that proves the point.** Feeding the verifier's report back *verbatim* — the
@@ -232,7 +232,7 @@ The lesson generalises: **constraints belong in your verifier, not in your gener
 model is bad at holding ten rules in mind and good at making one named change. Your agent's job is to
 convert "this is wrong" into "change exactly this."
 
-That is one rung. Nine more, and the held-back three, are yours — and the harder ones (8, 9, 10) will
+That is one level. Nine more, and the held-back three, are yours — and the harder ones (8, 9, 10) will
 not fall to a single repair round. But you now know the shape of the problem, which is more than we
 did an hour ago.
 
@@ -242,8 +242,8 @@ Same rubric as every problem.
 
 | weight | | |
 |---|---|---|
-| **30%** | Correctness | How many ladder rungs pass **on the held-back shapes and hostile values** — not just yours. A rule violation is a zero, not a deduction. |
-| **25%** | Delivered result | Rungs cleared, and attempts needed per rung. Fewer attempts to green is better agent design, not luck. |
+| **30%** | Correctness | How many ladder levels pass **on the held-back shapes and hostile values** — not just yours. A rule violation is a zero, not a deduction. |
+| **25%** | Delivered result | Levels cleared, and attempts needed per level. Fewer attempts to green is better agent design, not luck. |
 | **25%** | Method & honesty | **Does the agent know when it failed?** An agent reporting "verified" on a kernel that fails the harness scores worse than one reporting honest failure. Plus: your token-budget instrumentation, and your failure taxonomy. |
 | **20%** | Demo & write-up | Show a failure and the recovery, not just a success. Can we reproduce it? |
 
@@ -251,11 +251,11 @@ Same rubric as every problem.
 
 **Calibration.** Your agent must output a confidence, and be right about it. Confidently wrong is the
 worst possible behaviour on a problem where wrong kernels don't crash — in production that is a silent
-numerical bug shipped to users. An agent that says "I could not verify rung 8" is more valuable than
+numerical bug shipped to users. An agent that says "I could not verify level 8" is more valuable than
 one that says "done" and is lying.
 
 **The failure taxonomy.** Run your agent across the whole ladder, collect every wrong kernel it wrote,
-and classify them into a handful of named failure modes. Which rungs did it fail, and *why* — did it
+and classify them into a handful of named failure modes. Which levels did it fail, and *why* — did it
 misread the tiling rules, forget the partial tile, reinvent an illegal indexing pattern, fix the error
 it was shown while breaking something else? This is analysis work, it needs no accelerator, and it is
 the artifact we would most want to keep.
@@ -273,18 +273,18 @@ the artifact we would most want to keep.
 
 ## Where to start, in order
 
-1. Write the reference for rungs 1–3 and the harness. **Do not call the model yet.**
-2. Hand-write a correct rung-1 kernel yourself. Confirm the harness passes it, then break it on
+1. Write the reference for levels 1–3 and the harness. **Do not call the model yet.**
+2. Hand-write a correct level-1 kernel yourself. Confirm the harness passes it, then break it on
    purpose and confirm the harness catches it *and* produces a useful message. If the harness can't
    catch your own deliberate bug, it will not catch the model's.
-3. Now add the model. One call, one attempt, rung 1.
+3. Now add the model. One call, one attempt, level 1.
 4. Add the retry loop, and only then start caring about the token budget.
 5. Climb.
 
 ## Honest expectations
 
-Rungs 1–4 are achievable. Rungs 5–7 are a good day. Rungs 8–10 are hard, and 9 is genuinely hard.
+Levels 1–4 are achievable. Levels 5–7 are a good day. Levels 8–10 are hard, and 9 is genuinely hard.
 
-**A team that clears four rungs and brings a rigorous taxonomy of the six it failed will beat a team
-claiming rung 9 that cannot show its verification.** That is not a consolation prize — it is the
+**A team that clears four levels and brings a rigorous taxonomy of the six it failed will beat a team
+claiming level 9 that cannot show its verification.** That is not a consolation prize — it is the
 grading criterion.

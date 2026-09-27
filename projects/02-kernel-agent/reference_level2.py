@@ -1,5 +1,5 @@
 """
-Reference kernel for rung 2 of the ladder in nkibench.py.
+Reference kernel for level 2 of the ladder in nkibench.py.
 
 Adapted from the AWS Neuron NKI tutorial example
   transpose2d/transpose2d_nki_kernels.py
@@ -9,7 +9,7 @@ This is the ANSWER, and it is shipped on purpose: the tutorials are public, so h
 nothing, and a harness whose reference implementation nobody can read is a harness nobody
 should trust. Use it to check the harness works, then write your own.
 
-    python nkibench.py --rung 2 --check reference_rung2.py
+    python nkibench.py --level 2 --check reference_level2.py
 """
 
 import nki

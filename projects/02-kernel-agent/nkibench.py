@@ -14,8 +14,8 @@ Layers 2 and 3 of the harness -- real latency via nki.baremetal, and a profile s
 engine owns the time -- need the chip and are not in this file.
 
     python nkibench.py --list
-    python nkibench.py --rung 4 --show
-    python nkibench.py --rung 4 --check my_matmul.py
+    python nkibench.py --level 4 --show
+    python nkibench.py --level 4 --check my_matmul.py
     python nkibench.py --roofline 512 1024 2048      # what the roofline says before you code
     python nkibench.py --selftest
 
@@ -136,15 +136,15 @@ def ref_matmul(lhsT, rhs):
 
 # ---------------------------------------------------------------- the ladder
 
-LADDER = {}
+LEVELS = {}
 
 
-def rung(n, op, entry, teaches, optimization, ref, shapes, banned, notes=""):
-    LADDER[n] = dict(n=n, op=op, entry=entry, teaches=teaches, optimization=optimization,
+def level(n, op, entry, teaches, optimization, ref, shapes, banned, notes=""):
+    LEVELS[n] = dict(n=n, op=op, entry=entry, teaches=teaches, optimization=optimization,
                      ref=ref, shapes=shapes, banned=banned, notes=notes)
 
 
-rung(1, "average pooling 2D", "tensor_avgpool_kernel",
+level(1, "average pooling 2D", "tensor_avgpool_kernel",
      "the programming model: the partition axis is not like the others, and access patterns "
      "are explicit",
      "almost none -- a reduction has inherently low arithmetic intensity. This is the "
@@ -156,7 +156,7 @@ rung(1, "average pooling 2D", "tensor_avgpool_kernel",
      "nl.sum and nl.mean over a strided access-pattern view are the intended NKI route; "
      "what is banned is handing the whole reduction to numpy or torch.")
 
-rung(2, "2D transpose", "tensor_transpose2D_kernel_",
+level(2, "2D transpose", "tensor_transpose2D_kernel_",
      "layout: a transpose has to cross partitions, and the partition axis is the constrained "
      "one",
      "the first real one, and it is NOT about compute. A naive transpose moves tiny pieces "
@@ -167,10 +167,10 @@ rung(2, "2D transpose", "tensor_transpose2D_kernel_",
       dict(shape=(64, 128), shape2D=(4, 32)), dict(shape=(8, 35), shape2D=(5, 7))],
      {"transpose", "swapaxes", "moveaxis", "rollaxis", "permute"})
 
-rung(3, "matmul, single tile", "nki_matmul_basic_",
+level(3, "matmul, single tile", "nki_matmul_basic_",
      "the machine: results land in PSUM and must be copied to SBUF, the left operand arrives "
      "transposed, and tiles have hard shape limits",
-     "none yet -- this is a correctness rung where the layout rules bite.",
+     "none yet -- this is a correctness level where the layout rules bite.",
      ref_matmul,
      [dict(K=128, M=64, N=512)],
      {"matmul", "dot", "einsum", "tensordot", "inner", "vdot"})
@@ -178,29 +178,29 @@ rung(3, "matmul, single tile", "nki_matmul_basic_",
 _MM_SHAPES = [dict(K=128, M=128, N=512), dict(K=256, M=256, N=1024),
               dict(K=512, M=128, N=512), dict(K=128, M=512, N=1536)]
 
-rung(4, "matmul, tiled", "nki_matmul_tiled_",
+level(4, "matmul, tiled", "nki_matmul_tiled_",
      "tiling a matmul beyond one tile, in all three dimensions",
-     "THE PIVOT RUNG. Measurably memory bound, and derivably so: its innermost loop reads "
+     "THE PIVOT LEVEL. Measurably memory bound, and derivably so: its innermost loop reads "
      "160 KB per 16 MFlops, an arithmetic intensity of 102 against a ridge of 222. The agent "
      "should compute that from its own code and classify the kernel BEFORE changing anything.",
      ref_matmul, _MM_SHAPES,
      {"matmul", "dot", "einsum", "tensordot", "inner", "vdot"})
 
-rung(5, "matmul, loads hoisted", "nki_matmul_hoist_load_",
+level(5, "matmul, loads hoisted", "nki_matmul_hoist_load_",
      "that the same tiles are re-read every pass of the inner loop",
      "hoist the redundant loads out of the innermost loop. Cheap, mechanical, and the first "
      "measurable win. Arithmetic intensity rises.",
      ref_matmul, _MM_SHAPES,
      {"matmul", "dot", "einsum", "tensordot", "inner", "vdot"})
 
-rung(6, "matmul, M and N blocked", "nki_matmul_block_free_dimension_",
+level(6, "matmul, M and N blocked", "nki_matmul_block_free_dimension_",
      "spending SBUF capacity to buy reuse",
      "hoisting reuses one row of tiles; SBUF holds far more. Now there is a SEARCH SPACE -- "
      "block sizes bounded by SBUF capacity -- so the agent has to explore rather than derive.",
      ref_matmul, _MM_SHAPES,
      {"matmul", "dot", "einsum", "tensordot", "inner", "vdot"})
 
-rung(7, "matmul, M, N and K blocked", "nki_matmul_fully_optimized_",
+level(7, "matmul, M, N and K blocked", "nki_matmul_fully_optimized_",
      "the full blocking scheme",
      "the top of the ladder. Hard, and a fine place to stop short of.",
      ref_matmul, _MM_SHAPES,
@@ -209,12 +209,12 @@ rung(7, "matmul, M, N and K blocked", "nki_matmul_fully_optimized_",
 
 # ---------------------------------------------------------------- inputs
 
-def make_inputs(spec, rung_n, seed=0):
-    r = np.random.default_rng(seed + rung_n)
-    if rung_n == 1:
+def make_inputs(spec, level_n, seed=0):
+    r = np.random.default_rng(seed + level_n)
+    if level_n == 1:
         x = r.standard_normal(spec["shape"]).astype(np.float32)
         return (x, spec["pool_size"]), dict(pool_size=spec["pool_size"])
-    if rung_n == 2:
+    if level_n == 2:
         return (r.standard_normal(spec["shape"]).astype(np.float32), spec["shape2D"]), {}
     K, M, N = spec["K"], spec["M"], spec["N"]
     lhsT = r.standard_normal((K, M)).astype(np.float32)
@@ -222,10 +222,10 @@ def make_inputs(spec, rung_n, seed=0):
     return (lhsT, rhs), {}
 
 
-def label(spec, rung_n):
-    if rung_n == 1:
+def label(spec, level_n):
+    if level_n == 1:
         return f"C,H,W={spec['shape']} pool={spec['pool_size']}"
-    if rung_n == 2:
+    if level_n == 2:
         return f"shape={spec['shape']} as {spec['shape2D'][0]}x{spec['shape2D'][1]}"
     return f"K={spec['K']} M={spec['M']} N={spec['N']}"
 
@@ -247,17 +247,17 @@ def _dotted(node):
     return ".".join(reversed(parts))
 
 
-def check_rules(src, rung_n):
+def check_rules(src, level_n):
     """A scan, not a proof. Catches the cheats and the shape mistakes visible in the text. It
     cannot tell you your kernel is properly tiled -- a human reads that.
 
     Only FRAMEWORK-level calls are banned: np.mean, torch.matmul, the `@` operator, `.T` on an
     argument. NKI's own primitives are the intended route and are never flagged -- nl.sum over
     a strided view is how the pooling tutorial does it, and nisa.nc_matmul is the whole point
-    of the matmul rungs. Banning by bare name would reject correct kernels, which is worse
+    of the matmul levels. Banning by bare name would reject correct kernels, which is worse
     than missing a cheat.
     """
-    spec = LADDER[rung_n]
+    spec = LEVELS[level_n]
     bad = []
     try:
         tree = ast.parse(src)
@@ -281,7 +281,7 @@ def check_rules(src, rung_n):
             leaf = dotted.split(".")[-1] if dotted else ""
             if leaf in spec["banned"] and (head in FRAMEWORK_MODULES or head == leaf):
                 bad.append(f"line {node.lineno}: calls `{dotted}`, which hands the whole "
-                           f"operation to a framework. This rung is about computing it in "
+                           f"operation to a framework. This level is about computing it in "
                            f"the kernel.")
             if leaf == "ndarray" and node.args:
                 a0 = node.args[0]
@@ -301,7 +301,7 @@ def check_rules(src, rung_n):
 
     if spec["entry"] not in names:
         bad.append(f"no function named `{spec['entry']}` is defined; that is the entry point "
-                   f"this rung is checked through.")
+                   f"this level is checked through.")
     elif spec["entry"] not in decorated:
         bad.append(f"`{spec['entry']}` is not decorated with `@nki.jit`, so it will run as "
                    f"plain Python rather than compiling for the device.")
@@ -364,7 +364,7 @@ class NkiMissing(RuntimeError):
 def itemsize_of(obj, default=4):
     """Bytes per element, without guessing.
 
-    The first cluster run reported exactly half the true byte count for every matmul rung,
+    The first cluster run reported exactly half the true byte count for every matmul level,
     because the fallback here assumed 2 bytes while the test inputs are float32. Half the bytes
     doubles the arithmetic intensity, which would have turned a memory-bound kernel into a
     plausible-looking compute-bound one. So resolve the dtype properly and only fall back as a
@@ -459,12 +459,12 @@ def load_kernel(path, entry):
 
 # ---------------------------------------------------------------- verify
 
-def verify(path, rung_n, tol=2e-2, seed=0):
-    spec = LADDER[rung_n]
+def verify(path, level_n, tol=2e-2, seed=0):
+    spec = LEVELS[level_n]
     src = open(path).read()
 
-    violations = check_rules(src, rung_n)
-    print(f"rung {rung_n}: {spec['op']}")
+    violations = check_rules(src, level_n)
+    print(f"level {level_n}: {spec['op']}")
     if violations:
         print("\nRULE VIOLATIONS -- this scores zero regardless of speed or correctness:")
         for v in violations:
@@ -480,7 +480,7 @@ def verify(path, rung_n, tol=2e-2, seed=0):
 
     passed, failures, intensities = 0, [], []
     for case in spec["shapes"]:
-        args, _ = make_inputs(case, rung_n, seed)
+        args, _ = make_inputs(case, level_n, seed)
         want = spec["ref"](*args)
         try:
             got, counted = simulate_and_count(kernel, args)
@@ -488,17 +488,17 @@ def verify(path, rung_n, tol=2e-2, seed=0):
             print(f"\n  simulation  SKIPPED: {e}")
             return 3
         except Exception as e:
-            failures.append((label(case, rung_n),
+            failures.append((label(case, level_n),
                              f"RAISED during simulation: {type(e).__name__}: {e}"))
             continue
         m = describe_mismatch(got, want, tol)
         if m:
-            failures.append((label(case, rung_n), m))
+            failures.append((label(case, level_n), m))
             continue
         passed += 1
-        if rung_n >= 3 and counted["bytes"]:
+        if level_n >= 3 and counted["bytes"]:
             f = matmul_flops(case["M"], case["K"], case["N"])
-            intensities.append((label(case, rung_n), roofline(f, counted["bytes"]),
+            intensities.append((label(case, level_n), roofline(f, counted["bytes"]),
                                 counted))
 
     print(f"  numerics   {passed}/{len(spec['shapes'])} shapes passed")
@@ -626,7 +626,7 @@ def selftest():
     lhsT = np.zeros((128, 128), np.float32)
     rhs = np.zeros((128, 512), np.float32)
     want_bytes = lhsT.nbytes + rhs.nbytes + 128 * 512 * 4
-    print(f"  rung 3 should move {want_bytes:,} bytes, giving an intensity of "
+    print(f"  level 3 should move {want_bytes:,} bytes, giving an intensity of "
           f"{matmul_flops(64, 128, 512) / want_bytes:.1f} in float32")
 
     # Failure messages have to localise, not just complain.
@@ -676,7 +676,7 @@ def selftest():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--list", action="store_true")
-    ap.add_argument("--rung", type=int)
+    ap.add_argument("--level", type=int)
     ap.add_argument("--show", action="store_true")
     ap.add_argument("--check", metavar="FILE.py")
     ap.add_argument("--roofline", nargs=3, type=int, metavar=("M", "K", "N"),
@@ -700,31 +700,31 @@ def main():
         print(textwrap.indent(explain_roofline(roofline(f, b, a.dtype)), "  "))
         return
 
-    if a.rung and a.show:
-        s = LADDER[a.rung]
-        print(f"rung {a.rung}: {s['op']}")
+    if a.level and a.show:
+        s = LEVELS[a.level]
+        print(f"level {a.level}: {s['op']}")
         print(f"  entry point   {s['entry']}(...)  decorated @nki.jit")
         print(f"\n  teaches       {textwrap.fill(s['teaches'], 84, subsequent_indent='                ')}")
         print(f"\n  optimization  {textwrap.fill(s['optimization'], 84, subsequent_indent='                ')}")
         print(f"\n  reference     {s['ref'].__name__} in this file -- read it")
         print(f"  banned here   {sorted(s['banned'])}")
         print(f"  shapes        {len(s['shapes'])} cases: "
-              f"{', '.join(label(c, a.rung) for c in s['shapes'])}")
+              f"{', '.join(label(c, a.level) for c in s['shapes'])}")
         print(f"\n  tile limits   partition <= {PMAX}, gemm stationary free <= "
               f"{GEMM_STATIONARY_FMAX}, gemm moving free <= {GEMM_MOVING_FMAX}")
         return
 
-    if a.rung and a.check:
-        sys.exit(verify(a.check, a.rung, a.tol, a.seed))
+    if a.level and a.check:
+        sys.exit(verify(a.check, a.level, a.tol, a.seed))
 
-    print("THE LADDER — difficulty and optimization headroom rise together.\n")
-    for n, s in LADDER.items():
+    print("THE LEVELS — difficulty and optimization headroom rise together.\n")
+    for n, s in LEVELS.items():
         tier = "A correctness" if n <= 2 else "B roofline" if n <= 4 else "C search"
         print(f"  {n}. [{tier:<13}] {s['op']}")
     print(f"\n  ridge point: {RIDGE_FLOPS_PER_BYTE['bfloat16']:g} Flops/Byte for bfloat16 on "
           f"NeuronCore-v2.\n  Below it a kernel is memory bound; above it, compute bound.")
-    print("\n  python nkibench.py --rung 4 --show")
-    print("  python nkibench.py --rung 4 --check my_matmul.py")
+    print("\n  python nkibench.py --level 4 --show")
+    print("  python nkibench.py --level 4 --check my_matmul.py")
     print("  python nkibench.py --roofline 512 1024 2048")
     print("  python nkibench.py --selftest")
 

@@ -8,15 +8,15 @@ as it goes.**
 > **Works today, verified on a trn2 node:** the ladder, the checker (`nkibench.py`), four reference
 > kernels that pass it, and the agent loop (`agent.py`) writing kernels against a live model.
 >
-> **Not there yet:** the agent has not solved a single rung. Its best score is 0.30 of 1.0 — code
+> **Not there yet:** the agent has not solved a single level. Its best score is 0.30 of 1.0 — code
 > that parses, obeys the rules and runs, but computes the wrong numbers. The transcripts below show
 > exactly where it stalls, and that is the problem you are being handed.
 >
-> **Also missing:** reference kernels for rungs 5 to 7, so the optimization half of the ladder is
+> **Also missing:** reference kernels for levels 5 to 7, so the optimization half of the ladder is
 > unmarked; and layers 2 and 3 of the checker, so **latency cannot be measured at all yet** — every
 > number here is throughput reasoning from the simulator.
 >
-> This is a genuinely open problem, not a tidied-up exercise with a hidden answer. If you get a rung
+> This is a genuinely open problem, not a tidied-up exercise with a hidden answer. If you get a level
 > to 1.0, you have done something nobody here has.
 
 ---
@@ -59,18 +59,18 @@ nothing, and the input limit is 8192 tokens. All measured.
 
 Three operations from the [NKI tutorials](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/nki/guides/tutorials/index.html),
 ordered so that both the **difficulty** and the **amount of optimization available** go up together.
-Early rungs have almost nothing to optimize, which is the point: the agent has to learn to write
+Early levels have almost nothing to optimize, which is the point: the agent has to learn to write
 *legal* NKI before it can write *fast* NKI.
 
 ### Tier A — can the agent write a correct kernel at all?
 
-**Rung 1. Average pooling 2D.** Reduce `C × [H, W]` down over both spatial axes. Pure reduction, no
+**Level 1. Average pooling 2D.** Reduce `C × [H, W]` down over both spatial axes. Pure reduction, no
 data reuse to exploit, and its arithmetic intensity is inherently tiny — there is essentially nothing
-to optimize, so a rung the agent either passes or fails. What it teaches is the programming model: the
+to optimize, so a level the agent either passes or fails. What it teaches is the programming model: the
 **partition axis is not like the others**, and multi-dimensional access patterns have to be written
 explicitly. This is the "the loop works" checkpoint.
 
-**Rung 2. 2D transpose.** Still no arithmetic — only data movement. Teaches layout: a transpose has to
+**Level 2. 2D transpose.** Still no arithmetic — only data movement. Teaches layout: a transpose has to
 cross partitions, and the partition axis is the constrained one. **The first optimization appears
 here**, and it is not about compute at all: a naive transpose moves tiny pieces and pays a
 per-transfer issue cost, so the cost is the **number of transfers, not the number of bytes**. An agent
@@ -78,10 +78,10 @@ that reports "it is slow because it is moving a lot of data" has misdiagnosed it
 
 ### Tier B — the roofline, and a number the agent can compute
 
-**Rung 3. Matrix multiplication, single tile.** `64(M) × 128(K) × 512(N)` on the Tensor Engine.
+**Level 3. Matrix multiplication, single tile.** `64(M) × 128(K) × 512(N)` on the Tensor Engine.
 Teaches the machine: results land in **PSUM** and have to be copied to **SBUF**; the left operand
 arrives **already transposed** (`lhsT`) because of how the engine consumes partitions; tiles have hard
-shape limits. Mostly a correctness rung, but one where the layout rules bite.
+shape limits. Mostly a correctness level, but one where the layout rules bite.
 
 #### The roofline, in one paragraph
 
@@ -100,8 +100,8 @@ anything.** Memory bound means find reuse, so the same bytes do more work. Compu
 loads are already keeping up and tuning them is wasted effort. Guessing this wrong is the most common
 way to spend a day optimizing the wrong thing.
 
-**Rung 4. Tiled matrix multiplication.** Now it works for matrices larger than one tile — and it is
-**measurably memory bound**. This is the most important rung in the ladder, because the diagnosis is
+**Level 4. Tiled matrix multiplication.** Now it works for matrices larger than one tile — and it is
+**measurably memory bound**. This is the most important level in the ladder, because the diagnosis is
 *derivable rather than guessed*:
 
 > To saturate the Tensor Engine on NeuronCore-v2 in `bfloat16`, a kernel needs an arithmetic intensity
@@ -118,14 +118,14 @@ something genuinely useful.
 Each of these raises arithmetic intensity by finding more reuse. They are the four kernels the tutorial
 itself ships, in order.
 
-**Rung 5. Hoist the redundant loads.** The same tiles are re-read on every pass of the inner loop.
+**Level 5. Hoist the redundant loads.** The same tiles are re-read on every pass of the inner loop.
 Move the loads out. Cheap, mechanical, and the first measurable win.
 
-**Rung 6. Block the M and N dimensions.** Hoisting reuses one row of tiles; SBUF holds far more than
+**Level 6. Block the M and N dimensions.** Hoisting reuses one row of tiles; SBUF holds far more than
 that. Spend the capacity on reuse. Now there is a **search space** — block sizes, bounded by SBUF
 capacity — and the agent has to explore it rather than derive it.
 
-**Rung 7. Block M, N and K.** The fully optimized version. Hard, and a fine place to stop short.
+**Level 7. Block M, N and K.** The fully optimized version. Hard, and a fine place to stop short.
 
 ---
 
@@ -143,8 +143,8 @@ directions:
 | **Latency** | overlap — loads happening while compute happens, short dependency chains | wall time of a single invocation |
 
 Blocking raises throughput and **adds setup cost and a larger working set**. On a large square matmul
-rung 7 should win. On a **small or skinny** shape — a single short sequence, `M` of 8 or 32 — the
-blocked kernel may well be *slower* than rung 5, because it pays for reuse it never gets to exploit.
+level 7 should win. On a **small or skinny** shape — a single short sequence, `M` of 8 or 32 — the
+blocked kernel may well be *slower* than level 5, because it pays for reuse it never gets to exploit.
 
 **So run the ladder at two shapes and ask which metric you are optimizing:**
 
@@ -159,9 +159,9 @@ Two consequences worth stating plainly, because they are what a judge will push 
 * **A faster kernel need not make the model faster.** If the operation you sped up was 3 percent of
   the whole, you have bought 3 percent at best. Say what fraction you were working on.
 
-**The honest deliverable is a table**, not a single number: each rung, at each shape, with its latency,
+**The honest deliverable is a table**, not a single number: each level, at each shape, with its latency,
 its throughput, and its arithmetic intensity — and a sentence on which one you would ship and why.
-Reporting that rung 7 lost on the small shape is a *result*, not a failure.
+Reporting that level 7 lost on the small shape is a *result*, not a failure.
 
 ---
 
@@ -193,8 +193,8 @@ the agent should spend its iterations.
 ```bash
 python nkibench.py --selftest                              # prove the harness first
 python nkibench.py --list                                  # the ladder
-python nkibench.py --rung 4 --show                          # what this rung wants
-python nkibench.py --rung 4 --check reference_rung4.py      # verify a kernel
+python nkibench.py --level 4 --show                          # what this level wants
+python nkibench.py --level 4 --check reference_level4.py      # verify a kernel
 python nkibench.py --roofline 4096 4096 4096                # the verdict before you write code
 ```
 
@@ -204,7 +204,7 @@ It answers three questions in order, and stops at the first failure:
    operation (`np.mean`, `torch.matmul`, the `@` operator, `.T` on an argument), a partition
    dimension over 128, a missing `@nki.jit`, the wrong entry-point name. **NKI's own primitives
    are never flagged** — `nl.sum` over a strided view is how the pooling tutorial does it, and
-   `nisa.nc_matmul` is the whole point of the matmul rungs. Rejecting a correct kernel is worse
+   `nisa.nc_matmul` is the whole point of the matmul levels. Rejecting a correct kernel is worse
    than missing a cheat.
 2. **Does it compute the right thing?** `nki.simulate_kernel` against a NumPy reference, on
    hostile shapes including ones that do not divide evenly by the tile size. The failure message
@@ -213,9 +213,9 @@ It answers three questions in order, and stops at the first failure:
 3. **Is it memory bound or compute bound?** HBM bytes are counted by wrapping `nisa.dma_copy`
    for the duration of the simulation, flops come from the shapes, and the ratio is compared
    against the ridge. So **an arithmetic intensity is measurable without a device**, which is
-   what makes rung 4's diagnosis available in the inner loop rather than after a compile.
+   what makes level 4's diagnosis available in the inner loop rather than after a compile.
 
-`reference_rung1.py` … `reference_rung4.py` are the tutorial's own kernels, shipped deliberately.
+`reference_level1.py` … `reference_level4.py` are the tutorial's own kernels, shipped deliberately.
 The tutorials are public, so hiding them buys nothing, and a harness whose reference nobody can read
 is a harness nobody should trust. Use them to confirm the harness works, then write your own.
 
@@ -282,7 +282,7 @@ instead, which is what fixed the same class of problem in Project 1.
 This is what a `--check` prints, from a real run on a trn2 node:
 
 ```
-rung 4: matmul, tiled
+level 4: matmul, tiled
   rules      clean
   numerics   4/4 shapes passed
 
@@ -300,7 +300,7 @@ rung 4: matmul, tiled
 
 * **Bytes moved, and the transfer count** — `294,912 HBM bytes in 3 transfers`. Bytes catch a
   kernel re-reading the same data. The count catches the opposite failure: many tiny moves, where
-  the bytes are trivial and the per-transfer issue cost is everything. Rung 2 exists to teach that
+  the bytes are trivial and the per-transfer issue cost is everything. Level 2 exists to teach that
   those are different problems. The count is also a correctness check on the instrumentation
   itself — 20 transfers for `K=256 M=256 N=1024` is exactly 8 inner iterations × 2 loads + 4
   result stores, so if that number is wrong, nothing below it means anything.
@@ -311,16 +311,16 @@ rung 4: matmul, tiled
 * **The remaining gap as a factor** — `3.9x more reuse needed`. This turns a verdict into a
   target, so an agent knows **when to stop** instead of optimizing forever.
 
-**The instrumentation is the trend across rungs, not any single line.** In that run rung 3 sits at
-18% of the ceiling and rung 4's shapes at 26%, 33% and 38%. Tiling is visibly buying reuse, and
-every rung is still memory bound, so the ladder has not finished paying out. *That progression is
+**The instrumentation is the trend across levels, not any single line.** In that run level 3 sits at
+18% of the ceiling and level 4's shapes at 26%, 33% and 38%. Tiling is visibly buying reuse, and
+every level is still memory bound, so the ladder has not finished paying out. *That progression is
 the measurement* — hand in the table, not one number.
 
 Two caveats that run also taught us, both worth repeating to a team:
 
 * **A silent factor of two in the byte count is worse than no measurement.** The first run
   undercounted bytes by exactly 2x (it assumed 2 bytes per element on float32 inputs), which
-  *doubled* every intensity. Rung 3 read 39.4 Flops/Byte when the float32 figure is 14.2. That
+  *doubled* every intensity. Level 3 read 39.4 Flops/Byte when the float32 figure is 14.2. That
   error runs in the dangerous direction: it makes a starved kernel look closer to compute bound
   than it is, and sends you to optimize the wrong half. Check your instrumentation against a
   number you worked out by hand before you trust it.
@@ -338,8 +338,8 @@ Layer 1 claims **no Neuron device**, so it can run beside a model server without
 
 ```bash
 kubectl create configmap nkibench-code \
-  --from-file=nkibench.py --from-file=reference_rung1.py --from-file=reference_rung2.py \
-  --from-file=reference_rung3.py --from-file=reference_rung4.py \
+  --from-file=nkibench.py --from-file=reference_level1.py --from-file=reference_level2.py \
+  --from-file=reference_level3.py --from-file=reference_level4.py \
   --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f ../../k8s/nkibench-job.yaml
 kubectl logs -f job/nkibench
@@ -366,7 +366,7 @@ exposes. That last column is the point: fixing one does not finish the job, it m
 
 > **Measured vs expected.** Rows 1 to 4 are measured on a trn2 node. Rows 5 onward are **expected**
 > from the tutorial's structure — nobody has run an agent on this ladder yet, and there are no
-> reference kernels for rungs 5 to 7 in this repo. Treat them as the map, not the territory.
+> reference kernels for levels 5 to 7 in this repo. Treat them as the map, not the territory.
 
 ### 1. It does not compile or run at all — *measured*
 
@@ -382,14 +382,14 @@ the likely cause, not the core arithmetic`.
 **Fix:** handle the last, partial tile separately.
 **Exposes:** performance, once the thing is finally right.
 
-### 3. One tile only — it does not scale — *measured, rung 3*
+### 3. One tile only — it does not scale — *measured, level 3*
 
 **Signal:** correct on `K=128 M=64 N=512` and nothing larger, at **19.7 Flops/Byte, 9% of the
 ridge**.
 **Fix:** loop over tiles in all three dimensions.
 **Exposes:** redundant loads, which tiling introduces.
 
-### 4. The same bytes crossing the bus repeatedly — *measured, rung 4*
+### 4. The same bytes crossing the bus repeatedly — *measured, level 4*
 
 **Signal:** intensity rises with shape but stays far under the ridge. Measured: **28.4, 36.6, 42.7,
 28.4 Flops/Byte — 13% to 19% of the ridge**, every shape still `MEMORY BOUND`, with
@@ -397,7 +397,7 @@ ridge**.
 **Fix:** hoist the loads out of the innermost loop — the same tiles are being re-read every pass.
 **Exposes:** that hoisting only reuses one row of tiles while SBUF holds far more.
 
-### 5. SBUF underused — reuse limited to one row of tiles — *expected, rung 5 → 6*
+### 5. SBUF underused — reuse limited to one row of tiles — *expected, level 5 → 6*
 
 **Signal:** intensity up from row 4 but still `MEMORY BOUND`, and the byte count still far above
 what the operands themselves weigh.
@@ -405,7 +405,7 @@ what the operands themselves weigh.
 **Exposes:** a **search space** rather than a derivation — block sizes bounded by SBUF capacity. The
 agent has to explore now, and the log's `Nx more reuse needed` is what tells it when to stop.
 
-### 6. K still streamed — *expected, rung 6 → 7*
+### 6. K still streamed — *expected, level 6 → 7*
 
 **Signal:** intensity close to but under the ridge, and shape-dependent.
 **Fix:** block K as well.
@@ -417,11 +417,11 @@ agent has to explore now, and the log's `Nx more reuse needed` is what tells it 
 slow per invocation. **Only a profile shows it**: DMA busy and the Tensor Engine idle at the same
 moment, meaning loads and compute take turns instead of overlapping.
 **Fix:** double-buffer, so a load for the next tile is in flight during the current compute.
-**Exposes:** that the blocked kernel may now be *slower on small shapes* than rung 5 was, because it
+**Exposes:** that the blocked kernel may now be *slower on small shapes* than level 5 was, because it
 pays for reuse it never gets to exploit. That is the latency-versus-throughput tension, and it is a
 finding to report, not a regression to hide.
 
-### 8. Fast and wrong — *the gate, at every rung*
+### 8. Fast and wrong — *the gate, at every level*
 
 **Signal:** numerics fail while the intensity looks good.
 **Fix:** none — it scores zero. Re-verify every candidate automatically, before its timing counts.
@@ -455,7 +455,7 @@ in this repo. They are not hypothetical.
    Compute bound means the loads already keep up and tuning them buys nothing. Guessing this is the
    most common way to lose a day.
 4. **Diagnose the transfer count and the byte count separately.** They are different failures with
-   different fixes, and rung 2's cost is the count.
+   different fixes, and level 2's cost is the count.
 5. **Constraints belong in your verifier, not in your generation prompt.** Measured, twice, in this
    repo: a model given a list of rules audits itself and returns nothing; a model given none writes
    something confident and illegal. Generate freely, let the checker catch it, then send back **one
@@ -483,7 +483,7 @@ in this repo. They are not hypothetical.
 
 * The harness: reference implementations, the three-layer checker, and failure messages an agent can
   act on rather than a verdict it cannot.
-* Which rungs are held back for judging.
+* Which levels are held back for judging.
 * Whether the arithmetic-intensity calculation is given to the agent or expected from it. Giving it is
   the difference between a tool and a hint — Project 1 measured exactly this trade-off and found that
   handing over computed values stops the model from deriving anything.
@@ -499,10 +499,10 @@ all checkable on a CPU in milliseconds, so the lesson transfers.
 ```bash
 pip install numpy
 python kernelbench.py --selftest        # proves it catches planted bugs
-python kernelbench.py --list            # the ten-rung ladder
-python kernelbench.py --rung 1 --show
-python kernelbench.py --rung 1 --check my_kernel.py
-python try_rung.py --rung 5             # drive the model at one rung
+python kernelbench.py --list            # the ten-level ladder
+python kernelbench.py --level 1 --show
+python kernelbench.py --level 1 --check my_kernel.py
+python try_level.py --level 5             # drive the model at one level
 ```
 
 **Start here even when the on-device harness exists.** The agent architecture is identical and the
