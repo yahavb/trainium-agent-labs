@@ -328,6 +328,27 @@ def describe_mismatch(got, want, tol=2e-2):
     worst = float(err.max()) / scale
     if worst <= tol:
         return None
+
+    # An almost-all-zero output is its own diagnosis, and by far the most common one: the kernel
+    # ran, so it scores for running, but the results never reached the output tensor. Saying
+    # "most elements are wrong" sends the model to re-check arithmetic that was probably fine.
+    zero_frac = float((np.abs(got) < 1e-12).mean())
+    if zero_frac > 0.9 and float((np.abs(want) < 1e-12).mean()) < 0.5:
+        return (f"OUTPUT IS {zero_frac:.0%} ZEROS while the reference is not. The kernel ran but "
+                f"its results never reached the output tensor, so the arithmetic is probably not "
+                f"the problem. Check that every computed tile is copied all the way out: PSUM to "
+                f"SBUF with nisa.tensor_copy, then SBUF to the returned tensor with "
+                f"nisa.dma_copy, for every tile of the loop and not only the last one. Also "
+                f"check the destination slice indices, since writing every tile to the same "
+                f"place leaves the rest zero.")
+    if zero_frac > 0.25 and float((np.abs(want) < 1e-12).mean()) < 0.05:
+        zi = np.argwhere(np.abs(got) < 1e-12)
+        lo, hi = zi.min(axis=0), zi.max(axis=0)
+        return (f"{zero_frac:.0%} of the output is zero, in the block from "
+                f"{tuple(int(v) for v in lo)} to {tuple(int(v) for v in hi)}, while the reference "
+                f"has no zeros there. Some tiles were computed and written and others were not, "
+                f"so the loop is covering only part of the output. Check the loop bounds and the "
+                f"destination indices for every tile.")
     i = int(np.argmax(err))
     idx = np.unravel_index(i, got.shape)
     msg = [f"NUMERICAL MISMATCH: worst error {worst:.3g} of the output's RMS ({scale:.4g}), "
