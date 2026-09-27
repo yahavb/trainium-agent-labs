@@ -111,7 +111,7 @@ that stack five programmers tend to lose these.
 | # | project | status |
 |---|---|---|
 | **1** | [**The heat-rod agent**](projects/01-heat-rod-pde/) — a small model solves heat-equation problems under a checker that grades the physics, with a calculator it aims itself. **Worked end to end; the solution is included.** | ready |
-| **2** | [**The kernel agent**](projects/02-kernel-agent/) — an agent writes small kernels for linear-algebra operations that run directly on the chip, and keeps verifying its own output as it goes. | **not finalised** |
+| **2** | [**The kernel agent**](projects/02-kernel-agent/) — an agent writes small kernels for linear-algebra operations that run directly on the chip, and keeps verifying its own output as it goes. | runs; **unsolved** |
 
 **Both project READMEs open with a real transcript** of what the loop prints when it runs, so you
 can judge whether a project suits you — and tell progress from flailing — before you start anything.

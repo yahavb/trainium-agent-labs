@@ -3,12 +3,21 @@
 **An agent writes small programs that run directly on the chip, and keeps verifying its own output
 as it goes.**
 
-> ## STATUS: NOT FINALISED
+> ## STATUS: RUNNABLE, NOT YET SOLVED
 >
-> The idea and the constraint below are settled. The on-device harness is not written yet, so treat
-> this as a direction rather than a specification, and expect the details to change before the event.
-> What *is* ready today is the laptop version described at the bottom — `kernelbench.py` works and
-> proves itself.
+> **Works today, verified on a trn2 node:** the ladder, the checker (`nkibench.py`), four reference
+> kernels that pass it, and the agent loop (`agent.py`) writing kernels against a live model.
+>
+> **Not there yet:** the agent has not solved a single rung. Its best score is 0.30 of 1.0 — code
+> that parses, obeys the rules and runs, but computes the wrong numbers. The transcripts below show
+> exactly where it stalls, and that is the problem you are being handed.
+>
+> **Also missing:** reference kernels for rungs 5 to 7, so the optimization half of the ladder is
+> unmarked; and layers 2 and 3 of the checker, so **latency cannot be measured at all yet** — every
+> number here is throughput reasoning from the simulator.
+>
+> This is a genuinely open problem, not a tidied-up exercise with a hidden answer. If you get a rung
+> to 1.0, you have done something nobody here has.
 
 ---
 
