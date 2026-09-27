@@ -27,6 +27,7 @@ import json
 import os
 import re
 import sys
+import textwrap
 import time
 
 import nkibench
@@ -392,7 +393,7 @@ def solve(a, level, log):
     terse = a.terse
     prompt = first_prompt(level, terse)
     best = (0.0, None, "")
-    tried, streak = [], 0
+    tried, streak, seen = [], 0, {}
     for rnd in range(a.rounds):
         t0 = time.perf_counter()
         replies = (offline_answers(level, a.samples, rnd) if a.offline
@@ -419,13 +420,21 @@ def solve(a, level, log):
                   f"best {top[0]:.2f}  ({time.perf_counter() - t0:.1f}s)")
             print(f"  {top[2][:400]}")
         if top[0] >= sum(WEIGHTS.values()) - 1e-9:
-            print(f"  SOLVED on round {rnd}")
+            print(f"  SOLVED on round {rnd}. {top[2]}")
+            print("  ---------------- the kernel ----------------")
+            print(textwrap.indent(top[1], "  "))
+            print("  -------------------------------------------")
             return top[0], rnd + 1
+        seen[top[2]] = seen.get(top[2], 0) + 1
         streak = streak + 1 if same else 1
-        if streak >= a.give_up_after:
-            print(f"  STOPPING this level: the identical failure {streak} rounds running. The "
-                  f"prompt is no longer changing, and sampling here is greedy, so the answer "
-                  f"cannot change either. This is where a human has to change the approach.")
+        if seen[top[2]] >= a.give_up_after:
+            how = ("the identical failure %d rounds running" % streak if streak >= a.give_up_after
+                   else "this failure for the %dth time, alternating with %d other(s)"
+                        % (seen[top[2]], len(seen) - 1))
+            print(f"  STOPPING this level: {how}. The agent is cycling between a fixed set of "
+                  f"mistakes rather than converging, so more rounds will not help. Failures seen:")
+            for f, n in sorted(seen.items(), key=lambda kv: -kv[1]):
+                print(f"    {n}x  {f[:110]}")
             return best[0], rnd + 1
         tried.append(top[2])
         repeats = streak
