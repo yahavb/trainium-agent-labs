@@ -37,6 +37,16 @@ spec:
             - /bin/bash
             - -ec
             - |
+              echo "=============== mounted code ==============="
+              for f in agent.py nkibench.py; do
+                printf '%-14s %s  %s bytes\n' "$f" "$(sha256sum $f | cut -c1-12)" "$(stat -c%s $f)"
+              done
+              grep -q "copy_kernel" agent.py \
+                || { echo "STALE CONFIGMAP: agent.py predates the worked-example prompt. Recreate it:"; \
+                     echo "  kubectl delete configmap kernel-agent-code"; \
+                     echo "  kubectl create configmap kernel-agent-code --from-file=projects/02-kernel-agent/"; \
+                     exit 1; }
+              echo
               python -c "import nki; print('nki', getattr(nki,'__version__','?'), '| simulate:', hasattr(nki,'simulate'))"
               echo
               python nkibench.py --selftest
@@ -46,6 +56,8 @@ spec:
               echo "=============== is the prompt's worked example real? ==============="
               python - <<'PY'
               import re, numpy as np, nki, nki.language as nl, nki.isa as nisa, agent
+              if "import nki" not in agent.API_CARD:
+                  raise SystemExit("the prompt carries no worked example -- stale agent.py?")
               block = agent.API_CARD[agent.API_CARD.index("import nki"):]
               ns = {}
               exec(compile(block, "<api_card_example>", "exec"), ns)
