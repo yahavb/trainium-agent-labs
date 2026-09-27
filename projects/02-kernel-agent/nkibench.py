@@ -428,6 +428,21 @@ def _simulator(nki_mod, kernel):
         f"{sorted(n for n in dir(nki_mod) if not n.startswith('_'))}")
 
 
+def check_inputs_untouched(before, args):
+    """A kernel must not write into the tensor it was given.
+
+    The first solved level did exactly that -- dma_copy(dst=x, ...) then return x -- and passed,
+    because the reference happens to run before the kernel. That is luck, not correctness: in a real
+    graph the caller still owns that buffer.
+    """
+    for i, (orig, now) in enumerate(zip(before, args)):
+        if isinstance(orig, np.ndarray) and not np.array_equal(orig, np.asarray(now)):
+            return (f"THE KERNEL MODIFIED ITS INPUT (argument {i}). Allocate a new output with "
+                    f"nl.ndarray(shape, dtype=..., buffer=nl.shared_hbm), write the result there, "
+                    f"and return that. The input tensor belongs to the caller.")
+    return None
+
+
 def simulate_and_count(kernel, args):
     """Run the kernel on the CPU and count the HBM traffic it asked for.
 
@@ -517,6 +532,12 @@ def verify(path, level_n, tol=2e-2, seed=0):
             failures.append((label(case, level_n), m))
             continue
         passed += 1
+        elements = int(np.prod(np.shape(want)))
+        if counted["transfers"] > max(8, elements // 64):
+            print(f"\n  case {label(case, level_n)}: CORRECT BUT ISSUE-BOUND -- "
+                  f"{counted['transfers']:,} transfers for {elements:,} output elements, "
+                  f"{counted['bytes'] / max(counted['transfers'], 1):.0f} bytes each. The cost here "
+                  f"is the NUMBER of transfers, not the bytes. Move whole tiles, not elements.")
         if level_n >= 3 and counted["bytes"]:
             f = matmul_flops(case["M"], case["K"], case["N"])
             intensities.append((label(case, level_n), roofline(f, counted["bytes"]),

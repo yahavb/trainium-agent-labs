@@ -30,6 +30,8 @@ import sys
 import textwrap
 import time
 
+import numpy as np
+
 import nkibench
 
 MODEL = os.environ.get("KERNEL_AGENT_MODEL", "Qwen/Qwen3-8B")
@@ -115,6 +117,7 @@ def grade(source, level):
     failures, passed, intensity = [], 0, None
     for case in spec["shapes"]:
         args, _ = nkibench.make_inputs(case, level)
+        before = [x.copy() if isinstance(x, np.ndarray) else x for x in args]
         want = spec["ref"](*args)
         try:
             got, counted = nkibench.simulate_and_count(kernel, args)
@@ -126,7 +129,8 @@ def grade(source, level):
                              enrich(f"raised {type(e).__name__}: {e}")))
             continue
         parts["runs"] = True
-        m = nkibench.describe_mismatch(got, want)
+        m = (nkibench.check_inputs_untouched(before, args)
+             or nkibench.describe_mismatch(got, want))
         if m:
             failures.append((nkibench.label(case, level), m))
             continue
