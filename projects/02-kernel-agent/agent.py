@@ -100,7 +100,7 @@ def grade(source, rung):
                     f"CANNOT SIMULATE: {e}")
         except Exception as e:
             failures.append((nkibench.label(case, rung),
-                             f"raised {type(e).__name__}: {e}"))
+                             enrich(f"raised {type(e).__name__}: {e}")))
             continue
         parts["runs"] = True
         m = nkibench.describe_mismatch(got, want)
@@ -128,6 +128,61 @@ def grade(source, rung):
 
 # ---------------------------------------------------------------- prompting
 
+# Every name here appears in the three shipped tutorial kernels, so none of it is invented. The
+# model does not know this API and guesses plausible names -- nl.scalar, nl.value, nl.dot,
+# tile.mean -- none of which exist. A short card of what IS real costs ~200 tokens and is
+# documentation rather than the answer.
+API_CARD = """These are the only NKI functions you may use. Do not invent others.
+
+  @nki.jit                                  decorate the entry point
+  nl.ndarray(shape, dtype=..., buffer=b)    allocate; b is nl.sbuf, nl.psum or nl.shared_hbm
+  nl.affine_range(n)                        the loop to use
+  nl.sum(view, axis=[i, j])                 reduce; axis is a LIST
+  nl.float32, nl.bfloat16                   dtypes (never numpy dtypes)
+  nl.tile_size.pmax                         128
+  nisa.dma_copy(dst=, src=)                 move data between HBM and SBUF
+  nisa.nc_matmul(dst=, stationary=, moving=)   matmul into a PSUM tile
+  nisa.tensor_copy(dst=, src=)              copy, e.g. PSUM to SBUF
+  nisa.tensor_scalar(dst=, data=, op0=nl.multiply, operand0=0.5)   scale by a constant
+  tile.ap([[stride, count], ...])           a strided view, for reductions
+
+Tiles are not numpy arrays: they have no .mean, .sum, .T or .reshape."""
+
+
+def available_names(dotted):
+    """Turn 'no attribute X' into 'here are the real ones'.
+
+    Measured: told only `module 'nki.language' has no attribute 'value'`, the model guessed
+    another invented name every round -- value, scalar, sbuf_scalar, dot. A verdict names the
+    mistake and never the fix, so list what actually exists and let it choose.
+    """
+    import difflib
+    import importlib
+    mod_name, _, attr = dotted.rpartition(".")
+    try:
+        mod = importlib.import_module(mod_name)
+    except Exception:
+        return ""
+    names = [n for n in dir(mod) if not n.startswith("_")]
+    close = difflib.get_close_matches(attr, names, n=6, cutoff=0.4)
+    if close:
+        return (f" `{mod_name}` has no `{attr}`. The closest real names are: "
+                f"{', '.join(close)}. Pick one of those or use a different approach.")
+    return (f" `{mod_name}` has no `{attr}`, and nothing similar exists. Its real names include: "
+            f"{', '.join(sorted(names)[:25])}.")
+
+
+def enrich(error_text):
+    """Add the real names when the failure is an invented API call."""
+    m = re.search(r"module '([\w.]+)' has no attribute '(\w+)'", error_text)
+    if m:
+        return error_text + available_names(f"{m.group(1)}.{m.group(2)}")
+    m = re.search(r"'(\w+)' object has no attribute '(\w+)'", error_text)
+    if m:
+        return (error_text + f" A {m.group(1)} is not a numpy array, so it has no "
+                f"`{m.group(2)}`. Use the nl/nisa functions instead.")
+    return error_text
+
 def first_prompt(rung):
     """Deliberately short, and it does NOT list the rules.
 
@@ -147,9 +202,7 @@ def first_prompt(rung):
         f"Hardware limits: a tile's partition dimension is at most {nkibench.PMAX}. For matmul, "
         f"the stationary free dimension is at most {nkibench.GEMM_STATIONARY_FMAX} and the "
         f"moving free dimension at most {nkibench.GEMM_MOVING_FMAX}.\n\n"
-        f"Use nki, nki.language as nl, and nki.isa as nisa. Allocate with "
-        f"`nl.ndarray(shape, dtype=..., buffer=nl.sbuf | nl.psum | nl.shared_hbm)`, move data "
-        f"with `nisa.dma_copy(dst=, src=)`, and loop with `nl.affine_range(n)`.\n\n"
+        f"Import nki, nki.language as nl, and nki.isa as nisa.\n\n{API_CARD}\n\n"
         f"Reply with ONE python code block containing the imports and the function. No prose.")
 
 
