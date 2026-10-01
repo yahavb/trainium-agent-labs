@@ -25,3 +25,12 @@ NYU_REPLY_ADI.md
 Annapurna*.png
 *.whl
 attempts.jsonl
+
+# stray files from mistyped shell redirects
+configmap
+create
+delete
+generic
+gptoss-url
+kernel-agent-code
+secret
