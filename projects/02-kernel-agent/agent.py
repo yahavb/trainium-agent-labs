@@ -280,10 +280,11 @@ def enrich(error_text):
                   error_text)
     if m:
         dim, hi, size = m.group(1), int(m.group(3)), int(m.group(4))
-        return (error_text + f" You indexed up to {hi} on a dimension that is only {size} long. Tile "
-                f"sizes are a MAXIMUM, not a target: when a dimension is smaller than 128, use its "
-                f"actual size. Derive every bound from the tensor's own shape rather than writing 128, "
-                f"and let the final chunk be partial.")
+        return (error_text + f" You indexed up to {hi} on dimension {dim}, which is only {size} "
+                f"long. Tile limits are a MAXIMUM, not a target. Derive every bound from the tensor's "
+                f"own shape -- use min(limit, size) and let the final chunk be partial -- rather than "
+                f"writing a fixed number. Note the two limits differ: the partition dimension (first) "
+                f"allows at most 128, the free dimension allows more.")
     m = re.search(r"Matmul contraction dimension (\d+) exceeds pmax=(\d+)", error_text)
     if m:
         k, mx = int(m.group(1)), int(m.group(2))
@@ -293,6 +294,12 @@ def enrich(error_text):
                 f"the partial products add up there, and only after the loop copy it out with "
                 f"nisa.tensor_copy. Do not allocate a new psum tile per chunk and do not write partial "
                 f"results to HBM.")
+    m = re.search(r"(\w+) (?:dst|src)? ?must be in \['sbuf', 'psum'\], got shared_hbm", error_text)
+    if m:
+        return (error_text + f" `nisa.{m.group(1)}` only moves data between on-chip buffers, sbuf and "
+                f"psum. To reach HBM -- the tensor you allocated with buffer=nl.shared_hbm and will "
+                f"return -- use nisa.dma_copy instead. The usual sequence is nc_matmul into psum, "
+                f"tensor_copy psum to sbuf, then dma_copy sbuf to the shared_hbm output.")
     m = re.search(r"(\w+) must be in \['(\w+)'\], got (\w+)", error_text)
     if m:
         which, needed, got = m.groups()
