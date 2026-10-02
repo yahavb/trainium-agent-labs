@@ -11,6 +11,9 @@ The engineers who design these chips will be on the floor all day.
 
 ---
 
+**Resuming, or picking this up cold?** [`STATE.md`](STATE.md) has where both projects stand,
+what is measured, the environment gotchas, and what to do next.
+
 ## 1. Get your instance running
 
 You get a **`trn2.3xlarge`** for the day: one Trainium2 chip, 4 NeuronCores at LNC=2, ~96 GB of
