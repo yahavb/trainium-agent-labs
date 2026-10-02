@@ -127,21 +127,38 @@ Three settings in `serve.sh` are not optional, and all three were found by readi
 `k8s/` holds the same configuration as Kubernetes manifests, which is how this was developed. You do
 not need them on the instance.
 
-## 2. One chip, one process — the constraint that shapes your project
+## 2. Which model your project talks to
 
-**A Neuron device cannot be shared by two processes.** If vLLM is holding the chip and serving a
-model, nothing else can run on it; if your own code needs the chip, vLLM cannot be running.
+**A NeuronCore cannot be shared by two processes.** But a `trn2.3xlarge` has **four** logical cores,
+and the model server only needs two — so the other two are yours. Confirm it with `neuron-top` while
+the server is up:
 
-That single fact decides where your model comes from:
+```
+[-] ND 0                      20.3GB
+      NC 0                     0.0B      <- free
+      NC 1                     0.0B      <- free
+      [+] NC 2                10.0GB     <- vLLM
+      [+] NC 3                10.3GB     <- vLLM
+```
 
-| your project needs the chip for | the model you talk to |
-|---|---|
-| nothing — the chip only serves the model | **Qwen3-8B on your own instance** (`k8s/qwen3-8b-vllm.yaml`) |
-| running your own kernels or measuring hardware | **the shared `gpt-oss-20b` endpoint** ([`gptoss/`](gptoss/)) — it lives on separate hardware, so your chip stays free |
+So nothing has to be remote. Three cases, in increasing order of what they need:
 
-Decide this on day one. It is not a detail, and discovering it at 3 PM costs an afternoon.
+| your project needs | where the model comes from | cores it needs |
+|---|---|---|
+| no device at all — the checker runs on CPU | **the local Qwen3-8B** on `localhost:8000` | none |
+| to compile and run kernels on the chip | **the local Qwen3-8B** | pin to the free cores with `NEURON_RT_VISIBLE_CORES=0,1` |
+| the whole chip for serving experiments | **the shared `gpt-oss-20b` endpoint** ([`gptoss/`](gptoss/)), which lives on separate hardware | all four |
 
----
+**Both sample projects fall in the first row today**, so both run against the model on your own
+instance with nothing else to arrange:
+
+* Project 1's checker is SymPy — pure CPU.
+* Project 2's checker simulates kernels on the **CPU** (`nki.simulate`), which is deliberate: it is
+  seconds per iteration instead of a compile, and it is where an agent should spend its attempts.
+
+Only when you add real on-device timing — layers 2 and 3 of project 2's checker, which are not built
+yet — do you need cores, and then you pin to the two the server is not using. `NEURON_RT_VISIBLE_CORES`
+is the documented mechanism for that; we have not exercised it here, so expect to debug it.
 
 ## 3. The challenge
 

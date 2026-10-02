@@ -35,179 +35,43 @@ So: build the agent that writes them, runs them, checks the numbers against a re
 failure, and tries again. Same loop as Project 1, different checker — and here the checker has to run
 on the hardware.
 
-## The constraint that shapes this project
+## Which model, and which cores
 
-**A Neuron device cannot be shared by two processes.**
+**A NeuronCore cannot be shared by two processes** — but your chip has four logical cores and the model
+server only uses two, so two are free. Check with `neuron-top` while the server runs: NC 2 and NC 3 hold
+the model, NC 0 and NC 1 are idle.
 
-Your agent needs the chip, to compile and run each candidate kernel and time it. So **vLLM cannot be
-running on your chip at the same time** — the two cannot coexist.
+**Layer 1 of this harness needs no cores at all.** It checks kernels with `nki.simulate`, on the CPU, in
+seconds — which is the point, because that is where an agent should spend its hundreds of attempts
+rather than waiting on compiles. So the agent runs against **the Qwen3-8B already serving on your own
+instance**, and nothing has to be remote.
 
-That means the model driving your agent has to come from somewhere else:
+```bash
+docker exec -it vllm bash          # wait for the prompt
+cd /workspace/projects/02-kernel-agent
+export KERNEL_AGENT_BASE_URL=http://localhost:8000/v1
+export KERNEL_AGENT_MODEL=Qwen/Qwen3-8B
 
-> **Use the shared `gpt-oss-20b` endpoint** ([`../../gptoss/`](../../gptoss/)). It runs on separate
-> hardware, so your own chip stays free for kernels.
+python nkibench.py --selftest                       # prove the harness first
+python nkibench.py --level 4 --check reference_level4.py
+python agent.py --all --rounds 6 --samples 2 --context 4096
+```
 
-This is the opposite arrangement from Project 1, where the chip serves the model and the agent needs no
-hardware at all. Getting this the wrong way round costs you an afternoon, so settle it before you write
-code.
+`--context 4096` matches what the server was started with; the agent caps its answer budget to fit.
 
-Read [`../../gptoss/README.md`](../../gptoss/README.md) first. That endpoint is shared by the whole
-room, sampling is greedy so **retrying an identical prompt is pointless**, the `tools=` parameter does
-nothing, and the input limit is 8192 tokens. All measured.
+Only when you add **real on-device timing** — layers 2 and 3, which are not built — do you need cores,
+and then you pin to the two the server is not using:
 
-## The ladder
+```bash
+export NEURON_RT_VISIBLE_CORES=0,1
+```
 
-Three operations from the [NKI tutorials](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/nki/guides/tutorials/index.html),
-ordered so that both the **difficulty** and the **amount of optimization available** go up together.
-Early levels have almost nothing to optimize, which is the point: the agent has to learn to write
-*legal* NKI before it can write *fast* NKI.
-
-### Tier A — can the agent write a correct kernel at all?
-
-**Level 1. Average pooling 2D.** Reduce `C × [H, W]` down over both spatial axes. Pure reduction, no
-data reuse to exploit, and its arithmetic intensity is inherently tiny — there is essentially nothing
-to optimize, so a level the agent either passes or fails. What it teaches is the programming model: the
-**partition axis is not like the others**, and multi-dimensional access patterns have to be written
-explicitly. This is the "the loop works" checkpoint.
-
-**Level 2. 2D transpose.** Still no arithmetic — only data movement. Teaches layout: a transpose has to
-cross partitions, and the partition axis is the constrained one. **The first optimization appears
-here**, and it is not about compute at all: a naive transpose moves tiny pieces and pays a
-per-transfer issue cost, so the cost is the **number of transfers, not the number of bytes**. An agent
-that reports "it is slow because it is moving a lot of data" has misdiagnosed it.
-
-### Tier B — the roofline, and a number the agent can compute
-
-**Level 3. Matrix multiplication, single tile.** `64(M) × 128(K) × 512(N)` on the Tensor Engine.
-Teaches the machine: results land in **PSUM** and have to be copied to **SBUF**; the left operand
-arrives **already transposed** (`lhsT`) because of how the engine consumes partitions; tiles have hard
-shape limits. Mostly a correctness level, but one where the layout rules bite.
-
-#### The roofline, in one paragraph
-
-A chip can only do two things: move bytes and do arithmetic. Each has a ceiling — a peak memory
-bandwidth and a peak Flops rate — and **whichever ceiling you hit first is the one that limits you**.
-So for any kernel, ask how much arithmetic it does per byte it reads from memory. That ratio is its
-**arithmetic intensity**, in Flops per byte. Low intensity means the kernel is starved: the engine sits
-idle waiting for data, and it is **memory bound**. High intensity means the data keeps up and the
-engine is the limit, so it is **compute bound**. The crossover is a property of the hardware, not of
-your code: divide peak Flops by peak bandwidth and you get the intensity at which the two ceilings
-meet. Plot achievable performance against arithmetic intensity and you get a line rising with slope
-equal to bandwidth, then flattening at peak Flops — the shape is why it is called a roofline.
-
-Why it matters for an agent: **it tells you which half of the kernel to fix, before you change
-anything.** Memory bound means find reuse, so the same bytes do more work. Compute bound means the
-loads are already keeping up and tuning them is wasted effort. Guessing this wrong is the most common
-way to spend a day optimizing the wrong thing.
-
-#### HBM traffic and arithmetic intensity are the same number
-
-Arithmetic intensity is flops divided by HBM bytes, and **the flops are fixed by the problem** — a
-matmul is 2·M·K·N operations whatever you do. So intensity is nothing but a measure of your traffic:
-halve the bytes and you double the intensity. "Raise arithmetic intensity" and "move fewer bytes" are
-one instruction.
-
-That gives two numbers worth separating, and the harness prints both:
-
-* **The byte floor** — read each input once, write the output once. Divide your measured traffic by it
-  and you get the multiple you are wasting. This is **yours**, and recovering it is the whole of
-  levels 4 to 7.
-* **The intensity ceiling** — flops divided by that floor. No kernel can exceed it. This belongs to
-  **the shape**, not to you.
-
-The consequence is sharp: **if the ceiling is already below the ridge, the operation is memory bound
-at that shape no matter how well it is written.** Chasing compute-bound there is wasted effort. For a
-square `bfloat16` matmul the ceiling is about `n/3`, so `n` has to reach roughly **667** before it
-clears the ridge of 222 — a 512³ matmul tops out at 171 and can never saturate the engine.
-
-Every test shape in this project is deliberately below that. They are sized so the CPU simulator stays
-quick, which means **the win available here is entirely in removing redundant traffic, not in reaching
-the ridge.** The harness says so explicitly rather than telling you to find reuse that does not exist.
-
-**Level 4. Tiled matrix multiplication.** Now it works for matrices larger than one tile — and it is
-**measurably memory bound**. This is the most important level in the ladder, because the diagnosis is
-*derivable rather than guessed*:
-
-> To saturate the Tensor Engine on NeuronCore-v2 in `bfloat16`, a kernel needs an arithmetic intensity
-> of **222 Flops/Byte**. The tiled kernel's inner loop reads 160 KB from HBM per 16 MFlops of work,
-> which is **102** — well under the threshold. So it is memory bound, and no amount of tuning the
-> compute will help.
-
-The agent should compute that ratio **from its own code**, classify the kernel, and only then act. A
-team whose agent arrives at "memory bound, here is the arithmetic intensity, here is why" has built
-something genuinely useful.
-
-### Tier C — the optimization search
-
-Each of these raises arithmetic intensity by finding more reuse. They are the four kernels the tutorial
-itself ships, in order.
-
-**Level 5. Hoist the redundant loads.** The same tiles are re-read on every pass of the inner loop.
-Move the loads out. Cheap, mechanical, and the first measurable win.
-
-**Level 6. Block the M and N dimensions.** Hoisting reuses one row of tiles; SBUF holds far more than
-that. Spend the capacity on reuse. Now there is a **search space** — block sizes, bounded by SBUF
-capacity — and the agent has to explore it rather than derive it.
-
-**Level 7. Block M, N and K.** The fully optimized version. Hard, and a fine place to stop short.
-
----
-
-## Latency and throughput are different problems
-
-Everything above is a **throughput** story. Arithmetic intensity and the roofline describe sustained
-Flops per second on a large matrix, and they say **nothing about how long one call takes**.
-
-That distinction is the most interesting thing in this project, because the two can pull in opposite
-directions:
-
-| | what it wants | what it measures |
-|---|---|---|
-| **Throughput** | reuse — bigger blocks, more data resident in SBUF | Flops/second sustained over a large matrix |
-| **Latency** | overlap — loads happening while compute happens, short dependency chains | wall time of a single invocation |
-
-Blocking raises throughput and **adds setup cost and a larger working set**. On a large square matmul
-level 7 should win. On a **small or skinny** shape — a single short sequence, `M` of 8 or 32 — the
-blocked kernel may well be *slower* than level 5, because it pays for reuse it never gets to exploit.
-
-**So run the ladder at two shapes and ask which metric you are optimizing:**
-
-* a **large** matmul, where throughput dominates and the roofline applies;
-* a **small or skinny** matmul, where latency dominates and the roofline is irrelevant.
-
-Two consequences worth stating plainly, because they are what a judge will push on:
-
-* **A kernel can be roofline-optimal and have bad latency.** If loads and compute take turns instead
-  of overlapping, the engine idles between tiles. Arithmetic intensity cannot see that; only a profile
-  can, by showing DMA busy and the Tensor Engine idle at the same moment.
-* **A faster kernel need not make the model faster.** If the operation you sped up was 3 percent of
-  the whole, you have bought 3 percent at best. Say what fraction you were working on.
-
-**The honest deliverable is a table**, not a single number: each level, at each shape, with its latency,
-its throughput, and its arithmetic intensity — and a sentence on which one you would ship and why.
-Reporting that level 7 lost on the small shape is a *result*, not a failure.
-
----
-
-## The checker, in three layers
-
-Same principle as Project 1: **the quality of the error message is the quality of the agent.** Here it
-has three levels, and they cost wildly different amounts of time.
-
-| layer | what it catches | cost | needs the chip |
-|---|---|---|---|
-| **1. Simulator** — `nki.simulate_kernel` | wrong logic, illegal shapes, bad access patterns | seconds | no |
-| **2. Device** — `nki.baremetal` | real latency, and anything the simulator models loosely | a compile | yes |
-| **3. Profile** | *why* it is slow — which engine owns the time, whether DMA and compute overlap | a profiled run | yes |
-
-Plus a numerical comparison against the PyTorch reference, which is the gate: **a fast kernel with
-wrong output scores zero.**
-
-> **Put the simulator in the agent's inner loop.** Get the kernel *correct* in the simulator, then
-> compile and run it on the chip to find out how *fast* it is. Correctness questions go to layer 1,
-> performance questions to layers 2 and 3. An agent that compiles on every attempt will manage a
-> handful of iterations all day; one that simulates will manage hundreds. **This is the single biggest
-> design decision in the project.**
+That is the documented mechanism and we have not exercised it here, so expect to debug it. If you would
+rather have the whole chip for your own kernels, use the shared `gpt-oss-20b` endpoint
+([`../../gptoss/`](../../gptoss/)) for the model instead and stop the local server — it runs on separate
+hardware, so your chip stays entirely free. Read
+[`../../gptoss/README.md`](../../gptoss/README.md) first: sampling there is greedy so retrying an
+identical prompt is pointless, the `tools=` parameter does nothing, and the input limit is 8192 tokens.
 
 ## Layer 1 is built: `nkibench.py`
 
