@@ -34,3 +34,5 @@ generic
 gptoss-url
 kernel-agent-code
 secret
+attempts.jsonl
+projects/*/attempts.jsonl

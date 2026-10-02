@@ -254,6 +254,25 @@ def enrich(error_text):
                 "nl.ndarray(shape, nl.float32, buffer=nl.psum) and letting nisa.nc_matmul add into "
                 "it across the loop, or combine two tiles with a nisa op rather than a Python "
                 "operator.")
+    m = re.search(r"dma_copy requires src and dst to have the same number of elements, "
+                  r"got src=(\d+), dst=(\d+)", error_text)
+    if m:
+        src, dst = int(m.group(1)), int(m.group(2))
+        return (error_text + f" The tile you allocated holds {dst} elements but you copied {src} "
+                f"into it. nisa.dma_copy does not slice or broadcast: allocate the destination with "
+                f"EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a "
+                f"bigger tensor, write "
+                f"t = nl.ndarray((128, 512), dtype=a.dtype, buffer=nl.sbuf) and then "
+                f"nisa.dma_copy(dst=t, src=a[0:128, 0:512]) -- the slice on the right must have the "
+                f"same shape as the tile on the left.")
+    m = re.search(r"dma_copy (\w+) partition dimension (\d+) exceeds maximum (\d+)", error_text)
+    if m:
+        which, got, mx = m.group(1), int(m.group(2)), int(m.group(3))
+        return (error_text + f" A tile may have at most {mx} rows, and you asked for {got}. Do not "
+                f"allocate one tile for the whole tensor: loop over the partition dimension in "
+                f"chunks of {mx} with nl.affine_range, allocate a {mx}-row tile inside the loop, and "
+                f"copy one chunk at a time, e.g. src=a[i*{mx}:(i+1)*{mx}, :]. The same applies to "
+                f"where you write the result back.")
     m = re.search(r"(\w+) must be in \['(\w+)'\], got (\w+)", error_text)
     if m:
         which, needed, got = m.groups()
