@@ -270,9 +270,29 @@ def enrich(error_text):
         which, got, mx = m.group(1), int(m.group(2)), int(m.group(3))
         return (error_text + f" A tile may have at most {mx} rows, and you asked for {got}. Do not "
                 f"allocate one tile for the whole tensor: loop over the partition dimension in "
-                f"chunks of {mx} with nl.affine_range, allocate a {mx}-row tile inside the loop, and "
-                f"copy one chunk at a time, e.g. src=a[i*{mx}:(i+1)*{mx}, :]. The same applies to "
-                f"where you write the result back.")
+                f"chunks of at most {mx} with nl.affine_range, allocate the tile inside the loop with "
+                f"the chunk's own size, and copy one chunk at a time, e.g. "
+                f"src=a[i*{mx}:(i+1)*{mx}, :]. If a dimension is already {mx} or smaller, use it "
+                f"whole -- do NOT pad it up to {mx}, that reads past the end of the tensor. The same "
+                f"applies to where you write the result back.")
+    m = re.search(r"Out-of-bound access for tensor .*? on dimension (\d+): "
+                  r"index range \[(\d+), (\d+)\] exceed dimension size of (\d+)",
+                  error_text)
+    if m:
+        dim, hi, size = m.group(1), int(m.group(3)), int(m.group(4))
+        return (error_text + f" You indexed up to {hi} on a dimension that is only {size} long. Tile "
+                f"sizes are a MAXIMUM, not a target: when a dimension is smaller than 128, use its "
+                f"actual size. Derive every bound from the tensor's own shape rather than writing 128, "
+                f"and let the final chunk be partial.")
+    m = re.search(r"Matmul contraction dimension (\d+) exceeds pmax=(\d+)", error_text)
+    if m:
+        k, mx = int(m.group(1)), int(m.group(2))
+        return (error_text + f" The contraction dimension K is {k} and one nc_matmul can only "
+                f"contract {mx}. Split K into chunks of {mx} and accumulate: allocate ONE psum tile "
+                f"OUTSIDE the K loop, call nisa.nc_matmul into that same psum tile once per chunk so "
+                f"the partial products add up there, and only after the loop copy it out with "
+                f"nisa.tensor_copy. Do not allocate a new psum tile per chunk and do not write partial "
+                f"results to HBM.")
     m = re.search(r"(\w+) must be in \['(\w+)'\], got (\w+)", error_text)
     if m:
         which, needed, got = m.groups()
@@ -283,6 +303,11 @@ def enrich(error_text):
     if "got multiple values for argument" in error_text:
         return (error_text + " Pass every argument by keyword, e.g. "
                 "nisa.nc_matmul(dst=..., stationary=..., moving=...), so none is bound twice.")
+    if "must have at least 2 dimensions" in error_text:
+        return (error_text + " Every SBUF and PSUM tile needs two dimensions: a partition dimension "
+                "first, then a free dimension. A 1-D tile is not allowed, so write "
+                "nl.ndarray((rows, cols), ...) and give a length-N vector the shape (1, N) or "
+                "(N, 1) depending on which axis you are reducing over.")
     if "cannot reshape array of size" in error_text:
         return (error_text + " Do not reshape. Work with the shapes you were given and slice "
                 "them into tiles, e.g. src=a[0:128, 0:64].")
