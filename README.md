@@ -18,53 +18,114 @@ on-chip memory, root access. Yours. If you break it we hand you another one.
 
 **Access:** «TODO — organisers: instance id, SSM command, per-team card»
 
-Three commands from a fresh instance to a model answering on `localhost`:
+Everything below is the exact sequence, in order, verified on a real instance. **Use two terminals:**
+one for the model, one for your work.
+
+### Terminal 1 — the model
+
+**1. Confirm you have a chip.**
 
 ```bash
-git clone https://github.com/yahavb/trainium-agent-labs.git && cd trainium-agent-labs
-./install-docker.sh
+neuron-ls
+```
+
+You should see one NEURON DEVICE with 4 cores and 96 GB. If not, stop and find an organiser.
+
+**2. Clone the repo.**
+
+```bash
+cd ~ && git clone https://github.com/yahavb/trainium-agent-labs.git
+cd trainium-agent-labs
+```
+
+**3. Check Docker, and install it only if missing.**
+
+```bash
+docker --version || ./install-docker.sh
+```
+
+If it installs, it may tell you to run `newgrp docker` before continuing.
+
+**4. Start the model.**
+
+```bash
 ./serve.sh
 ```
 
-`serve.sh` starts **Qwen3-8B** on your chip in a container, behind an OpenAI-compatible API on port
-8000, and waits until it answers. The first run downloads the weights and compiles the model —
-measured at **102 seconds of compile, answering about 4 minutes after start**. Later runs reuse the
-cache and are quick.
+That serves **Qwen3-8B** on your chip behind an OpenAI-compatible API on port 8000, and waits until it
+answers. **The first run takes about 5 minutes** — it pulls a container image, downloads ~16 GB of
+weights, then compiles. It prints `still starting, N minutes elapsed` while it works, and `READY` when
+it is done. Later starts reuse the cache and are quick.
+
+**5. Confirm it is really answering.**
 
 ```bash
-./serve.sh --logs      # follow it
-./serve.sh --stop      # stop it
 curl -s localhost:8000/v1/models
 ```
 
-### Then run a project inside that container
+You want to see `"id":"Qwen/Qwen3-8B"`. Leave this terminal alone from here on.
 
-The model is on `localhost` in there, and this repo is mounted at `/workspace`:
+### Terminal 2 — your work
+
+**6. Get a shell inside the container**, where the model is on `localhost` and this repo is mounted at
+`/workspace`:
 
 ```bash
 docker exec -it vllm bash
-cd /workspace/projects/01-heat-rod-pde
-pip install sympy
-export HEATROD_BASE_URL=http://localhost:8000/v1
-python agent.py --level 1 --all
 ```
 
-### Three settings that are not optional
+> **Wait for the new prompt before typing anything else.** It takes a second or two, and anything you
+> type in the meantime goes to your laptop's shell instead and is lost. This catches everyone once.
 
-All three were found by reading a failure, and two of them stop the server dead:
+**7. Now, inside the container**, run the first project:
+
+```bash
+cd /workspace/projects/01-heat-rod-pde
+export HEATROD_BASE_URL=http://localhost:8000/v1
+
+python level0_heatrod.py --selftest     # prove the checker BEFORE you trust a score
+python agent.py --level 0 --all         # the warm-up: solved on round 0
+python agent.py --level 1 --all         # the real one
+```
+
+`sympy` and `numpy` are already in the container. If you are running outside it, `pip install sympy
+numpy httpx` first.
+
+### Useful while it runs
+
+```bash
+./serve.sh --logs     # follow the model's log
+./serve.sh --stop     # stop and remove it
+```
+
+### Why a container, when the instance already has vLLM
+
+The AMI ships several Neuron virtualenvs under `/opt`, and the newest is vLLM-Neuron **0.21**. That
+version **cannot serve Qwen3-8B** — its model registry has only `LlamaForCausalLM`,
+`GptOssForCausalLM`, `Eagle3LlamaForCausalLM` and `Qwen3VLForConditionalGeneration`, the last being the
+*vision* model. Point it at Qwen3-8B and you get:
+
+```
+AttributeError: type object 'Qwen3ForCausalLM' has no attribute 'from_configs'
+```
+
+which is vLLM's generic class being used where the Neuron loader expected a Neuron one. `serve.sh` uses
+the **0.24** container image instead, which does support it. If you would rather use a pre-installed
+venv, `openai/gpt-oss-20b` works there and needs `--hf-overrides '{"quantization_config": {}}'` to load
+in bf16.
+
+Three settings in `serve.sh` are not optional, and all three were found by reading a failure:
 
 * `NEURON_SKIP_EFA_AFFINITY=1` — without it the workers abort with `No EFA device found`. It skips a
   CPU-placement optimization that assumes networking hardware a single chip does not have.
 * `--no-enable-prefix-caching` — prefix caching demands a segmented-prefill size of 512 or more.
-* `--num-gpu-blocks-override` — required, or you get out-of-bounds errors. `serve.sh` computes it
-  from the context length, so it stays correct if you change that.
+* `--num-gpu-blocks-override` — required, or you get out-of-bounds errors. `serve.sh` computes it from
+  the context length so it stays correct if you change that.
 
 `--tensor-parallel-size 2` matches the hardware: one chip at LNC=2 is two logical NeuronCores.
 
 `k8s/` holds the same configuration as Kubernetes manifests, which is how this was developed. You do
 not need them on the instance.
-
----
 
 ## 2. One chip, one process — the constraint that shapes your project
 

@@ -48,29 +48,38 @@ last step of the loop with a trainer and the model improves instead of just retr
 
 ## Run it
 
-Start the model first, from the repo root on your instance:
+Start the model first, from the repo root — see step 4 of the [top-level README](../../README.md):
 
 ```bash
 ./serve.sh
 ```
 
-Then work inside that container, where the model is on `localhost` and this repo is at
-`/workspace`:
+Then, in a second terminal, get a shell inside that container and **wait for the prompt** before
+typing:
 
 ```bash
 docker exec -it vllm bash
+```
+
+Now, inside the container:
+
+```bash
 cd /workspace/projects/01-heat-rod-pde
-pip install sympy
 export HEATROD_BASE_URL=http://localhost:8000/v1
 
-python level0_heatrod.py --selftest             # prove the checker before trusting it
+python level0_heatrod.py --selftest             # prove the checker before trusting a score
 python level1_heatrod.py --selftest
-python agent.py --level 1 --all
+python agent.py --level 0 --all                 # the warm-up
+python agent.py --level 1 --all                 # the real one
 python agent.py --level 1 --sub 3 --no-tools    # the controlled comparison
 ```
 
-`--offline` needs no model at all and exercises the whole loop against a canned generator, so you can
-write code while the server is still compiling. Never report a number from it.
+`sympy` and `numpy` are already in the container.
+
+### Without a model at all
+
+`--offline` exercises the whole loop against a canned generator, so you can write code while the
+server is still compiling. Never report a number from it.
 
 ```bash
 pip install sympy numpy
