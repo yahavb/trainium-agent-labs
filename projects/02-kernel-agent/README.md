@@ -60,6 +60,57 @@ python agent.py --all --rounds 6 --samples 2 --context 4096
 
 `--context 4096` matches what the server was started with; the agent caps its answer budget to fit.
 
+### Getting more out of the local model
+
+The defaults are conservative. Four levers, in the order they are worth pulling. **Mind which shell each
+command belongs in** — `serve.sh` controls the container, so it only runs on the instance, never inside
+it. Type `exit` if your prompt looks like `root@<hex>`.
+
+**1. Raise the context to 8192.** On the instance:
+
+```bash
+cd ~/trainium-agent-labs
+./serve.sh --stop
+MAX_MODEL_LEN=8192 ./serve.sh
+```
+
+The weights are already cached, so this is just a recompile — a few minutes. Why it matters: a repair
+prompt carries the previous kernel, the checker's instruction and the ledger of failed attempts, and at
+4096 all of that squeezes the room left for an answer. `serve.sh` recomputes
+`--num-gpu-blocks-override` for you.
+
+Stopping the container closes your container shell, so reopen it afterwards:
+
+```bash
+docker exec -it vllm bash
+git config --global --add safe.directory /workspace
+cd /workspace/projects/02-kernel-agent
+```
+
+**2. Use four samples instead of two.** The server runs four sequences at once, so this doubles the
+attempts per round at almost no extra wall-clock. Worth doing here and *not* on the shared gpt-oss
+endpoint, where sampling is greedy and four samples would be four identical answers.
+
+**3. Turn thinking on.** Qwen3 reasons before answering. It is off by default only because it caused
+truncation at 4096; with 8192 it is affordable, and these are reasoning-heavy tasks.
+
+```bash
+python agent.py --all --rounds 8 --samples 4 --context 8192 --think
+```
+
+**4. Then run it again with thinking off**, everything else identical, and compare:
+
+```bash
+python agent.py --all --rounds 8 --samples 4 --context 8192
+```
+
+That one-variable comparison is a result worth handing in. On the shared gpt-oss endpoint, reasoning
+turned out to *prevent* answers entirely — a 1866-character prompt produced 13,245 characters of hidden
+reasoning and no code. Whether it helps or hurts here is an open question, and you will have measured it.
+
+**What not to bother with.** Raising tensor parallelism from 2 to 4 makes serving faster, not the model
+better, and it costs you the two free cores you will want for on-device timing later.
+
 ### When the small model stalls, try the big one
 
 Measured on the local Qwen3-8B: level 2 solved, the rest stalling at 0.30 to 0.62. That is the point at
