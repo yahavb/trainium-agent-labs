@@ -96,22 +96,28 @@ export KERNEL_AGENT_MODEL=Qwen/Qwen3-8B
 attempts per round at almost no extra wall-clock. Worth doing here and *not* on the shared gpt-oss
 endpoint, where sampling is greedy and four samples would be four identical answers.
 
-**3. Turn thinking on.** Qwen3 reasons before answering. It is off by default only because it caused
-truncation at 4096; with 8192 it is affordable, and these are reasoning-heavy tasks.
-
-```bash
-python agent.py --all --rounds 8 --samples 4 --context 8192 --think
-```
-
-**4. Then run it again with thinking off**, everything else identical, and compare:
+**3. Run it.** Thinking stays OFF:
 
 ```bash
 python agent.py --all --rounds 8 --samples 4 --context 8192
 ```
 
-That one-variable comparison is a result worth handing in. On the shared gpt-oss endpoint, reasoning
-turned out to *prevent* answers entirely — a 1866-character prompt produced 13,245 characters of hidden
-reasoning and no code. Whether it helps or hurts here is an open question, and you will have measured it.
+**4. Do NOT turn thinking on. Measured, and it is much worse.** `--think` exists so you can reproduce
+this, not because you should use it. Same levels, same server at 8192, only `--think` changed:
+
+| | round time | answers |
+|---|---|---|
+| thinking off | **~8 s** | code, scoring 0.30–0.62 |
+| thinking on | **446 s** | truncated at ~9,900 characters, scoring **0.00** |
+
+Every sample hit `finish_reason=length` with ~9,900 characters produced and no usable code: the model
+spent its entire budget reasoning and never finished the answer. Fifty-five times slower, for nothing.
+
+**This is the second model to behave this way**, and it is the most transferable thing in this project.
+On the shared gpt-oss endpoint a 1866-character prompt produced 13,245 characters of hidden reasoning and
+no answer, while 581 characters produced working code. Both models fail the same way, and in both cases
+**a bigger token budget does not help** — the fix is a shorter prompt and less reasoning, not more room.
+If your own agent returns nothing, look there first.
 
 **What not to bother with.** Raising tensor parallelism from 2 to 4 makes serving faster, not the model
 better, and it costs you the two free cores you will want for on-device timing later.
