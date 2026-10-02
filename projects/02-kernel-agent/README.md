@@ -82,10 +82,15 @@ prompt carries the previous kernel, the checker's instruction and the ledger of 
 Stopping the container closes your container shell, so reopen it afterwards:
 
 ```bash
-docker exec -it vllm bash
+docker exec -it vllm bash          # wait for the prompt before typing
 git config --global --add safe.directory /workspace
 cd /workspace/projects/02-kernel-agent
+export KERNEL_AGENT_BASE_URL=http://localhost:8000/v1
+export KERNEL_AGENT_MODEL=Qwen/Qwen3-8B
 ```
+
+> **A restarted container is a fresh shell, so the exports are gone.** Re-run those two `export` lines
+> every time you reopen it, or the agent stops with "KERNEL_AGENT_BASE_URL is empty or unset".
 
 **2. Use four samples instead of two.** The server runs four sequences at once, so this doubles the
 attempts per round at almost no extra wall-clock. Worth doing here and *not* on the shared gpt-oss

@@ -580,9 +580,11 @@ def main():
         # starting with "." and 30 lines of httpx/idna traceback that say nothing about the cause.
         raw = (a.base or "").strip()
         if not raw:
-            sys.exit("KERNEL_AGENT_BASE_URL is empty or unset. Point it at a model, e.g.\n"
-                     "  http://qwen3-8b:8000/v1   (the in-cluster Qwen3-8B service)\n"
-                     "or pass --offline to exercise the loop with no model.\n"
+            sys.exit("KERNEL_AGENT_BASE_URL is empty or unset. Point it at a model:\n"
+                     "  export KERNEL_AGENT_BASE_URL=http://localhost:8000/v1\n"
+                     "  export KERNEL_AGENT_MODEL=Qwen/Qwen3-8B\n"
+                     "That is the server ./serve.sh started. Note a fresh container shell loses these, "
+                     "so re-export them after any restart. Or pass --offline to run with no model.\n"
                      "For the shared gpt-oss endpoint instead, set GPTOSS_BASE_URL and pass "
                      "--path /agg/v1.")
         from urllib.parse import urlparse
