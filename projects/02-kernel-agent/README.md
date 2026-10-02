@@ -48,6 +48,7 @@ instance**, and nothing has to be remote.
 
 ```bash
 docker exec -it vllm bash          # wait for the prompt
+git config --global --add safe.directory /workspace    # needed before any git command here
 cd /workspace/projects/02-kernel-agent
 export KERNEL_AGENT_BASE_URL=http://localhost:8000/v1
 export KERNEL_AGENT_MODEL=Qwen/Qwen3-8B
@@ -58,6 +59,21 @@ python agent.py --all --rounds 6 --samples 2 --context 4096
 ```
 
 `--context 4096` matches what the server was started with; the agent caps its answer budget to fit.
+
+### When the small model stalls, try the big one
+
+Measured on the local Qwen3-8B: level 2 solved, the rest stalling at 0.30 to 0.62. That is the point at
+which a bigger model is worth trying:
+
+```bash
+export KERNEL_AGENT_BASE_URL="«the URL the organisers give you»/agg/v1"
+export KERNEL_AGENT_MODEL=gpt-oss-20b
+python agent.py --all --rounds 6 --samples 1 --context 8192 --terse 1
+```
+
+`--samples 1` because sampling there is greedy, so extra samples are identical; `--terse 1` because a
+long prompt makes it reason instead of answering. Report which model cleared which level and in how many
+rounds — that comparison is a result in itself.
 
 Only when you add **real on-device timing** — layers 2 and 3, which are not built — do you need cores,
 and then you pin to the two the server is not using:

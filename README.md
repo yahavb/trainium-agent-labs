@@ -77,9 +77,10 @@ docker exec -it vllm bash
 > **Wait for the new prompt before typing anything else.** It takes a second or two, and anything you
 > type in the meantime goes to your laptop's shell instead and is lost. This catches everyone once.
 
-**7. Now, inside the container**, run the first project:
+**7. Now, inside the container**, allow git to use the mounted repo, then run the first project:
 
 ```bash
+git config --global --add safe.directory /workspace    # the mount is owned by ubuntu, you are root
 cd /workspace/projects/01-heat-rod-pde
 export HEATROD_BASE_URL=http://localhost:8000/v1
 
@@ -159,6 +160,34 @@ instance with nothing else to arrange:
 Only when you add real on-device timing — layers 2 and 3 of project 2's checker, which are not built
 yet — do you need cores, and then you pin to the two the server is not using. `NEURON_RT_VISIBLE_CORES`
 is the documented mechanism for that; we have not exercised it here, so expect to debug it.
+
+## 2b. When the small model is not enough
+
+Qwen3-8B on your own chip is the right default: it is instant, private to you, and good enough to get
+both projects moving. Measured on it, project 2 solves level 2 and stalls around 0.30–0.62 on the rest.
+
+When you hit that ceiling, **try a bigger model**. `gpt-oss-20b` is 20 billion parameters on separate
+hardware, shared by the room:
+
+```bash
+export KERNEL_AGENT_BASE_URL="«the URL the organisers give you»/agg/v1"
+export KERNEL_AGENT_MODEL=gpt-oss-20b
+python agent.py --all --rounds 6 --samples 1 --context 8192 --terse 1
+```
+
+Three of those flags are not arbitrary, and each is a measured property of that endpoint:
+
+* **`--samples 1`** — sampling there is greedy server-side, so N samples return N *identical* answers
+  and there is nothing to choose between. Spend the budget on rounds instead.
+* **`--context 8192`** — its real limit, double the local server's.
+* **`--terse 1`** — it reasons before answering and a long prompt makes it reason *instead* of
+  answering. Measured, same problem, only the prompt length changed: 1866 characters produced 13,245
+  characters of hidden reasoning and **no answer**; 581 characters produced working code. You cannot fix
+  this with a bigger token budget.
+
+**Compare the two and report both.** Which model solves which level, in how many rounds, is a result —
+and a bigger model being *worse* on some level because it reasons itself into silence is a more
+interesting result than either number alone.
 
 ## 3. The challenge
 
