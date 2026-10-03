@@ -275,6 +275,16 @@ def enrich(error_text):
                 f"src=a[i*{mx}:(i+1)*{mx}, :]. If a dimension is already {mx} or smaller, use it "
                 f"whole -- do NOT pad it up to {mx}, that reads past the end of the tensor. The same "
                 f"applies to where you write the result back.")
+    m = re.search(r"value array of shape \((\d+),?\) could not be broadcast to "
+                  r"indexing result of shape \((\d+),?\)", error_text)
+    if m:
+        val, dst = int(m.group(1)), int(m.group(2))
+        return (error_text + f" You assigned {val} elements into a slice that holds {dst}. Assignment "
+                f"does not reshape or broadcast either: the slice on the left and the value on the "
+                f"right must have the SAME shape. If the value is bigger, you are writing a whole tile "
+                f"where a slice belongs -- index the destination to match, e.g. "
+                f"out[i*128:(i+1)*128, :] = tile. If it is smaller, you are looping over the wrong "
+                f"dimension.")
     m = re.search(r"Out-of-bound access for tensor .*? on dimension (\d+): "
                   r"index range \[(\d+), (\d+)\] exceed dimension size of (\d+)",
                   error_text)

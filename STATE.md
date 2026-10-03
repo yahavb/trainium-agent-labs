@@ -164,9 +164,9 @@ Reward: 0.1 parses, 0.2 rules clean, 0.2 runs, 0.5 correct on every shape, prora
 
 ## Next, in priority order
 
-1. **`TP=4 MAX_MODEL_LEN=8192 ./serve.sh`** — untried. NC 0–1 were idle, so doubling tensor parallelism
-   is a free speedup, and the loop is round-limited so faster rounds mean more attempts. Only cost is
-   needing cores back for on-device timing later, which does not exist yet.
+1. ~~`TP=4`~~ **TRIED, no benefit.** It serves fine on all four cores at 8192, but round times are 8–20 s,
+   the same as TP 2. The loop is bound by how long the model takes to generate, not by compute, so the
+   whole chip buys nothing. **Stay at TP 2** and keep NC 0–1 free for on-device timing later.
 2. **Reference kernels for levels 5–7.** The traffic bars exist but nothing demonstrates passing them, so
    the optimization half of the ladder is unproven.
 3. **Layers 2 and 3 of the checker** — real latency via `nki.baremetal`, and a profile. Until then
