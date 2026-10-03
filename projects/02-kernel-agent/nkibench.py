@@ -641,9 +641,22 @@ def simulate_and_count(kernel, args):
         counter["transfers"] += 1
         return original(dst=dst, src=src, **kw)
 
+    # Capture warnings instead of letting them print. The simulator emits one per traced
+    # instruction, which meant dozens of identical UserWarning blocks per round drowning the log.
+    # They are also not noise: one of them says the pattern produces INCORRECT RESULTS on hardware,
+    # which the agent should be told rather than have scrolled past.
+    import warnings
     nisa.dma_copy = counting_dma_copy
     try:
-        out = run(*args)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            out = run(*args)
+        seen = []
+        for w in caught:
+            msg = str(w.message).split(". ")[0]
+            if msg not in seen:
+                seen.append(msg)
+        counter["warnings"] = seen[:3]
     finally:
         nisa.dma_copy = original
     return out, counter

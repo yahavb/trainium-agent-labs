@@ -94,10 +94,14 @@ Reward: 0.1 parses, 0.2 rules clean, 0.2 runs, 0.5 correct on every shape, prora
 
 ```
 level 1: solved 0/5   all = [0.30, 0.30, 0.30, 0.30, 0.30]
-level 2: solved 2/5   all = [0.62, 0.50, 1.00, 1.00, 0.30]
+level 2: solved 4/5   all = [1.00, 1.00, 1.00, 0.50, 1.00]   <- current baseline
 level 3: solved 0/5   all = [0.30, 0.30, 0.30, 0.30, 0.30]
 level 4: solved 0/5   all = [0.62, 0.62, 0.62, 0.62, 0.62]
 ```
+
+An earlier 5-run measurement had level 2 at 2/5. The difference is not attributable: 2/5 vs 4/5 at n=5 is
+within what this level's variance produces, and several feedback messages changed in between. **Treat 4/5
+as the baseline and do not claim the improvement.**
 
 **The important part is which numbers move.** Level 2 varies wildly — 0.30 to 1.00, solving 2 times in 5.
 Levels 1, 3 and 4 are *identical* across all five runs, which is 20 samples each with zero spread.
