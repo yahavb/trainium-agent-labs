@@ -570,6 +570,10 @@ def main():
     ap.add_argument("--base", default=os.environ.get("KERNEL_AGENT_BASE_URL")
                     or os.environ.get("GPTOSS_BASE_URL"))
     ap.add_argument("--path", default="", help="path to append, e.g. /agg/v1 for gpt-oss")
+    ap.add_argument("--repeat", type=int, default=1,
+                    help="run the whole thing N times and report a solve RATE. One run is not a "
+                         "result: measured, the same config scored 1.00, 1.00 and 0.50 on level 2 "
+                         "across three runs with no code change.")
     ap.add_argument("--log", default="attempts.jsonl")
     ap.add_argument("--give-up-after", type=int, default=4,
                     help="stop a level after this many identical failures in a row. Measured: 15 "
@@ -608,17 +612,35 @@ def main():
         print("*** OFFLINE: replaying the reference kernel. Numbers are meaningless. ***")
 
     levels = sorted(nkibench.LEVELS)[:4] if a.all else [a.level or 1]
-    results = []
-    with open(a.log, "a") as log:
-        for level in levels:
-            results.append((level,) + solve(a, level, log))
+    full = sum(WEIGHTS.values())
+    history = {lv: [] for lv in levels}
 
-    print("\n=========== summary ===========")
-    for level, reward, rounds in results:
-        print(f"  level {level}  reward {reward:.2f} after {rounds} round(s)"
-              + ("  SOLVED" if reward >= sum(WEIGHTS.values()) - 1e-9 else ""))
-    print(f"  solved {sum(1 for _, r, _ in results if r >= sum(WEIGHTS.values()) - 1e-9)}"
-          f"/{len(results)}")
+    with open(a.log, "a") as log:
+        for rep in range(a.repeat):
+            if a.repeat > 1:
+                print(f"\n################ run {rep + 1} of {a.repeat} ################")
+            results = []
+            for level in levels:
+                results.append((level,) + solve(a, level, log))
+                history[level].append(results[-1][1])
+
+            print("\n=========== summary ===========")
+            for level, reward, rounds in results:
+                print(f"  level {level}  reward {reward:.2f} after {rounds} round(s)"
+                      + ("  SOLVED" if reward >= full - 1e-9 else ""))
+            print(f"  solved {sum(1 for _, r, _ in results if r >= full - 1e-9)}/{len(results)}")
+
+    if a.repeat > 1:
+        # The number that actually means something. A solve rate over N runs survives the variance
+        # that makes any single run uninterpretable.
+        print(f"\n=========== over {a.repeat} runs ===========")
+        for lv in levels:
+            got = history[lv]
+            solves = sum(1 for r in got if r >= full - 1e-9)
+            print(f"  level {lv}: solved {solves}/{len(got)}  "
+                  f"best {max(got):.2f}  worst {min(got):.2f}  "
+                  f"mean {sum(got) / len(got):.2f}  all={[round(r, 2) for r in got]}")
+        print("\n  Report the rate, not your best run. A level that solves 1 in 3 times is not solved.")
     print(f"\nattempts logged to {a.log}")
 
 
