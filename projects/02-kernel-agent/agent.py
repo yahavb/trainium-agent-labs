@@ -599,8 +599,8 @@ def main():
                      "  export KERNEL_AGENT_MODEL=Qwen/Qwen3-8B\n"
                      "That is the server ./serve.sh started. Note a fresh container shell loses these, "
                      "so re-export them after any restart. Or pass --offline to run with no model.\n"
-                     "For the shared gpt-oss endpoint instead, set GPTOSS_BASE_URL and pass "
-                     "--path /agg/v1.")
+                     "(Separately: the shared gpt-oss endpoint is reached by setting "
+                     "GPTOSS_BASE_URL and passing --path /agg/v1 -- not needed for the local run.)")
         from urllib.parse import urlparse
         u = urlparse(raw)
         if u.scheme not in ("http", "https") or not u.netloc:
