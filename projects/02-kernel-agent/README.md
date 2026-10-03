@@ -276,6 +276,35 @@ That prints, per level, how many runs solved it plus best, worst and mean. **Rep
 best run.** A team that reports "we solved it" from one lucky run has measured the dice, not their agent —
 and this harness did exactly that for several commits before anyone noticed.
 
+#### What measuring actually bought: a reverted "improvement"
+
+Right after adding `--repeat`, a plausible change went in — a second worked example in the prompt showing
+how to loop a dimension in chunks of 128. It targeted the exact wall three levels were stuck on. Five runs
+before, five runs after, nothing else changed:
+
+| level | before | after |
+|---|---|---|
+| 1 | 0.30 | 0.30 |
+| 2 | **solved 2 of 5** | 0 of 5, 0.30 every run |
+| 3 | 0.30 | 0.30 |
+| 4 | **0.62**, passing 1 shape of 4 | 0.30, passing none |
+
+**Strictly worse everywhere, and it was reverted.** The reason is instructive: level 2's winning kernel
+never chunked anything — it was three plain nested loops — and the new example pushed the model toward
+`dma_transpose`, which it then got wrong five different ways. Level 4 stopped passing even the shape it had
+passed every single time.
+
+Two things to take from this:
+
+* **A targeted, reasonable-looking prompt improvement made every level worse.** Nothing about it was
+  obviously wrong. Only the measurement showed it.
+* **Without `--repeat` this would have shipped.** A single run after the change would have looked like
+  ordinary variance, and the regression would have been invisible under the noise that level 2 produces
+  anyway.
+
+That is the whole argument for reporting rates rather than runs, and it happened to the reference
+implementation rather than to a hypothetical team.
+
 ### Then feel the difference: not all tokens are equal
 
 Run the identical ladder against the shared `gpt-oss-20b`, where **sampling is greedy server-side**:

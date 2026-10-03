@@ -120,10 +120,12 @@ Each wall is one NKI idiom the model does not have, and it is the same idiom thr
 | 4 | `dma_copy dst partition dimension 256 exceeds maximum 128` — it allocates one tile for the whole tensor | 0.62, 1 of 4 shapes |
 
 Level 4 is the closest: it passes the single-tile shape every time and fails every shape needing real
-tiling. Latest change is a **worked chunked-copy example** in the prompt's API card — looping a dimension
-in chunks of at most 128, allocating the tile inside the loop at the chunk's own size, slicing both sides
-to match. That is the idiom all three walls need, and a worked example is what fixed the two previous
-walls of this kind. **Not yet measured.**
+tiling.
+
+**A chunked-copy example was tried in the prompt and REVERTED.** It targeted exactly these walls and made
+everything worse — level 2 went from 2 of 5 solved to 0 of 5, level 4 from 0.62 to 0.30, measured over five
+runs each way. Level 2's winning kernel never chunked; the example pushed it toward `dma_transpose`, which
+it got wrong five ways. **Do not re-add it without measuring.** Without `--repeat` it would have shipped.
 
 ### What matters about the measurement
 

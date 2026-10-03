@@ -193,23 +193,6 @@ def copy_kernel(a):
     nisa.dma_copy(dst=out, src=tile)
     return out
 
-When a dimension is larger than 128, work on it in chunks. Allocate the tile INSIDE the loop with
-the chunk's own size, and slice both sides to match:
-
-@nki.jit
-def chunked_kernel(a):
-    rows, cols = a.shape
-    out = nl.ndarray((rows, cols), dtype=a.dtype, buffer=nl.shared_hbm)
-    for i in nl.affine_range((rows + 127) // 128):
-        lo = i * 128
-        hi = min(lo + 128, rows)
-        tile = nl.ndarray((hi - lo, cols), dtype=a.dtype, buffer=nl.sbuf)
-        nisa.dma_copy(dst=tile, src=a[lo:hi, :])
-        nisa.dma_copy(dst=out[lo:hi, :], src=tile)
-    return out
-
-Every tile here is 2-D: a partition dimension then a free dimension. A 1-D tile is not allowed, so a
-length-N vector is shaped (1, N) or (N, 1).
 """
 
 
