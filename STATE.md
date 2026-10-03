@@ -90,16 +90,40 @@ checker, by cost: **static rules** (milliseconds), **`nki.simulate` on the CPU**
 
 Reward: 0.1 parses, 0.2 rules clean, 0.2 runs, 0.5 correct on every shape, prorated.
 
-### Status per level, measured on local Qwen3-8B
+### Status per level — 5 runs, local Qwen3-8B, 8 rounds x 4 samples, context 8192
 
-| level | op | best | wall |
-|---|---|---|---|
-| 1 | average pooling 2D | 0.30 | invented `nisa` functions, bad `dma_copy` shapes |
-| 2 | 2D transpose | **1.00 once**, usually 0.30 | solved twice, not reliably |
-| 3 | matmul, single tile | 0.30 | 1-D tiles, reshaping instead of slicing |
-| 4 | matmul, tiled | **0.62**, 1 of 4 shapes | small shape passes; fails `partition dimension 256 exceeds 128`, then `Matmul contraction dimension 256 exceeds pmax=128` |
-| 5–7 | hoist, block MN, block MNK | untried | graded on **HBM traffic** (≤1.60×, ≤1.25×, ≤1.05× the byte floor), no reference kernels |
-| 8 | single-head attention | untried | the worked example of adding your own operation |
+```
+level 1: solved 0/5   all = [0.30, 0.30, 0.30, 0.30, 0.30]
+level 2: solved 2/5   all = [0.62, 0.50, 1.00, 1.00, 0.30]
+level 3: solved 0/5   all = [0.30, 0.30, 0.30, 0.30, 0.30]
+level 4: solved 0/5   all = [0.62, 0.62, 0.62, 0.62, 0.62]
+```
+
+**The important part is which numbers move.** Level 2 varies wildly — 0.30 to 1.00, solving 2 times in 5.
+Levels 1, 3 and 4 are *identical* across all five runs, which is 20 samples each with zero spread.
+
+So there are **two different problems**, and they need opposite treatment:
+
+* **Level 2 is luck-limited.** Report a rate, not a verdict; it solves about 2 in 5. Single-run
+  comparisons here are meaningless.
+* **Levels 1, 3 and 4 are capability-limited.** Zero variance means more samples and more rounds buy
+  nothing, and it also means **changes to these levels ARE cleanly attributable** — if a fix moves 0.30,
+  that was the fix. An earlier claim in this file that variance swamps all changes was only true of
+  level 2.
+
+Each wall is one NKI idiom the model does not have, and it is the same idiom three times — **tiling**:
+
+| level | the wall, every run | best |
+|---|---|---|
+| 1 | `SBUF and PSUM tensors must have at least 2 dimensions` — it builds a 1-D tile | 0.30 |
+| 3 | `cannot reshape array of size 32768 into shape (1,64)` — it reshapes instead of slicing | 0.30 |
+| 4 | `dma_copy dst partition dimension 256 exceeds maximum 128` — it allocates one tile for the whole tensor | 0.62, 1 of 4 shapes |
+
+Level 4 is the closest: it passes the single-tile shape every time and fails every shape needing real
+tiling. Latest change is a **worked chunked-copy example** in the prompt's API card — looping a dimension
+in chunks of at most 128, allocating the tile inside the loop at the chunk's own size, slicing both sides
+to match. That is the idiom all three walls need, and a worked example is what fixed the two previous
+walls of this kind. **Not yet measured.**
 
 ### What matters about the measurement
 
