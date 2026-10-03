@@ -243,6 +243,69 @@ instead, which is what fixed the same class of problem in Project 1.
 | the **same** error three rounds running | your feedback is a verdict, not an instruction. Fix the message, not the prompt. |
 | identical rewards within a round | sampling is off, so there is nothing to choose between |
 
+### One run is not a result
+
+**Measured here, not asserted.** Three runs of level 2, identical code, identical settings, identical
+model, nothing changed between them:
+
+```
+run 1:  1.00  SOLVED on round 0
+run 2:  1.00  SOLVED on round 3
+run 3:  0.50  not solved in 6 rounds
+```
+
+Sampling is on for the local Qwen3, so the model picks among plausible next tokens rather than always the
+single likeliest one. That is deliberate — it is what makes four samples per round four *different*
+attempts instead of four copies. The cost is that **any single run is partly luck.**
+
+Two consequences, and both are the point of this section:
+
+* **Level 2 is not "solved". It solves about two times in three.** That is a solve *rate*, and it is a
+  more honest and more useful number than a yes or no.
+* **The swing from luck alone is larger than most improvements you will make.** If you change a feedback
+  message and the next run scores worse, you cannot tell whether that was your change or the dice. So
+  single-run comparisons are uninformative, including the ones used while building this harness.
+
+So measure the rate:
+
+```bash
+python agent.py --all --rounds 8 --samples 4 --context 8192 --repeat 5
+```
+
+That prints, per level, how many runs solved it plus best, worst and mean. **Report the rate, not your
+best run.** A team that reports "we solved it" from one lucky run has measured the dice, not their agent —
+and this harness did exactly that for several commits before anyone noticed.
+
+### Then feel the difference: not all tokens are equal
+
+Run the identical ladder against the shared `gpt-oss-20b`, where **sampling is greedy server-side**:
+
+```bash
+export KERNEL_AGENT_BASE_URL="«the URL the organisers give you»/agg/v1"
+export KERNEL_AGENT_MODEL=gpt-oss-20b
+python agent.py --all --rounds 8 --samples 1 --context 8192 --terse 1 --repeat 3
+```
+
+Note `--samples 1`: with greedy decoding, four samples return four *identical* answers, so extra samples
+buy nothing. And then watch what the repeats do — a greedy model is **reproducible**, so the same prompt
+gives the same answer every time.
+
+That is the comparison worth running side by side, because it makes a property of decoding you can feel:
+
+| | local Qwen3-8B | shared gpt-oss-20b |
+|---|---|---|
+| sampling | on — samples differ | **greedy** — samples identical |
+| extra samples | genuinely more attempts | wasted |
+| repeat the same run | different outcome | same outcome |
+| retry an identical prompt | may work | **cannot** work |
+| what moves the loop forward | luck *and* better feedback | better feedback only |
+
+**The practical lesson:** on a greedy model, your only lever is the prompt. A retry loop that resends the
+same text is a no-op, which is why this harness carries a ledger of failed attempts — changing the prompt
+is the one thing that can change the answer. On a sampling model you get diversity for free and pay for it
+in reproducibility. Neither is better; they fail differently, and knowing which you are holding decides
+how you build the loop.
+
 ### How suboptimality shows up in the log
 
 This is what a `--check` prints, from a real run on a trn2 node:
