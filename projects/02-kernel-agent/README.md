@@ -305,7 +305,7 @@ Two things to take from this:
 That is the whole argument for reporting rates rather than runs, and it happened to the reference
 implementation rather than to a hypothetical team.
 
-### Then feel the difference: not all tokens are equal
+### Then feel the difference: not all tokens are equal — MEASURED
 
 Run the identical ladder against the shared `gpt-oss-20b`, where **sampling is greedy server-side**:
 
@@ -315,25 +315,39 @@ export KERNEL_AGENT_MODEL=gpt-oss-20b
 python agent.py --all --rounds 8 --samples 1 --context 8192 --terse 1 --repeat 3
 ```
 
-Note `--samples 1`: with greedy decoding, four samples return four *identical* answers, so extra samples
-buy nothing. And then watch what the repeats do — a greedy model is **reproducible**, so the same prompt
-gives the same answer every time.
+`--samples 1` because with greedy decoding four samples return four *identical* answers.
 
-That is the comparison worth running side by side, because it makes a property of decoding you can feel:
+**Both models, same harness, same levels.** Qwen3-8B over 5 runs, gpt-oss-20b over 3:
 
-| | local Qwen3-8B | shared gpt-oss-20b |
+| level | Qwen3-8B (8B, sampling) | gpt-oss-20b (20B, greedy) |
 |---|---|---|
-| sampling | on — samples differ | **greedy** — samples identical |
-| extra samples | genuinely more attempts | wasted |
-| repeat the same run | different outcome | same outcome |
-| retry an identical prompt | may work | **cannot** work |
-| what moves the loop forward | luck *and* better feedback | better feedback only |
+| 1 average pooling | 0/5, always 0.30 | 0/3, always 0.30 |
+| 2 transpose | **4/5**, scores 0.5–1.0 | **3/3**, always 1.00 |
+| 3 matmul single tile | 0/5, always 0.30 | 0/3, always 0.30 |
+| 4 matmul tiled | **0.62** | **0.30** |
 
-**The practical lesson:** on a greedy model, your only lever is the prompt. A retry loop that resends the
-same text is a no-op, which is why this harness carries a ledger of failed attempts — changing the prompt
-is the one thing that can change the answer. On a sampling model you get diversity for free and pay for it
-in reproducibility. Neither is better; they fail differently, and knowing which you are holding decides
-how you build the loop.
+**Three findings, and none of them is "the bigger model is better".**
+
+**1. The greedy model is reproducible to the round.** The three gpt-oss runs are not merely similar — they
+are *identical*: the same errors in the same order, the same per-round timings to a tenth of a second, the
+same final kernel character for character. Qwen3 on the same level produced 1.0, 1.0, 1.0, 0.5, 1.0. One
+model you can bisect; the other you have to average.
+
+**2. Greedy is more reliable where it works.** Level 2: gpt-oss solved 3 of 3, Qwen3 4 of 5. Same ceiling,
+less spread.
+
+**3. The 8B model BEATS the 20B model on level 4** — 0.62 against 0.30 — and the reason is the whole
+lesson. gpt-oss spends its budget reasoning and returns nothing: four of six rounds on that level came back
+empty after ~10,000 characters of hidden reasoning, each costing 21 seconds for no output. Qwen3, which
+reasons less, actually emits code and gets further.
+
+**So "more capable model" did not mean "better agent".** Capacity spent on hidden reasoning is capacity not
+spent on the answer, and an agent loop needs answers. That is a property of how the model decodes, not of
+how much it knows — and it is why `--terse 1` exists for this endpoint and why thinking mode is off by
+default for the other.
+
+**What to report:** both columns, plus the spread. A team that runs only the bigger model concludes the
+task is too hard. A team that runs both discovers the smaller model is better at it, and can say why.
 
 ### How suboptimality shows up in the log
 

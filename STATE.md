@@ -131,6 +131,28 @@ everything worse — level 2 went from 2 of 5 solved to 0 of 5, level 4 from 0.6
 runs each way. Level 2's winning kernel never chunked; the example pushed it toward `dma_transpose`, which
 it got wrong five ways. **Do not re-add it without measuring.** Without `--repeat` it would have shipped.
 
+### gpt-oss-20b, 3 runs, --samples 1 --terse 1 --context 8192
+
+```
+level 1: solved 0/3   all = [0.30, 0.30, 0.30]
+level 2: solved 3/3   all = [1.00, 1.00, 1.00]
+level 3: solved 0/3   all = [0.30, 0.30, 0.30]
+level 4: solved 0/3   all = [0.30, 0.30, 0.30]
+```
+
+**The three runs are byte-identical** -- same errors in the same order, same per-round timings to 0.1 s,
+same kernel text. That is greedy decoding, and it is the cleanest demonstration in the repo of why the two
+models need different loop designs.
+
+**The 8B model beats the 20B model on level 4: 0.62 vs 0.30.** gpt-oss returned NO CODE in four of six
+rounds there, after ~10,000 characters of hidden reasoning each, at 21 s per empty round. Capacity spent
+reasoning is capacity not spent answering. Level 2 goes the other way: gpt-oss 3/3 against Qwen3 4/5 --
+same ceiling, less spread.
+
+Known gap this exposed: terseness escalates only when the *latest* attempt produced no code, so once a
+round succeeds the prompt grows again and later rounds go empty at terseness 2 with a 2549-character repair
+prompt. Escalating on every empty answer regardless would likely recover those rounds. **Untried.**
+
 ### What matters about the measurement
 
 * **Arithmetic intensity is HBM traffic.** Flops are fixed by the problem, so intensity is just
