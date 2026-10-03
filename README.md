@@ -1,47 +1,46 @@
 # Hack the Chip — NYU × Annapurna Labs
 
-**Annapurna Labs** is the Amazon team that designs **AWS Trainium**, the custom silicon behind a
-large share of AI training and inference on AWS. For one day we are handing you that hardware, a
-language model already running on it, and a question we care about.
+**Annapurna Labs** is the Amazon team that designs **AWS Trainium**, the custom silicon behind a large
+share of AI training and inference on AWS. For one day we are handing you that hardware, a language model
+already running on it, and a question we care about.
 
-> **A small model on a chip you control, driven by an agent, can solve problems the model cannot
-> solve on its own.** Build the loop that does it, and prove it.
+> **A small model on a chip you control, driven by an agent, can solve problems the model cannot solve on
+> its own.** Build the loop that does it, and prove it.
 
 The engineers who design these chips will be on the floor all day.
 
+**The idea in one line:** a model attempts something, a **checker** grades it, and the grade *plus the
+reason* feed the next attempt. What decides whether that loop works is not the model — it is the checker.
+*"Wrong, off by 341 percent"* is true and useless. *"The term sin(pi\*x) should not be there at all"* names
+the change. Everything here was built by learning that the hard way, eight separate times.
+
+Resuming or picking this up cold? [`STATE.md`](STATE.md) has exactly where things stand and what to do next.
+
 ---
 
-**Resuming, or picking this up cold?** [`STATE.md`](STATE.md) has where both projects stand,
-what is measured, the environment gotchas, and what to do next.
+# Part 1 — Get a model running on your chip
 
-## 1. Get your instance running
+Nine steps, in order, verified end to end on a real instance. **Use two terminals**: one for the model, one
+for your work.
 
-You get a **`trn2.3xlarge`** for the day: one Trainium2 chip, 4 NeuronCores at LNC=2, ~96 GB of
-on-chip memory, root access. Yours. If you break it we hand you another one.
+## Terminal 1 — the model
 
-**Access:** «TODO — organisers: instance id, SSM command, per-team card»
-
-Everything below is the exact sequence, in order, verified on a real instance. **Use two terminals:**
-one for the model, one for your work.
-
-### Terminal 1 — the model
-
-**1. Confirm you have a chip.**
+### 1. Confirm you have a chip
 
 ```bash
 neuron-ls
 ```
 
-You should see one NEURON DEVICE with 4 cores and 96 GB. If not, stop and find an organiser.
+Expect one `NEURON DEVICE` with 4 cores and 96 GB. If not, stop and find an organiser.
 
-**2. Clone the repo.**
+### 2. Clone the repo
 
 ```bash
 cd ~ && git clone https://github.com/yahavb/trainium-agent-labs.git
 cd trainium-agent-labs
 ```
 
-**3. Check Docker, and install it only if missing.**
+### 3. Check Docker, install only if missing
 
 ```bash
 docker --version || ./install-docker.sh
@@ -49,197 +48,236 @@ docker --version || ./install-docker.sh
 
 If it installs, it may tell you to run `newgrp docker` before continuing.
 
-**4. Start the model.**
+### 4. Start the model
 
 ```bash
-./serve.sh
+MAX_MODEL_LEN=8192 ./serve.sh
 ```
 
-That serves **Qwen3-8B** on your chip behind an OpenAI-compatible API on port 8000, and waits until it
-answers. **The first run takes about 5 minutes** — it pulls a container image, downloads ~16 GB of
-weights, then compiles. It prints `still starting, N minutes elapsed` while it works, and `READY` when
-it is done. Later starts reuse the cache and are quick.
+Serves **Qwen3-8B** on your chip behind an OpenAI-compatible API on port 8000, and waits until it answers.
+**First run takes about 5 minutes** — pulls a container image, downloads ~16 GB of weights, then compiles.
+It prints `still starting, N minutes elapsed`, then `READY`. Later starts reuse the cache.
 
-**5. Confirm it is really answering.**
+### 5. Confirm it is really answering
 
 ```bash
 curl -s localhost:8000/v1/models
 ```
 
-You want to see `"id":"Qwen/Qwen3-8B"`. Leave this terminal alone from here on.
-
-### Terminal 2 — your work
-
-**6. Get a shell inside the container**, where the model is on `localhost` and this repo is mounted at
-`/workspace`:
-
-```bash
-docker exec -it vllm bash
-```
-
-> **Wait for the new prompt before typing anything else.** It takes a second or two, and anything you
-> type in the meantime goes to your laptop's shell instead and is lost. This catches everyone once.
-
-**7. Now, inside the container**, allow git to use the mounted repo, then run the first project:
-
-```bash
-git config --global --add safe.directory /workspace    # the mount is owned by ubuntu, you are root
-cd /workspace/projects/01-heat-rod-pde
-export HEATROD_BASE_URL=http://localhost:8000/v1
-
-python level0_heatrod.py --selftest     # prove the checker BEFORE you trust a score
-python agent.py --level 0 --all         # the warm-up: solved on round 0
-python agent.py --level 1 --all         # the real one
-```
-
-`sympy` and `numpy` are already in the container. If you are running outside it, `pip install sympy
-numpy httpx` first.
-
-### Useful while it runs
+You want `"id":"Qwen/Qwen3-8B"`. **`READY` and "is answering" are not the same claim** — check it. Then leave
+this terminal alone.
 
 ```bash
 ./serve.sh --logs     # follow the model's log
 ./serve.sh --stop     # stop and remove it
 ```
 
-### Why a container, when the instance already has vLLM
+## Terminal 2 — your work
 
-The AMI ships several Neuron virtualenvs under `/opt`, and the newest is vLLM-Neuron **0.21**. That
-version **cannot serve Qwen3-8B** — its model registry has only `LlamaForCausalLM`,
-`GptOssForCausalLM`, `Eagle3LlamaForCausalLM` and `Qwen3VLForConditionalGeneration`, the last being the
-*vision* model. Point it at Qwen3-8B and you get:
+### 6. Get a shell inside the container
+
+The model is on `localhost` in there, and this repo is mounted at `/workspace`.
+
+```bash
+docker exec -it vllm bash
+```
+
+> **Wait for the new prompt before typing anything else.** It takes a second or two, and anything typed in
+> the meantime goes to the host shell and is lost. This caught us three times.
+
+### 7. Two lines of setup, inside the container
+
+```bash
+git config --global --add safe.directory /workspace
+cd /workspace/projects/01-heat-rod-pde
+```
+
+The first is needed before **any** git command in here: the mount is owned by `ubuntu` and you are `root`.
+
+### 8. Run project 1 — the heat-rod agent
+
+```bash
+export HEATROD_BASE_URL=http://localhost:8000/v1
+
+python level0_heatrod.py --selftest     # prove the checker BEFORE trusting a score
+python agent.py --level 0 --all         # warm-up: solved on round 0
+python agent.py --level 1 --all         # the real one
+```
+
+`sympy` and `numpy` are already in the container. **This project is solved, 6 of 6.** Write-up:
+[`projects/01-heat-rod-pde/`](projects/01-heat-rod-pde/).
+
+### 9. Run project 2 — the kernel agent
+
+```bash
+cd /workspace/projects/02-kernel-agent
+export KERNEL_AGENT_BASE_URL=http://localhost:8000/v1
+export KERNEL_AGENT_MODEL=Qwen/Qwen3-8B
+
+python nkibench.py --selftest
+python agent.py --all --rounds 8 --samples 4 --context 8192 --repeat 5
+```
+
+**This project is unsolved — that is the point.** A real open problem, not an exercise with a hidden answer.
+Write-up: [`projects/02-kernel-agent/`](projects/02-kernel-agent/).
+
+> **A restarted container is a fresh shell, so the exports are gone.** Re-run them after any restart, or the
+> agent stops with `KERNEL_AGENT_BASE_URL is empty or unset`.
+
+---
+
+# Part 2 — What we already measured, so you do not re-learn it
+
+Every number below came from runs in this repo, on this hardware.
+
+## One run is not a result
+
+Five runs of project 2, identical settings, nothing changed between them:
+
+```
+level 1: solved 0/5   all = [0.30, 0.30, 0.30, 0.30, 0.30]
+level 2: solved 4/5   all = [1.00, 1.00, 1.00, 0.50, 1.00]
+level 3: solved 0/5   all = [0.30, 0.30, 0.30, 0.30, 0.30]
+level 4: solved 0/5   all = [0.62, 0.62, 0.62, 0.62, 0.62]
+```
+
+Level 2 swings from 0.50 to 1.00 on luck alone. **Report a rate, not your best run** — `--repeat N` does it.
+And notice levels 1, 3 and 4 have *zero* spread: those are capability walls, not dice, so changes to them
+are cleanly attributable while changes to level 2 are not.
+
+**What that bought, concretely.** A plausible prompt improvement went in — a worked tiling example, aimed at
+the exact wall three levels were stuck on. Five runs before, five after: level 2 fell from 4/5 to **0/5**,
+level 4 from 0.62 to **0.30**. Strictly worse, and reverted. **Without `--repeat` it would have shipped**,
+because one run would have read as ordinary variance.
+
+## Not all tokens are equal
+
+The same ladder against the shared `gpt-oss-20b`, where sampling is **greedy server-side**:
+
+| level | Qwen3-8B (8B, sampling) | gpt-oss-20b (20B, greedy) |
+|---|---|---|
+| 1 average pooling | 0/5, always 0.30 | 0/3, always 0.30 |
+| 2 transpose | **4/5**, 0.5–1.0 | **3/3**, always 1.00 |
+| 3 matmul single tile | 0/5, always 0.30 | 0/3, always 0.30 |
+| 4 matmul tiled | **0.62** | **0.30** |
+
+* **The greedy runs are byte-identical** — same errors in the same order, same per-round timings to a tenth
+  of a second, the same kernel character for character. One model you can bisect; the other you must
+  average.
+* **Greedy is more reliable where it works:** level 2 solved 3/3 against 4/5. Same ceiling, less spread.
+* **The 8B model beats the 20B model on level 4**, 0.62 to 0.30. gpt-oss returned *no code* in four of six
+  rounds there, after ~10,000 characters of hidden reasoning each, 21 s per empty round. **Capacity spent
+  reasoning is capacity not spent answering**, and an agent loop needs answers.
+
+So *more capable model* did not mean *better agent*. On a greedy model the prompt is your only lever — a
+retry that resends the same text is a no-op, which is why the agent keeps a ledger of failed attempts.
+
+## Reasoning modes cost more than they return
+
+Measured on Qwen3, only `--think` changed:
+
+| | round time | result |
+|---|---|---|
+| thinking off | **~8 s** | code, 0.30–0.62 |
+| thinking on | **446 s** | truncated at ~9,900 chars, **0.00** |
+
+Every sample hit `finish_reason=length` with no usable code. **A bigger token budget does not fix this on
+either model** — the fix is a shorter prompt. If your agent returns nothing, look there first.
+
+## Settings that are not preferences
+
+| setting | why |
+|---|---|
+| `TP=2`, not 4 | TP=4 serves fine but round times are identical — the loop is bound by generation length, not compute. TP 2 leaves NC 0–1 free for on-device timing later. |
+| `--samples 4` locally, `--samples 1` on gpt-oss | Qwen3's samples differ and are nearly free (the server runs 4 at once). gpt-oss is greedy, so 4 samples are 4 identical answers. |
+| `--context 8192` | Repair prompts carry the previous kernel, the checker's instruction and the ledger. At 4096 that squeezes out the answer. |
+| `--terse 1` on gpt-oss | A long prompt makes it reason *instead of* answering: 1866 chars → 13,245 chars of reasoning and no code; 581 chars → working code. |
+
+---
+
+# Part 3 — Which model your project talks to
+
+**A NeuronCore cannot be shared by two processes.** But your chip has **four** logical cores and the server
+uses two, so two are free. Check with `neuron-top` while it runs: NC 2–3 hold the model, NC 0–1 sit at 0 B.
+
+| your project needs | model from | cores |
+|---|---|---|
+| no device — the checker runs on CPU | **local Qwen3-8B** | none |
+| to compile and run kernels on the chip | **local Qwen3-8B** | pin to the free cores: `NEURON_RT_VISIBLE_CORES=0,1` |
+| the whole chip for serving experiments | **shared `gpt-oss-20b`** ([`gptoss/`](gptoss/)), separate hardware | all four |
+
+**Both sample projects are in the first row today**, so nothing has to be remote. Project 1's checker is
+SymPy; project 2's simulates kernels on the **CPU** with `nki.simulate`, deliberately — seconds per
+iteration instead of a compile, which is where an agent should spend its attempts. Cores are needed only for
+real on-device timing, which is not built yet. `NEURON_RT_VISIBLE_CORES` is the documented mechanism and we
+have not exercised it, so expect to debug it.
+
+## Why a container, when the instance already has vLLM
+
+The AMI ships Neuron virtualenvs under `/opt`, the newest being vLLM-Neuron **0.21**. That version **cannot
+serve Qwen3-8B** — its registry holds only `LlamaForCausalLM`, `GptOssForCausalLM`, `Eagle3LlamaForCausalLM`
+and `Qwen3VLForConditionalGeneration`, the last being the **vision** model. Point it at Qwen3-8B and you
+get:
 
 ```
 AttributeError: type object 'Qwen3ForCausalLM' has no attribute 'from_configs'
 ```
 
-which is vLLM's generic class being used where the Neuron loader expected a Neuron one. `serve.sh` uses
-the **0.24** container image instead, which does support it. If you would rather use a pre-installed
-venv, `openai/gpt-oss-20b` works there and needs `--hf-overrides '{"quantization_config": {}}'` to load
-in bf16.
+which looks like a broken install and is a model-support gap. `serve.sh` uses the **0.24** container, which
+supports it. To use a pre-installed venv instead, `openai/gpt-oss-20b` works there with
+`--hf-overrides '{"quantization_config": {}}'` to load in bf16.
 
-Three settings in `serve.sh` are not optional, and all three were found by reading a failure:
+Three flags in `serve.sh` are not optional, each found by reading a failure:
 
 * `NEURON_SKIP_EFA_AFFINITY=1` — without it the workers abort with `No EFA device found`. It skips a
-  CPU-placement optimization that assumes networking hardware a single chip does not have.
+  CPU-placement optimization that assumes networking hardware a single chip lacks.
 * `--no-enable-prefix-caching` — prefix caching demands a segmented-prefill size of 512 or more.
-* `--num-gpu-blocks-override` — required, or you get out-of-bounds errors. `serve.sh` computes it from
-  the context length so it stays correct if you change that.
+* `--num-gpu-blocks-override` — required, or you get out-of-bounds errors. `serve.sh` computes it from the
+  context length so it stays correct when you change that.
 
-`--tensor-parallel-size 2` matches the hardware: one chip at LNC=2 is two logical NeuronCores.
+`--tensor-parallel-size 2` matches the hardware: one chip at LNC=2 is two logical NeuronCores. `k8s/` holds
+the same configuration as manifests, which is how this was developed; you do not need them on the instance.
 
-`k8s/` holds the same configuration as Kubernetes manifests, which is how this was developed. You do
-not need them on the instance.
+---
 
-## 2. Which model your project talks to
+# Part 4 — The challenge
 
-**A NeuronCore cannot be shared by two processes.** But a `trn2.3xlarge` has **four** logical cores,
-and the model server only needs two — so the other two are yours. Confirm it with `neuron-top` while
-the server is up:
-
-```
-[-] ND 0                      20.3GB
-      NC 0                     0.0B      <- free
-      NC 1                     0.0B      <- free
-      [+] NC 2                10.0GB     <- vLLM
-      [+] NC 3                10.3GB     <- vLLM
-```
-
-So nothing has to be remote. Three cases, in increasing order of what they need:
-
-| your project needs | where the model comes from | cores it needs |
-|---|---|---|
-| no device at all — the checker runs on CPU | **the local Qwen3-8B** on `localhost:8000` | none |
-| to compile and run kernels on the chip | **the local Qwen3-8B** | pin to the free cores with `NEURON_RT_VISIBLE_CORES=0,1` |
-| the whole chip for serving experiments | **the shared `gpt-oss-20b` endpoint** ([`gptoss/`](gptoss/)), which lives on separate hardware | all four |
-
-**Both sample projects fall in the first row today**, so both run against the model on your own
-instance with nothing else to arrange:
-
-* Project 1's checker is SymPy — pure CPU.
-* Project 2's checker simulates kernels on the **CPU** (`nki.simulate`), which is deliberate: it is
-  seconds per iteration instead of a compile, and it is where an agent should spend its attempts.
-
-Only when you add real on-device timing — layers 2 and 3 of project 2's checker, which are not built
-yet — do you need cores, and then you pin to the two the server is not using. `NEURON_RT_VISIBLE_CORES`
-is the documented mechanism for that; we have not exercised it here, so expect to debug it.
-
-## 2b. When the small model is not enough
-
-Qwen3-8B on your own chip is the right default: it is instant, private to you, and good enough to get
-both projects moving. Measured on it, project 2 solves level 2 and stalls around 0.30–0.62 on the rest.
-
-When you hit that ceiling, **try a bigger model**. `gpt-oss-20b` is 20 billion parameters on separate
-hardware, shared by the room:
-
-```bash
-export KERNEL_AGENT_BASE_URL="«the URL the organisers give you»/agg/v1"
-export KERNEL_AGENT_MODEL=gpt-oss-20b
-python agent.py --all --rounds 6 --samples 1 --context 8192 --terse 1
-```
-
-Three of those flags are not arbitrary, and each is a measured property of that endpoint:
-
-* **`--samples 1`** — sampling there is greedy server-side, so N samples return N *identical* answers
-  and there is nothing to choose between. Spend the budget on rounds instead.
-* **`--context 8192`** — its real limit, double the local server's.
-* **`--terse 1`** — it reasons before answering and a long prompt makes it reason *instead* of
-  answering. Measured, same problem, only the prompt length changed: 1866 characters produced 13,245
-  characters of hidden reasoning and **no answer**; 581 characters produced working code. You cannot fix
-  this with a bigger token budget.
-
-**Compare the two and report both.** Which model solves which level, in how many rounds, is a result —
-and a bigger model being *worse* on some level because it reasons itself into silence is a more
-interesting result than either number alone.
-
-## 3. The challenge
-
-Build an **agent** around a model: it attempts a problem, something **checks** the attempt, and the
-check plus the reason feed the next attempt. Repeat until it solves the problem, or until it can say
-honestly that it could not.
-
-The ingredient that makes or breaks this is the **checker**. A checker that says *"wrong, off by 341
-percent"* is true and useless. A checker that says *"the term sin(pi\*x) should not be there at
-all"* names the change to make. Project 1 records three separate occasions where the fix was not a
-better model but a better error message — that is the lesson of the day.
+Build an **agent** around a model: it attempts a problem, something **checks** the attempt, and the check
+plus the reason feed the next attempt — until it solves the problem, or can say honestly that it could not.
 
 **What to hand in**, whichever project you pick:
 
-1. **Your checker**, and the reasoning behind what it accepts and rejects. This is the artifact we
-   keep.
+1. **Your checker**, and the reasoning behind what it accepts and rejects. This is the artifact we keep.
 2. **Your attempt log** — every attempt with its score, so someone else can see the loop working.
-3. **A one-page note**: what you ran, on what, what came out.
+3. **A one-page note**: what you ran, on what, what came out — including how many runs, and the spread.
 
-**You do not need to be a programmer to matter here.** Deciding what counts as correct, and turning
-a verdict into an instruction, are the hard parts and they are not coding tasks. Teams of 3–5. Teams
-that stack five programmers tend to lose these.
+**You do not need to be a programmer to matter here.** Deciding what counts as correct, and turning a
+verdict into an instruction, are the hard parts and neither is a coding task. Teams of 3–5; the teams that
+stack five programmers tend to lose these.
 
----
-
-## 4. Sample projects
+## Sample projects
 
 | # | project | status |
 |---|---|---|
-| **1** | [**The heat-rod agent**](projects/01-heat-rod-pde/) — a small model solves heat-equation problems under a checker that grades the physics, with a calculator it aims itself. **Worked end to end; the solution is included.** | **solved** |
-| **2** | [**The kernel agent**](projects/02-kernel-agent/) — an agent writes small kernels for linear-algebra operations that run directly on the chip, and keeps verifying its own output as it goes. | runs; **unsolved** |
+| **1** | [**The heat-rod agent**](projects/01-heat-rod-pde/) — a small model solves heat-equation problems under a checker that grades the physics, with a calculator it aims itself. | **solved 6/6** |
+| **2** | [**The kernel agent**](projects/02-kernel-agent/) — an agent writes NKI kernels that run on the chip and keeps verifying its own output. | runs; **unsolved** |
 
-**Both project READMEs open with a real transcript** of what the loop prints when it runs, so you
-can judge whether a project suits you — and tell progress from flailing — before you start anything.
+Both project READMEs open with a real transcript of what the loop prints, so you can judge a project — and
+tell progress from flailing — before starting.
 
-Or **propose your own**. Two requirements: it runs on the hardware we give you, and it produces the
-three deliverables above. Find an Annapurna engineer before 11:30 and we will tell you honestly
-whether it fits in a day.
+Or **propose your own**: it must run on the hardware we give you and produce the three deliverables above.
+Find an Annapurna engineer before 11:30 and we will tell you honestly whether it fits in a day.
 
-Adding a project is a folder under `projects/` with a README and a checker. That is the whole
-pattern.
+Adding a project is a folder under `projects/` with a README and a checker. Adding an *operation* to project
+2 is one NumPy reference, one input builder, and one registration call — level 8 there is the worked example.
 
 ---
 
-## 5. The shared `gpt-oss-20b` endpoint
+# Part 5 — The shared `gpt-oss-20b` endpoint
 
-A 20-billion-parameter open-weight model on Trainium2, behind an OpenAI-compatible API, on hardware
-separate from your instance. Use it when your own chip is busy with your own code, or just to talk to
-a model in the first five minutes.
+A 20-billion-parameter open-weight model on Trainium2, behind an OpenAI-compatible API, on hardware separate
+from your instance. Use it to compare against your local model, or when you want the whole chip for your own
+code.
 
 ```bash
 export GPTOSS_BASE_URL="https://..."     # the organisers will give you this
@@ -247,10 +285,9 @@ pip install httpx
 python gptoss/chat.py
 ```
 
-It is shared by everyone in the room and it behaves in several ways that look like bugs and are not —
-it thinks before it answers, sampling is greedy so retrying is pointless, and the `tools=` parameter
-does nothing. **Read [`gptoss/README.md`](gptoss/README.md) before you build against it.** Every
-number in that document was measured, and it will save you hours.
+It behaves in several ways that look like bugs and are not — it thinks before answering, sampling is greedy
+so retrying is pointless, and the `tools=` parameter does nothing. **Read
+[`gptoss/README.md`](gptoss/README.md) before building against it.** Every number there was measured.
 
 ---
 
@@ -263,5 +300,5 @@ pip install -r requirements.txt
 ## License / use
 
 Sample code, provided as-is for the event, free to reuse.
-[`openai/gpt-oss-20b`](https://huggingface.co/openai/gpt-oss-20b) and
-[`Qwen/Qwen3-8B`](https://huggingface.co/Qwen/Qwen3-8B) are under their own licenses.
+[`Qwen/Qwen3-8B`](https://huggingface.co/Qwen/Qwen3-8B) and
+[`openai/gpt-oss-20b`](https://huggingface.co/openai/gpt-oss-20b) are under their own licenses.

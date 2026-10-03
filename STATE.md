@@ -231,6 +231,7 @@ prompt. Escalating on every empty answer regardless would likely recover those r
 
 ## Still open for the event itself
 
-* Student access instructions — the only `«TODO»` left in `README.md`.
+* Student access instructions — how a team reaches its instance on the day. The README now
+  starts at `neuron-ls`, assuming access already exists, so this lives only here.
 * The repo is **private**; students need it public or need invites.
 * `RUN-OF-DAY.md` and `LOCAL-NOTES.md` are gitignored and hold the judging answers and the endpoint URL.
