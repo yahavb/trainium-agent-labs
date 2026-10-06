@@ -18,85 +18,140 @@ Resuming or picking this up cold? [`STATE.md`](STATE.md) has exactly where thing
 
 ---
 
-# Part 1 — Get a model running on your chip
+# Part 1 — Get onto your chip
 
-Nine steps, in order, verified end to end on a real instance. **Use two terminals**: one for the model, one
-for your work.
+Every participant has a **seat number**, handed out at check-in. Your seat is a pod on our Trainium
+cluster, called `seat-<your number>`. It already has Qwen3-8B running on its own chip and this repo at
+`/workspace`. You reach it from your own laptop. **Your seat is yours. Don't go into anyone else's.**
 
-## Terminal 1 — the model
+Nine steps. Steps 1–5 run on **your laptop**; steps 6–9 run **inside your pod**.
 
-### 1. Confirm you have a chip
+## On your laptop
+
+### 1. Install the AWS CLI and kubectl
+
+**macOS** (with [Homebrew](https://brew.sh)):
+
+```bash
+brew install awscli kubectl
+```
+
+No Homebrew? Use the [AWS CLI installer](https://awscli.amazonaws.com/AWSCLIV2.pkg), then
+`curl -LO "https://dl.k8s.io/release/$(curl -Ls https://dl.k8s.io/release/stable.txt)/bin/darwin/arm64/kubectl" && chmod +x kubectl && sudo mv kubectl /usr/local/bin/`
+(Intel Mac: replace `arm64` with `amd64`).
+
+**Linux** (x86_64):
+
+```bash
+curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip
+unzip -q awscliv2.zip && sudo ./aws/install
+curl -LO "https://dl.k8s.io/release/$(curl -Ls https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+```
+
+**Windows** (PowerShell):
+
+```powershell
+winget install -e --id Amazon.AWSCLI
+winget install -e --id Kubernetes.kubectl
+```
+
+**Then close the terminal and open a new one**, or it will not find the commands. Check both:
+
+```bash
+aws --version
+kubectl version --client
+```
+
+### 2. Paste the workshop credentials
+
+The organisers post a block in the workshop channel with three versions — **macOS / Linux**, **Windows
+Command Prompt** and **Windows PowerShell**. Paste only the one for your terminal, into the terminal you
+will use. They look like:
+
+```bash
+# macOS / Linux
+export AWS_ACCESS_KEY_ID="ASIA..."
+export AWS_SECRET_ACCESS_KEY="..."
+export AWS_SESSION_TOKEN="..."
+```
+
+```bat
+:: Windows Command Prompt (no quotes)
+SET AWS_ACCESS_KEY_ID=ASIA...
+SET AWS_SECRET_ACCESS_KEY=...
+SET AWS_SESSION_TOKEN=...
+```
+
+```powershell
+# Windows PowerShell
+$env:AWS_ACCESS_KEY_ID="ASIA..."
+$env:AWS_SECRET_ACCESS_KEY="..."
+$env:AWS_SESSION_TOKEN="..."
+```
+
+> **These live only in that terminal.** A new terminal, or a new tab, needs them pasted again. They also
+> **expire** — when kubectl suddenly says `ExpiredToken` or asks for credentials, paste the newest block
+> from the channel. Your pod and your work are untouched. Don't commit them, don't post them anywhere else.
+
+### 3. Point kubectl at the cluster
+
+Same command on every system:
+
+```bash
+aws eks update-kubeconfig --name hack-hyd --region ap-south-2
+```
+
+It prints `Added new context ... to ...kube/config`. If it fails with an access or credentials error,
+the credentials from step 2 are missing from this terminal — paste them again.
+
+### 4. Find your pod
+
+Use **your** seat number; 42 here is an example.
+
+```bash
+kubectl get pod seat-42
+```
+
+You want `READY 1/1` and `STATUS Running`. `0/1` means the model is still starting — wait a minute and
+ask again. Anything else (`Pending`, `CrashLoopBackOff`, `Error`), find an organiser; they will move you to
+a spare seat. `kubectl logs seat-42` shows the model's log.
+
+### 5. Get a shell inside it
+
+```bash
+kubectl exec -it seat-42 -- bash
+```
+
+> **Wait for the new prompt (`root@seat-42:/workspace#`) before typing anything else.** Anything typed
+> before it appears goes to your laptop's shell. Want a second terminal? Open one, paste the credentials
+> again (step 2), and run the same `kubectl exec` — both land in the same pod.
+
+## Inside your pod
+
+### 6. Confirm the chip and the model
 
 ```bash
 neuron-ls
-```
-
-Expect one `NEURON DEVICE` with 4 cores and 96 GB. If not, stop and find an organiser.
-
-### 2. Clone the repo
-
-```bash
-cd ~ && git clone https://github.com/yahavb/trainium-agent-labs.git
-cd trainium-agent-labs
-```
-
-### 3. Check Docker, install only if missing
-
-```bash
-docker --version || ./install-docker.sh
-```
-
-If it installs, it may tell you to run `newgrp docker` before continuing.
-
-### 4. Start the model
-
-```bash
-MAX_MODEL_LEN=8192 ./serve.sh
-```
-
-Serves **Qwen3-8B** on your chip behind an OpenAI-compatible API on port 8000, and waits until it answers.
-**First run takes about 5 minutes** — pulls a container image, downloads ~16 GB of weights, then compiles.
-It prints `still starting, N minutes elapsed`, then `READY`. Later starts reuse the cache.
-
-### 5. Confirm it is really answering
-
-```bash
 curl -s localhost:8000/v1/models
 ```
 
-You want `"id":"Qwen/Qwen3-8B"`. **`READY` and "is answering" are not the same claim** — check it. Then leave
-this terminal alone.
+Expect a `NEURON DEVICE`, and `"id":"Qwen/Qwen3-8B"`. If `curl` fails, the model is not ready; it is not
+your fault and it is not a reason to restart anything. Find an organiser.
 
-```bash
-./serve.sh --logs     # follow the model's log
-./serve.sh --stop     # stop and remove it
-```
-
-## Terminal 2 — your work
-
-### 6. Get a shell inside the container
-
-The model is on `localhost` in there, and this repo is mounted at `/workspace`.
-
-```bash
-docker exec -it vllm bash
-```
-
-> **Wait for the new prompt before typing anything else.** It takes a second or two, and anything typed in
-> the meantime goes to the host shell and is lost. This caught us three times.
-
-### 7. Two lines of setup, inside the container
+### 7. One line of setup
 
 ```bash
 git config --global --add safe.directory /workspace
-cd /workspace/projects/01-heat-rod-pde
 ```
 
-The first is needed before **any** git command in here: the mount is owned by `ubuntu` and you are `root`.
+Needed before **any** git command in here. Your work lives in `/workspace` for as long as the pod does —
+**if the pod is replaced, it is gone**, so push anything you want to keep to your own git repo.
 
 ### 8. Run project 1 — the heat-rod agent
 
 ```bash
+cd /workspace/projects/01-heat-rod-pde
 export HEATROD_BASE_URL=http://localhost:8000/v1
 
 python level0_heatrod.py --selftest     # prove the checker BEFORE trusting a score
@@ -121,8 +176,12 @@ python agent.py --all --rounds 8 --samples 4 --context 8192 --repeat 5
 **This project is unsolved — that is the point.** A real open problem, not an exercise with a hidden answer.
 Write-up: [`projects/02-kernel-agent/`](projects/02-kernel-agent/).
 
-> **A restarted container is a fresh shell, so the exports are gone.** Re-run them after any restart, or the
-> agent stops with `KERNEL_AGENT_BASE_URL is empty or unset`.
+> The pod sets these `export`s for you, so they are already in every shell. They are shown so you know
+> what the agents read, and so you can point them at a different model.
+
+**Organisers:** setting up the cluster, sharing the credentials and assigning seats is in
+[`workshop/FACILITATOR.md`](workshop/FACILITATOR.md). **On your own `trn2` instance instead**, without the
+cluster: `MAX_MODEL_LEN=8192 ./serve.sh`, then `docker exec -it vllm bash` — see [`STATE.md`](STATE.md).
 
 ---
 

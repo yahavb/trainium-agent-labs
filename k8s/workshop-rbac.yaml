@@ -1,0 +1,65 @@
+# What the shared EKSExec credentials may do in the cluster: list pods, and exec into or read the
+# logs of seat-1 ... seat-105 only. Nothing else — no delete, no create, no other pods.
+# EKSExec is mapped to the group workshop-participants by an EKS access entry (see workshop/FACILITATOR.md).
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: workshop-participant
+  namespace: default
+rules:
+  # Listing cannot be restricted by name, so participants can see every pod in default.
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+    resourceNames: [
+      "seat-1", "seat-2", "seat-3", "seat-4", "seat-5", "seat-6", "seat-7", "seat-8", "seat-9", 
+      "seat-10", "seat-11", "seat-12", "seat-13", "seat-14", "seat-15", "seat-16", "seat-17", 
+      "seat-18", "seat-19", "seat-20", "seat-21", "seat-22", "seat-23", "seat-24", "seat-25", 
+      "seat-26", "seat-27", "seat-28", "seat-29", "seat-30", "seat-31", "seat-32", "seat-33", 
+      "seat-34", "seat-35", "seat-36", "seat-37", "seat-38", "seat-39", "seat-40", "seat-41", 
+      "seat-42", "seat-43", "seat-44", "seat-45", "seat-46", "seat-47", "seat-48", "seat-49", 
+      "seat-50", "seat-51", "seat-52", "seat-53", "seat-54", "seat-55", "seat-56", "seat-57", 
+      "seat-58", "seat-59", "seat-60", "seat-61", "seat-62", "seat-63", "seat-64", "seat-65", 
+      "seat-66", "seat-67", "seat-68", "seat-69", "seat-70", "seat-71", "seat-72", "seat-73", 
+      "seat-74", "seat-75", "seat-76", "seat-77", "seat-78", "seat-79", "seat-80", "seat-81", 
+      "seat-82", "seat-83", "seat-84", "seat-85", "seat-86", "seat-87", "seat-88", "seat-89", 
+      "seat-90", "seat-91", "seat-92", "seat-93", "seat-94", "seat-95", "seat-96", "seat-97", 
+      "seat-98", "seat-99", "seat-100", "seat-101", "seat-102", "seat-103", "seat-104", "seat-105"
+    ]
+  # get as well as create: kubectl 1.30+ execs over WebSocket, which some servers authorize as get.
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create", "get"]
+    resourceNames: [
+      "seat-1", "seat-2", "seat-3", "seat-4", "seat-5", "seat-6", "seat-7", "seat-8", "seat-9", 
+      "seat-10", "seat-11", "seat-12", "seat-13", "seat-14", "seat-15", "seat-16", "seat-17", 
+      "seat-18", "seat-19", "seat-20", "seat-21", "seat-22", "seat-23", "seat-24", "seat-25", 
+      "seat-26", "seat-27", "seat-28", "seat-29", "seat-30", "seat-31", "seat-32", "seat-33", 
+      "seat-34", "seat-35", "seat-36", "seat-37", "seat-38", "seat-39", "seat-40", "seat-41", 
+      "seat-42", "seat-43", "seat-44", "seat-45", "seat-46", "seat-47", "seat-48", "seat-49", 
+      "seat-50", "seat-51", "seat-52", "seat-53", "seat-54", "seat-55", "seat-56", "seat-57", 
+      "seat-58", "seat-59", "seat-60", "seat-61", "seat-62", "seat-63", "seat-64", "seat-65", 
+      "seat-66", "seat-67", "seat-68", "seat-69", "seat-70", "seat-71", "seat-72", "seat-73", 
+      "seat-74", "seat-75", "seat-76", "seat-77", "seat-78", "seat-79", "seat-80", "seat-81", 
+      "seat-82", "seat-83", "seat-84", "seat-85", "seat-86", "seat-87", "seat-88", "seat-89", 
+      "seat-90", "seat-91", "seat-92", "seat-93", "seat-94", "seat-95", "seat-96", "seat-97", 
+      "seat-98", "seat-99", "seat-100", "seat-101", "seat-102", "seat-103", "seat-104", "seat-105"
+    ]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: workshop-participant
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: workshop-participant
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: workshop-participants

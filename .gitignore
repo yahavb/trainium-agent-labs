@@ -36,3 +36,6 @@ kernel-agent-code
 secret
 attempts.jsonl
 projects/*/attempts.jsonl
+
+# minted participant credentials (mint-creds.sh writes outside the repo; this is a backstop)
+*creds*.txt
