@@ -87,6 +87,10 @@ spec:
               value: http://localhost:8000/v1
             - name: HEATROD_MODEL
               value: gpt-oss-20b
+            # gpt-oss spends its budget reasoning first: at 3000 it left level 1.3 with no answer,
+            # at 6000 it solved it on round 0.
+            - name: HEATROD_MAX_TOKENS
+              value: "6000"
             - name: KERNEL_AGENT_MODEL
               value: gpt-oss-20b
             # Read by ./serve.sh: gpt-oss-20b instead of Qwen3-8B. Two chips at LNC=2 are 8 logical
