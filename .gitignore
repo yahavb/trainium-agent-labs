@@ -39,3 +39,6 @@ projects/*/attempts.jsonl
 
 # minted participant credentials (mint-creds.sh writes outside the repo; this is a backstop)
 *creds*.txt
+
+# agent runs started with nohup ... > run.log (README pattern for surviving a dropped kubectl exec)
+run*.log

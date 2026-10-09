@@ -161,10 +161,24 @@ cd /workspace/projects/01-heat-rod-pde
 
 python level0_heatrod.py --selftest     # prove the checker BEFORE trusting a score
 python agent.py --level 0 --all         # warm-up: solved on round 0
-python agent.py --level 1 --all         # the real one
+
+nohup python agent.py --level 1 --all > run.log 2>&1 < /dev/null &    # the real one
+tail -f run.log                         # Ctrl+C stops watching; the run keeps going
 ```
 
-`sympy` and `numpy` are already in the container. **This project is solved, 6 of 6.** Write-up:
+> **Long runs survive a dropped connection only if you start them like this.** A `kubectl exec` session
+> can drop (Wi-Fi, laptop sleep, `connection reset by peer`), and anything running in the foreground of
+> that shell dies with it. So start the run in the background, writing to a log, and watch the log:
+>
+> ```bash
+> nohup python agent.py ARGS > run.log 2>&1 < /dev/null &
+> tail -f run.log        # Ctrl+C stops watching; the run keeps going
+> ```
+>
+> Disconnected? Reconnect with `kubectl exec -it seat-42 -- bash` and pick up where you were with
+> `tail -f /workspace/projects/01-heat-rod-pde/run.log`. `pgrep -af agent.py` shows whether it is still running.
+
+`sympy` and `numpy` are already in the pod. **This project is solved, 6 of 6.** Write-up:
 [`projects/01-heat-rod-pde/`](projects/01-heat-rod-pde/).
 
 ### 9. Run project 2 — the kernel agent
@@ -173,7 +187,9 @@ python agent.py --level 1 --all         # the real one
 cd /workspace/projects/02-kernel-agent
 
 python nkibench.py --selftest
-python agent.py --all --rounds 8 --samples 4 --context 8192 --repeat 5
+
+nohup python agent.py --all --rounds 8 --samples 4 --context 8192 --repeat 5 > run.log 2>&1 < /dev/null &
+tail -f run.log                         # reconnect: tail -f /workspace/projects/02-kernel-agent/run.log
 ```
 
 **This project is unsolved — that is the point.** A real open problem, not an exercise with a hidden answer.

@@ -83,9 +83,28 @@ cd /workspace/projects/01-heat-rod-pde
 python level0_heatrod.py --selftest             # prove the checker before trusting a score
 python level1_heatrod.py --selftest
 python agent.py --level 0 --all                 # the warm-up
-python agent.py --level 1 --all                 # the real one
-python agent.py --level 1 --sub 3 --no-tools    # the controlled comparison
 ```
+
+The real runs take minutes each, so start them in the background and watch the log:
+
+```bash
+nohup python agent.py --level 1 --all > run.log 2>&1 < /dev/null &             # the real one
+tail -f run.log
+nohup python agent.py --level 1 --sub 3 --no-tools > run-notools.log 2>&1 < /dev/null &   # the controlled comparison
+tail -f run-notools.log
+```
+
+> **Long runs survive a dropped connection only if you start them like this.** A `kubectl exec` session
+> can drop (Wi-Fi, laptop sleep, `connection reset by peer`), and anything running in the foreground of
+> that shell dies with it. So start the run in the background, writing to a log, and watch the log:
+>
+> ```bash
+> nohup python agent.py ARGS > run.log 2>&1 < /dev/null &
+> tail -f run.log        # Ctrl+C stops watching; the run keeps going
+> ```
+>
+> Disconnected? Reconnect with `kubectl exec -it seat-42 -- bash` and pick up where you were with
+> `tail -f /workspace/projects/01-heat-rod-pde/run.log`. `pgrep -af agent.py` shows whether it is still running.
 
 The pod already sets `HEATROD_BASE_URL=http://localhost:8000/v1` and the model name, so there is
 nothing to export.

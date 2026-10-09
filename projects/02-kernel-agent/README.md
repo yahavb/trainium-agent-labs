@@ -56,8 +56,24 @@ cd /workspace/projects/02-kernel-agent
 
 python nkibench.py --selftest                       # prove the harness first
 python nkibench.py --level 4 --check reference_level4.py
-python agent.py --all --rounds 6 --samples 2 --context 4096
+
+nohup python agent.py --all --rounds 6 --samples 2 --context 4096 > run.log 2>&1 < /dev/null &
+tail -f run.log
 ```
+
+> **Long runs survive a dropped connection only if you start them like this.** A `kubectl exec` session
+> can drop (Wi-Fi, laptop sleep, `connection reset by peer`), and anything running in the foreground of
+> that shell dies with it. So start the run in the background, writing to a log, and watch the log:
+>
+> ```bash
+> nohup python agent.py ARGS > run.log 2>&1 < /dev/null &
+> tail -f run.log        # Ctrl+C stops watching; the run keeps going
+> ```
+>
+> Disconnected? Reconnect with `kubectl exec -it seat-42 -- bash` and pick up where you were with
+> `tail -f /workspace/projects/02-kernel-agent/run.log`. `pgrep -af agent.py` shows whether it is still running.
+
+Every `python agent.py ...` run further down this page is long too — start each the same way.
 
 The pod already sets `KERNEL_AGENT_BASE_URL` and `KERNEL_AGENT_MODEL`, so there is nothing to export.
 `--context 4096` fits inside what the server was started with (8192 in the seat pods); the agent caps its
