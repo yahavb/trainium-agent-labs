@@ -48,24 +48,37 @@ last step of the loop with a trainer and the model improves instead of just retr
 
 ## Run it
 
-Start the model first, from the repo root — see step 4 of the [top-level README](../../README.md):
+Your seat is a pod, `seat-<your number>` (or `mseat-<your number>`), and you work inside it — there is
+no container to enter. Seat 42 is the example; use your own number.
+
+**Terminal 1 — start the model.** Get a shell in your pod and **wait for the prompt**
+(`root@seat-42:/workspace#`) before typing:
 
 ```bash
+kubectl exec -it seat-42 -- bash
+```
+
+The repo is at `/workspace`, and `serve.sh` is at its top:
+
+```bash
+cd /workspace
 ./serve.sh
 ```
 
-Then, in a second terminal, get a shell inside that container and **wait for the prompt** before
-typing:
+It prints `READY` when the model answers on `http://localhost:8000` — about 4 minutes the first time.
+Leave this terminal open.
+
+**Terminal 2 — run the agent.** Open a second terminal, paste the credentials again, and get a second
+shell in **the same pod**:
 
 ```bash
-docker exec -it vllm bash
+kubectl exec -it seat-42 -- bash
 ```
 
-Now, inside the container:
+Then:
 
 ```bash
 cd /workspace/projects/01-heat-rod-pde
-export HEATROD_BASE_URL=http://localhost:8000/v1
 
 python level0_heatrod.py --selftest             # prove the checker before trusting a score
 python level1_heatrod.py --selftest
@@ -74,7 +87,10 @@ python agent.py --level 1 --all                 # the real one
 python agent.py --level 1 --sub 3 --no-tools    # the controlled comparison
 ```
 
-`sympy` and `numpy` are already in the container.
+The pod already sets `HEATROD_BASE_URL=http://localhost:8000/v1` and the model name, so there is
+nothing to export.
+
+`sympy` and `numpy` are already in the pod.
 
 ### Without a model at all
 
@@ -87,7 +103,7 @@ python agent.py --offline --level 1 --all
 ```
 
 There is also a Kubernetes job in [`../../k8s/heatrod-agent.yaml`](../../k8s/heatrod-agent.yaml),
-which is how this was developed. You do not need it on the instance.
+which is how this was developed. You do not need it in your pod.
 
 ## What it looks like when you run it
 

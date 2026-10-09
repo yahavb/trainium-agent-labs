@@ -606,8 +606,8 @@ def main():
             sys.exit("KERNEL_AGENT_BASE_URL is empty or unset. Point it at a model:\n"
                      "  export KERNEL_AGENT_BASE_URL=http://localhost:8000/v1\n"
                      "  export KERNEL_AGENT_MODEL=Qwen/Qwen3-8B\n"
-                     "That is the server ./serve.sh started. Note a fresh container shell loses these, "
-                     "so re-export them after any restart. Or pass --offline to run with no model.\n"
+                     "That is the server ./serve.sh started. The seat pods set these for you; if they are "
+                     "missing, you are not in a seat pod. Or pass --offline to run with no model.\n"
                      "(Separately: the shared gpt-oss endpoint is reached by setting "
                      "GPTOSS_BASE_URL and passing --path /agg/v1 -- not needed for the local run.)")
         from urllib.parse import urlparse

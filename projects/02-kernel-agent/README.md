@@ -43,54 +43,33 @@ the model, NC 0 and NC 1 are idle.
 
 **Layer 1 of this harness needs no cores at all.** It checks kernels with `nki.simulate`, on the CPU, in
 seconds — which is the point, because that is where an agent should spend its hundreds of attempts
-rather than waiting on compiles. So the agent runs against **the Qwen3-8B already serving on your own
-instance**, and nothing has to be remote.
+rather than waiting on compiles. So the agent runs against **the model `./serve.sh` started in your own
+pod**, and nothing has to be remote.
+
+Start the model in one terminal (`kubectl exec -it seat-42 -- bash`, then `cd /workspace && ./serve.sh`,
+wait for `READY`), then open a second `kubectl exec -it seat-42 -- bash` into the same pod — use your own
+seat number — and run:
 
 ```bash
-docker exec -it vllm bash          # wait for the prompt
 git config --global --add safe.directory /workspace    # needed before any git command here
 cd /workspace/projects/02-kernel-agent
-export KERNEL_AGENT_BASE_URL=http://localhost:8000/v1
-export KERNEL_AGENT_MODEL=Qwen/Qwen3-8B
 
 python nkibench.py --selftest                       # prove the harness first
 python nkibench.py --level 4 --check reference_level4.py
 python agent.py --all --rounds 6 --samples 2 --context 4096
 ```
 
-`--context 4096` matches what the server was started with; the agent caps its answer budget to fit.
+The pod already sets `KERNEL_AGENT_BASE_URL` and `KERNEL_AGENT_MODEL`, so there is nothing to export.
+`--context 4096` fits inside what the server was started with (8192 in the seat pods); the agent caps its
+answer budget to fit.
 
 ### Getting more out of the local model
 
-The defaults are conservative. Four levers, in the order they are worth pulling. **Mind which shell each
-command belongs in** — `serve.sh` controls the container, so it only runs on the instance, never inside
-it. Type `exit` if your prompt looks like `root@<hex>`.
+The defaults are conservative. Four levers, in the order they are worth pulling.
 
-**1. Raise the context to 8192.** On the instance:
-
-```bash
-cd ~/trainium-agent-labs
-./serve.sh --stop
-MAX_MODEL_LEN=8192 ./serve.sh
-```
-
-The weights are already cached, so this is just a recompile — a few minutes. Why it matters: a repair
-prompt carries the previous kernel, the checker's instruction and the ledger of failed attempts, and at
-4096 all of that squeezes the room left for an answer. `serve.sh` recomputes
-`--num-gpu-blocks-override` for you.
-
-Stopping the container closes your container shell, so reopen it afterwards:
-
-```bash
-docker exec -it vllm bash          # wait for the prompt before typing
-git config --global --add safe.directory /workspace
-cd /workspace/projects/02-kernel-agent
-export KERNEL_AGENT_BASE_URL=http://localhost:8000/v1
-export KERNEL_AGENT_MODEL=Qwen/Qwen3-8B
-```
-
-> **A restarted container is a fresh shell, so the exports are gone.** Re-run those two `export` lines
-> every time you reopen it, or the agent stops with "KERNEL_AGENT_BASE_URL is empty or unset".
+**1. Use the full context.** The seat pods start the server at 8192, so pass `--context 8192` to the
+agent. Why it matters: a repair prompt carries the previous kernel, the checker's instruction and the
+ledger of failed attempts, and at 4096 all of that squeezes the room left for an answer.
 
 **2. Use four samples instead of two.** The server runs four sequences at once, so this doubles the
 attempts per round at almost no extra wall-clock. Worth doing here and *not* on the shared gpt-oss

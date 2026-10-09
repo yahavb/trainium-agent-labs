@@ -21,8 +21,8 @@ Resuming or picking this up cold? [`STATE.md`](STATE.md) has exactly where thing
 # Part 1 — Get onto your chip
 
 Every participant has a **seat number**, handed out at check-in. Your seat is a pod on our Trainium
-cluster, called `seat-<your number>`. It already has Qwen3-8B running on its own chip and this repo at
-`/workspace`. You reach it from your own laptop. **Your seat is yours. Don't go into anyone else's.**
+cluster, called `seat-<your number>`. It has its own Trainium chip and this repo at `/workspace`; you
+start the model in it yourself, in step 6. You reach it from your own laptop. **Your seat is yours. Don't go into anyone else's.**
 
 Nine steps. Steps 1–5 run on **your laptop**; steps 6–9 run **inside your pod**.
 
@@ -113,9 +113,9 @@ Use **your** seat number; 42 here is an example.
 kubectl get pod seat-42
 ```
 
-You want `READY 1/1` and `STATUS Running`. `0/1` means the model is still starting — wait a minute and
+You want `READY 1/1` and `STATUS Running`. `Init` or `0/1` means it is still starting — wait a minute and
 ask again. Anything else (`Pending`, `CrashLoopBackOff`, `Error`), find an organiser; they will move you to
-a spare seat. `kubectl logs seat-42` shows the model's log.
+a spare seat.
 
 ### 5. Get a shell inside it
 
@@ -129,15 +129,21 @@ kubectl exec -it seat-42 -- bash
 
 ## Inside your pod
 
-### 6. Confirm the chip and the model
+### 6. Start the model
 
 ```bash
 neuron-ls
-curl -s localhost:8000/v1/models
+cd /workspace
+./serve.sh
 ```
 
-Expect a `NEURON DEVICE`, and `"id":"Qwen/Qwen3-8B"`. If `curl` fails, the model is not ready; it is not
-your fault and it is not a reason to restart anything. Find an organiser.
+Expect a `NEURON DEVICE` from `neuron-ls`. `serve.sh` then starts the model on your chip and prints
+`READY` when it answers on `http://localhost:8000` — about 4 minutes the first time. If it stops with an
+error instead, find an organiser.
+
+**Leave this terminal open.** Open a **second terminal**, paste the credentials again (step 2), and get a
+second shell in the same pod — `kubectl exec -it seat-42 -- bash`. Steps 7–9 run in that second one.
+`./serve.sh --logs` (in `/workspace`) shows the model's log.
 
 ### 7. One line of setup
 
@@ -152,7 +158,6 @@ Needed before **any** git command in here. Your work lives in `/workspace` for a
 
 ```bash
 cd /workspace/projects/01-heat-rod-pde
-export HEATROD_BASE_URL=http://localhost:8000/v1
 
 python level0_heatrod.py --selftest     # prove the checker BEFORE trusting a score
 python agent.py --level 0 --all         # warm-up: solved on round 0
@@ -166,8 +171,6 @@ python agent.py --level 1 --all         # the real one
 
 ```bash
 cd /workspace/projects/02-kernel-agent
-export KERNEL_AGENT_BASE_URL=http://localhost:8000/v1
-export KERNEL_AGENT_MODEL=Qwen/Qwen3-8B
 
 python nkibench.py --selftest
 python agent.py --all --rounds 8 --samples 4 --context 8192 --repeat 5
@@ -176,12 +179,13 @@ python agent.py --all --rounds 8 --samples 4 --context 8192 --repeat 5
 **This project is unsolved — that is the point.** A real open problem, not an exercise with a hidden answer.
 Write-up: [`projects/02-kernel-agent/`](projects/02-kernel-agent/).
 
-> The pod sets these `export`s for you, so they are already in every shell. They are shown so you know
-> what the agents read, and so you can point them at a different model.
+> The pod sets `HEATROD_BASE_URL`, `KERNEL_AGENT_BASE_URL` and the model names for you, in every shell —
+> `env | grep -E 'HEATROD|KERNEL_AGENT'` shows them. Don't re-export them: `mseat` pods serve a different
+> model, and the pod's values are already right.
 
 **Organisers:** setting up the cluster, sharing the credentials and assigning seats is in
-[`workshop/FACILITATOR.md`](workshop/FACILITATOR.md). **On your own `trn2` instance instead**, without the
-cluster: `MAX_MODEL_LEN=8192 ./serve.sh`, then `docker exec -it vllm bash` — see [`STATE.md`](STATE.md).
+[`workshop/FACILITATOR.md`](workshop/FACILITATOR.md). `serve.sh` runs inside a seat pod; it no longer starts a docker
+container, so the standalone-instance notes in [`STATE.md`](STATE.md) are history.
 
 ---
 
