@@ -1,45 +1,45 @@
-# One pod per participant seat: seat-1 ... seat-N, all in the default namespace.
-# Each pod holds one chip (s-lnc2) and has this repo cloned at /workspace. The participant runs
-# ./serve.sh in one `kubectl exec -it seat-N -- bash`, and the projects in a second one.
+# Alternative seats for a small turnout: mseat-1 ... mseat-N, two chips each (m-lnc2), serving
+# gpt-oss-20b instead of Qwen3-8B. Same flow as k8s/workshop-seats.yaml: ./serve.sh in one
+# `kubectl exec -it mseat-N -- bash`, the projects in a second one.
 #
-# 105 seats: 100 participants plus 5 spares. Changing the count? Update k8s/workshop-rbac.yaml too.
+# 1 seat for now, to test the gpt-oss path. Changing the count? Update k8s/workshop-rbac.yaml too.
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: seat
+  name: mseat
   namespace: default
 spec:
   clusterIP: None
   selector:
-    app: seat
+    app: mseat
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: seat
+  name: mseat
   namespace: default
 spec:
-  serviceName: seat
-  replicas: 105
+  serviceName: mseat
+  replicas: 1
   # Seat numbers start at 1, so the pod name matches the number on the participant's card.
   ordinals:
     start: 1
-  # Without this, 100 pods start one at a time, each waiting ~5 minutes for the model.
+  # Without this, pods start one at a time.
   podManagementPolicy: Parallel
   selector:
     matchLabels:
-      app: seat
+      app: mseat
   template:
     metadata:
       labels:
-        app: seat
+        app: mseat
     spec:
       nodeSelector:
         node-type: trn2
       resourceClaims:
         - name: neurons
-          resourceClaimTemplateName: s-lnc2
+          resourceClaimTemplateName: m-lnc2
       initContainers:
         - name: clone
           image: alpine/git:latest
@@ -58,11 +58,11 @@ spec:
             claims:
               - name: neurons
             requests:
-              cpu: 10
-              memory: 100Gi
+              cpu: 20
+              memory: 200Gi
             limits:
-              cpu: 10
-              memory: 100Gi
+              cpu: 20
+              memory: 200Gi
           volumeMounts:
             - name: dshm
               mountPath: /dev/shm
@@ -81,11 +81,21 @@ spec:
               value: http://localhost:8000/v1
             - name: KERNEL_AGENT_BASE_URL
               value: http://localhost:8000/v1
+            - name: HEATROD_MODEL
+              value: gpt-oss-20b
             - name: KERNEL_AGENT_MODEL
-              value: Qwen/Qwen3-8B
-            # Read by ./serve.sh. Blocks = ceil(8192 / 32) * 4.
+              value: gpt-oss-20b
+            # Read by ./serve.sh: gpt-oss-20b instead of Qwen3-8B. Two chips at LNC=2 are 8 logical
+            # cores; TP 4 is the per-replica degree measured on KEEP-ray. Untested in this image.
+            - name: MODEL
+              value: openai/gpt-oss-20b
+            - name: TP
+              value: "4"
             - name: MAX_MODEL_LEN
               value: "8192"
+            # Load in bf16, and serve under the name the agents and gptoss/ clients use.
+            - name: VLLM_EXTRA_ARGS
+              value: '--served-model-name gpt-oss-20b --hf-overrides {"quantization_config":{}}'
           # The pod only holds the chip. The participant starts the model with ./serve.sh from a
           # first `kubectl exec`, then runs the projects from a second one against localhost:8000.
           command: ["sleep", "infinity"]
@@ -97,7 +107,7 @@ spec:
         # Survives container restarts, not pod deletion. Participants' work lives here.
         - name: workspace
           emptyDir: {}
-        # Shared per node, so 16 pods on one trn2.48xlarge download the 16 GB of weights once.
+        # Shared per node with the seat pods, so each model downloads once per node.
         - name: hf-cache
           hostPath:
             path: /opt/workshop/hf-cache
