@@ -21,7 +21,7 @@ metadata:
   namespace: default
 spec:
   serviceName: seat
-  replicas: 105
+  replicas: 10
   # Seat numbers start at 1, so the pod name matches the number on the participant's card.
   ordinals:
     start: 1
@@ -57,12 +57,16 @@ spec:
           resources:
             claims:
               - name: neurons
+            # About 1/16 of a trn2.48xlarge (192 vCPU, 2 TiB RAM, 2000 GiB root disk), rounded down
+            # so 16 seats still fit after kubelet reservations, the DaemonSets, images and hf-cache.
             requests:
-              cpu: 10
-              memory: 100Gi
+              cpu: 11
+              memory: 120Gi
+              ephemeral-storage: 100Gi
             limits:
-              cpu: 10
-              memory: 100Gi
+              cpu: 11
+              memory: 120Gi
+              ephemeral-storage: 100Gi
           volumeMounts:
             - name: dshm
               mountPath: /dev/shm

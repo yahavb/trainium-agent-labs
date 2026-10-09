@@ -57,12 +57,16 @@ spec:
           resources:
             claims:
               - name: neurons
+            # About 1/8 of a trn2.48xlarge (192 vCPU, 2 TiB RAM, 2000 GiB root disk), rounded down
+            # so 8 seats still fit after kubelet reservations, the DaemonSets, images and hf-cache.
             requests:
-              cpu: 20
-              memory: 200Gi
+              cpu: 22
+              memory: 240Gi
+              ephemeral-storage: 200Gi
             limits:
-              cpu: 20
-              memory: 200Gi
+              cpu: 22
+              memory: 240Gi
+              ephemeral-storage: 200Gi
           volumeMounts:
             - name: dshm
               mountPath: /dev/shm
