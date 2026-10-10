@@ -4,7 +4,7 @@ Divergence is measured from **v8.2**. Cell: solved/runs · round of the first 1.
 
 | config | L1 | L2 | L3 | L4 |
 |---|---|---|---|---|
-| v8.2 | **4/4** · first 1.0 r2,2,4,0 · min 8.8 10.1 8.7 1.4 · trunc 7 · traj 4 · V4 · div - | **3/6** · first 1.0 r-,4,-,2,1,- · min 8.7 4.7 10.1 2.8 1.7 7.9 · trunc 1 · traj 6 · NS3 V3 · div - | **1/1** · first 1.0 r0 · min 1.0 · trunc 0 · traj 1 · V1 · div - | **2/2** · first 1.0 r2,2 · min 9.5 11.7 · trunc 0 · traj 1 · V2 · div - |
+| v8.2 | **4/4** · first 1.0 r2,2,4,0 · min 8.8 10.1 8.7 1.4 · trunc 7 · traj 4 · V4 · div - | **5/9** · first 1.0 r-,4,-,3,-,2,1,-,1 · min 8.7 4.7 10.1 4.2 7.9 2.8 1.7 7.9 1.9 · trunc 1 · traj 9 · V5 NS4 · div - | **1/1** · first 1.0 r0 · min 1.0 · trunc 0 · traj 1 · V1 · div - | **2/2** · first 1.0 r2,2 · min 9.5 11.7 · trunc 0 · traj 1 · V2 · div - |
 | v7 | **0/2** · first 1.0 r-,- · min 28.9 2.0 · trunc 12 · traj 2 · NS1 · div r0 | **0/4** · first 1.0 r-,-,-,- · min 10.1 8.4 6.7 5.5 · trunc 0 · traj 4 · NS3 · div r0 | **5/5** · first 1.0 r0,0,0,0,0 · min 0.9 1.0 0.9 1.0 0.9 · trunc 0 · traj 3 · V5 · div r0 | **5/5** · first 1.0 r2,2,2,2,2 · min 3.4 3.3 3.3 3.3 3.3 · trunc 0 · traj 1 · V5 · div r0 |
 | baseline | **0/10** · first 1.0 r-,-,-,-,-,-,-,-,-,- · min n/a n/a n/a n/a n/a n/a n/a n/a n/a n/a · trunc 0 · traj 1 · - · div r0 | **5/10** · first 1.0 r0,-,0,-,0,0,-,-,0,- · min n/a n/a n/a n/a n/a n/a n/a n/a n/a n/a · trunc 0 · traj 9 · - · div r0 | **0/10** · first 1.0 r-,-,-,-,-,-,-,-,-,- · min n/a n/a n/a n/a n/a n/a n/a n/a n/a n/a · trunc 0 · traj 10 · - · div r0 | **0/10** · first 1.0 r-,-,-,-,-,-,-,-,-,- · min n/a n/a n/a n/a n/a n/a n/a n/a n/a n/a · trunc 0 · traj 10 · - · div r0 |
 
@@ -20,31 +20,37 @@ Divergence is measured from **v8.2**. Cell: solved/runs · round of the first 1.
 - v8.2 attempts: `../trainium-agent-labs/runs/seat-117/v82/v82_L1b_s117.jsonl`
 - v8.2 attempts: `../trainium-agent-labs/runs/seat-118/v82/v82_L1b_s118.jsonl`
 - v8.2 attempts: `../trainium-agent-labs/runs/seat-116/v82/v82_L2_s116.jsonl`
+- v8.2 attempts: `../trainium-agent-labs/runs/seat-118/v82_L2/v82_L2_s118.jsonl`
 - v8.2 attempts: `../trainium-agent-labs/runs/seat-119/v82/v82_L2_s119.jsonl`
 - v8.2 attempts: `../trainium-agent-labs/runs/seat-116/v82/v82_L3_s116.jsonl`
 - v8.2 attempts: `../trainium-agent-labs/runs/seat-119/v82/v82_L4_s119.jsonl`
 - v8.2 attempts: `../trainium-agent-labs/runs/seat-119/v82/v82_L4b_s119.jsonl`
 - v8.2 attempts: `../trainium-agent-labs/runs/seat-117/v82x_partial/v82x_L2_s117.jsonl`
+- v8.2 attempts: `../trainium-agent-labs/runs/seat-118/v82_L2/v82x_L2_s118.jsonl`
 - v8.2 verdicts: `../trainium-agent-labs/runs/seat-117/v82/v82_L1_s117_verdicts.jsonl`
 - v8.2 verdicts: `../trainium-agent-labs/runs/seat-118/v82/v82_L1_s118_verdicts.jsonl`
 - v8.2 verdicts: `../trainium-agent-labs/runs/seat-117/v82/v82_L1b_s117_verdicts.jsonl`
 - v8.2 verdicts: `../trainium-agent-labs/runs/seat-118/v82/v82_L1b_s118_verdicts.jsonl`
 - v8.2 verdicts: `../trainium-agent-labs/runs/seat-116/v82/v82_L2_s116_verdicts.jsonl`
+- v8.2 verdicts: `../trainium-agent-labs/runs/seat-118/v82_L2/v82_L2_s118_verdicts.jsonl`
 - v8.2 verdicts: `../trainium-agent-labs/runs/seat-119/v82/v82_L2_s119_verdicts.jsonl`
 - v8.2 verdicts: `../trainium-agent-labs/runs/seat-116/v82/v82_L3_s116_verdicts.jsonl`
 - v8.2 verdicts: `../trainium-agent-labs/runs/seat-119/v82/v82_L4_s119_verdicts.jsonl`
 - v8.2 verdicts: `../trainium-agent-labs/runs/seat-119/v82/v82_L4b_s119_verdicts.jsonl`
 - v8.2 verdicts: `../trainium-agent-labs/runs/seat-117/v82x_partial/v82x_L2_s117_verdicts.jsonl`
+- v8.2 verdicts: `../trainium-agent-labs/runs/seat-118/v82_L2/v82x_L2_s118_verdicts.jsonl`
 - v8.2 usage: `../trainium-agent-labs/runs/seat-117/v82/v82_L1_s117_usage.jsonl`
 - v8.2 usage: `../trainium-agent-labs/runs/seat-118/v82/v82_L1_s118_usage.jsonl`
 - v8.2 usage: `../trainium-agent-labs/runs/seat-117/v82/v82_L1b_s117_usage.jsonl`
 - v8.2 usage: `../trainium-agent-labs/runs/seat-118/v82/v82_L1b_s118_usage.jsonl`
 - v8.2 usage: `../trainium-agent-labs/runs/seat-116/v82/v82_L2_s116_usage.jsonl`
+- v8.2 usage: `../trainium-agent-labs/runs/seat-118/v82_L2/v82_L2_s118_usage.jsonl`
 - v8.2 usage: `../trainium-agent-labs/runs/seat-119/v82/v82_L2_s119_usage.jsonl`
 - v8.2 usage: `../trainium-agent-labs/runs/seat-116/v82/v82_L3_s116_usage.jsonl`
 - v8.2 usage: `../trainium-agent-labs/runs/seat-119/v82/v82_L4_s119_usage.jsonl`
 - v8.2 usage: `../trainium-agent-labs/runs/seat-119/v82/v82_L4b_s119_usage.jsonl`
 - v8.2 usage: `../trainium-agent-labs/runs/seat-117/v82x_partial/v82x_L2_s117_usage.jsonl`
+- v8.2 usage: `../trainium-agent-labs/runs/seat-118/v82_L2/v82x_L2_s118_usage.jsonl`
 - v7 attempts: `../trainium-agent-labs/runs/seat-119/Ev7_L1/Ev7_L1.jsonl`
 - v7 attempts: `../trainium-agent-labs/runs/seat-116/Ev7_L2/Ev7_L2.jsonl`
 - v7 attempts: `../trainium-agent-labs/runs/seat-117/Ev7_L3/Ev7_L3.jsonl`
