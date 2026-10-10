@@ -164,6 +164,10 @@ class DashboardHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
 
+        if parsed.path in ("/", "/index.html"):
+            self.path = "/dashboard.html"
+            return super().do_GET()
+
         if parsed.path == "/api/ping":
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
