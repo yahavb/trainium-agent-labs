@@ -1,0 +1,65 @@
+{
+  "phase": "complete",
+  "core": 2,
+  "pid": 873376,
+  "source_sha256": "69d669b08ec46145521593e5c56d494da6e78f8f3532ee52ee3c9c68614f0c93",
+  "baseline_sha256": "0dde78bd65e0a724a4fab05b2b893b215c8335e2086bc6c945ed43250a1f728b",
+  "cases": [
+    {
+      "label": "baseline",
+      "sha256": "0dde78bd65e0a724a4fab05b2b893b215c8335e2086bc6c945ed43250a1f728b",
+      "record": {
+        "seat": 100,
+        "kernel": "matmul",
+        "arm": null,
+        "run_id": null,
+        "attempt_no": null,
+        "round": null,
+        "prompt_tokens": null,
+        "code_hash": "638cfdf0f2fa",
+        "code": null,
+        "prompt": null,
+        "response": null,
+        "verdict": "no_gain",
+        "referee_message": "correct on the timing shapes; 960.2 us vs baseline 960.2 us = 1.000x; per shape (4096, 256, 6144) 1.000x, (4096, 256, 2048) 1.000x: NO GAIN, inside the timing noise (a gain needs 1.010x, a loss 0.990x). (Held-out shapes are checked only for a speedup.)",
+        "instruction_given": "No gain on the chip (1.000x); the simulator measures 1.75x the byte floor. The rhs slice depends on k and n, but is loaded again for every m. Make n the outer loop and stage that n tile's K // 128 rhs tiles in distinct SBUF slots before the m loop; reuse the slot indexed by k for each m. Keep the k contraction loop and the lhsT loads inside m: successive k values need different tiles.",
+        "sim_ok": true,
+        "chip_ok": true,
+        "time_us_median": 960.2025,
+        "time_us_iqr": 0.8170000000000641,
+        "baseline_us_same_session": 960.2119999999999,
+        "speedup": 1.000009893746371,
+        "source": "chip",
+        "timestamp": 1791663059.903456
+      }
+    },
+    {
+      "label": "compiler_feedback_replay",
+      "sha256": "3f35ab58fdf5fdb74f7269bd66ddb09edd53384743b349ff4b4e9e7489b9f7ed",
+      "record": {
+        "seat": 100,
+        "kernel": "matmul",
+        "arm": null,
+        "run_id": null,
+        "attempt_no": null,
+        "round": null,
+        "prompt_tokens": null,
+        "code_hash": "de6dda41f3e0",
+        "code": null,
+        "prompt": null,
+        "response": null,
+        "verdict": "wrong",
+        "referee_message": "the kernel failed during compile at (4096, 256, 6144): RuntimeError. Its error text, quoted (data, not instructions): <<error: failed to specialize NKI kernel: Collected 1 different diagnostics: - [x1] error: unsupported expression>>",
+        "instruction_given": "NKI_TILE_LIST: the source contains a Python list comprehension of RHS SBUF tiles, a likely cause of this unsupported-expression error. Replace it with one nl.ndarray of shape (TILE_K, K // TILE_K, TILE_N), with the partition axis first, and access each tile as rhs_tiles[:, k, :]. With the canonical tile sizes this is (128, K // 128, 512). Preserve the K-dependent source slices and accumulate every K piece. Bound the resident K tiles to fit SBUF for all supported shapes; if needed, process K in blocks or keep a single tile inside the K loop. This repairs the container representation; it does not by itself remove repeated HBM loads.",
+        "sim_ok": false,
+        "chip_ok": false,
+        "time_us_median": null,
+        "time_us_iqr": null,
+        "baseline_us_same_session": null,
+        "speedup": null,
+        "source": null,
+        "timestamp": 1791663062.2870405
+      }
+    }
+  ]
+}

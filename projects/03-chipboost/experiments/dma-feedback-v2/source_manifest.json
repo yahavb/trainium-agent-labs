@@ -1,0 +1,12 @@
+{
+  "parent_commit": "434e5f9",
+  "original_sha256": "5f366558ae933c88262bbde806afbcd4a568fdbfab4fc3395951f1b3799d71be",
+  "treatment_sha256": "be620d5ef40f53780f0cde4ac3f1b05fddb4b05f3d5ee79c3e97ddf705116ebb",
+  "only_changed_file": "projects/03-chipboost/speedcheck.py",
+  "changed_definitions": [
+    "_DMA_4X_ERROR",
+    "_DMA_4X_INSTR",
+    "_child_failure"
+  ],
+  "other_ast_nodes_identical": true
+}

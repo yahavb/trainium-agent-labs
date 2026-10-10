@@ -88,10 +88,14 @@ dashboard/         build.py, index.html                         (P4)
 **Referee API** (P1 provides, P2/P3 call):
 
 ```python
-rec = speedcheck.check_isolated(path, op="matmul")    # use THIS in loops: one fresh process per candidate
+rec = speedcheck.check_isolated(path, op="matmul")    # one-shot: fresh process per candidate
 # -> dict with the referee-owned fields of schema.ATTEMPT_FIELDS, or None if the REFEREE failed
 #    (no free core, baseline broken): retry later, never log None as a verdict on the kernel.
 rec = speedcheck.check(path, op="matmul", baseline=None, rounds=3)   # same, in-process (raises RefereeError)
+
+# Preferred in repeated loops; retains its core until the context exits.
+with speedcheck.RefereeWorker(op="matmul", core=3) as worker:
+    rec = worker.check(path)  # same record/None contract; inspect worker.last_error on None
 ```
 
 - There is **no `shapes=` / `heldout=` argument** (this replaces the earlier `shapes="dev"|"heldout"` draft).
@@ -113,8 +117,8 @@ rec = speedcheck.check(path, op="matmul", baseline=None, rounds=3)   # same, in-
 
 1. `schema.py` + this file on `master` first; every branch starts from there.
 2. ~13:30: merge `referee-timing` (the gate). P2 and P3 rebase on it.
-   **Update:** `kernels-search` carries an *old* copy of the referee. Merge `kernels-search` first, then
-   `referee-timing` on top: its `speedcheck.py`/`timing.py` are the hardened ones and must win.
+   **Oct 10 handoff update:** `kernels-search` (`919c6be`) and `redteam-agent` (`2ce9416`) both already
+   carry the current P1 referee/timer (`76b2227`). Preserve P2's added `copy` schema op during integration.
 3. ~15:00: merge `kernels-search` and `redteam-agent`; loops start on every seat.
 4. Any time: merge `dashboard` (it only reads logs).
 5. 18:30: stop building; one PR from the fork.
