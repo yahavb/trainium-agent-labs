@@ -13,21 +13,26 @@ Each row is one run of one level. A repair step is a round that answers a checke
 | 1 | located | 0.30 | no | 8 | 7 | 5 | 0 | 2 | 6 |
 | 1 | located | 0.30 | no | 8 | 7 | 5 | 0 | 2 | 6 |
 | 1 | located | 0.30 | no | 8 | 7 | 5 | 0 | 2 | 6 |
+| 1 | located | 0.30 | no | 8 | 7 | 4 | 0 | 3 | 5 |
 | 1 | directed | 0.30 | no | 8 | 7 | 6 | 0 | 1 | 7 |
 | 2 | located | 0.30 | no | 3 | 2 | 1 | 0 | 1 | 2 |
 | 2 | located | 1.00 | round 0 | 1 | 0 | 0 | 0 | 0 | 0 |
 | 2 | located | 0.30 | no | 7 | 6 | 1 | 5 | 0 | 2 |
 | 2 | located | 1.00 | round 0 | 1 | 0 | 0 | 0 | 0 | 0 |
 | 2 | located | 0.30 | no | 5 | 4 | 1 | 0 | 3 | 2 |
+| 2 | located | 0.30 | no | 5 | 4 | 1 | 1 | 2 | 2 |
 | 2 | directed | 1.00 | round 0 | 1 | 0 | 0 | 0 | 0 | 0 |
 | 3 | located | 0.30 | no | 6 | 5 | 2 | 0 | 3 | 3 |
 | 3 | located | 0.30 | no | 5 | 4 | 1 | 0 | 3 | 2 |
 | 3 | located | 0.30 | no | 7 | 6 | 1 | 5 | 0 | 2 |
-| 3 | located | 0.30 | no | 6 | 5 | 1 | 4 | 0 | 2 |
+| 3 | located | 0.30 | no | 7 | 6 | 1 | 5 | 0 | 2 |
+| 3 | located | 0.30 | no | 6 | 5 | 2 | 0 | 3 | 3 |
 | 3 | directed | 0.30 | no | 6 | 5 | 1 | 1 | 3 | 2 |
 | 4 | located | 0.75 | no | 6 | 5 | 2 | 0 | 3 | 3 |
 | 4 | located | 0.30 | no | 5 | 4 | 1 | 0 | 3 | 2 |
 | 4 | located | 0.62 | no | 8 | 7 | 4 | 2 | 1 | 5 |
+| 4 | located | 0.75 | no | 6 | 5 | 2 | 0 | 3 | 3 |
+| 4 | located | 0.75 | no | 5 | 4 | 2 | 0 | 2 | 3 |
 | 4 | directed | 0.75 | no | 6 | 5 | 2 | 0 | 3 | 3 |
 
 ## Per run
@@ -38,5 +43,6 @@ Each row is one run of one level. A repair step is a round that answers a checke
 | located | 20261010-163428 | 4 | 1 | 17 | 9 | 0 | 8 | 53% |
 | located | 20261010-163428 | 4 | 0 | 21 | 8 | 5 | 8 | 38% |
 | located | 20261010-163428 | 4 | 1 | 20 | 10 | 7 | 3 | 50% |
-| located | 20261010-163428 | 3 | 0 | 16 | 7 | 4 | 5 | 44% |
+| located | 20261010-163428 | 4 | 0 | 22 | 9 | 5 | 8 | 41% |
+| located | 20261010-163428 | 4 | 0 | 20 | 9 | 1 | 10 | 45% |
 | directed | 20261010-161200 | 4 | 1 | 17 | 9 | 1 | 7 | 53% |

@@ -1,6 +1,6 @@
 # Kernel agent: what the checker's feedback is worth
 
-Seat 17 · project 2 · **interim note, 10 Oct 15:05 EDT.** Ten more runs are queued on the seat; the
+Seat 17 · project 2 · **interim note, 10 Oct 15:50 EDT.** More runs are in progress on the seat; the
 tables here cover the runs that have finished and will be regenerated when the rest do.
 
 ## What we ran
@@ -25,12 +25,12 @@ this seat. The kernel line and error that prompted each one are quoted in a comm
 
 ## Results so far
 
-| level | `located`, 4 runs | `directed`, 1 run |
+| level | `located`, 5 runs | `directed`, 1 run |
 |---|---|---|
-| 1 average pooling | 0.30, 0.30, 0.30, 0.30 | 0.30 |
-| 2 transpose | 1.00, 0.30, 1.00, 0.30 | 1.00 |
-| 3 matmul, one tile | 0.30, 0.30, 0.30, 0.30 | 0.30 |
-| 4 matmul, tiled | 0.75, 0.30, 0.62 (fourth still running) | 0.75 |
+| 1 average pooling | 0.30, 0.30, 0.30, 0.30, 0.30 | 0.30 |
+| 2 transpose | 1.00, 0.30, 1.00, 0.30, 0.30 | 1.00 |
+| 3 matmul, one tile | 0.30, 0.30, 0.30, 0.30, 0.30 | 0.30 |
+| 4 matmul, tiled | 0.75, 0.30, 0.62, 0.75, 0.75 | 0.75 |
 
 `enriched` and `directed3` have no finished run on this seat yet. Per-run detail:
 [`RESULTS.md`](RESULTS.md). Mistakes grouped and counted:
@@ -39,18 +39,19 @@ Every attempt with its kernel, feedback and score: [`logs/`](logs/).
 
 ## What the logs show
 
-1. **One run is not a result.** The same checker gave level 4 a best score of 0.75, 0.30 and 0.62 in
-   three runs, and solved level 2 in two runs out of four. Our earlier draft of this note credited
-   0.75 on level 4 to `directed`; `located` reached the same score in one run of three, so that
-   claim is withdrawn. The repo's own figure for level 4 is 0.62 on five of five runs.
+1. **One run is not a result.** The same checker gave level 4 a best score between 0.30 and 0.75
+   across five runs, and solved level 2 in two runs out of five. Our earlier draft of this note
+   credited 0.75 on level 4 to `directed`; `located` reached the same score in three runs of five, so
+   that claim is withdrawn. The repo's own figure for level 4 is 0.62 on five of five runs.
 2. **Level 2 is decided in the first round.** When the first answer was right it scored 1.00 at
-   round 0; when it was wrong, neither run recovered, in four and six repair rounds. The first prompt is
+   round 0; when it was wrong, no run recovered (three runs, four to six repair rounds each). The
+   first prompt is
    identical in every feedback mode, so level 2 measures feedback only in the runs that start wrong.
 3. **Two true messages can form a loop.** On level 2 the model allocated a tile of 16384 elements for
    an input of 384. "The tile holds 16384 elements, you copied 384" made it copy a 128-wide slice;
    "you indexed up to 127 on a dimension of 12" sent it back. The same loop appeared on level 3.
-   Three runs alternated between the two messages for six or seven rounds. This is the largest
-   single pattern in the log: 19 of 74 repair steps.
+   Several runs alternated between the two messages for up to seven rounds. This is the largest
+   single pattern in the log: 22 of 100 repair steps.
 4. **A wrong diagnosis cost a level.** On level 4 at 0.62 the model deleted the copy into its output
    and returned an array of NaN. The checker said "usually an uninitialised tile". The model
    invented `nisa.psum_init`, was offered `gpsimd_engine` as the closest real name, called it, and
@@ -62,7 +63,7 @@ Every attempt with its kernel, feedback and score: [`logs/`](logs/).
    25 names in `nki.isa`, it repeated the mistake for three rounds and then invented
    `nisa.scalar_mul`. Told "write `nl.multiply`" in the `directed` run, it fixed it in the next round.
    This is one observation in one run.
-7. **Three of four samples are wasted after the first round.** In 71 of 74 repair rounds all four
+7. **Three of four samples are wasted after the first round.** In 93 of 100 repair rounds all four
    samples were the same kernel. In first rounds they differed on levels 2 to 4 (2 to 4 distinct
    answers). Level 1 produced the identical kernel in every sample of every run for the first six
    rounds, so repeating level 1 adds no information.
@@ -74,16 +75,16 @@ Every attempt with its kernel, feedback and score: [`logs/`](logs/).
 (a "give it the shape (1, N)" instruction that led to a "cannot reshape" error in a kernel that never
 calls reshape). Whether those changes raise scores is what the queued runs measure.
 
-## Where the prompt goes (`located`, 356 attempts, mean per prompt)
+## Where the prompt goes (`located`, 480 attempts, mean per prompt)
 
 | prompt | prompt tokens | answer tokens | made of (characters) |
 |---|---|---|---|
-| first | 717 | 333 | API card 1581, task wording 506, reference 400 |
-| repair | 577 | 352 | previous kernel 1052, checker feedback 587, wording 200 |
-| repair with ledger | 716 | 324 | previous kernel 998, checker feedback 528, ledger 485, wording 267 |
+| first | 716 | 334 | API card 1581, task wording 506, reference 399 |
+| repair | 579 | 359 | previous kernel 1064, checker feedback 584, wording 200 |
+| repair with ledger | 733 | 347 | previous kernel 1064, checker feedback 506, ledger 484, wording 267 |
 
-No answer was cut off: all 356 attempts ended with `finish_reason=stop`. A round took a median of
-76 s; while a second agent shared the model, most rounds took 190 to 265 s.
+No answer was cut off: all 480 attempts ended with `finish_reason=stop`. A round took a median of
+71 s; while a second agent shared the model, most rounds took 190 to 265 s.
 
 ## What these numbers do not show
 

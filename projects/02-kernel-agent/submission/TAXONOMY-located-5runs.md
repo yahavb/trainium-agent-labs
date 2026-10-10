@@ -1,54 +1,54 @@
 # Failure taxonomy
 
-356 attempts, levels [1, 2, 3, 4], 1 session(s): 20261010-163428
+480 attempts, levels [1, 2, 3, 4], 1 session(s): 20261010-163428
 
 | failure mode | what it means | L1 | L2 | L3 | L4 | total | share |
 |---|---|---|---|---|---|---|---|
-| tile/slice size mismatch | source and destination hold different element counts | 16 | 25 | 28 | 22 | 91 | 26% |
-| invented API name | called an nl/nisa function that does not exist | 64 |  |  | 8 | 72 | 20% |
-| read past the end | indexed beyond the tensor, usually a padded final tile |  | 28 | 40 |  | 68 | 19% |
-| invented argument | passed a keyword the function does not take | 32 |  |  |  | 32 | 9% |
-| wrong buffer | operand or result in the wrong memory (sbuf / psum / hbm) | 16 |  |  |  | 16 | 4% |
-| other: IndexError | an exception no rule above names yet |  |  | 16 |  | 16 | 4% |
-| no tiling: M or N over the limit | K is chunked, but the output dimensions are not |  |  |  | 16 | 16 | 4% |
-| 1-D tile | allocated an SBUF/PSUM tile with one dimension |  |  | 8 |  | 8 | 2% |
+| tile/slice size mismatch | source and destination hold different element counts | 20 | 41 | 34 | 25 | 120 | 25% |
+| invented API name | called an nl/nisa function that does not exist | 84 |  |  | 8 | 92 | 19% |
+| read past the end | indexed beyond the tensor, usually a padded final tile |  | 32 | 40 |  | 72 | 15% |
+| no tiling: M or N over the limit | K is chunked, but the output dimensions are not |  |  |  | 44 | 44 | 9% |
+| invented argument | passed a keyword the function does not take | 36 |  |  |  | 36 | 8% |
+| other: IndexError | an exception no rule above names yet |  |  | 32 |  | 32 | 7% |
+| wrong buffer | operand or result in the wrong memory (sbuf / psum / hbm) | 20 |  |  |  | 20 | 4% |
+| no tiling: K over 128 | contracted more than one tile's worth in one nc_matmul |  |  |  | 12 | 12 | 2% |
+| 1-D tile | allocated an SBUF/PSUM tile with one dimension |  |  | 10 |  | 10 | 2% |
+| no tiling: partition over 128 | one tile for the whole tensor |  |  |  | 10 | 10 | 2% |
+| result does not fit its tile | an NKI call's result is a different size from its destination; the simulator reports it as a reshape error |  |  | 8 | 1 | 9 | 2% |
 | other: AssertionError | an exception no rule above names yet |  |  |  | 8 | 8 | 2% |
 | other: TypeError | an exception no rule above names yet |  |  |  | 8 | 8 | 2% |
-| result does not fit its tile | an NKI call's result is a different size from its destination; the simulator reports it as a reshape error |  |  | 4 | 1 | 5 | 1% |
-| no tiling: partition over 128 | one tile for the whole tensor |  |  |  | 5 | 5 | 1% |
-| no tiling: K over 128 | contracted more than one tile's worth in one nc_matmul |  |  |  | 4 | 4 | 1% |
 | NaN or Inf | read an uninitialised tile |  |  |  | 4 | 4 | 1% |
-| solved | correct on every shape |  | 2 |  |  | 2 | 1% |
+| solved | correct on every shape |  | 2 |  |  | 2 | 0% |
 | framework shortcut | called numpy/torch to do the whole job, or used @ / .T |  | 1 |  |  | 1 | 0% |
 
 ## How the failure moved, round to round
 
-74 repair steps: 29 repeated the same failure (39%), 45 changed it, and 2 made the score go DOWN.
+100 repair steps: 43 repeated the same failure (43%), 57 changed it, and 2 made the score go DOWN.
 
 | after this failure | the next round hit | times |
 |---|---|---|
-| tile/slice size mismatch | read past the end | 11 |
-| read past the end | tile/slice size mismatch | 8 |
-| tile/slice size mismatch | invented argument | 4 |
-| invented argument | wrong buffer | 4 |
-| wrong buffer | invented API name | 4 |
+| tile/slice size mismatch | read past the end | 12 |
+| read past the end | tile/slice size mismatch | 10 |
+| tile/slice size mismatch | invented argument | 5 |
+| invented argument | wrong buffer | 5 |
+| wrong buffer | invented API name | 5 |
 | invented API name | invented argument | 4 |
-| invented API name | other: TypeError | 2 |
-| 1-D tile | result does not fit its tile | 1 |
-| result does not fit its tile | other: IndexError | 1 |
-| no tiling: partition over 128 | no tiling: K over 128 | 1 |
+| no tiling: partition over 128 | no tiling: K over 128 | 3 |
+| no tiling: K over 128 | no tiling: M or N over the limit | 3 |
+| 1-D tile | result does not fit its tile | 2 |
+| result does not fit its tile | other: IndexError | 2 |
 
 ## Where the prompt went (characters, mean per prompt)
 
 | prompt kind | prompts | reference | docs | code | feedback | ledger | instructions | prompt tokens | answer tokens |
 |---|---|---|---|---|---|---|---|---|---|
-| first | 15 | 400 | 1581 | 0 | 0 | 0 | 506 | 717 | 333 |
-| repair | 55 | 0 | 0 | 1052 | 587 | 0 | 200 | 577 | 352 |
-| repair+ledger | 19 | 0 | 0 | 998 | 528 | 485 | 267 | 716 | 324 |
+| first | 20 | 399 | 1581 | 0 | 0 | 0 | 506 | 716 | 334 |
+| repair | 73 | 0 | 0 | 1064 | 584 | 0 | 200 | 579 | 359 |
+| repair+ledger | 27 | 0 | 0 | 1064 | 506 | 484 | 267 | 733 | 347 |
 
 ## Line-located feedback
 
-The checker quoted the failing line on 349 of 349 attempts that raised (100%).
+The checker quoted the failing line on 473 of 473 attempts that raised (100%).
 
 ## One real checker message per failure mode
 
