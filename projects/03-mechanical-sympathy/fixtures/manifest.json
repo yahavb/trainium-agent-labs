@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "status": "draft",
+  "reference_artifact": "fixtures/cpu_reference.npz",
+  "reference_sha256": "c6c43040fc96178a72d118c820acaa046f0e1c4429aa598a6b58c2751a2c9571",
+  "reference_bytes": 43714881,
+  "prediction_key": "prediction",
+  "coordinate_keys": [
+    "time",
+    "variables"
+  ],
+  "checkpoint": {
+    "name": "Samudra2 one-degree EMA",
+    "path_on_seat": "checkpoints/Samudra2/onedeg/ema_ckpt.pt",
+    "sha256": "ff6160cb7e2a2b5b8ee2c5731c16bd114a1bb5a267245cc5ed766fb00c7f797a"
+  },
+  "data": {
+    "source": "m2lines-pubs/Samudra/v2026-09/om4_onedeg/OM4.zarr",
+    "endpoint_url": "https://nyu1.osn.mghpcc.org",
+    "inference_start": "2014-10-10",
+    "inference_end": "2014-12-04",
+    "input_steps": 2,
+    "output_steps": 2
+  },
+  "samudra_commit": "6b88f2c0204828ef77d41b3ab2733679615f53e8",
+  "tolerance": {
+    "atol": null,
+    "rtol": null,
+    "derivation": "Run the CPU fixture twice. Freeze tolerances above observed CPU repeatability and document the Trainium precision."
+  },
+  "repeatability": {
+    "runs": 2,
+    "byte_identical": true,
+    "max_abs_error": 0.0,
+    "run_sha256": [
+      "c6c43040fc96178a72d118c820acaa046f0e1c4429aa598a6b58c2751a2c9571",
+      "c6c43040fc96178a72d118c820acaa046f0e1c4429aa598a6b58c2751a2c9571"
+    ]
+  },
+  "notes": "The CPU reference is repeatable. The checker still refuses candidates until the team selects Trainium precision, sets atol and rtol, and changes status to frozen. The 43.7 MB fixture is regenerated on each pod and is not committed."
+}
