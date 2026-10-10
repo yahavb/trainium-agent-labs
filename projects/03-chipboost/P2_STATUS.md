@@ -153,8 +153,8 @@ Never `git pull` into this folder while a check is running; use a separate clone
 
 ## 6. What remains
 
-1. **Copy seat-102's logs out of the pod and commit them:** `logs/seat-102/*.jsonl` and `archive/`. They are the
-   attempt-log deliverable.
+1. ~~Copy seat-102's logs out of the pod and commit them.~~ **Done** (commit 234d059): 134 schema-valid records,
+   and `--summarize` on them reproduces the pod's numbers exactly.
 2. **About 17:30:** run `heldout_grid.py --op matmul` on each arm's best, once P3's arm logs are in. It reads every
    `attempts*.jsonl`.
 3. **For P1, their call:** a referee option to launch `kernel[2]`, so LNC=2 kernels get full verdicts and held-out
