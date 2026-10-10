@@ -9,7 +9,6 @@ import improved_agent
 import level0_heatrod
 import level1_heatrod
 import pdecheck
-import validation
 
 
 class DecayRepairTests(unittest.TestCase):
@@ -30,13 +29,12 @@ class DecayRepairTests(unittest.TestCase):
         answer = ('(32/pi**3)*exp(-2*pi**2*t)*sin(pi*x/2) + '
                   '(32/(27*pi**3))*exp(-8*pi**2*t)*sin(3*pi*x/2) + '
                   '(32/(125*pi**3))*exp(-18*pi**2*t)*sin(5*pi*x/2)')
-        before = validation.grade(problem, answer)
+        before = pdecheck.check(problem, answer)
         fixed = decay_repair.repair(answer, problem['k'])
-        after = validation.grade(problem, fixed['answer'])
+        after = pdecheck.check(problem, fixed['answer'])
         self.assertEqual(before['reward'], .6)
         self.assertEqual(after['reward'], 1.0)
         self.assertEqual(before['start_error'], after['start_error'])
-        self.assertEqual(after['validation_status'], 'passed')
 
     def test_declines_unsupported_or_already_correct_expressions(self):
         for answer in ('exp(-t**2)*sin(pi*x)', 'x*exp(-t)*sin(pi*x)',
@@ -44,7 +42,7 @@ class DecayRepairTests(unittest.TestCase):
                        'exp(-pi**2*t)*sin(pi*x)'):
             self.assertFalse(decay_repair.repair(answer, 1)['applied'], answer)
 
-    def test_agent_accepts_only_validated_tool_output_and_logs_both_answers(self):
+    def test_agent_accepts_original_checker_tool_output_and_logs_both_answers(self):
         problem = level0_heatrod.make(1)
         a = SimpleNamespace(rounds=1, workers=1, samples=1, seed=0, decay_repair=True)
         raw = 'u(x, t) = ' + sp.sstr(problem['f'])
@@ -57,7 +55,7 @@ class DecayRepairTests(unittest.TestCase):
         self.assertEqual(row['answer'], raw)
         self.assertNotEqual(row['executed_answer'], raw)
         self.assertEqual(row['trace'][-1]['input_grade']['reward'], .6)
-        self.assertEqual(row['grade']['validation_status'], 'passed')
+        self.assertEqual(row['grade']['grading_policy'], 'original_checker')
 
     def test_agent_does_not_repair_wrong_initial_shape(self):
         problem = level0_heatrod.make(1)

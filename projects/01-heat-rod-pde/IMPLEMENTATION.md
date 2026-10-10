@@ -1,5 +1,8 @@
 # Heat-Rod PDE Agent — seat 85
 
+> Historical report: the current agent uses only the unchanged upstream checker.
+> The additional physics validator described below has been removed; see README.md.
+
 Historical implementation notes for the `challenge1-improvements` source branch.
 The integrated team version additionally instruments `agent.py` and provides opt-in
 symbolic decay repair; see [current results](OPTIMIZATION_RESULTS.md).

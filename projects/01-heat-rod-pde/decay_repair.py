@@ -5,7 +5,7 @@ coefficients, repair missing modes, or recover a truncated answer.
 """
 import sympy as sp
 import pdecheck
-from validation import checked_expression
+from answer_syntax import checked_expression
 
 
 def repair(answer, conductivity):

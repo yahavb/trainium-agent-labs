@@ -7,7 +7,7 @@ import time
 
 import agent
 import decay_repair
-import validation
+from improved_agent import grade_candidate
 
 
 def replay(root):
@@ -29,25 +29,25 @@ def replay(root):
             if key not in cache:
                 level, sub=map(int,row['problem'].removeprefix('level').split('.'))
                 problem=agent.LEVELS[level].make(sub,row['seed'])
-                before=validation.grade(problem,row['answer'])
+                before=grade_candidate(problem,row['answer'])
                 eligible=(before['parts'].get('equation') is False and all(
                     before['parts'].get(k) is True for k in ('left_bc','right_bc','start_shape')))
                 started=time.perf_counter()
                 proposal=decay_repair.repair(row['answer'],problem['k']) if eligible else None
-                after=validation.grade(problem,proposal['answer']) if proposal and proposal['applied'] else before
+                after=grade_candidate(problem,proposal['answer']) if proposal and proposal['applied'] else before
                 accepted=proposal is not None and proposal['applied'] and after['reward']==1.0
                 cache[key]=dict(model_original_reward=before['original_reward'],
-                    before_validated=before['reward']==1.0, eligible=eligible,
-                    accepted=accepted, after_validated=after['reward']==1.0 if accepted else before['reward']==1.0,
+                    before_original_solved=before['reward']==1.0, eligible=eligible,
+                    accepted=accepted, after_original_solved=after['reward']==1.0 if accepted else before['reward']==1.0,
                     proposal=proposal, input_grade=before, output_grade=after if accepted else None,
                     repair_and_check_seconds=time.perf_counter()-started)
             outcomes.append(dict(round=row['round'],sample=row['sample'],answer=row['answer'],**cache[key]))
         runs.append(dict(path=str(path.relative_to(root)),sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
-            candidates=len(rows),before_solved=any(r['before_validated'] for r in outcomes),
-            after_solved=any(r['after_validated'] for r in outcomes),
+            candidates=len(rows),before_solved=any(r['before_original_solved'] for r in outcomes),
+            after_solved=any(r['after_original_solved'] for r in outcomes),
             eligible=sum(r['eligible'] for r in outcomes),accepted=sum(r['accepted'] for r in outcomes),
             outcomes=outcomes))
-    return dict(kind='counterfactual_recorded_candidate_replay',
+    return dict(kind='counterfactual_recorded_candidate_replay', grading_policy='original_checker',
         note='Uses existing model outputs only. No new inference, no live solve-rate or latency estimate. '
              'Later recorded rounds might not have occurred if a repaired earlier answer had succeeded.',
         completed_recorded_runs=len(runs),before_solved_runs=sum(r['before_solved'] for r in runs),

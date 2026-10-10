@@ -3,6 +3,7 @@ import argparse
 import concurrent.futures as cf
 import datetime
 import json
+import math
 import os
 from pathlib import Path
 import time
@@ -11,12 +12,22 @@ import httpx
 import agent as upstream
 import pdecheck
 import tool_calc
-import validation
 import decay_repair
 
 
 class ModelError(RuntimeError):
     pass
+
+
+def grade_candidate(problem, answer):
+    """Use the upstream checker directly; metadata adds no acceptance conditions."""
+    result = pdecheck.check(problem, answer)
+    result.update(original_reward=result['reward'], original_parts=dict(result['parts']),
+                  grading_policy='original_checker')
+    # Strict JSON cannot represent infinity. This changes only log representation.
+    if result['start_error'] is not None and not math.isfinite(result['start_error']):
+        result['start_error'] = None
+    return result
 
 
 def ask(a, messages, trace, seed):
@@ -106,7 +117,7 @@ def solve(problem, a, log, run_id):
                 errors += 1
                 graded = None
             else:
-                graded = validation.grade(problem, response['answer'])
+                graded = grade_candidate(problem, response['answer'])
                 response['model_grade'] = dict(graded)
                 if (getattr(a, 'decay_repair', False)
                         and graded['parts'].get('equation') is False
@@ -114,7 +125,7 @@ def solve(problem, a, log, run_id):
                                 for key in ('left_bc', 'right_bc', 'start_shape'))):
                     repair_started = time.perf_counter()
                     proposal = decay_repair.repair(response['answer'], problem['k'])
-                    repaired_grade = (validation.grade(problem, proposal['answer'])
+                    repaired_grade = (grade_candidate(problem, proposal['answer'])
                                       if proposal['applied'] else None)
                     accepted = repaired_grade is not None and repaired_grade['reward'] == 1.0
                     response['trace'].append({'type': 'decay_repair', 'proposal': proposal,
@@ -148,16 +159,15 @@ def solve(problem, a, log, run_id):
         if best['reward'] == 1.0:
             return {'problem': problem['name'], 'seed': a.seed, 'status': 'solved', 'reward': 1.0,
                     'original_reward': best['original_reward'],
-                    'validation_status': best['validation_status'],
+                    'grading_policy': 'original_checker',
                     'rounds': rnd + 1, 'requests': calls, 'errors': errors,
-                    'seconds': time.perf_counter() - started, 'answer': best['expr'],
-                    'validation': best['validation']}
+                    'seconds': time.perf_counter() - started, 'answer': best['expr']}
         if candidate['expr'] and all(h['expr'] != candidate['expr'] for h in history):
             history.append(candidate)
         prompt = repair_prompt(problem, best, history)
     return {'problem': problem['name'], 'seed': a.seed, 'status': 'unsolved', 'reward': best['reward'],
             'original_reward': best['original_reward'],
-            'validation_status': best['validation_status'],
+            'grading_policy': 'original_checker',
             'rounds': a.rounds, 'requests': calls, 'errors': errors,
             'seconds': time.perf_counter() - started, 'answer': best['expr']}
 
@@ -179,7 +189,7 @@ def main():
     p.add_argument('--no-tools', action='store_true')
     p.add_argument('--concise', action='store_true', help='experimental concise output contract; disabled by default')
     p.add_argument('--decay-repair', action='store_true',
-                   help='derive decay from candidate eigenwaves and accept only fully validated proposals')
+                   help='derive decay from candidate eigenwaves; accept using the original checker')
     p.add_argument('--model', default=os.getenv('HEATROD_MODEL', 'Qwen/Qwen3-8B'))
     p.add_argument('--base', default=os.getenv('HEATROD_BASE_URL', 'http://localhost:8000/v1'))
     p.add_argument('--output', default='results')

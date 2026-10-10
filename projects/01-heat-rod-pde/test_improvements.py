@@ -8,57 +8,37 @@ import improved_agent as improved
 import level0_heatrod as level0
 import level1_heatrod as level1
 import pdecheck
-import validation
+import json
+from answer_syntax import checked_expression
 
 
-class PhysicsTests(unittest.TestCase):
-    def test_exact_answers_across_seeds_without_oracle(self):
-        for mod in (level0, level1):
-            for seed in range(3):
-                for sub in mod.SUBS:
-                    problem = mod.make(sub, seed)
-                    answer = problem['exact']
-                    if answer is None:
-                        continue
-                    problem['exact'] = None
-                    self.assertTrue(validation.verify(problem, sp.sstr(answer))['accepted'])
-
-    def test_series_truncation_threshold(self):
-        problem = level1.make(3)
-        for terms in (1, 2, 3, 5):
-            self.assertEqual(validation.verify(problem, sp.sstr(level1.series_answer(problem, terms)))['accepted'], terms >= 3)
-
-    def test_wrong_decay_and_boundary(self):
-        problem = level1.make(1)
-        self.assertFalse(validation.verify(problem, sp.sstr(problem['f']))['parts']['equation'])
-        self.assertFalse(validation.verify(problem, 'exp(-pi**2*t)*sin(pi*x)')['parts']['right_bc'])
-
-    def test_high_frequency_grid_alias_is_rejected(self):
+class CheckerParityTests(unittest.TestCase):
+    def test_original_acceptance_and_parser_are_not_overridden(self):
         problem = level0.make(1)
-        answer = sp.sstr(problem['exact']) + f" + exp(-1000000*t)*sin(1600*pi*x/{problem['L']})"
-        self.assertEqual(pdecheck.check(problem, answer)['reward'], 1.0)
-        self.assertFalse(validation.verify(problem, answer)['accepted'])
-        grade = validation.grade(problem, answer)
-        self.assertEqual(grade['original_reward'], 1.0)
-        self.assertTrue(all(grade['original_parts'].values()))
-        self.assertEqual(grade['validation_status'], 'failed')
-        self.assertLess(grade['reward'], 1.0)
+        answers = [sp.sstr(problem['exact']) +
+                   f" + exp(-1000000*t)*sin(1600*pi*x/{problem['L']})",
+                   'exp(-9*pi**2*t) sin(3*pi*x)']
+        settings = SimpleNamespace(rounds=2, samples=1, workers=1, seed=0)
+        for answer in answers:
+            with self.subTest(answer=answer):
+                expected = pdecheck.check(problem, answer)
+                self.assertEqual(expected['reward'], 1.0)
+                response = dict(answer=answer, tool_calls=0, trace=[], error=None)
+                log = io.StringIO()
+                with patch.object(improved, 'attempt', return_value=response) as attempt:
+                    result = improved.solve(problem, settings, log, 'parity')
+                self.assertEqual(result['status'], 'solved')
+                self.assertEqual(result['rounds'], 1)
+                attempt.assert_called_once()
+                grade = json.loads(log.getvalue())['grade']
+                for key, value in expected.items():
+                    self.assertEqual(grade[key], value)
 
-    def test_original_score_and_validation_status_are_distinct(self):
-        problem = level0.make(1)
-        good = validation.grade(problem, sp.sstr(problem['exact']))
-        self.assertEqual(good['original_reward'], 1.0)
-        self.assertEqual(good['validation_status'], 'passed')
-        wrong = validation.grade(problem, sp.sstr(problem['f']))
-        self.assertEqual(wrong['original_reward'], wrong['reward'])
-        self.assertEqual(wrong['validation_status'], 'not_run')
-        invalid = validation.grade(problem, 'x.__class__')
-        self.assertIsNone(invalid['original_reward'])
-        self.assertEqual(invalid['validation_status'], 'syntax_rejected')
-
-    def test_untrusted_expression_rejected(self):
-        for answer in ('x.__class__', '__import__("os")', '[x for x in (1,2)]', 'sin(x).evalf()', 'x if t else 0'):
-            self.assertEqual(validation.grade(level0.make(1), answer)['reward'], 0.0)
+    def test_syntax_limits_apply_only_to_the_optional_tool(self):
+        for answer in ('x.__class__', '__import__("os")', '[x for x in (1,2)]',
+                       'sin(x).evalf()', 'x if t else 0'):
+            with self.assertRaises((ValueError, SyntaxError)):
+                checked_expression(answer)
 
 
 class AgentTests(unittest.TestCase):

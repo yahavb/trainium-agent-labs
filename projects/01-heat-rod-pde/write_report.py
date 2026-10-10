@@ -1,4 +1,4 @@
-"""Generate a compact report from one completed real-model benchmark."""
+"""Generate a report from a benchmark; preserve its recorded grading policy."""
 import collections
 import json
 from pathlib import Path
@@ -10,6 +10,9 @@ def main():
     source = Path(sys.argv[1])
     data = json.loads(source.read_text())
     rows = data['results']
+    original_only = data.get('settings', {}).get('grading_policy') == 'original_checker'
+    policy = ('Original upstream checker only.' if original_only else
+              'Historical policy: original checker plus an independent physics validator.')
     for row in rows:
         if row['status'] == 'infrastructure_timeout':
             row['status'] = 'budget_timeout'
@@ -21,7 +24,8 @@ def main():
              'Each variant: 2 samples/round, at most 3 rounds, 512 output tokens, 1 calculator exchange/attempt; 180-second case budget. '
              'Level 0 and Level 1 subproblems 1/2: one run per subproblem. Level 1 subproblem 3: three problem seeds. '
              'Sampling is stochastic; problem seeds do not fix generated answers.', '',
-             '| Variant | Level | Validated solved | Service failures | Budget timeouts | Reward range on completed runs | Mean rounds on completed runs |',
+             policy, '',
+             '| Variant | Level | Solved under recorded policy | Service failures | Budget timeouts | Reward range on completed runs | Mean rounds on completed runs |',
              '|---|---|---|---|---|---|---|']
     for variant in ('baseline', 'improved'):
         for level in (0, 1):
@@ -50,13 +54,9 @@ def main():
         smoke = json.loads(smoke_files[-1].read_text())['results'][0]
         smoke_text = (f"Final default-mode smoke run: {smoke['problem']}, {smoke['status']}, "
                       f"reward {smoke.get('reward')}, {smoke['rounds']} round(s), "
-                      f"{smoke['seconds']:.1f}s; independent validation accepted: "
-                      f"{smoke.get('validation', {}).get('accepted', False)}. "
+                      f"{smoke['seconds']:.1f}s. "
                       'This is one runnable-path check, not an estimated solve rate.')
-    lines += ['', 'The improved checker preserves the original physics reward and qualitative coefficient feedback, '
-              'then requires a separate 384-point space/time check and a refined 1601-point initial-shape check. '
-              'It does not consult known exact solutions. A tested high-frequency error that earns full marks '
-              'from the original checker is rejected by the added near-zero-time checks.', '',
+    lines += ['', policy, '',
               'Both original checker selftests and all nine new regression tests pass. The client records calculator '
               'requests/results, retries transient errors, preserves its best candidate, and keeps a short failure ledger.', '',
               'The concise contract regressed on Level 0 (baseline 3/3 versus concise 1/3), so it is now optional (`--concise`) '
@@ -66,13 +66,13 @@ def main():
               f'Observed duplicate final answers in {duplicate_rounds}/{total_rounds} recorded multi-sample rounds. '
               'The two samples must not be treated as independent statistical trials.', '',
               'Limits: only the hardest parabola case uses three problem seeds; the easier cases use one. These are exploratory results, not statistical proof of improvement. '
-              'Numerical validation is not a universal symbolic proof. Wall-clock costs may differ because the improved '
+              'Wall-clock costs may differ because the improved '
               'client retries transport errors. The first batch crashed on a Neuron-incompatible per-request seed; '
               'its logs are retained separately and are not included in this comparison.', '',
               'A second preliminary batch exposed long derivations exhausting output budgets; it was stopped to add a concise output contract '
               'and truncation-aware feedback. Its partial logs are retained separately. Only the final batch is summarized here.', '',
               'Budget timeouts are inconclusive: they do not imply a zero mathematical reward or a server failure. '
-              'Any full-score answer in a completed baseline run must pass the independent verifier before being counted as solved.', '',
+              'Success uses the grading policy recorded in the source benchmark.', '',
               f'Evidence: `{source.name}` plus case-level `attempts.jsonl`, `console.log` and `summary.json` in the same batch directory.']
     target = source.parent / 'RESULTS.md'
     target.write_text('\n'.join(lines) + '\n')

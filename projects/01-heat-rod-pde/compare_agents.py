@@ -13,27 +13,23 @@ import tempfile
 import time
 
 import agent
-import validation
+import pdecheck
 
 PROJECT = Path(__file__).resolve().parent
 DEFAULT_CASES = [[0, sub, 0] for sub in (1, 2, 3)] + [[1, sub, 0] for sub in (1, 2, 3)] + [[1, 3, s] for s in (1, 2)]
 
 
 def summarize_attempts(paths, problem):
-    """Both variants receive the same post-hoc validation; do not mix score layers."""
+    """Use the same original checker for both variants and both answer layers."""
     rows = [json.loads(line) for path in paths for line in path.read_text().splitlines() if line.strip()]
-    original_solved = model_solved = validated_solved = False
+    original_solved = model_solved = False
     model_requests = output_tokens = truncated = accepted_repairs = 0
-    validations = []
     for row in rows:
         executed = row.get('executed_answer', row['answer'])
-        grade = validation.grade(problem, executed)
-        model_grade = row.get('model_grade') or validation.grade(problem, row['answer'])
-        model_solved |= model_grade.get('original_reward') == 1.0
-        original_solved |= grade.get('original_reward') == 1.0
-        validated_solved |= grade['reward'] == 1.0
-        if grade.get('original_reward') == 1.0:
-            validations.append(grade.get('validation'))
+        grade = pdecheck.check(problem, executed)
+        model_grade = grade if executed == row['answer'] else pdecheck.check(problem, row['answer'])
+        model_solved |= model_grade['reward'] == 1.0
+        original_solved |= grade['reward'] == 1.0
         for turn in row.get('trace', []):
             if turn.get('type', 'model') == 'model':
                 model_requests += 1
@@ -43,7 +39,6 @@ def summarize_attempts(paths, problem):
             accepted_repairs += turn.get('type') == 'decay_repair' and turn.get('accepted', False)
     return dict(candidates=len(rows), rounds=max((r['round'] for r in rows), default=-1)+1,
                 model_original_solved=model_solved, executed_original_solved=original_solved,
-                validated_solved=validated_solved, validations=validations,
                 model_requests=model_requests, completion_tokens=output_tokens,
                 truncated_replies=truncated, accepted_repairs=accepted_repairs)
 
@@ -82,7 +77,7 @@ def main(argv=None):
     settings = vars(a).copy()
     settings.update(cases=cases, model=os.getenv('HEATROD_MODEL', 'Qwen/Qwen3-8B'),
                     seat=os.getenv('HOSTNAME'), offline=False,
-                    retries=0, workers=a.samples, source_sha256=hashes)
+                    retries=0, workers=a.samples, grading_policy='original_checker', source_sha256=hashes)
     settings = {key: str(value) if isinstance(value, Path) else value for key,value in settings.items()}
     results = []
     expected = len(cases)*a.repeats*len(a.variants)
@@ -139,7 +134,7 @@ def main(argv=None):
                             entry['status']='infrastructure_error'
                 entry['wall_seconds']=time.perf_counter()-started
                 results.append(entry);save()
-                print(f"DONE {case.name}: {entry['status']}, validated={entry.get('validated_solved',False)}, {entry['wall_seconds']:.1f}s",flush=True)
+                print(f"DONE {case.name}: {entry['status']}, original_solved={entry.get('executed_original_solved')}, {entry['wall_seconds']:.1f}s",flush=True)
                 if interrupted: return 130
     print(f'COMPLETE {root}',flush=True)
     return 0

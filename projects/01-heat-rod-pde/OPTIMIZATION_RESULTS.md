@@ -1,10 +1,23 @@
 # Verified symbolic decay repair
 
-The integrated agent now has an opt-in `--decay-repair` tool. In a matched real-model
+The integrated agent has an opt-in `--decay-repair` tool. In a matched real-model
 comparison on three parabola problem seeds, it solved 2/3 cases versus 0/3 without the
 tool. Total measured time fell from 210.595 to 120.110 seconds (43.0%), and completion
 tokens fell from 5012 to 2812 (43.9%). These are observed results on this fixed small
 test set, not a population solve-rate estimate.
+
+## Grading policy correction
+
+The current implementation uses the unmodified upstream `pdecheck.check` for rewards,
+feedback, proposal acceptance, and stopping. The additional numerical validator has
+been removed. `compare_agents.py`, `benchmark.py`, and new candidate replays use the
+same original checker. The syntax limits retained in `answer_syntax.py` only describe
+inputs supported by the optional decay tool; they do not gate checker scores.
+
+The measurements below are historical: their frozen source snapshots used the original
+checker plus an additional numerical acceptance gate. They remain intact for provenance,
+but are not measurements of the corrected original-checker-only implementation. Rerun
+the comparison command below to measure the current policy; do not pool the two policies.
 
 ## What the tool changes
 
@@ -18,7 +31,8 @@ or frequency helpers, or `series_answer`.
 The agent invokes the tool only if the original candidate passes both boundaries
 and the initial-shape test but fails the equation. The tool preserves the initial
 expression exactly and rejects unsupported forms. A proposal replaces the executed
-answer only after the original checker and held-out validator both accept it. No
+answer only after the original checker returns 1.0. The historical experiment below
+also required a held-out validation pass. No
 weights or tolerances were changed. Missing modes, wrong coefficients, malformed
 answers, and token truncation remain the model/feedback loop's responsibility.
 
@@ -64,7 +78,7 @@ all per-case attempt traces, commands, console logs and the executed Python sour
 in the same directory. Settings include source SHA-256 hashes. `wall_seconds` includes
 the client process and common post-hoc validation; `process_wall_seconds` is also retained.
 
-Reproduce the exact case list by creating `three-seeds.json` containing
+Run the current implementation on the same case list by creating `three-seeds.json` containing
 `[[1,3,0],[1,3,1],[1,3,2]]`, then running inside a seat with `HEATROD_BASE_URL` configured:
 
 ```bash
@@ -100,5 +114,5 @@ outcomes. Seventeen physics/agent/comparison/repair tests and eleven workflow te
 as did both original checker selftests. An additional six-problem coverage batch was
 stopped at the user's request to avoid further testing; its partial results are not
 included in the improvement claim. Finite
-held-out numerical checks strengthen validation but do not prove every possible answer.
+the extra numerical validator from those snapshots has since been removed.
 The remaining coefficient-normalization failure needs a separate, isolated experiment.
