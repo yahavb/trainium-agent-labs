@@ -23,6 +23,8 @@ Every attempt is appended to a JSONL file with its reward, so the log is the del
 """
 
 import argparse
+import ast
+import hashlib
 import json
 import os
 import re
@@ -33,9 +35,44 @@ import time
 import numpy as np
 
 import nkibench
+from prompts import level_prompt_context
+from nki_docs import DEFAULT_ROOT as NKI_DOCS_ROOT, augment_prompt
 
 MODEL = os.environ.get("KERNEL_AGENT_MODEL", "Qwen/Qwen3-8B")
-
+SEARCH_STRATEGIES = [
+    {
+        "name": "simple",
+        "instruction": (
+            "Prioritize correctness and simplicity. "
+            "Use the simplest valid NKI implementation. "
+            "Avoid unnecessary operations and abstractions."
+        ),
+    },
+    {
+        "name": "tiled",
+        "instruction": (
+            "Design the kernel using explicit tiling. "
+            "Derive tile dimensions from the tensor shape "
+            "and hardware limits. Handle boundary tiles."
+        ),
+    },
+    {
+        "name": "memory",
+        "instruction": (
+            "Focus on memory layout and data movement. "
+            "Minimize unnecessary HBM transfers. "
+            "Reuse data in SBUF when possible."
+        ),
+    },
+    {
+        "name": "alternative",
+        "instruction": (
+            "Explore a different implementation structure. "
+            "Avoid copying the organization of the "
+            "previous attempt. Preserve exact correctness."
+        ),
+    },
+]
 # The model writes to a hidden reasoning channel before it writes any answer. Measured on this
 # endpoint: a coding task burned 900 tokens thinking and returned EMPTY content. See gptoss/README.
 MIN_ANSWER_TOKENS = 2500
@@ -356,12 +393,20 @@ def first_prompt(level, terse=0):
     """
     s = nkibench.LEVELS[level]
     import inspect
+    context = level_prompt_context(
+        level,
+        nkibench.PMAX,
+        nkibench.GEMM_STATIONARY_FMAX,
+        nkibench.GEMM_MOVING_FMAX,
+        terse=terse,
+    )
     if terse >= 2:
         # Last resort. Measured on this endpoint: one-sentence prompts answered in 300-700
         # tokens while every structured, rule-carrying prompt spiralled.
         return (f"Write a Python function `{s['entry']}` decorated with @nki.jit that computes "
                 f"the same thing as this, using nki.language as nl and nki.isa as nisa:\n\n"
                 f"{inspect.getsource(s['ref'])}\n"
+                f"{context}\n\n"
                 f"Reply with one python code block.")
     if terse >= 1:
         # The matmul memory rules are the substance of levels 3 and 4, and the short prompt has to
@@ -378,6 +423,7 @@ def first_prompt(level, terse=0):
                 f"Allocate with nl.ndarray(shape, dtype=..., buffer=nl.sbuf), move data with "
                 f"nisa.dma_copy(dst=, src=), loop with nl.affine_range(n). A tile's partition "
                 f"dimension is at most {nkibench.PMAX}.\n{mm}\n"
+                f"{context}\n\n"
                 f"Reply with one python code block.")
     return (
         f"Write an AWS Neuron NKI kernel.\n\n"
@@ -388,7 +434,7 @@ def first_prompt(level, terse=0):
         f"Hardware limits: a tile's partition dimension is at most {nkibench.PMAX}. For matmul, "
         f"the stationary free dimension is at most {nkibench.GEMM_STATIONARY_FMAX} and the "
         f"moving free dimension at most {nkibench.GEMM_MOVING_FMAX}.\n\n"
-        f"Import nki, nki.language as nl, and nki.isa as nisa.\n\n{API_CARD}\n\n"
+        f"Import nki, nki.language as nl, and nki.isa as nisa.\n\n{context}\n\n"
         f"Reply with ONE python code block containing the imports and the function. No prose.")
 
 
@@ -426,6 +472,74 @@ def extract_code(text):
         if re.match(r"^\s*(import |from |@nki|def )", line):
             return "\n".join(lines[i:]).strip()
     return ""
+
+
+# ---------------------------------------------------------------- safe, targeted repair
+
+def repair_known_nki_error(source, feedback):
+    """Apply one mechanically verifiable repair; all results still go through grade().
+
+    Never alter the algorithm or replace the candidate with a reference kernel.
+    """
+    if not source.strip() or not re.search(
+        r"dst must be in \[?'psum'\]?|dst must be in \['psum'\]", feedback
+    ):
+        return source, ""
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return source, ""
+
+    # Find the actual variable used as nc_matmul(dst=...), rather than guessing
+    # that the result is named 'psum'. Fix only its nl.ndarray allocation.
+    dst_names = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+            continue
+        if not (isinstance(node.func.value, ast.Name) and
+                node.func.value.id == "nisa" and node.func.attr == "nc_matmul"):
+            continue
+        for kw in node.keywords:
+            if kw.arg == "dst" and isinstance(kw.value, ast.Name):
+                dst_names.add(kw.value.id)
+    if not dst_names:
+        return source, ""
+
+    changes = 0
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Assign, ast.AnnAssign)):
+            continue
+        targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+        if not any(isinstance(t, ast.Name) and t.id in dst_names for t in targets):
+            continue
+        call = node.value
+        if not (isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute)
+                and isinstance(call.func.value, ast.Name)
+                and call.func.value.id == "nl" and call.func.attr == "ndarray"):
+            continue
+        existing = next((kw for kw in call.keywords if kw.arg == "buffer"), None)
+        target = ast.Attribute(value=ast.Name(id="nl", ctx=ast.Load()),
+                               attr="psum", ctx=ast.Load())
+        if existing:
+            if isinstance(existing.value, ast.Attribute) and existing.value.attr == "psum":
+                continue
+            existing.value = target
+        else:
+            call.keywords.append(ast.keyword(arg="buffer", value=target))
+        changes += 1
+    if not changes:
+        return source, ""
+    ast.fix_missing_locations(tree)
+    return ast.unparse(tree) + "\n", "set nc_matmul destination allocation buffer=nl.psum"
+
+
+def code_fingerprint(source):
+    """Ignore formatting when deduplicating Python source."""
+    try:
+        normalized = ast.dump(ast.parse(source), include_attributes=False)
+    except SyntaxError:
+        normalized = source.strip()
+    return hashlib.sha256(normalized.encode()).hexdigest()
 
 
 # ---------------------------------------------------------------- the model
@@ -469,11 +583,31 @@ def ask(a, prompt):
     return content
 
 
+#def ask_parallel(a, prompt, n):
+    #import concurrent.futures as cf
+    #with cf.ThreadPoolExecutor(max_workers=n) as ex:
+        #return [f.result() for f in [ex.submit(ask, a, prompt) for _ in range(n)]]
 def ask_parallel(a, prompt, n):
     import concurrent.futures as cf
-    with cf.ThreadPoolExecutor(max_workers=n) as ex:
-        return [f.result() for f in [ex.submit(ask, a, prompt) for _ in range(n)]]
 
+    def generate_one(i):
+        strategy = SEARCH_STRATEGIES[
+            i % len(SEARCH_STRATEGIES)
+        ]
+
+        new_prompt = (
+            prompt
+            + "\n\nAdditional generation strategy:\n"
+            + strategy["instruction"]
+            + "\n\nPay special attention to matrix size and shape mismatches. "
+            "Check that operand dimensions, transposes, tile shapes, and output shapes "
+            "are compatible for every supported input shape, including boundary tiles."
+        )
+
+        return ask(a, new_prompt)
+
+    with cf.ThreadPoolExecutor(max_workers=n) as ex:
+        return list(ex.map(generate_one, range(n)))
 
 def offline_answers(level, n, rnd):
     """No model. Replays the shipped reference, preceded by a deliberately broken version, so the
@@ -493,22 +627,53 @@ def solve(a, level, log):
     prompt = first_prompt(level, terse)
     best = (0.0, None, "")
     tried, streak, seen = [], 0, {}
+    seen_codes = set()
+    grade_cache = {}
+    repair_hint = ""
     latest = ("", "")
     for rnd in range(a.rounds):
         t0 = time.perf_counter()
+        request_prompt = augment_prompt(
+            prompt, level, latest[1], latest[0], root=a.nki_docs,
+            max_chars=0 if a.no_nki_docs else a.docs_chars,
+            context=a.context, answer_tokens=a.max_tokens, terse=terse,
+        )
         replies = (offline_answers(level, a.samples, rnd) if a.offline
-                   else ask_parallel(a, prompt, a.samples))
+                   else ask_parallel(a, request_prompt, a.samples))
         graded = []
-        for reply in replies:
+        for i, reply in enumerate(replies):
             src = extract_code(reply)
-            reward, parts, feedback = grade(src, level)
-            graded.append((reward, src, feedback, parts))
+
+            strategy_name = SEARCH_STRATEGIES[
+                i % len(SEARCH_STRATEGIES)
+            ]["name"]
+
+            raw_src = src
+            auto_fix = ""
+            # If the previous attempt exposed a known deterministic error, fix
+            # the new generation before running it through the checker.
+            if repair_hint and not a.offline:
+                src, auto_fix = repair_known_nki_error(src, repair_hint)
+            fingerprint = code_fingerprint(src)
+            cached = fingerprint in grade_cache
+            if cached:
+                reward, parts, feedback = grade_cache[fingerprint]
+            else:
+                reward, parts, feedback = grade(src, level)
+                grade_cache[fingerprint] = (reward, parts, feedback)
+            graded.append((reward, src, feedback, parts, not cached))
             log.write(json.dumps(dict(level=level, round=rnd, reward=reward, parts=parts,
-                                      prompt_chars=len(prompt), reply_chars=len(reply),
-                                      code=src, feedback=feedback)) + "\n")
+                                      prompt_chars=len(request_prompt), reply_chars=len(reply),
+                                      docs_chars=len(request_prompt) - len(prompt),
+                                      code=src, feedback=feedback, strategy=strategy_name,
+                                      sample_index=i, cached=cached, auto_fix=auto_fix,
+                                      raw_code_hash=code_fingerprint(raw_src))) + "\n")
         log.flush()
-        graded.sort(key=lambda g: g[0], reverse=True)
+        # Prefer unseen code when rewards tie; reward remains the primary criterion.
+        graded.sort(key=lambda g: (g[0], g[4], g[1] not in seen_codes), reverse=True)
         top = graded[0]
+        for g in graded:
+            seen_codes.add(g[1])
         if top[0] > best[0]:
             best = (top[0], top[1], top[2])
         # Repair the LATEST attempt, not the best one. Rebuilding from the best attempt with the
@@ -517,6 +682,7 @@ def solve(a, level, log):
         # stuck at 0.10 for four rounds while the prompt still carried the 0.50 code.
         if (top[1] or "").strip():
             latest = (top[1], top[2])
+        repair_hint = top[2]
         same = top[2] == (tried[-1] if tried else None)
         if same:
             # Collapse. Fifteen identical multi-line blocks is noise, not information.
@@ -533,7 +699,9 @@ def solve(a, level, log):
             return top[0], rnd + 1
         seen[top[2]] = seen.get(top[2], 0) + 1
         streak = streak + 1 if same else 1
-        if seen[top[2]] >= a.give_up_after:
+        # Only give up when the same error persists AND the model is not
+        # producing any untested candidate. Different code can share an error.
+        if seen[top[2]] >= a.give_up_after and all(not g[4] for g in graded):
             how = ("the identical failure %d rounds running" % streak if streak >= a.give_up_after
                    else "this failure for the %dth time, alternating with %d other(s)"
                         % (seen[top[2]], len(seen) - 1))
@@ -544,6 +712,13 @@ def solve(a, level, log):
             return best[0], rnd + 1
         tried.append(top[2])
         repeats = streak
+        if all(not g[4] for g in graded) and not a.offline:
+            prompt = (first_prompt(level, min(terse + 1, 2)) +
+                      "\nPrevious candidates were identical to tested failures. "
+                      "Produce a structurally different implementation.\n" +
+                      "Latest blocking error: " + latest[1])
+            print("  all candidates duplicates; switching to a fresh prompt")
+            continue
         if repeats >= 2 and (best[1] or "").strip():
             # Sampling on this endpoint is greedy, so an unchanged prompt returns an unchanged
             # answer. Measured: the same TypeError 19 rounds running. Changing the prompt is the
@@ -596,6 +771,12 @@ def main():
     ap.add_argument("--think", action="store_true",
                     help="let the model reason first; costs budget, and it ran out")
     ap.add_argument("--offline", action="store_true")
+    ap.add_argument("--nki-docs", default=os.environ.get("NKI_DOCS_DIR", str(NKI_DOCS_ROOT)),
+                    help="path to the neuron-nki-docs skill directory")
+    ap.add_argument("--docs-chars", type=int, default=1600,
+                    help="maximum documentation characters per prompt (default: 1600)")
+    ap.add_argument("--no-nki-docs", action="store_true",
+                    help="disable local documentation retrieval for baseline comparisons")
     a = ap.parse_args()
 
     if not a.offline:
