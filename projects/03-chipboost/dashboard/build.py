@@ -45,6 +45,7 @@ import html
 import json
 import math
 import random
+import re
 import statistics
 import sys
 from collections import defaultdict
@@ -258,6 +259,41 @@ def summarize(records):
     return out
 
 
+CAP_RE = [re.compile(rf"^{n}\s*=\s*(\d+)", re.M) for n in ("TILES_IN_BLOCK_M", "TILES_IN_BLOCK_N", "TILES_IN_BLOCK_K")]
+SHIPPED_CAPS = (16, 2, 8)   # kernels/matmul_expert.py as AWS ships it: search.py's attempt 0
+
+
+def caps_of(code):
+    """search.py's three block caps, read back from the candidate's source; None if they are not there."""
+    got = [r.search(code or "") for r in CAP_RE]
+    return tuple(int(m.group(1)) for m in got) if all(got) else None
+
+
+def tuning(summary, sweep):
+    """Random search tunes the expert's block sizes and starts FROM the expert, so it is measured against
+    the expert as shipped -- each run's attempt 0, timed in that run's session -- not the start kernel.
+    The sweep (search.py --exhaustive, sweep-*.jsonl) times every legal setting once: its best is the
+    ceiling for this arm, and each run's best is ranked among its settings."""
+    timed = sorted((x for x in sweep if x["speedup"] and x["verdict"] in ("faster", "no_gain", "slower")),
+                   key=lambda x: -x["speedup"])
+    ref = next((x["speedup"] for x in timed if caps_of(x["code"]) == SHIPPED_CAPS), None)
+    order = [caps_of(x["code"]) for x in timed]
+    sw = (dict(n=len(timed), best=timed[0]["speedup"] / ref, best_caps=caps_of(timed[0]["code"]))
+          if timed and ref else None)
+    runs = []
+    for r in (summary.get("matmul") or {}).get("arms", {}).get("random_search", []):
+        a0 = r["attempts"][0] if r["attempts"] else None
+        base = a0["speedup"] if a0 and a0["speedup"] and caps_of(a0["code"]) == SHIPPED_CAPS else None
+        if not base:
+            continue
+        best = max((a for a in r["attempts"] if verified(a)), key=lambda a: a["speedup"], default=a0)
+        caps = caps_of(best["code"])
+        runs.append(dict(run_id=r["run_id"], seat=r["seat"], curve=[c / base for c in r["curve"]],
+                         best=r["curve"][-1] / base, caps=caps,
+                         rank=order.index(caps) + 1 if sw and caps in order else None))
+    return dict(runs=runs, sweep=sw) if runs or sw else None
+
+
 def kernels_of(summary, results):
     """Every op with logs or with numbers in a results file, in schema order: before the loops run, the
     page still shows P2's start, expert and floor times."""
@@ -407,8 +443,9 @@ def kernel_view(k, summary, results):
     return s, info, start, (start / expert if start and expert else None), (start / floor if start and floor else None)
 
 
-def panel_speed(summary, results):
+def panel_speed(summary, results, tune):
     blocks, rows_t = [], []
+    tuned = median(r["best"] for r in tune["runs"]) if tune and tune["runs"] else None
     for k in kernels_of(summary, results):
         s, info, start, expert_x, limit_x = kernel_view(k, summary, results)
         rows = []
@@ -456,7 +493,9 @@ def panel_speed(summary, results):
                 g.append(f'<path d="M{sx(lo):.1f},{yc:.1f} H{sx(hi_):.1f} M{sx(lo):.1f},{yc - 4:.1f} V{yc + 4:.1f} '
                          f'M{sx(hi_):.1f},{yc - 4:.1f} V{yc + 4:.1f}" class="whisker"/>')
                 end = max(end, sx(hi_))
-            g.append(f'<text x="{end + 6:.1f}" y="{y + bh / 2 + 4:.1f}" class="value strong">{fmt_x(x)}</text>')
+            over = (f" · expert {(tuned - 1) * 100:+.0f}%" if tuned and k == "matmul"
+                    and name == ARM_LABEL["random_search"] else "")
+            g.append(f'<text x="{end + 6:.1f}" y="{y + bh / 2 + 4:.1f}" class="value strong">{fmt_x(x)}{over}</text>')
             rows_t.append([esc(k), esc(name), fmt_x(x), fmt_x(lo) if lo else "", fmt_x(hi_) if hi_ else "",
                            fmt_us(us), str(n or "")])
         below = [r for rs in s["arms"].values() for r in rs
@@ -469,7 +508,8 @@ def panel_speed(summary, results):
                       f'aria-label="{esc(k)}: speedup per arm, expert and floor">{"".join(g)}</svg>{warns}</div>')
     body = "".join(blocks) or empty("No kernels yet.")
     return card("Speedup over the start kernel",
-                "Bar: median of each run's best verified speedup; whisker: fastest to slowest run.",
+                "Bar: median of each run's best verified speedup; whisker: fastest to slowest run. Random search "
+                "starts from the expert, so its bar includes the expert's own speedup.",
                 legend_arms() + body + table_view(table(
                     ["Kernel", "Row", "Speedup", "Fastest run", "Slowest run", "Time", "Runs"], rows_t,
                     numeric=(2, 3, 4, 5, 6))))
@@ -484,15 +524,18 @@ def step_points(xs, ys):
     return pts
 
 
-def panel_progress(summary, results):
+MODEL_ARMS = ("referee", "model_alone")   # both start from the start kernel; random search starts from the expert
+
+
+def panel_progress(summary, results, tune):
     blocks, rows_t = [], []
     for k, s in summary.items():
-        L_max = max((len(r["curve"]) for rs in s["arms"].values() for r in rs), default=0)
+        L_max = max((len(r["curve"]) for arm in MODEL_ARMS for r in s["arms"][arm]), default=0)
         if not L_max:
             continue
         xs = list(range(1, L_max + 1))
         series = []
-        for arm in schema.ARMS:
+        for arm in MODEL_ARMS:
             rs = s["arms"][arm]
             if not rs:
                 continue
@@ -553,12 +596,79 @@ def panel_progress(summary, results):
         blocks.append(f'<div class="kblock"><h3>{esc(k)} <span class="src">{esc(source_label(s["sources"]))}</span></h3>'
                       f'<svg viewBox="0 0 {W} {H}" role="img" data-curves="{esc(json.dumps(curves))}" '
                       f'aria-label="{esc(k)}: best verified speedup against attempts, per arm">{"".join(g)}</svg></div>')
-    body = "".join(blocks) or empty("No attempts logged yet: this fills in as the loops run.")
-    return card("Progress: best verified speedup so far",
-                "Line: median over runs; band: fastest to slowest run. Same x = same budget.",
-                legend_arms() + body + table_view(table(
+    body = "".join(blocks) or empty("No model-arm attempts logged yet: this fills in as the loops run.")
+    legend = ('<div class="legend">' + "".join(
+        f'<span class="key"><span class="line-key" style="background:{ARM_COLOR[a]}"></span>{ARM_LABEL[a]}</span>'
+        for a in MODEL_ARMS) + "</div>")
+    return card("Progress: the model improves the start kernel",
+                "Best verified speedup so far, from the start kernel (1×). Line: median over runs; band: fastest to "
+                "slowest run. Same x = same budget.",
+                legend + body + tuning_block(tune) + table_view(table(
                     ["Kernel", "Arm", "Runs", "Attempts", "After 25%", "After 50%", "After 75%", "At the end",
                      "Spread at the end"], rows_t, numeric=(2, 3, 4, 5, 6, 7))))
+
+
+def tuning_block(tune):
+    """Random search's own chart: speedup over the expert as shipped, against the sweep's best of every
+    legal block setting. It starts from AWS's design, so it is a different claim from the model arms'."""
+    if not tune:
+        return ""
+    runs, sw = tune["runs"], tune["sweep"]
+    head = ('<h3 class="sep">Random search: tuning the expert\'s block sizes <span class="src">'
+            'speedup over the expert as shipped (1×), so not comparable with the curves above</span></h3>')
+    if not runs:
+        return head + empty(f"No random-search runs yet. The sweep's best of all {sw['n']} settings is "
+                            f"{fmt_x(sw['best'])} the expert.")
+    L_max = max(len(r["curve"]) for r in runs)
+    xs = list(range(1, L_max + 1))
+    med, lo, hi, n = [], [], [], []
+    for i in range(L_max):
+        vals = [r["curve"][i] for r in runs if len(r["curve"]) > i]
+        med.append(median(vals))
+        lo.append(min(vals))
+        hi.append(max(vals))
+        n.append(len(vals))
+    top = max(hi + ([sw["best"]] if sw else []) + [1.05])
+    bottom = min(lo + [1.0])
+    y0, y1, yt = nice_domain(bottom, top, 4)
+    W, H, Lm, Rm, T, B = 540, 150, 44, 104, 10, 28
+    dx0, dx1 = 1, max(L_max, 2)
+    sx = lambda v: Lm + (v - dx0) / (dx1 - dx0) * (W - Lm - Rm)
+    sy = lambda v: T + (1 - (v - y0) / (y1 - y0)) * (H - T - B)
+    color = ARM_COLOR["random_search"]
+    g = []
+    for t in yt:
+        g.append(f'<line x1="{Lm}" x2="{W - Rm}" y1="{sy(t):.1f}" y2="{sy(t):.1f}" class="{"axis" if t == y0 else "grid"}"/>'
+                 f'<text x="{Lm - 6}" y="{sy(t) + 4:.1f}" text-anchor="end" class="tick">{t:g}×</text>')
+    _, _, xt = nice_domain(dx0, dx1, 6)
+    for t in xt:
+        if dx0 <= t <= dx1:
+            g.append(f'<text x="{sx(t):.1f}" y="{H - B + 15}" text-anchor="middle" class="tick">{t:.0f}</text>')
+    g.append(f'<line x1="{Lm}" x2="{W - Rm}" y1="{sy(1):.1f}" y2="{sy(1):.1f}" class="ref"/>'
+             f'<text x="{W - Rm + 6}" y="{sy(1) + 4:.1f}" class="ref-label">expert as shipped</text>')
+    if sw:
+        g.append(f'<line x1="{Lm}" x2="{W - Rm}" y1="{sy(sw["best"]):.1f}" y2="{sy(sw["best"]):.1f}" class="ref"/>'
+                 f'<text x="{W - Rm + 6}" y="{sy(sw["best"]) + 4:.1f}" class="ref-label">best of all {sw["n"]}: '
+                 f'{fmt_x(sw["best"])}</text>')
+    if max(n) > 1:
+        up, dn = step_points(xs, hi), step_points(xs, lo)[::-1]
+        g.append('<polygon points="' + " ".join(f"{sx(a):.1f},{sy(b):.1f}" for a, b in up + dn) +
+                 f'" fill="{color}" class="band"/>')
+    g.append('<polyline points="' + " ".join(f"{sx(a):.1f},{sy(b):.1f}" for a, b in step_points(xs, med)) +
+             f'" stroke="{color}" class="line"/>'
+             f'<circle cx="{sx(xs[-1]):.1f}" cy="{sy(med[-1]):.1f}" r="4" fill="{color}" class="end-dot"/>'
+             f'<line class="hair" x1="0" x2="0" y1="{T}" y2="{H - B}"/>'
+             f'<rect class="overlay" x="{Lm}" y="{T}" width="{W - Lm - Rm}" height="{H - T - B}" fill="transparent"/>')
+    curves = dict(xs=xs, dx0=dx0, dx1=dx1, px0=Lm, px1=W - Rm,
+                  series=[dict(label="Random search, over the expert", color=color, med=med, lo=lo, hi=hi, n=n)])
+    ranks = [r["rank"] for r in runs if r["rank"]]
+    note = (f'{len(runs)} run{"s" if len(runs) != 1 else ""}; median best <strong>{fmt_x(median(r["best"] for r in runs))}'
+            f'</strong> the expert')
+    if ranks and sw:
+        note += f'; each run\'s best ranks #{", #".join(str(x) for x in ranks)} of the sweep\'s {sw["n"]} settings'
+    return (head + f'<svg viewBox="0 0 {W} {H}" role="img" data-curves="{esc(json.dumps(curves))}" '
+            f'aria-label="random search: best speedup over the expert against attempts">{"".join(g)}</svg>'
+            f'<p class="how">{note}.</p>')
 
 
 # ---------------------------------------------------------------- screen 2: trust
@@ -841,7 +951,7 @@ def meter(frac):
     return f'<div class="meter" aria-hidden="true"><span style="width:{max(0.0, min(1.0, frac)) * 100:.0f}%"></span></div>'
 
 
-def kpis(summary, results, records):
+def kpis(summary, results, records, tune):
     tiles = []
     for k in kernels_of(summary, results):
         s, info, start, expert_x, limit_x = kernel_view(k, summary, results)
@@ -855,6 +965,15 @@ def kpis(summary, results, records):
             sub = "no runs yet" + (f" · target: {tname} {fmt_x(target)}" if target else "")
         tiles.append((f"{k} speedup", fmt_x(best) if best else "–", sub,
                       meter((best - 1) / (target - 1)) if best and target and target > 1 else meter(0)))
+    if tune:
+        sw, runs = tune["sweep"], tune["runs"]
+        best = median(r["best"] for r in runs) if runs else None
+        sub = (f"random search over AWS's default · {len(runs)} run{'s' if len(runs) != 1 else ''}" if runs
+               else "random search: no runs yet")
+        if sw:
+            sub += f" · best of all {sw['n']}: {(sw['best'] - 1) * 100:+.0f}%"
+        tiles.append(("Block tuning", f"{(best - 1) * 100:+.0f}%" if best else "–", sub,
+                      meter((best - 1) / (sw["best"] - 1)) if best and sw and sw["best"] > 1 else meter(0)))
     rt = results["redteam"]
     if rt:
         control, cheats, caught, pending = redteam_split(rt)
@@ -925,6 +1044,7 @@ padding:8px 12px;margin:0 0 12px;font-size:13px}
 h3{font-size:13px;margin:8px 0 2px}
 .src{font-weight:400;font-size:11.5px;color:var(--muted);margin-left:4px}
 .kblock+.kblock{margin-top:4px}
+h3.sep{margin-top:12px;padding-top:10px;border-top:1px solid var(--grid)}
 .pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(480px,100%),1fr));gap:4px 20px}
 .legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--ink-2);margin:0 0 4px}
 .key{display:inline-flex;align-items:center;gap:5px}
@@ -1157,8 +1277,9 @@ def stamp(records, fake):
     return f'<div class="fake" role="alert"><strong>Fake or stub data.</strong> {what}</div>'
 
 
-def build(records, results, notes, fake, inputs):
+def build(records, results, notes, fake, inputs, sweep=()):
     summary = summarize(records)
+    tune = tuning(summary, list(sweep))
     timeline, details = panel_timeline(summary)
     sources = set().union(*(s["sources"] for s in summary.values())) if summary else set()
     sources |= {v["source"] for v in results["kernels"].values() if v.get("source")}
@@ -1186,8 +1307,8 @@ def build(records, results, notes, fake, inputs):
 A speedup counts only if the referee verifies it: correct on the chip and on unseen shapes, and faster than the noise.</p></div>
 <p class="meta">{esc(meta)}</p>
 </header>
-{stamp(records, fake)}{note_html}{kpis(summary, results, records)}
-<div class="row">{panel_speed(summary, results)}{panel_progress(summary, results)}</div>
+{stamp(records, fake)}{note_html}{kpis(summary, results, records, tune)}
+<div class="row">{panel_speed(summary, results, tune)}{panel_progress(summary, results, tune)}</div>
 <div class="row">{panel_redteam(results)}{panel_heldout(results, summary)}</div>
 {timeline}
 <footer>Inputs: {esc(", ".join(inputs)) or "none"}. Speedups are against the start kernel timed in the same session;
@@ -1205,13 +1326,16 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("logs", nargs="*", help="attempts*.jsonl files (default: every one under 03-chipboost/)")
     ap.add_argument("--results", nargs="*", help="results*.json files (default: every one under 03-chipboost/)")
+    ap.add_argument("--sweep", nargs="*", help="search.py --exhaustive logs (default: every sweep*.jsonl here)")
     ap.add_argument("--fake", action="store_true", help="build from schema.fake_attempts(); stamped FAKE")
     ap.add_argument("-o", "--out", default=str(HERE / "index.html"))
     a = ap.parse_args()
 
     def found(pattern):
+        # dashboard/collected/ is collect.py's copy of other branches and pods: it passes those files
+        # explicitly, so finding them here too would count every line twice.
         return sorted(str(p) for p in PROJECT.rglob(pattern)
-                      if ".git" not in p.parts and not p.name.startswith("fake_"))
+                      if ".git" not in p.parts and "collected" not in p.parts and not p.name.startswith("fake_"))
 
     def rel(p):
         """logs/seat-100/attempts.jsonl, not attempts.jsonl: every seat's file has the same name."""
@@ -1255,9 +1379,14 @@ def main():
     else:
         inputs += [rel(p) for p in res_paths]
 
+    sweep_paths = [] if a.fake else (a.sweep if a.sweep is not None else found("sweep*.jsonl"))
+    sweep, sweep_notes = load_attempts(sweep_paths)
+    notes += sweep_notes
+    inputs += [rel(p) for p in sweep_paths]
+
     out = Path(a.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(build(records, results, notes, fake, inputs), encoding="utf-8")
+    out.write_text(build(records, results, notes, fake, inputs, sweep), encoding="utf-8")
     print(f"wrote {out}: {len(records)} attempts from {', '.join(inputs)}"
           + ("  [FAKE DATA]" if fake else "") + (f"  ({len(notes)} log lines need attention)" if notes else ""))
 
