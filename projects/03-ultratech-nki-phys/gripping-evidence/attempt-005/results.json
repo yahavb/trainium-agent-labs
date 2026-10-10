@@ -1,0 +1,786 @@
+{
+  "context": {
+    "run_id": "858e2394ca1c4f91ab92c288b3578c68",
+    "backend": "simulate",
+    "batch": 2,
+    "steps": 1024,
+    "runs": 1,
+    "warmup": 20,
+    "iters": 200,
+    "host": "seat-260",
+    "python": "3.13.7",
+    "numpy": "2.4.6",
+    "visible_cores": null,
+    "public_manifest_sha256": "c7325d553f4f83e812b3693721f9c910bc16d4d4fdc36f82dac95bcd5cea5ec5",
+    "contract_sha256": "b43241fcfd8d6c665413480416c6e5fdc6f1329246d1098357aef0f15e7216c6",
+    "public_input_sha256": {
+      "grip-000": "68a22bc5d8b4605d4975b290b251af319e83e0d7a0b6340bb0e2cb3a98d69aa7",
+      "grip-001": "406c8d7f601f70dc6ff7adf5d3acfa1d8e5dd2014b591ec4231b2585f930d1b5",
+      "grip-002": "9b7dfb0407973f51ab5fae898179276ef02dbeaf0155fc2cd9201c46c64a0864",
+      "grip-003": "9bbb542090d98f2a2582e248abc0ed25220725057c55631ac81a6307a700e8ac",
+      "grip-004": "f33b2b4222c13c9b0316ea1e3bc965fa9ae605027ed6278f3853f15b70641fbe",
+      "grip-005": "6eea0b967a51a8043b02f74e1ea6bc47039a3ebc5563faf7eccd87ffb7c05b42",
+      "grip-006": "1c6a449edb5927fb1313c7aaf2b5176dbdff357763bd3a13444a1b71f4504d92",
+      "grip-007": "115fec1ea66c63f10d14f7e7a189c209d16e0cbebb954ebe19781351d8431a84",
+      "grip-008": "b39bf5fc8a3a07b504db10465b5f249dbaed0925c7c583c65a26f884d8c2a40a",
+      "grip-009": "061140b9c3eedf95b0555bee25ebe8d71b530303d2799c14a51a0b4cfcef5fed",
+      "grip-010": "c59c4e5f4676dde1900124aa9e95c076a76b0c8e90d033ce642056d0f478f2bf",
+      "grip-011": "f7980753dc3948c386410ceb93a8e79ab8c2e2d5e8362235ee81d36229eec83b",
+      "grip-012": "23d2b861666403b65e05d952080cb838a11d28dedd3472c760322cbff02cfb83",
+      "grip-013": "faa1c6964be461b155029480773578b87229a45f2da780b0f5e9be7e6cfd9e73",
+      "grip-014": "d64a50cb877816914e811485b68f789a96d3b4ea5b3b1fa403d8931f76f4efdd",
+      "grip-015": "5facbfcc484a05bba0667c31f11d9478692dd710c28b27076a65b45e39edee95"
+    },
+    "source_sha256": {
+      "grip_throughput.py": "d1c2c899c87d523197fefbd9a1231e41268f491e32f6a7f1f82452a88ed3de53",
+      "batch_reference.py": "e0d6dce4c00474ab55ec5bd3b822abe0ebbe6ad7cd06dd9204b770e7e5639a28",
+      "update_reference.py": "a0ea98345fe4ae793d4b25048a189a462a7b2e724ac9940cfa90d0050c3c11a5",
+      "nki_contact_batch.py": "2d4ade0473df9e5fdead2187b6675f25082c4c253ed92c6b302be32baf1d943f",
+      "benchmark_update.py": "7cb4023224021e86a4ea499d5c8e5756d079c72fa8bbff0e2604d9580ae88254",
+      "generated_candidate.py": "9346455bb393ff783ed38b658f14aad6af755f0f54a646803491711043fa767f"
+    },
+    "candidate_sha256": "9346455bb393ff783ed38b658f14aad6af755f0f54a646803491711043fa767f",
+    "nki_version": "0.6.0+31049202112.g85070674"
+  },
+  "all_cases_pass": false,
+  "scored_attempts": [
+    {
+      "group": 0,
+      "run": 0,
+      "score": 0,
+      "cases": [
+        {
+          "case_id": "grip-000",
+          "passed": false,
+          "before": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": false,
+                "residual": 0.07000792975494259,
+                "objective_error": 0.07202071805822,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 0.2856382347232926,
+              "acceleration_error": 0.0009898376458750135
+            },
+            "wrench_error": 0.3165033828504311,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": false,
+                "residual": 0.07000792975494259,
+                "objective_error": 0.07202071805822,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 0.2856382347232926,
+              "acceleration_error": 0.0009898376458750135
+            },
+            "wrench_error": 0.3165033828504311,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "Projected residual 0.0700079 exceeds 0.0001. The output has not met the optimality tolerance. Investigate update correctness, step size, convergence or FP32 stagnation; more iterations alone may not fix rounding. Objective discrepancy 0.0720207 exceeds 1e-05. Check that the solver minimizes the specified regularized QP, with the correct matrix orientation and bias sign. Edge-force error 0.285638 exceeds 0.0001. Edge values differ too much from the trusted solution. Residual-only stopping may be insufficient; investigate conditioning or a more accurate solving method. Acceleration error 0.000989838 exceeds 0.0001. The force errors produce excessive generalized-acceleration error. Reduce force error rather than accepting a small objective error alone. Contact-wrench error 0.316503 exceeds 0.0001. Reconstructed normal/friction forces are inaccurate. Return pyramid-edge coefficients, not direct normal/tangential components, and solve their coupled problem.",
+            "after": "Projected residual 0.0700079 exceeds 0.0001. The output has not met the optimality tolerance. Investigate update correctness, step size, convergence or FP32 stagnation; more iterations alone may not fix rounding. Objective discrepancy 0.0720207 exceeds 1e-05. Check that the solver minimizes the specified regularized QP, with the correct matrix orientation and bias sign. Edge-force error 0.285638 exceeds 0.0001. Edge values differ too much from the trusted solution. Residual-only stopping may be insufficient; investigate conditioning or a more accurate solving method. Acceleration error 0.000989838 exceeds 0.0001. The force errors produce excessive generalized-acceleration error. Reduce force error rather than accepting a small objective error alone. Contact-wrench error 0.316503 exceeds 0.0001. Reconstructed normal/friction forces are inaccurate. Return pyramid-edge coefficients, not direct normal/tangential components, and solve their coupled problem."
+          }
+        },
+        {
+          "case_id": "grip-001",
+          "passed": false,
+          "before": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": false,
+                "residual": 0.02167599298540265,
+                "objective_error": 0.012386930725548116,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 0.17557492997775867,
+              "acceleration_error": 6.87356117382597e-05
+            },
+            "wrench_error": 0.044619786505584916,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": false,
+                "residual": 0.02167599298540265,
+                "objective_error": 0.012386930725548116,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 0.17557492997775867,
+              "acceleration_error": 6.87356117382597e-05
+            },
+            "wrench_error": 0.044619786505584916,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "Projected residual 0.021676 exceeds 0.0001. The output has not met the optimality tolerance. Investigate update correctness, step size, convergence or FP32 stagnation; more iterations alone may not fix rounding. Objective discrepancy 0.0123869 exceeds 1e-05. Check that the solver minimizes the specified regularized QP, with the correct matrix orientation and bias sign. Edge-force error 0.175575 exceeds 0.0001. Edge values differ too much from the trusted solution. Residual-only stopping may be insufficient; investigate conditioning or a more accurate solving method. Contact-wrench error 0.0446198 exceeds 0.0001. Reconstructed normal/friction forces are inaccurate. Return pyramid-edge coefficients, not direct normal/tangential components, and solve their coupled problem.",
+            "after": "Projected residual 0.021676 exceeds 0.0001. The output has not met the optimality tolerance. Investigate update correctness, step size, convergence or FP32 stagnation; more iterations alone may not fix rounding. Objective discrepancy 0.0123869 exceeds 1e-05. Check that the solver minimizes the specified regularized QP, with the correct matrix orientation and bias sign. Edge-force error 0.175575 exceeds 0.0001. Edge values differ too much from the trusted solution. Residual-only stopping may be insufficient; investigate conditioning or a more accurate solving method. Contact-wrench error 0.0446198 exceeds 0.0001. Reconstructed normal/friction forces are inaccurate. Return pyramid-edge coefficients, not direct normal/tangential components, and solve their coupled problem."
+          }
+        }
+      ]
+    },
+    {
+      "group": 1,
+      "run": 0,
+      "score": 0,
+      "cases": [
+        {
+          "case_id": "grip-002",
+          "passed": false,
+          "before": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": false,
+                "residual": 0.09242244105321155,
+                "objective_error": 0.02581725648568749,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 0.15815862388904145,
+              "acceleration_error": 0.008761596675174132
+            },
+            "wrench_error": 0.1612712177734305,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": false,
+                "residual": 0.09242244105321155,
+                "objective_error": 0.02581725648568749,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 0.15815862388904145,
+              "acceleration_error": 0.008761596675174132
+            },
+            "wrench_error": 0.1612712177734305,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "Projected residual 0.0924224 exceeds 0.0001. The output has not met the optimality tolerance. Investigate update correctness, step size, convergence or FP32 stagnation; more iterations alone may not fix rounding. Objective discrepancy 0.0258173 exceeds 1e-05. Check that the solver minimizes the specified regularized QP, with the correct matrix orientation and bias sign. Edge-force error 0.158159 exceeds 0.0001. Edge values differ too much from the trusted solution. Residual-only stopping may be insufficient; investigate conditioning or a more accurate solving method. Acceleration error 0.0087616 exceeds 0.0001. The force errors produce excessive generalized-acceleration error. Reduce force error rather than accepting a small objective error alone. Contact-wrench error 0.161271 exceeds 0.0001. Reconstructed normal/friction forces are inaccurate. Return pyramid-edge coefficients, not direct normal/tangential components, and solve their coupled problem.",
+            "after": "Projected residual 0.0924224 exceeds 0.0001. The output has not met the optimality tolerance. Investigate update correctness, step size, convergence or FP32 stagnation; more iterations alone may not fix rounding. Objective discrepancy 0.0258173 exceeds 1e-05. Check that the solver minimizes the specified regularized QP, with the correct matrix orientation and bias sign. Edge-force error 0.158159 exceeds 0.0001. Edge values differ too much from the trusted solution. Residual-only stopping may be insufficient; investigate conditioning or a more accurate solving method. Acceleration error 0.0087616 exceeds 0.0001. The force errors produce excessive generalized-acceleration error. Reduce force error rather than accepting a small objective error alone. Contact-wrench error 0.161271 exceeds 0.0001. Reconstructed normal/friction forces are inaccurate. Return pyramid-edge coefficients, not direct normal/tangential components, and solve their coupled problem."
+          }
+        },
+        {
+          "case_id": "grip-003",
+          "passed": false,
+          "before": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": false,
+                "residual": 0.059106089311820514,
+                "objective_error": 0.03032011454016623,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 0.18604271058288388,
+              "acceleration_error": 0.0008213758859110369
+            },
+            "wrench_error": 0.17947469628905546,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": false,
+                "residual": 0.059106089311820514,
+                "objective_error": 0.03032011454016623,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 0.18604271058288388,
+              "acceleration_error": 0.0008213758859110369
+            },
+            "wrench_error": 0.17947469628905546,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "Projected residual 0.0591061 exceeds 0.0001. The output has not met the optimality tolerance. Investigate update correctness, step size, convergence or FP32 stagnation; more iterations alone may not fix rounding. Objective discrepancy 0.0303201 exceeds 1e-05. Check that the solver minimizes the specified regularized QP, with the correct matrix orientation and bias sign. Edge-force error 0.186043 exceeds 0.0001. Edge values differ too much from the trusted solution. Residual-only stopping may be insufficient; investigate conditioning or a more accurate solving method. Acceleration error 0.000821376 exceeds 0.0001. The force errors produce excessive generalized-acceleration error. Reduce force error rather than accepting a small objective error alone. Contact-wrench error 0.179475 exceeds 0.0001. Reconstructed normal/friction forces are inaccurate. Return pyramid-edge coefficients, not direct normal/tangential components, and solve their coupled problem.",
+            "after": "Projected residual 0.0591061 exceeds 0.0001. The output has not met the optimality tolerance. Investigate update correctness, step size, convergence or FP32 stagnation; more iterations alone may not fix rounding. Objective discrepancy 0.0303201 exceeds 1e-05. Check that the solver minimizes the specified regularized QP, with the correct matrix orientation and bias sign. Edge-force error 0.186043 exceeds 0.0001. Edge values differ too much from the trusted solution. Residual-only stopping may be insufficient; investigate conditioning or a more accurate solving method. Acceleration error 0.000821376 exceeds 0.0001. The force errors produce excessive generalized-acceleration error. Reduce force error rather than accepting a small objective error alone. Contact-wrench error 0.179475 exceeds 0.0001. Reconstructed normal/friction forces are inaccurate. Return pyramid-edge coefficients, not direct normal/tangential components, and solve their coupled problem."
+          }
+        }
+      ]
+    },
+    {
+      "group": 2,
+      "run": 0,
+      "score": 1,
+      "cases": [
+        {
+          "case_id": "grip-004",
+          "passed": true,
+          "before": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 1.4093604695159998e-07,
+                "objective_error": 9.526771970395724e-14,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 5.740477880809189e-07,
+              "acceleration_error": 9.517669642136183e-06
+            },
+            "wrench_error": 5.997155088662422e-07,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 1.4093604695159998e-07,
+                "objective_error": 9.526771970395724e-14,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 5.740477880809189e-07,
+              "acceleration_error": 9.517669642136183e-06
+            },
+            "wrench_error": 5.997155088662422e-07,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "All physics gates passed for this output. Preserve accuracy when changing the solver.",
+            "after": "All physics gates passed for this output. Preserve accuracy when changing the solver."
+          }
+        },
+        {
+          "case_id": "grip-005",
+          "passed": true,
+          "before": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 6.093367079375708e-08,
+                "objective_error": 1.1784270759323874e-14,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 2.044764396186705e-07,
+              "acceleration_error": 5.595977221055881e-07
+            },
+            "wrench_error": 2.923619181459387e-07,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 6.093367079375708e-08,
+                "objective_error": 1.1784270759323874e-14,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 2.044764396186705e-07,
+              "acceleration_error": 5.595977221055881e-07
+            },
+            "wrench_error": 2.923619181459387e-07,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "All physics gates passed for this output. Preserve accuracy when changing the solver.",
+            "after": "All physics gates passed for this output. Preserve accuracy when changing the solver."
+          }
+        }
+      ]
+    },
+    {
+      "group": 3,
+      "run": 0,
+      "score": 0,
+      "cases": [
+        {
+          "case_id": "grip-006",
+          "passed": false,
+          "before": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": false,
+                "residual": 0.0001235565699920195,
+                "objective_error": 1.9119940316932956e-07,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 0.000436457475118482,
+              "acceleration_error": 7.553100691808365e-05
+            },
+            "wrench_error": 0.00047557421874932,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": false,
+                "residual": 0.0001235565699920195,
+                "objective_error": 1.9119940316932956e-07,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 0.000436457475118482,
+              "acceleration_error": 7.553100691808365e-05
+            },
+            "wrench_error": 0.00047557421874932,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "Projected residual 0.000123557 exceeds 0.0001. The output has not met the optimality tolerance. Investigate update correctness, step size, convergence or FP32 stagnation; more iterations alone may not fix rounding. Edge-force error 0.000436457 exceeds 0.0001. Edge values differ too much from the trusted solution. Residual-only stopping may be insufficient; investigate conditioning or a more accurate solving method. Contact-wrench error 0.000475574 exceeds 0.0001. Reconstructed normal/friction forces are inaccurate. Return pyramid-edge coefficients, not direct normal/tangential components, and solve their coupled problem.",
+            "after": "Projected residual 0.000123557 exceeds 0.0001. The output has not met the optimality tolerance. Investigate update correctness, step size, convergence or FP32 stagnation; more iterations alone may not fix rounding. Edge-force error 0.000436457 exceeds 0.0001. Edge values differ too much from the trusted solution. Residual-only stopping may be insufficient; investigate conditioning or a more accurate solving method. Contact-wrench error 0.000475574 exceeds 0.0001. Reconstructed normal/friction forces are inaccurate. Return pyramid-edge coefficients, not direct normal/tangential components, and solve their coupled problem."
+          }
+        },
+        {
+          "case_id": "grip-007",
+          "passed": false,
+          "before": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": true,
+                "residual": 4.730678100312204e-05,
+                "objective_error": 4.3689345390165414e-08,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 0.00035257164583965333,
+              "acceleration_error": 3.819370836262828e-06
+            },
+            "wrench_error": 0.00020255786132684832,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": true,
+                "residual": 4.730678100312204e-05,
+                "objective_error": 4.3689345390165414e-08,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 0.00035257164583965333,
+              "acceleration_error": 3.819370836262828e-06
+            },
+            "wrench_error": 0.00020255786132684832,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "Edge-force error 0.000352572 exceeds 0.0001. Edge values differ too much from the trusted solution. Residual-only stopping may be insufficient; investigate conditioning or a more accurate solving method. Contact-wrench error 0.000202558 exceeds 0.0001. Reconstructed normal/friction forces are inaccurate. Return pyramid-edge coefficients, not direct normal/tangential components, and solve their coupled problem.",
+            "after": "Edge-force error 0.000352572 exceeds 0.0001. Edge values differ too much from the trusted solution. Residual-only stopping may be insufficient; investigate conditioning or a more accurate solving method. Contact-wrench error 0.000202558 exceeds 0.0001. Reconstructed normal/friction forces are inaccurate. Return pyramid-edge coefficients, not direct normal/tangential components, and solve their coupled problem."
+          }
+        }
+      ]
+    },
+    {
+      "group": 4,
+      "run": 0,
+      "score": 0,
+      "cases": [
+        {
+          "case_id": "grip-008",
+          "passed": false,
+          "before": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": false,
+                "residual": 0.07000792975494259,
+                "objective_error": 0.07202071805822,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 0.2856382347232926,
+              "acceleration_error": 0.0009898376458750135
+            },
+            "wrench_error": 0.3165033828504311,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": false,
+                "residual": 0.07000792975494259,
+                "objective_error": 0.07202071805822,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 0.2856382347232926,
+              "acceleration_error": 0.0009898376458750135
+            },
+            "wrench_error": 0.3165033828504311,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "Projected residual 0.0700079 exceeds 0.0001. The output has not met the optimality tolerance. Investigate update correctness, step size, convergence or FP32 stagnation; more iterations alone may not fix rounding. Objective discrepancy 0.0720207 exceeds 1e-05. Check that the solver minimizes the specified regularized QP, with the correct matrix orientation and bias sign. Edge-force error 0.285638 exceeds 0.0001. Edge values differ too much from the trusted solution. Residual-only stopping may be insufficient; investigate conditioning or a more accurate solving method. Acceleration error 0.000989838 exceeds 0.0001. The force errors produce excessive generalized-acceleration error. Reduce force error rather than accepting a small objective error alone. Contact-wrench error 0.316503 exceeds 0.0001. Reconstructed normal/friction forces are inaccurate. Return pyramid-edge coefficients, not direct normal/tangential components, and solve their coupled problem.",
+            "after": "Projected residual 0.0700079 exceeds 0.0001. The output has not met the optimality tolerance. Investigate update correctness, step size, convergence or FP32 stagnation; more iterations alone may not fix rounding. Objective discrepancy 0.0720207 exceeds 1e-05. Check that the solver minimizes the specified regularized QP, with the correct matrix orientation and bias sign. Edge-force error 0.285638 exceeds 0.0001. Edge values differ too much from the trusted solution. Residual-only stopping may be insufficient; investigate conditioning or a more accurate solving method. Acceleration error 0.000989838 exceeds 0.0001. The force errors produce excessive generalized-acceleration error. Reduce force error rather than accepting a small objective error alone. Contact-wrench error 0.316503 exceeds 0.0001. Reconstructed normal/friction forces are inaccurate. Return pyramid-edge coefficients, not direct normal/tangential components, and solve their coupled problem."
+          }
+        },
+        {
+          "case_id": "grip-009",
+          "passed": false,
+          "before": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": false,
+                "residual": 0.02167599298540265,
+                "objective_error": 0.012386930725548116,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 0.17557492997775867,
+              "acceleration_error": 6.87356117382597e-05
+            },
+            "wrench_error": 0.044619786505584916,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": false,
+                "residual": 0.02167599298540265,
+                "objective_error": 0.012386930725548116,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 0.17557492997775867,
+              "acceleration_error": 6.87356117382597e-05
+            },
+            "wrench_error": 0.044619786505584916,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "Projected residual 0.021676 exceeds 0.0001. The output has not met the optimality tolerance. Investigate update correctness, step size, convergence or FP32 stagnation; more iterations alone may not fix rounding. Objective discrepancy 0.0123869 exceeds 1e-05. Check that the solver minimizes the specified regularized QP, with the correct matrix orientation and bias sign. Edge-force error 0.175575 exceeds 0.0001. Edge values differ too much from the trusted solution. Residual-only stopping may be insufficient; investigate conditioning or a more accurate solving method. Contact-wrench error 0.0446198 exceeds 0.0001. Reconstructed normal/friction forces are inaccurate. Return pyramid-edge coefficients, not direct normal/tangential components, and solve their coupled problem.",
+            "after": "Projected residual 0.021676 exceeds 0.0001. The output has not met the optimality tolerance. Investigate update correctness, step size, convergence or FP32 stagnation; more iterations alone may not fix rounding. Objective discrepancy 0.0123869 exceeds 1e-05. Check that the solver minimizes the specified regularized QP, with the correct matrix orientation and bias sign. Edge-force error 0.175575 exceeds 0.0001. Edge values differ too much from the trusted solution. Residual-only stopping may be insufficient; investigate conditioning or a more accurate solving method. Contact-wrench error 0.0446198 exceeds 0.0001. Reconstructed normal/friction forces are inaccurate. Return pyramid-edge coefficients, not direct normal/tangential components, and solve their coupled problem."
+          }
+        }
+      ]
+    },
+    {
+      "group": 5,
+      "run": 0,
+      "score": 0,
+      "cases": [
+        {
+          "case_id": "grip-010",
+          "passed": false,
+          "before": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": false,
+                "residual": 0.09242244105321155,
+                "objective_error": 0.02581725648568749,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 0.15815862388904145,
+              "acceleration_error": 0.008761596675174132
+            },
+            "wrench_error": 0.1612712177734305,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": false,
+                "residual": 0.09242244105321155,
+                "objective_error": 0.02581725648568749,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 0.15815862388904145,
+              "acceleration_error": 0.008761596675174132
+            },
+            "wrench_error": 0.1612712177734305,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "Projected residual 0.0924224 exceeds 0.0001. The output has not met the optimality tolerance. Investigate update correctness, step size, convergence or FP32 stagnation; more iterations alone may not fix rounding. Objective discrepancy 0.0258173 exceeds 1e-05. Check that the solver minimizes the specified regularized QP, with the correct matrix orientation and bias sign. Edge-force error 0.158159 exceeds 0.0001. Edge values differ too much from the trusted solution. Residual-only stopping may be insufficient; investigate conditioning or a more accurate solving method. Acceleration error 0.0087616 exceeds 0.0001. The force errors produce excessive generalized-acceleration error. Reduce force error rather than accepting a small objective error alone. Contact-wrench error 0.161271 exceeds 0.0001. Reconstructed normal/friction forces are inaccurate. Return pyramid-edge coefficients, not direct normal/tangential components, and solve their coupled problem.",
+            "after": "Projected residual 0.0924224 exceeds 0.0001. The output has not met the optimality tolerance. Investigate update correctness, step size, convergence or FP32 stagnation; more iterations alone may not fix rounding. Objective discrepancy 0.0258173 exceeds 1e-05. Check that the solver minimizes the specified regularized QP, with the correct matrix orientation and bias sign. Edge-force error 0.158159 exceeds 0.0001. Edge values differ too much from the trusted solution. Residual-only stopping may be insufficient; investigate conditioning or a more accurate solving method. Acceleration error 0.0087616 exceeds 0.0001. The force errors produce excessive generalized-acceleration error. Reduce force error rather than accepting a small objective error alone. Contact-wrench error 0.161271 exceeds 0.0001. Reconstructed normal/friction forces are inaccurate. Return pyramid-edge coefficients, not direct normal/tangential components, and solve their coupled problem."
+          }
+        },
+        {
+          "case_id": "grip-011",
+          "passed": false,
+          "before": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": false,
+                "residual": 0.059106089311820514,
+                "objective_error": 0.03032011454016623,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 0.18604271058288388,
+              "acceleration_error": 0.0008213758859110369
+            },
+            "wrench_error": 0.17947469628905546,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": false,
+                "residual": 0.059106089311820514,
+                "objective_error": 0.03032011454016623,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 0.18604271058288388,
+              "acceleration_error": 0.0008213758859110369
+            },
+            "wrench_error": 0.17947469628905546,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "Projected residual 0.0591061 exceeds 0.0001. The output has not met the optimality tolerance. Investigate update correctness, step size, convergence or FP32 stagnation; more iterations alone may not fix rounding. Objective discrepancy 0.0303201 exceeds 1e-05. Check that the solver minimizes the specified regularized QP, with the correct matrix orientation and bias sign. Edge-force error 0.186043 exceeds 0.0001. Edge values differ too much from the trusted solution. Residual-only stopping may be insufficient; investigate conditioning or a more accurate solving method. Acceleration error 0.000821376 exceeds 0.0001. The force errors produce excessive generalized-acceleration error. Reduce force error rather than accepting a small objective error alone. Contact-wrench error 0.179475 exceeds 0.0001. Reconstructed normal/friction forces are inaccurate. Return pyramid-edge coefficients, not direct normal/tangential components, and solve their coupled problem.",
+            "after": "Projected residual 0.0591061 exceeds 0.0001. The output has not met the optimality tolerance. Investigate update correctness, step size, convergence or FP32 stagnation; more iterations alone may not fix rounding. Objective discrepancy 0.0303201 exceeds 1e-05. Check that the solver minimizes the specified regularized QP, with the correct matrix orientation and bias sign. Edge-force error 0.186043 exceeds 0.0001. Edge values differ too much from the trusted solution. Residual-only stopping may be insufficient; investigate conditioning or a more accurate solving method. Acceleration error 0.000821376 exceeds 0.0001. The force errors produce excessive generalized-acceleration error. Reduce force error rather than accepting a small objective error alone. Contact-wrench error 0.179475 exceeds 0.0001. Reconstructed normal/friction forces are inaccurate. Return pyramid-edge coefficients, not direct normal/tangential components, and solve their coupled problem."
+          }
+        }
+      ]
+    },
+    {
+      "group": 6,
+      "run": 0,
+      "score": 1,
+      "cases": [
+        {
+          "case_id": "grip-012",
+          "passed": true,
+          "before": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 1.4093604695159998e-07,
+                "objective_error": 9.526771970395724e-14,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 5.740477880809189e-07,
+              "acceleration_error": 9.517669642136183e-06
+            },
+            "wrench_error": 5.997155088662422e-07,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 1.4093604695159998e-07,
+                "objective_error": 9.526771970395724e-14,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 5.740477880809189e-07,
+              "acceleration_error": 9.517669642136183e-06
+            },
+            "wrench_error": 5.997155088662422e-07,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "All physics gates passed for this output. Preserve accuracy when changing the solver.",
+            "after": "All physics gates passed for this output. Preserve accuracy when changing the solver."
+          }
+        },
+        {
+          "case_id": "grip-013",
+          "passed": true,
+          "before": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 6.093367079375708e-08,
+                "objective_error": 1.1784270759323874e-14,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 2.044764396186705e-07,
+              "acceleration_error": 5.595977221055881e-07
+            },
+            "wrench_error": 2.923619181459387e-07,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 6.093367079375708e-08,
+                "objective_error": 1.1784270759323874e-14,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 2.044764396186705e-07,
+              "acceleration_error": 5.595977221055881e-07
+            },
+            "wrench_error": 2.923619181459387e-07,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "All physics gates passed for this output. Preserve accuracy when changing the solver.",
+            "after": "All physics gates passed for this output. Preserve accuracy when changing the solver."
+          }
+        }
+      ]
+    },
+    {
+      "group": 7,
+      "run": 0,
+      "score": 0,
+      "cases": [
+        {
+          "case_id": "grip-014",
+          "passed": false,
+          "before": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": false,
+                "residual": 0.0001235565699920195,
+                "objective_error": 1.9119940316932956e-07,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 0.000436457475118482,
+              "acceleration_error": 7.553100691808365e-05
+            },
+            "wrench_error": 0.00047557421874932,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": false,
+                "residual": 0.0001235565699920195,
+                "objective_error": 1.9119940316932956e-07,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 0.000436457475118482,
+              "acceleration_error": 7.553100691808365e-05
+            },
+            "wrench_error": 0.00047557421874932,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "Projected residual 0.000123557 exceeds 0.0001. The output has not met the optimality tolerance. Investigate update correctness, step size, convergence or FP32 stagnation; more iterations alone may not fix rounding. Edge-force error 0.000436457 exceeds 0.0001. Edge values differ too much from the trusted solution. Residual-only stopping may be insufficient; investigate conditioning or a more accurate solving method. Contact-wrench error 0.000475574 exceeds 0.0001. Reconstructed normal/friction forces are inaccurate. Return pyramid-edge coefficients, not direct normal/tangential components, and solve their coupled problem.",
+            "after": "Projected residual 0.000123557 exceeds 0.0001. The output has not met the optimality tolerance. Investigate update correctness, step size, convergence or FP32 stagnation; more iterations alone may not fix rounding. Edge-force error 0.000436457 exceeds 0.0001. Edge values differ too much from the trusted solution. Residual-only stopping may be insufficient; investigate conditioning or a more accurate solving method. Contact-wrench error 0.000475574 exceeds 0.0001. Reconstructed normal/friction forces are inaccurate. Return pyramid-edge coefficients, not direct normal/tangential components, and solve their coupled problem."
+          }
+        },
+        {
+          "case_id": "grip-015",
+          "passed": false,
+          "before": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": true,
+                "residual": 4.730678100312204e-05,
+                "objective_error": 4.3689345390165414e-08,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 0.00035257164583965333,
+              "acceleration_error": 3.819370836262828e-06
+            },
+            "wrench_error": 0.00020255786132684832,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": true,
+                "residual": 4.730678100312204e-05,
+                "objective_error": 4.3689345390165414e-08,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 0.00035257164583965333,
+              "acceleration_error": 3.819370836262828e-06
+            },
+            "wrench_error": 0.00020255786132684832,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "Edge-force error 0.000352572 exceeds 0.0001. Edge values differ too much from the trusted solution. Residual-only stopping may be insufficient; investigate conditioning or a more accurate solving method. Contact-wrench error 0.000202558 exceeds 0.0001. Reconstructed normal/friction forces are inaccurate. Return pyramid-edge coefficients, not direct normal/tangential components, and solve their coupled problem.",
+            "after": "Edge-force error 0.000352572 exceeds 0.0001. Edge values differ too much from the trusted solution. Residual-only stopping may be insufficient; investigate conditioning or a more accurate solving method. Contact-wrench error 0.000202558 exceeds 0.0001. Reconstructed normal/friction forces are inaccurate. Return pyramid-edge coefficients, not direct normal/tangential components, and solve their coupled problem."
+          }
+        }
+      ]
+    }
+  ],
+  "evaluator_source_sha256": {
+    "grip_throughput.py": "d1c2c899c87d523197fefbd9a1231e41268f491e32f6a7f1f82452a88ed3de53",
+    "grip_feedback.py": "ae02236af0062529152cbba6c3ff49eba0ef34aff676ce382085fc59fe7ba992",
+    "grip_physics.py": "889c1951f708841d0fb6deb15458c13012e0f75ae7f2a3f10ef096c54dcb500f",
+    "force_checker.py": "1f9af524e26f6ba5a818f72de33e4bf55f749468e2574a623337685cfae40c59",
+    "contact.py": "a83053062d737111ef1ad1e3ce3e7d9a0cbee352330186e6249ae4792e733f78"
+  },
+  "passing_case_evaluations": 4,
+  "expected_case_evaluations": 16,
+  "throughput_eligible": false
+}

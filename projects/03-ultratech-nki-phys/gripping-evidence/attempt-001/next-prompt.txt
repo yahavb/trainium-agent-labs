@@ -1,0 +1,13 @@
+Revise the NKI solver using this public checker feedback. Correctness comes before throughput.
+Do not relax gates, hardcode case answers or access oracle outputs. Suggested causes are hypotheses.
+Public cases observed: 8; failed in at least one phase/repeat: 6.
+Each metric below is the worst value per case across before/after execution and repeats.
+projected residual: range 2.87721e-06..3.33596e-05; limit 0.0001; failures 0/8.
+objective discrepancy: range 3.8993e-11..9.72369e-10; limit 1e-05; failures 0/8.
+edge-force error: range 1.21881e-05..4.71545e-05; limit 0.0001; failures 0/8.
+acceleration error: range 2.83999e-05..0.00543823; limit 0.0001; failures 6/8.
+contact-wrench error: range 1.28262e-05..2.69297e-05; limit 0.0001; failures 0/8.
+friction-cone violation: range 0..0; limit 1e-06; failures 0/8.
+Representative grip-002: acceleration error=0.00543823.
+Representative grip-010: acceleration error=0.00543823.
+Representative grip-003: acceleration error=0.000776574.

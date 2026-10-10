@@ -35,6 +35,18 @@ For a quick review, read this table, `CHECKER.md` and `RUN_NOTE.md`. The nested 
 
 Ratios compare device-only candidate throughput to paired original-baseline throughput. Five repeats, 20 warmups and 200 timing samples per repeat; Qwen stopped during timing. The final 64 cases test unseen values in the same equations/shapes/distributions, not unseen algorithms. Development has 16 public cases per task. All input values are synthetic.
 
+## Gripping: Failed Cases And The Time-Limit Pivot
+
+We first targeted frictional gripping contact-force solves from MuJoCo-derived snapshots, not just the two simple force equations. Six fixed-momentum trials at 1024 solver updates passed **10, 10, 10, 6, 6 and 4 out of 16** cases. None reached full physics acceptance, so none earned an accepted gripping-throughput result. For example, `grip-000` had a small optimization residual but acceleration error **0.000456848**, above its fixed **0.0001** gate. A small objective error alone was not enough to preserve the physical output.
+
+Because of the hackathon time limit, we narrowed the agent experiment to spring-damper and net-force primitives rather than relaxing the gripping checker. Read [GRIPPING_FAILURES.md](GRIPPING_FAILURES.md) for the six scores, concrete failures and precision caveats. The actual six-attempt log and per-case diagnostic reports are in [gripping-evidence/](gripping-evidence/); this separate record must not be confused with the final four-proposal math-agent log.
+
+## Broader Development: Physics-Engine Prototype
+
+In parallel, Devesh developed a simplified engine covering semi-implicit integration, coupled spring-chain forces, floor-contact projection and fused rollouts. The teammate report describes **four reference certifications, four accepted reference kernels and 12 diagnosed planted bugs**, plus a 128-world, 16-mass validation scenario. It reports approximately **51x less simulation-counted DMA traffic** and **52x host-to-host rollout speedup** from reducing launches.
+
+These are **teammate-reported prototype results**, with a different timing boundary from our device-only agent benchmarks; they are not added to our 3.87%/7.55% throughput gains. Qwen did not fully solve the broader physics levels in that reported search. The prototype is the intended integration direction, not proof of a fully agent-generated engine. Read [BROADER_DEVELOPMENT.md](BROADER_DEVELOPMENT.md) and the [full teammate report](submission-assets/teammate-engine-report.pdf). Its underlying engine source and full logs were not available in this package.
+
 ## Verify Without AWS Or A Model
 
 From this folder, install NumPy in your preferred environment, then run:

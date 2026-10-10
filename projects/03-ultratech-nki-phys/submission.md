@@ -147,6 +147,8 @@ Attempt 3 returned the same net-force program as attempt 1. Duplicate rejection 
 
 ### Earlier Failures And Scope Changes
 
+The earlier gripping track now has a dedicated [failure record](GRIPPING_FAILURES.md), its [six-attempt log](gripping-evidence/ATTEMPTS.jsonl), and saved per-case diagnostic reports in `gripping-evidence/`. The parallel engine track is summarized in [BROADER_DEVELOPMENT.md](BROADER_DEVELOPMENT.md) and the attached PDF; its source/logs remain outside this package.
+
 - **Correct but slower:** an earlier contact fused-subtraction candidate passed physics yet measured 0.80905x original throughput, approximately 19.10% lower. A named optimization was not automatically an improvement.
 - **Fusion lost to a simpler change:** contact scaling/update fusion beat its original baseline by about 1.06%, but measured 0.99703x the paired copy-removal implementation. The controller retained copy removal rather than adopting the newer technique.
 - **Gripping did not reach full FP32 correctness:** a six-setting fixed-momentum search at 1024 updates scored 10, 10, 10, 6, 6 and 4 out of 16. A human-written adaptive-restart CPU reference still reached only 10/16 in FP32 at the tested budgets. Higher-precision working arithmetic passed 16/16 on the same exported inputs, implicating numerical precision without proving that an FP32 solution is impossible. We shifted to simpler primitives because of the hackathon time limit, not by loosening checker gates.

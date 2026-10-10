@@ -1,0 +1,15 @@
+Revise the NKI solver using this public checker feedback. Correctness comes before throughput.
+Do not relax gates, hardcode case answers or access oracle outputs. Suggested causes are hypotheses.
+Public cases observed: 8; failed in at least one phase/repeat: 6.
+Each metric below is the worst value per case across before/after execution and repeats.
+projected residual: range 2.36537e-06..0.00167672; limit 0.0001; failures 4/8.
+objective discrepancy: range 2.83129e-11..8.36077e-06; limit 1e-05; failures 0/8.
+edge-force error: range 9.16778e-06..0.00284734; limit 0.0001; failures 4/8.
+acceleration error: range 9.79308e-06..0.00483398; limit 0.0001; failures 6/8.
+contact-wrench error: range 9.15853e-06..0.00290218; limit 0.0001; failures 4/8.
+friction-cone violation: range 0..0; limit 1e-06; failures 0/8.
+Representative grip-002: projected residual=0.00167672; edge-force error=0.00284734; acceleration error=0.00483398; contact-wrench error=0.00290218.
+Representative grip-010: projected residual=0.00167672; edge-force error=0.00284734; acceleration error=0.00483398; contact-wrench error=0.00290218.
+Representative grip-003: projected residual=0.000877581; edge-force error=0.00273806; acceleration error=0.00032855; contact-wrench error=0.00286623.
+Investigate convergence, step size and conditioning before low-level speed tuning. More iterations may help, but FP32 stagnation can remain; consider acceleration, preconditioning or another mathematically valid solver.
+A small objective/residual alone is insufficient: edge forces, reconstructed contact forces and generalized accelerations must all meet their own gates.
