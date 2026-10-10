@@ -3,6 +3,13 @@
 Read PROJECT_BASELINE.md before changing this project's code, experiments or submission.
 It records the owner's fixed requirements; later explicit owner instructions take precedence.
 
+Owner workflow: reuse `challenge1-runtime-resilience` as the single maintained
+Project 1 development branch. Commit changes there and provide the existing PR
+targeting `master` (or create its replacement if it has closed). Do not create
+additional feature branches or merge master without explicit owner authorization.
+The current Checker/consolidation work is explicitly implementation-only: do not
+run tests, benchmarks or inference unless the owner authorizes them again.
+
 Preserve the real-model candidate/checker/feedback loop, the model-directed calculator,
 official scoring and problem definitions. Never use hidden answers as a solving shortcut.
 Keep official deliverables separate from additional engineering standards.

@@ -1,5 +1,18 @@
 # Submission readiness assessment
 
+## Current implementation update — 2026-10-10
+
+Checker changes from `346ae58` have been consolidated into the maintained
+`challenge1-runtime-resilience` branch. The original-score `grade_candidate` API
+is retained; supplementary validation is explicit and does not change Agent
+stopping rules. See [Checker design](../CHECKER_DESIGN.md).
+
+**IMPLEMENTED — NOT TESTED.** The owner prohibited tests, benchmarks and inference
+for this work. The checks listed below are historical evidence for their named
+revisions, not verification of this combined code. Overall status remains
+**NOT READY**, with **ENGINEERING REVIEW REQUIRED** until appropriate authorized
+validation and the outstanding official-log gaps are addressed.
+
 **Overall: NOT READY. Engineering checks: ENGINEERING REVIEW REQUIRED.**
 Assessment date: 2026-10-10. Runtime reviewed/tested: 2d1a68a694ba1d9619fd954a30663e60e7119d6c.
 Historical reference: c3c16f6. This assessment follows the owner's
