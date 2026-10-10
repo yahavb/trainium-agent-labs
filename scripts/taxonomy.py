@@ -106,9 +106,11 @@ def load_attempts(paths):
             r = json.loads(line)
             if "run" in r:
                 run = r["run"]
-            elif prev is not None and r["level"] < prev:
-                run += 1          # older logs: --all starts over at the lowest level
-            prev = r["level"]
+            elif prev is not None and (r["level"] < prev[0] or
+                                       (r["level"] == prev[0] and r["round"] < prev[1])):
+                run += 1          # older logs: --all starts over at the lowest level, and
+                                  # --level N --repeat starts over at round 0
+            prev = (r["level"], r["round"])
             episodes.setdefault((fi, run, r["level"]), []).append(r)
     return episodes
 

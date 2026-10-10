@@ -1,0 +1,6 @@
+﻿run,level,loop_reward,logged_best_reward,best_round,rounds,confidence,reasons,heldout_passed,heldout_total,claim,first_failure,error
+1,1,0.3,0.30000000000000004,0,8,0.0,it still fails shapes the loop tested,0,20,NOT SOLVED,"C,H,W=(128, 32, 32) pool=2 normal: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=4, dst=16384",
+2,1,0.3,0.30000000000000004,0,8,0.0,it still fails shapes the loop tested,0,20,NOT SOLVED,"C,H,W=(128, 32, 32) pool=2 normal: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=4, dst=16384",
+3,1,0.3,0.30000000000000004,0,8,0.0,it still fails shapes the loop tested,0,20,NOT SOLVED,"C,H,W=(128, 32, 32) pool=2 normal: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=4, dst=16384",
+4,1,0.3,0.30000000000000004,0,8,0.0,it still fails shapes the loop tested,0,20,NOT SOLVED,"C,H,W=(128, 32, 32) pool=2 normal: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=4, dst=16384",
+5,1,0.3,0.30000000000000004,0,8,0.0,it still fails shapes the loop tested,0,20,NOT SOLVED,"C,H,W=(128, 32, 32) pool=2 normal: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=4, dst=16384",

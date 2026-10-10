@@ -14,6 +14,7 @@ simulator (a seat pod, or the container in SETUP_PYTHON.md). Works on old logs w
 Writes <out>.md (per-run table, calibration, Brier) and <out>.csv (one row per (run, level)).
 """
 import argparse
+import collections
 import csv
 import io
 import os
@@ -44,8 +45,9 @@ def regrade(attempts, level, cache):
         code = r.get("code", "")
         if (level, code) not in cache:
             with redirect_stdout(io.StringIO()):
-                cache[(level, code)] = agent.grade(code, level)[0]
-        r["regraded"] = cache[(level, code)]
+                reward, _, feedback = agent.grade(code, level)
+            cache[(level, code)] = (reward, feedback)
+        r["regraded"], r["regraded_feedback"] = cache[(level, code)]
 
 
 def main():
@@ -107,8 +109,8 @@ def main():
            + (f"{len(changed)} of {sum(len(x) for x in episodes.values())} attempts scored "
               f"differently from the log: "
               + "; ".join(f"run {r + 1} L{lv} round {rd}: {x:.2f} -> {y:.2f}"
-                          for r, lv, rd, x, y in changed[:12])
-              + (" ..." if len(changed) > 12 else "") + "."
+                          for r, lv, rd, x, y in changed[:60])
+              + (" ..." if len(changed) > 60 else "") + "."
               if changed else "Every attempt scored the same as logged.")
            if not a.no_regrade else "Loop rewards are as logged (`--no-regrade`)."),
           "",
@@ -143,6 +145,19 @@ def main():
                       f"{v['heldout_passed']}/{v['heldout_total']}, "
                       + ("**passes every case**." if ok(v) else
                          f"**fails**, first: {esc(v['first_failure'])}."))
+    if not a.no_regrade:
+        # Failure modes, as logged and as re-graded: a stale grade also means stale feedback.
+        logged, fresh = collections.Counter(), collections.Counter()
+        for atts in episodes.values():
+            for r in atts:
+                logged[taxonomy.classify(r.get("feedback", ""))] += 1
+                fresh[taxonomy.classify(r["regraded_feedback"])] += 1
+        top = lambda c: ", ".join(f"`{m}` {n}" for m, n in c.most_common() if m != "solved")
+        md += ["", "## Failure modes, logged vs re-graded", "",
+               f"- logged: {top(logged)}", f"- re-graded: {top(fresh)}",
+               "- per run, best loop reward logged -> re-graded: "
+               + ", ".join(f"run {v['run'] + 1} L{v['level']} {v['logged_best']:.2f} -> "
+                           f"{v['reward']:.2f}" for v in rows)]
     if a.note:
         md += ["", "## Notes", ""] + [f"- {n}" for n in a.note]
     with open(a.out + ".md", "w") as f:

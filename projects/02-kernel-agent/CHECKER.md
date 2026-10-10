@@ -94,11 +94,14 @@ in `verdicts.jsonl` ([EVAL.md](EVAL.md), "Confidence and calibration").
 - **Traffic is a model.** Levels 5–7 count the bytes the kernel asks `dma_copy` to move in
   simulation. The roofline uses 222 Flops/Byte, the published bf16 figure for NeuronCore-v2,
   while the test inputs are float32; treat it as indicative.
-- **SBUF limit is the older chip's.** The audit uses 192 KiB per partition (24 MiB, NeuronCore-v2).
-  The *Trainium2 Architecture Guide* gives NeuronCore-v3 (trn2) 224 KiB (28 MiB). The checker is
-  therefore stricter than trn2: it can reject a legal kernel using 192–224 KiB, never accept an
-  illegal one. (The simulator itself reports `nc_version.gen3`, i.e. NeuronCore-v3.) Re-grading
-  all 424 baseline attempts with the audit on changed no score (b39989f).
+- **SBUF limit: a deliberately conservative 192 KiB per partition.** That is NeuronCore-v2's
+  24 MiB / 128. Trn2 is NeuronCore-v3, which the *Trainium2 Architecture Guide* (NKI docs,
+  `architecture/trainium2_arch.md`) gives 28 MiB, i.e. 224 KiB per partition, and the simulator
+  itself reports `nc_version.gen3`. We keep 192 KiB on purpose: being stricter than the chip can
+  only reject a legal kernel in the 192–224 KiB range, never accept an illegal one, and level 1–4
+  shapes rarely reach that range. Re-grading all 424 baseline attempts with the audit on changed
+  no score (b39989f). If a run ever shows an SBUF rejection between 192 and 224 KiB, the limit
+  gets raised to 224 KiB.
 - **Static rules are a text scan.** They catch framework calls by name; a kernel that hides one
   behind an alias would pass the scan (then still has to pass the simulator's numerics).
 - **Shapes**: level 3 is one shape (its reference asserts it); shapes outside each reference's
