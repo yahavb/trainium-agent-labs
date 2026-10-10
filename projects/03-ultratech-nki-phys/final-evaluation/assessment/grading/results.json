@@ -1,0 +1,664 @@
+{
+  "context": {
+    "hostname": "seat-260",
+    "python": "3.13.7",
+    "cores": "0,1",
+    "manifest_sha256": "2de67353ccb88bce02cd76d311ed37b56c2b7543e0145b71bd701f034509ce59",
+    "backend": "device"
+  },
+  "tasks": {
+    "spring": {
+      "passed": 32,
+      "measured": 32,
+      "expected": 32
+    },
+    "net-force": {
+      "passed": 32,
+      "measured": 32,
+      "expected": 32
+    }
+  },
+  "cases": [
+    {
+      "task": "spring",
+      "seed": 10000,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 9.511463758826721e-07,
+      "max_normalized_error": 0.02636082276730561,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10001,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 1.0569878213573247e-05,
+      "max_normalized_error": 0.029490856314492067,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10002,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 1.1484706192277372e-05,
+      "max_normalized_error": 0.026408762432568417,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10003,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 1.2665982097814776e-05,
+      "max_normalized_error": 0.04475329569793937,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10004,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 8.021465873753186e-07,
+      "max_normalized_error": 0.02404476246402144,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10005,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 1.1877389624714851e-05,
+      "max_normalized_error": 0.02900154527900639,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10006,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 6.4678824855946004e-06,
+      "max_normalized_error": 0.026323150138753526,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10007,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 1.3586038221546914e-05,
+      "max_normalized_error": 0.04509960668124351,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10008,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 8.441444379059249e-07,
+      "max_normalized_error": 0.025172124553127073,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10009,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 7.2448019636794925e-06,
+      "max_normalized_error": 0.026884393011580198,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10010,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 7.0708310886402614e-06,
+      "max_normalized_error": 0.027625578821359027,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10011,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 1.2626671690441071e-05,
+      "max_normalized_error": 0.04431930084932815,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10012,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 1.3929811757407151e-06,
+      "max_normalized_error": 0.026433368546343365,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10013,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 8.113682270050049e-06,
+      "max_normalized_error": 0.029053238027494394,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10014,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 7.437985914293677e-06,
+      "max_normalized_error": 0.028791004004998254,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10015,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 1.1820104333537529e-05,
+      "max_normalized_error": 0.049857377057768056,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10016,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 7.183240313679562e-07,
+      "max_normalized_error": 0.026131064984314663,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10017,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 7.078466296661645e-06,
+      "max_normalized_error": 0.02705447645463057,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10018,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 6.684318577754311e-06,
+      "max_normalized_error": 0.02653424012359825,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10019,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 1.469649134833162e-05,
+      "max_normalized_error": 0.051142314517901556,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10020,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 7.655869467271259e-07,
+      "max_normalized_error": 0.025123923207238837,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10021,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 7.609760359628126e-06,
+      "max_normalized_error": 0.028171177001556684,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10022,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 1.2615702871698886e-05,
+      "max_normalized_error": 0.027306241981535154,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10023,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 1.1684417700053018e-05,
+      "max_normalized_error": 0.04413967891712493,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10024,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 8.541519491700456e-07,
+      "max_normalized_error": 0.025679592956929384,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10025,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 1.3163051335141063e-05,
+      "max_normalized_error": 0.02862237137574065,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10026,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 7.5356001616455615e-06,
+      "max_normalized_error": 0.029196220828589692,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10027,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 1.0225069672742393e-05,
+      "max_normalized_error": 0.04783716096544003,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10028,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 4.663215804612264e-07,
+      "max_normalized_error": 0.023210035501927424,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10029,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 7.4996605690103024e-06,
+      "max_normalized_error": 0.027358167422442025,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10030,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 7.60248803999275e-06,
+      "max_normalized_error": 0.028135851831983704,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "spring",
+      "seed": 10031,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 1.2358172625681618e-05,
+      "max_normalized_error": 0.0474260771620035,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10001,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 2.384185791015625e-07,
+      "max_normalized_error": 0.016270782859076825,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10002,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 0.00034154579043388367,
+      "max_normalized_error": 0.10500973292448856,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10003,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 5.364418029785156e-07,
+      "max_normalized_error": 0.03640367397526934,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10005,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 4.76837158203125e-07,
+      "max_normalized_error": 0.024913211833756208,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10006,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 0.0001754462718963623,
+      "max_normalized_error": 0.08059052357886219,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10007,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 5.066394805908203e-07,
+      "max_normalized_error": 0.028408764948896825,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10009,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 2.980232238769531e-07,
+      "max_normalized_error": 0.0211168512578622,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10010,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 0.00021752715110778809,
+      "max_normalized_error": 0.08227314808067261,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10011,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 5.140900611877441e-07,
+      "max_normalized_error": 0.03416524039909433,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10013,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 2.384185791015625e-07,
+      "max_normalized_error": 0.017520122495790855,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10014,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 0.00017876550555229187,
+      "max_normalized_error": 0.07850958597936172,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10015,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 5.976180545985699e-07,
+      "max_normalized_error": 0.038636921173205205,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10017,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 5.960464477539062e-07,
+      "max_normalized_error": 0.028104765956184368,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10018,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 0.00015763938426971436,
+      "max_normalized_error": 0.08796583756549889,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10019,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 4.6938657760620117e-07,
+      "max_normalized_error": 0.036479836888295945,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10021,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 4.76837158203125e-07,
+      "max_normalized_error": 0.02134192815463977,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10022,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 0.00018306449055671692,
+      "max_normalized_error": 0.09176358181242052,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10023,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 4.76837158203125e-07,
+      "max_normalized_error": 0.03981764872246643,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10025,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 3.129243850708008e-07,
+      "max_normalized_error": 0.021088940407647215,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10026,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 0.0005908310413360596,
+      "max_normalized_error": 0.13256124233982094,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10027,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 5.252659320831299e-07,
+      "max_normalized_error": 0.03677432003892336,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10029,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 3.5762786865234375e-07,
+      "max_normalized_error": 0.023629981516059304,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10030,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 0.0002525597810745239,
+      "max_normalized_error": 0.10700242095008956,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10031,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 7.636845111846924e-07,
+      "max_normalized_error": 0.05882318362934295,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10033,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 3.5762786865234375e-07,
+      "max_normalized_error": 0.025711767724141393,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10034,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 0.00015400350093841553,
+      "max_normalized_error": 0.10257074748358405,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10035,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 5.513429641723633e-07,
+      "max_normalized_error": 0.046121295411965475,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10037,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 4.76837158203125e-07,
+      "max_normalized_error": 0.02689800601584664,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10038,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 0.0003666132688522339,
+      "max_normalized_error": 0.08484222156706488,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10039,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 4.76837158203125e-07,
+      "max_normalized_error": 0.02985914894950157,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10041,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 2.384185791015625e-07,
+      "max_normalized_error": 0.014993348500804589,
+      "reason": "All equation and input-preservation gates passed"
+    },
+    {
+      "task": "net-force",
+      "seed": 10042,
+      "score": 1,
+      "status": "graded",
+      "inputs_unchanged": true,
+      "max_absolute_error": 0.0001583881676197052,
+      "max_normalized_error": 0.11893456470405991,
+      "reason": "All equation and input-preservation gates passed"
+    }
+  ],
+  "note": "Held-out values only; no model revision or final performance benchmark"
+}

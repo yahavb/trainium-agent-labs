@@ -1,0 +1,6 @@
+# Model-Driven Math Agent
+
+Seat seat-260; confirmed cores 0,1; attempts 4/4; budget 30.0 minutes. Tasks ['spring', 'net-force'].
+Qwen selects and revises bounded operation graphs from equations, source and feedback; the controller does not prescribe target transformations or accept generated Python. Trusted lowering emits NKI. Supported operations are a finite DSL, not unrestricted discovery.
+Each task: 16 public correctness cases. Device timing: seed 3, paired original baseline, 5 repeats, 200 samples, 20 warmups. Pre/post gates required; >10% baseline drift invalidates reward. Raw samples and spread derivable in timing.json. Qwen stops for timing and restarts for generation. Every rejection remains in attempts.jsonl. No model weight training, private-task generalization or statistically significant gain claimed.
+Best observed per-task results: {"spring": {"winner": "agent-proposal", "throughput_ratio": 1.0398102810398713, "attempt": 2, "hypothesis": "Correcting the order of operations to ensure the negative sign is applied after the sum of stiffness*displacement and damping*velocity."}, "net-force": {"winner": "agent-proposal", "throughput_ratio": 1.0704279692499414, "attempt": 1, "hypothesis": "Replace the loop with a single sum operation to reduce overhead"}}

@@ -1,0 +1,25 @@
+{
+  "frozen_manifest_sha256": "2de67353ccb88bce02cd76d311ed37b56c2b7543e0145b71bd701f034509ce59",
+  "tasks": {
+    "spring": {
+      "throughput_ratio": 1.0387349387265958,
+      "baseline_drift_fraction": 0.00017989083260370193,
+      "candidate_repeat_mean_ms": {
+        "min": 0.015456995,
+        "median": 0.01546133,
+        "max": 0.015469085
+      },
+      "source_sha256": "68872332a2fcf9d5f03506f749e9d43482fbf131079706ff5c19c8c4e17cba20"
+    },
+    "net-force": {
+      "throughput_ratio": 1.0754677024895138,
+      "baseline_drift_fraction": 0.0006041976349228122,
+      "candidate_repeat_mean_ms": {
+        "min": 0.017342015,
+        "median": 0.0173452,
+        "max": 0.017361155
+      },
+      "source_sha256": "cc18d809141ee45b7fbe81c8358c95d2e63824cdf8031e7c4ee1fbffe153bfe3"
+    }
+  }
+}

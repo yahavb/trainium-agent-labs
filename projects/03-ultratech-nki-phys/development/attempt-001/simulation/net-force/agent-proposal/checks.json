@@ -1,0 +1,162 @@
+[
+  {
+    "seed": 0,
+    "score": 1,
+    "inputs_unchanged": true,
+    "max_absolute_error": 0.0,
+    "max_normalized_error": 0.0,
+    "reason": "All equation and input-preservation gates passed",
+    "output_file": "case-00.npz",
+    "output_sha256": "9414cb834156baec498bb46fc87bc04f9eed0392c4dec24faa34363b5d1cc74a"
+  },
+  {
+    "seed": 1,
+    "score": 1,
+    "inputs_unchanged": true,
+    "max_absolute_error": 0.0,
+    "max_normalized_error": 0.0,
+    "reason": "All equation and input-preservation gates passed",
+    "output_file": "case-01.npz",
+    "output_sha256": "21466c2288ccc8270293a4fd54c313d6411dad7559e17fb68988eb78e44e5094"
+  },
+  {
+    "seed": 2,
+    "score": 1,
+    "inputs_unchanged": true,
+    "max_absolute_error": 0.00024928897619247437,
+    "max_normalized_error": 0.04678298218592117,
+    "reason": "All equation and input-preservation gates passed",
+    "output_file": "case-02.npz",
+    "output_sha256": "ed043a5498983190c01ceab2cc09d25a695dbdda6d2e3779f597b62594616540"
+  },
+  {
+    "seed": 3,
+    "score": 1,
+    "inputs_unchanged": true,
+    "max_absolute_error": 3.129243850708008e-07,
+    "max_normalized_error": 0.02596946941621219,
+    "reason": "All equation and input-preservation gates passed",
+    "output_file": "case-03.npz",
+    "output_sha256": "2e188ff3627f9abfdc6315ca16f3bdf64e9e635ee609853943cf2836df80e976"
+  },
+  {
+    "seed": 4,
+    "score": 1,
+    "inputs_unchanged": true,
+    "max_absolute_error": 0.0,
+    "max_normalized_error": 0.0,
+    "reason": "All equation and input-preservation gates passed",
+    "output_file": "case-04.npz",
+    "output_sha256": "9414cb834156baec498bb46fc87bc04f9eed0392c4dec24faa34363b5d1cc74a"
+  },
+  {
+    "seed": 5,
+    "score": 1,
+    "inputs_unchanged": true,
+    "max_absolute_error": 0.0,
+    "max_normalized_error": 0.0,
+    "reason": "All equation and input-preservation gates passed",
+    "output_file": "case-05.npz",
+    "output_sha256": "5b68352a035acf8730a71707c4913b9f5a85967ad27495d324adf56043c9fbec"
+  },
+  {
+    "seed": 6,
+    "score": 1,
+    "inputs_unchanged": true,
+    "max_absolute_error": 0.00015366077423095703,
+    "max_normalized_error": 0.05351675656031669,
+    "reason": "All equation and input-preservation gates passed",
+    "output_file": "case-06.npz",
+    "output_sha256": "e7d304c3ca7e216309378257d578ed5f86d56dbeca8b87f4f27457a374a82106"
+  },
+  {
+    "seed": 7,
+    "score": 1,
+    "inputs_unchanged": true,
+    "max_absolute_error": 5.21540641784668e-07,
+    "max_normalized_error": 0.03502220884342713,
+    "reason": "All equation and input-preservation gates passed",
+    "output_file": "case-07.npz",
+    "output_sha256": "732f7b34a8ff7f1b0817425ce4ebbe84aa2c47375401cf2d87661b1a89e11b14"
+  },
+  {
+    "seed": 8,
+    "score": 1,
+    "inputs_unchanged": true,
+    "max_absolute_error": 0.0,
+    "max_normalized_error": 0.0,
+    "reason": "All equation and input-preservation gates passed",
+    "output_file": "case-08.npz",
+    "output_sha256": "9414cb834156baec498bb46fc87bc04f9eed0392c4dec24faa34363b5d1cc74a"
+  },
+  {
+    "seed": 9,
+    "score": 1,
+    "inputs_unchanged": true,
+    "max_absolute_error": 0.0,
+    "max_normalized_error": 0.0,
+    "reason": "All equation and input-preservation gates passed",
+    "output_file": "case-09.npz",
+    "output_sha256": "d89845b6804f949584cf66194629dff78b8cf66e12c041e5166267796a365f4c"
+  },
+  {
+    "seed": 10,
+    "score": 1,
+    "inputs_unchanged": true,
+    "max_absolute_error": 0.00012278507347218692,
+    "max_normalized_error": 0.05772602605909194,
+    "reason": "All equation and input-preservation gates passed",
+    "output_file": "case-10.npz",
+    "output_sha256": "fed1fdbb1d4ca2173bfdf8383d09b48dfddc49ddeca8090086b90f7524935143"
+  },
+  {
+    "seed": 11,
+    "score": 1,
+    "inputs_unchanged": true,
+    "max_absolute_error": 2.980232238769531e-07,
+    "max_normalized_error": 0.026905288305446397,
+    "reason": "All equation and input-preservation gates passed",
+    "output_file": "case-11.npz",
+    "output_sha256": "d1f0d83c108c649f551e683a84c5f30036f5016c62dcb2ef37f4e4c942563f2e"
+  },
+  {
+    "seed": 12,
+    "score": 1,
+    "inputs_unchanged": true,
+    "max_absolute_error": 0.0,
+    "max_normalized_error": 0.0,
+    "reason": "All equation and input-preservation gates passed",
+    "output_file": "case-12.npz",
+    "output_sha256": "9414cb834156baec498bb46fc87bc04f9eed0392c4dec24faa34363b5d1cc74a"
+  },
+  {
+    "seed": 13,
+    "score": 1,
+    "inputs_unchanged": true,
+    "max_absolute_error": 0.0,
+    "max_normalized_error": 0.0,
+    "reason": "All equation and input-preservation gates passed",
+    "output_file": "case-13.npz",
+    "output_sha256": "c1fa80e164ed11aa7530f743656cee653b7692c9e686d54bca1072bcbf7a1aff"
+  },
+  {
+    "seed": 14,
+    "score": 1,
+    "inputs_unchanged": true,
+    "max_absolute_error": 9.795278310775757e-05,
+    "max_normalized_error": 0.05838173819215321,
+    "reason": "All equation and input-preservation gates passed",
+    "output_file": "case-14.npz",
+    "output_sha256": "e40261f07250f13b8178148e75f2d7aa7a376351108e4f471b994ad088aeb857"
+  },
+  {
+    "seed": 15,
+    "score": 1,
+    "inputs_unchanged": true,
+    "max_absolute_error": 5.317851901054382e-07,
+    "max_normalized_error": 0.040299368945152236,
+    "reason": "All equation and input-preservation gates passed",
+    "output_file": "case-15.npz",
+    "output_sha256": "08ad88fd1b2ee2017e70ff5041c4cb92bae244056ed8ba22bdb999ef16b5061e"
+  }
+]

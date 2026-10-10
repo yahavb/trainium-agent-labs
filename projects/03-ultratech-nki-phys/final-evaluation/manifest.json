@@ -1,0 +1,530 @@
+{
+  "version": 1,
+  "development_run": "/Users/vedantdesai/.codex/.chatgpt-projects/g-p-6aca4cd2de2081918aafaa90a7757cb1/repo/projects/03-contact-physics/data/math-agent-f6b07d70f80843839970831aee0139b4",
+  "development_seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+  ],
+  "heldout_seeds": {
+    "spring": [
+      10000,
+      10001,
+      10002,
+      10003,
+      10004,
+      10005,
+      10006,
+      10007,
+      10008,
+      10009,
+      10010,
+      10011,
+      10012,
+      10013,
+      10014,
+      10015,
+      10016,
+      10017,
+      10018,
+      10019,
+      10020,
+      10021,
+      10022,
+      10023,
+      10024,
+      10025,
+      10026,
+      10027,
+      10028,
+      10029,
+      10030,
+      10031
+    ],
+    "net-force": [
+      10001,
+      10002,
+      10003,
+      10005,
+      10006,
+      10007,
+      10009,
+      10010,
+      10011,
+      10013,
+      10014,
+      10015,
+      10017,
+      10018,
+      10019,
+      10021,
+      10022,
+      10023,
+      10025,
+      10026,
+      10027,
+      10029,
+      10030,
+      10031,
+      10033,
+      10034,
+      10035,
+      10037,
+      10038,
+      10039,
+      10041,
+      10042
+    ]
+  },
+  "tasks": {
+    "spring": {
+      "kernel": "spring/kernel.py",
+      "kernel_sha256": "68872332a2fcf9d5f03506f749e9d43482fbf131079706ff5c19c8c4e17cba20",
+      "proposal": "spring/proposal.json",
+      "proposal_sha256": "303d9f84afc3dab12390a36985f0c537b3d5c7f03d01213f94525edf6c087218",
+      "input_names": [
+        "displacement",
+        "velocity",
+        "stiffness",
+        "damping"
+      ],
+      "cases": [
+        {
+          "seed": 10000,
+          "file": "spring/input-10000.npz",
+          "sha256": "975d4d401247478c43eb77fdc9c74395e6dd048f001f38c5dda0fa0cb84c5bb9",
+          "input_signature": "61e176e4e5f8f1f117cc2036711b2712199e37c18bdbd6622800579cd9dec6d1"
+        },
+        {
+          "seed": 10001,
+          "file": "spring/input-10001.npz",
+          "sha256": "ce7d4a6ec2b9c785e75e7c346001d7c7b6560c9e7b833eb99f07fce4c7d7c3b1",
+          "input_signature": "a86ec2420326c8ce69374173890186f00a3d6470c894fc76453091f203f2a03f"
+        },
+        {
+          "seed": 10002,
+          "file": "spring/input-10002.npz",
+          "sha256": "a12518d3370f1e6ac7d3f2f54c4a766b8b5a8e6fef94d7db01f2becc06382e96",
+          "input_signature": "8159cf749b41b40a114121d206bd232eb1056619967122e2dbccb07bf258ac42"
+        },
+        {
+          "seed": 10003,
+          "file": "spring/input-10003.npz",
+          "sha256": "ecf4d233fa3bca06b739c013f883793a65d572aaed923e8ac939db69a1441a6b",
+          "input_signature": "1eb98105c20ba0e05ce61796a55e0a38b03b301ab9fe750f76c8e823f5cd1811"
+        },
+        {
+          "seed": 10004,
+          "file": "spring/input-10004.npz",
+          "sha256": "8ad161c3815242fdeeef371dd9425643f8f5541501d06b79c78ffe8b75c26d71",
+          "input_signature": "419d21a9616dc8e86cc7687443741921264c1338669251a6efda6dfc06ce6116"
+        },
+        {
+          "seed": 10005,
+          "file": "spring/input-10005.npz",
+          "sha256": "e9f9d7599a053171f5b893a38730c2093bc0bd7c0401a660438a389d3f197ae9",
+          "input_signature": "be2fb9f494af6dddb5e524cfc7ad0157d2ffc0483ddffe7b7f238c9c550a1b80"
+        },
+        {
+          "seed": 10006,
+          "file": "spring/input-10006.npz",
+          "sha256": "483b62cd0e47e87ad96cc8b9d985b06948666138164a2db1efd75894c06b39fa",
+          "input_signature": "655e6e290bb8a990617cb58becf86a06752009a29e71c5a4cb1eed7fe4534208"
+        },
+        {
+          "seed": 10007,
+          "file": "spring/input-10007.npz",
+          "sha256": "a50c4b2e59ab251cdc7afa4c950255aa3de9cfc95c9ff7b4864d86077e3fef5c",
+          "input_signature": "faaa59fc7b42cc805c73f27109df6c88ae1a104e4775f7b691ea2f55d33adccf"
+        },
+        {
+          "seed": 10008,
+          "file": "spring/input-10008.npz",
+          "sha256": "0c2986194edd1b85775f0120cc2e2f584b81d20a756ab7fb34cdd11d4ceef071",
+          "input_signature": "8310e73cf623edd72ceb31912fa5382dbe29c347fca015f8b126e1f0f72168e5"
+        },
+        {
+          "seed": 10009,
+          "file": "spring/input-10009.npz",
+          "sha256": "13504cc580dde7a91175992e38e35664181e1c9d69bc64a6a22d8af0a6c981e9",
+          "input_signature": "d3e3f7adab467d4161dd805ba1836a646bef207bee7250c6684e7642da370d22"
+        },
+        {
+          "seed": 10010,
+          "file": "spring/input-10010.npz",
+          "sha256": "fd243315c41df1b759db1891193706874cc0e718d4c5f78eca03352d3ec331df",
+          "input_signature": "3d35682012c32516a17912db1667d8c562975e04e4845af2df39a55cbf222f20"
+        },
+        {
+          "seed": 10011,
+          "file": "spring/input-10011.npz",
+          "sha256": "8fa446acf3e20148ccc9606efa52e94aca3211b9f9c86f7082f36d375937af02",
+          "input_signature": "2978ccf393d34a0418c6ef361561c9d19d1cba32b4effca62545aad99e484bf8"
+        },
+        {
+          "seed": 10012,
+          "file": "spring/input-10012.npz",
+          "sha256": "3e9a511d489e95e974d7b23fbdecaca425858dcde1ccada7cbb9d3fc6cf92474",
+          "input_signature": "7c99be6e258d93c6abfbffad8347daf33660b23d131b4c86594035839d73c530"
+        },
+        {
+          "seed": 10013,
+          "file": "spring/input-10013.npz",
+          "sha256": "09a7b5e443657d196906fbf69cf62f48dfbfa3e8137b8ed6b43aec97c63acc83",
+          "input_signature": "cad4931d983c85f91bd47da983cc60c1b77208336a9ed20c36ebd2f337e9c08c"
+        },
+        {
+          "seed": 10014,
+          "file": "spring/input-10014.npz",
+          "sha256": "ac0cae5d7745e451c28781d50879da23843d3d5c981e5165137da153403af8a0",
+          "input_signature": "ac955311f71c27938402b032f576aa2ae3dae8eba76b8180c55e4c5a3160d28a"
+        },
+        {
+          "seed": 10015,
+          "file": "spring/input-10015.npz",
+          "sha256": "46e3fc0c738f8bccca3a1ab486fec21b60fba705faf14dad1280e59bc6345b36",
+          "input_signature": "6a9c39bd150376e54da7a85483b2c9fb40e1e1df38e0dc8749decd7f0be6abd2"
+        },
+        {
+          "seed": 10016,
+          "file": "spring/input-10016.npz",
+          "sha256": "c690a5f99d1224a6e37ced675140623b74d2780f0b0a8564e7acf713a5ec41bb",
+          "input_signature": "1147ff524ccae57741327125594364b606d074e00ece540530643e95d7c7d218"
+        },
+        {
+          "seed": 10017,
+          "file": "spring/input-10017.npz",
+          "sha256": "e6dca67ecbb8e6b825e97fd706accc7568d42766ac4e31a0d3e328d0072e23dd",
+          "input_signature": "f4777c435cea68fd05f00382dffce6175b405e8bf8921a82bf585145c273f2b9"
+        },
+        {
+          "seed": 10018,
+          "file": "spring/input-10018.npz",
+          "sha256": "d67e8501e4bc354d8e8a2b0d865f910d1ab43c85867221875e12ee1eec87a62d",
+          "input_signature": "75e720e4a62eb1abad0a6d77916e5e794073941ebe17a4a51cadd1717a42b835"
+        },
+        {
+          "seed": 10019,
+          "file": "spring/input-10019.npz",
+          "sha256": "1b3e377cdcc793858ba0cca1e08efd8e4304842904e7b9f68ec83d1cac068217",
+          "input_signature": "cb3d82d4da2f04c42760e1d936742b72208eba54ef16ef99f24186faf5c9582e"
+        },
+        {
+          "seed": 10020,
+          "file": "spring/input-10020.npz",
+          "sha256": "b77e52d347cc92abc17f8f2f0599b8f37df9872f6d7800165acf3b4221d56059",
+          "input_signature": "531759aed86e197b91af2295239a4d94dfb1106eef227d07dafae0e97e2bc26e"
+        },
+        {
+          "seed": 10021,
+          "file": "spring/input-10021.npz",
+          "sha256": "35d30acd6feff9a5aba7e789e99aad91d0dba8d95a83c1b1b24865e96bbdcc81",
+          "input_signature": "84739392cff810847c971ed9439e41b8e57595eaa9fe2832af35e96ead3a1528"
+        },
+        {
+          "seed": 10022,
+          "file": "spring/input-10022.npz",
+          "sha256": "2129778cda291e1c42c78112fd98b4c14efd833d35392c40d921cffb0820583f",
+          "input_signature": "5b8112a8f45c8bef7b3f8db96079c323592cc0d600193bc9eb1162f50de668a7"
+        },
+        {
+          "seed": 10023,
+          "file": "spring/input-10023.npz",
+          "sha256": "b8d81f0838ab5fdaf4ea5af4d0bba19b4464d350664cf80221a1d261a479c694",
+          "input_signature": "3af205c995f2b3fc47103608b72f783c309fe2f3660f7b465ac4b77a92ef1d7d"
+        },
+        {
+          "seed": 10024,
+          "file": "spring/input-10024.npz",
+          "sha256": "1c132a0b1c73c4e91bda40c912b8b9697424b75a91953cd8affde93c50a0857e",
+          "input_signature": "49363258cca2866245012ebe9b65430a446b053d96d96d0d27b5882154d87c62"
+        },
+        {
+          "seed": 10025,
+          "file": "spring/input-10025.npz",
+          "sha256": "c342e67b613bc6007bb12b271a891772aaa33b131d416c2516ae593550152f23",
+          "input_signature": "f2c3de9c9dd3751108f93d1101438c387172a1130ff2064bda88a55ce85caaed"
+        },
+        {
+          "seed": 10026,
+          "file": "spring/input-10026.npz",
+          "sha256": "142e0c8dd73f59a85db0c2e9448c836cf396a68888a7b32396af076905096e85",
+          "input_signature": "92a738bfa048307ce3f53a31054207c7d02ad11f4ae639c2792c0a77364bcd04"
+        },
+        {
+          "seed": 10027,
+          "file": "spring/input-10027.npz",
+          "sha256": "8111a4c09bed8a69e07c584354b5bc0a70e2a04c9aeaf2f701f93f345a809ab0",
+          "input_signature": "a6edef6830d5e1d17819a2bfec5a0f391a81f0794287556e7458a148af6a22a5"
+        },
+        {
+          "seed": 10028,
+          "file": "spring/input-10028.npz",
+          "sha256": "c405bb563a3d3044f19d6086017c0862550ddfd8e40667138c825dd1edad22da",
+          "input_signature": "c9d0744e8a7d4fd9e18f227d9fe9e45a4d5490d03ff00e43ca12148505e232f6"
+        },
+        {
+          "seed": 10029,
+          "file": "spring/input-10029.npz",
+          "sha256": "a2a05ee3405b5e353c58a211ba8167c10582e49e0b16e2bffaa8c09263378701",
+          "input_signature": "da07196459d427e8f30ced91318b8684942b082eee3408a5212a159fbd239e7c"
+        },
+        {
+          "seed": 10030,
+          "file": "spring/input-10030.npz",
+          "sha256": "0ee51286f39ff9b8c8a68a9ea34addc6f7d8a9dd8b465c84cfbe4acb0ac5e054",
+          "input_signature": "ed5b35cf70077d1e5a3fc0560d062f584f4f7bc01594e1ea150272b4e5c3cd3a"
+        },
+        {
+          "seed": 10031,
+          "file": "spring/input-10031.npz",
+          "sha256": "71ad787832aab4c2a2ff9191c03d0921e65f3b97ca7560ad172980fb04828a02",
+          "input_signature": "5a7ad054361b69efc51526a2e5ea54fc544ec6826ac7868e07f7288efee928f6"
+        }
+      ],
+      "development_attempt": {
+        "attempt": 2,
+        "task": "spring",
+        "status": "benchmarked",
+        "correctness_score": 1.0,
+        "throughput_ratio": 1.0398102810398713,
+        "hypothesis": "Correcting the order of operations to ensure the negative sign is applied after the sum of stiffness*displacement and damping*velocity.",
+        "candidate_sha256": "68872332a2fcf9d5f03506f749e9d43482fbf131079706ff5c19c8c4e17cba20",
+        "seconds": 221.39415104093496
+      }
+    },
+    "net-force": {
+      "kernel": "net-force/kernel.py",
+      "kernel_sha256": "cc18d809141ee45b7fbe81c8358c95d2e63824cdf8031e7c4ee1fbffe153bfe3",
+      "proposal": "net-force/proposal.json",
+      "proposal_sha256": "7b68d89147d29118f23934b6a827fa9e7e215466555c31ac5b7de469f8549681",
+      "input_names": [
+        "forces"
+      ],
+      "cases": [
+        {
+          "seed": 10001,
+          "file": "net-force/input-10001.npz",
+          "sha256": "119ed4fc32251abf74a56b4514232f9fd4e03b9e4ff030c39c118d34d0021403",
+          "input_signature": "6f12867ebbf364232a49ec74a0bda1ca4d2d494da9e3057ec468f1650bc21719"
+        },
+        {
+          "seed": 10002,
+          "file": "net-force/input-10002.npz",
+          "sha256": "0bb81a4eb8695356369ab6379310860d42255c7abbb030384d0f917260313375",
+          "input_signature": "92e90af54b6c8a2d07719f8b6a0c08c78dc3c85fde6173620648e6c3dfb56e44"
+        },
+        {
+          "seed": 10003,
+          "file": "net-force/input-10003.npz",
+          "sha256": "66d27dbc5e066a60d59ebb376267ab2d74795e78e3ff210fe1733b9f9ef0041a",
+          "input_signature": "a14596f17962d250422ab64779d28b3a7309bb76ba6c78cbdad5887e4e44c7fa"
+        },
+        {
+          "seed": 10005,
+          "file": "net-force/input-10005.npz",
+          "sha256": "570c35d5ab7fd0c5db47425367a503018107cf2c13dc24b283e403c442ad4fdc",
+          "input_signature": "62c4ee840882b3b088fad8af082f7f56dd3d5b3b5647c4a8bcd9eda4368e9708"
+        },
+        {
+          "seed": 10006,
+          "file": "net-force/input-10006.npz",
+          "sha256": "0f81a62397b560fa9ff169fab96e357da5b0c371f2842330c6f7eaba41c64721",
+          "input_signature": "c36aadc5821456d3777edb22c5d552ffbd77d98e4e9569b48063235c06750251"
+        },
+        {
+          "seed": 10007,
+          "file": "net-force/input-10007.npz",
+          "sha256": "122af65fe64ba8c56eab6e772ad468a309c9d1c95d5aaba995075ea17c7bf69b",
+          "input_signature": "62aabac57d4d4885529948f48289baf2876eb71f5bc26be0d408770d59256c7e"
+        },
+        {
+          "seed": 10009,
+          "file": "net-force/input-10009.npz",
+          "sha256": "8deac9d6d98c11b20092ca800b9be2763b09f53db8c63573fe6b34730765de6d",
+          "input_signature": "08280e734f1ba0a61c3d7ef98a952de0301b51fcc8c433018d535c1857a0b6e9"
+        },
+        {
+          "seed": 10010,
+          "file": "net-force/input-10010.npz",
+          "sha256": "5e23bae1885834a7f193fce0f1d478b1d04927d8cf54d5ef31ed49d504654e29",
+          "input_signature": "6fc5aa11d51f8371452648fa183370ee1a447401f99e20927e91434eee4d8f6d"
+        },
+        {
+          "seed": 10011,
+          "file": "net-force/input-10011.npz",
+          "sha256": "c38f8c7a5ae005ad0486c0037401f9b391c7f57f76451f18e5d2305ffe8a81d5",
+          "input_signature": "e7c0f9ceff3e6d7229d0bd2083fbba53dae095f66df8bb1890de133c4297c6b5"
+        },
+        {
+          "seed": 10013,
+          "file": "net-force/input-10013.npz",
+          "sha256": "84f888d85ea154c5d82604b2b2c2eb032a729407d9a0104f7155dd5705e0ee90",
+          "input_signature": "f6c1ac97e0f5a0dd0fbc267969866ccdfbd3a845ec73748c841ea669815f26e6"
+        },
+        {
+          "seed": 10014,
+          "file": "net-force/input-10014.npz",
+          "sha256": "3d7a12f82aaf28846384a27cfc77f9acbdd9b932c450858723b19e9fd988bea3",
+          "input_signature": "61d9f6fda684cdab06670d63451257fa3fe7267fe2f4cc3bd1dd873506766861"
+        },
+        {
+          "seed": 10015,
+          "file": "net-force/input-10015.npz",
+          "sha256": "31225237df0bdb6f8b72a206915aa57135a100c9fff3ec79ef96b78a7b15f47c",
+          "input_signature": "169ff3f6c04397c71a63251818b9899106c4f341b0cbbd647098e59d90d56093"
+        },
+        {
+          "seed": 10017,
+          "file": "net-force/input-10017.npz",
+          "sha256": "7ff83dd50eb3012171ca2e7863302ec18e4a7a6bfa89928083816f7e84fd46ee",
+          "input_signature": "e6ee64dbd3de98179ad094f26920a047be20d533371801dfa610065f7ccdba33"
+        },
+        {
+          "seed": 10018,
+          "file": "net-force/input-10018.npz",
+          "sha256": "d9938995ce806ca6cf9389bf0f9a23945d5c2f0a8819dc89299d99da4aa30942",
+          "input_signature": "92be8f6a85c1b1fc2b12c71cb41bfa0cd997df5515805846359022c3e70e29ef"
+        },
+        {
+          "seed": 10019,
+          "file": "net-force/input-10019.npz",
+          "sha256": "c3604574f93b6494c3f8d8a6358ef70fece8a45c015f4bee8fc5e3e375fca792",
+          "input_signature": "820622a2316837c52ad94d4eff02332bfaeb98463bc0c33de2e8c6dd4f480d1d"
+        },
+        {
+          "seed": 10021,
+          "file": "net-force/input-10021.npz",
+          "sha256": "718ec6e5da47fe08fbcce6ec43613096299a5db3f1f60401961cf246ef3a8519",
+          "input_signature": "101b066632cf5ee9edd2c4c416a4e63d47ad37ca4d0b0aaf4958bdeb6384a270"
+        },
+        {
+          "seed": 10022,
+          "file": "net-force/input-10022.npz",
+          "sha256": "282659bdfc7ef6873faee4e88cc1fc07d98de8513bb655855a2eaf614029f39c",
+          "input_signature": "8915e723d15ef3ac46215b72270f601dc527f5cb417275d4047c5a158f8533df"
+        },
+        {
+          "seed": 10023,
+          "file": "net-force/input-10023.npz",
+          "sha256": "aa80b7e9060163da8632df0d53139507360ab60152bd3caaafbaa457445c929b",
+          "input_signature": "7bf1e34e2a7b20c1affccc704191313454be5fd2541f76ed42d1e11dde502120"
+        },
+        {
+          "seed": 10025,
+          "file": "net-force/input-10025.npz",
+          "sha256": "c6a94cb7c97008e9b2ea9a3e4ee6a2eaf91f91bb65005114bcf651206c310fda",
+          "input_signature": "40b0dc1184881ffedf41923f63b1792a19bf48a5b4c59d837e2136be4fd7bdc1"
+        },
+        {
+          "seed": 10026,
+          "file": "net-force/input-10026.npz",
+          "sha256": "ba1b4f0aeb7714526a5ac49ff83ce2d7fc91df2e3cd7f656f247731d38fdbdad",
+          "input_signature": "be809cb65040059188b6472e4008242943092d8a657f373833274d74ff8a9bc1"
+        },
+        {
+          "seed": 10027,
+          "file": "net-force/input-10027.npz",
+          "sha256": "e7a2975522486adf99ec7c705416ed35685972d31c18d478538bdc9ce3caa491",
+          "input_signature": "408253eb4a956ee8064e918b399887c7ae1645272abfa98499f73e8497d1923d"
+        },
+        {
+          "seed": 10029,
+          "file": "net-force/input-10029.npz",
+          "sha256": "b80c7f999a3be7c4fa59cba437296e7abfd02032329f3e70cf34e62588dbb987",
+          "input_signature": "3ea0edac51cab881fd6b399d0c3da75e8bbf24b1cdad3d1d8d6fd89e50a07680"
+        },
+        {
+          "seed": 10030,
+          "file": "net-force/input-10030.npz",
+          "sha256": "679b642828fe70e477590b6ae43525b1eba4be551007d76a2336eb70d2a83a16",
+          "input_signature": "5f021fea52d86017d54dfd4db24b436ecd9dec75893ac243eddcac15fa394aa7"
+        },
+        {
+          "seed": 10031,
+          "file": "net-force/input-10031.npz",
+          "sha256": "cf40dd5d1aca470f0e2bd2213fcdb79fccf82feca26f1227ff5ad0c129914371",
+          "input_signature": "bfd1ed1d1897afebfb9eb941a004fe207880c5ba874904285397dea76cfcb7ca"
+        },
+        {
+          "seed": 10033,
+          "file": "net-force/input-10033.npz",
+          "sha256": "8923ca5ded69a047d1fc03638395bac2b8ee77ff1efb8aa4b34a814c2e5a771e",
+          "input_signature": "d1ad3fe39c1b1dda2038689caee64bdfe2b3ed267d06791041ba8af5e5f47cb5"
+        },
+        {
+          "seed": 10034,
+          "file": "net-force/input-10034.npz",
+          "sha256": "a69623ecaf762053d6f7649c1514ad5134eeeae6086d6288631e2bbdb9026a92",
+          "input_signature": "829aca5ab5eaaffa0f27870e19f0842357d2ff77ddebb858857b0b17685ea5b3"
+        },
+        {
+          "seed": 10035,
+          "file": "net-force/input-10035.npz",
+          "sha256": "cf6255d5095f758cac6bc2e3b33075fa78d7ae599ff44564fc6153d6d9e1ea69",
+          "input_signature": "561ae7aa45cf0ef98096e183f93a5767e0152371f1263d256e993f9264d1e0a5"
+        },
+        {
+          "seed": 10037,
+          "file": "net-force/input-10037.npz",
+          "sha256": "ac028d680285180cbcf85e466d888e6ff1a3af706361c6fb96235697b1068c6b",
+          "input_signature": "ed31cbe850997e8b394e786d31e357820511243d73a28d3d5f2ca99bf081421f"
+        },
+        {
+          "seed": 10038,
+          "file": "net-force/input-10038.npz",
+          "sha256": "0565a5e0964a0a79f656ad85251237ec66b8376324a7fcaa578e8cdf7a778670",
+          "input_signature": "fc0d2fee560bf284481d0152cdf3458357cb33e5c9711adc6ab8d0f5f766070b"
+        },
+        {
+          "seed": 10039,
+          "file": "net-force/input-10039.npz",
+          "sha256": "4a7de169fb2ca0a2e4c32feabb8ba4b11aa2c7c6799aaf7596f897c38474818e",
+          "input_signature": "0799b56e83d9637158c783af5169be6c6144faf2d199f936e421101c175b6983"
+        },
+        {
+          "seed": 10041,
+          "file": "net-force/input-10041.npz",
+          "sha256": "b7ca28f5b38d679ed76ae62375c3d7ab3f6b772e4a6b38598e0141f8f2895d86",
+          "input_signature": "8896c6089db693646ca0b1e3d9355b02abf6d1fa6b00a5224160181141d77101"
+        },
+        {
+          "seed": 10042,
+          "file": "net-force/input-10042.npz",
+          "sha256": "9b80385557f435f83221f0902a2394bc69a838344f6d6c09c37e8685f2528a8e",
+          "input_signature": "b57709ca1a7ace1bf9004d0f1bada83fdbf2ea14c02399e2993a1db9e2781979"
+        }
+      ],
+      "development_attempt": {
+        "attempt": 1,
+        "task": "net-force",
+        "status": "benchmarked",
+        "correctness_score": 1.0,
+        "throughput_ratio": 1.0704279692499414,
+        "hypothesis": "Replace the loop with a single sum operation to reduce overhead",
+        "candidate_sha256": "cc18d809141ee45b7fbe81c8358c95d2e63824cdf8031e7c4ee1fbffe153bfe3",
+        "seconds": 51.070817624917254
+      }
+    }
+  },
+  "support_sources": {
+    "support/frozen_math_eval.py": "5f11cbedfaa34c7cddf7d4ab05fb5146bd8bfdad83a2a1fbde1544d45e7160dc",
+    "support/math_tasks.py": "d850d19b4c4355f3e5f4cec05cd2f64d6844db0286e4b2a18db314e7d971106b",
+    "support/math_program.py": "703bd73568c031405f3609329b53950eebe4381372c72ce579292f4110b25c49"
+  },
+  "policy": "One fixed-kernel assessment; no generation, feedback or revision",
+  "scope": "New values in the same distributions, equations and fixed shapes; not unseen-task generalization"
+}

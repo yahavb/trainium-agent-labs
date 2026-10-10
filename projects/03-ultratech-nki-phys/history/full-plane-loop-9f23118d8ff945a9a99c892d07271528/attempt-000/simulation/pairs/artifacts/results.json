@@ -1,0 +1,202 @@
+{
+  "context": {
+    "run_id": "b7933b0afb624a42b62c2c2c5f94a789",
+    "hostname": "seat-260",
+    "visible_cores": null,
+    "backend": "simulate",
+    "batch": 8,
+    "contacts": 33,
+    "steps": 32,
+    "scene": "pairs",
+    "runs": 1,
+    "warmup": 5,
+    "iters": 20,
+    "candidate": "/workspace/projects/03-contact-physics/data/full-plane-loop-9f23118d8ff945a9a99c892d07271528/initial-candidate.py",
+    "candidate_sha256": "e9331d05e5529337a7ddfd8a854f325ff3d7b4b547e79466059e487e85ce376d",
+    "require_physics": true,
+    "source_sha256": {
+      "check_batch.py": "61b288c43d1de94226df9a70d0b51d4de285aa86678111998ffee5ac42c0c2d3",
+      "batch_reference.py": "e0d6dce4c00474ab55ec5bd3b822abe0ebbe6ad7cd06dd9204b770e7e5639a28",
+      "nki_contact_batch.py": "2d4ade0473df9e5fdead2187b6675f25082c4c253ed92c6b302be32baf1d943f",
+      "benchmark_update.py": "7cb4023224021e86a4ea499d5c8e5756d079c72fa8bbff0e2604d9580ae88254",
+      "contact.py": "a83053062d737111ef1ad1e3ce3e7d9a0cbee352330186e6249ae4792e733f78",
+      "update_reference.py": "a0ea98345fe4ae793d4b25048a189a462a7b2e724ac9940cfa90d0050c3c11a5",
+      "candidate.py": "e9331d05e5529337a7ddfd8a854f325ff3d7b4b547e79466059e487e85ce376d"
+    },
+    "nki_version": "0.6.0+31049202112.g85070674",
+    "initial_check": {
+      "score": 1,
+      "per_world_update_error": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "update_error_limits": [
+        0.00011136251123389229,
+        9.999999747378752e-05,
+        0.00012845646415371448,
+        9.999999747378752e-05,
+        0.0001267845364054665,
+        9.999999747378752e-05,
+        0.0001313960092375055,
+        9.999999747378752e-05
+      ],
+      "padding_ok": true,
+      "inputs_unchanged": true,
+      "physics_checks": [
+        {
+          "passed": true,
+          "residual": 4.463019864111604e-06,
+          "objective_error": 5.248448534874482e-12,
+          "velocity_error": 2.3681797028621863e-06,
+          "feasible": true
+        },
+        {
+          "passed": true,
+          "residual": 4.170211643030889e-08,
+          "objective_error": 2.584070405345187e-15,
+          "velocity_error": 5.056443302225164e-08,
+          "feasible": true
+        },
+        {
+          "passed": true,
+          "residual": 9.580081523513117e-07,
+          "objective_error": 3.3243189706986713e-13,
+          "velocity_error": 8.250528894221885e-07,
+          "feasible": true
+        },
+        {
+          "passed": true,
+          "residual": 4.8402177495944023e-08,
+          "objective_error": 2.5742053566819025e-15,
+          "velocity_error": 3.1319318080173825e-08,
+          "feasible": true
+        },
+        {
+          "passed": true,
+          "residual": 1.1367422415329608e-07,
+          "objective_error": 7.510891123395871e-15,
+          "velocity_error": 1.0596557601917634e-07,
+          "feasible": true
+        },
+        {
+          "passed": true,
+          "residual": 5.535821759459128e-08,
+          "objective_error": 9.669911544093228e-16,
+          "velocity_error": 4.393157458776112e-08,
+          "feasible": true
+        },
+        {
+          "passed": true,
+          "residual": 1.4920854583767944e-07,
+          "objective_error": 1.2246094409981168e-14,
+          "velocity_error": 1.2926752041590453e-07,
+          "feasible": true
+        },
+        {
+          "passed": true,
+          "residual": 6.580439866347842e-08,
+          "objective_error": 2.647148210048699e-15,
+          "velocity_error": 3.57340041441119e-08,
+          "feasible": true
+        }
+      ],
+      "physics_passes": 8
+    }
+  },
+  "results": [
+    {
+      "repeat": 0,
+      "score": 1,
+      "timing_ok": false,
+      "per_world_update_error": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "update_error_limits": [
+        0.00011136251123389229,
+        9.999999747378752e-05,
+        0.00012845646415371448,
+        9.999999747378752e-05,
+        0.0001267845364054665,
+        9.999999747378752e-05,
+        0.0001313960092375055,
+        9.999999747378752e-05
+      ],
+      "padding_ok": true,
+      "inputs_unchanged": true,
+      "physics_checks": [
+        {
+          "passed": true,
+          "residual": 4.463019864111604e-06,
+          "objective_error": 5.248448534874482e-12,
+          "velocity_error": 2.3681797028621863e-06,
+          "feasible": true
+        },
+        {
+          "passed": true,
+          "residual": 4.170211643030889e-08,
+          "objective_error": 2.584070405345187e-15,
+          "velocity_error": 5.056443302225164e-08,
+          "feasible": true
+        },
+        {
+          "passed": true,
+          "residual": 9.580081523513117e-07,
+          "objective_error": 3.3243189706986713e-13,
+          "velocity_error": 8.250528894221885e-07,
+          "feasible": true
+        },
+        {
+          "passed": true,
+          "residual": 4.8402177495944023e-08,
+          "objective_error": 2.5742053566819025e-15,
+          "velocity_error": 3.1319318080173825e-08,
+          "feasible": true
+        },
+        {
+          "passed": true,
+          "residual": 1.1367422415329608e-07,
+          "objective_error": 7.510891123395871e-15,
+          "velocity_error": 1.0596557601917634e-07,
+          "feasible": true
+        },
+        {
+          "passed": true,
+          "residual": 5.535821759459128e-08,
+          "objective_error": 9.669911544093228e-16,
+          "velocity_error": 4.393157458776112e-08,
+          "feasible": true
+        },
+        {
+          "passed": true,
+          "residual": 1.4920854583767944e-07,
+          "objective_error": 1.2246094409981168e-14,
+          "velocity_error": 1.2926752041590453e-07,
+          "feasible": true
+        },
+        {
+          "passed": true,
+          "residual": 6.580439866347842e-08,
+          "objective_error": 2.647148210048699e-15,
+          "velocity_error": 3.57340041441119e-08,
+          "feasible": true
+        }
+      ],
+      "physics_passes": 8,
+      "output_file": "outputs-r0.npz",
+      "output_sha256": "9156e0302d6c6d2f81c051afa0d4eb8452ef467f7af150c96486c978e8f006aa"
+    }
+  ]
+}

@@ -1,0 +1,1502 @@
+{
+  "scores": {
+    "fixed-beta09": 10,
+    "fista-restart": 10,
+    "fista-restart-fp64-work": 16
+  },
+  "cases": [
+    {
+      "case_id": "grip-000",
+      "method": "fixed-beta09",
+      "steps": 1024,
+      "check": {
+        "passed": false,
+        "force_check": {
+          "passed": false,
+          "numerical": {
+            "passed": true,
+            "residual": 9.136249374443105e-06,
+            "objective_error": 6.673452660740056e-11,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 1.061616801572019e-05,
+          "acceleration_error": 0.0004568481443703833
+        },
+        "wrench_error": 9.158533393120761e-06,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 0,
+        "restart_steps": []
+      }
+    },
+    {
+      "case_id": "grip-000",
+      "method": "fista-restart",
+      "steps": 1024,
+      "check": {
+        "passed": false,
+        "force_check": {
+          "passed": false,
+          "numerical": {
+            "passed": true,
+            "residual": 7.334440870888072e-06,
+            "objective_error": 1.689901203991445e-10,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 1.4063343011103493e-05,
+          "acceleration_error": 0.0005329895013801433
+        },
+        "wrench_error": 1.5299374437085765e-05,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 4,
+        "restart_steps": [
+          114,
+          228,
+          289,
+          331
+        ]
+      }
+    },
+    {
+      "case_id": "grip-000",
+      "method": "fista-restart-fp64-work",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 2.5148425483533527e-06,
+            "objective_error": 8.529945532272597e-11,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 9.134269394379404e-06,
+          "acceleration_error": 3.4052614701352013e-06
+        },
+        "wrench_error": 1.0931773611742037e-05,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 7,
+        "restart_steps": [
+          114,
+          228,
+          342,
+          456,
+          570,
+          685,
+          706
+        ]
+      }
+    },
+    {
+      "case_id": "grip-001",
+      "method": "fixed-beta09",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 2.365374081493567e-06,
+            "objective_error": 2.831294326532364e-11,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 9.167784142225292e-06,
+          "acceleration_error": 9.793077524133842e-06
+        },
+        "wrench_error": 1.1219500592724366e-05,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 0,
+        "restart_steps": []
+      }
+    },
+    {
+      "case_id": "grip-001",
+      "method": "fista-restart",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 2.5267743562571395e-06,
+            "objective_error": 6.822911959708105e-11,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 1.1697207275797957e-05,
+          "acceleration_error": 3.525507915416968e-05
+        },
+        "wrench_error": 1.8310910182121183e-05,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 7,
+        "restart_steps": [
+          115,
+          229,
+          325,
+          354,
+          419,
+          444,
+          457
+        ]
+      }
+    },
+    {
+      "case_id": "grip-001",
+      "method": "fista-restart-fp64-work",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 1.140645175631696e-06,
+            "objective_error": 2.3614613991797148e-11,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 6.645607261522756e-06,
+          "acceleration_error": 5.499924885277372e-07
+        },
+        "wrench_error": 1.0812763411042466e-05,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 7,
+        "restart_steps": [
+          115,
+          229,
+          343,
+          457,
+          571,
+          685,
+          759
+        ]
+      }
+    },
+    {
+      "case_id": "grip-002",
+      "method": "fixed-beta09",
+      "steps": 1024,
+      "check": {
+        "passed": false,
+        "force_check": {
+          "passed": false,
+          "numerical": {
+            "passed": false,
+            "residual": 0.0016767216604318845,
+            "objective_error": 8.360773320937742e-06,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 0.002847336083853859,
+          "acceleration_error": 0.004833984368815436
+        },
+        "wrench_error": 0.002902183593741686,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 0,
+        "restart_steps": []
+      }
+    },
+    {
+      "case_id": "grip-002",
+      "method": "fista-restart",
+      "steps": 1024,
+      "check": {
+        "passed": false,
+        "force_check": {
+          "passed": false,
+          "numerical": {
+            "passed": true,
+            "residual": 3.148416970569885e-05,
+            "objective_error": 4.3962462487196187e-11,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 8.209013216029332e-06,
+          "acceleration_error": 0.012689208989252163
+        },
+        "wrench_error": 3.316406258338275e-06,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 2,
+        "restart_steps": [
+          162,
+          323
+        ]
+      }
+    },
+    {
+      "case_id": "grip-002",
+      "method": "fista-restart-fp64-work",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 4.3998100791101656e-06,
+            "objective_error": 5.4614376721524935e-11,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 7.275957191419903e-06,
+          "acceleration_error": 3.4706791041116958e-06
+        },
+        "wrench_error": 7.414804153566427e-06,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 5,
+        "restart_steps": [
+          162,
+          324,
+          486,
+          648,
+          810
+        ]
+      }
+    },
+    {
+      "case_id": "grip-003",
+      "method": "fixed-beta09",
+      "steps": 1024,
+      "check": {
+        "passed": false,
+        "force_check": {
+          "passed": false,
+          "numerical": {
+            "passed": false,
+            "residual": 0.0008775813575026987,
+            "objective_error": 7.655786518177837e-06,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 0.002738055473064431,
+          "acceleration_error": 0.0003285503538849518
+        },
+        "wrench_error": 0.0028662304687414966,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 0,
+        "restart_steps": []
+      }
+    },
+    {
+      "case_id": "grip-003",
+      "method": "fista-restart",
+      "steps": 1024,
+      "check": {
+        "passed": false,
+        "force_check": {
+          "passed": false,
+          "numerical": {
+            "passed": true,
+            "residual": 1.734716645727764e-05,
+            "objective_error": 9.408814027388898e-11,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 1.1485465134304454e-05,
+          "acceleration_error": 0.00035841856860493673
+        },
+        "wrench_error": 8.343750008527492e-06,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 2,
+        "restart_steps": [
+          162,
+          322
+        ]
+      }
+    },
+    {
+      "case_id": "grip-003",
+      "method": "fista-restart-fp64-work",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 2.4403438078924673e-06,
+            "objective_error": 5.069076955332154e-11,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 6.9840726077112485e-06,
+          "acceleration_error": 5.282680820946385e-07
+        },
+        "wrench_error": 7.375166798214257e-06,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 5,
+        "restart_steps": [
+          162,
+          324,
+          486,
+          648,
+          811
+        ]
+      }
+    },
+    {
+      "case_id": "grip-004",
+      "method": "fixed-beta09",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 1.2019458004278732e-07,
+            "objective_error": 1.271210370282865e-14,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 1.8777517014953007e-07,
+          "acceleration_error": 9.517669713332565e-06
+        },
+        "wrench_error": 1.4889993066821545e-07,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 0,
+        "restart_steps": []
+      }
+    },
+    {
+      "case_id": "grip-004",
+      "method": "fista-restart",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 2.1731441032391105e-07,
+            "objective_error": 1.6949471603771535e-14,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 1.0838539606479494e-07,
+          "acceleration_error": 3.807067872685366e-05
+        },
+        "wrench_error": 4.793521250177929e-08,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 3,
+        "restart_steps": [
+          23,
+          45,
+          67
+        ]
+      }
+    },
+    {
+      "case_id": "grip-004",
+      "method": "fista-restart-fp64-work",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 2.9487507616136756e-08,
+            "objective_error": 1.1689290761221748e-15,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 4.015279734609017e-08,
+          "acceleration_error": 2.620877488368478e-07
+        },
+        "wrench_error": 6.069724144074058e-08,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 6,
+        "restart_steps": [
+          23,
+          45,
+          67,
+          89,
+          111,
+          133
+        ]
+      }
+    },
+    {
+      "case_id": "grip-005",
+      "method": "fixed-beta09",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 5.8284532243841825e-08,
+            "objective_error": 4.606578569553878e-14,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 3.9294673515996513e-07,
+          "acceleration_error": 3.7829455934461415e-08
+        },
+        "wrench_error": 6.386724718376618e-07,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 0,
+        "restart_steps": []
+      }
+    },
+    {
+      "case_id": "grip-005",
+      "method": "fista-restart",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 1.472508539893532e-07,
+            "objective_error": 2.7585906550235433e-14,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 1.795813155999517e-07,
+          "acceleration_error": 5.595977212700515e-07
+        },
+        "wrench_error": 3.8067499003427776e-07,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 4,
+        "restart_steps": [
+          8,
+          30,
+          52,
+          73
+        ]
+      }
+    },
+    {
+      "case_id": "grip-005",
+      "method": "fista-restart-fp64-work",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 1.7735671529299406e-08,
+            "objective_error": 2.6782433543917897e-16,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 1.7735671577768276e-08,
+          "acceleration_error": 2.7965349156468636e-08
+        },
+        "wrench_error": 3.4974818574949125e-08,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 7,
+        "restart_steps": [
+          8,
+          30,
+          52,
+          74,
+          96,
+          118,
+          140
+        ]
+      }
+    },
+    {
+      "case_id": "grip-006",
+      "method": "fixed-beta09",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 7.984670708639636e-07,
+            "objective_error": 1.9300186267332563e-12,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 2.2612875334661127e-06,
+          "acceleration_error": 2.1032800887610392e-06
+        },
+        "wrench_error": 1.0913085930696987e-06,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 0,
+        "restart_steps": []
+      }
+    },
+    {
+      "case_id": "grip-006",
+      "method": "fista-restart",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 4.84341945732574e-07,
+            "objective_error": 1.4917000795963954e-13,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 6.217771830962208e-07,
+          "acceleration_error": 7.553100590484974e-05
+        },
+        "wrench_error": 2.30468749170541e-07,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 4,
+        "restart_steps": [
+          32,
+          64,
+          96,
+          116
+        ]
+      }
+    },
+    {
+      "case_id": "grip-006",
+      "method": "fista-restart-fp64-work",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 2.1902744749781699e-07,
+            "objective_error": 4.1993559365274646e-13,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 6.320180953758023e-07,
+          "acceleration_error": 5.336247816956075e-07
+        },
+        "wrench_error": 7.029967719099664e-07,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 8,
+        "restart_steps": [
+          32,
+          64,
+          96,
+          128,
+          160,
+          192,
+          224,
+          255
+        ]
+      }
+    },
+    {
+      "case_id": "grip-007",
+      "method": "fixed-beta09",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 3.647589325190476e-07,
+            "objective_error": 1.7215305971768168e-13,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 6.852007134697934e-07,
+          "acceleration_error": 3.8193707595164255e-06
+        },
+        "wrench_error": 4.907226549730701e-07,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 0,
+        "restart_steps": []
+      }
+    },
+    {
+      "case_id": "grip-007",
+      "method": "fista-restart",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 2.091913690869212e-07,
+            "objective_error": 8.160794436850326e-13,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 1.564565083237219e-06,
+          "acceleration_error": 3.830699421221458e-08
+        },
+        "wrench_error": 1.4111328139260895e-06,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 3,
+        "restart_steps": [
+          32,
+          64,
+          96
+        ]
+      }
+    },
+    {
+      "case_id": "grip-007",
+      "method": "fista-restart-fp64-work",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 1.3574474833644746e-07,
+            "objective_error": 2.274477866484777e-13,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 6.526031274890668e-07,
+          "acceleration_error": 8.373708615622399e-08
+        },
+        "wrench_error": 7.935957689842336e-07,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 8,
+        "restart_steps": [
+          32,
+          64,
+          96,
+          128,
+          160,
+          192,
+          224,
+          255
+        ]
+      }
+    },
+    {
+      "case_id": "grip-008",
+      "method": "fixed-beta09",
+      "steps": 1024,
+      "check": {
+        "passed": false,
+        "force_check": {
+          "passed": false,
+          "numerical": {
+            "passed": true,
+            "residual": 9.136249374443105e-06,
+            "objective_error": 6.673452660740056e-11,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 1.061616801572019e-05,
+          "acceleration_error": 0.0004568481443703833
+        },
+        "wrench_error": 9.158533393120761e-06,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 0,
+        "restart_steps": []
+      }
+    },
+    {
+      "case_id": "grip-008",
+      "method": "fista-restart",
+      "steps": 1024,
+      "check": {
+        "passed": false,
+        "force_check": {
+          "passed": false,
+          "numerical": {
+            "passed": true,
+            "residual": 7.334440870888072e-06,
+            "objective_error": 1.689901203991445e-10,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 1.4063343011103493e-05,
+          "acceleration_error": 0.0005329895013801433
+        },
+        "wrench_error": 1.5299374437085765e-05,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 4,
+        "restart_steps": [
+          114,
+          228,
+          289,
+          331
+        ]
+      }
+    },
+    {
+      "case_id": "grip-008",
+      "method": "fista-restart-fp64-work",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 2.5148425483533527e-06,
+            "objective_error": 8.529945532272597e-11,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 9.134269394379404e-06,
+          "acceleration_error": 3.4052614701352013e-06
+        },
+        "wrench_error": 1.0931773611742037e-05,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 7,
+        "restart_steps": [
+          114,
+          228,
+          342,
+          456,
+          570,
+          685,
+          706
+        ]
+      }
+    },
+    {
+      "case_id": "grip-009",
+      "method": "fixed-beta09",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 2.365374081493567e-06,
+            "objective_error": 2.831294326532364e-11,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 9.167784142225292e-06,
+          "acceleration_error": 9.793077524133842e-06
+        },
+        "wrench_error": 1.1219500592724366e-05,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 0,
+        "restart_steps": []
+      }
+    },
+    {
+      "case_id": "grip-009",
+      "method": "fista-restart",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 2.5267743562571395e-06,
+            "objective_error": 6.822911959708105e-11,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 1.1697207275797957e-05,
+          "acceleration_error": 3.525507915416968e-05
+        },
+        "wrench_error": 1.8310910182121183e-05,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 7,
+        "restart_steps": [
+          115,
+          229,
+          325,
+          354,
+          419,
+          444,
+          457
+        ]
+      }
+    },
+    {
+      "case_id": "grip-009",
+      "method": "fista-restart-fp64-work",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 1.140645175631696e-06,
+            "objective_error": 2.3614613991797148e-11,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 6.645607261522756e-06,
+          "acceleration_error": 5.499924885277372e-07
+        },
+        "wrench_error": 1.0812763411042466e-05,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 7,
+        "restart_steps": [
+          115,
+          229,
+          343,
+          457,
+          571,
+          685,
+          759
+        ]
+      }
+    },
+    {
+      "case_id": "grip-010",
+      "method": "fixed-beta09",
+      "steps": 1024,
+      "check": {
+        "passed": false,
+        "force_check": {
+          "passed": false,
+          "numerical": {
+            "passed": false,
+            "residual": 0.0016767216604318845,
+            "objective_error": 8.360773320937742e-06,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 0.002847336083853859,
+          "acceleration_error": 0.004833984368815436
+        },
+        "wrench_error": 0.002902183593741686,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 0,
+        "restart_steps": []
+      }
+    },
+    {
+      "case_id": "grip-010",
+      "method": "fista-restart",
+      "steps": 1024,
+      "check": {
+        "passed": false,
+        "force_check": {
+          "passed": false,
+          "numerical": {
+            "passed": true,
+            "residual": 3.148416970569885e-05,
+            "objective_error": 4.3962462487196187e-11,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 8.209013216029332e-06,
+          "acceleration_error": 0.012689208989252163
+        },
+        "wrench_error": 3.316406258338275e-06,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 2,
+        "restart_steps": [
+          162,
+          323
+        ]
+      }
+    },
+    {
+      "case_id": "grip-010",
+      "method": "fista-restart-fp64-work",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 4.3998100791101656e-06,
+            "objective_error": 5.4614376721524935e-11,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 7.275957191419903e-06,
+          "acceleration_error": 3.4706791041116958e-06
+        },
+        "wrench_error": 7.414804153566427e-06,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 5,
+        "restart_steps": [
+          162,
+          324,
+          486,
+          648,
+          810
+        ]
+      }
+    },
+    {
+      "case_id": "grip-011",
+      "method": "fixed-beta09",
+      "steps": 1024,
+      "check": {
+        "passed": false,
+        "force_check": {
+          "passed": false,
+          "numerical": {
+            "passed": false,
+            "residual": 0.0008775813575026987,
+            "objective_error": 7.655786518177837e-06,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 0.002738055473064431,
+          "acceleration_error": 0.0003285503538849518
+        },
+        "wrench_error": 0.0028662304687414966,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 0,
+        "restart_steps": []
+      }
+    },
+    {
+      "case_id": "grip-011",
+      "method": "fista-restart",
+      "steps": 1024,
+      "check": {
+        "passed": false,
+        "force_check": {
+          "passed": false,
+          "numerical": {
+            "passed": true,
+            "residual": 1.734716645727764e-05,
+            "objective_error": 9.408814027388898e-11,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 1.1485465134304454e-05,
+          "acceleration_error": 0.00035841856860493673
+        },
+        "wrench_error": 8.343750008527492e-06,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 2,
+        "restart_steps": [
+          162,
+          322
+        ]
+      }
+    },
+    {
+      "case_id": "grip-011",
+      "method": "fista-restart-fp64-work",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 2.4403438078924673e-06,
+            "objective_error": 5.069076955332154e-11,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 6.9840726077112485e-06,
+          "acceleration_error": 5.282680820946385e-07
+        },
+        "wrench_error": 7.375166798214257e-06,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 5,
+        "restart_steps": [
+          162,
+          324,
+          486,
+          648,
+          811
+        ]
+      }
+    },
+    {
+      "case_id": "grip-012",
+      "method": "fixed-beta09",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 1.2019458004278732e-07,
+            "objective_error": 1.271210370282865e-14,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 1.8777517014953007e-07,
+          "acceleration_error": 9.517669713332565e-06
+        },
+        "wrench_error": 1.4889993066821545e-07,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 0,
+        "restart_steps": []
+      }
+    },
+    {
+      "case_id": "grip-012",
+      "method": "fista-restart",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 2.1731441032391105e-07,
+            "objective_error": 1.6949471603771535e-14,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 1.0838539606479494e-07,
+          "acceleration_error": 3.807067872685366e-05
+        },
+        "wrench_error": 4.793521250177929e-08,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 3,
+        "restart_steps": [
+          23,
+          45,
+          67
+        ]
+      }
+    },
+    {
+      "case_id": "grip-012",
+      "method": "fista-restart-fp64-work",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 2.9487507616136756e-08,
+            "objective_error": 1.1689290761221748e-15,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 4.015279734609017e-08,
+          "acceleration_error": 2.620877488368478e-07
+        },
+        "wrench_error": 6.069724144074058e-08,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 6,
+        "restart_steps": [
+          23,
+          45,
+          67,
+          89,
+          111,
+          133
+        ]
+      }
+    },
+    {
+      "case_id": "grip-013",
+      "method": "fixed-beta09",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 5.8284532243841825e-08,
+            "objective_error": 4.606578569553878e-14,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 3.9294673515996513e-07,
+          "acceleration_error": 3.7829455934461415e-08
+        },
+        "wrench_error": 6.386724718376618e-07,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 0,
+        "restart_steps": []
+      }
+    },
+    {
+      "case_id": "grip-013",
+      "method": "fista-restart",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 1.472508539893532e-07,
+            "objective_error": 2.7585906550235433e-14,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 1.795813155999517e-07,
+          "acceleration_error": 5.595977212700515e-07
+        },
+        "wrench_error": 3.8067499003427776e-07,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 4,
+        "restart_steps": [
+          8,
+          30,
+          52,
+          73
+        ]
+      }
+    },
+    {
+      "case_id": "grip-013",
+      "method": "fista-restart-fp64-work",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 1.7735671529299406e-08,
+            "objective_error": 2.6782433543917897e-16,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 1.7735671577768276e-08,
+          "acceleration_error": 2.7965349156468636e-08
+        },
+        "wrench_error": 3.4974818574949125e-08,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 7,
+        "restart_steps": [
+          8,
+          30,
+          52,
+          74,
+          96,
+          118,
+          140
+        ]
+      }
+    },
+    {
+      "case_id": "grip-014",
+      "method": "fixed-beta09",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 7.984670708639636e-07,
+            "objective_error": 1.9300186267332563e-12,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 2.2612875334661127e-06,
+          "acceleration_error": 2.1032800887610392e-06
+        },
+        "wrench_error": 1.0913085930696987e-06,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 0,
+        "restart_steps": []
+      }
+    },
+    {
+      "case_id": "grip-014",
+      "method": "fista-restart",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 4.84341945732574e-07,
+            "objective_error": 1.4917000795963954e-13,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 6.217771830962208e-07,
+          "acceleration_error": 7.553100590484974e-05
+        },
+        "wrench_error": 2.30468749170541e-07,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 4,
+        "restart_steps": [
+          32,
+          64,
+          96,
+          116
+        ]
+      }
+    },
+    {
+      "case_id": "grip-014",
+      "method": "fista-restart-fp64-work",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 2.1902744749781699e-07,
+            "objective_error": 4.1993559365274646e-13,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 6.320180953758023e-07,
+          "acceleration_error": 5.336247816956075e-07
+        },
+        "wrench_error": 7.029967719099664e-07,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 8,
+        "restart_steps": [
+          32,
+          64,
+          96,
+          128,
+          160,
+          192,
+          224,
+          255
+        ]
+      }
+    },
+    {
+      "case_id": "grip-015",
+      "method": "fixed-beta09",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 3.647589325190476e-07,
+            "objective_error": 1.7215305971768168e-13,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 6.852007134697934e-07,
+          "acceleration_error": 3.8193707595164255e-06
+        },
+        "wrench_error": 4.907226549730701e-07,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 0,
+        "restart_steps": []
+      }
+    },
+    {
+      "case_id": "grip-015",
+      "method": "fista-restart",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 2.091913690869212e-07,
+            "objective_error": 8.160794436850326e-13,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 1.564565083237219e-06,
+          "acceleration_error": 3.830699421221458e-08
+        },
+        "wrench_error": 1.4111328139260895e-06,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 3,
+        "restart_steps": [
+          32,
+          64,
+          96
+        ]
+      }
+    },
+    {
+      "case_id": "grip-015",
+      "method": "fista-restart-fp64-work",
+      "steps": 1024,
+      "check": {
+        "passed": true,
+        "force_check": {
+          "passed": true,
+          "numerical": {
+            "passed": true,
+            "residual": 1.3574474833644746e-07,
+            "objective_error": 2.274477866484777e-13,
+            "velocity_error": 0.0,
+            "feasible": true
+          },
+          "force_error": 6.526031274890668e-07,
+          "acceleration_error": 8.373708615622399e-08
+        },
+        "wrench_error": 7.935957689842336e-07,
+        "cone_violation": 0.0
+      },
+      "trace": {
+        "world": 0,
+        "restart_count": 8,
+        "restart_steps": [
+          32,
+          64,
+          96,
+          128,
+          160,
+          192,
+          224,
+          255
+        ]
+      }
+    }
+  ],
+  "source_sha256": "4721514289b9d7a2ab9d9231aa4e248cc04426e290a44db408d9c01cdf368216"
+}

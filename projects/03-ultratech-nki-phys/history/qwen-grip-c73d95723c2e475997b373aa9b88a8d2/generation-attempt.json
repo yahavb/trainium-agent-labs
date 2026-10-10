@@ -1,0 +1,21 @@
+{
+  "attempt_id": "qwen-grip-c73d95723c2e475997b373aa9b88a8d2",
+  "model": "Qwen/Qwen3-8B",
+  "status": "generated_not_evaluated",
+  "temperature": 0.5,
+  "max_tokens": 1400,
+  "physics_score": null,
+  "baseline_sha256": "2d4ade0473df9e5fdead2187b6675f25082c4c253ed92c6b302be32baf1d943f",
+  "feedback_sha256": "8aab072d3dd7e2de8caa80578ec8a4f4c2f4d402dd0c8260193b8d19d8f6bde9",
+  "request_sha256": "d7d74b5ea053b69c56f1fa235f89dc66ae43d57a5b05a25f62ff7aea7877d2e5",
+  "previous_candidate_sha256": "23fd2f7c0580a17561f9a320d255d08979077e31c372df6af35b14703b0f06b9",
+  "generation_seconds": 65.09116152199931,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 2339,
+    "total_tokens": 3244,
+    "completion_tokens": 905,
+    "prompt_tokens_details": null
+  },
+  "candidate_sha256": "d6b0edb0efc8bde9b2a4b90ec2a5e7baec23fff50bc8f126fdd2a1421e011d78"
+}

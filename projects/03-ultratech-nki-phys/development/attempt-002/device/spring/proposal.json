@@ -1,0 +1,44 @@
+{
+  "hypothesis": "Correcting the order of operations to ensure the negative sign is applied after the sum of stiffness*displacement and damping*velocity.",
+  "expected_effect": "Fixing the calculation order to match the original equation and avoid incorrect negation of individual terms.",
+  "program": {
+    "operations": [
+      {
+        "id": "v0",
+        "op": "mul",
+        "inputs": [
+          "displacement",
+          "stiffness"
+        ],
+        "engine": "vector"
+      },
+      {
+        "id": "v1",
+        "op": "mul",
+        "inputs": [
+          "velocity",
+          "damping"
+        ],
+        "engine": "vector"
+      },
+      {
+        "id": "v2",
+        "op": "add",
+        "inputs": [
+          "v0",
+          "v1"
+        ],
+        "engine": "vector"
+      },
+      {
+        "id": "v3",
+        "op": "neg",
+        "inputs": [
+          "v2"
+        ],
+        "engine": "vector"
+      }
+    ],
+    "result": "v3"
+  }
+}

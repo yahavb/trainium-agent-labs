@@ -1,0 +1,162 @@
+[
+  {
+    "seed": 0,
+    "score": 0,
+    "inputs_unchanged": true,
+    "max_absolute_error": 49.21196308708841,
+    "max_normalized_error": 980084.4383823188,
+    "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+    "output_file": "case-00.npz",
+    "output_sha256": "83502a000a5e375920779367872c0891b68a7cc3f0da25ee6a278e58f80e853d"
+  },
+  {
+    "seed": 1,
+    "score": 0,
+    "inputs_unchanged": true,
+    "max_absolute_error": 530.0036005571455,
+    "max_normalized_error": 998116.7745701699,
+    "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+    "output_file": "case-01.npz",
+    "output_sha256": "70858f9680e37cf4f19cfac64d722e9e5e30d05f1b05a085eed5573a4783cbdf"
+  },
+  {
+    "seed": 2,
+    "score": 0,
+    "inputs_unchanged": true,
+    "max_absolute_error": 530.1980500639984,
+    "max_normalized_error": 998117.4799138978,
+    "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+    "output_file": "case-02.npz",
+    "output_sha256": "c6e10fda8a18142c4e4515d2b4a237f601327c13e7029512b5a498d095625328"
+  },
+  {
+    "seed": 3,
+    "score": 0,
+    "inputs_unchanged": true,
+    "max_absolute_error": 567.0763755315829,
+    "max_normalized_error": 998239.6372072313,
+    "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+    "output_file": "case-03.npz",
+    "output_sha256": "088b58c078025c59c8547d4cd34893d8e1b64cbe5be1314c81d6cec9c325e6f9"
+  },
+  {
+    "seed": 4,
+    "score": 0,
+    "inputs_unchanged": true,
+    "max_absolute_error": 35.1505514946972,
+    "max_normalized_error": 972337.8871685643,
+    "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+    "output_file": "case-04.npz",
+    "output_sha256": "ccbf5eacfcfa09e66194d8ae04ff86a046a89729049d7350f3ac330102de1df6"
+  },
+  {
+    "seed": 5,
+    "score": 0,
+    "inputs_unchanged": true,
+    "max_absolute_error": 531.6648710956979,
+    "max_normalized_error": 998122.6186209943,
+    "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+    "output_file": "case-05.npz",
+    "output_sha256": "0c1eb99d267aa6b2367321227d191f988384db1c6cc07f7007f034d57ca110ad"
+  },
+  {
+    "seed": 6,
+    "score": 0,
+    "inputs_unchanged": true,
+    "max_absolute_error": 518.7979886354879,
+    "max_normalized_error": 998076.1468961479,
+    "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+    "output_file": "case-06.npz",
+    "output_sha256": "2bef60903aa27b111e1fa5584654dacf74372be1a171b888d07209eb1be54428"
+  },
+  {
+    "seed": 7,
+    "score": 0,
+    "inputs_unchanged": true,
+    "max_absolute_error": 590.0680277890326,
+    "max_normalized_error": 998048.185024244,
+    "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+    "output_file": "case-07.npz",
+    "output_sha256": "918902b155ae29104596f8417c21a832ee37f74d250cff5c2040ccf20d7c9d1a"
+  },
+  {
+    "seed": 8,
+    "score": 0,
+    "inputs_unchanged": true,
+    "max_absolute_error": 53.07820459859431,
+    "max_normalized_error": 981508.2710898765,
+    "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+    "output_file": "case-08.npz",
+    "output_sha256": "8a055a4215404e709ca99d548f343afbd3dda3feb8b1d46489df4744e9504c0b"
+  },
+  {
+    "seed": 9,
+    "score": 0,
+    "inputs_unchanged": true,
+    "max_absolute_error": 454.57439658165276,
+    "max_normalized_error": 997804.9803824283,
+    "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+    "output_file": "case-09.npz",
+    "output_sha256": "493a7b976c57ea08eb17d02ee3b015f9b52196dbfbae120c8d845a889b3f496a"
+  },
+  {
+    "seed": 10,
+    "score": 0,
+    "inputs_unchanged": true,
+    "max_absolute_error": 569.7267372898859,
+    "max_normalized_error": 998247.8625344665,
+    "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+    "output_file": "case-10.npz",
+    "output_sha256": "7346798619794db2a8a48123d09cddd79722732981d6ed7cb156105289f3d2d9"
+  },
+  {
+    "seed": 11,
+    "score": 0,
+    "inputs_unchanged": true,
+    "max_absolute_error": 441.96346307078625,
+    "max_normalized_error": 997742.4941065151,
+    "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+    "output_file": "case-11.npz",
+    "output_sha256": "34b6bfd935e58d90ca8ea68360913c24d72ce93f0bd755563d05b5e03261d42c"
+  },
+  {
+    "seed": 12,
+    "score": 0,
+    "inputs_unchanged": true,
+    "max_absolute_error": 46.38683988703906,
+    "max_normalized_error": 978897.1138652605,
+    "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+    "output_file": "case-12.npz",
+    "output_sha256": "e50e6952e6a183b48b164f9c979a2f74575ae6ef73a96713a6eaa25385f205b2"
+  },
+  {
+    "seed": 13,
+    "score": 0,
+    "inputs_unchanged": true,
+    "max_absolute_error": 668.2329095600398,
+    "max_normalized_error": 998505.7527948854,
+    "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+    "output_file": "case-13.npz",
+    "output_sha256": "90577d698565a9d73bdce0fb50ba1f57788be313cdedbc6752413213e9644ea1"
+  },
+  {
+    "seed": 14,
+    "score": 0,
+    "inputs_unchanged": true,
+    "max_absolute_error": 468.59850460118287,
+    "max_normalized_error": 997870.5343771874,
+    "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+    "output_file": "case-14.npz",
+    "output_sha256": "fdc3ef957c20857593d2aeda2ec37353c8954dde425fdf53c5756168cd0dccf4"
+  },
+  {
+    "seed": 15,
+    "score": 0,
+    "inputs_unchanged": true,
+    "max_absolute_error": 445.9118042925129,
+    "max_normalized_error": 997684.017555629,
+    "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+    "output_file": "case-15.npz",
+    "output_sha256": "026a13d8f3bda03ada93c249a9bfccac08d7f30027490174a0bded6830064c20"
+  }
+]

@@ -1,0 +1,351 @@
+{
+  "task": "spring",
+  "equation": "force = -(stiffness * displacement + damping * velocity)",
+  "structure": "elementwise",
+  "backend": "simulate",
+  "winner": null,
+  "attempts": [
+    {
+      "task": "spring",
+      "form": "baseline",
+      "status": "correct_not_benchmarked",
+      "correctness_score": 1.0,
+      "throughput_ratio": null,
+      "source_sha256": "9152602379ebecb1a53b29843fcefa51cd05a806cf6ba6ba5abb8b1061903b03",
+      "checks": [
+        {
+          "seed": 0,
+          "score": 1,
+          "inputs_unchanged": true,
+          "max_absolute_error": 9.484128895564936e-07,
+          "max_normalized_error": 0.024298446265957962,
+          "reason": "All equation and input-preservation gates passed",
+          "output_file": "case-00.npz",
+          "output_sha256": "0842ca7f98438ab7d0d4c8d7ec6bd2bb5e95e92e6e51f15b768849059356d8d3"
+        },
+        {
+          "seed": 1,
+          "score": 1,
+          "inputs_unchanged": true,
+          "max_absolute_error": 7.489208655897528e-06,
+          "max_normalized_error": 0.02829964897246074,
+          "reason": "All equation and input-preservation gates passed",
+          "output_file": "case-01.npz",
+          "output_sha256": "c55ed7521fada77b98f6a086466cc5fcac03d7a44833310c00f2f20ee0667868"
+        },
+        {
+          "seed": 2,
+          "score": 1,
+          "inputs_unchanged": true,
+          "max_absolute_error": 1.5154535503825173e-05,
+          "max_normalized_error": 0.029013841361307437,
+          "reason": "All equation and input-preservation gates passed",
+          "output_file": "case-02.npz",
+          "output_sha256": "89064e3b13592e9f3ed5bb58a60ac1ee3851bbde61fae1ceb038387dea6d62c9"
+        },
+        {
+          "seed": 3,
+          "score": 1,
+          "inputs_unchanged": true,
+          "max_absolute_error": 2.055111417575972e-05,
+          "max_normalized_error": 0.048958405299048165,
+          "reason": "All equation and input-preservation gates passed",
+          "output_file": "case-03.npz",
+          "output_sha256": "f452f8b177fe2e450deb69c67701da6a1dfbb0ffa4ce760c318f2b3cbbde1a0d"
+        },
+        {
+          "seed": 4,
+          "score": 1,
+          "inputs_unchanged": true,
+          "max_absolute_error": 8.043496109166881e-07,
+          "max_normalized_error": 0.02713150702042982,
+          "reason": "All equation and input-preservation gates passed",
+          "output_file": "case-04.npz",
+          "output_sha256": "ccb1ec14596c9e034292899d3f12580bc9b1e514105cc2063666584f1d2a75d1"
+        },
+        {
+          "seed": 5,
+          "score": 1,
+          "inputs_unchanged": true,
+          "max_absolute_error": 1.5138666640268639e-05,
+          "max_normalized_error": 0.02842062060311566,
+          "reason": "All equation and input-preservation gates passed",
+          "output_file": "case-05.npz",
+          "output_sha256": "3cefc33cc1a0b61eef618961d751daf7033a04e883ca61e08c47b652f92ceb6a"
+        },
+        {
+          "seed": 6,
+          "score": 1,
+          "inputs_unchanged": true,
+          "max_absolute_error": 1.5002675354480743e-05,
+          "max_normalized_error": 0.028862510531926282,
+          "reason": "All equation and input-preservation gates passed",
+          "output_file": "case-06.npz",
+          "output_sha256": "a055727b40c5f3ea094bd890f0185de1a3eb6414cf1ed0bdbb52ae073b8da82e"
+        },
+        {
+          "seed": 7,
+          "score": 1,
+          "inputs_unchanged": true,
+          "max_absolute_error": 2.641018608073864e-05,
+          "max_normalized_error": 0.04793855852029982,
+          "reason": "All equation and input-preservation gates passed",
+          "output_file": "case-07.npz",
+          "output_sha256": "543533d3b3a7a7fab4f370f71e798e1f8081633bcfc27202a4bd3422a0437361"
+        },
+        {
+          "seed": 8,
+          "score": 1,
+          "inputs_unchanged": true,
+          "max_absolute_error": 6.847391205155873e-07,
+          "max_normalized_error": 0.026286265672819723,
+          "reason": "All equation and input-preservation gates passed",
+          "output_file": "case-08.npz",
+          "output_sha256": "ec0887a1a284fa107e259a9d8fe410e2f68b3d97c6ca5ca5bb4cf6753098c9cd"
+        },
+        {
+          "seed": 9,
+          "score": 1,
+          "inputs_unchanged": true,
+          "max_absolute_error": 7.501189429603983e-06,
+          "max_normalized_error": 0.028601433546481154,
+          "reason": "All equation and input-preservation gates passed",
+          "output_file": "case-09.npz",
+          "output_sha256": "8a4350f00d46128d3b45674a6a2fa01e25d63c1ce538ed6698cf840c83cb2e5a"
+        },
+        {
+          "seed": 10,
+          "score": 1,
+          "inputs_unchanged": true,
+          "max_absolute_error": 8.315582817886025e-06,
+          "max_normalized_error": 0.028868195963545264,
+          "reason": "All equation and input-preservation gates passed",
+          "output_file": "case-10.npz",
+          "output_sha256": "4396b5e8eb068c2f43da7cfbb5005f8b8bdb12fe4f64ad8ee0481775e2222df3"
+        },
+        {
+          "seed": 11,
+          "score": 1,
+          "inputs_unchanged": true,
+          "max_absolute_error": 1.3396049666880572e-05,
+          "max_normalized_error": 0.049012505514131194,
+          "reason": "All equation and input-preservation gates passed",
+          "output_file": "case-11.npz",
+          "output_sha256": "b76392622f110e868ace5fef83596593f20f83faf31fce570f65da4ba7799aee"
+        },
+        {
+          "seed": 12,
+          "score": 1,
+          "inputs_unchanged": true,
+          "max_absolute_error": 9.332734407507814e-07,
+          "max_normalized_error": 0.02605442492920696,
+          "reason": "All equation and input-preservation gates passed",
+          "output_file": "case-12.npz",
+          "output_sha256": "cd2e54391f0fdfe40a0d61bcbbd511a5560751038b9bec8689f35da980a5ee0e"
+        },
+        {
+          "seed": 13,
+          "score": 1,
+          "inputs_unchanged": true,
+          "max_absolute_error": 7.516235200455412e-06,
+          "max_normalized_error": 0.02897296048678352,
+          "reason": "All equation and input-preservation gates passed",
+          "output_file": "case-13.npz",
+          "output_sha256": "bf5fa73004fc13a34b03903d5e1063460b7d1cc2eaf9a86d46112327e3d88aab"
+        },
+        {
+          "seed": 14,
+          "score": 1,
+          "inputs_unchanged": true,
+          "max_absolute_error": 7.085082870617043e-06,
+          "max_normalized_error": 0.026971303995908233,
+          "reason": "All equation and input-preservation gates passed",
+          "output_file": "case-14.npz",
+          "output_sha256": "3bb45e36e835fec5e6d6c30af1c908c5a542c5ba4afc8de952350a7ba002b552"
+        },
+        {
+          "seed": 15,
+          "score": 1,
+          "inputs_unchanged": true,
+          "max_absolute_error": 1.2102025266358396e-05,
+          "max_normalized_error": 0.04935827380638176,
+          "reason": "All equation and input-preservation gates passed",
+          "output_file": "case-15.npz",
+          "output_sha256": "e62910bad5ba6356f5b0609757e633383be72d3ec7d8b4cfa3f6bd01d5dca499"
+        }
+      ]
+    },
+    {
+      "task": "spring",
+      "form": "agent-proposal",
+      "status": "correctness_failed",
+      "correctness_score": 0.0,
+      "throughput_ratio": null,
+      "source_sha256": "42e8493a5de897545425d0f2f395002da61bdcdc1058b38707a0654ad55c7aee",
+      "error": "Traceback (most recent call last):\n  File \"/workspace/projects/03-contact-physics/math_harness.py\", line 123, in run_task\n    row[\"checks\"] = validate(task, executor, model, tensor_type, directory)\n                    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/projects/03-contact-physics/math_harness.py\", line 72, in validate\n    raise ValueError(f\"Equation checks: {sum(r['score'] for r in rows)}/16; refusing timing\")\nValueError: Equation checks: 0/16; refusing timing\n",
+      "checks": [
+        {
+          "seed": 0,
+          "score": 0,
+          "inputs_unchanged": true,
+          "max_absolute_error": 49.21196308708841,
+          "max_normalized_error": 980084.4383823188,
+          "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+          "output_file": "case-00.npz",
+          "output_sha256": "83502a000a5e375920779367872c0891b68a7cc3f0da25ee6a278e58f80e853d"
+        },
+        {
+          "seed": 1,
+          "score": 0,
+          "inputs_unchanged": true,
+          "max_absolute_error": 530.0036005571455,
+          "max_normalized_error": 998116.7745701699,
+          "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+          "output_file": "case-01.npz",
+          "output_sha256": "70858f9680e37cf4f19cfac64d722e9e5e30d05f1b05a085eed5573a4783cbdf"
+        },
+        {
+          "seed": 2,
+          "score": 0,
+          "inputs_unchanged": true,
+          "max_absolute_error": 530.1980500639984,
+          "max_normalized_error": 998117.4799138978,
+          "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+          "output_file": "case-02.npz",
+          "output_sha256": "c6e10fda8a18142c4e4515d2b4a237f601327c13e7029512b5a498d095625328"
+        },
+        {
+          "seed": 3,
+          "score": 0,
+          "inputs_unchanged": true,
+          "max_absolute_error": 567.0763755315829,
+          "max_normalized_error": 998239.6372072313,
+          "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+          "output_file": "case-03.npz",
+          "output_sha256": "088b58c078025c59c8547d4cd34893d8e1b64cbe5be1314c81d6cec9c325e6f9"
+        },
+        {
+          "seed": 4,
+          "score": 0,
+          "inputs_unchanged": true,
+          "max_absolute_error": 35.1505514946972,
+          "max_normalized_error": 972337.8871685643,
+          "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+          "output_file": "case-04.npz",
+          "output_sha256": "ccbf5eacfcfa09e66194d8ae04ff86a046a89729049d7350f3ac330102de1df6"
+        },
+        {
+          "seed": 5,
+          "score": 0,
+          "inputs_unchanged": true,
+          "max_absolute_error": 531.6648710956979,
+          "max_normalized_error": 998122.6186209943,
+          "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+          "output_file": "case-05.npz",
+          "output_sha256": "0c1eb99d267aa6b2367321227d191f988384db1c6cc07f7007f034d57ca110ad"
+        },
+        {
+          "seed": 6,
+          "score": 0,
+          "inputs_unchanged": true,
+          "max_absolute_error": 518.7979886354879,
+          "max_normalized_error": 998076.1468961479,
+          "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+          "output_file": "case-06.npz",
+          "output_sha256": "2bef60903aa27b111e1fa5584654dacf74372be1a171b888d07209eb1be54428"
+        },
+        {
+          "seed": 7,
+          "score": 0,
+          "inputs_unchanged": true,
+          "max_absolute_error": 590.0680277890326,
+          "max_normalized_error": 998048.185024244,
+          "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+          "output_file": "case-07.npz",
+          "output_sha256": "918902b155ae29104596f8417c21a832ee37f74d250cff5c2040ccf20d7c9d1a"
+        },
+        {
+          "seed": 8,
+          "score": 0,
+          "inputs_unchanged": true,
+          "max_absolute_error": 53.07820459859431,
+          "max_normalized_error": 981508.2710898765,
+          "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+          "output_file": "case-08.npz",
+          "output_sha256": "8a055a4215404e709ca99d548f343afbd3dda3feb8b1d46489df4744e9504c0b"
+        },
+        {
+          "seed": 9,
+          "score": 0,
+          "inputs_unchanged": true,
+          "max_absolute_error": 454.57439658165276,
+          "max_normalized_error": 997804.9803824283,
+          "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+          "output_file": "case-09.npz",
+          "output_sha256": "493a7b976c57ea08eb17d02ee3b015f9b52196dbfbae120c8d845a889b3f496a"
+        },
+        {
+          "seed": 10,
+          "score": 0,
+          "inputs_unchanged": true,
+          "max_absolute_error": 569.7267372898859,
+          "max_normalized_error": 998247.8625344665,
+          "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+          "output_file": "case-10.npz",
+          "output_sha256": "7346798619794db2a8a48123d09cddd79722732981d6ed7cb156105289f3d2d9"
+        },
+        {
+          "seed": 11,
+          "score": 0,
+          "inputs_unchanged": true,
+          "max_absolute_error": 441.96346307078625,
+          "max_normalized_error": 997742.4941065151,
+          "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+          "output_file": "case-11.npz",
+          "output_sha256": "34b6bfd935e58d90ca8ea68360913c24d72ce93f0bd755563d05b5e03261d42c"
+        },
+        {
+          "seed": 12,
+          "score": 0,
+          "inputs_unchanged": true,
+          "max_absolute_error": 46.38683988703906,
+          "max_normalized_error": 978897.1138652605,
+          "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+          "output_file": "case-12.npz",
+          "output_sha256": "e50e6952e6a183b48b164f9c979a2f74575ae6ef73a96713a6eaa25385f205b2"
+        },
+        {
+          "seed": 13,
+          "score": 0,
+          "inputs_unchanged": true,
+          "max_absolute_error": 668.2329095600398,
+          "max_normalized_error": 998505.7527948854,
+          "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+          "output_file": "case-13.npz",
+          "output_sha256": "90577d698565a9d73bdce0fb50ba1f57788be313cdedbc6752413213e9644ea1"
+        },
+        {
+          "seed": 14,
+          "score": 0,
+          "inputs_unchanged": true,
+          "max_absolute_error": 468.59850460118287,
+          "max_normalized_error": 997870.5343771874,
+          "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+          "output_file": "case-14.npz",
+          "output_sha256": "fdc3ef957c20857593d2aeda2ec37353c8954dde425fdf53c5756168cd0dccf4"
+        },
+        {
+          "seed": 15,
+          "score": 0,
+          "inputs_unchanged": true,
+          "max_absolute_error": 445.9118042925129,
+          "max_normalized_error": 997684.017555629,
+          "reason": "Output differs from FP64 equation beyond the fixed FP32 error budget, or inputs changed",
+          "output_file": "case-15.npz",
+          "output_sha256": "026a13d8f3bda03ada93c249a9bfccac08d7f30027490174a0bded6830064c20"
+        }
+      ]
+    }
+  ],
+  "note": "No global optimality or statistical significance claim"
+}
