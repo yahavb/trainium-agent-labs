@@ -53,7 +53,10 @@ baseline 回溯校准（b39989f）：3 次解出置信度 0.90，保留集 16/16
 | 14:07–15:15 | **第 2 轮 b：v7 在 L3（117，14:07）、L4（118，14:12）、L1（119，14:14）各 ×5**，三个座位开跑前检查全过，命令照 V7.md，开跑前过 test_v7.py 并查模拟目标 | 执行 1 | 按 §4 格式回报；第 1 个 run 结束先确认 prompt_split 和 verdicts.jsonl 都有 |
 | 14:30– | 115 的 v7 L2/L9 跑完后：拉日志，用我们的 nkibench 对 1.0 的 kernel 做 reaudit 和保留集检查 | 执行 1 | 这几次解出在审计后还算不算数 |
 | ✅ 14:20 | 一键出报告 scripts/report.py（2f30c2e）：先打检查表（四种日志齐不齐、run 数、有没有混进别的调用），再出 summary、taxonomy、token 图。D2 和 17:45 都用它 | 执行 2 | |
-| 14:21–15:10 | prompt 泄题检查：抓下 v7 发出的全部请求体，和教程 kernel、reference_level1-4.py、answers/ 逐行比对 | 执行 2 | analysis/prompt_leak_check.md，一句结论 |
+| ✅ 14:26 | attempt log 收进仓库 analysis/logs/（9ea5407，2.0 MB，含 README 和凭证扫描，0 命中） | 执行 2 | |
+| 14:27–15:10 | 照文档从头复现：全新 clone，只按 SUBMISSION §1 和 SETUP_PYTHON.md 做，记下卡住的地方和建议的改法 | 执行 2 | analysis/repro_dryrun.md |
+| ✅ 14:24 | prompt 泄题检查（a9f52d8）：0 命中，阳性对照 95 处 | 执行 2 | |
+| ~~14:21–15:10~~ | prompt 泄题检查：抓下 v7 发出的全部请求体，和教程 kernel、reference_level1-4.py、answers/ 逐行比对 | 执行 2 | analysis/prompt_leak_check.md，一句结论 |
 | 14:30– | 115 上 liuyq 的 v7 L2/L9 跑完后：执行 1 拉日志，执行 2 用我们的 harness 全量重新打分（L9 由 ops07 注册） | 执行 1 → 执行 2 | 审计后还剩几次解出 |
 | **14:45** | **D2a** E-F 采用还是回滚 | 总规划 | |
 | 14:50–15:10 | 116 跑 **v7 L2 ×5**（ce0403c，不含 E-F）。L2 一般 15 分钟内跑完，这样第 3 轮 4 个座位全都能用在「v7 + 一处改动」上 | 执行 1 | 按 §4 格式回报 |
