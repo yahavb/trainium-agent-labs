@@ -79,7 +79,8 @@ def build_command(options, arm, level, directory):
     if arm[0] in ('C_synthetic','D_combined','E_combined_constrained','C_targeted_synthetic','D_full_adaptive','S_control','S_sympy','P_control','P_planner'):
         command.extend(['--example-policy','synthetic'])
     if arm[0] in ('D_combined','E_combined_constrained','D_full_adaptive','S_control','S_sympy','P_control','P_planner'):command.append('--adaptive-repair')
-    if arm[0]=='P_planner':command.extend(['--planner-policy','hardware'])
+    if getattr(options,'primitive_policy','off')=='legalize':command.extend(['--primitive-policy','legalize'])
+    if arm[0]=='P_planner' or getattr(options,'planner_policy','off')=='hardware':command.extend(['--planner-policy','hardware'])
     if arm[0]=='S_sympy':command.extend(['--shape-analysis','sympy'])
     if arm[0]=='E_combined_constrained':command.extend(['--generation-policy','constrained'])
     return command
@@ -118,11 +119,14 @@ def summarize(rows):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--run',action='store_true')
+    parser.add_argument('--full-agent-only',action='store_true',help='run only the full adaptive agent, without comparison arms')
     parser.add_argument('--synthetic-pilot',choices=('smoke','ablation','iteration','diagnosis-smoke','diagnosis-ablation','sympy-smoke','sympy-evaluation','planner-smoke'))
     parser.add_argument('--correctness-pilot',action='store_true',help='existing full versus constrained generation/shape-aware repair')
     parser.add_argument('--rounds',type=int,default=2)
     parser.add_argument('--samples',type=int,default=4)
     parser.add_argument('--repeat',type=int,default=1)
+    parser.add_argument('--primitive-policy',choices=('off','legalize'),default='off')
+    parser.add_argument('--planner-policy',choices=('off','hardware'),default='off')
     parser.add_argument('--levels',type=int,nargs='+',default=[1,3],choices=range(1,9))
     parser.add_argument('--output-root',type=Path,default=PROJECT/'runs')
     options=parser.parse_args()
@@ -131,7 +135,7 @@ def main():
     if options.run and blocked:
         print('Inference refused: original Project 2 baseline is active:',blocked)
         return 2
-    if options.run and (options.correctness_pilot or options.synthetic_pilot) and (evaluation_processes() or not endpoint_healthy()):
+    if options.run and (options.correctness_pilot or options.synthetic_pilot or options.full_agent_only) and (evaluation_processes() or not endpoint_healthy()):
         print('Inference deferred: another evaluation is active or the model endpoint is unhealthy.');return 2
     options.output_root.mkdir(parents=True,exist_ok=True)
     stamp=datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')
@@ -159,6 +163,8 @@ def main():
         arms=(('S_control','diverse','diagnostic','grounded'),('S_sympy','diverse','diagnostic','grounded'))
     if options.synthetic_pilot=='planner-smoke':
         arms=(('P_control','diverse','diagnostic','grounded'),('P_planner','diverse','diagnostic','grounded'))
+    if options.full_agent_only:
+        arms=(('D_full_adaptive','diverse','diagnostic','grounded'),)
     for level in dict.fromkeys(options.levels):
         for arm in arms:
             directory=root/f'level{level}'/arm[0]
@@ -166,7 +172,7 @@ def main():
             command[3]=str(source_directory/'agent.py')
             plan.append(dict(arm=arm[0],level=level,directory=str(directory),command=command))
     import nki
-    manifest=dict(synthetic_pilot=options.synthetic_pilot,correctness_pilot=options.correctness_pilot,preparation_only=not options.run,baseline_processes=blocked,revision=revision,
+    manifest=dict(primitive_policy=options.primitive_policy,planner_policy=options.planner_policy,full_agent_only=options.full_agent_only,synthetic_pilot=options.synthetic_pilot,correctness_pilot=options.correctness_pilot,preparation_only=not options.run,baseline_processes=blocked,revision=revision,
                   source_sha256=file_hashes,sdk_version=nki.__version__,target='trn2',
                   model='Qwen/Qwen3-8B',context=8192,max_tokens=2500,temperature=.6,top_p=.95,
                   thinking=False,rounds=options.rounds,samples=options.samples,repeat=options.repeat,
@@ -180,7 +186,7 @@ def main():
     environment=dict(os.environ,NEURON_PLATFORM_TARGET_OVERRIDE='trn2')
     outcomes=[]
     for entry in plan:
-        if baseline_processes() or ((options.correctness_pilot or options.synthetic_pilot) and (evaluation_processes() or not endpoint_healthy())):
+        if baseline_processes() or ((options.correctness_pilot or options.synthetic_pilot or options.full_agent_only) and (evaluation_processes() or not endpoint_healthy())):
             print('Original baseline started; remaining arms deferred.');return 2
         directory=Path(entry['directory']);directory.mkdir(parents=True,exist_ok=False)
         started=time.perf_counter()

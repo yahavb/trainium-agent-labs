@@ -49,7 +49,7 @@ def broadcasting(left,right):
     return EQUAL if all(s==EQUAL for s in statuses) else UNKNOWN
 
 
-def analyze(source,input_shapes=None):
+def analyze(source,input_shapes=None,input_values=None):
     result=dict(status=UNKNOWN,allocations=[],operations=[],violations=[],unknowns=[],loops=[],verification='Symbolic shape evidence only; simulator remains authoritative.')
     if len(source)>MAX_SOURCE:result['unknowns'].append('Source complexity budget exceeded');return result
     try:tree=ast.parse(source)
@@ -58,6 +58,12 @@ def analyze(source,input_shapes=None):
     functions=[n for n in tree.body if isinstance(n,ast.FunctionDef)]
     if len(functions)!=1:result['unknowns'].append('Multiple or missing entry functions');return result
     env={};shapes={};buffers={};loop_values={};unknown=False
+    for name,value in (input_values or {}).items():
+        if type(value) is int and abs(value)<2**31:env[name]=sp.Integer(value)
+        elif isinstance(value,tuple) and len(value)<=MAX_EXPR_NODES and all(type(v) is int and abs(v)<2**31 for v in value):env[name]=tuple(sp.Integer(v) for v in value)
+    rebound={n.id for n in ast.walk(functions[0]) if isinstance(n,ast.Name) and isinstance(n.ctx,ast.Store)}
+    for name in rebound:
+        if name in (input_values or {}):env.pop(name,None)
     for name,shape in (input_shapes or {}).items():
         converted=[]
         for dim in shape:
@@ -122,7 +128,12 @@ def analyze(source,input_shapes=None):
             indices=node.slice.elts if isinstance(node.slice,ast.Tuple) else [node.slice]
             if len(indices)>len(original):return None
             extent=[]
-            for dim,index in zip(original,indices):
+            base=node.value
+            while isinstance(base,ast.Subscript):base=base.value
+            buffer=buffers.get(base.id) if isinstance(base,ast.Name) else None
+            if buffer is None:return None
+            onchip=buffer.endswith(('sbuf','psum'))
+            for axis,(dim,index) in enumerate(zip(original,indices)):
                 if isinstance(index,ast.Slice):
                     step=sp.Integer(1) if index.step is None else expr(index.step)
                     if equality(step,sp.Integer(1))!=EQUAL:return None
@@ -143,7 +154,11 @@ def analyze(source,input_shapes=None):
                 else:
                     index_value=expr(index)
                     if not isinstance(index_value,sp.Integer) or not isinstance(dim,sp.Integer) or not -dim<=index_value<dim:return None
-            return tuple(extent)+tuple(original[len(indices):])
+                    if onchip and axis==0:extent.append(sp.Integer(1))
+            extent.extend(original[len(indices):])
+            if not extent:extent.append(sp.Integer(1))
+            if onchip and len(extent)<2:extent.append(sp.Integer(1))
+            return tuple(extent)
         return None
     def kw(call,names):
         values={n:arg for n,arg in zip(names,call.args)}
@@ -270,10 +285,10 @@ def analyze(source,input_shapes=None):
     return result
 
 
-def repair_prompt(prompt,source,feedback,*,input_shapes=None,context=8192,answer_budget=2500,model='Qwen/Qwen3-8B'):
+def repair_prompt(prompt,source,feedback,*,input_shapes=None,input_values=None,context=8192,answer_budget=2500,model='Qwen/Qwen3-8B'):
     from failure_selection import classify_failure
     from nki_knowledge import local_token_counter
-    result=analyze(source,input_shapes);category=classify_failure(feedback).failure_category
+    result=analyze(source,input_shapes,input_values);category=classify_failure(feedback).failure_category
     kinds={'DMA_SHAPE_MISMATCH':('dma_elements',),'INVALID_TENSOR_DIMENSIONS':('reduction_rank','onchip_rank','matmul_dimensions','partition_limit','psum_free_limit','matmul_tile_limit'),'OUT_OF_BOUNDS':('slice_bounds',),'INVALID_BUFFER_PLACEMENT':('matmul_buffer','transpose_buffer')}.get(category,())
     relevant=[v for v in result['violations'] if v['kind'] in kinds]
     # Original exception, not a later mathematical hypothesis, controls routing.

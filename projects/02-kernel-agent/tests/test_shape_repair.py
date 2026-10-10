@@ -93,3 +93,50 @@ class ShapeTests(unittest.TestCase):
    with patch('sys.argv',['run_controlled.py','--correctness-pilot','--run']),patch.object(run_controlled,'baseline_processes',return_value=[]),patch.object(run_controlled,'evaluation_processes',return_value=busy),patch.object(run_controlled,'endpoint_healthy',return_value=healthy),patch.object(run_controlled.subprocess,'run') as run,contextlib.redirect_stdout(io.StringIO()):self.assertEqual(run_controlled.main(),2)
    run.assert_not_called()
 if __name__=='__main__':unittest.main()
+
+class ScalarNormalizationTests(unittest.TestCase):
+ def test_tensor_division_guidance_does_not_introduce_matmul(self):
+  from shape_repair import plan_repair
+  code='import nki.language as nl\ndef f(x,p):\n r=nl.sum(x,axis=1,keepdims=True)\n mean=r/(p*p)\n return mean'
+  error="TypeError: unsupported operand type(s) for /: 'NkiTensor' and 'int'"
+  r=plan_repair(code,error)
+  self.assertIn('line 4',r['guidance']);self.assertIn('tensor_scalar',r['guidance']);self.assertIn('op0=nl.multiply',r['guidance'])
+  self.assertIn('does not require matmul',r['guidance']);self.assertEqual(r['original_feedback'],error)
+ def test_host_reciprocal_not_misidentified(self):
+  from shape_repair import plan_repair
+  code='def f(p):\n reciprocal=1/(p*p)\n return reciprocal'
+  error="TypeError: unsupported operand type(s) for /: 'NkiTensor' and 'int'"
+  self.assertFalse(any('line 2:' in c for c in plan_repair(code,error)['root_causes']))
+
+class NamespaceAndSliceTests(unittest.TestCase):
+ def test_wrong_namespace_and_hbm_target(self):
+  code='import nki.language as nl\ndef f(x):\n nl.tensor_scalar(dst=x,data=x,op0=nl.multiply,operand0=.5)'
+  error="module 'nki.language' has no attribute 'tensor_scalar'"
+  result=plan_repair(code,error)
+  self.assertIn('nki.isa.tensor_scalar',result['guidance']);self.assertIn('HBM destination',result['guidance']);self.assertIn('line 3',result['guidance'])
+ def test_onchip_partition_index_preserved(self):
+  code='import nki.language as nl\nimport nki.isa as ni\ndef f(a):\n t=nl.ndarray((3,4,5),a.dtype,buffer=nl.sbuf)\n out=nl.ndarray((1,),a.dtype,buffer=nl.shared_hbm)\n ni.dma_copy(dst=out,src=t[0,1,2])'
+  r=inspect_shapes(code,{'a':(3,4,5)})
+  self.assertEqual(r['transfers'][0]['operands']['src']['derived_shape'],(1,1))
+ def test_hbm_indices_remove_axes(self):
+  code='import nki.isa as ni\ndef f(a):\n ni.dma_copy(dst=a[0,1,2],src=a[0,1,2])'
+  r=inspect_shapes(code,{'a':(3,4,5)})
+  self.assertEqual(r['transfers'][0]['operands']['src']['derived_shape'],(1,))
+
+class OpcodeNamespaceTests(unittest.TestCase):
+ def test_attribute_opcode_not_call(self):
+  code='import nki.language as nl\nimport nki.isa as ni\ndef f(x):\n ni.tensor_scalar(dst=x,data=x,op0=ni.multiply,operand0=.5)'
+  r=plan_repair(code,"module 'nki.isa' has no attribute 'multiply'")
+  self.assertIn('nki.language.multiply',r['guidance']);self.assertIn('line 4',r['guidance']);self.assertIn('SBUF result',r['guidance'])
+
+class SliceBoundConservatismTests(unittest.TestCase):
+ def test_nki_slices_do_not_use_numpy_clipping(self):
+  code='import nki.language as nl\nimport nki.isa as ni\ndef f(a):\n t=nl.ndarray((4,8),a.dtype,buffer=nl.sbuf)\n ni.dma_copy(dst=t,src=a[0:128,:])'
+  r=inspect_shapes(code,{'a':(4,8)})
+  self.assertIsNone(r['transfers'][0]['operands']['src']['derived_shape']);self.assertEqual(r['issues'],[])
+
+class OperationSpecificNumericalFeedbackTests(unittest.TestCase):
+ def test_pool_shape_error_not_given_matmul_advice(self):
+  code='import nki.language as nl\ndef f(x,p):\n out=nl.ndarray((3,2),x.dtype,buffer=nl.shared_hbm)'
+  r=plan_repair(code,'WRONG SHAPE: returned (), reference is (3,2)')
+  self.assertIn('returned tensor',r['guidance']);self.assertNotIn('matmul',r['guidance']);self.assertNotIn('contraction',r['guidance'])

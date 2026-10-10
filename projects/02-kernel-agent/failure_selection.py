@@ -51,11 +51,13 @@ _RULES = (
      r"SBUF and PSUM tensors must have at least 2 dimensions|"
      r"dma_copy \w+ partition dimension \d+ exceeds maximum \d+|"
      r"Matmul contraction dimension \d+ exceeds pmax=\d+|"
+     r"ap\(\) pattern has invalid partition stride[^\n]*|"
      r"cannot reshape array of size \d+ into shape \([^)]*\)|"
      r"value array of shape \([^)]*\) could not be broadcast to indexing result of shape \([^)]*\)",
      0.99, "explicit tensor rank, tile dimension, or reshape constraint"),
     ("OUT_OF_BOUNDS",
      r"Out-of-bound access for tensor .*?exceed dimension size of \d+|"
+     r"Out-of-bound access: max index \d+ exceeds storage size \d+|"
      r"index [^\n]*out of bounds[^\n]*",
      0.99, "explicit indexing-bound failure"),
     ("INVALID_API_ARGUMENT",

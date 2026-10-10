@@ -36,7 +36,7 @@ import nkibench
 from failure_selection import Candidate, select_candidate, classify_failure
 from candidate_diversity import build_variants, diversity_metrics
 from nki_knowledge import ground_prompt
-from shape_repair import constrained_prompt, shape_prompt, failure_input_shapes
+from shape_repair import constrained_prompt, shape_prompt, failure_input_shapes, failure_input_values
 from synthetic_nki.retrieval import example_prompt
 from repair_history import RepairHistory
 from experiment_metrics import (CASE_RESULTS, GRADE_DIRECTORY, ModelReply,
@@ -475,8 +475,9 @@ def ask(a, prompt):
     body = dict(model=a.model, messages=[{"role": "user", "content": prompt}],
                 max_tokens=budget, temperature=0.6, top_p=0.95,
                 chat_template_kwargs={"enable_thinking": a.think})
+    if getattr(a,"adapter_mode",None) is not None:body["adapter_mode"]=a.adapter_mode
     r = httpx.post(f"{a.base.rstrip('/')}/chat/completions", json=body,
-                   timeout=900, verify=False)
+                   timeout=getattr(a, "request_timeout", 900), verify=False)
     if r.status_code != 200:
         raise SystemExit(f"the endpoint returned HTTP {r.status_code}:\n{r.text[:600]}")
     payload = r.json()
@@ -557,13 +558,17 @@ def solve(a, level, log):
             from kernel_planner import generation_prompt as planned_prompt
             generation_prompt,kernel_plan=planned_prompt(generation_prompt,level,
                 context=getattr(a,"context",8192),answer_budget=getattr(a,"max_tokens",2500),model=getattr(a,"model",MODEL))
+        if getattr(a,"planner_policy","off") == "hardware" and latest[0]:
+            from kernel_planner import semantic_prompt
+            generation_prompt,kernel_plan=semantic_prompt(generation_prompt,latest[0],level,
+                context=getattr(a,"context",8192),answer_budget=getattr(a,"max_tokens",2500),model=getattr(a,"model",MODEL))
         if generation_policy == "constrained" and not latest[0]:
             generation_prompt, generation_constraints = constrained_prompt(
                 generation_prompt, nkibench.LEVELS[level]["op"], model=getattr(a,"model",MODEL),
                 context=getattr(a,"context",8192), answer_budget=getattr(a,"max_tokens",2500))
         if (repair_policy == "shape-aware" or feedback_policy == "targeted") and latest[0]:
             generation_prompt, shape_plan = shape_prompt(
-                generation_prompt, latest[0], latest[1], streak, input_shapes=failure_input_shapes(latest[0],latest[1],level), model=getattr(a,"model",MODEL),
+                generation_prompt, latest[0], latest[1], streak, input_shapes=failure_input_shapes(latest[0],latest[1],level),input_values=failure_input_values(latest[0],latest[1],level), model=getattr(a,"model",MODEL),
                 context=getattr(a,"context",8192), answer_budget=getattr(a,"max_tokens",2500))
         if repair_policy == "grounded" and latest[0] and feedback_policy == "legacy":
             generation_prompt, grounding = ground_prompt(
@@ -574,7 +579,7 @@ def solve(a, level, log):
             from symbolic_shapes import repair_prompt as symbolic_prompt
             generation_prompt, symbolic_plan = symbolic_prompt(
                 generation_prompt, latest[0], latest[1],
-                input_shapes=failure_input_shapes(latest[0],latest[1],level),
+                input_shapes=failure_input_shapes(latest[0],latest[1],level),input_values=failure_input_values(latest[0],latest[1],level),
                 model=getattr(a,"model",MODEL),context=getattr(a,"context",8192),
                 answer_budget=getattr(a,"max_tokens",2500))
         if example_policy == "synthetic" and latest[0]:
@@ -600,6 +605,15 @@ def solve(a, level, log):
         grade_metrics = []
         for reply in replies:
             src = extract_code(reply)
+            generated_src = src
+            primitive_changes = None
+            if getattr(a, "primitive_policy", "off") == "legalize":
+                from primitive_legalizer import legalize
+                src, primitive_changes = legalize(src)
+            semantic_analysis = None
+            if getattr(a, "planner_policy", "off") == "hardware":
+                from kernel_planner import semantic_gate
+                semantic_analysis = semantic_gate(src, level)
             details = []
             case_token = CASE_RESULTS.set(details) if measured else None
             grade_dir = getattr(a, 'grade_dir', None)
@@ -611,7 +625,7 @@ def solve(a, level, log):
                 if case_token is not None: CASE_RESULTS.reset(case_token)
                 if directory_token is not None: GRADE_DIRECTORY.reset(directory_token)
             grade_metrics.append(dict(checker_seconds=time.perf_counter() - grade_started,
-                                      shape_results=details) if measured else {})
+                                      shape_results=details,semantic_analysis=semantic_analysis,primitive_changes=primitive_changes,generated_source=generated_src) if measured else {})
             graded.append((reward, src, feedback, parts))
             if not extended:
                 log.write(json.dumps(dict(level=level, round=rnd, reward=reward, parts=parts,
@@ -643,8 +657,10 @@ def solve(a, level, log):
                     record.update(feedback_policy=feedback_policy,example_policy=example_policy,
                                   adaptive_repair=adaptive,shape_plan=shape_plan,
                                   synthetic_context=synthetic_context,repair_history_context=history_context)
-                if getattr(a,"planner_policy","off") != "off":record.update(planner_policy=a.planner_policy,kernel_plan=kernel_plan)
+                if getattr(a,"primitive_policy","off") != "off":record.update(primitive_policy=a.primitive_policy,primitive_changes=grade_metrics[index].get("primitive_changes"),generated_source=grade_metrics[index].get("generated_source"))
+                if getattr(a,"planner_policy","off") != "off":record.update(planner_policy=a.planner_policy,kernel_plan=kernel_plan,semantic_gate=grade_metrics[index].get("semantic_analysis"))
                 if shape_analysis != "off":record.update(shape_analysis=shape_analysis,symbolic_analysis=symbolic_plan)
+                if getattr(a,"adapter_mode",None) is not None:record["adapter_mode"]=a.adapter_mode
                 if measured:
                     evaluated = {case['case'] for case in grade_metrics[index]['shape_results']}
                     shape_results = grade_metrics[index]['shape_results'] + [
@@ -753,6 +769,7 @@ def main():
     ap.add_argument("--candidate-policy", choices=("standard", "diverse"), default="standard")
     ap.add_argument("--repair-policy", choices=("standard", "grounded", "shape-aware"), default="standard")
     ap.add_argument("--generation-policy", choices=("standard", "constrained"), default="standard")
+    ap.add_argument("--primitive-policy", choices=("off","legalize"), default="off")
     ap.add_argument("--planner-policy", choices=("off","hardware"), default="off")
     ap.add_argument("--shape-analysis", choices=("off","sympy"), default="off")
     ap.add_argument("--feedback-policy", choices=("legacy","targeted"), default="legacy")
@@ -760,6 +777,8 @@ def main():
     ap.add_argument("--adaptive-repair", action="store_true")
     ap.add_argument("--instrument", action="store_true", help="add usage, timing and per-shape experimental metadata")
     ap.add_argument("--grade-dir", help="private candidate-code directory for an isolated experiment")
+    ap.add_argument("--adapter-mode", choices=("base","lora"), default=None, help="adapter switch for the isolated CPU evaluation endpoint only")
+    ap.add_argument("--request-timeout", type=float, default=900, help="HTTP timeout in seconds; CPU adapter evaluation may need longer")
     ap.add_argument("--max-tokens", type=int, default=MIN_ANSWER_TOKENS)
     ap.add_argument("--model", default=MODEL)
     ap.add_argument("--base", default=os.environ.get("KERNEL_AGENT_BASE_URL")

@@ -32,3 +32,9 @@
 ## Approved synthetic/diagnostic evaluation scope
 - Current user authorization includes a 12-kernel corpus, 20-40 verified injected-error repairs, train-only retrieval, bounded adaptive history, bug-specific diagnosis checks and sequential live ablations. Preserve existing work and original benchmark files.
 - Prioritize the earliest actual simulator failure. Installed nl.load and nl.store exist; do not classify them as invented functions. Diagnostic coverage does not establish a causal correctness benefit.
+
+## Approved operation-aware and LoRA scope
+- Current user authorization includes semantic planning, SymPy analysis, verified non-benchmark synthetic data, CPU LoRA training and matched original/adapter evaluations. Keep defaults opt-in and preserve all active/queued jobs.
+- Treat warm-start expert fixes and deterministic instruction-lowering replays separately from independent cold-start agent solves; never use complete official/generated benchmark solutions in training or prompt retrieval.
+- Optional primitive legalization must preserve the mathematical operation, record raw/transformed source and pass the unchanged checker. Unknown shapes/buffers stay unresolved.
+- Keep training/held-out families and clean ASTs disjoint. Training loss is not benchmark correctness. Original and adapter controls use the same backend/settings; do not claim CPU-vLLM speedups.

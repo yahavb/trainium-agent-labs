@@ -5,7 +5,7 @@ from failure_selection import classify_failure
 from nki_knowledge import CATALOG, compatible, installed_compatibility, local_token_counter, referenced_operations
 
 
-def inspect_shapes(source, input_shapes=None):
+def inspect_shapes(source, input_shapes=None, input_values=None):
     """Literal arithmetic is evaluated; symbolic/unsupported expressions stay unknown.
 
     Loop values, branching assignments, views with advanced indices, and arbitrary
@@ -13,7 +13,8 @@ def inspect_shapes(source, input_shapes=None):
     """
     try: tree=ast.parse(source)
     except SyntaxError as error:return dict(allocations=[],calls=[],issues=[],parse_error=str(error))
-    env={};shapes=dict(input_shapes or {});allocations=[];issues=[]
+    env={name:value for name,value in (input_values or {}).items() if type(value) is int and abs(value)<2**31 or isinstance(value,tuple) and all(type(v) is int and abs(v)<2**31 for v in value)};shapes=dict(input_shapes or {});allocations=[];issues=[]
+    buffers={name:'input_hbm' for name in shapes}
     counts={}
     conditional_names=set()
     for parent in ast.walk(tree):
@@ -25,6 +26,8 @@ def inspect_shapes(source, input_shapes=None):
         if isinstance(node,ast.Name) and isinstance(node.ctx,ast.Store):counts[node.id]=counts.get(node.id,0)+1
     # Rebinding an input invalidates its externally supplied initial shape.
     for name in counts:shapes.pop(name,None) if name in (input_shapes or {}) else None
+    for name in counts:
+        if name in (input_values or {}):env.pop(name,None)
     def value(node):
         if isinstance(node,ast.Constant) and type(node.value) is int:return node.value
         if isinstance(node,ast.Name):return env.get(node.id)
@@ -75,6 +78,7 @@ def inspect_shapes(source, input_shapes=None):
             buffer=ast.unparse(keywords['buffer']) if 'buffer' in keywords else 'default SBUF (verify API)'
             record=dict(name=target.id,line=node.lineno,shape_expression=ast.unparse(expr) if expr else 'unavailable',derived_shape=shape,elements=math.prod(shape) if shape else None,buffer=buffer)
             allocations.append(record)
+            buffers[target.id]=buffer
             if shape:shapes[target.id]=shape
             if shape is not None and len(shape)<2 and ('sbuf' in buffer or 'psum' in buffer or buffer.startswith('default')):
                 issues.append(f'line {node.lineno}: {target.id} has rank {len(shape)} in {buffer}; on-chip tensors require at least 2 dimensions.')
@@ -87,16 +91,27 @@ def inspect_shapes(source, input_shapes=None):
             indices=node.slice.elts if isinstance(node.slice,ast.Tuple) else [node.slice]
             if len(indices)>len(base):return None
             result=[]
-            for dim,index in zip(base,indices):
+            root=node.value
+            while isinstance(root,ast.Subscript):root=root.value
+            buffer=buffers.get(root.id) if isinstance(root,ast.Name) else None
+            if buffer is None:return None
+            onchip=buffer.endswith(('sbuf','psum')) or buffer.startswith('default')
+            for axis,(dim,index) in enumerate(zip(base,indices)):
                 if isinstance(index,ast.Slice):
                     bounds=[value(x) if x is not None else None for x in (index.lower,index.upper,index.step)]
                     if any(x is not None and value(x) is None for x in (index.lower,index.upper,index.step)):return None
+                    start=0 if bounds[0] is None else bounds[0];stop=dim if bounds[1] is None else bounds[1];step=1 if bounds[2] is None else bounds[2]
+                    if start<0 or stop<0 or start>dim or stop>dim or step<=0:return None
                     try:result.append(len(range(*slice(*bounds).indices(dim))))
                     except (ValueError,TypeError):return None
                 elif type(value(index)) is int:
                     if not -dim<=value(index)<dim:return None
+                    if onchip and axis==0:result.append(1)
                 else:return None
-            return tuple(result)+tuple(base[len(indices):])
+            result.extend(base[len(indices):])
+            if not result:result.append(1)
+            if onchip and len(result)<2:result.append(1)
+            return tuple(result)
         return None
     transfers=[]
     for node in ast.walk(tree):
@@ -168,6 +183,23 @@ def root_cause(source,feedback,evidence):
     except SyntaxError:return result
     lifetime=input_lifetime_evidence(source,evidence)
     lifetime_note=(' '+lifetime[0]) if lifetime else ''
+    if "unsupported operand type(s) for /" in feedback and "NkiTensor" in feedback and 'scalar' in verified:
+        tensor_names={record['name'] for record in evidence['allocations']}
+        for node in ast.walk(tree):
+            if isinstance(node,ast.Assign) and isinstance(node.value,ast.Call) and ast.unparse(node.value.func).split('.')[-1] in ('sum','max','tensor_reduce','reshape'):
+                tensor_names.update(n.id for target in node.targets for n in ast.walk(target) if isinstance(n,ast.Name))
+        for node in ast.walk(tree):
+            if not isinstance(node,ast.BinOp) or not isinstance(node.op,ast.Div):continue
+            left=node.left
+            if isinstance(left,ast.Name) and left.id in tensor_names or isinstance(left,ast.Call) and ast.unparse(left.func).split('.')[-1] in ('sum','max','tensor_reduce'):
+                return [f'line {node.lineno}: {ast.unparse(node)} divides an NKI tensor with Python /. Use nki.isa.tensor_scalar (nisa.tensor_scalar with import nki.isa as nisa), NOT nl.tensor_scalar: dst=output_tile, data=reduction_tile, op0=nl.multiply, operand0=reciprocal_divisor. Both tiles must be on-chip, with matching shapes; allocate the result in SBUF, then nisa.dma_copy it to the matching HBM output slice. Do not use an HBM output view as tensor_scalar dst. Compute the reciprocal from host scalar dimensions. Preserve the reduction and output store; scalar normalization does not require matmul or a new PSUM accumulation algorithm.']
+    if 'ap() pattern has invalid partition stride' in feedback:
+        import re
+        match=re.search(r'Partition step (\d+) must equal tensor free dimension size (\d+)',feedback)
+        for call in ast.walk(tree):
+            if isinstance(call,ast.Call) and isinstance(call.func,ast.Attribute) and call.func.attr=='ap':
+                detail=f'Actual partition step {match.group(1)} must equal the original free extent {match.group(2)}. ' if match else ''
+                return [f'Access-pattern call site line {call.lineno}: {ast.unparse(call)}. '+detail+'Each .ap pair is [element stride, extent]. Preserve the existing on-chip partition layout; the partition stride is the product of original free dimensions, not 1. Derive all remaining strides from the intended element-offset mapping, check bounds and reduction axes together. If multiple .ap calls exist this is a call site, not a proven failing line.']
     # Diagnose the reported transfer before later matmul consumers.
     if category=='DMA_SHAPE_MISMATCH':
         import re
@@ -188,6 +220,18 @@ def root_cause(source,feedback,evidence):
             dim,lo,hi,size=bounds.groups()
             lines=[str(t['line']) for t in evidence.get('transfers',[]) if t['operation'].endswith('dma_copy')]
             return [f'Runtime dimension {dim} has size {size}, but the reported slice reaches indices {lo} through {hi}. DMA call sites: '+(', '.join(lines) or 'unresolved')+'. Clip the final tile boundary to the actual dimension, derive its allocation extent from the clipped end minus start, and update both source/destination slices and consumers. Preserve accumulation and complete output coverage; do not pad the final partial tile past input bounds.']
+    if category=='NUMERICAL_MISMATCH':
+        for loop in ast.walk(tree):
+            if not isinstance(loop,ast.For) or not isinstance(loop.iter,ast.Call) or ast.unparse(loop.iter.func).split('.')[-1] not in ('range','affine_range'):continue
+            if len(loop.iter.args)!=1 or not isinstance(loop.iter.args[0],ast.Constant) or type(loop.iter.args[0].value) is not int or loop.iter.args[0].value<=1:continue
+            for call in ast.walk(loop):
+                if not isinstance(call,ast.Call) or ast.unparse(call.func).split('.')[-1]!='nc_matmul':continue
+                kwargs={k.arg:k.value for k in call.keywords if k.arg}
+                flag=kwargs.get('accumulate');dst=kwargs.get('dst')
+                if isinstance(flag,ast.Constant) and flag.value is False and isinstance(dst,ast.Name):
+                    allocation=next((a for a in evidence['allocations'] if a['name']==dst.id and a['line']<loop.lineno and a['buffer'].endswith('psum')),None)
+                    if allocation:
+                        return [f'line {call.lineno}: nc_matmul accumulate=False repeatedly overwrites the same PSUM {dst.id} in the {loop.iter.args[0].value}-iteration loop at line {loop.lineno}; previous contraction contributions are lost. If these are disjoint K tiles, overwrite on the first contribution and accumulate later ones with accumulate=(k_index>0). Preserve the PSUM lifetime per output tile, matching SBUF operand slices and final output store.']
     if category=='INVALID_API_ARGUMENT':
         import re
         import inspect
@@ -204,8 +248,20 @@ def root_cause(source,feedback,evidence):
         missing=re.search(r"has no attribute ['\"]([^'\"]+)",feedback)
         if missing:
             name=missing.group(1)
+            import nki.language as language
+            import nki.isa as isa
+            if name in ('multiply','add','subtract') and 'nki.isa' in feedback and hasattr(language,name) and not hasattr(isa,name):
+                for call in ast.walk(tree):
+                    if isinstance(call,ast.Call) and ast.unparse(call.func).split('.')[-1]=='tensor_scalar':
+                        for keyword in call.keywords:
+                            if keyword.arg in ('op0','op1') and isinstance(keyword.value,ast.Attribute) and keyword.value.attr==name:
+                                return [f'line {call.lineno}: {ast.unparse(keyword.value)} is a math opcode, not an ISA instruction. Use nki.language.{name} (nl.{name}) for {keyword.arg}; keep the instruction nki.isa.tensor_scalar (nisa.tensor_scalar). Its dst/data must be on-chip: allocate a matching SBUF result, then dma_copy to the original HBM destination slice. Do not change the reduction or scalar reciprocal.']
             for node in ast.walk(tree):
                 if isinstance(node,ast.Call) and ast.unparse(node.func).split('.')[-1]==name:
+                    import inspect
+                    import nki.isa as isa
+                    if name in ('tensor_scalar','tensor_copy','tensor_reduce') and 'nki.language' in feedback and hasattr(isa,name):
+                        return [f'line {node.lineno}: {ast.unparse(node.func)} is in the wrong namespace. Use nki.isa.{name}, imported as nisa, with installed signature {inspect.signature(getattr(isa,name))}. Operands and destination are on-chip; a tensor_scalar result belongs in matching SBUF, then dma_copy to the matching HBM output slice. Preserve the mathematical reduction/normalization; changing namespace alone does not legalize an HBM destination.']
                     return [f'line {node.lineno}: unsupported API {ast.unparse(node.func)} is the reported failure. Verify a replacement against the installed signature; preserve operand shapes and buffers. nl.load/nl.store exist in this SDK and must not be rejected merely by name.']
     if category=='INVALID_TENSOR_DIMENSIONS' and 'at least 2 dimensions' in feedback:
         explicit=[issue for issue in evidence['issues'] if 'rank 1' in issue]
@@ -255,8 +311,8 @@ def root_cause(source,feedback,evidence):
     return result
 
 
-def plan_repair(source, feedback, repeated=0, input_shapes=None):
-    diagnostic=classify_failure(feedback);evidence=inspect_shapes(source,input_shapes)
+def plan_repair(source, feedback, repeated=0, input_shapes=None, input_values=None):
+    diagnostic=classify_failure(feedback);evidence=inspect_shapes(source,input_shapes,input_values)
     category=diagnostic.failure_category
     scope='localized_api_correction';guidance='Correct the named API or keyword using the installed signature; preserve unrelated operations.'
     if category in ('DMA_SHAPE_MISMATCH','INVALID_TENSOR_DIMENSIONS','OUT_OF_BOUNDS','INCOMPLETE_OUTPUT'):
@@ -269,7 +325,9 @@ def plan_repair(source, feedback, repeated=0, input_shapes=None):
         scope='buffer_placement_correction';guidance='Check each operation\'s required input/output region. Correct allocation plus dependent transfers; PSUM results need a separate result-shaped SBUF tile before DMA. Do not reuse an input tile with a different result shape.'
     elif category in ('NUMERICAL_MISMATCH','HARDWARE_CORRECTNESS_HAZARD'):
         scope='algorithm_redesign' if repeated>=3 else 'coordinated_dataflow_repair'
-        guidance='Check mathematical operation, contraction coverage and accumulator lifetime; avoid overlapping contraction windows, overwrites of completed output, or missing output tiles. First matmul overwrites each PSUM tile; subsequent contraction tiles accumulate. Redesign only the failing dataflow if repeated repairs have not converged.'
+        guidance='Check the required mathematical operation, result shape, complete output writes and returned tensor. Redesign only the failing dataflow if repeated repairs have not converged.'
+        if any(t['operation'].endswith('nc_matmul') for t in evidence.get('transfers',[])):
+            guidance+=' Check contraction coverage and accumulator lifetime: first matmul overwrites each PSUM tile; subsequent disjoint contraction tiles accumulate.'
     # Only cite real source lines. Unknown expressions are explicitly unresolved.
     excerpts=[]
     for record in evidence['allocations'][:5]:
@@ -312,8 +370,8 @@ def constrained_prompt(prompt, operation, *, model='Qwen/Qwen3-8B', context=8192
     return (base+'\n\n'+text if text else prompt),dict(applied=bool(text),card_ids=[c.id for c in used],source_urls=[c.source_url for c in used],context_token_count=counter(text),counting_method=method)
 
 
-def shape_prompt(prompt, source, feedback, repeated=0, *, input_shapes=None, model='Qwen/Qwen3-8B', context=8192, answer_budget=2500):
-    plan=plan_repair(source,feedback,repeated,input_shapes)
+def shape_prompt(prompt, source, feedback, repeated=0, *, input_shapes=None, input_values=None, model='Qwen/Qwen3-8B', context=8192, answer_budget=2500):
+    plan=plan_repair(source,feedback,repeated,input_shapes,input_values)
     base=prompt.replace('Change exactly what the checker names and keep everything else identical.',
                         'Apply the simplest scope described below, including dependent lines when necessary; preserve unrelated working code.')
     counter,method=local_token_counter(model);budget=max(0,min(450,context-answer_budget-128-counter(base)))
@@ -322,3 +380,16 @@ def shape_prompt(prompt, source, feedback, repeated=0, *, input_shapes=None, mod
         if counter('\n'.join(lines+[line]))<=budget:lines.append(line)
     plan['applied']=bool(lines);plan['context_token_count']=counter('\n'.join(lines));plan['counting_method']=method
     return base+('\n\nShape-aware repair plan:\n'+'\n'.join(lines) if lines else ''),plan
+
+
+def failure_input_values(source,feedback,level):
+    """Bind only actual scalar/tuple arguments of the checker-reported failing case."""
+    import nkibench
+    try:
+        spec=nkibench.LEVELS[level];tree=ast.parse(source)
+        function=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name==spec['entry'])
+        case=next(c for c in spec['shapes'] if 'On '+nkibench.label(c,level)+':' in feedback)
+        args,_=nkibench.make_inputs(case,level);names=[n.arg for n in function.args.posonlyargs+function.args.args]
+        if len(names)!=len(args):return {}
+        return {name:arg for name,arg in zip(names,args) if type(arg) is int or isinstance(arg,tuple) and all(type(v) is int for v in arg)}
+    except (KeyError,SyntaxError,StopIteration):return {}

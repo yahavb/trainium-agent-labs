@@ -115,3 +115,34 @@ class NKIBoundaryTests(unittest.TestCase):
   broken=spec['source'].replace(rule[0],rule[1])
   result=analyze(broken,{'a':(7,2),'b':(7,3)})
   self.assertIn('slice_bounds',[v['kind'] for v in result['violations']])
+
+class ScalarBindingTests(unittest.TestCase):
+ def test_pool_size_resolves_allocation_elements(self):
+  source='import nki.language as nl\nimport nki.isa as i\ndef f(x,pool_size):\n C,H,W=x.shape\n p=pool_size\n t=nl.ndarray((C,H,p,W),x.dtype,buffer=nl.sbuf)\n i.dma_copy(dst=t,src=x)'
+  r=analyze(source,{'x':(32,32,32)},{'pool_size':2})
+  self.assertEqual(r['operations'][0]['dst_elements'],'65536');self.assertEqual(r['operations'][0]['src_elements'],'32768')
+  self.assertEqual(r['operations'][0]['status'],'PROVEN_MISMATCH')
+ def test_unknown_parameter_stays_unknown(self):
+  source='import nki.language as nl\ndef f(x,p):\n t=nl.ndarray((p,4),x.dtype,buffer=nl.sbuf)'
+  self.assertEqual(analyze(source,{'x':(2,4)})['status'],'UNKNOWN')
+  self.assertEqual(analyze(source,{'x':(2,4)})['allocations'],[])
+ def test_scalar_binding_ignored_if_rebound(self):
+  source='import nki.language as nl\ndef f(x,p):\n p=unsupported()\n t=nl.ndarray((p,4),x.dtype,buffer=nl.sbuf)'
+  self.assertEqual(analyze(source,{'x':(2,4)},{'p':2})['status'],'UNKNOWN')
+  self.assertEqual(analyze(source,{'x':(2,4)},{'p':2})['allocations'],[])
+ def test_actual_checker_case_scalar_only(self):
+  from shape_repair import failure_input_values,inspect_shapes
+  source='def tensor_avgpool_kernel(x,pool_size):\n C,H,W=x.shape\n p=pool_size\n t=nl.ndarray((C,H,p,W),x.dtype,buffer=nl.sbuf)'
+  values=failure_input_values(source,'On C,H,W=(32, 32, 32) pool=2: raised AssertionError',1)
+  self.assertEqual(values,{'pool_size':2})
+  allocations=inspect_shapes(source,{'x':(32,32,32)},values)['allocations']
+  self.assertEqual(allocations[0]['derived_shape'],(32,32,2,32))
+  self.assertEqual(failure_input_values(source,'Unidentified failure',1),{})
+
+class NkiIndexingTests(unittest.TestCase):
+ def test_onchip_integer_partition_preserved(self):
+  r=analyze(kernel('t=nl.ndarray((3,4,5),nl.float32,buffer=nl.sbuf)\nout=nl.ndarray((1,),nl.float32,buffer=nl.shared_hbm)\nni.dma_copy(dst=out,src=t[0,1,2])'))
+  self.assertEqual(r['operations'][0]['src_shape'],['1','1']);self.assertEqual(r['operations'][0]['status'],'PROVEN_EQUAL')
+ def test_hbm_integer_scalar_view(self):
+  r=analyze(kernel('t=nl.ndarray((1,1),nl.float32,buffer=nl.sbuf)\nni.dma_copy(dst=t,src=a[0,1,2])'),{'a':(3,4,5)})
+  self.assertEqual(r['operations'][0]['src_shape'],['1']);self.assertEqual(r['operations'][0]['status'],'PROVEN_EQUAL')

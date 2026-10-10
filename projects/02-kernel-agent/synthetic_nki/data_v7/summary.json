@@ -1,0 +1,172 @@
+{
+  "verified_pairs": 37,
+  "independent_clean_kernels": 21,
+  "added_verified_pairs": 5,
+  "accepted": [
+    "primitive-85fc09b9662d5481",
+    "primitive-9f0959af3e3af8d8",
+    "primitive-0f5a63a2077c68dd",
+    "primitive-34c70c6c71c5bcaa",
+    "primitive-45b755cf31245aae"
+  ],
+  "rejected": [
+    {
+      "kind": "primitive_ap_mean_offset",
+      "cause": "access_pattern_bounds",
+      "intended_category": "OUT_OF_BOUNDS",
+      "actual": {
+        "status": "STATIC_VERIFIED",
+        "passed": false,
+        "cases": [
+          {
+            "seed": 20001,
+            "passed": false,
+            "error": "AssertionError: Out-of-bound access: max index 27 exceeds storage size 24."
+          }
+        ],
+        "sdk_version": "0.6.0+31049202112.g85070674",
+        "hardware_target": "trn2",
+        "error": "AssertionError: Out-of-bound access: max index 27 exceeds storage size 24.",
+        "failure_category": "UNKNOWN"
+      }
+    }
+  ],
+  "clean_primitive_results": [
+    {
+      "kind": "primitive_ap_mean_offset",
+      "verification": {
+        "status": "SIMULATOR_VERIFIED",
+        "passed": true,
+        "cases": [
+          {
+            "seed": 20001,
+            "passed": true,
+            "numerically_correct": true,
+            "inputs_untouched": true
+          },
+          {
+            "seed": 20002,
+            "passed": true,
+            "numerically_correct": true,
+            "inputs_untouched": true
+          },
+          {
+            "seed": 20003,
+            "passed": true,
+            "numerically_correct": true,
+            "inputs_untouched": true
+          }
+        ],
+        "sdk_version": "0.6.0+31049202112.g85070674",
+        "hardware_target": "trn2",
+        "error": null,
+        "failure_category": "UNKNOWN"
+      }
+    },
+    {
+      "kind": "primitive_free_permutation_offset",
+      "verification": {
+        "status": "SIMULATOR_VERIFIED",
+        "passed": true,
+        "cases": [
+          {
+            "seed": 20002,
+            "passed": true,
+            "numerically_correct": true,
+            "inputs_untouched": true
+          },
+          {
+            "seed": 20003,
+            "passed": true,
+            "numerically_correct": true,
+            "inputs_untouched": true
+          },
+          {
+            "seed": 20004,
+            "passed": true,
+            "numerically_correct": true,
+            "inputs_untouched": true
+          }
+        ],
+        "sdk_version": "0.6.0+31049202112.g85070674",
+        "hardware_target": "trn2",
+        "error": null,
+        "failure_category": "UNKNOWN"
+      }
+    },
+    {
+      "kind": "primitive_partition_transpose_offset",
+      "verification": {
+        "status": "SIMULATOR_VERIFIED",
+        "passed": true,
+        "cases": [
+          {
+            "seed": 20003,
+            "passed": true,
+            "numerically_correct": true,
+            "inputs_untouched": true
+          },
+          {
+            "seed": 20004,
+            "passed": true,
+            "numerically_correct": true,
+            "inputs_untouched": true
+          },
+          {
+            "seed": 20005,
+            "passed": true,
+            "numerically_correct": true,
+            "inputs_untouched": true
+          }
+        ],
+        "sdk_version": "0.6.0+31049202112.g85070674",
+        "hardware_target": "trn2",
+        "error": null,
+        "failure_category": "UNKNOWN"
+      }
+    },
+    {
+      "kind": "primitive_k_accumulate_offset",
+      "verification": {
+        "status": "SIMULATOR_VERIFIED",
+        "passed": true,
+        "cases": [
+          {
+            "seed": 20004,
+            "passed": true,
+            "numerically_correct": true,
+            "inputs_untouched": true
+          },
+          {
+            "seed": 20005,
+            "passed": true,
+            "numerically_correct": true,
+            "inputs_untouched": true
+          },
+          {
+            "seed": 20006,
+            "passed": true,
+            "numerically_correct": true,
+            "inputs_untouched": true
+          }
+        ],
+        "sdk_version": "0.6.0+31049202112.g85070674",
+        "hardware_target": "trn2",
+        "error": null,
+        "failure_category": "UNKNOWN"
+      }
+    }
+  ],
+  "train_records": 35,
+  "heldout_records": 2,
+  "sdk_version": "0.6.0+31049202112.g85070674",
+  "device_verified": 0,
+  "signatures": {
+    "dma_copy": "(dst: 'NkiTensor', src: 'NkiTensor', priority=None, oob_mode=<oob_mode.error: 0>, dge_mode=<dge_mode.unknown: 0>, engine=<engine.unknown: 0>, name=None)",
+    "tensor_scalar": "(dst: 'NkiTensor', data: 'NkiTensor', op0, operand0: 'float | NkiTensor', reverse0=False, op1=None, operand1: 'float | NkiTensor | None' = None, reverse1=False, engine=<engine.unknown: 0>, name=None)",
+    "tensor_copy": "(dst: 'NkiTensor', src: 'NkiTensor', engine=<engine.unknown: 0>, name=None)",
+    "nc_transpose": "(dst: 'NkiTensor', data: 'NkiTensor', engine=<engine.unknown: 0>, name=None)",
+    "nc_matmul": "(dst: 'NkiTensor', stationary: 'NkiTensor', moving: 'NkiTensor', is_stationary_onezero=False, is_moving_onezero=False, is_transpose=False, accumulate=None, tile_position=(), tile_size=(), perf_mode=<matmul_perf_mode.none: 'none'>, name=None)"
+  },
+  "access_pattern_signature": "(self, pattern: 'list[list[int]]', offset: 'int | None' = None, scalar_offset: 'NkiTensor | None' = None, vector_offset: 'NkiTensor | None' = None, indirect_dim: 'int' = 0, dtype: 'DType | None' = None) -> 'NkiTensor'"
+}

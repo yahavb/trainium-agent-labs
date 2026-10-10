@@ -10,6 +10,15 @@ def identifies(cause,text):
     """Predeclared semantic checks independent of the classifier's category."""
     t=text.lower()
     rules={
+        'python_tensor_division': lambda: 'tensor_scalar' in t and 'reciprocal' in t and 'python /' in t,
+        'group_axis_element_conservation': lambda: 'dma' in t and 'element' in t and ('allocation' in t or 'destination' in t),
+        'incorrect_normalization': lambda: 'normalization' in t and ('factor' in t or 'divisor' in t or 'reciprocal' in t),
+        'incorrect_reduction_operation': lambda: 'sum' in t and 'max' in t and 'reduc' in t,
+        'scalar_instruction_namespace': lambda: 'nki.isa.tensor_scalar' in t and 'namespace' in t,
+        'access_pattern_bounds': lambda: 'bound' in t and ('stride' in t or 'access pattern' in t or '.ap' in t),
+        'missing_free_permutation': lambda: 'permut' in t and ('free' in t or 'partition' in t),
+        'transpose_output_buffer': lambda: 'nc_transpose' in t and 'psum' in t,
+        'missing_contraction_accumulation': lambda: 'accumulate=false' in t and 'overwrite' in t and ('first' in t or 'later' in t) and ('contraction' in t or 'k tile' in t),
         'boundary_slice_tail': lambda: ('partial' in t or 'final tile' in t) and ('clip' in t or 'min(' in t),
         'transpose_regions': lambda: 'nc_transpose' in t and ('sbuf' in t or 'on-chip' in t),
         'matching_dma_extents': lambda: 'dma' in t and ('slice' in t or 'source' in t) and ('allocation' in t or 'allocated' in t or 'destination' in t),

@@ -8,7 +8,7 @@ from synthetic_nki.diagnostics import identifies
 from shape_repair import plan_repair
 import agent
 
-CAUSE_KINDS={'matching_dma_extents':{'dma_elements'},'explicit_onchip_rank':{'onchip_rank'},'reduction_rank':{'reduction_rank'},'matmul_destination':{'matmul_dimensions'},'partition_limit':{'partition_limit','matmul_tile_limit'},'onchip_copy_regions':{'matmul_buffer'},'transpose_regions':{'transpose_buffer'},'boundary_slice_tail':{'slice_bounds'}}
+CAUSE_KINDS={'group_axis_element_conservation':{'dma_elements'},'access_pattern_bounds':{'slice_bounds'},'transpose_output_buffer':{'transpose_buffer'},'matching_dma_extents':{'dma_elements'},'explicit_onchip_rank':{'onchip_rank'},'reduction_rank':{'reduction_rank'},'matmul_destination':{'matmul_dimensions'},'partition_limit':{'partition_limit','matmul_tile_limit'},'onchip_copy_regions':{'matmul_buffer'},'transpose_regions':{'transpose_buffer'},'boundary_slice_tail':{'slice_bounds'}}
 
 
 def evaluate(directory,output):

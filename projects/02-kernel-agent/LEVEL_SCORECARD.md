@@ -1,15 +1,17 @@
 # Level scorecard
 
-Latest original baseline: five repetitions, 0/5 solved on EACH level. Scores below are from this pod only. CPU-checker verification is distinct from device execution. No device-verified kernels. Current A–D evaluation is still running; completed-arm results are provisional at this timestamp.
+Observed results on seat-265 only. Original five-repeat baseline: zero of five solved on each level. Official checker unchanged. No device-verified kernels.
 
-| Level | Operation | Best reward | Cases passed | Cases total | Verified cold-start solves recorded | Best experiment | Dominant remaining error |
-|---|---|---:|---:|---:|---:|---|---|
-| 1 | Average pooling | 0.30 | 0 | 4 | 0 | Original/pilot | DMA window/allocation mismatch; invalid reductions |
-| 2 | Free-axis transpose per partition | 0.30 historical; recent live run pending | 0 | 4 | 0 | Original baseline, private forensic replay | DMA ignores P/free layout |
-| 3 | Single-tile matmul | 1.00 | 1 | 1 | 4 | A_full, A_current, B_targeted, D_full_adaptive | Other perspectives: DMA/PSUM shape failures |
-| 4 | Tiled matmul | 0.625 | 1 | 4 | 0 | Historical private replay / current targeted arm | Whole-input DMA limits, M/N/K tiling/accumulation |
+| Level | Operation | Best autonomous cold-start reward | Cases passed/total | Current status |
+|---|---|---:|---:|---|
+| 1 | Average pooling | 0.50 (active, provisional) | 0/4 | Planner/legalizer cold run active; prior full runs 0.30. 0.50 is execution credit, not numerical correctness. |
+| 2 | Free-axis transpose within each partition | 0.30 | 0/4 | Full agent run completed at 0.30; DMA/indexing failures. New primitives verified independently; new model evaluation pending. |
+| 3 | Single-tile matmul | 1.00 | 1/1 | Four recorded cold-start successes across different configurations; initial shapes_buffers generation, not proof of repair benefit. |
+| 4 | Tiled matmul | 0.625 | 1/4 | Small single-tile case passes; larger K/M/N loads and coverage remain invalid. |
 
-The four Level 3 successes are different cold-start model requests, all at round zero, usually candidate 2 / shapes_buffers. They are not repair-driven solves or an intentionally balanced five-repeat study. One A_full kernel was independently replayed immediately; verified-archive-20261010-initial2 replays the completed earlier successes. The newest D_full_adaptive success will be archived once its full experiment finishes.
+Autonomous cold-start solved levels: **1/4 (Level 3)**. No matched repeated reliability gain or LoRA benchmark gain established. Separate Level 1 results: expert-edited warm diagnostic 1.00/4 cases; generic instruction-legalizer warm replay 1.00/4 cases, explicitly excluded from cold-start solve count.
+
+Latest full Level 1/2 run: runs/controlled-20261010T192716-jp07xp0l. Planner Level 1: runs/controlled-20261010T194114-ln8yl9ak and runs/controlled-20261010T195135-qyw82zco, both .30. Current cold planner/legalizer: runs/controlled-20261010T201403-vxbwe5dd. Automatic warm replay: runs/level1-automatic-primitive-replay-72i8u7g7. Formal original/LoRA x legacy/planner comparison remains pending; see LORA_COMPARISON.md rather than substituting historical scores into its cells.
 
 ## Exact benchmark specifications
 

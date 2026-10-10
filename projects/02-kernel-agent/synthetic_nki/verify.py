@@ -8,6 +8,11 @@ from failure_selection import classify_failure
 def reference(spec,args):
     a=args[0];kind=spec['kind']
     if kind=='transpose_offset':return a.T+.25
+    if kind=='primitive_ap_mean_offset':return a.reshape(2,3,4).mean(axis=2)+.375
+    if kind=='primitive_free_permutation_offset':return a.reshape(3,2,4).transpose(0,2,1).reshape(3,8)+.125
+    if kind=='primitive_partition_transpose_offset':return a.T*.75
+    if kind=='primitive_k_accumulate_offset':return a.T@args[1]+.125
+    if kind=='grouped_mean_offset':return a.reshape(3,2,3).mean(axis=2)+.125
     if kind=='grouped_sum_offset':return a.reshape(2,2,3).sum(axis=2)-.25
     if kind=='slice':return a[1:3,1:4].copy()
     if kind in ('copy','partition','psum'):return a.copy()
