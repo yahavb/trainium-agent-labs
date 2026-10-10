@@ -6,12 +6,17 @@ speedcheck.py -- the CHIPBOOST referee. One candidate kernel in, one verdict and
     sim        CPU simulation vs NumPy on small shapes; bytes counted over every DMA            -> "wrong"
     chip       on the device at the timing shapes, hostile then normal inputs, fresh output
                garbage before every run, inputs read back afterwards                          -> "wrong"
+    fail fast  ONE fresh, verified run of baseline and candidate per timing shape; more than
+               3x slower on any shape stops here, without the full interleave                  -> "slower"
     timing     device clock, interleaved with the baseline; every timed run gets a DIFFERENT
                input set in an unpredictable order and fresh output garbage, and is verified  -> "wrong"
+    verdict    thr = timing.noise_threshold (1 + max(1%, 2x the worse arm's relative IQR)):
+               total speedup <= 1/thr                                                          -> "slower"
+               total >= thr AND no shape below 1/thr -> held-out, then                         -> "faster"
+               anything else (inside the noise, or a gain that costs some shape)               -> "no_gain"
     held-out   only for a candidate that would score faster: 3 shapes drawn at random from
-               every legal tile multiple, hostile values                                       -> "heldout_fail"
-    verdict    "faster" only if it beats the measured noise on the total AND regresses on no
-               shape AND passed held-out; otherwise "slower"
+               every legal tile multiple, hostile values. A failure says WHAT failed, never
+               WHICH shape (the next prompt would learn it)                                    -> "heldout_fail"
 
 TRUST BOUNDARY. The referee never imports the candidate. A child process does that -- simulation and
 compilation to a NEFF -- and it is sandboxed by the operating system, not by source filtering (a source
@@ -758,10 +763,11 @@ def _resolve_baseline(baseline, op):
 
 
 class Wrong(RuntimeError):
-    def __init__(self, verdict, msg, instr=None):
+    def __init__(self, verdict, msg, instr=None, kind="mismatch"):
         super().__init__(msg)
         self.verdict = verdict
         self.instr = instr or (msg.splitlines() or [""])[0]
+        self.kind = kind                 # crash / input modified / mismatch / precision: says WHAT, not WHERE
 
 
 _DEVICE_INSTR = "The compiled kernel failed on the device; fix the interface or runtime error named in the referee message."
@@ -784,24 +790,29 @@ def _chip_case(neff_path, spec, shape, inp, label, rng, verdict="wrong"):
         got = N.run()
         after = N.read_inputs()
     except Exception as e:
-        raise Wrong(verdict, _device_failure(f"at {label}", e), _DEVICE_INSTR)
+        raise Wrong(verdict, _device_failure(f"at {label}", e), _DEVICE_INSTR, kind="crash")
     want = spec["ref"](inp)
-    bad = nkibench.check_inputs_untouched(list(inp.values()), [after[k] for k in inp]) or \
-        _mismatch(got, want, spec["tol"], label)
+    bad = nkibench.check_inputs_untouched(list(inp.values()), [after[k] for k in inp])
     if bad:
-        raise Wrong(verdict, bad)
+        raise Wrong(verdict, bad, kind="input modified")
+    bad = _mismatch(got, want, spec["tol"], label)
+    if bad:
+        raise Wrong(verdict, bad, kind="precision" if "PRECISION LOSS" in bad else "mismatch")
     return N, got, want
 
 
-def _verifier(spec, wants, label):
+def _verifier(spec, wants, label, baseline=False):
     """Checks every timed output against the reference for the input set it was fed. Bitwise equality with
-    an already-verified output for the same set short-circuits the full check."""
+    an already-verified output for the same set short-circuits the full check. A wrong BASELINE output is the
+    referee's failure, not the candidate's: it raises RefereeError, never a verdict."""
     seen = {}
 
     def verify(out, k):
         if k in seen and np.array_equal(out, seen[k]):
             return
         bad = _mismatch(out, wants[k], spec["tol"], f"timed run {label}")
+        if bad and baseline:
+            raise RefereeError(f"the baseline produced a wrong output while timed: {bad}")
         if bad:
             raise Wrong("wrong", "A TIMED RUN PRODUCED A WRONG OUTPUT: the kernel was correct when checked but not "
                                  "when timed, so its time is not for this computation.\n" + bad)
@@ -809,9 +820,36 @@ def _verifier(spec, wants, label):
     return verify
 
 
+FAIL_FAST = 3.0          # one verified run more than this many times the baseline's: `slower`, no full interleave
+ACCEPTED = ("faster", "no_gain", "slower")      # correct kernels; exit code 0
+
+_HELDOUT_INSTR = {
+    "compile": "The kernel does not compile at every legal shape: derive every loop bound, tile count and buffer "
+               "size from the input shapes, with no hard-coded sizes or shape-specific branches.",
+    "crash": "The kernel fails on the device at some legal shapes: derive every loop bound, tile count and buffer "
+             "size from the input shapes, with no hard-coded sizes or shape-specific branches.",
+    "input modified": "The kernel overwrites an input at some shapes: write only to a new output allocated with "
+                      "nl.ndarray(..., buffer=nl.shared_hbm).",
+    "precision": "The kernel loses precision at some shapes: accumulate in fp32 (a PSUM tile) across the whole "
+                 "contraction and round to the output dtype once, at the end.",
+    "mismatch": "The kernel is wrong at some legal shapes it was not tuned on: make every loop cover the whole "
+                "input for any legal size, with no hard-coded sizes or shape-specific branches.",
+}
+
+
+def _heldout_fail(head, kind, detail=""):
+    """A held-out failure names the kind of failure, never the shape or the kernel's own error text (which can
+    carry the dims): the next prompt must not learn the held-out shapes."""
+    msg = (f"HELD-OUT FAILURE ({kind}): {head}, but the kernel {detail or 'gave a wrong result'} on a held-out "
+           f"shape. Held-out shapes are drawn at random per check and never disclosed: the kernel must be correct "
+           f"at every legal shape, not only the ones it is timed on.")
+    return msg, _HELDOUT_INSTR.get(kind, _HELDOUT_INSTR["mismatch"])
+
+
 def check(path, op="matmul", baseline=None, rounds=3, verbose=False):
-    """Referee one candidate. Returns a schema record. Raises RefereeError if the referee itself cannot run --
-    that is never the candidate's fault and is never logged as its verdict."""
+    """Referee one candidate. Returns a schema record whose verdict is one of rules / wrong / heldout_fail /
+    slower / no_gain / faster (see the module docstring for when each applies). Raises RefereeError if the
+    referee itself cannot run -- that is never the candidate's fault and is never logged as its verdict."""
     spec = OPS[op]
     say = print if verbose else (lambda *a, **k: None)
     try:
@@ -902,15 +940,14 @@ def check(path, op="matmul", baseline=None, rounds=3, verbose=False):
         say(f"  chip       correct on {len(cands)} shapes, hostile and normal (worst {worst:.2f} bf16 ulps)")
 
         # 4. timing: both arms see the same unpredictable sequence of DIFFERENT input sets; every run fresh + verified
-        t_cand = t_base = rel = 0.0
-        per_shape, n_runs = [], 10
+        n_runs = 10
+        arms = []
         for shape, (N, normal) in cands.items():
             vary = spec["vary"]
             sets = [dict(normal, **{vary: spec["make_inputs"](shape, int(rng.integers(1 << 62)))[vary]})
                     for _ in range(6)]
             wants = [spec["ref"](x) for x in sets]
             order = [int(k) for k in rng.integers(0, len(sets), rounds * n_runs)]
-            feed = (lambda j, sets=sets, order=order: (order[j], sets[order[j]]))
             out_shape, out_dtype = spec["out"](shape)
             try:
                 B = timing.Neff(_baseline_neff(baseline, spec, shape), normal, out_shape, out_dtype,
@@ -919,58 +956,115 @@ def check(path, op="matmul", baseline=None, rounds=3, verbose=False):
                 raise
             except Exception as e:
                 raise RefereeError(f"the baseline would not load at {shape}: {type(e).__name__}: {e}")
+            arms.append(dict(shape=shape, N=N, B=B, sets=sets, order=order,
+                             feed=(lambda j, sets=sets, order=order: (order[j], sets[order[j]])),
+                             va=_verifier(spec, wants, f"baseline {shape}", baseline=True),
+                             vb=_verifier(spec, wants, str(shape))))
+        instr = one_instruction(*diag)
+
+        # 4a. fail fast: ONE fresh, verified run of each arm per shape. A kernel thousands of times slower would
+        # otherwise spend most of an hour in the interleave below.
+        probe = []
+        for x in arms:
+            shape, first = x["shape"], (lambda j, f=x["feed"]: f(0))
             try:
-                ab = timing.time_ab_fresh(B, N, rounds=rounds, n=n_runs,
-                                          verify_a=_verifier(spec, wants, f"baseline {shape}"),
-                                          verify_b=_verifier(spec, wants, str(shape)), feed=feed)
-                after = N.read_inputs()
+                x["B"].run()                                  # warm; the candidate is warm from the chip stage
+                tb = x["B"].time_fresh(1, x["va"], first)[0]
+            except RefereeError:
+                raise
+            except Exception as e:
+                raise RefereeError(f"the baseline failed on the chip at {shape}: {type(e).__name__}: {e}")
+            try:
+                tc = x["N"].time_fresh(1, x["vb"], first)[0]
             except Wrong:
                 raise
             except Exception as e:
-                raise Wrong("wrong", _device_failure(f"timing at {shape}", e), _DEVICE_INSTR)
-            last = sets[order[-1]]
+                raise Wrong("wrong", _device_failure(f"timing at {shape}", e), _DEVICE_INSTR, kind="crash")
+            probe.append((shape, tb, tc))
+        if any(tc > FAIL_FAST * tb for _, tb, tc in probe):
+            t_base, t_cand = sum(tb for _, tb, _ in probe), sum(tc for _, _, tc in probe)
+            speedup = t_base / t_cand
+            slow = ", ".join(f"{sh}: {tc:.1f} us vs {tb:.1f} us ({tb / tc:.3f}x)" for sh, tb, tc in probe
+                             if tc > FAIL_FAST * tb)
+            say(f"  fail-fast  more than {FAIL_FAST:g}x slower at {slow}")
+            msg = (f"correct on the timing shapes, but STOPPED EARLY: more than {FAIL_FAST:g}x slower than the "
+                   f"baseline at {slow}. One verified run each: {t_cand:.1f} us vs baseline {t_base:.1f} us = "
+                   f"{speedup:.3f}x; the full interleaved timing was skipped.")
+            return _record(**base, verdict="slower", referee_message=msg, instruction_given=instr,
+                           time_us_median=float(t_cand), time_us_iqr=None, baseline_us_same_session=float(t_base),
+                           speedup=float(speedup), source="chip")
+
+        # 4b. the full interleave
+        t_cand = t_base = iqr_cand = 0.0
+        per_shape, stats = [], []
+        for x in arms:
+            shape, N = x["shape"], x["N"]
+            try:
+                ab = timing.time_ab_fresh(x["B"], N, rounds=rounds, n=n_runs, verify_a=x["va"], verify_b=x["vb"],
+                                          feed=x["feed"])
+                after = N.read_inputs()
+            except (Wrong, RefereeError):
+                raise
+            except Exception as e:
+                raise Wrong("wrong", _device_failure(f"timing at {shape}", e), _DEVICE_INSTR, kind="crash")
+            last = x["sets"][x["order"][-1]]
             bad = nkibench.check_inputs_untouched([last[k] for k in last], [after[k] for k in last])
             if bad:
-                raise Wrong("wrong", f"during timing at {shape}: {bad}")
+                raise Wrong("wrong", f"during timing at {shape}: {bad}", kind="input modified")
             t_base += ab["a"]["median_us"]
             t_cand += ab["b"]["median_us"]
-            rel = max(rel, ab["a"]["iqr_us"] / ab["a"]["median_us"], ab["b"]["iqr_us"] / ab["b"]["median_us"])
+            iqr_cand += ab["b"]["iqr_us"]                     # the candidate's own spread, pooled over shapes
+            stats += [ab["a"], ab["b"]]
             per_shape.append((shape, ab["speedup"]))
             say(f"  timing     {shape}: baseline {ab['a']['median_us']:.1f} us, candidate {ab['b']['median_us']:.1f} us"
                 f" -> {ab['speedup']:.3f}x")
         speedup = t_base / t_cand
-        threshold = 1.0 + max(0.05, 2.0 * rel)
-        timed = dict(time_us_median=float(t_cand), time_us_iqr=float(t_cand * rel),
+        threshold = timing.noise_threshold(*stats)
+        timed = dict(time_us_median=float(t_cand), time_us_iqr=float(iqr_cand),
                      baseline_us_same_session=float(t_base), speedup=float(speedup), source="chip")
-        instr = one_instruction(*diag)
         regressed = [(sh, sp) for sh, sp in per_shape if sp < 1.0 / threshold]
+        head = f"{t_cand:.1f} us vs baseline {t_base:.1f} us = {speedup:.3f}x"
+        shapes_txt = "; per shape " + ", ".join(f"{sh} {sp:.3f}x" for sh, sp in per_shape)
+        say(f"  verdict    {speedup:.4f}x against the noise band {1 / threshold:.4f}-{threshold:.4f}")
 
-        if speedup < threshold or regressed:
-            why = (f"below the noise threshold {threshold:.3f}" if speedup < threshold else
-                   f"but SLOWER at {', '.join(f'{sh} ({sp:.3f}x)' for sh, sp in regressed)}")
-            msg = (f"correct on the timing shapes; {t_cand:.1f} us vs baseline {t_base:.1f} us = {speedup:.3f}x, "
-                   f"{why}. (Held-out shapes are checked only for a speedup.)")
+        if speedup <= 1.0 / threshold:
+            msg = (f"correct on the timing shapes; {head}{shapes_txt}: SLOWER, beyond the noise threshold "
+                   f"({1 / threshold:.3f}x). (Held-out shapes are checked only for a speedup.)")
             return _record(**base, verdict="slower", referee_message=msg, instruction_given=instr, **timed)
+        if speedup < threshold or regressed:
+            why = (f"inside the timing noise (a gain needs {threshold:.3f}x, a loss {1 / threshold:.3f}x)"
+                   if speedup < threshold else
+                   f"faster on the total but SLOWER at {', '.join(f'{sh} ({sp:.3f}x)' for sh, sp in regressed)}, "
+                   f"and a speedup must not cost any shape")
+            msg = (f"correct on the timing shapes; {head}{shapes_txt}: NO GAIN, {why}. "
+                   f"(Held-out shapes are checked only for a speedup.)")
+            return _record(**base, verdict="no_gain", referee_message=msg, instruction_given=instr, **timed)
 
-        # 5. held-out: fresh random shapes, hostile values
+        # 5. held-out: fresh random shapes, hostile values. Nothing below may name one (see _heldout_fail).
         held = [tuple(x) for x in spec["heldout"](rng, 3, set(spec["time_shapes"]) | set(spec["sim_shapes"]))]
         res2 = run_child(src, op, sim_seed, False, [(f"h{i}", x) for i, x in enumerate(held)], baseline, workdirs)
+        hhead = f"correct and {speedup:.3f}x faster on the timing shapes"
         if res2["error"]:
-            text, instr2 = _child_failure(res2["error"], "held-out: ")
-            return _record(**base, verdict="heldout_fail", referee_message=text, instruction_given=instr2, **timed)
+            e = res2["error"]
+            if e.get("stage") == "crash":                  # `type` is the referee's own account of how it ended
+                kind, detail = "crash", f"crashed while being compiled ({e.get('type', '?')})"
+            else:                                           # the type only: the kernel's message can carry the dims
+                kind, detail = "compile", f"failed to compile ({e.get('type', '?')})"
+            msg, instr2 = _heldout_fail(hhead, kind, detail)
+            return _record(**base, verdict="heldout_fail", referee_message=msg, instruction_given=instr2, **timed)
         for i, shape in enumerate(held):
             inp = spec["make_inputs"](shape, int(rng.integers(1 << 62)), hostile=True)
             try:
                 _chip_case(os.path.join(res2["wd"], f"h{i}.neff"), spec, shape, inp,
-                           f"held-out {shape} hostile", rng, verdict="heldout_fail")
+                           "held-out", rng, verdict="heldout_fail")
             except Wrong as w:
-                msg = ("Correct on the development shapes but WRONG on a shape the loop never saw -- the kernel "
-                       "must not depend on the shapes it was tuned on.\n" + str(w))
-                return _record(**base, verdict="heldout_fail", referee_message=msg,
-                               instruction_given=msg.split("\n")[0], **timed)
-        say(f"  held-out   correct on {held}")
-        msg = (f"correct everywhere, including held-out {held}; {t_cand:.1f} us vs baseline {t_base:.1f} us = "
-               f"{speedup:.3f}x, beating the noise threshold {threshold:.3f} with no shape slower.")
+                detail = {"crash": "failed on the device", "input modified": "modified its input",
+                          "precision": "lost precision (errors above the bf16 ulp limit)"}.get(w.kind)
+                msg, instr2 = _heldout_fail(hhead, w.kind, detail)
+                return _record(**base, verdict="heldout_fail", referee_message=msg, instruction_given=instr2, **timed)
+        say(f"  held-out   correct on {len(held)} random shapes")
+        msg = (f"correct everywhere, including {len(held)} random held-out shapes; {head}{shapes_txt}: FASTER, "
+               f"beating the noise threshold {threshold:.3f}x with no shape slower.")
         return _record(**base, verdict="faster", referee_message=msg, instruction_given=instr, **timed)
 
     except Tampered as t:
@@ -987,7 +1081,8 @@ def check(path, op="matmul", baseline=None, rounds=3, verbose=False):
 
 def check_isolated(path, op="matmul", timeout=2 * CHILD_TIMEOUT + 600, baseline=None):
     """Run the referee in a fresh process (device memory from hundreds of candidates is released each time).
-    The record comes back through a file only the parent names, and must agree with the exit code.
+    The record comes back through a file only the parent names, and must agree with the exit code (0 for the
+    accepted verdicts faster / no_gain / slower, 1 for rules / wrong / heldout_fail).
     Returns None when the REFEREE failed (no core, baseline broken): that is not a verdict on the kernel."""
     fd, out = tempfile.mkstemp(prefix="chipboost_rec_", suffix=".json")
     os.close(fd)
@@ -1010,7 +1105,7 @@ def check_isolated(path, op="matmul", timeout=2 * CHILD_TIMEOUT + 600, baseline=
             os.remove(out)
         except OSError:
             pass
-    accepted = rec.get("verdict") in ("faster", "slower")
+    accepted = rec.get("verdict") in ACCEPTED
     if schema.validate(rec) or accepted != (p.returncode == 0):
         return None
     return rec
@@ -1049,7 +1144,7 @@ def main():
         print(f"\nVERDICT: {rec['verdict'].upper()}")
         print(rec["referee_message"])
         print(f"\nONE CHANGE: {rec['instruction_given']}")
-    sys.exit(0 if rec["verdict"] in ("faster", "slower") else 1)
+    sys.exit(0 if rec["verdict"] in ACCEPTED else 1)       # correct kernels exit 0, rejected ones 1, referee 3
 
 
 if __name__ == "__main__":
