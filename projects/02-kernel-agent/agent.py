@@ -639,6 +639,83 @@ def repair_prompt(level, source, feedback, tried=None):
         f"ONE python code block.")
 
 
+AUDIT_FAILURES = {
+    "dtype": "raised TypeError: ndarray() missing 1 required positional argument: 'dtype'",
+    "mean": "raised AttributeError: 'NkiTensor' object has no attribute 'mean'",
+    "dma": "nisa.dma_copy requires src and dst to have the same number of elements",
+    "scale": "CONSISTENT SCALE ERROR: output is about 2x the reference across most elements.",
+    "nonfinite": "NON-FINITE OUTPUT: output contains NaN/Inf. Check the final copy path.",
+    "traffic": "traffic K=256 M=256 N=1024: 2.0x byte floor.",
+}
+
+
+def print_budget(name, budget):
+    parts = ", ".join(f"{k}={v}" for k, v in budget.items() if k != "total")
+    print(f"  {name}: total~{budget['total']} tokens ({parts})")
+
+
+def audit_context(level):
+    import inspect
+    ref = inspect.getsource(nkibench.LEVELS[level]["ref"])
+    first = first_prompt(level)
+    first_budget = prompt_accounting(reference=ref, core=CORE_CARD)
+    print(f"level {level}: {nkibench.LEVELS[level]['op']}")
+    print_budget("first prompt", first_budget)
+    print(f"    chars={len(first)} cards=core_minimal")
+
+    source = (
+        "import nki\nimport nki.language as nl\nimport nki.isa as nisa\n\n"
+        f"@nki.jit\ndef {nkibench.LEVELS[level]['entry']}(*args):\n"
+        "    out = nl.ndarray(args[0].shape, dtype=args[0].dtype, buffer=nl.shared_hbm)\n"
+        "    return out\n"
+    )
+    for name, feedback in AUDIT_FAILURES.items():
+        cat, inst = distill_failure(feedback)
+        cards = repair_card_names(level, cat)
+        rendered = render_context_cards(cards)
+        prompt = repair_prompt(level, source, feedback, tried=[feedback])
+        budget = prompt_accounting(code=source, feedback=compact_feedback(feedback),
+                                   cards=rendered, ledger=compact_ledger([feedback]),
+                                   instruction=inst)
+        print(f"\n  case={name} category={cat}")
+        print(f"    cards={', '.join(cards)}")
+        print(f"    instruction={inst}")
+        print_budget("repair prompt", budget)
+        print(f"    chars={len(prompt)} compact_feedback={compact_feedback(feedback)}")
+
+
+def summarize_log(path):
+    rows = []
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                rows.append(json.loads(line))
+    if not rows:
+        print(f"{path}: no attempts")
+        return
+
+    print(f"{path}: {len(rows)} attempt(s)")
+    by_cat = {}
+    for r in rows:
+        cat = r.get("failure_category", "unknown")
+        by_cat[cat] = by_cat.get(cat, 0) + 1
+    print("failure categories:")
+    for cat, n in sorted(by_cat.items(), key=lambda kv: (-kv[1], kv[0])):
+        print(f"  {cat}: {n}")
+
+    print("\nattempts:")
+    for r in rows:
+        b = r.get("prompt_budget") or {}
+        cards = ",".join(r.get("context_cards") or [])
+        print(
+            f"  L{r.get('level')} R{r.get('round')}: reward={r.get('reward'):.2f} "
+            f"cat={r.get('failure_category', 'unknown')} "
+            f"prompt~{b.get('total', len(str(r.get('prompt_chars', ''))) // 4)}tok "
+            f"cards={cards or 'none'}"
+        )
+
+
 CODE_BLOCK = re.compile(r"```(?:python)?\s*(.*?)```", re.S)
 
 
@@ -858,7 +935,22 @@ def main():
     ap.add_argument("--think", action="store_true",
                     help="let the model reason first; costs budget, and it ran out")
     ap.add_argument("--offline", action="store_true")
+    ap.add_argument("--audit-context", action="store_true",
+                    help="print prompt cards and token estimates for representative failures, "
+                         "without calling the model")
+    ap.add_argument("--summarize-log", metavar="PATH",
+                    help="summarize an attempts JSONL log without calling the model")
     a = ap.parse_args()
+
+    if a.summarize_log:
+        summarize_log(a.summarize_log)
+        return
+
+    if a.audit_context:
+        levels = sorted(nkibench.LEVELS)[:4] if a.all else [a.level or 1]
+        for level in levels:
+            audit_context(level)
+        return
 
     if not a.offline:
         # Validate before the first request. An empty or scheme-less value produces a hostname

@@ -172,3 +172,22 @@ Local validation:
 - `python3 -m py_compile projects/02-kernel-agent/agent.py projects/02-kernel-agent/nkibench.py`
 - Direct `distill_failure(...)` check returns `reduction_api` and cards
   `['avgpool_reduction', 'reductions', 'signatures']`.
+
+## Agent instrumentation
+
+Added two no-model utilities to `agent.py`:
+
+- `--audit-context`: prints selected cards and estimated token budget for representative failures.
+- `--summarize-log attempts.jsonl`: summarizes failure categories, cards, and prompt budget from a run.
+
+Validation:
+
+- `python3 projects/02-kernel-agent/agent.py --level 1 --audit-context`
+- `python3 projects/02-kernel-agent/agent.py --all --audit-context`
+- fake JSONL summary test for `--summarize-log`
+
+Observed Level 1 context sizes:
+
+- first prompt: about 122 tokens;
+- `.mean()` repair: about 315 tokens with `avgpool_reduction`, `reductions`, `signatures`;
+- DMA-shape repair: about 276 tokens.
