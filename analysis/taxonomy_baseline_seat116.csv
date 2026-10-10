@@ -3,7 +3,7 @@ index arithmetic,copy_size_mismatch,copies between tiles of different sizes,40,3
 API,invented_name,calls an NKI function or attribute that does not exist,80,0,0,1,81,19.3%,100%
 index arithmetic,out_of_bounds,indexes past the end of a tensor,0,32,16,16,64,15.2%,100%
 tiling rules,partition_over_128,a tile or contraction larger than 128 partitions,0,0,0,55,55,13.1%,100%
-index arithmetic,reshape,reshapes instead of slicing,0,1,48,1,50,11.9%,100%
+index arithmetic,reshape,reshapes instead of slicing (or changes the partition size),0,1,48,1,50,11.9%,100%
 tiling rules,tile_1d,a 1-D tile (every SBUF/PSUM tile needs 2 dims),0,0,22,0,22,5.2%,50%
 memory model,wrong_buffer,a tile in the wrong memory (SBUF / PSUM / HBM),20,0,0,1,21,5.0%,0%
 API,wrong_signature,"right function, wrong arguments",20,1,0,0,21,5.0%,0%

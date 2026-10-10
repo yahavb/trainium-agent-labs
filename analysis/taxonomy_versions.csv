@@ -1,0 +1,19 @@
+﻿mode,family,baseline L1,baseline L2,baseline L3,baseline L4,v7 L1,v7 L2,v7 L3,v7 L4,v7+E-div L1,v7+E-div L3,v7+E-div L4,v8 L1,v8 L3,v8 L4,v8.1 L1,v8.1 L2,v8.1 L4,total
+copy_size_mismatch,index arithmetic,80,71,45,0,0,16,0,0,0,0,2,0,0,1,0,7,8,230
+invented_name,API,160,0,0,2,16,30,0,0,18,0,0,0,0,0,0,0,0,226
+partition_over_128,tiling rules,0,0,0,110,0,0,0,20,0,0,20,0,0,8,0,0,0,158
+out_of_bounds,index arithmetic,0,63,16,17,0,20,0,0,0,0,0,0,0,24,0,0,0,140
+reshape,index arithmetic,0,1,96,1,0,0,0,0,0,0,0,0,0,0,6,0,4,108
+broadcast,index arithmetic,0,0,0,18,0,0,0,20,0,12,18,0,6,7,5,0,7,93
+tile_1d,tiling rules,0,0,55,0,2,0,0,0,5,1,0,2,0,0,0,0,1,66
+wrong_signature,API,40,2,0,0,0,12,0,0,0,0,0,0,0,0,2,0,0,56
+wrong_buffer,memory model,40,0,0,2,0,0,7,0,0,2,0,0,2,0,0,0,0,53
+transpose_whole_input,index arithmetic,0,0,0,0,0,30,0,0,0,0,0,0,0,0,0,0,0,30
+numeric_mismatch,silent wrong numbers,0,0,0,14,0,0,0,0,0,0,0,0,0,0,0,13,0,27
+python_op_on_tile,memory model,0,0,0,0,7,0,0,0,15,0,0,0,0,0,1,0,0,23
+truncated,rules / format,0,0,0,0,12,0,0,0,0,0,0,2,0,0,2,0,0,16
+wrong_output_shape,index arithmetic,0,0,0,0,0,0,0,0,10,0,0,0,0,0,0,0,0,10
+axis_mismatch,index arithmetic,0,0,0,0,2,0,0,0,3,0,0,0,0,0,3,0,0,8
+other,other,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4
+bad_access_pattern,index arithmetic,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,2
+parse_error,rules / format,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1

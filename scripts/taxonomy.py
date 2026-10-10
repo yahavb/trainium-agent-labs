@@ -30,8 +30,8 @@ MODES = [
      r"has no attribute|object is not callable"),
     ("invented_module", "API", "imports a module that does not exist", r"no module named"),
     ("wrong_signature", "API", "right function, wrong arguments",
-     r"unexpected keyword argument|missing \d+ required|takes \d+ positional|"
-     r"got multiple values for argument"),
+     r"unexpected keyword argument|missing \d+ required|takes (?:from \d+ to )?\d+ positional|"
+     r"got multiple values for argument|Unknown dtype: NkiTensor|'int' object is not iterable"),
     # the agent does not know the memory model
     ("wrong_buffer", "memory model", "a tile in the wrong memory (SBUF / PSUM / HBM)",
      r"must be in \["),
@@ -50,12 +50,16 @@ MODES = [
      r"same number of elements"),
     ("out_of_bounds", "index arithmetic", "indexes past the end of a tensor",
      r"Out-of-bound access"),
-    ("reshape", "index arithmetic", "reshapes instead of slicing", r"cannot reshape"),
+    ("reshape", "index arithmetic", "reshapes instead of slicing (or changes the partition size)",
+     r"cannot reshape|Partition dim size must be preserved"),
     ("broadcast", "index arithmetic", "assigns a value of the wrong shape",
      r"could not be broadcast|shape mismatch|operands could not"),
     ("wrong_output_shape", "index arithmetic", "returns the wrong output shape", r"WRONG SHAPE"),
+    ("transpose_whole_input", "index arithmetic",
+     "level 2: transposes all of x, rows included, instead of each row's F1-by-F2 block", r"(?!)"),
     ("axis_mismatch", "index arithmetic", "an operation given a tile with more axes than it takes",
-     r"more dimensions than allowed by the axis remapping|axis \d+ is out of bounds for array"),
+     r"more dimensions than allowed by the axis remapping|axis \d+ is out of bounds for array|"
+     r"tensor_reduce axis must be the last contiguous"),
     ("bad_access_pattern", "index arithmetic", "a strided .ap() view that does not fit the tile",
      r"ap\(\) pattern|invalid partition stride"),
     # it runs, and the numbers are wrong
@@ -85,7 +89,21 @@ FAMILY = {m: f for m, f, _, _ in MODES}
 DESCRIBE = {m: d for m, _, d, _ in MODES}
 
 
+def _whole_transpose(text):
+    """Level 2: the model transposed all of x (rows included) instead of each row's F1-by-F2 block. Seen as
+    the partition size changing, or an index on axis 1 that runs to P-1 of a (P, F) input."""
+    if not re.search(r"shape=\(\d+, \d+\) as \d+x\d+", text):     # level 2's case label
+        return False
+    if re.search(r"Partition dim size must be preserved", text):
+        return True
+    m = re.search(r"shape=\((\d+), (\d+)\) as \d+x\d+.*?Out-of-bound access for tensor .*? on dimension 1: "
+                  r"index (?:range \[\d+, )?(\d+)", text, re.S)
+    return bool(m and int(m.group(3)) == int(m.group(1)) - 1)
+
+
 def classify(text):
+    if text and _whole_transpose(text):
+        return "transpose_whole_input"
     for mode, _, _, pat in MODES:
         if re.search(pat, text or ""):
             return mode

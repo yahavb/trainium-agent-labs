@@ -19,7 +19,7 @@
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | index arithmetic | `copy_size_mismatch` | copies between tiles of different sizes | 40 | 30 | 26 |  | 96 | 23% | 15 | 62% | AssertionError: dma_copy requires src and dst to have the same number of elements, got src=4, dst=16384 |
 | index arithmetic | `out_of_bounds` | indexes past the end of a tensor |  | 32 | 16 | 16 | 64 | 15% | 5 | 100% | AssertionError: Out-of-bound access for tensor `unnamed` on dimension 0: index 3 exceed dimension size of 3. |
-| index arithmetic | `reshape` | reshapes instead of slicing |  | 1 | 48 | 1 | 50 | 12% | 5 | 100% | ValueError: cannot reshape array of size 32768 into shape (1,64) |
+| index arithmetic | `reshape` | reshapes instead of slicing (or changes the partition size) |  | 1 | 48 | 1 | 50 | 12% | 5 | 100% | ValueError: cannot reshape array of size 32768 into shape (1,64) |
 | index arithmetic | `broadcast` | assigns a value of the wrong shape |  |  |  | 9 | 9 | 2% | 5 | - | ValueError: shape mismatch: value array of shape (65536,) could not be broadcast to indexing result of shape ( |
 | API | `invented_name` | calls an NKI function or attribute that does not exist | 80 |  |  | 1 | 81 | 19% | 6 | 100% | AttributeError: module 'nki.isa' has no attribute 'multiply' `nki.isa` has no `multiply`, and nothing similar  |
 | API | `wrong_signature` | right function, wrong arguments | 20 | 1 |  |  | 21 | 5% | 6 | 0% | TypeError: nc_matmul() got an unexpected keyword argument 'transpose_moving' |
