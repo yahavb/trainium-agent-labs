@@ -52,7 +52,7 @@ REASONING_KEYS = ("reasoning", "reasoning_content")
 WEIGHTS = dict(parses=0.1, rules=0.2, runs=0.2, correct=0.5)
 
 
-def grade(source, level):
+def grade_run(source, level):
     """Returns (reward, parts, feedback). Feedback is an INSTRUCTION, never just a verdict."""
     parts = dict(parses=False, rules=False, runs=False, correct=False)
 
@@ -162,6 +162,189 @@ def grade(source, level):
     return reward, parts, note
 
 
+# ---------------------------------------------------------------- static check (before running)
+#
+# Two checks on the code itself, before it runs, so that every problem they find is reported in ONE
+# round instead of one per round -- a crash only ever reports the first error, and measured on
+# level 1 the model needed five rounds to meet four mistakes that were all in its round-0 code.
+#
+#  API          every nl.x / nisa.x / nki.x name is looked up in the REAL modules, and every call's
+#               keyword arguments in the REAL signature. No list of known-bad names: measured, the
+#               model invented a new one most runs (nisa.multiply, nisa.scalar_mul, nl.assign,
+#               transpose_moving=, nl.sum(dst=...)), so only the real API can be the reference.
+#  RETURN VALUE a call whose result is thrown away, when the function RETURNS its result instead of
+#               writing into a dst= argument. Measured in both --plan-merge runs: the model treated
+#               nl.sum and tile.ap as if they changed a tile in place. `nl.sum(x, axis=[3, 4])` alone
+#               on a line gave an all-NaN output; `tile.ap([...])` alone gave an unrelated-looking
+#               "invalid partition stride" five rounds running. Neither crash names the real cause.
+#
+# Findings are ADDED to the feedback; they never change the reward and never stop the code from
+# running, so a false positive costs a sentence, not a correct kernel.
+
+STATIC_CHECK = True
+NKI_ALIASES = {"nl": "nki.language", "nisa": "nki.isa", "nki": "nki"}
+VIEW_METHODS = ("ap", "reshape")
+
+
+def _dotted_name(node):
+    parts = []
+    while isinstance(node, ast_mod().Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if isinstance(node, ast_mod().Name):
+        parts.append(node.id)
+        return ".".join(reversed(parts))
+    return None
+
+
+def ast_mod():
+    import ast
+    return ast
+
+
+def _resolve(dotted, aliases):
+    """'nl.sum' -> ('nki.language', 'sum', <function or None>, found_module) using the kernel's imports."""
+    import importlib
+    parts = dotted.split(".")
+    if len(parts) < 2 or parts[0] not in aliases:
+        return None
+    mod_path = ".".join([aliases[parts[0]]] + parts[1:-1])
+    try:
+        mod = importlib.import_module(mod_path)
+    except Exception:
+        return None
+    return mod_path, parts[-1], getattr(mod, parts[-1], None), hasattr(mod, parts[-1])
+
+
+def _kernel_aliases(tree):
+    ast = ast_mod()
+    aliases = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for n in node.names:
+                if n.name in ("nki", "nki.language", "nki.isa"):
+                    if n.asname:
+                        aliases[n.asname] = n.name
+                    else:
+                        aliases["nki"] = "nki"
+        elif isinstance(node, ast.ImportFrom) and node.module == "nki":
+            for n in node.names:
+                if n.name in ("language", "isa"):
+                    aliases[n.asname or n.name] = f"nki.{n.name}"
+    return aliases or dict(NKI_ALIASES)
+
+
+def static_check(source):
+    """List of findings, each naming the line and the change to make. Empty if nothing found."""
+    import inspect
+    ast = ast_mod()
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return []
+    aliases = _kernel_aliases(tree)
+    short = {v: k for k, v in aliases.items()}
+    lines = source.splitlines()
+    show = lambda n: lines[n.lineno - 1].strip() if 0 < n.lineno <= len(lines) else ""
+    found, seen = [], set()
+
+    def add(key, text):
+        if key not in seen:
+            seen.add(key)
+            found.append(text)
+
+    # API, part 1: names. Only the outermost attribute of a chain (nl.sum, not nl).
+    inner = {id(n.value) for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Attribute) or id(node) in inner:
+            continue
+        dotted = _dotted_name(node)
+        r = dotted and _resolve(dotted, aliases)
+        if r and not r[3]:
+            mod_path, attr = r[0], r[1]
+            add(("name", dotted), f"line {node.lineno} (`{show(node)}`): `{dotted}` does not "
+                f"exist.{available_names(f'{mod_path}.{attr}')}")
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        dotted = _dotted_name(node.func)
+        r = dotted and _resolve(dotted, aliases)
+        fn = r[2] if r else None
+        sig = None
+        if fn is not None:
+            try:
+                sig = inspect.signature(fn)
+            except (TypeError, ValueError):
+                sig = None
+        # API, part 2: arguments, against the real signature.
+        if sig is not None and not any(isinstance(a, ast.Starred) for a in node.args) \
+                and all(k.arg is not None for k in node.keywords):
+            params = sig.parameters
+            plain = [p for p in params.values() if p.kind not in (p.VAR_POSITIONAL, p.VAR_KEYWORD)]
+            takes_any_kw = any(p.kind == p.VAR_KEYWORD for p in params.values())
+            call = f"{short.get(r[0], r[0])}.{r[1]}"
+            listing = ", ".join([p.name for p in plain if p.default is p.empty]
+                                + [f"{p.name}=..." for p in plain if p.default is not p.empty])
+            for k in node.keywords:
+                if k.arg not in params and not takes_any_kw:
+                    hint = ""
+                    if k.arg == "dst" and "dst" not in params:
+                        hint = (f" {call} does not write into a tile you pass it: it RETURNS the "
+                                f"result. Write `result = {call}(...)` and use `result`.")
+                    add(("kw", node.lineno, k.arg), f"line {node.lineno} (`{show(node)}`): "
+                        f"`{call}` has no argument `{k.arg}=`.{hint} Its arguments are: {listing}.")
+            given = {p.name for p in plain[:len(node.args)]} | {k.arg for k in node.keywords}
+            missing = [p.name for p in plain if p.default is p.empty and p.name not in given]
+            if missing:
+                add(("missing", node.lineno), f"line {node.lineno} (`{show(node)}`): `{call}` is "
+                    f"missing {', '.join(f'`{m}=`' for m in missing)}. Its arguments are: {listing}. "
+                    f"Check that each holds the right kind of value: a tile where it works on data, "
+                    f"a number where it takes a constant.")
+
+    # RETURN VALUE: a call on a line of its own, whose function returns its result.
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Expr) and isinstance(node.value, ast.Call)):
+            continue
+        call = node.value
+        dotted = _dotted_name(call.func)
+        r = dotted and _resolve(dotted, aliases)
+        if r and r[2] is not None:
+            try:
+                writes_dst = "dst" in inspect.signature(r[2]).parameters
+            except (TypeError, ValueError):
+                continue
+            if not writes_dst and ("kw", node.lineno, "dst") not in seen:   # dst= already explained
+                name = f"{short.get(r[0], r[0])}.{r[1]}"
+                add(("ret", node.lineno), f"line {node.lineno} (`{show(node)}`): the result of "
+                    f"`{name}(...)` is thrown away. `{name}` returns a new tile and does not change "
+                    f"its arguments, so write `result = {name}(...)` and use `result` afterwards.")
+        elif isinstance(call.func, ast.Attribute) and call.func.attr in VIEW_METHODS \
+                and not (r and r[3]):
+            m = call.func.attr
+            add(("ret", node.lineno), f"line {node.lineno} (`{show(node)}`): the view returned by "
+                f"`.{m}(...)` is thrown away. `.{m}()` does not change the tile it is called on; it "
+                f"returns a new view of it. Write `view = <tile>.{m}(...)` and use `view` afterwards.")
+    return found[:8]
+
+
+def grade(source, level):
+    """grade_run(), plus the static check's findings in front of the feedback when not correct."""
+    reward, parts, feedback = grade_run(source, level)
+    if STATIC_CHECK and parts.get("parses") and not parts.get("correct"):
+        try:
+            findings = static_check(source)
+        except Exception as e:
+            # Never let the checker's own bug end a run: it is an extra, not the grade.
+            print(f"    (static check skipped: {type(e).__name__}: {e})")
+            findings = []
+        if findings:
+            feedback = ("Before running, a static check of your code found: "
+                        + " ".join(f"({i + 1}) {f}" for i, f in enumerate(findings))
+                        + "\nWhen it ran: " + feedback)
+    return reward, parts, feedback
+
+
 # ---------------------------------------------------------------- prompting
 
 # Every name here appears in the three shipped tutorial kernels, so none of it is invented. The
@@ -214,17 +397,52 @@ def available_names(dotted):
     import difflib
     import importlib
     mod_name, _, attr = dotted.rpartition(".")
-    try:
-        mod = importlib.import_module(mod_name)
-    except Exception:
+    # Measured on level 1: the model wrote op0=nisa.multiply, and the reply said "nki.isa has no
+    # multiply, and nothing similar exists" -- true of nki.isa, but nl.multiply is real and is
+    # exactly what the API card shows. The reply then listed nki.isa's first 25 names
+    # alphabetically (bn_aggr, dropout, iota ... max8), none relevant, and the model froze for three
+    # rounds. So search all three modules, and never dump an alphabetical slice.
+    aliases = {"nki.language": "nl", "nki.isa": "nisa", "nki": "nki"}
+    here = aliases.get(mod_name, mod_name)
+
+    # Every public name, written the way a kernel writes it: bare name -> ["nl.x", "nisa.x", ...]
+    import types
+    names = {}
+    for mod, alias in aliases.items():
+        try:
+            m = importlib.import_module(mod)
+        except Exception:
+            continue
+        for n in dir(m):
+            # Skip submodules: `nki.language` is an attribute of nki, not something to call.
+            if not n.startswith("_") and not isinstance(getattr(m, n, None), types.ModuleType):
+                names.setdefault(n, []).append(f"{alias}.{n}")
+    if not names:
         return ""
-    names = [n for n in dir(mod) if not n.startswith("_")]
-    close = difflib.get_close_matches(attr, names, n=6, cutoff=0.4)
+
+    # 1. The exact name exists, only in a different module.
+    elsewhere = [q for q in names.get(attr, []) if q != f"{here}.{attr}"]
+    if elsewhere:
+        return (f" `{attr}` is not in `{mod_name}` but it IS real: write `{elsewhere[0]}`, not "
+                f"`{here}.{attr}`.")
+
+    # 2. The closest names across nki, nl and nisa, each written with its module. Word parts
+    #    first: scalar_mul shares "scalar" with tensor_scalar and "mul" starts multiply, yet
+    #    spelling similarity alone ranks it 0.52, below junk like dot -> dropout at 0.60.
+    parts = [p for p in attr.lower().split("_") if len(p) >= 3]
+    close = [n for n in names
+             if any(q == p or q.startswith(p) for p in parts for q in n.lower().split("_"))]
+    close += [n for n in difflib.get_close_matches(attr, list(names), n=6, cutoff=0.6)
+              if n not in close]
+    close = close[:6]
     if close:
-        return (f" `{mod_name}` has no `{attr}`. The closest real names are: "
-                f"{', '.join(close)}. Pick one of those or use a different approach.")
-    return (f" `{mod_name}` has no `{attr}`, and nothing similar exists. Its real names include: "
-            f"{', '.join(sorted(names)[:25])}.")
+        found = [q for n in close for q in names[n] if q != f"{here}.{attr}"][:6]
+        return (f" `{here}` has no `{attr}`. The closest real names in nki, nl and nisa are: "
+                f"{', '.join(found)}. Pick one of those or use a different approach.")
+
+    # 3. Nothing close anywhere. Point back at the card, which lists the calls these levels use.
+    return (f" `{attr}` does not exist in nki, nl or nisa, and nothing similar does. Use only the "
+            f"functions listed under 'Available NKI functions'.")
 
 
 def real_signature(func_name):
@@ -245,6 +463,29 @@ def real_signature(func_name):
     return ""
 
 
+def argument_list(func_name):
+    """Every argument of an NKI function, split into required and optional, written as a kernel
+    writes the call (nisa.x / nl.x). Returns (call_name, required, optional) or None."""
+    import inspect
+    for mod_name, alias in (("nki.isa", "nisa"), ("nki.language", "nl"), ("nki", "nki")):
+        try:
+            mod = __import__(mod_name, fromlist=["x"])
+        except Exception:
+            continue
+        fn = getattr(mod, func_name, None)
+        if fn is None:
+            continue
+        try:
+            params = inspect.signature(fn).parameters.values()
+        except (TypeError, ValueError):
+            return None
+        plain = [p for p in params if p.kind not in (p.VAR_POSITIONAL, p.VAR_KEYWORD)]
+        required = [p.name for p in plain if p.default is p.empty]
+        optional = [f"{p.name}={p.default!r}" for p in plain if p.default is not p.empty]
+        return f"{alias}.{func_name}", required, optional
+    return None
+
+
 def enrich(error_text):
     """Add the real names when the failure is an invented API call."""
     if "'MemoryRegion' object is not callable" in error_text:
@@ -252,6 +493,23 @@ def enrich(error_text):
                 "functions. Do not call them. Allocate with "
                 "nl.ndarray(shape, dtype=nl.float32, buffer=nl.sbuf) and pass the region as the "
                 "buffer= argument.")
+    # Measured on level 1: told only "tensor_scalar() missing 1 required positional argument:
+    # 'operand0'", the model added operand0 and left data=0.5 alone, so the next round failed on
+    # data. Name every argument the function takes, so all of them can be checked in one round.
+    m = re.search(r"(\w+)\(\) missing \d+ required (?:positional |keyword-only )?arguments?: (.+)",
+                  error_text)
+    if m:
+        missing = re.findall(r"'(\w+)'", m.group(2))
+        info = argument_list(m.group(1))
+        if not info:
+            return error_text + f" Add the missing argument(s): {', '.join(missing)}."
+        call, required, optional = info
+        return (error_text + f" Add {', '.join(f'`{a}=`' for a in missing)}. {call} takes these "
+                f"REQUIRED arguments: {', '.join(required)}"
+                + (f"; and these optional ones: {', '.join(optional)}" if optional else "")
+                + f". Pass every argument by keyword, and check that each one holds the right kind "
+                  f"of value: a tile where the function works on data, a number where it takes a "
+                  f"constant.")
     m = re.search(r"(\w+)\(\) got an unexpected keyword argument '(\w+)'", error_text)
     if m:
         sig = real_signature(m.group(1))
@@ -334,6 +592,10 @@ def enrich(error_text):
                 "first, then a free dimension. A 1-D tile is not allowed, so write "
                 "nl.ndarray((rows, cols), ...) and give a length-N vector the shape (1, N) or "
                 "(N, 1) depending on which axis you are reducing over.")
+    # KNOWN GAP, deliberately left as in the original for the --plan vs --plan-merge comparison: the
+    # NKI simulator says "cannot reshape TENSOR of size ...", so this numpy-worded rule never fires
+    # on tiles. Do NOT fix it as "tiles cannot be reshaped": measured under --plan, reshaping a WHOLE
+    # (C, H, W) tile to 5D works; the failure was reshaping a 2D slice with too few elements.
     if "cannot reshape array of size" in error_text:
         return (error_text + " Do not reshape. Work with the shapes you were given and slice "
                 "them into tiles, e.g. src=a[0:128, 0:64].")
@@ -346,7 +608,47 @@ def enrich(error_text):
                 f"`{m.group(2)}`. Use the nl/nisa functions instead.")
     return error_text
 
-def first_prompt(level, terse=0):
+# --spec words: the first prompt describes the operation in WORDS instead of showing the NumPy
+# reference. The words are written by the model itself from the reference, once per level, so no
+# human writes any explanation and any level -- or a new one -- works without hand-written text.
+# The reference stays the definition the checker grades against; only what the model is SHOWN
+# changes. Measured under --plan on level 1: the model copied the reference's
+# reshape(...).mean(axis=(2, 4)) into NKI, where that does not work, and stalled there.
+DESCRIBE_PROMPT = """Here is a Python function:
+
+{code}
+Describe in plain English exactly what it computes, so that someone who never sees this code could
+implement it from your description alone. Cover the inputs (names, shapes, meaning), the output
+(shape and dtype), and precisely which input elements each output element is computed from and how,
+including what happens to any input elements that are left over or ignored.
+
+Do not write any code, do not name any NumPy function or method, and do not describe how the
+function is implemented -- only what result it produces. Reply with the description only."""
+
+
+def describe_reference(a, level):
+    """Ask the model, thinking off, to turn the level's NumPy reference into a plain description."""
+    import inspect
+    code = inspect.getsource(nkibench.LEVELS[level]["ref"])
+    r = chat(a, DESCRIBE_PROMPT.format(code=code), False, a.summary_tokens)
+    text = re.sub(r"```.*?```", "", r["content"], flags=re.S).strip()   # drop any code it wrote anyway
+    return text, r
+
+
+def what_to_compute(level, spec, described=None):
+    """The part of the first prompt that defines the operation. spec='code' is byte-for-byte what
+    the prompt always contained, so runs with and without --spec stay comparable."""
+    import inspect
+    s = nkibench.LEVELS[level]
+    if spec == "code" or not described:
+        return inspect.getsource(s["ref"])
+    # The signature is read from the reference, not written by hand: the model needs the argument
+    # names and order, which the code used to show.
+    sig = f"def {s['entry']}({', '.join(inspect.signature(s['ref']).parameters)}):"
+    return f"The function signature is:\n    {sig}\n\n{described}\n"
+
+
+def first_prompt(level, terse=0, spec="code", described=None):
     """Deliberately short, and it does NOT list the rules.
 
     Measured twice in this repo: hand a model an enumerated list of prohibitions and it audits
@@ -361,7 +663,7 @@ def first_prompt(level, terse=0):
         # tokens while every structured, rule-carrying prompt spiralled.
         return (f"Write a Python function `{s['entry']}` decorated with @nki.jit that computes "
                 f"the same thing as this, using nki.language as nl and nki.isa as nisa:\n\n"
-                f"{inspect.getsource(s['ref'])}\n"
+                f"{what_to_compute(level, spec, described)}\n"
                 f"Reply with one python code block.")
     if terse >= 1:
         # The matmul memory rules are the substance of levels 3 and 4, and the short prompt has to
@@ -374,7 +676,7 @@ def first_prompt(level, terse=0):
               if level >= 3 else "")
         return (f"Write an AWS Neuron NKI kernel: a function `{s['entry']}` decorated with "
                 f"@nki.jit that computes what this reference computes.\n\n"
-                f"{inspect.getsource(s['ref'])}\n"
+                f"{what_to_compute(level, spec, described)}\n"
                 f"Allocate with nl.ndarray(shape, dtype=..., buffer=nl.sbuf), move data with "
                 f"nisa.dma_copy(dst=, src=), loop with nl.affine_range(n). A tile's partition "
                 f"dimension is at most {nkibench.PMAX}.\n{mm}\n"
@@ -383,8 +685,9 @@ def first_prompt(level, terse=0):
         f"Write an AWS Neuron NKI kernel.\n\n"
         f"Operation: {s['op']}\n"
         f"Entry point: a function named `{s['entry']}`, decorated with `@nki.jit`.\n"
-        f"It must compute exactly what this NumPy reference computes:\n\n"
-        f"{inspect.getsource(s['ref'])}\n"
+        + (f"It must compute exactly what this NumPy reference computes:\n\n"
+           if spec == "code" or not described else "It must compute exactly this:\n\n")
+        + f"{what_to_compute(level, spec, described)}\n"
         f"Hardware limits: a tile's partition dimension is at most {nkibench.PMAX}. For matmul, "
         f"the stationary free dimension is at most {nkibench.GEMM_STATIONARY_FMAX} and the "
         f"moving free dimension at most {nkibench.GEMM_MOVING_FMAX}.\n\n"
@@ -392,18 +695,57 @@ def first_prompt(level, terse=0):
         f"Reply with ONE python code block containing the imports and the function. No prose.")
 
 
-def repair_prompt(level, source, feedback):
+HISTORY_MAX_CHARS = 6000      # ~1,500 tokens: what the merge summary can spare at an 8k context
+
+
+def history_block(attempts, keep):
+    """Earlier failed attempts -- code and checker report only, no model-written explanation, so
+    nothing in it can be a wrong diagnosis. Newest first until --history attempts or
+    HISTORY_MAX_CHARS is reached, identical code shown once, then printed oldest first."""
+    if keep <= 0 or not attempts:
+        return ""
+    picked, used, codes = [], 0, set()
+    for rnd, code, feedback in reversed(attempts):
+        if code in codes:
+            continue
+        entry = (f"--- round {rnd} ---\n```python\n{code}\n```\n"
+                 f"Checker: {feedback[:600]}{' ...' if len(feedback) > 600 else ''}\n")
+        if picked and used + len(entry) > HISTORY_MAX_CHARS:
+            break
+        picked.append(entry)
+        codes.add(code)
+        used += len(entry)
+        if len(picked) >= keep:
+            break
+    return ("Earlier attempts that also failed, oldest first. Do not go back to any of them:\n\n"
+            + "\n".join(reversed(picked)) + "\n")
+
+
+def repair_prompt(level, source, feedback, card=True, history=""):
     """One named change, and the previous code. No rules list, no reference re-sent.
 
     The lesson this whole repo keeps re-learning: feeding a verifier's report back verbatim
     reproduces the same mistake, because a report says what is wrong and never what to do.
+
+    The closing line used to be "Change exactly what the checker names and keep everything else
+    identical". Measured on level 1, the model then refused to touch anything the feedback did not
+    name -- data=0.5 survived three rounds -- and returned identical code when the feedback was
+    vague. It now asks only for the necessary changes.
+
+    card=True re-sends API_CARD (~400 tokens). Measured on level 1 without it: from round 1 on the
+    model no longer saw the card, and guessed nisa.multiply, op=nisa.multiply and nisa.scalar_mul
+    for three rounds, although the card's nisa.tensor_scalar line is the real call.
+    Turn it off with --repair-card 0 to compare.
     """
+    api = f"{API_CARD}\n" if card else ""
     return (
+        f"{history}"
         f"This NKI kernel for {nkibench.LEVELS[level]['op']} is not right yet.\n\n"
         f"```python\n{source}\n```\n\n"
+        f"{api}"
         f"A checker reports:\n{feedback}\n\n"
-        f"Change exactly what the checker names and keep everything else identical. Reply with "
-        f"ONE python code block.")
+        f"Make only the changes that are necessary to fix this. Reply with ONE python code "
+        f"block.")
 
 
 CODE_BLOCK = re.compile(r"```(?:python)?\s*(.*?)```", re.S)
@@ -430,47 +772,205 @@ def extract_code(text):
 
 # ---------------------------------------------------------------- the model
 
-def ask(a, prompt):
+THINK_TAGS = re.compile(r"<think>(.*?)(?:</think>|$)", re.S)
+
+
+def split_thinking(msg, think):
+    """Return (thinking, answer) from one chat message.
+
+    Where the reasoning lands depends on how vLLM was started. With a reasoning parser it arrives in
+    its own field; without one (serve.sh passes none) it is inline in `content`, as
+    <think>...</think> -- and Qwen3's template may already have opened the tag in the prompt, so the
+    reply can hold only a closing </think>, or no tag at all if the budget ran out mid-thought.
+    """
+    content = msg.get("content") or ""
+    thinking = next((msg[k] for k in REASONING_KEYS if msg.get(k)), "")
+    if "<think>" in content:
+        thinking += "".join(THINK_TAGS.findall(content))
+        content = THINK_TAGS.sub("", content)
+    elif "</think>" in content:
+        before, _, content = content.partition("</think>")
+        thinking += before
+    elif think and not thinking:
+        # Thinking was on, the budget ran out before </think>: everything we got is thinking.
+        thinking, content = content, ""
+    return thinking.strip(), content.strip()
+
+
+def chat(a, prompt, think, max_tokens, temperature=0.6):
+    """One request. Returns dict(thinking, content, finish, seconds, temperature)."""
     import httpx
-    # enable_thinking=False matters. Qwen3 reasons before answering, and with thinking on it
-    # spent the whole budget there: the first cluster run returned "No code came back" at 54.7s
-    # over and over, plus truncated fragments (invalid decimal literal, unterminated string).
     # Keep prompt + answer inside the server's context, or the answer is silently cut off and
     # every parse error below is really a budget error. Repair prompts grow with the kernel.
     est_prompt = len(prompt) // 4
-    budget = min(a.max_tokens, max(256, a.context - est_prompt - 64))
-    if budget < a.max_tokens:
-        print(f"    (prompt is ~{est_prompt} tokens, so the answer budget is capped at {budget} "
+    budget = min(max_tokens, max(256, a.context - est_prompt - 64))
+    if budget < max_tokens:
+        print(f"    (prompt is ~{est_prompt} tokens, so the budget is capped at {budget} "
               f"to stay inside the {a.context}-token context)")
     body = dict(model=a.model, messages=[{"role": "user", "content": prompt}],
-                max_tokens=budget, temperature=0.6, top_p=0.95,
-                chat_template_kwargs={"enable_thinking": a.think})
+                max_tokens=budget, temperature=temperature, top_p=0.95,
+                chat_template_kwargs={"enable_thinking": think})
+    t0 = time.perf_counter()
     r = httpx.post(f"{a.base.rstrip('/')}/chat/completions", json=body,
-                   timeout=900, verify=False)
+                   timeout=1800, verify=False)
     if r.status_code != 200:
         raise SystemExit(f"the endpoint returned HTTP {r.status_code}:\n{r.text[:600]}")
-    payload = r.json()
-    ch = payload["choices"][0]
-    msg = ch.get("message", {})
-    reasoning = next((msg[k] for k in REASONING_KEYS if msg.get(k)), "")
-    content = msg.get("content") or ""
-    finish = ch.get("finish_reason")
-    if finish == "length":
+    ch = r.json()["choices"][0]
+    thinking, content = split_thinking(ch.get("message", {}), think)
+    return dict(thinking=thinking, content=content, finish=ch.get("finish_reason"),
+                seconds=round(time.perf_counter() - t0, 1), temperature=temperature)
+
+
+def ask(a, prompt):
+    """The original single request. Returns the same dict shape as ask_planned()."""
+    # enable_thinking=False matters. Qwen3 reasons before answering, and with thinking on it
+    # spent the whole budget there: the first cluster run returned "No code came back" at 54.7s
+    # over and over, plus truncated fragments (invalid decimal literal, unterminated string).
+    r = chat(a, prompt, a.think, a.max_tokens)
+    if r["finish"] == "length":
         # Do not let a budget problem look like a model failure.
-        print(f"    (TRUNCATED: finish_reason=length after {len(content)} chars. The answer was "
-              f"cut off, so any parse error below is the budget, not the model. Prompt is "
-              f"{len(prompt)} chars; server context is the ceiling.)")
-    if not content.strip() and reasoning:
-        # The single most common surprise on this endpoint, so name it rather than reporting
-        # an empty answer as a model failure.
-        print(f"    (empty answer, {len(reasoning)} chars of hidden reasoning, "
-              f"finish={ch.get('finish_reason')} — shorten the prompt rather than raising the "
-              f"budget)")
-    return content
+        print(f"    (TRUNCATED: finish_reason=length after {len(r['content'])} chars. The answer "
+              f"was cut off, so any parse error below is the budget, not the model.)")
+    if not r["content"] and r["thinking"]:
+        print(f"    (empty answer, {len(r['thinking'])} chars of thinking, finish={r['finish']} "
+              f"-- shorten the prompt rather than raising the budget)")
+    return dict(reply=r["content"], thinking=r["thinking"], summary="",
+                stages=[dict(stage="answer", think=a.think, finish=r["finish"],
+                             seconds=r["seconds"])])
+
+
+SUMMARY_PROMPT = """You were asked to do the task below, and you thought about it first. Your notes are
+below the task. They may stop mid-sentence.
+
+=== TASK ===
+{task}
+
+=== YOUR NOTES ===
+{thinking}
+
+=== NOW ===
+Summarize your notes into a short, concrete plan of at most 10 bullet points:
+- what the kernel must compute, and the approach that computes it
+- if there is existing code: what is wrong with it, and every change it needs
+- the exact NKI calls to use, with their arguments
+Do not write the full kernel. Reply with the bullet points only."""
+
+CODE_PROMPT = """{task}
+
+A plan worked out for this task:
+{summary}
+
+Follow the plan. Reply with ONE python code block."""
+
+
+def ask_planned(a, prompt, temperature=0.6):
+    """--plan: think with a fixed budget, summarize the thinking, then write code without thinking.
+
+    1. thinking ON, at most --think-tokens. Only the thinking is kept; a truncated thought is fine.
+    2. thinking OFF: the model condenses its own thinking into a short plan.
+    3. thinking OFF: the original prompt plus that plan, answered with code.
+
+    Why this shape. Measured with plain --think: every sample ran out of budget mid-thought and
+    returned no code, at 446 s a round. Capping the thought and then asking for the answer in a
+    separate request with thinking off guarantees an answer, and the summary keeps the third prompt
+    short -- long prompts are what pushed both models in this repo into reasoning instead of answering.
+    """
+    t = chat(a, prompt, True, a.think_tokens, temperature)
+    s = chat(a, SUMMARY_PROMPT.format(task=prompt, thinking=t["thinking"] or "(no notes)"),
+             False, a.summary_tokens)
+    summary = s["content"]
+    c = chat(a, CODE_PROMPT.format(task=prompt, summary=summary or "(no plan)"),
+             False, a.max_tokens)
+    if c["finish"] == "length":
+        print(f"    (TRUNCATED code answer after {len(c['content'])} chars)")
+    return dict(reply=c["content"], thinking=t["thinking"], summary=summary,
+                stages=[dict(stage=name, think=(name == "think"), finish=r["finish"],
+                             seconds=r["seconds"], temperature=r["temperature"],
+                             chars=len(r["thinking"] or r["content"]))
+                        for name, r in (("think", t), ("summary", s), ("code", c))])
+
+
+MERGE_PROMPT = """You were asked to do the task below. {n} separate attempts at thinking about it
+follow the task. They were written independently, may disagree, and may stop mid-sentence.
+
+=== TASK ===
+{task}
+
+{thoughts}
+
+=== NOW ===
+Combine the useful parts of ALL the attempts into one short, concrete plan of at most 10 bullet
+points. Where they disagree, choose the option that is correct for the task and the NKI functions
+listed in it, and drop the rest.
+- what the kernel must compute, and the approach that computes it
+- if there is existing code: what is wrong with it, and every change it needs
+- the exact NKI calls to use, with their arguments
+Do not write the full kernel. Reply with the bullet points only."""
+
+
+def clip_middle(text, max_chars):
+    """Keep the opening (the plan the model starts with) and the end (where it had got to)."""
+    if len(text) <= max_chars:
+        return text
+    head = max_chars // 3
+    return text[:head] + "\n[... middle omitted ...]\n" + text[-(max_chars - head):]
+
+
+def ask_merged(a, prompt, n):
+    """--plan-merge: n thinkings in parallel, ONE summary of all of them, n code attempts from it.
+
+    1. thinking ON, n requests at once, each at its own temperature from --think-temps.
+    2. thinking OFF, one request: every thought, clipped to fit the context, merged into one plan.
+    3. thinking OFF, n requests at once: the original prompt plus that one plan. They also cycle
+       through --think-temps: with thinking off and an identical prompt, Qwen3 returned the same
+       code for every sample on level 1, which would make n attempts cost n and count as one.
+    """
+    import concurrent.futures as cf
+    temps = [a.think_temps[i % len(a.think_temps)] for i in range(n)]
+    with cf.ThreadPoolExecutor(max_workers=n) as ex:
+        thoughts = list(ex.map(lambda t: chat(a, prompt, True, a.think_tokens, t), temps))
+
+    # Fit every thought into what the context leaves after the task and the summary's own budget.
+    # Estimated at 3 characters a token rather than chat()'s 4, with 600 tokens spare: an overlong
+    # request is rejected by the server, and that ends the whole run, not just this sample.
+    room = a.context - len(prompt) // 3 - a.summary_tokens - 600
+    per = max(200, room // max(1, n)) * 3                       # characters per thought
+    blocks = [f"=== THINKING ATTEMPT {i + 1} (temperature {t['temperature']}) ===\n"
+              f"{clip_middle(t['thinking'] or '(no notes)', per)}"
+              for i, t in enumerate(thoughts)]
+    s = chat(a, MERGE_PROMPT.format(n=n, task=prompt, thoughts="\n\n".join(blocks)),
+             False, a.summary_tokens)
+    summary = s["content"]
+
+    code_prompt = CODE_PROMPT.format(task=prompt, summary=summary or "(no plan)")
+    with cf.ThreadPoolExecutor(max_workers=n) as ex:
+        codes = list(ex.map(lambda t: chat(a, code_prompt, False, a.max_tokens, t), temps))
+
+    thinking = "\n\n".join(blocks)        # as the summary saw it, clipped
+    out = []
+    for i, c in enumerate(codes):
+        if c["finish"] == "length":
+            print(f"    (TRUNCATED code answer {i} after {len(c['content'])} chars)")
+        out.append(dict(
+            reply=c["content"], thinking=thinking, summary=summary,
+            stages=[dict(stage=f"think{j}", think=True, finish=t["finish"], seconds=t["seconds"],
+                         temperature=t["temperature"], chars=len(t["thinking"]))
+                    for j, t in enumerate(thoughts)]
+                   + [dict(stage="summary", think=False, finish=s["finish"], seconds=s["seconds"],
+                           chars=len(summary)),
+                      dict(stage="code", think=False, finish=c["finish"], seconds=c["seconds"],
+                           temperature=c["temperature"], chars=len(c["content"]))]))
+    return out
 
 
 def ask_parallel(a, prompt, n):
     import concurrent.futures as cf
+    if a.plan_merge:
+        return ask_merged(a, prompt, n)
+    if a.plan:
+        temps = [a.think_temps[i % len(a.think_temps)] for i in range(n)]
+        with cf.ThreadPoolExecutor(max_workers=n) as ex:
+            return list(ex.map(lambda t: ask_planned(a, prompt, t), temps))
     with cf.ThreadPoolExecutor(max_workers=n) as ex:
         return [f.result() for f in [ex.submit(ask, a, prompt) for _ in range(n)]]
 
@@ -479,34 +979,97 @@ def offline_answers(level, n, rnd):
     """No model. Replays the shipped reference, preceded by a deliberately broken version, so the
     loop and the feedback path can be exercised with no endpoint. Never report a number."""
     ref = open(f"reference_level{level}.py").read()
-    if rnd == 0:
-        broken = ref.replace("@nki.jit", "", 1)
-        return [f"```python\n{broken}\n```"] * n
-    return [f"```python\n{ref}\n```"] * n
+    code = ref.replace("@nki.jit", "", 1) if rnd == 0 else ref
+    return [dict(reply=f"```python\n{code}\n```", thinking="", summary="", stages=[])] * n
+
+
+# ---------------------------------------------------------------- the transcript
+
+def write_transcript(out, run, level, rnd, prompt, records):
+    """Append one round to the human-readable transcript: the prompt once, then every DISTINCT
+    sample with its thinking, summary, reply and feedback. Identical samples are printed once.
+    Under --plan-merge every sample shares one thinking and one summary, so those print once."""
+    if out is None:
+        return
+    w = lambda s="": print(s, file=out)
+    stage_line = lambda st: "stages: " + ", ".join(
+        f"{s['stage']} {s['seconds']}s" + (f" t={s['temperature']}" if "temperature" in s else "")
+        + f" finish={s['finish']}" for s in st)
+    rewards = [round(r["reward"], 2) for r in records]
+    keys = [(r["thinking"], r["summary"], r["reply"]) for r in records]
+    shared = len({(r["thinking"], r["summary"]) for r in records}) == 1 and records[0]["summary"]
+    w("=" * 80)
+    w(f"run {run}  level {level}  round {rnd}  rewards {rewards}  "
+      f"({len(set(keys))} distinct of {len(records)} samples)")
+    w("-" * 30 + " PROMPT " + "-" * 30)
+    w(prompt)
+    if shared:
+        r = records[0]
+        if r["stages"]:
+            w(stage_line([s for s in r["stages"] if s["stage"] != "code"]))
+        w("-" * 30 + " THINKING (all attempts, as the summary saw them) " + "-" * 5)
+        w(r["thinking"])
+        w("-" * 30 + " SUMMARY (shared by every sample) " + "-" * 5)
+        w(r["summary"])
+    shown = set()
+    for i, (r, k) in enumerate(zip(records, keys)):
+        if k in shown:
+            continue
+        shown.add(k)
+        same = [j for j, x in enumerate(keys) if x == k and j != i]
+        w("#" * 30 + f" SAMPLE {i}" + (f" (same as {same})" if same else "") + " " + "#" * 20)
+        if r["stages"]:
+            w(stage_line([s for s in r["stages"] if not shared or s["stage"] == "code"]))
+        if r["thinking"] and not shared:
+            w("-" * 30 + " THINKING " + "-" * 28)
+            w(r["thinking"])
+        if r["summary"] and not shared:
+            w("-" * 30 + " SUMMARY " + "-" * 29)
+            w(r["summary"])
+        w("-" * 30 + " REPLY " + "-" * 31)
+        w(r["reply"])
+        w("-" * 30 + f" FEEDBACK (reward {round(r['reward'], 2)}) " + "-" * 15)
+        w(r["feedback"])
+    out.flush()
 
 
 # ---------------------------------------------------------------- the loop
 
-def solve(a, level, log):
+def solve(a, level, log, transcript=None, run=0):
     print(f"\n=========== level {level}: {nkibench.LEVELS[level]['op']} ===========")
     terse = a.terse
-    prompt = first_prompt(level, terse)
+    described = None
+    if a.spec == "words" and not a.offline:
+        described, r = describe_reference(a, level)
+        print(f"  --spec words: the model described the reference in {len(described)} chars "
+              f"({r['seconds']}s):\n" + textwrap.indent(described, "    | "))
+        if transcript is not None:
+            print("=" * 80 + f"\nlevel {level}: DESCRIPTION OF THE REFERENCE, written by the model "
+                  f"(replaces the NumPy code in the first prompt)\n" + "-" * 80 + f"\n{described}",
+                  file=transcript)
+    prompt = first_prompt(level, terse, a.spec, described)
     best = (0.0, None, "")
     tried, streak, seen = [], 0, {}
+    attempts = []                       # (round, code, feedback) of the attempt each round repaired
     latest = ("", "")
     for rnd in range(a.rounds):
         t0 = time.perf_counter()
         replies = (offline_answers(level, a.samples, rnd) if a.offline
                    else ask_parallel(a, prompt, a.samples))
-        graded = []
-        for reply in replies:
+        graded, records = [], []
+        for r in replies:
+            reply = r["reply"]
             src = extract_code(reply)
             reward, parts, feedback = grade(src, level)
             graded.append((reward, src, feedback, parts))
-            log.write(json.dumps(dict(level=level, round=rnd, reward=reward, parts=parts,
-                                      prompt_chars=len(prompt), reply_chars=len(reply),
-                                      code=src, feedback=feedback)) + "\n")
+            rec = dict(run=run, level=level, round=rnd, reward=reward, parts=parts,
+                       prompt_chars=len(prompt), reply_chars=len(reply),
+                       prompt=prompt, thinking=r["thinking"], summary=r["summary"],
+                       reply=reply, stages=r["stages"], code=src, feedback=feedback)
+            records.append(rec)
+            log.write(json.dumps(rec) + "\n")
         log.flush()
+        write_transcript(transcript, run, level, rnd, prompt, records)
         graded.sort(key=lambda g: g[0], reverse=True)
         top = graded[0]
         if top[0] > best[0]:
@@ -517,6 +1080,9 @@ def solve(a, level, log):
         # stuck at 0.10 for four rounds while the prompt still carried the 0.50 code.
         if (top[1] or "").strip():
             latest = (top[1], top[2])
+            attempts.append((rnd, top[1], top[2]))
+        # The latest attempt is already in the repair prompt in full, so history is the ones before.
+        hist = history_block([x for x in attempts if x[1] != latest[0]], a.history)
         same = top[2] == (tried[-1] if tried else None)
         if same:
             # Collapse. Fifteen identical multi-line blocks is noise, not information.
@@ -549,7 +1115,7 @@ def solve(a, level, log):
             # answer. Measured: the same TypeError 19 rounds running. Changing the prompt is the
             # only thing that can change the answer, so say what has already been tried.
             ledger = "\n".join(f"- {t[:160]}" for t in dict.fromkeys(tried))
-            prompt = (repair_prompt(level, latest[0], latest[1])
+            prompt = (repair_prompt(level, latest[0], latest[1], a.repair_card, hist)
                       + f"\n\nThese approaches have already failed, so do something different:\n"
                         f"{ledger}")
             print(f"  same failure {repeats}x — adding a ledger of {len(set(tried))} failed "
@@ -560,10 +1126,10 @@ def solve(a, level, log):
             # 202-character prompt and, under greedy sampling, the identical non-answer six
             # rounds running. Shorten and re-ask instead.
             terse = min(terse + 1, 2)
-            prompt = first_prompt(level, terse)
+            prompt = first_prompt(level, terse, a.spec, described)
             print(f"  no code yet, so re-asking with a shorter prompt (terseness {terse})")
         else:
-            prompt = repair_prompt(level, latest[0], latest[1])
+            prompt = repair_prompt(level, latest[0], latest[1], a.repair_card, hist)
     print(f"  not solved in {a.rounds} rounds; best reward {best[0]:.2f}")
     return best[0], a.rounds
 
@@ -593,8 +1159,42 @@ def main():
                          "Qwen3-8B is fine at 0.")
     ap.add_argument("--context", type=int, default=4096,
                     help="the server's max-model-len; prompt + answer must fit inside it")
+    ap.add_argument("--repair-card", type=int, default=1, choices=(0, 1),
+                    help="1 (default) puts the API card in every repair prompt as well as the first "
+                         "one; 0 is the original behaviour, for comparison")
+    ap.add_argument("--history", type=int, default=0,
+                    help="put up to N earlier failed attempts (their code and checker report, no "
+                         "explanation) in every repair prompt, capped at ~1,500 tokens. 0 (default): "
+                         "only the latest attempt, as in earlier runs")
+    ap.add_argument("--static-check", type=int, default=1, choices=(0, 1),
+                    help="1 (default): before running, check every NKI name and keyword argument "
+                         "against the real modules and flag results that are thrown away, and put "
+                         "what it finds in front of the feedback. 0: off, as in earlier runs")
+    ap.add_argument("--spec", default="code", choices=("code", "words"),
+                    help="how the first prompt defines the operation: code = the NumPy reference "
+                         "(default, unchanged); words = the model first describes the reference in "
+                         "plain English, and the first prompt shows that description and the "
+                         "signature instead of the code")
     ap.add_argument("--think", action="store_true",
                     help="let the model reason first; costs budget, and it ran out")
+    ap.add_argument("--plan", action="store_true",
+                    help="three requests per sample: think (capped at --think-tokens), summarize "
+                         "that thinking into a plan, then write the code with thinking OFF")
+    ap.add_argument("--think-tokens", type=int, default=2000,
+                    help="--plan: the thinking budget of step 1")
+    ap.add_argument("--plan-merge", action="store_true",
+                    help="like --plan, but all --samples thinkings feed ONE summary, and every code "
+                         "attempt is written from that same summary")
+    ap.add_argument("--think-temps", default=None,
+                    help="comma-separated temperatures, cycled across samples for the thinking (and, "
+                         "under --plan-merge, the code) requests. Default: 0.6 for --plan, "
+                         "0.6,0.75,0.9,1.0 for --plan-merge")
+    ap.add_argument("--summary-tokens", type=int, default=700,
+                    help="--plan: the budget for the summary of step 2")
+    ap.add_argument("--transcript", default=None,
+                    help="readable transcript of this run (prompt, thinking, summary, reply, "
+                         "feedback per round). Default: the --log name with .txt instead of "
+                         ".jsonl. Overwritten each time, unlike the .jsonl log, which appends.")
     ap.add_argument("--offline", action="store_true")
     a = ap.parse_args()
 
@@ -624,13 +1224,29 @@ def main():
     full = sum(WEIGHTS.values())
     history = {lv: [] for lv in levels}
 
-    with open(a.log, "a") as log:
+    global STATIC_CHECK
+    STATIC_CHECK = bool(a.static_check)
+    if a.transcript is None:
+        a.transcript = os.path.splitext(a.log)[0] + ".txt"
+    if a.think_temps is None:
+        a.think_temps = "0.6,0.75,0.9,1.0" if a.plan_merge else "0.6"
+    a.think_temps = [float(t) for t in a.think_temps.split(",")]
+    if a.plan_merge:
+        print(f"plan-merge mode: {a.samples} thinkings of {a.think_tokens} tokens at temperatures "
+              f"{a.think_temps} -> one summary -> {a.samples} code attempts")
+    elif a.plan:
+        print(f"plan mode: think {a.think_tokens} tokens -> summary {a.summary_tokens} -> code "
+              f"{a.max_tokens}, three requests per sample")
+
+    with open(a.log, "a") as log, open(a.transcript, "w", encoding="utf-8") as transcript:
+        print(f"command: {' '.join(sys.argv)}", file=transcript)
+        print(f"started: {time.strftime('%Y-%m-%d %H:%M:%S')}  model {a.model}", file=transcript)
         for rep in range(a.repeat):
             if a.repeat > 1:
                 print(f"\n################ run {rep + 1} of {a.repeat} ################")
             results = []
             for level in levels:
-                results.append((level,) + solve(a, level, log))
+                results.append((level,) + solve(a, level, log, transcript, rep))
                 history[level].append(results[-1][1])
 
             print("\n=========== summary ===========")
@@ -651,6 +1267,7 @@ def main():
                   f"mean {sum(got) / len(got):.2f}  all={[round(r, 2) for r in got]}")
         print("\n  Report the rate, not your best run. A level that solves 1 in 3 times is not solved.")
     print(f"\nattempts logged to {a.log}")
+    print(f"readable transcript written to {a.transcript}")
 
 
 if __name__ == "__main__":
