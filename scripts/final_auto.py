@@ -10,6 +10,7 @@ level 5-7 configuration. Groups:
              else v83)
   v8.2_L2    L2 from v82 + v82x (the comparison)
   final_all  116's --all run, by itself
+  L9-L14     every file whose levels are all in 9-14 (e.g. final_L9_s116), whatever its prefix
   <prefix>   every other prefix that ran levels 5-7, by itself
 Levels come from the files' contents, not their names. The baseline + replica go into the compare table.
 """
@@ -54,6 +55,7 @@ def main():
                        + pick([l57], (5, 6, 7)))
     groups["v8.2_L2"] = pick(["v82", "v82x"], (2,))
     groups["final_all"] = by_prefix.get("final_all", [])
+    groups["L9-L14"] = [f for fs in by_prefix.values() for f in fs if levels[f] and set(levels[f]) <= set(range(9, 15))]
     for p, fs in by_prefix.items():
         if p not in ("v82", "v82x", "final_all", l57) and any(set(levels[f]) & {5, 6, 7} for f in fs):
             groups[p] = [f for f in fs if set(levels[f]) & {5, 6, 7}]
