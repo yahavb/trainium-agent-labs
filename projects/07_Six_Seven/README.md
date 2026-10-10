@@ -5,7 +5,7 @@
 Qwen3-8B, running on an AWS Trainium chip, writes digital hardware in Verilog. A simulator checks every
 design against a reference on every test and sends feedback back; the model tries again. We measured
 whether the **quality of that feedback** — A: only *pass/fail*, B: *how many tests fail*, C: *where it first
-goes wrong* — decides whether the loop succeeds.
+goes wrong*, D: *why* (the cause) — decides whether the loop succeeds. **141 counted runs.**
 
 ## What a run looks like (real output)
 
@@ -32,15 +32,14 @@ COULD NOT VERIFY -- best design passes 0.68 of the score; not solved
 
 ## The result in four lines
 
-- **Easy blocks need no feedback:** mux, adder and counter were solved on the first try in all 72 runs.
-- **Feedback did not turn hard failures into solves:** the traffic-light state machine and the FIFO were never
-  solved, with any feedback — not even with 12 rounds (0/15). C's small edge at 6 rounds (0.69 vs 0.65)
-  vanished at 12. Even feedback **D**, which names the cause ("every phase is one cycle too long"), solved
-  0/6 on each. The MAC cell was fixed on round 2 with A, B and C alike.
-- **The model's mistakes are mostly cycle counting** — on the traffic light, 66% of failures first go wrong by
-  holding a light too long; the most common design has every phase one cycle too long (an off-by-one).
-  Feedback that says *where* did not make it see *why*.
-- **The model does not know when it is wrong** — designs it rated 80–100% confident were right only half the
+- **Easy blocks need no feedback:** mux, adder and counter were solved on the first try in all 72 runs; the MAC
+  cell was fixed on round 2 with A, B and C alike.
+- **No feedback solved the hard blocks:** the traffic light and the FIFO were never solved — not with *where*
+  (C), not with 12 rounds, not with *why* (D, 0/6 on each). The model can be told the right cause and still
+  not make the right edit.
+- **The checker is right; the model's idea is wrong:** on the traffic light 66% of failures first hold a light
+  too long — the most common design runs every phase one cycle long (`results/TAXONOMY.md`).
+- **The model does not know when it is wrong:** designs it rated 80–100% confident were right only half the
   time, so only the checker may declare success (`results/calibration.txt`).
 
 Full one-page note: **[`SUBMISSION.md`](SUBMISSION.md)** · the checker: **[`CHECKER.md`](CHECKER.md)**
@@ -68,7 +67,6 @@ python veriloop/plot.py                        # table + graph from results/
 Run from this folder. Running the model needs a seat with the model served — README Part 1 at the top of
 this repo (`./serve.sh`) — plus Icarus Verilog in the seat: `apt-get update && apt-get install -y iverilog`.
 The checker alone runs anywhere with Icarus Verilog (`brew install icarus-verilog` on a Mac).
-Our team's working repo, with the plan and task board: https://github.com/krishmehtagit/Six_Seven.
 
 ## Team
 

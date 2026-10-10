@@ -81,13 +81,13 @@ iverilog -V | head -1
 
 ## Getting our code onto your seat, and results back
 
-Inside a seat this repo is already at `/workspace`: run from `/workspace/projects/six-seven-veriloop`.
+Inside a seat this repo is already at `/workspace`: run from `/workspace/projects/07_Six_Seven`.
 Or work on your laptop and copy files over.
 Run these **on your laptop**, from the repo folder:
 
 ```bash
 # laptop → seat: copy the whole veriloop folder
-kubectl cp projects/six-seven-veriloop/veriloop seat-<N>:/workspace/veriloop -c app
+kubectl cp projects/07_Six_Seven/veriloop seat-<N>:/workspace/veriloop -c app
 
 # seat → laptop: bring a result file back into results/
 kubectl cp seat-<N>:/workspace/veriloop/results/run.jsonl results/2026-10-10_<you>_<what>.jsonl -c app
