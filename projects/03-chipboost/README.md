@@ -22,11 +22,13 @@ marked [sim]. [NOTE.md](NOTE.md) is the one-page note, with runs and spread.
 | **Referee** | Caught 34 of 36 planted cheats and accepted 9 of 9 honest kernels. Neither cheat it missed gained any speed. |
 | **AWS tutorial bug** | AWS's published matmul rounds its running sum to bf16 once per K-block. It fails its own correctness check at K=8192 [sim] and a held-out Qwen3 shape. An fp32 accumulator fixes it, at no measurable speed cost. |
 | **Block-size tuning** | Random search, 3 runs × 24 tries: 1.325–1.372× over AWS's defaults. Measuring all 62 settings puts AWS's default at #29 and the ceiling at 1.375×. The best setting does not transfer: +84% to −61% on unseen shapes. |
-| **The model** | First version, alone or with the referee's feedback: 0 faster kernels in 96 attempts. With feedback that names the change to make: in its first run, a correct kernel 1.517× faster on the third attempt, and correct on 6 of 6 unseen shapes (1.52× geometric mean). Repeats and the success rate are in NOTE.md. |
+| **The model** | First version, alone or with the referee's feedback: 0 faster kernels in 96 attempts. With feedback that names the change to make: in its first run, a correct kernel 1.517× faster on the third attempt, and correct on 6 of 6 unseen shapes (1.52× geometric mean). Across 5 runs with this feedback, 2 produced verified 1.517× kernels (3 in all): a first result, not yet a rate. |
 
 - **Also measured, not a referee verdict:** splitting the expert across both physical cores of an LNC=2
   NeuronCore gives 1.50× more (5.0× the start kernel).
 - **Not claimed:** any end-to-end Qwen3 speedup. No kernel was plugged into the served model.
+
+![Results summary from the dashboard](dashboard/screenshots/results.png)
 
 ## How the referee decides
 
@@ -46,7 +48,6 @@ marked [sim]. [NOTE.md](NOTE.md) is the one-page note, with runs and spread.
 | **Dashboard** | [`dashboard/index.html`](dashboard/index.html), built from the logs by `dashboard/build.py` |
 | **Kernels** | [`kernels/`](kernels/): start, expert, AWS as published, the model's 1.517× kernel |
 | **Per-owner detail** | [`STATUS.md`](STATUS.md) (P1), [`P2_STATUS.md`](P2_STATUS.md), [`P3_STATUS.md`](P3_STATUS.md) |
-| **Original plan** | [`PLAN.md`](PLAN.md) |
 
 ## Run it (in a seat pod)
 
