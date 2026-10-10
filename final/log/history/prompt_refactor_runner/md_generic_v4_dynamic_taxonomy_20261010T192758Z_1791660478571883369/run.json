@@ -1,0 +1,88 @@
+{
+  "version": "md_generic_v4_dynamic_taxonomy",
+  "mode": "checker",
+  "seed": 0,
+  "manifest": {
+    "version": "md_generic_v4_dynamic_taxonomy",
+    "taxonomy": "taxonomy.json",
+    "knowledge": "knowledge.json",
+    "context_tokens": 8000,
+    "max_tokens": 1500,
+    "rules_limit": 2,
+    "rule_bytes": 1200,
+    "cycles": 256,
+    "random_cycles": 128,
+    "tasks": [
+      {
+        "name": "lfsr",
+        "spec": "LFSR.md",
+        "tb": "TestBench/lfsr_tb.v",
+        "ref": "verilog/reference/lfsr.v"
+      },
+      {
+        "name": "sequence_generator",
+        "spec": "sequence_generator.md",
+        "tb": "TestBench/sequence_generator_tb.v",
+        "ref": "verilog/reference/sequence_generator.v"
+      },
+      {
+        "name": "traffic_light",
+        "spec": "traffic_light.md",
+        "tb": "TestBench/traffic_light_tb.v",
+        "ref": "verilog/reference/traffic_light.v"
+      },
+      {
+        "name": "dice_roller",
+        "spec": "dice_roller.md",
+        "tb": "TestBench/dice_roller_tb.v",
+        "ref": "verilog/reference/dice_roller.v"
+      }
+    ]
+  },
+  "manifest_path": "/workspace/GUIDE/VerilogGenBenchmark/experiments/md_generic_v4_dynamic_taxonomy.json",
+  "manifest_sha256": "7fa162ba7f30fa431c8f0b859762efbf5dad824e6ba5ee9945de0433e936db12",
+  "arguments": {
+    "problem": null,
+    "dut": null,
+    "spec": null,
+    "tb": null,
+    "ref": null,
+    "seed": 0,
+    "cycles": 256,
+    "random_cycles": 128,
+    "taxonomy": "/workspace/GUIDE/VerilogGenBenchmark/taxonomy.json",
+    "knowledge": "/workspace/GUIDE/VerilogGenBenchmark/knowledge.json",
+    "exclude_categories": "",
+    "category": [],
+    "rules_limit": 2,
+    "diagnostics_json": null,
+    "facts": true,
+    "detectors": false,
+    "principles": false,
+    "async_reset": null,
+    "selftest": false,
+    "run_all": true,
+    "manifest": "/workspace/GUIDE/VerilogGenBenchmark/experiments/md_generic_v4_dynamic_taxonomy.json",
+    "mode": "checker",
+    "only": null,
+    "dut_dir": null,
+    "log_dir": "logs/prompt_refactor_runner",
+    "rounds": 6,
+    "repeat": 5,
+    "model": null,
+    "base_url": null,
+    "no_principles": false,
+    "no_explain": false,
+    "explain": false,
+    "principles_v2": false,
+    "hint": false,
+    "no_code": false,
+    "interface_from_tb": false,
+    "show_interface_lines": false,
+    "context_tokens": null,
+    "max_tokens": null,
+    "rule_bytes": null,
+    "run_tb": false,
+    "timeout": 30
+  }
+}

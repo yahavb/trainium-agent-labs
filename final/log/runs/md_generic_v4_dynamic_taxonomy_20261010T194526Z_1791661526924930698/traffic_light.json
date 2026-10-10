@@ -1,0 +1,25 @@
+{
+  "score": 1.0,
+  "feedback": "correct",
+  "diagnostics": {
+    "signatures": [],
+    "checks": {
+      "compiles": true,
+      "reset_value": true,
+      "reset_immediate": true,
+      "reset_midrun": true,
+      "first_step": true,
+      "sequence": true,
+      "random": true,
+      "toggles": true,
+      "reset_restart": true
+    },
+    "mismatches": [],
+    "categories": [
+      "timer",
+      "fsm",
+      "has_enable",
+      "generic"
+    ]
+  }
+}

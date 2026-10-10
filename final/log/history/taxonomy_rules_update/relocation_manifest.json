@@ -1,0 +1,3456 @@
+{
+  "source": "/workspace/GUIDE/VerilogGenBenchmark",
+  "destination": "/workspace/sean-work",
+  "moved": [
+    "README.md",
+    "CHECKER.md",
+    "agent.py",
+    "checker.py",
+    "taxonomy.py",
+    "prompt_regression.py",
+    "taxonomy.json",
+    "knowledge.json",
+    "principles.json",
+    "baseline_lfsr.txt",
+    "prompts",
+    "experiments",
+    "TestBench",
+    "verilog",
+    "reference",
+    "candidates",
+    "tests",
+    "log"
+  ],
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "938af9e0b6a7ccce80c1af8fa2da5f9ecf65120da10b9a6f2864d730e797d5fe"
+    },
+    {
+      "path": "CHECKER.md",
+      "sha256": "3feeba849058de3e46f5ffbd60155e10137b2deeb52823c2c47d157f6c5d7e9e"
+    },
+    {
+      "path": "agent.py",
+      "sha256": "0f882eba37278768e7c3ac71ea4129147f1412e8a1608694be0ad2829390af08"
+    },
+    {
+      "path": "checker.py",
+      "sha256": "9bf9b16d036fe8014be4465166a23a596dbb4724c3bbddd940c9917d933c73d8"
+    },
+    {
+      "path": "taxonomy.py",
+      "sha256": "dd8e2b8f2e2047739df054441a32400b53205590845806a396be96517f61f853"
+    },
+    {
+      "path": "prompt_regression.py",
+      "sha256": "3b12792761100d0ea3b1a7c5763d0a60503bf08092d6c584c053adbf745bbc3c"
+    },
+    {
+      "path": "taxonomy.json",
+      "sha256": "7d227b3ff29ab2165341d429d2201f14bea408c14048d480f9b47c907ddb051e"
+    },
+    {
+      "path": "knowledge.json",
+      "sha256": "39ac6f0b5cd066f5459aab1811fc4913b7a4bb19c2caad69e025ab53bc1fa9b8"
+    },
+    {
+      "path": "principles.json",
+      "sha256": "041940c2bfb73297d3c4b66ccff81d031e1ab75e98156c95e58197ba87fa6c32"
+    },
+    {
+      "path": "baseline_lfsr.txt",
+      "sha256": "9ecd82dbc66e39c8e3949360a3a48654baa40831d4e76b32925fd5eed0449e9f"
+    },
+    {
+      "path": "prompts/README.md",
+      "sha256": "c7eef8739cb112f6ba99b0ff92cdc41076921ad1485feb9d29ac1daf24b3c8b3"
+    },
+    {
+      "path": "prompts/catalog.md",
+      "sha256": "2b3f4b6f33d48d1f10950f2b8298fa256a61671771115616b6da58b9721d75e7"
+    },
+    {
+      "path": "prompts/regression/after/current_lfsr_explain_principles_round0.json",
+      "sha256": "559883ef50e05288c2679cc78d275b3d069c912fa537bcbfff95e69422e5ff64"
+    },
+    {
+      "path": "prompts/regression/after/current_lfsr_explain_principles_round0.txt",
+      "sha256": "2550883f92fb9727febcef79284fdd50e92b5f7ca0cf75d398fa3542daf85470"
+    },
+    {
+      "path": "prompts/regression/after/current_lfsr_explain_principles_round1.json",
+      "sha256": "009fc75d0954a19734445ed09c3d1e803da2d12ef2b374d729560df5ffb3776e"
+    },
+    {
+      "path": "prompts/regression/after/current_lfsr_explain_principles_round1.txt",
+      "sha256": "f8d45480bcc18a29bbe5b239e383e51c9acf5d6a8fe679ee507c1024295472e3"
+    },
+    {
+      "path": "prompts/regression/after/current_lfsr_explain_principles_v2_round0.json",
+      "sha256": "559883ef50e05288c2679cc78d275b3d069c912fa537bcbfff95e69422e5ff64"
+    },
+    {
+      "path": "prompts/regression/after/current_lfsr_explain_principles_v2_round0.txt",
+      "sha256": "2550883f92fb9727febcef79284fdd50e92b5f7ca0cf75d398fa3542daf85470"
+    },
+    {
+      "path": "prompts/regression/after/current_lfsr_explain_principles_v2_round1.json",
+      "sha256": "0c85682a6f10607040efa2967a9eb3daa0e5dd4c7bc78181fd4d1419a3055ece"
+    },
+    {
+      "path": "prompts/regression/after/current_lfsr_explain_principles_v2_round1.txt",
+      "sha256": "67825bd29a1dcf5e2f17f4f91a80f020855f0d6761d674c1a10d6548cfca06be"
+    },
+    {
+      "path": "prompts/regression/after/current_lfsr_explain_round0.json",
+      "sha256": "559883ef50e05288c2679cc78d275b3d069c912fa537bcbfff95e69422e5ff64"
+    },
+    {
+      "path": "prompts/regression/after/current_lfsr_explain_round0.txt",
+      "sha256": "2550883f92fb9727febcef79284fdd50e92b5f7ca0cf75d398fa3542daf85470"
+    },
+    {
+      "path": "prompts/regression/after/current_lfsr_explain_round1.json",
+      "sha256": "66aaada8d25271d1c35b562898ac1d60f996861681c3000927d32ab7d13e202e"
+    },
+    {
+      "path": "prompts/regression/after/current_lfsr_explain_round1.txt",
+      "sha256": "aa38792a36aa6564be51cfb5ef864efd4fe1c0185d5c0fb22e4ecce66e836a23"
+    },
+    {
+      "path": "prompts/regression/after/current_lfsr_no_flags_round0.json",
+      "sha256": "559883ef50e05288c2679cc78d275b3d069c912fa537bcbfff95e69422e5ff64"
+    },
+    {
+      "path": "prompts/regression/after/current_lfsr_no_flags_round0.txt",
+      "sha256": "2550883f92fb9727febcef79284fdd50e92b5f7ca0cf75d398fa3542daf85470"
+    },
+    {
+      "path": "prompts/regression/after/current_lfsr_no_flags_round1.json",
+      "sha256": "973c4a2e024f5b291b64d847a3495450a33e07b2b5cd8c7451be14dddedfeddf"
+    },
+    {
+      "path": "prompts/regression/after/current_lfsr_no_flags_round1.txt",
+      "sha256": "5592cea89b17612e238a3ba322db2ad80f4c4c9be3564be1cc879dd973309bd8"
+    },
+    {
+      "path": "prompts/regression/after/current_sequence_generator_no_flags_round0.json",
+      "sha256": "ae8f521027914154244b94fedcfcb872bd1b0ca237014bda0a2d626d9efebe12"
+    },
+    {
+      "path": "prompts/regression/after/current_sequence_generator_no_flags_round0.txt",
+      "sha256": "85bafdba118a5e05de7a2b72bb2f33bd39bb6b146c313fb7940fecaad12d2183"
+    },
+    {
+      "path": "prompts/regression/after/current_sequence_generator_no_flags_round1.json",
+      "sha256": "10f18061140f9710c3df31b6e1fa2fc4857d74b9a1a645422ae4c8748e8644f6"
+    },
+    {
+      "path": "prompts/regression/after/current_sequence_generator_no_flags_round1.txt",
+      "sha256": "1a0115421bc235dbd6f87913a0f8ccc71de54dec70c0fb9d95aa9553150a7f6c"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791651870_run0_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791651870_run0_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791651870_run0_round1.json",
+      "sha256": "bffe2242181c9f2eb46bcef2f038b99acd7e99cbdfd978618d227772748696a4"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791651870_run0_round1.txt",
+      "sha256": "8f6a4b2ea21dd3647c2664cf666af0daa16f6b3c0a298eb64566527fd541afbc"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791651870_run0_round2.json",
+      "sha256": "412b30f2006b7a94ce2c3e2392238d648f94581dd744cc1721847eb0e796e845"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791651870_run0_round2.txt",
+      "sha256": "27c128b64ecb5cced247248b3da87ac995220daca71c79902ca5ed2d74ad5b63"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791651870_run1_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791651870_run1_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791651870_run1_round1.json",
+      "sha256": "bffe2242181c9f2eb46bcef2f038b99acd7e99cbdfd978618d227772748696a4"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791651870_run1_round1.txt",
+      "sha256": "8f6a4b2ea21dd3647c2664cf666af0daa16f6b3c0a298eb64566527fd541afbc"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791651870_run2_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791651870_run2_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791651870_run2_round1.json",
+      "sha256": "bffe2242181c9f2eb46bcef2f038b99acd7e99cbdfd978618d227772748696a4"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791651870_run2_round1.txt",
+      "sha256": "8f6a4b2ea21dd3647c2664cf666af0daa16f6b3c0a298eb64566527fd541afbc"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791651870_run3_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791651870_run3_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791651870_run3_round1.json",
+      "sha256": "bffe2242181c9f2eb46bcef2f038b99acd7e99cbdfd978618d227772748696a4"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791651870_run3_round1.txt",
+      "sha256": "8f6a4b2ea21dd3647c2664cf666af0daa16f6b3c0a298eb64566527fd541afbc"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791651870_run4_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791651870_run4_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791651870_run4_round1.json",
+      "sha256": "bffe2242181c9f2eb46bcef2f038b99acd7e99cbdfd978618d227772748696a4"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791651870_run4_round1.txt",
+      "sha256": "8f6a4b2ea21dd3647c2664cf666af0daa16f6b3c0a298eb64566527fd541afbc"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791652775_run0_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791652775_run0_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791652775_run0_round1.json",
+      "sha256": "b731714d32eb3dcbcefd0e23bf4550edab358e27231a9f7724ea84b31717f4c5"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791652775_run0_round1.txt",
+      "sha256": "3fdc61fe9f86891e2964d7b61fd29fa29256e97d7173ab88b15e8d7a0fb0118b"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791652775_run0_round2.json",
+      "sha256": "b796f46166f3bf99a40115cde10ded518e855c516a3445ad919c595eb951a0de"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791652775_run0_round2.txt",
+      "sha256": "6a355a09ea111cd9663658f06ec14ccdde0b61fec498bbe53762621a9fd91a6d"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791652775_run1_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791652775_run1_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791652775_run1_round1.json",
+      "sha256": "b731714d32eb3dcbcefd0e23bf4550edab358e27231a9f7724ea84b31717f4c5"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791652775_run1_round1.txt",
+      "sha256": "3fdc61fe9f86891e2964d7b61fd29fa29256e97d7173ab88b15e8d7a0fb0118b"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791652775_run2_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791652775_run2_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791652775_run2_round1.json",
+      "sha256": "b731714d32eb3dcbcefd0e23bf4550edab358e27231a9f7724ea84b31717f4c5"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791652775_run2_round1.txt",
+      "sha256": "3fdc61fe9f86891e2964d7b61fd29fa29256e97d7173ab88b15e8d7a0fb0118b"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791652775_run3_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791652775_run3_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791652775_run3_round1.json",
+      "sha256": "b731714d32eb3dcbcefd0e23bf4550edab358e27231a9f7724ea84b31717f4c5"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791652775_run3_round1.txt",
+      "sha256": "3fdc61fe9f86891e2964d7b61fd29fa29256e97d7173ab88b15e8d7a0fb0118b"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791652775_run4_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791652775_run4_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791652775_run4_round1.json",
+      "sha256": "b731714d32eb3dcbcefd0e23bf4550edab358e27231a9f7724ea84b31717f4c5"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791652775_run4_round1.txt",
+      "sha256": "3fdc61fe9f86891e2964d7b61fd29fa29256e97d7173ab88b15e8d7a0fb0118b"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791654064_run0_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791654064_run0_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791654064_run0_round1.json",
+      "sha256": "cad7f064dc27a3e8a9895fb4e6e1bd47c9c9f15a6948cc5ead2a896f4922d84a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791654064_run0_round1.txt",
+      "sha256": "7799dae9593132a44d157632eaaa664ae3efc1e2d38b051702eeca361892d591"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791654064_run0_round2.json",
+      "sha256": "9c41d18f3b0649807c2de86657120b92a09e84043e09d4f57e7b4deac426905f"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791654064_run0_round2.txt",
+      "sha256": "f460c4414c3c935861c8cd30e7752ca1a93d6a97931268ea48ee4f0e9c07820e"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791654064_run1_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791654064_run1_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791654064_run1_round1.json",
+      "sha256": "cad7f064dc27a3e8a9895fb4e6e1bd47c9c9f15a6948cc5ead2a896f4922d84a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791654064_run1_round1.txt",
+      "sha256": "7799dae9593132a44d157632eaaa664ae3efc1e2d38b051702eeca361892d591"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791654064_run2_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791654064_run2_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791654064_run2_round1.json",
+      "sha256": "cad7f064dc27a3e8a9895fb4e6e1bd47c9c9f15a6948cc5ead2a896f4922d84a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791654064_run2_round1.txt",
+      "sha256": "7799dae9593132a44d157632eaaa664ae3efc1e2d38b051702eeca361892d591"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791654064_run3_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791654064_run3_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791654064_run3_round1.json",
+      "sha256": "cad7f064dc27a3e8a9895fb4e6e1bd47c9c9f15a6948cc5ead2a896f4922d84a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791654064_run3_round1.txt",
+      "sha256": "7799dae9593132a44d157632eaaa664ae3efc1e2d38b051702eeca361892d591"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791654064_run4_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791654064_run4_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791654064_run4_round1.json",
+      "sha256": "cad7f064dc27a3e8a9895fb4e6e1bd47c9c9f15a6948cc5ead2a896f4922d84a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_1791654064_run4_round1.txt",
+      "sha256": "7799dae9593132a44d157632eaaa664ae3efc1e2d38b051702eeca361892d591"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791655958_run0_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791655958_run0_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791655958_run0_round1.json",
+      "sha256": "5a2c444bcccd61ef630483a24ece9c88a9ed5717b2d9da4c9c7c9a632b856acf"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791655958_run0_round1.txt",
+      "sha256": "b975ee45765ef70601269290f25681ab9377c16f8f8baa7f6ee01cb3f9581d76"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791655958_run0_round2.json",
+      "sha256": "fb272d1c0867a297d4924b03105b8756293f955fcc2f073fda6e431cd351f4c6"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791655958_run0_round2.txt",
+      "sha256": "7f2e38726f592ff4e9b0f80831cf1342bf8aadd5d1149b158cc830f0e5ad9292"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791655958_run1_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791655958_run1_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791655958_run1_round1.json",
+      "sha256": "5a2c444bcccd61ef630483a24ece9c88a9ed5717b2d9da4c9c7c9a632b856acf"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791655958_run1_round1.txt",
+      "sha256": "b975ee45765ef70601269290f25681ab9377c16f8f8baa7f6ee01cb3f9581d76"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791655958_run2_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791655958_run2_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791655958_run2_round1.json",
+      "sha256": "5a2c444bcccd61ef630483a24ece9c88a9ed5717b2d9da4c9c7c9a632b856acf"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791655958_run2_round1.txt",
+      "sha256": "b975ee45765ef70601269290f25681ab9377c16f8f8baa7f6ee01cb3f9581d76"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791655958_run3_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791655958_run3_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791655958_run3_round1.json",
+      "sha256": "5a2c444bcccd61ef630483a24ece9c88a9ed5717b2d9da4c9c7c9a632b856acf"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791655958_run3_round1.txt",
+      "sha256": "b975ee45765ef70601269290f25681ab9377c16f8f8baa7f6ee01cb3f9581d76"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791655958_run4_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791655958_run4_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791655958_run4_round1.json",
+      "sha256": "5a2c444bcccd61ef630483a24ece9c88a9ed5717b2d9da4c9c7c9a632b856acf"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791655958_run4_round1.txt",
+      "sha256": "b975ee45765ef70601269290f25681ab9377c16f8f8baa7f6ee01cb3f9581d76"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791656585_run0_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791656585_run0_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791656585_run0_round1.json",
+      "sha256": "5a2c444bcccd61ef630483a24ece9c88a9ed5717b2d9da4c9c7c9a632b856acf"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791656585_run0_round1.txt",
+      "sha256": "b975ee45765ef70601269290f25681ab9377c16f8f8baa7f6ee01cb3f9581d76"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791656585_run0_round2.json",
+      "sha256": "fb272d1c0867a297d4924b03105b8756293f955fcc2f073fda6e431cd351f4c6"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791656585_run0_round2.txt",
+      "sha256": "7f2e38726f592ff4e9b0f80831cf1342bf8aadd5d1149b158cc830f0e5ad9292"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791656585_run1_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791656585_run1_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791656585_run1_round1.json",
+      "sha256": "5a2c444bcccd61ef630483a24ece9c88a9ed5717b2d9da4c9c7c9a632b856acf"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791656585_run1_round1.txt",
+      "sha256": "b975ee45765ef70601269290f25681ab9377c16f8f8baa7f6ee01cb3f9581d76"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791656585_run2_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791656585_run2_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791656585_run2_round1.json",
+      "sha256": "5a2c444bcccd61ef630483a24ece9c88a9ed5717b2d9da4c9c7c9a632b856acf"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791656585_run2_round1.txt",
+      "sha256": "b975ee45765ef70601269290f25681ab9377c16f8f8baa7f6ee01cb3f9581d76"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791656585_run3_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791656585_run3_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791656585_run3_round1.json",
+      "sha256": "5a2c444bcccd61ef630483a24ece9c88a9ed5717b2d9da4c9c7c9a632b856acf"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791656585_run3_round1.txt",
+      "sha256": "b975ee45765ef70601269290f25681ab9377c16f8f8baa7f6ee01cb3f9581d76"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791656585_run4_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791656585_run4_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791656585_run4_round1.json",
+      "sha256": "5a2c444bcccd61ef630483a24ece9c88a9ed5717b2d9da4c9c7c9a632b856acf"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_1791656585_run4_round1.txt",
+      "sha256": "b975ee45765ef70601269290f25681ab9377c16f8f8baa7f6ee01cb3f9581d76"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_v2_1791656090_run0_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_v2_1791656090_run0_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_v2_1791656090_run0_round1.json",
+      "sha256": "8c87f27e5c35526841c7a8724ccee450019a13a60b8ce8b0ae082147bbbaab63"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_v2_1791656090_run0_round1.txt",
+      "sha256": "75ce149a3e93dd883c40b7d0594a115c43296a7afc6d7036da4bed39ea5f0a06"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_v2_1791656090_run0_round2.json",
+      "sha256": "a7d35852d2e5867880ffce786c0137ac8e9c88c5505575fbae9a33763e7e5a4b"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_v2_1791656090_run0_round2.txt",
+      "sha256": "4e47562ece5e7b544a2470f04d9b13aadc22ca9ccc313ebe853343c4b2452266"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_v2_1791656090_run1_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_v2_1791656090_run1_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_v2_1791656090_run1_round1.json",
+      "sha256": "8c87f27e5c35526841c7a8724ccee450019a13a60b8ce8b0ae082147bbbaab63"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_v2_1791656090_run1_round1.txt",
+      "sha256": "75ce149a3e93dd883c40b7d0594a115c43296a7afc6d7036da4bed39ea5f0a06"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_v2_1791656090_run2_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_v2_1791656090_run2_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_v2_1791656090_run2_round1.json",
+      "sha256": "8c87f27e5c35526841c7a8724ccee450019a13a60b8ce8b0ae082147bbbaab63"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_v2_1791656090_run2_round1.txt",
+      "sha256": "75ce149a3e93dd883c40b7d0594a115c43296a7afc6d7036da4bed39ea5f0a06"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_v2_1791656090_run3_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_v2_1791656090_run3_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_v2_1791656090_run3_round1.json",
+      "sha256": "8c87f27e5c35526841c7a8724ccee450019a13a60b8ce8b0ae082147bbbaab63"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_v2_1791656090_run3_round1.txt",
+      "sha256": "75ce149a3e93dd883c40b7d0594a115c43296a7afc6d7036da4bed39ea5f0a06"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_v2_1791656090_run4_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_v2_1791656090_run4_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_v2_1791656090_run4_round1.json",
+      "sha256": "8c87f27e5c35526841c7a8724ccee450019a13a60b8ce8b0ae082147bbbaab63"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_mine_explain_principles_v2_1791656090_run4_round1.txt",
+      "sha256": "75ce149a3e93dd883c40b7d0594a115c43296a7afc6d7036da4bed39ea5f0a06"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649150_run0_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649150_run0_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649150_run1_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649150_run1_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649150_run2_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649150_run2_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649150_run3_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649150_run3_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649150_run4_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649150_run4_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649150_run5_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649150_run5_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649150_run6_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649150_run6_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649150_run7_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649150_run7_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649150_run8_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649150_run8_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649150_run9_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649150_run9_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run0_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run0_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run0_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run0_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run0_round2.json",
+      "sha256": "8f7c3ecf28e2ffd7a3998df212b520e35c6dd906f42736719be69a8be6f8fddb"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run0_round2.txt",
+      "sha256": "e92e60589587b1ac4394f418d7ef75c8acfe0ba90abae37472079418da3dd297"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run1_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run1_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run1_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run1_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run2_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run2_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run2_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run2_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run3_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run3_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run3_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run3_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run4_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run4_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run4_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run4_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run5_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run5_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run5_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run5_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run6_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run6_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run6_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run6_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run7_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run7_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run7_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run7_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run8_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run8_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run8_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run8_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run9_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run9_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run9_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791649697_run9_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run0_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run0_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run0_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run0_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run0_round2.json",
+      "sha256": "9c7252e855096f73b70b6f85a5627e7e5db9296319b4d6de10b621ce9bf5106a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run0_round2.txt",
+      "sha256": "821081080ae2ce5312aa2eb4fd174807b0bdbd4bd6a4ea1c0f2f364233d6c0cb"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run1_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run1_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run1_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run1_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run2_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run2_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run2_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run2_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run3_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run3_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run3_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run3_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run4_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run4_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run4_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run4_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run5_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run5_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run5_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run5_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run6_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run6_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run6_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run6_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run7_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run7_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run7_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run7_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run8_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run8_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run8_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run8_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run9_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run9_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run9_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650123_run9_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650839_run0_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650839_run0_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650839_run0_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650839_run0_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650839_run0_round2.json",
+      "sha256": "26e67a92bab825621f87d4aa0b1c985e43c5262b8312bc3967448e36b5137367"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650839_run0_round2.txt",
+      "sha256": "cba42b6b5a55e7ffac9fe3555698256ac5891f91d14dd6673207a85842e77e1e"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650839_run1_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650839_run1_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650839_run1_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650839_run1_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650839_run2_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650839_run2_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650839_run2_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650839_run2_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650839_run3_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650839_run3_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650839_run3_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650839_run3_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650839_run4_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650839_run4_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650839_run4_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791650839_run4_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run0_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run0_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run0_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run0_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run0_round2.json",
+      "sha256": "26e67a92bab825621f87d4aa0b1c985e43c5262b8312bc3967448e36b5137367"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run0_round2.txt",
+      "sha256": "cba42b6b5a55e7ffac9fe3555698256ac5891f91d14dd6673207a85842e77e1e"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run1_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run1_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run1_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run1_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run2_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run2_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run2_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run2_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run3_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run3_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run3_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run3_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run4_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run4_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run4_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run4_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run5_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run5_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run5_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run5_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run6_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run6_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run6_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run6_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run7_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run7_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run7_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run7_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run8_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run8_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run8_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run8_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run9_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run9_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run9_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/after/historical_lfsr_nohint_1791651047_run9_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/after/historical_sequence_generator_1791653129902567742_run0_round0.json",
+      "sha256": "5bbc6689211b47b4cdf90fa05e17be3a09a08f8fe4faaa74ec5bd805bb742e9e"
+    },
+    {
+      "path": "prompts/regression/after/historical_sequence_generator_1791653129902567742_run0_round0.txt",
+      "sha256": "5a2a83f95f10a8c3a684bf4f682b43101cc2482a28c23ccaa819aec2180f4e56"
+    },
+    {
+      "path": "prompts/regression/after/historical_sequence_generator_1791653129902567742_run0_round1.json",
+      "sha256": "4793a0fd34bf4690d517aa88fa7a210952f249847f899d776a240bb11eacd16a"
+    },
+    {
+      "path": "prompts/regression/after/historical_sequence_generator_1791653129902567742_run0_round1.txt",
+      "sha256": "ea47a5cca8afbacf5d533fa1499659a5ad37a1a8a9306c6fb1e3b55c1ae303be"
+    },
+    {
+      "path": "prompts/regression/after/historical_sequence_generator_1791653129902567742_run0_round2.json",
+      "sha256": "c3441e2502db6ca73029b6c3745805fd66c15b243bea7268da83b6bd3ef3c659"
+    },
+    {
+      "path": "prompts/regression/after/historical_sequence_generator_1791653129902567742_run0_round2.txt",
+      "sha256": "c0fada89b18ddf5398c37349038410bbe95692e3587c1149da5ca7e30763da3f"
+    },
+    {
+      "path": "prompts/regression/after/historical_sequence_generator_1791653129902567742_run1_round0.json",
+      "sha256": "5bbc6689211b47b4cdf90fa05e17be3a09a08f8fe4faaa74ec5bd805bb742e9e"
+    },
+    {
+      "path": "prompts/regression/after/historical_sequence_generator_1791653129902567742_run1_round0.txt",
+      "sha256": "5a2a83f95f10a8c3a684bf4f682b43101cc2482a28c23ccaa819aec2180f4e56"
+    },
+    {
+      "path": "prompts/regression/after/historical_sequence_generator_1791653129902567742_run1_round1.json",
+      "sha256": "680ff85e4fd62f181025dc3919c761bb9926fdaa2a36f731451b5f96075881c1"
+    },
+    {
+      "path": "prompts/regression/after/historical_sequence_generator_1791653129902567742_run1_round1.txt",
+      "sha256": "184457e66693af703626e4b2ffc1acfa138746c02b7929aa8532ed7f2bedf4e8"
+    },
+    {
+      "path": "prompts/regression/after/historical_sequence_generator_1791653129902567742_run2_round0.json",
+      "sha256": "5bbc6689211b47b4cdf90fa05e17be3a09a08f8fe4faaa74ec5bd805bb742e9e"
+    },
+    {
+      "path": "prompts/regression/after/historical_sequence_generator_1791653129902567742_run2_round0.txt",
+      "sha256": "5a2a83f95f10a8c3a684bf4f682b43101cc2482a28c23ccaa819aec2180f4e56"
+    },
+    {
+      "path": "prompts/regression/after/historical_sequence_generator_1791653129902567742_run2_round1.json",
+      "sha256": "8cd674315a26d0dac07bf25f2db4e66f8592970c0e424537f44df282cb5eba87"
+    },
+    {
+      "path": "prompts/regression/after/historical_sequence_generator_1791653129902567742_run2_round1.txt",
+      "sha256": "897388b5c3948f91269e659868cc5585e3a017474bdd55baf9c80f6b0a62d4cb"
+    },
+    {
+      "path": "prompts/regression/after/historical_sequence_generator_1791653129902567742_run3_round0.json",
+      "sha256": "5bbc6689211b47b4cdf90fa05e17be3a09a08f8fe4faaa74ec5bd805bb742e9e"
+    },
+    {
+      "path": "prompts/regression/after/historical_sequence_generator_1791653129902567742_run3_round0.txt",
+      "sha256": "5a2a83f95f10a8c3a684bf4f682b43101cc2482a28c23ccaa819aec2180f4e56"
+    },
+    {
+      "path": "prompts/regression/after/historical_sequence_generator_1791653129902567742_run3_round1.json",
+      "sha256": "8949e27013b599690318a745a4e833a08f9f2ab6636a6ec38fa9591f948fdbb6"
+    },
+    {
+      "path": "prompts/regression/after/historical_sequence_generator_1791653129902567742_run3_round1.txt",
+      "sha256": "f5865d9f285875244b3c02341200fec16fdc2c4d5773b9bec71d2e143954cd13"
+    },
+    {
+      "path": "prompts/regression/after/historical_sequence_generator_1791653129902567742_run4_round0.json",
+      "sha256": "5bbc6689211b47b4cdf90fa05e17be3a09a08f8fe4faaa74ec5bd805bb742e9e"
+    },
+    {
+      "path": "prompts/regression/after/historical_sequence_generator_1791653129902567742_run4_round0.txt",
+      "sha256": "5a2a83f95f10a8c3a684bf4f682b43101cc2482a28c23ccaa819aec2180f4e56"
+    },
+    {
+      "path": "prompts/regression/after/historical_sequence_generator_1791653129902567742_run4_round1.json",
+      "sha256": "3067c2337315d69d735973d079b944dc1c6039209610cdac93bc7ce6345593a3"
+    },
+    {
+      "path": "prompts/regression/after/historical_sequence_generator_1791653129902567742_run4_round1.txt",
+      "sha256": "24a8a6974088f71066db012102ffbfffa4220bef20e273c16ba79fe32d42b94f"
+    },
+    {
+      "path": "prompts/regression/after/inputs.json",
+      "sha256": "ea26ceaab24833d43bc1627c8812aea8b8ce86813e1292d7562acbe5e4652218"
+    },
+    {
+      "path": "prompts/regression/after/knowledge.json",
+      "sha256": "39ac6f0b5cd066f5459aab1811fc4913b7a4bb19c2caad69e025ab53bc1fa9b8"
+    },
+    {
+      "path": "prompts/regression/after/manifest.json",
+      "sha256": "c5cef6af2e2155002bf092b51d4cf2c5d41aca9952708bcbfba53ab52da6362b"
+    },
+    {
+      "path": "prompts/regression/after/source_agent.py",
+      "sha256": "1715964450d8982779548410a690a177586dce05a6f0669d3cb3946be04ac4de"
+    },
+    {
+      "path": "prompts/regression/after/source_agent_legacy.py",
+      "sha256": "4612932f7f8a2c8386bfe3b54c67814a9d1e3341a74680b4478996438cc292a7"
+    },
+    {
+      "path": "prompts/regression/after/source_agent_v1.py",
+      "sha256": "edad9de952cfb0fce7e78466e2065756408fab1e90ced8ebcb18864854c9c37a"
+    },
+    {
+      "path": "prompts/regression/after/taxonomy.json",
+      "sha256": "7d227b3ff29ab2165341d429d2201f14bea408c14048d480f9b47c907ddb051e"
+    },
+    {
+      "path": "prompts/regression/before/current_lfsr_explain_principles_round0.json",
+      "sha256": "559883ef50e05288c2679cc78d275b3d069c912fa537bcbfff95e69422e5ff64"
+    },
+    {
+      "path": "prompts/regression/before/current_lfsr_explain_principles_round0.txt",
+      "sha256": "2550883f92fb9727febcef79284fdd50e92b5f7ca0cf75d398fa3542daf85470"
+    },
+    {
+      "path": "prompts/regression/before/current_lfsr_explain_principles_round1.json",
+      "sha256": "009fc75d0954a19734445ed09c3d1e803da2d12ef2b374d729560df5ffb3776e"
+    },
+    {
+      "path": "prompts/regression/before/current_lfsr_explain_principles_round1.txt",
+      "sha256": "f8d45480bcc18a29bbe5b239e383e51c9acf5d6a8fe679ee507c1024295472e3"
+    },
+    {
+      "path": "prompts/regression/before/current_lfsr_explain_principles_v2_round0.json",
+      "sha256": "559883ef50e05288c2679cc78d275b3d069c912fa537bcbfff95e69422e5ff64"
+    },
+    {
+      "path": "prompts/regression/before/current_lfsr_explain_principles_v2_round0.txt",
+      "sha256": "2550883f92fb9727febcef79284fdd50e92b5f7ca0cf75d398fa3542daf85470"
+    },
+    {
+      "path": "prompts/regression/before/current_lfsr_explain_principles_v2_round1.json",
+      "sha256": "0c85682a6f10607040efa2967a9eb3daa0e5dd4c7bc78181fd4d1419a3055ece"
+    },
+    {
+      "path": "prompts/regression/before/current_lfsr_explain_principles_v2_round1.txt",
+      "sha256": "67825bd29a1dcf5e2f17f4f91a80f020855f0d6761d674c1a10d6548cfca06be"
+    },
+    {
+      "path": "prompts/regression/before/current_lfsr_explain_round0.json",
+      "sha256": "559883ef50e05288c2679cc78d275b3d069c912fa537bcbfff95e69422e5ff64"
+    },
+    {
+      "path": "prompts/regression/before/current_lfsr_explain_round0.txt",
+      "sha256": "2550883f92fb9727febcef79284fdd50e92b5f7ca0cf75d398fa3542daf85470"
+    },
+    {
+      "path": "prompts/regression/before/current_lfsr_explain_round1.json",
+      "sha256": "66aaada8d25271d1c35b562898ac1d60f996861681c3000927d32ab7d13e202e"
+    },
+    {
+      "path": "prompts/regression/before/current_lfsr_explain_round1.txt",
+      "sha256": "aa38792a36aa6564be51cfb5ef864efd4fe1c0185d5c0fb22e4ecce66e836a23"
+    },
+    {
+      "path": "prompts/regression/before/current_lfsr_no_flags_round0.json",
+      "sha256": "559883ef50e05288c2679cc78d275b3d069c912fa537bcbfff95e69422e5ff64"
+    },
+    {
+      "path": "prompts/regression/before/current_lfsr_no_flags_round0.txt",
+      "sha256": "2550883f92fb9727febcef79284fdd50e92b5f7ca0cf75d398fa3542daf85470"
+    },
+    {
+      "path": "prompts/regression/before/current_lfsr_no_flags_round1.json",
+      "sha256": "973c4a2e024f5b291b64d847a3495450a33e07b2b5cd8c7451be14dddedfeddf"
+    },
+    {
+      "path": "prompts/regression/before/current_lfsr_no_flags_round1.txt",
+      "sha256": "5592cea89b17612e238a3ba322db2ad80f4c4c9be3564be1cc879dd973309bd8"
+    },
+    {
+      "path": "prompts/regression/before/current_sequence_generator_no_flags_round0.json",
+      "sha256": "ae8f521027914154244b94fedcfcb872bd1b0ca237014bda0a2d626d9efebe12"
+    },
+    {
+      "path": "prompts/regression/before/current_sequence_generator_no_flags_round0.txt",
+      "sha256": "85bafdba118a5e05de7a2b72bb2f33bd39bb6b146c313fb7940fecaad12d2183"
+    },
+    {
+      "path": "prompts/regression/before/current_sequence_generator_no_flags_round1.json",
+      "sha256": "10f18061140f9710c3df31b6e1fa2fc4857d74b9a1a645422ae4c8748e8644f6"
+    },
+    {
+      "path": "prompts/regression/before/current_sequence_generator_no_flags_round1.txt",
+      "sha256": "1a0115421bc235dbd6f87913a0f8ccc71de54dec70c0fb9d95aa9553150a7f6c"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791651870_run0_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791651870_run0_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791651870_run0_round1.json",
+      "sha256": "bffe2242181c9f2eb46bcef2f038b99acd7e99cbdfd978618d227772748696a4"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791651870_run0_round1.txt",
+      "sha256": "8f6a4b2ea21dd3647c2664cf666af0daa16f6b3c0a298eb64566527fd541afbc"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791651870_run0_round2.json",
+      "sha256": "412b30f2006b7a94ce2c3e2392238d648f94581dd744cc1721847eb0e796e845"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791651870_run0_round2.txt",
+      "sha256": "27c128b64ecb5cced247248b3da87ac995220daca71c79902ca5ed2d74ad5b63"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791651870_run1_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791651870_run1_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791651870_run1_round1.json",
+      "sha256": "bffe2242181c9f2eb46bcef2f038b99acd7e99cbdfd978618d227772748696a4"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791651870_run1_round1.txt",
+      "sha256": "8f6a4b2ea21dd3647c2664cf666af0daa16f6b3c0a298eb64566527fd541afbc"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791651870_run2_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791651870_run2_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791651870_run2_round1.json",
+      "sha256": "bffe2242181c9f2eb46bcef2f038b99acd7e99cbdfd978618d227772748696a4"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791651870_run2_round1.txt",
+      "sha256": "8f6a4b2ea21dd3647c2664cf666af0daa16f6b3c0a298eb64566527fd541afbc"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791651870_run3_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791651870_run3_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791651870_run3_round1.json",
+      "sha256": "bffe2242181c9f2eb46bcef2f038b99acd7e99cbdfd978618d227772748696a4"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791651870_run3_round1.txt",
+      "sha256": "8f6a4b2ea21dd3647c2664cf666af0daa16f6b3c0a298eb64566527fd541afbc"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791651870_run4_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791651870_run4_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791651870_run4_round1.json",
+      "sha256": "bffe2242181c9f2eb46bcef2f038b99acd7e99cbdfd978618d227772748696a4"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791651870_run4_round1.txt",
+      "sha256": "8f6a4b2ea21dd3647c2664cf666af0daa16f6b3c0a298eb64566527fd541afbc"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791652775_run0_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791652775_run0_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791652775_run0_round1.json",
+      "sha256": "b731714d32eb3dcbcefd0e23bf4550edab358e27231a9f7724ea84b31717f4c5"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791652775_run0_round1.txt",
+      "sha256": "3fdc61fe9f86891e2964d7b61fd29fa29256e97d7173ab88b15e8d7a0fb0118b"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791652775_run0_round2.json",
+      "sha256": "b796f46166f3bf99a40115cde10ded518e855c516a3445ad919c595eb951a0de"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791652775_run0_round2.txt",
+      "sha256": "6a355a09ea111cd9663658f06ec14ccdde0b61fec498bbe53762621a9fd91a6d"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791652775_run1_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791652775_run1_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791652775_run1_round1.json",
+      "sha256": "b731714d32eb3dcbcefd0e23bf4550edab358e27231a9f7724ea84b31717f4c5"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791652775_run1_round1.txt",
+      "sha256": "3fdc61fe9f86891e2964d7b61fd29fa29256e97d7173ab88b15e8d7a0fb0118b"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791652775_run2_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791652775_run2_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791652775_run2_round1.json",
+      "sha256": "b731714d32eb3dcbcefd0e23bf4550edab358e27231a9f7724ea84b31717f4c5"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791652775_run2_round1.txt",
+      "sha256": "3fdc61fe9f86891e2964d7b61fd29fa29256e97d7173ab88b15e8d7a0fb0118b"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791652775_run3_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791652775_run3_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791652775_run3_round1.json",
+      "sha256": "b731714d32eb3dcbcefd0e23bf4550edab358e27231a9f7724ea84b31717f4c5"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791652775_run3_round1.txt",
+      "sha256": "3fdc61fe9f86891e2964d7b61fd29fa29256e97d7173ab88b15e8d7a0fb0118b"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791652775_run4_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791652775_run4_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791652775_run4_round1.json",
+      "sha256": "b731714d32eb3dcbcefd0e23bf4550edab358e27231a9f7724ea84b31717f4c5"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791652775_run4_round1.txt",
+      "sha256": "3fdc61fe9f86891e2964d7b61fd29fa29256e97d7173ab88b15e8d7a0fb0118b"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791654064_run0_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791654064_run0_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791654064_run0_round1.json",
+      "sha256": "cad7f064dc27a3e8a9895fb4e6e1bd47c9c9f15a6948cc5ead2a896f4922d84a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791654064_run0_round1.txt",
+      "sha256": "7799dae9593132a44d157632eaaa664ae3efc1e2d38b051702eeca361892d591"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791654064_run0_round2.json",
+      "sha256": "9c41d18f3b0649807c2de86657120b92a09e84043e09d4f57e7b4deac426905f"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791654064_run0_round2.txt",
+      "sha256": "f460c4414c3c935861c8cd30e7752ca1a93d6a97931268ea48ee4f0e9c07820e"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791654064_run1_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791654064_run1_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791654064_run1_round1.json",
+      "sha256": "cad7f064dc27a3e8a9895fb4e6e1bd47c9c9f15a6948cc5ead2a896f4922d84a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791654064_run1_round1.txt",
+      "sha256": "7799dae9593132a44d157632eaaa664ae3efc1e2d38b051702eeca361892d591"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791654064_run2_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791654064_run2_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791654064_run2_round1.json",
+      "sha256": "cad7f064dc27a3e8a9895fb4e6e1bd47c9c9f15a6948cc5ead2a896f4922d84a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791654064_run2_round1.txt",
+      "sha256": "7799dae9593132a44d157632eaaa664ae3efc1e2d38b051702eeca361892d591"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791654064_run3_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791654064_run3_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791654064_run3_round1.json",
+      "sha256": "cad7f064dc27a3e8a9895fb4e6e1bd47c9c9f15a6948cc5ead2a896f4922d84a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791654064_run3_round1.txt",
+      "sha256": "7799dae9593132a44d157632eaaa664ae3efc1e2d38b051702eeca361892d591"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791654064_run4_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791654064_run4_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791654064_run4_round1.json",
+      "sha256": "cad7f064dc27a3e8a9895fb4e6e1bd47c9c9f15a6948cc5ead2a896f4922d84a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_1791654064_run4_round1.txt",
+      "sha256": "7799dae9593132a44d157632eaaa664ae3efc1e2d38b051702eeca361892d591"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791655958_run0_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791655958_run0_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791655958_run0_round1.json",
+      "sha256": "5a2c444bcccd61ef630483a24ece9c88a9ed5717b2d9da4c9c7c9a632b856acf"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791655958_run0_round1.txt",
+      "sha256": "b975ee45765ef70601269290f25681ab9377c16f8f8baa7f6ee01cb3f9581d76"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791655958_run0_round2.json",
+      "sha256": "fb272d1c0867a297d4924b03105b8756293f955fcc2f073fda6e431cd351f4c6"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791655958_run0_round2.txt",
+      "sha256": "7f2e38726f592ff4e9b0f80831cf1342bf8aadd5d1149b158cc830f0e5ad9292"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791655958_run1_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791655958_run1_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791655958_run1_round1.json",
+      "sha256": "5a2c444bcccd61ef630483a24ece9c88a9ed5717b2d9da4c9c7c9a632b856acf"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791655958_run1_round1.txt",
+      "sha256": "b975ee45765ef70601269290f25681ab9377c16f8f8baa7f6ee01cb3f9581d76"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791655958_run2_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791655958_run2_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791655958_run2_round1.json",
+      "sha256": "5a2c444bcccd61ef630483a24ece9c88a9ed5717b2d9da4c9c7c9a632b856acf"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791655958_run2_round1.txt",
+      "sha256": "b975ee45765ef70601269290f25681ab9377c16f8f8baa7f6ee01cb3f9581d76"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791655958_run3_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791655958_run3_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791655958_run3_round1.json",
+      "sha256": "5a2c444bcccd61ef630483a24ece9c88a9ed5717b2d9da4c9c7c9a632b856acf"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791655958_run3_round1.txt",
+      "sha256": "b975ee45765ef70601269290f25681ab9377c16f8f8baa7f6ee01cb3f9581d76"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791655958_run4_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791655958_run4_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791655958_run4_round1.json",
+      "sha256": "5a2c444bcccd61ef630483a24ece9c88a9ed5717b2d9da4c9c7c9a632b856acf"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791655958_run4_round1.txt",
+      "sha256": "b975ee45765ef70601269290f25681ab9377c16f8f8baa7f6ee01cb3f9581d76"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791656585_run0_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791656585_run0_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791656585_run0_round1.json",
+      "sha256": "5a2c444bcccd61ef630483a24ece9c88a9ed5717b2d9da4c9c7c9a632b856acf"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791656585_run0_round1.txt",
+      "sha256": "b975ee45765ef70601269290f25681ab9377c16f8f8baa7f6ee01cb3f9581d76"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791656585_run0_round2.json",
+      "sha256": "fb272d1c0867a297d4924b03105b8756293f955fcc2f073fda6e431cd351f4c6"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791656585_run0_round2.txt",
+      "sha256": "7f2e38726f592ff4e9b0f80831cf1342bf8aadd5d1149b158cc830f0e5ad9292"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791656585_run1_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791656585_run1_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791656585_run1_round1.json",
+      "sha256": "5a2c444bcccd61ef630483a24ece9c88a9ed5717b2d9da4c9c7c9a632b856acf"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791656585_run1_round1.txt",
+      "sha256": "b975ee45765ef70601269290f25681ab9377c16f8f8baa7f6ee01cb3f9581d76"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791656585_run2_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791656585_run2_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791656585_run2_round1.json",
+      "sha256": "5a2c444bcccd61ef630483a24ece9c88a9ed5717b2d9da4c9c7c9a632b856acf"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791656585_run2_round1.txt",
+      "sha256": "b975ee45765ef70601269290f25681ab9377c16f8f8baa7f6ee01cb3f9581d76"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791656585_run3_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791656585_run3_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791656585_run3_round1.json",
+      "sha256": "5a2c444bcccd61ef630483a24ece9c88a9ed5717b2d9da4c9c7c9a632b856acf"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791656585_run3_round1.txt",
+      "sha256": "b975ee45765ef70601269290f25681ab9377c16f8f8baa7f6ee01cb3f9581d76"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791656585_run4_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791656585_run4_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791656585_run4_round1.json",
+      "sha256": "5a2c444bcccd61ef630483a24ece9c88a9ed5717b2d9da4c9c7c9a632b856acf"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_1791656585_run4_round1.txt",
+      "sha256": "b975ee45765ef70601269290f25681ab9377c16f8f8baa7f6ee01cb3f9581d76"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_v2_1791656090_run0_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_v2_1791656090_run0_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_v2_1791656090_run0_round1.json",
+      "sha256": "8c87f27e5c35526841c7a8724ccee450019a13a60b8ce8b0ae082147bbbaab63"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_v2_1791656090_run0_round1.txt",
+      "sha256": "75ce149a3e93dd883c40b7d0594a115c43296a7afc6d7036da4bed39ea5f0a06"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_v2_1791656090_run0_round2.json",
+      "sha256": "a7d35852d2e5867880ffce786c0137ac8e9c88c5505575fbae9a33763e7e5a4b"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_v2_1791656090_run0_round2.txt",
+      "sha256": "4e47562ece5e7b544a2470f04d9b13aadc22ca9ccc313ebe853343c4b2452266"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_v2_1791656090_run1_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_v2_1791656090_run1_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_v2_1791656090_run1_round1.json",
+      "sha256": "8c87f27e5c35526841c7a8724ccee450019a13a60b8ce8b0ae082147bbbaab63"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_v2_1791656090_run1_round1.txt",
+      "sha256": "75ce149a3e93dd883c40b7d0594a115c43296a7afc6d7036da4bed39ea5f0a06"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_v2_1791656090_run2_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_v2_1791656090_run2_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_v2_1791656090_run2_round1.json",
+      "sha256": "8c87f27e5c35526841c7a8724ccee450019a13a60b8ce8b0ae082147bbbaab63"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_v2_1791656090_run2_round1.txt",
+      "sha256": "75ce149a3e93dd883c40b7d0594a115c43296a7afc6d7036da4bed39ea5f0a06"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_v2_1791656090_run3_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_v2_1791656090_run3_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_v2_1791656090_run3_round1.json",
+      "sha256": "8c87f27e5c35526841c7a8724ccee450019a13a60b8ce8b0ae082147bbbaab63"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_v2_1791656090_run3_round1.txt",
+      "sha256": "75ce149a3e93dd883c40b7d0594a115c43296a7afc6d7036da4bed39ea5f0a06"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_v2_1791656090_run4_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_v2_1791656090_run4_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_v2_1791656090_run4_round1.json",
+      "sha256": "8c87f27e5c35526841c7a8724ccee450019a13a60b8ce8b0ae082147bbbaab63"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_mine_explain_principles_v2_1791656090_run4_round1.txt",
+      "sha256": "75ce149a3e93dd883c40b7d0594a115c43296a7afc6d7036da4bed39ea5f0a06"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649150_run0_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649150_run0_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649150_run1_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649150_run1_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649150_run2_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649150_run2_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649150_run3_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649150_run3_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649150_run4_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649150_run4_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649150_run5_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649150_run5_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649150_run6_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649150_run6_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649150_run7_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649150_run7_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649150_run8_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649150_run8_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649150_run9_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649150_run9_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run0_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run0_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run0_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run0_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run0_round2.json",
+      "sha256": "8f7c3ecf28e2ffd7a3998df212b520e35c6dd906f42736719be69a8be6f8fddb"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run0_round2.txt",
+      "sha256": "e92e60589587b1ac4394f418d7ef75c8acfe0ba90abae37472079418da3dd297"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run1_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run1_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run1_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run1_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run2_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run2_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run2_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run2_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run3_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run3_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run3_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run3_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run4_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run4_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run4_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run4_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run5_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run5_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run5_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run5_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run6_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run6_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run6_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run6_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run7_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run7_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run7_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run7_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run8_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run8_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run8_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run8_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run9_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run9_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run9_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791649697_run9_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run0_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run0_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run0_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run0_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run0_round2.json",
+      "sha256": "9c7252e855096f73b70b6f85a5627e7e5db9296319b4d6de10b621ce9bf5106a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run0_round2.txt",
+      "sha256": "821081080ae2ce5312aa2eb4fd174807b0bdbd4bd6a4ea1c0f2f364233d6c0cb"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run1_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run1_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run1_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run1_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run2_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run2_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run2_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run2_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run3_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run3_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run3_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run3_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run4_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run4_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run4_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run4_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run5_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run5_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run5_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run5_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run6_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run6_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run6_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run6_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run7_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run7_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run7_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run7_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run8_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run8_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run8_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run8_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run9_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run9_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run9_round1.json",
+      "sha256": "97cab67a5261c62a0f4b3f9fc877c5291da6879b98f8bf31eae3afb1efbcfc5a"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650123_run9_round1.txt",
+      "sha256": "61e50b34b28fdbee9fa70c219ff57f213237287b115d5e1e0daf8f555a7c3383"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650839_run0_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650839_run0_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650839_run0_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650839_run0_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650839_run0_round2.json",
+      "sha256": "26e67a92bab825621f87d4aa0b1c985e43c5262b8312bc3967448e36b5137367"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650839_run0_round2.txt",
+      "sha256": "cba42b6b5a55e7ffac9fe3555698256ac5891f91d14dd6673207a85842e77e1e"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650839_run1_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650839_run1_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650839_run1_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650839_run1_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650839_run2_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650839_run2_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650839_run2_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650839_run2_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650839_run3_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650839_run3_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650839_run3_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650839_run3_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650839_run4_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650839_run4_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650839_run4_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791650839_run4_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run0_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run0_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run0_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run0_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run0_round2.json",
+      "sha256": "26e67a92bab825621f87d4aa0b1c985e43c5262b8312bc3967448e36b5137367"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run0_round2.txt",
+      "sha256": "cba42b6b5a55e7ffac9fe3555698256ac5891f91d14dd6673207a85842e77e1e"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run1_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run1_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run1_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run1_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run2_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run2_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run2_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run2_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run3_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run3_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run3_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run3_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run4_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run4_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run4_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run4_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run5_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run5_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run5_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run5_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run6_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run6_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run6_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run6_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run7_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run7_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run7_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run7_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run8_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run8_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run8_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run8_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run9_round0.json",
+      "sha256": "6b6d71ea14d79442b7fd9e30da86161ef17b0c9397246a84d2ef5a58da035215"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run9_round0.txt",
+      "sha256": "34fbd5819cb0bd773e3025278c5a645bf2feda938f4246b2ddec0f822c18c6d9"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run9_round1.json",
+      "sha256": "0e8bf19609c82f6793ee11a92648deaca58c56b151d83747319f3a3d1ea7de91"
+    },
+    {
+      "path": "prompts/regression/before/historical_lfsr_nohint_1791651047_run9_round1.txt",
+      "sha256": "a08f1454be664dd3a0606fbf0aa7fe64dd63bee1f79e319bdec31e93e251d310"
+    },
+    {
+      "path": "prompts/regression/before/historical_sequence_generator_1791653129902567742_run0_round0.json",
+      "sha256": "5bbc6689211b47b4cdf90fa05e17be3a09a08f8fe4faaa74ec5bd805bb742e9e"
+    },
+    {
+      "path": "prompts/regression/before/historical_sequence_generator_1791653129902567742_run0_round0.txt",
+      "sha256": "5a2a83f95f10a8c3a684bf4f682b43101cc2482a28c23ccaa819aec2180f4e56"
+    },
+    {
+      "path": "prompts/regression/before/historical_sequence_generator_1791653129902567742_run0_round1.json",
+      "sha256": "4793a0fd34bf4690d517aa88fa7a210952f249847f899d776a240bb11eacd16a"
+    },
+    {
+      "path": "prompts/regression/before/historical_sequence_generator_1791653129902567742_run0_round1.txt",
+      "sha256": "ea47a5cca8afbacf5d533fa1499659a5ad37a1a8a9306c6fb1e3b55c1ae303be"
+    },
+    {
+      "path": "prompts/regression/before/historical_sequence_generator_1791653129902567742_run0_round2.json",
+      "sha256": "c3441e2502db6ca73029b6c3745805fd66c15b243bea7268da83b6bd3ef3c659"
+    },
+    {
+      "path": "prompts/regression/before/historical_sequence_generator_1791653129902567742_run0_round2.txt",
+      "sha256": "c0fada89b18ddf5398c37349038410bbe95692e3587c1149da5ca7e30763da3f"
+    },
+    {
+      "path": "prompts/regression/before/historical_sequence_generator_1791653129902567742_run1_round0.json",
+      "sha256": "5bbc6689211b47b4cdf90fa05e17be3a09a08f8fe4faaa74ec5bd805bb742e9e"
+    },
+    {
+      "path": "prompts/regression/before/historical_sequence_generator_1791653129902567742_run1_round0.txt",
+      "sha256": "5a2a83f95f10a8c3a684bf4f682b43101cc2482a28c23ccaa819aec2180f4e56"
+    },
+    {
+      "path": "prompts/regression/before/historical_sequence_generator_1791653129902567742_run1_round1.json",
+      "sha256": "680ff85e4fd62f181025dc3919c761bb9926fdaa2a36f731451b5f96075881c1"
+    },
+    {
+      "path": "prompts/regression/before/historical_sequence_generator_1791653129902567742_run1_round1.txt",
+      "sha256": "184457e66693af703626e4b2ffc1acfa138746c02b7929aa8532ed7f2bedf4e8"
+    },
+    {
+      "path": "prompts/regression/before/historical_sequence_generator_1791653129902567742_run2_round0.json",
+      "sha256": "5bbc6689211b47b4cdf90fa05e17be3a09a08f8fe4faaa74ec5bd805bb742e9e"
+    },
+    {
+      "path": "prompts/regression/before/historical_sequence_generator_1791653129902567742_run2_round0.txt",
+      "sha256": "5a2a83f95f10a8c3a684bf4f682b43101cc2482a28c23ccaa819aec2180f4e56"
+    },
+    {
+      "path": "prompts/regression/before/historical_sequence_generator_1791653129902567742_run2_round1.json",
+      "sha256": "8cd674315a26d0dac07bf25f2db4e66f8592970c0e424537f44df282cb5eba87"
+    },
+    {
+      "path": "prompts/regression/before/historical_sequence_generator_1791653129902567742_run2_round1.txt",
+      "sha256": "897388b5c3948f91269e659868cc5585e3a017474bdd55baf9c80f6b0a62d4cb"
+    },
+    {
+      "path": "prompts/regression/before/historical_sequence_generator_1791653129902567742_run3_round0.json",
+      "sha256": "5bbc6689211b47b4cdf90fa05e17be3a09a08f8fe4faaa74ec5bd805bb742e9e"
+    },
+    {
+      "path": "prompts/regression/before/historical_sequence_generator_1791653129902567742_run3_round0.txt",
+      "sha256": "5a2a83f95f10a8c3a684bf4f682b43101cc2482a28c23ccaa819aec2180f4e56"
+    },
+    {
+      "path": "prompts/regression/before/historical_sequence_generator_1791653129902567742_run3_round1.json",
+      "sha256": "8949e27013b599690318a745a4e833a08f9f2ab6636a6ec38fa9591f948fdbb6"
+    },
+    {
+      "path": "prompts/regression/before/historical_sequence_generator_1791653129902567742_run3_round1.txt",
+      "sha256": "f5865d9f285875244b3c02341200fec16fdc2c4d5773b9bec71d2e143954cd13"
+    },
+    {
+      "path": "prompts/regression/before/historical_sequence_generator_1791653129902567742_run4_round0.json",
+      "sha256": "5bbc6689211b47b4cdf90fa05e17be3a09a08f8fe4faaa74ec5bd805bb742e9e"
+    },
+    {
+      "path": "prompts/regression/before/historical_sequence_generator_1791653129902567742_run4_round0.txt",
+      "sha256": "5a2a83f95f10a8c3a684bf4f682b43101cc2482a28c23ccaa819aec2180f4e56"
+    },
+    {
+      "path": "prompts/regression/before/historical_sequence_generator_1791653129902567742_run4_round1.json",
+      "sha256": "3067c2337315d69d735973d079b944dc1c6039209610cdac93bc7ce6345593a3"
+    },
+    {
+      "path": "prompts/regression/before/historical_sequence_generator_1791653129902567742_run4_round1.txt",
+      "sha256": "24a8a6974088f71066db012102ffbfffa4220bef20e273c16ba79fe32d42b94f"
+    },
+    {
+      "path": "prompts/regression/before/inputs.json",
+      "sha256": "ea26ceaab24833d43bc1627c8812aea8b8ce86813e1292d7562acbe5e4652218"
+    },
+    {
+      "path": "prompts/regression/before/knowledge.json",
+      "sha256": "39ac6f0b5cd066f5459aab1811fc4913b7a4bb19c2caad69e025ab53bc1fa9b8"
+    },
+    {
+      "path": "prompts/regression/before/manifest.json",
+      "sha256": "c5cef6af2e2155002bf092b51d4cf2c5d41aca9952708bcbfba53ab52da6362b"
+    },
+    {
+      "path": "prompts/regression/before/source_agent.py",
+      "sha256": "1715964450d8982779548410a690a177586dce05a6f0669d3cb3946be04ac4de"
+    },
+    {
+      "path": "prompts/regression/before/source_agent_legacy.py",
+      "sha256": "4612932f7f8a2c8386bfe3b54c67814a9d1e3341a74680b4478996438cc292a7"
+    },
+    {
+      "path": "prompts/regression/before/source_agent_v1.py",
+      "sha256": "edad9de952cfb0fce7e78466e2065756408fab1e90ced8ebcb18864854c9c37a"
+    },
+    {
+      "path": "prompts/regression/before/taxonomy.json",
+      "sha256": "7d227b3ff29ab2165341d429d2201f14bea408c14048d480f9b47c907ddb051e"
+    },
+    {
+      "path": "prompts/regression/source_taxonomy.py",
+      "sha256": "e624564383d7c7dc087903e4d4193730dc4ca5b0403d9b6e58a7b475a6df7f22"
+    },
+    {
+      "path": "prompts/runs/md_generic_v4_dynamic_taxonomy_20261010T193309Z_1791660789210467332_lfsr_20261010T193309Z_1791660789260213302/run_0_round_0.json",
+      "sha256": "559883ef50e05288c2679cc78d275b3d069c912fa537bcbfff95e69422e5ff64"
+    },
+    {
+      "path": "prompts/runs/md_generic_v4_dynamic_taxonomy_20261010T193309Z_1791660789210467332_lfsr_20261010T193309Z_1791660789260213302/run_0_round_0.txt",
+      "sha256": "2550883f92fb9727febcef79284fdd50e92b5f7ca0cf75d398fa3542daf85470"
+    },
+    {
+      "path": "prompts/runs/md_generic_v4_dynamic_taxonomy_20261010T193309Z_1791660789210467332_lfsr_20261010T193309Z_1791660789260213302/run_0_round_1.json",
+      "sha256": "4eff6053876c7860f934ebea371754f16b7459921d31aa156525d528c2adc870"
+    },
+    {
+      "path": "prompts/runs/md_generic_v4_dynamic_taxonomy_20261010T193309Z_1791660789210467332_lfsr_20261010T193309Z_1791660789260213302/run_0_round_1.txt",
+      "sha256": "3b59a417b86cb6c43e993da968aab4557444a86035495ad82c43d4f77af0d096"
+    },
+    {
+      "path": "prompts/runs/md_generic_v4_dynamic_taxonomy_20261010T193309Z_1791660789210467332_lfsr_20261010T193309Z_1791660789260213302/source.json",
+      "sha256": "07d88557cec9e293c9d21822ea0b68514816d1c848a3fed0e6bc1d0d543d4f04"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_0_round_0.json",
+      "sha256": "5bbc6689211b47b4cdf90fa05e17be3a09a08f8fe4faaa74ec5bd805bb742e9e"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_0_round_0.txt",
+      "sha256": "5a2a83f95f10a8c3a684bf4f682b43101cc2482a28c23ccaa819aec2180f4e56"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_0_round_1.json",
+      "sha256": "4793a0fd34bf4690d517aa88fa7a210952f249847f899d776a240bb11eacd16a"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_0_round_1.txt",
+      "sha256": "ea47a5cca8afbacf5d533fa1499659a5ad37a1a8a9306c6fb1e3b55c1ae303be"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_0_round_2.json",
+      "sha256": "c3441e2502db6ca73029b6c3745805fd66c15b243bea7268da83b6bd3ef3c659"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_0_round_2.txt",
+      "sha256": "c0fada89b18ddf5398c37349038410bbe95692e3587c1149da5ca7e30763da3f"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_0_round_3.json",
+      "sha256": "fec1774998c870f2c07a822f3c6db4d48ac2cfe6521d15d5a64bc83adb91d82c"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_0_round_3.txt",
+      "sha256": "bb4ea4242e280413daa46319c6895f0c2f041394e14d58e258a0f40065688c5b"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_1_round_0.json",
+      "sha256": "5bbc6689211b47b4cdf90fa05e17be3a09a08f8fe4faaa74ec5bd805bb742e9e"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_1_round_0.txt",
+      "sha256": "5a2a83f95f10a8c3a684bf4f682b43101cc2482a28c23ccaa819aec2180f4e56"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_1_round_1.json",
+      "sha256": "680ff85e4fd62f181025dc3919c761bb9926fdaa2a36f731451b5f96075881c1"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_1_round_1.txt",
+      "sha256": "184457e66693af703626e4b2ffc1acfa138746c02b7929aa8532ed7f2bedf4e8"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_1_round_2.json",
+      "sha256": "e5f655c133c68c502ba52046582af20b4e40dcc3e5b9a56eb9e848c0ae8faddd"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_1_round_2.txt",
+      "sha256": "8bd3019a323cf139997f09f6a046acdf4b99b48eeaa693f17d6b1b7863d1ae4e"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_1_round_3.json",
+      "sha256": "d2d7321a38b3d5124e5c4224b0b29c05cfa3d72ed4b401ac0117c3d2b5372241"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_1_round_3.txt",
+      "sha256": "9883ed34867b2d06ef405945efd07788d1066864145384e948add8590cad399b"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_2_round_0.json",
+      "sha256": "5bbc6689211b47b4cdf90fa05e17be3a09a08f8fe4faaa74ec5bd805bb742e9e"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_2_round_0.txt",
+      "sha256": "5a2a83f95f10a8c3a684bf4f682b43101cc2482a28c23ccaa819aec2180f4e56"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_2_round_1.json",
+      "sha256": "8cd674315a26d0dac07bf25f2db4e66f8592970c0e424537f44df282cb5eba87"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_2_round_1.txt",
+      "sha256": "897388b5c3948f91269e659868cc5585e3a017474bdd55baf9c80f6b0a62d4cb"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_2_round_2.json",
+      "sha256": "f53406eea757f2bb9dd3a5c741ddea3ec1f7f09c17fd4d1820b0ca8e66baedce"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_2_round_2.txt",
+      "sha256": "df784f21c28e31ccf4c2b182f52afe42e48d56385a1f57a84737d8ab961a5e13"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_2_round_3.json",
+      "sha256": "389adec2dc814120096284ea8117bbaaf0960f3fdbc23f7dddfa771e87a2bdf8"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_2_round_3.txt",
+      "sha256": "c2dc36eba3b7b3d64d766f13f66520db236258695547167b009fb3172af17c85"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_3_round_0.json",
+      "sha256": "5bbc6689211b47b4cdf90fa05e17be3a09a08f8fe4faaa74ec5bd805bb742e9e"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_3_round_0.txt",
+      "sha256": "5a2a83f95f10a8c3a684bf4f682b43101cc2482a28c23ccaa819aec2180f4e56"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_3_round_1.json",
+      "sha256": "8949e27013b599690318a745a4e833a08f9f2ab6636a6ec38fa9591f948fdbb6"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_3_round_1.txt",
+      "sha256": "f5865d9f285875244b3c02341200fec16fdc2c4d5773b9bec71d2e143954cd13"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_3_round_2.json",
+      "sha256": "b5d1ceec6560963507f6f0d6303f8a7300b232d1c82d2741874b7a7b92e9ecc3"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_3_round_2.txt",
+      "sha256": "5492e99777b08a8603bf87e01458a6cc5f8675e0e5e3a2e7cb1f378ca92082ac"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_3_round_3.json",
+      "sha256": "68706ade6caac3c67200309656cc9a1a67d267e3c8dc32995f1f5127a97b694a"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_3_round_3.txt",
+      "sha256": "19038785d622ab3d1994e0982aef714820c4c73cfe6b3d72d92a7288ba044c83"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_4_round_0.json",
+      "sha256": "5bbc6689211b47b4cdf90fa05e17be3a09a08f8fe4faaa74ec5bd805bb742e9e"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_4_round_0.txt",
+      "sha256": "5a2a83f95f10a8c3a684bf4f682b43101cc2482a28c23ccaa819aec2180f4e56"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_4_round_1.json",
+      "sha256": "3067c2337315d69d735973d079b944dc1c6039209610cdac93bc7ce6345593a3"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_4_round_1.txt",
+      "sha256": "24a8a6974088f71066db012102ffbfffa4220bef20e273c16ba79fe32d42b94f"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_4_round_2.json",
+      "sha256": "f53406eea757f2bb9dd3a5c741ddea3ec1f7f09c17fd4d1820b0ca8e66baedce"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_4_round_2.txt",
+      "sha256": "df784f21c28e31ccf4c2b182f52afe42e48d56385a1f57a84737d8ab961a5e13"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_4_round_3.json",
+      "sha256": "389adec2dc814120096284ea8117bbaaf0960f3fdbc23f7dddfa771e87a2bdf8"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/run_4_round_3.txt",
+      "sha256": "c2dc36eba3b7b3d64d766f13f66520db236258695547167b009fb3172af17c85"
+    },
+    {
+      "path": "prompts/runs/sequence_generator_1791653129902567742/source.json",
+      "sha256": "3cb2e1505738a015e065ee563372a9c441aae1183b46c6c177ac7fe5fe4d3551"
+    },
+    {
+      "path": "prompts/specs/LFSR.md",
+      "sha256": "8d3c435d26425845f9625c6de44964d15d506fb063d8783e9a566cb555758bc2"
+    },
+    {
+      "path": "prompts/specs/abro_state_machine.md",
+      "sha256": "9670cc0553c79acac6b6a238789f8c3d288a633fccc2cac100f95fce04c34322"
+    },
+    {
+      "path": "prompts/specs/binary_to_bcd.md",
+      "sha256": "ca983202ed272ecb8e27ddaa504dde3e2f80eb485173ce56a6a03801d22f4569"
+    },
+    {
+      "path": "prompts/specs/dice_roller.md",
+      "sha256": "182a0d16ff791dad168977426382cb9c2733ba834acbd5b6fd00a222cd57df00"
+    },
+    {
+      "path": "prompts/specs/sequence_detector.md",
+      "sha256": "e596ebe971ca1fae9d0d8dff031e058d9f05eb58eb34ab776b1ae6669d0e63c2"
+    },
+    {
+      "path": "prompts/specs/sequence_generator.md",
+      "sha256": "458b989e87a5430cd66f3995fd6da2ca16f2233ac2c3f9b23a9502c37cdc6a13"
+    },
+    {
+      "path": "prompts/specs/shift_register.md",
+      "sha256": "faa52be0358cc815d4ee86c98e9b0487d98b61a96f71ac44606460662639a652"
+    },
+    {
+      "path": "prompts/specs/traffic_light.md",
+      "sha256": "0a4a1802bdd89fdf6c47baac4622af67c316eb052dc6ed3a76a5f60ca7a958cf"
+    },
+    {
+      "path": "prompts/testbench.md",
+      "sha256": "9b9efc7672d15575d22b6bbe673f5c9c674763074b4344c800c013fa50a9c9ec"
+    },
+    {
+      "path": "experiments/md_generic_v4_dynamic_taxonomy.json",
+      "sha256": "b27dc7e4f99c1a5c603704474ddf849e11d74e2f6f844ff5f2376532fd398f9b"
+    },
+    {
+      "path": "TestBench/abro_state_machine_tb.v",
+      "sha256": "8989ccfd08d1ac51de44b77e7143a0f0d8351838c17873d3304f1326d6297070"
+    },
+    {
+      "path": "TestBench/binary_to_bcd_tb.v",
+      "sha256": "b1a5d1efeb22b0268f74f730b8b056c2bf073988e17b9b1a62e584324f5f3c16"
+    },
+    {
+      "path": "TestBench/dice_roller_tb.v",
+      "sha256": "dacf86fc102fdd93352aa0cf18adf3563abfeef5f40424c0a6826036b6c6267f"
+    },
+    {
+      "path": "TestBench/lfsr_tb.v",
+      "sha256": "b426b5eddcba0fbb1da9514727d6a7f4bb9657e4ebeb4c432c5f111a1eee12d7"
+    },
+    {
+      "path": "TestBench/sequence_detector_tb.v",
+      "sha256": "e316f3f9317005954263a114d86308e4c9d8282dca1bf39670ec351fcaadfc35"
+    },
+    {
+      "path": "TestBench/sequence_generator_tb.v",
+      "sha256": "7c5b074f0b3151aee3628a57c9732b6901bcb4fb6af7f7204ce3de6b14235202"
+    },
+    {
+      "path": "TestBench/shift_register_tb.v",
+      "sha256": "8c8cf4ad3ebd143a80bf5730ad9433f5ce7d93c136d9fafa23c1d11fa46b451f"
+    },
+    {
+      "path": "TestBench/traffic_light_tb.v",
+      "sha256": "c06810ceb26732a9b82a562dcf77f525db3093fed7bd5e337ee4fbe1ef1e8829"
+    },
+    {
+      "path": "verilog/reference/dice_roller.json",
+      "sha256": "f41762a5c258c79bc5830c2f30903213c3a413da182aea071d4f01125ffbc4e2"
+    },
+    {
+      "path": "verilog/reference/dice_roller.v",
+      "sha256": "258774ae4fcc634700b89c355fbc6f74d11e8bb95d0e3e91cdea1fa1d6d7d257"
+    },
+    {
+      "path": "verilog/reference/lfsr.json",
+      "sha256": "2dceb27d2f2335a15bb825c1ffde497e624d0c6f8bcea2e85d037e5b366722f6"
+    },
+    {
+      "path": "verilog/reference/lfsr.v",
+      "sha256": "63a035f65295c4c95d5e2856d7ed8f61248f41e17498d672cae3161212148981"
+    },
+    {
+      "path": "verilog/reference/sequence_generator.json",
+      "sha256": "19f4e29720e6bcbc0c0eebccab26699b07da75c2a8c9ec545bcb1f39198f1514"
+    },
+    {
+      "path": "verilog/reference/sequence_generator.v",
+      "sha256": "57159ffc31bbe0ce10193dc9499db221eb505f4bb2b8e92f819268b6ea1ce7ca"
+    },
+    {
+      "path": "verilog/reference/traffic_light.json",
+      "sha256": "7d6c5b856f90da70f4cf5d56f8d8b8d4fdc92b04821c996a396dee372b2fc312"
+    },
+    {
+      "path": "verilog/reference/traffic_light.v",
+      "sha256": "7ece8b451f7041c2bea80487b7753d788692350385789beb3108f6a2db8cea27"
+    },
+    {
+      "path": "reference/seq/seq_a.v",
+      "sha256": "57159ffc31bbe0ce10193dc9499db221eb505f4bb2b8e92f819268b6ea1ce7ca"
+    },
+    {
+      "path": "reference/seq/seq_b.v",
+      "sha256": "c0670eae6c0f378efab31dd8e72d9f4f60d6fbf5aba1a61d3cbdd38a8bdfe304"
+    },
+    {
+      "path": "candidates/bad/inverted_feedback.v",
+      "sha256": "878805cdfa54d45e9494d259038351e19ca3694d2c7f683216a550f59dc5c99c"
+    },
+    {
+      "path": "candidates/bad/lfsr_badtap.v",
+      "sha256": "8235f1c12263947380934cb2c9414d1966b3b342bfe3bd8ee8a74c48b5e6dd6d"
+    },
+    {
+      "path": "candidates/bad/lfsr_initial_hack.v",
+      "sha256": "30505be3ddfa3c1da462f5205c32397ce73fca31ff5ca6d11a8c2d8c619f9fb5"
+    },
+    {
+      "path": "candidates/bad/lfsr_syncreset.v",
+      "sha256": "11a90b4236a5edd12cfd2cf1513c781aa7cc709ecba21932dd619bb1c0dfebe1"
+    },
+    {
+      "path": "candidates/bad/lfsr_two_drivers.v",
+      "sha256": "7e6bf115cab0bdbc6a58e9fc159c709ce5e28ecace32b78b6467868ef713b7dc"
+    },
+    {
+      "path": "candidates/bad/sequence_generator/bad_item.v",
+      "sha256": "7a1976adffa2c787c9d70b5637ef782fa869ce6be66fa38ebf527a66b6f32447"
+    },
+    {
+      "path": "candidates/bad/sequence_generator/ignores_enable.v",
+      "sha256": "93daac7018bcec7f1b80a3b46848fc3c7765e0d20a95a36007e67087cfdfc5cc"
+    },
+    {
+      "path": "candidates/bad/sequence_generator/no_wrap.v",
+      "sha256": "d9ef5276089384ac3e82e14f81daa6ae8fe7a466201dcbaa444d46ba478757fa"
+    },
+    {
+      "path": "candidates/bad/sequence_generator/reset_position.v",
+      "sha256": "d77f0507b1869c1917ec5cb596e49fa4f36648b350395354451c5062b097ef4c"
+    },
+    {
+      "path": "candidates/bad/sequence_generator/restart_on_pause.v",
+      "sha256": "500723bf3a675d41617a9307c56a87bcacc48a541140605e35481d0037dc24ff"
+    },
+    {
+      "path": "candidates/bad/shift_wrong_direction.v",
+      "sha256": "c33a3177fab8c99a954e5fd29c78233f7a30bbe721912ddf5bb54344ed95e0ba"
+    },
+    {
+      "path": "candidates/gen/md_generic_v4_dynamic_taxonomy_20261010T193309Z_1791660789210467332_lfsr_20261010T193309Z_1791660789260213302/lfsr/lfsr_0_0.v",
+      "sha256": "992cdc38c3d20a5299bbc66eab9d9f20f41eea0d31b94077c2329a8340b20bf2"
+    },
+    {
+      "path": "candidates/gen/md_generic_v4_dynamic_taxonomy_20261010T193309Z_1791660789210467332_lfsr_20261010T193309Z_1791660789260213302/lfsr/lfsr_0_1.v",
+      "sha256": "5be1264cd9941bdc860285b03953f013a84beb245ab7d022f5e4475640938932"
+    },
+    {
+      "path": "candidates/lfsr.v",
+      "sha256": "63a035f65295c4c95d5e2856d7ed8f61248f41e17498d672cae3161212148981"
+    },
+    {
+      "path": "tests/__pycache__/test_checker.cpython-313.pyc",
+      "sha256": "e57df437eab779ee36f7a994a8c83d9a159d747a0467c4ad70f66270cb3b5a2a"
+    },
+    {
+      "path": "tests/__pycache__/test_engine.cpython-313.pyc",
+      "sha256": "7434d21aa7c010e56f200f26ef0cc07618ad200b1dd58681f117dfdf40b81b9e"
+    },
+    {
+      "path": "tests/__pycache__/test_prompt_owner.cpython-313.pyc",
+      "sha256": "c3e6c76eedb0b781f18c7af5feddc2af9c20124be1857c4a8e1d0f58ddca7713"
+    },
+    {
+      "path": "tests/__pycache__/test_taxonomy.cpython-313.pyc",
+      "sha256": "f61b96712fba6979db534f24746f318b3b680afc3a7bf19bea8982bcc5a808f3"
+    },
+    {
+      "path": "tests/test_checker.py",
+      "sha256": "cabe17a940424edac52d200a26071caf97d90e29e4e568ebd12dad2abc1d862e"
+    },
+    {
+      "path": "tests/test_engine.py",
+      "sha256": "90e74539c825b59b8446de3eaa0933bf0ed17c5704adb9bff5b6f24b393b70f3"
+    },
+    {
+      "path": "tests/test_prompt_owner.py",
+      "sha256": "3bad9089b88b0cb6e5c62b58074083c3e066800bc5cbce4ef3d93fb36f68c2eb"
+    },
+    {
+      "path": "tests/test_taxonomy.py",
+      "sha256": "702a8bb1d83097dedcc7f2a40bf7c3c261fefe352a69aabbe40311fc8626311a"
+    },
+    {
+      "path": "log/dice_roller.log",
+      "sha256": "0021aebfcbf7b7e279a4acf34f84cf60ed065ec821efb5bd3f87826e23c9bfd9"
+    },
+    {
+      "path": "log/history/interface_lines_prompt_refactor.json",
+      "sha256": "a5e81891bb3f104d098b2266211b4d4a05a66c4b29d107aeefece2007e910423"
+    },
+    {
+      "path": "log/history/lfsr_after_prompt_refactor.stderr.txt",
+      "sha256": "65b114af71a201637bcc1db9c0cbb9050d257e577d2a55880f5d5d710c0d21e4"
+    },
+    {
+      "path": "log/history/lfsr_after_prompt_refactor.txt",
+      "sha256": "9ecd82dbc66e39c8e3949360a3a48654baa40831d4e76b32925fd5eed0449e9f"
+    },
+    {
+      "path": "log/history/md_generic_v4_dynamic_taxonomy_20261010T193309Z_1791660789210467332/lfsr.log",
+      "sha256": "c63a5f195872b283c7371cfbe66266fa6a7789a782728b8a1106c97def8be4fe"
+    },
+    {
+      "path": "log/history/md_generic_v4_dynamic_taxonomy_20261010T193309Z_1791660789210467332/md_generic_v4_dynamic_taxonomy_20261010T193309Z_1791660789210467332_lfsr_20261010T193309Z_1791660789260213302.jsonl",
+      "sha256": "0fbe19a6a4c9fa6c9747dc3f0247bd2e6e29d2c34dfeb4be8142057dee99ff09"
+    },
+    {
+      "path": "log/history/md_generic_v4_dynamic_taxonomy_20261010T193309Z_1791660789210467332/run.json",
+      "sha256": "fb32a8472bbedee7ac46ff3859acb15d27d62ab0071af1ad2f36ed3c24f2a036"
+    },
+    {
+      "path": "log/history/md_generic_v4_dynamic_taxonomy_20261010T193309Z_1791660789210467332/summary.json",
+      "sha256": "5906e9632862347c9c071ee854caf4e3c80c74b8d63111aafe35b91a74c45348"
+    },
+    {
+      "path": "log/history/md_generic_v4_dynamic_taxonomy_UPDATE.json",
+      "sha256": "134e7087338d41e8d5a33c61e9e55f569df28177d6882be0c1a8488b82058dec"
+    },
+    {
+      "path": "log/history/prompt_owner_tests.log",
+      "sha256": "0ae94af8cc127d6f6fd4010b1c7c19b4b51184c3741bdc3ffaf9657a6da36352"
+    },
+    {
+      "path": "log/history/prompt_refactor_regression.json",
+      "sha256": "dec744f044523a35a5196c889053fc9ba94c1bb2ac00b41c72bc32a8c0593fc2"
+    },
+    {
+      "path": "log/history/prompt_refactor_runner/md_generic_v4_dynamic_taxonomy_20261010T192758Z_1791660478571883369/dice_roller.json",
+      "sha256": "189889c7d9e8f9fe23d2765143e917576f77800599019eb33c702360f4d298bf"
+    },
+    {
+      "path": "log/history/prompt_refactor_runner/md_generic_v4_dynamic_taxonomy_20261010T192758Z_1791660478571883369/dice_roller.log",
+      "sha256": "29908d21c1c14652201de91aad4dfe3c707d71488829e15aa2b7ffdf1439b621"
+    },
+    {
+      "path": "log/history/prompt_refactor_runner/md_generic_v4_dynamic_taxonomy_20261010T192758Z_1791660478571883369/lfsr.json",
+      "sha256": "acad87ce71863a3fa38ef2b1c9c0d9f56b3cf928d73f20b1f74bad43ed5ba3ab"
+    },
+    {
+      "path": "log/history/prompt_refactor_runner/md_generic_v4_dynamic_taxonomy_20261010T192758Z_1791660478571883369/lfsr.log",
+      "sha256": "3f9b70dd3eb568b08f064ec8fefc08a5b6d6bc87e9ea15ea920ab4c1d0ff4d9d"
+    },
+    {
+      "path": "log/history/prompt_refactor_runner/md_generic_v4_dynamic_taxonomy_20261010T192758Z_1791660478571883369/run.json",
+      "sha256": "514ddf828753f576468a2e245e5b38ac606352f15fc0b9c41abdbbfc88ff687e"
+    },
+    {
+      "path": "log/history/prompt_refactor_runner/md_generic_v4_dynamic_taxonomy_20261010T192758Z_1791660478571883369/sequence_generator.json",
+      "sha256": "5105ca977505389b3c0b0d723ee37cdaed00261145c0532f294cf5ca1c931b5c"
+    },
+    {
+      "path": "log/history/prompt_refactor_runner/md_generic_v4_dynamic_taxonomy_20261010T192758Z_1791660478571883369/sequence_generator.log",
+      "sha256": "dbaab88994d79a5bad4bb23580498bf55c47ae32ed903e7a728605a40eb2b557"
+    },
+    {
+      "path": "log/history/prompt_refactor_runner/md_generic_v4_dynamic_taxonomy_20261010T192758Z_1791660478571883369/summary.json",
+      "sha256": "ad825747824cb0cd13878f85b8fa3f520a3221e183f69aa6e3df37e5a79d5c9f"
+    },
+    {
+      "path": "log/history/prompt_refactor_runner/md_generic_v4_dynamic_taxonomy_20261010T192758Z_1791660478571883369/traffic_light.json",
+      "sha256": "2ce2c836f1294e641ddcb0ff59c274509921dec3708e76ab244a70ffb1c149fa"
+    },
+    {
+      "path": "log/history/prompt_refactor_runner/md_generic_v4_dynamic_taxonomy_20261010T192758Z_1791660478571883369/traffic_light.log",
+      "sha256": "6e55d6a77e67a32aa3de8992acaef0ff8fcccdf1a2c50a6cd75f1cc20b201cde"
+    },
+    {
+      "path": "log/history/prompt_refactor_tests.log",
+      "sha256": "5f9f9f4b496109f67bdf58feb8f23589d4ed26363303a795d40ae9f806e5d722"
+    },
+    {
+      "path": "log/history/prompt_refactor_verification.json",
+      "sha256": "431f61c23f0c989d1ff66ae023f512a5145cfcfa22e9d91b25812cae2d72e030"
+    },
+    {
+      "path": "log/history/taxonomy_rules_update/batch_stdout.txt",
+      "sha256": "f7b651614766bbadf85b1470ac84c33d22ae50a5d2375c2c8319614ed2547dc9"
+    },
+    {
+      "path": "log/history/taxonomy_rules_update/before_checker.py",
+      "sha256": "067800f48550e343364ba9ef0966046853e760c659303388e3ac40f933e28bed"
+    },
+    {
+      "path": "log/history/taxonomy_rules_update/before_taxonomy.py",
+      "sha256": "e624564383d7c7dc087903e4d4193730dc4ca5b0403d9b6e58a7b475a6df7f22"
+    },
+    {
+      "path": "log/history/taxonomy_rules_update/knowledge_comparison.json",
+      "sha256": "e4dc5bfa3f3e84136b8ffd4c9d36c1feec278ebd7e464b974c495d7e49a91e2c"
+    },
+    {
+      "path": "log/history/taxonomy_rules_update/lfsr_stderr.txt",
+      "sha256": "7f19a407fa01a3b190ec991c5fe9184f0c07a72bea62ab0b3190008133bf0212"
+    },
+    {
+      "path": "log/history/taxonomy_rules_update/lfsr_stdout.txt",
+      "sha256": "9ecd82dbc66e39c8e3949360a3a48654baa40831d4e76b32925fd5eed0449e9f"
+    },
+    {
+      "path": "log/history/taxonomy_rules_update/proposed_move.json",
+      "sha256": "2081f6eadbf36e17e0a223ebfcdb4d91497f3921a203a2459afbe2bbce2cc12c"
+    },
+    {
+      "path": "log/history/taxonomy_rules_update/report.json",
+      "sha256": "27ff1bfce0c646ff35727e1a36f5711b613d1a1fe3e8a738c853875facf22458"
+    },
+    {
+      "path": "log/history/taxonomy_rules_update/round1_after.json",
+      "sha256": "15dbe8629614ac79a47afadab837d9b32994084ae788b916aa627daeb51123ad"
+    },
+    {
+      "path": "log/history/taxonomy_rules_update/round1_before.json",
+      "sha256": "4eff6053876c7860f934ebea371754f16b7459921d31aa156525d528c2adc870"
+    },
+    {
+      "path": "log/history/taxonomy_rules_update/round1_rules_after.txt",
+      "sha256": "76ecd7ddc10e5cdd2ba4eb35b3f59f15990382020b50a12260d0d8aeb6889b0f"
+    },
+    {
+      "path": "log/history/taxonomy_rules_update/round1_rules_before.txt",
+      "sha256": "bcc24faf3ea6d055771fde004fc3ed68ca65a9a078f44ac373395bb803e8dc4f"
+    },
+    {
+      "path": "log/history/taxonomy_rules_update/show_detect_cli.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "log/history/taxonomy_rules_update/tests.log",
+      "sha256": "33a8aaeae8e9099d1fbd2f79dade944aba25fdee3042af207b02565beb606afa"
+    },
+    {
+      "path": "log/lfsr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "log/runs/md_generic_v4_dynamic_taxonomy_20261010T194313Z_1791661393449624988/dice_roller.json",
+      "sha256": "189889c7d9e8f9fe23d2765143e917576f77800599019eb33c702360f4d298bf"
+    },
+    {
+      "path": "log/runs/md_generic_v4_dynamic_taxonomy_20261010T194313Z_1791661393449624988/dice_roller.log",
+      "sha256": "0021aebfcbf7b7e279a4acf34f84cf60ed065ec821efb5bd3f87826e23c9bfd9"
+    },
+    {
+      "path": "log/runs/md_generic_v4_dynamic_taxonomy_20261010T194313Z_1791661393449624988/lfsr.json",
+      "sha256": "acad87ce71863a3fa38ef2b1c9c0d9f56b3cf928d73f20b1f74bad43ed5ba3ab"
+    },
+    {
+      "path": "log/runs/md_generic_v4_dynamic_taxonomy_20261010T194313Z_1791661393449624988/lfsr.log",
+      "sha256": "0021aebfcbf7b7e279a4acf34f84cf60ed065ec821efb5bd3f87826e23c9bfd9"
+    },
+    {
+      "path": "log/runs/md_generic_v4_dynamic_taxonomy_20261010T194313Z_1791661393449624988/run.json",
+      "sha256": "36867407f08b9a4090d1819e3cea49683a546461f134d1c2f948c7ddcd6b2e98"
+    },
+    {
+      "path": "log/runs/md_generic_v4_dynamic_taxonomy_20261010T194313Z_1791661393449624988/sequence_generator.json",
+      "sha256": "919d7031bf963a1b02dc8e06c78a0a033496585cbc0dfae862d1eb8e0ac4e9ba"
+    },
+    {
+      "path": "log/runs/md_generic_v4_dynamic_taxonomy_20261010T194313Z_1791661393449624988/sequence_generator.log",
+      "sha256": "0021aebfcbf7b7e279a4acf34f84cf60ed065ec821efb5bd3f87826e23c9bfd9"
+    },
+    {
+      "path": "log/runs/md_generic_v4_dynamic_taxonomy_20261010T194313Z_1791661393449624988/summary.json",
+      "sha256": "213184ec7d86f31847472680f1376aee9604d129faa0b01588bbcb5451264071"
+    },
+    {
+      "path": "log/runs/md_generic_v4_dynamic_taxonomy_20261010T194313Z_1791661393449624988/traffic_light.json",
+      "sha256": "1afea1304e37024e45660e9c1bccbec6741496d9757be5685297b13849d09fd3"
+    },
+    {
+      "path": "log/runs/md_generic_v4_dynamic_taxonomy_20261010T194313Z_1791661393449624988/traffic_light.log",
+      "sha256": "0021aebfcbf7b7e279a4acf34f84cf60ed065ec821efb5bd3f87826e23c9bfd9"
+    },
+    {
+      "path": "log/sequence_generator.log",
+      "sha256": "0021aebfcbf7b7e279a4acf34f84cf60ed065ec821efb5bd3f87826e23c9bfd9"
+    },
+    {
+      "path": "log/traffic_light.log",
+      "sha256": "0021aebfcbf7b7e279a4acf34f84cf60ed065ec821efb5bd3f87826e23c9bfd9"
+    }
+  ],
+  "all_moved_files_verified": true,
+  "unused_files_archive": "/workspace/GUIDE/VerilogGenBenchmark/archive"
+}

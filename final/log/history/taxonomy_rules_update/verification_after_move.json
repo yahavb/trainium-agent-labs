@@ -1,0 +1,19 @@
+{
+  "unit_tests_exit_code": 0,
+  "lfsr_selftest_exit_code": 0,
+  "lfsr_stdout_byte_identical": true,
+  "all_references_exit_code": 0,
+  "reference_scores": {
+    "lfsr": 1.0,
+    "sequence_generator": 1.0,
+    "traffic_light": 1.0,
+    "dice_roller": 1.0
+  },
+  "historical_prompt_replay_exit_code": 0,
+  "json_md5_after": {
+    "knowledge.json": "0c06e1a7c98e3fe4c17d909d6d087e2b",
+    "taxonomy.json": "99f8e421be61691dcabe262d4e960220"
+  },
+  "json_files_unchanged": true,
+  "knowledge_comparison_status": "original_missing"
+}

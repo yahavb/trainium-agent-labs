@@ -1,0 +1,11 @@
+test_agent_contains_no_prompt_helpers_or_instructions (test_prompt_owner.PromptOwnerTests.test_agent_contains_no_prompt_helpers_or_instructions) ... ok
+test_extraction_is_a_literal_move (test_prompt_owner.PromptOwnerTests.test_extraction_is_a_literal_move) ... ok
+test_interface_generation_is_opt_in (test_prompt_owner.PromptOwnerTests.test_interface_generation_is_opt_in) ... ok
+test_jsonl_events_are_identical_to_the_old_loop (test_prompt_owner.PromptOwnerTests.test_jsonl_events_are_identical_to_the_old_loop) ... ok
+test_saved_prompt_cases_are_identical (test_prompt_owner.PromptOwnerTests.test_saved_prompt_cases_are_identical) ... ok
+test_testbench_runner_needs_no_registry_or_reference (test_prompt_owner.PromptOwnerTests.test_testbench_runner_needs_no_registry_or_reference) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.065s
+
+OK

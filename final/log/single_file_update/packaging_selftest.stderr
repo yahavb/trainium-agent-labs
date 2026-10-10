@@ -1,0 +1,38 @@
+test_cli_flags_and_experiment_name (_single_checker_test_checker.CheckerTests.test_cli_flags_and_experiment_name) ... ok
+test_compile_failure_and_timeout (_single_checker_test_checker.CheckerTests.test_compile_failure_and_timeout) ... ok
+test_detector_is_never_called_when_disabled (_single_checker_test_checker.CheckerTests.test_detector_is_never_called_when_disabled) ... ok
+test_every_detector_on_bad_designs (_single_checker_test_checker.CheckerTests.test_every_detector_on_bad_designs) ... ok
+test_guards_and_reference_samples (_single_checker_test_checker.CheckerTests.test_guards_and_reference_samples) ... ok
+test_observed_previous_state_and_entered_bit (_single_checker_test_checker.CheckerTests.test_observed_previous_state_and_entered_bit) ... ok
+test_only_first_failing_cycle_is_reported (_single_checker_test_checker.CheckerTests.test_only_first_failing_cycle_is_reported) ... ok
+test_principle_priority_budget_and_deduplication (_single_checker_test_checker.CheckerTests.test_principle_priority_budget_and_deduplication) ... ok
+test_reference_and_existing_bad_designs (_single_checker_test_checker.CheckerTests.test_reference_and_existing_bad_designs) ... ok
+test_agent_cli_problem_and_all_feedback_flags (_single_checker_test_engine.EngineTests.test_agent_cli_problem_and_all_feedback_flags) ... ok
+test_agent_sequence_rounds_use_shared_grader_and_diagnosis (_single_checker_test_engine.EngineTests.test_agent_sequence_rounds_use_shared_grader_and_diagnosis) ... ok
+test_early_finish_and_official_failure_do_not_pass (_single_checker_test_engine.EngineTests.test_early_finish_and_official_failure_do_not_pass) ... ok
+test_every_legacy_sequence_fault_and_feedback_modes (_single_checker_test_engine.EngineTests.test_every_legacy_sequence_fault_and_feedback_modes) ... ok
+test_multi_output_sync_active_high_and_settled_sampling (_single_checker_test_engine.EngineTests.test_multi_output_sync_active_high_and_settled_sampling) ... ok
+test_problem_weights_and_reference_models (_single_checker_test_engine.EngineTests.test_problem_weights_and_reference_models) ... ok
+test_reset_checks_and_facts_apply_to_sequence (_single_checker_test_engine.EngineTests.test_reset_checks_and_facts_apply_to_sequence) ... ok
+test_reset_while_enabled_and_disabled_independently (_single_checker_test_engine.EngineTests.test_reset_while_enabled_and_disabled_independently) ... ok
+test_sequence_compile_and_timeout_principles (_single_checker_test_engine.EngineTests.test_sequence_compile_and_timeout_principles) ... ok
+test_sequence_plan_covers_lengths_and_reset_positions (_single_checker_test_engine.EngineTests.test_sequence_plan_covers_lengths_and_reset_positions) ... ok
+test_sequence_reference_and_official (_single_checker_test_engine.EngineTests.test_sequence_reference_and_official) ... ok
+test_agent_file_only_passes_all_options (_single_checker_test_engine.FileReferenceTests.test_agent_file_only_passes_all_options) ... ok
+test_both_reference_sources_and_all_bad_designs (_single_checker_test_engine.FileReferenceTests.test_both_reference_sources_and_all_bad_designs) ... ok
+test_cli_file_only_needs_no_registry_entry (_single_checker_test_engine.FileReferenceTests.test_cli_file_only_needs_no_registry_entry) ... ok
+test_flags_are_independent_and_do_not_mutate_problem_data (_single_checker_test_engine.FileReferenceTests.test_flags_are_independent_and_do_not_mutate_problem_data) ... ok
+test_lfsr_stdout_is_byte_identical (_single_checker_test_engine.FileReferenceTests.test_lfsr_stdout_is_byte_identical) ... ok
+test_seeded_probe_and_inferred_ports (_single_checker_test_engine.FileReferenceTests.test_seeded_probe_and_inferred_ports) ... ok
+test_cli_detection_option_and_missing_original_report (_single_checker_test_taxonomy.TaxonomyTests.test_cli_detection_option_and_missing_original_report) ... ok
+test_empty_category_rule_can_fall_back_to_generic (_single_checker_test_taxonomy.TaxonomyTests.test_empty_category_rule_can_fall_back_to_generic) ... ok
+test_keywords_match_whole_words_and_phrases (_single_checker_test_taxonomy.TaxonomyTests.test_keywords_match_whole_words_and_phrases) ... ok
+test_missing_principles_do_not_take_slots_or_bytes (_single_checker_test_taxonomy.TaxonomyTests.test_missing_principles_do_not_take_slots_or_bytes) ... ok
+test_only_principles_are_sent_by_default (_single_checker_test_taxonomy.TaxonomyTests.test_only_principles_are_sent_by_default) ... ok
+test_prompt_option_controls_detection_text (_single_checker_test_taxonomy.TaxonomyTests.test_prompt_option_controls_detection_text) ... ok
+test_report_lists_all_text_and_preserves_inputs (_single_checker_test_taxonomy.TaxonomyTests.test_report_lists_all_text_and_preserves_inputs) ... ok
+
+----------------------------------------------------------------------
+Ran 33 tests in 3.182s
+
+OK

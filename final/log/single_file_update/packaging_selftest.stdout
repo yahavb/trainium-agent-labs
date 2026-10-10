@@ -1,0 +1,83 @@
+lfsr: candidates/lfsr.v: 1.0
+    correct
+lfsr: candidates/bad/inverted_feedback.v: 0.4
+    reset_midrun: requirement: reset during a run must restore the initial state immediately, hold it across a clock edge, and restart the specified sequence after release. Observed: reset restored and held the initial state correctly; the sequence after restart fails at restart cycle 1 after reset release, data is wrong in bit(s) [0]; the other 7 bits are correct.
+    first_step: requirement: on each clock edge after reset_n is released, data must advance by one step of the LFSR in the spec. Observed: on the first edge after release, data is wrong in bit(s) [0]; the other 7 bits are correct.
+    sequence: requirement: every clock edge must advance data by one step of the LFSR in the spec. Observed: at cycle 1 after release, data is wrong in bit(s) [0]; the other 7 bits are correct.
+lfsr: candidates/bad/lfsr_badtap.v: 0.55
+    reset_midrun: requirement: reset during a run must restore the initial state immediately, hold it across a clock edge, and restart the specified sequence after release. Observed: reset restored and held the initial state correctly; the sequence after restart fails at restart cycle 2 after reset release, data is wrong in bit(s) [0]; the other 7 bits are correct.
+    sequence: requirement: every clock edge must advance data by one step of the LFSR in the spec. Observed: at cycle 2 after release, data is wrong in bit(s) [0]; the other 7 bits are correct.
+lfsr: candidates/bad/lfsr_initial_hack.v: 0.8
+    reset_midrun: requirement: reset during a run must restore the initial state immediately, hold it across a clock edge, and restart the specified sequence after release. Observed: at 2573 ns, one ns after reset assertion with clk low and no clock edge, data is wrong in bit(s) [7, 5, 0]; the other 5 bits are correct.
+    In your design, data is assigned in 2 place(s): line 6, an initial block; line 8, a block triggered by posedge clk. (data is driven from more than one block) (data uses a blocking assignment on line 6)
+lfsr: candidates/bad/lfsr_syncreset.v: 0.65
+    reset_immediate: requirement: while reset_n is 0, data must equal the initial state at every moment, including before the first clock edge. Observed: at 2 ns, with reset_n at 0 and no clock edge yet, data is undefined (X).
+    In your design, data is assigned in 1 place(s): line 6, a block triggered by posedge clk.
+    reset_midrun: requirement: reset during a run must restore the initial state immediately, hold it across a clock edge, and restart the specified sequence after release. Observed: at 2573 ns, one ns after reset assertion with clk low and no clock edge, data is wrong in bit(s) [7, 5, 0]; the other 5 bits are correct.
+    In your design, data is assigned in 1 place(s): line 6, a block triggered by posedge clk.
+lfsr: candidates/bad/lfsr_two_drivers.v: 0.65
+    reset_value: requirement: while reset_n is 0, data must equal the initial state from the spec. Observed: with reset_n held at 0, after a clock edge, data is wrong in bit(s) [7, 4, 3, 2, 1, 0]; the other 2 bits are correct.
+    In your design, data is assigned in 2 place(s): line 6, a block triggered by posedge clk; line 10, a block triggered by reset_n. (data is driven from more than one block)
+    reset_midrun: requirement: reset during a run must restore the initial state immediately, hold it across a clock edge, and restart the specified sequence after release. Observed: at 2577 ns, after a clock edge with reset held, data is wrong in bit(s) [7, 4, 3, 2, 1, 0]; the other 2 bits are correct.
+    In your design, data is assigned in 2 place(s): line 6, a block triggered by posedge clk; line 10, a block triggered by reset_n. (data is driven from more than one block)
+lfsr: candidates/bad/shift_wrong_direction.v: 0.4
+    reset_midrun: requirement: reset during a run must restore the initial state immediately, hold it across a clock edge, and restart the specified sequence after release. Observed: reset restored and held the initial state correctly; the sequence after restart fails at restart cycle 1 after reset release, data is wrong in bit(s) [7, 6, 4]; the other 5 bits are correct.
+    first_step: requirement: on each clock edge after reset_n is released, data must advance by one step of the LFSR in the spec. Observed: on the first edge after release, data is wrong in bit(s) [7, 6, 4]; the other 5 bits are correct.
+    sequence: requirement: every clock edge must advance data by one step of the LFSR in the spec. Observed: at cycle 1 after release, data is wrong in bit(s) [7, 6, 4]; the other 5 bits are correct.
+sequence_generator: reference/seq/seq_a.v: 1.0
+    correct
+sequence_generator: candidates/bad/sequence_generator/bad_item.v: 0.4
+    reset_midrun: requirement: reset during a run must restore the initial state immediately, hold it across a clock edge, and restart the specified sequence after release. Observed: reset restored and held the initial state correctly; the sequence after restart fails at restart cycle 5 after reset release, data is wrong in bit(s) [0]; the other 7 bits are correct.
+    sequence: requirement: enabled rising edges must advance through the specified sequence in order. Observed: at probe cycle 5, data is wrong in bit(s) [0]; the other 7 bits are correct.
+    repetition: requirement: the sequence must repeat in order across its boundary. Observed: at probe cycle 5, data is wrong in bit(s) [0]; the other 7 bits are correct.
+    resume: requirement: enabling again must continue from the paused sequence position. Observed: at probe cycle 10, data is wrong in bit(s) [0]; the other 7 bits are correct.
+    reset_restart: requirement: reset while enabled or disabled must restore the initial state and restart the sequence after release. Observed: at probe cycle 5, data is wrong in bit(s) [0]; the other 7 bits are correct.
+sequence_generator: candidates/bad/sequence_generator/ignores_enable.v: 0.8
+    disable: requirement: data and the sequence position must hold while enable is low. Observed: at probe cycle 1, data is wrong in bit(s) [4, 1, 0]; the other 5 bits are correct.
+    resume: requirement: enabling again must continue from the paused sequence position. Observed: at probe cycle 1, data is wrong in bit(s) [7, 5, 4, 2, 1, 0]; the other 2 bits are correct.
+sequence_generator: candidates/bad/sequence_generator/no_wrap.v: 0.3
+    reset_midrun: requirement: reset during a run must restore the initial state immediately, hold it across a clock edge, and restart the specified sequence after release. Observed: reset restored and held the initial state correctly; the sequence after restart fails at restart cycle 8 after reset release, data is wrong in bit(s) [5, 1]; the other 6 bits are correct.
+    sequence: requirement: enabled rising edges must advance through the specified sequence in order. Observed: at probe cycle 8, data is wrong in bit(s) [5, 1]; the other 6 bits are correct.
+    repetition: requirement: the sequence must repeat in order across its boundary. Observed: at probe cycle 1, data is wrong in bit(s) [5, 4, 0]; the other 5 bits are correct.
+    disable: requirement: data and the sequence position must hold while enable is low. Observed: at probe cycle 1, data is wrong in bit(s) [5, 1]; the other 6 bits are correct.
+    resume: requirement: enabling again must continue from the paused sequence position. Observed: at probe cycle 1, data is wrong in bit(s) [5, 4, 0]; the other 5 bits are correct.
+    reset_restart: requirement: reset while enabled or disabled must restore the initial state and restart the sequence after release. Observed: at probe cycle 8, data is wrong in bit(s) [5, 1]; the other 6 bits are correct.
+sequence_generator: candidates/bad/sequence_generator/reset_position.v: 0.2
+    reset_midrun: requirement: reset during a run must restore the initial state immediately, hold it across a clock edge, and restart the specified sequence after release. Observed: reset restored and held the initial state correctly; the sequence after restart fails at restart cycle 1 after reset release, data is wrong in bit(s) [4, 1, 0]; the other 5 bits are correct.
+    first_step: requirement: the first enabled rising edge after reset must advance from the initial sequence item. Observed: on the first enabled edge after release, data is wrong in bit(s) [4, 1, 0]; the other 5 bits are correct.
+    sequence: requirement: enabled rising edges must advance through the specified sequence in order. Observed: at probe cycle 1, data is wrong in bit(s) [4, 1, 0]; the other 5 bits are correct.
+    repetition: requirement: the sequence must repeat in order across its boundary. Observed: at probe cycle 1, data is wrong in bit(s) [4, 1, 0]; the other 5 bits are correct.
+    disable: requirement: data and the sequence position must hold while enable is low. Observed: at probe cycle 1, data is wrong in bit(s) [5, 1]; the other 6 bits are correct.
+    resume: requirement: enabling again must continue from the paused sequence position. Observed: at probe cycle 1, data is wrong in bit(s) [4, 1, 0]; the other 5 bits are correct.
+    reset_restart: requirement: reset while enabled or disabled must restore the initial state and restart the sequence after release. Observed: at probe cycle 1, data is wrong in bit(s) [4, 1, 0]; the other 5 bits are correct.
+sequence_generator: candidates/bad/sequence_generator/restart_on_pause.v: 0.9
+    resume: requirement: enabling again must continue from the paused sequence position. Observed: at probe cycle 9, data is wrong in bit(s) [6, 1, 0]; the other 5 bits are correct.
+sequence_generator (files): reference/seq/seq_a.v: 1.0
+    correct
+sequence_generator (files): candidates/bad/sequence_generator/bad_item.v: 0.4
+    reset_midrun: requirement: reset during a run must restore the initial state immediately, hold it across a clock edge, and restart the specified sequence after release. Observed: at cycle 436, data is wrong in bit(s) [0]; the other 7 bits are correct. Context: 18 cycles after enable went high.
+    sequence: requirement: every output must follow the specified behavior on each rising edge. Observed: at cycle 7, data is wrong in bit(s) [0]; the other 7 bits are correct. Context: 5 cycles after enable went high.
+    random: requirement: every output must follow the specified behavior for the sampled inputs. Observed: at cycle 267, data is wrong in bit(s) [0]; the other 7 bits are correct. Context: 2 cycles after enable went high.
+    toggles: requirement: input changes and holds must follow the specified behavior. Observed: at cycle 394, data is wrong in bit(s) [0]; the other 7 bits are correct. Context: 3 cycles after enable went high.
+    reset_restart: requirement: reset with either input level must restore and restart the specified behavior. Observed: at cycle 410, data is wrong in bit(s) [0]; the other 7 bits are correct. Context: 19 cycles after enable went high.
+sequence_generator (files): candidates/bad/sequence_generator/ignores_enable.v: 0.75
+    random: requirement: every output must follow the specified behavior for the sampled inputs. Observed: at cycle 260, data is wrong in bit(s) [6, 4, 3, 2, 1]; the other 3 bits are correct. Context: 1 cycle after enable went low.
+    toggles: requirement: input changes and holds must follow the specified behavior. Observed: at cycle 387, data is wrong in bit(s) [6, 4, 3, 2, 1]; the other 3 bits are correct. Context: 1 cycle after enable went low.
+sequence_generator (files): candidates/bad/sequence_generator/no_wrap.v: 0.4
+    reset_midrun: requirement: reset during a run must restore the initial state immediately, hold it across a clock edge, and restart the specified sequence after release. Observed: at cycle 439, data is wrong in bit(s) [5, 1]; the other 6 bits are correct. Context: 21 cycles after enable went high.
+    sequence: requirement: every output must follow the specified behavior on each rising edge. Observed: at cycle 10, data is wrong in bit(s) [5, 1]; the other 6 bits are correct. Context: 8 cycles after enable went high.
+    random: requirement: every output must follow the specified behavior for the sampled inputs. Observed: at cycle 259, data is wrong in bit(s) [5, 4, 0]; the other 5 bits are correct. Context: 257 cycles after enable went high.
+    toggles: requirement: input changes and holds must follow the specified behavior. Observed: at cycle 387, data is wrong in bit(s) [6, 5, 3, 2, 1, 0]; the other 2 bits are correct. Context: 1 cycle after enable went low.
+    reset_restart: requirement: reset with either input level must restore and restart the specified behavior. Observed: at cycle 413, data is wrong in bit(s) [5, 1]; the other 6 bits are correct. Context: 22 cycles after enable went high.
+sequence_generator (files): candidates/bad/sequence_generator/reset_position.v: 0.3
+    reset_midrun: requirement: reset during a run must restore the initial state immediately, hold it across a clock edge, and restart the specified sequence after release. Observed: at cycle 432, data is wrong in bit(s) [4, 1, 0]; the other 5 bits are correct. Context: 14 cycles after enable went high.
+    first_step: requirement: the first rising edge after reset must follow the specified behavior. Observed: at cycle 3, data is wrong in bit(s) [4, 1, 0]; the other 5 bits are correct. Context: 1 cycle after enable went high.
+    sequence: requirement: every output must follow the specified behavior on each rising edge. Observed: at cycle 3, data is wrong in bit(s) [4, 1, 0]; the other 5 bits are correct. Context: 1 cycle after enable went high.
+    random: requirement: every output must follow the specified behavior for the sampled inputs. Observed: at cycle 259, data is wrong in bit(s) [4, 1, 0]; the other 5 bits are correct. Context: 257 cycles after enable went high.
+    toggles: requirement: input changes and holds must follow the specified behavior. Observed: at cycle 387, data is wrong in bit(s) [6, 4, 3, 2, 1]; the other 3 bits are correct. Context: 1 cycle after enable went low.
+    reset_restart: requirement: reset with either input level must restore and restart the specified behavior. Observed: at cycle 406, data is wrong in bit(s) [4, 1, 0]; the other 5 bits are correct. Context: 15 cycles after enable went high.
+sequence_generator (files): candidates/bad/sequence_generator/restart_on_pause.v: 0.75
+    random: requirement: every output must follow the specified behavior for the sampled inputs. Observed: at cycle 261, data is wrong in bit(s) [6, 4, 3, 2, 1]; the other 3 bits are correct. Context: 1 cycle after enable went high.
+    toggles: requirement: input changes and holds must follow the specified behavior. Observed: at cycle 387, data is wrong in bit(s) [4, 3, 2, 0]; the other 4 bits are correct. Context: 1 cycle after enable went low.
+
+SELFTEST PASSED

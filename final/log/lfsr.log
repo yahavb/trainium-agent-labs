@@ -1,0 +1,53 @@
+run 0 round 0: 0.70; checks=reset_immediate, reset_midrun, reset_restart; rules=[]; input_bytes=626/5988
+reset_immediate: requirement: while reset_n is 0, data must equal the initial state at every moment, including before the first clock edge. Observed: at cycle 0, data is undefined (X).
+In your design, data is assigned in 1 place(s): line 7, a block triggered by posedge clk.
+reset_midrun: requirement: reset during a run must restore the initial state immediately, hold it across a clock edge, and restart the specified sequence after release. Observed: at cycle 412, data is wrong in bit(s) [7, 3, 0]; the other 5 bits are correct.
+In your design, data is assigned in 1 place(s): line 7, a block triggered by posedge clk.
+reset_restart: requirement: reset with either input level must restore and restart the specified behavior. Observed: at cycle 386, data is wrong in bit(s) [7, 6, 4, 3, 2, 0]; the other 2 bits are correct.
+In your design, data is assigned in 1 place(s): line 7, a block triggered by posedge clk.
+run 0 round 1: 1.00; checks=correct; rules=['lfsr:X_BEFORE_FIRST_EDGE', 'lfsr:WRONG_BETWEEN_EDGES_IN_RESET']; input_bytes=2338/5988
+correct
+run 1 round 0: 0.70; checks=reset_immediate, reset_midrun, reset_restart; rules=[]; input_bytes=626/5988
+reset_immediate: requirement: while reset_n is 0, data must equal the initial state at every moment, including before the first clock edge. Observed: at cycle 0, data is undefined (X).
+In your design, data is assigned in 1 place(s): line 7, a block triggered by posedge clk.
+reset_midrun: requirement: reset during a run must restore the initial state immediately, hold it across a clock edge, and restart the specified sequence after release. Observed: at cycle 412, data is wrong in bit(s) [7, 3, 0]; the other 5 bits are correct.
+In your design, data is assigned in 1 place(s): line 7, a block triggered by posedge clk.
+reset_restart: requirement: reset with either input level must restore and restart the specified behavior. Observed: at cycle 386, data is wrong in bit(s) [7, 6, 4, 3, 2, 0]; the other 2 bits are correct.
+In your design, data is assigned in 1 place(s): line 7, a block triggered by posedge clk.
+run 1 round 1: 1.00; checks=correct; rules=['lfsr:X_BEFORE_FIRST_EDGE', 'lfsr:WRONG_BETWEEN_EDGES_IN_RESET']; input_bytes=2338/5988
+correct
+run 2 round 0: 0.70; checks=reset_immediate, reset_midrun, reset_restart; rules=[]; input_bytes=626/5988
+reset_immediate: requirement: while reset_n is 0, data must equal the initial state at every moment, including before the first clock edge. Observed: at cycle 0, data is undefined (X).
+In your design, data is assigned in 1 place(s): line 7, a block triggered by posedge clk.
+reset_midrun: requirement: reset during a run must restore the initial state immediately, hold it across a clock edge, and restart the specified sequence after release. Observed: at cycle 412, data is wrong in bit(s) [7, 3, 0]; the other 5 bits are correct.
+In your design, data is assigned in 1 place(s): line 7, a block triggered by posedge clk.
+reset_restart: requirement: reset with either input level must restore and restart the specified behavior. Observed: at cycle 386, data is wrong in bit(s) [7, 6, 4, 3, 2, 0]; the other 2 bits are correct.
+In your design, data is assigned in 1 place(s): line 7, a block triggered by posedge clk.
+run 2 round 1: 1.00; checks=correct; rules=['lfsr:X_BEFORE_FIRST_EDGE', 'lfsr:WRONG_BETWEEN_EDGES_IN_RESET']; input_bytes=2338/5988
+correct
+run 3 round 0: 0.70; checks=reset_immediate, reset_midrun, reset_restart; rules=[]; input_bytes=626/5988
+reset_immediate: requirement: while reset_n is 0, data must equal the initial state at every moment, including before the first clock edge. Observed: at cycle 0, data is undefined (X).
+In your design, data is assigned in 1 place(s): line 7, a block triggered by posedge clk.
+reset_midrun: requirement: reset during a run must restore the initial state immediately, hold it across a clock edge, and restart the specified sequence after release. Observed: at cycle 412, data is wrong in bit(s) [7, 3, 0]; the other 5 bits are correct.
+In your design, data is assigned in 1 place(s): line 7, a block triggered by posedge clk.
+reset_restart: requirement: reset with either input level must restore and restart the specified behavior. Observed: at cycle 386, data is wrong in bit(s) [7, 6, 4, 3, 2, 0]; the other 2 bits are correct.
+In your design, data is assigned in 1 place(s): line 7, a block triggered by posedge clk.
+run 3 round 1: 1.00; checks=correct; rules=['lfsr:X_BEFORE_FIRST_EDGE', 'lfsr:WRONG_BETWEEN_EDGES_IN_RESET']; input_bytes=2338/5988
+correct
+run 4 round 0: 0.70; checks=reset_immediate, reset_midrun, reset_restart; rules=[]; input_bytes=626/5988
+reset_immediate: requirement: while reset_n is 0, data must equal the initial state at every moment, including before the first clock edge. Observed: at cycle 0, data is undefined (X).
+In your design, data is assigned in 1 place(s): line 7, a block triggered by posedge clk.
+reset_midrun: requirement: reset during a run must restore the initial state immediately, hold it across a clock edge, and restart the specified sequence after release. Observed: at cycle 412, data is wrong in bit(s) [7, 3, 0]; the other 5 bits are correct.
+In your design, data is assigned in 1 place(s): line 7, a block triggered by posedge clk.
+reset_restart: requirement: reset with either input level must restore and restart the specified behavior. Observed: at cycle 386, data is wrong in bit(s) [7, 6, 4, 3, 2, 0]; the other 2 bits are correct.
+In your design, data is assigned in 1 place(s): line 7, a block triggered by posedge clk.
+run 4 round 1: 0.70; checks=reset_immediate, reset_midrun, reset_restart; rules=['lfsr:X_BEFORE_FIRST_EDGE', 'lfsr:WRONG_BETWEEN_EDGES_IN_RESET']; input_bytes=2338/5988
+reset_immediate: requirement: while reset_n is 0, data must equal the initial state at every moment, including before the first clock edge. Observed: at cycle 0, data is undefined (X).
+In your design, data is assigned in 1 place(s): line 7, a block triggered by posedge clk.
+reset_midrun: requirement: reset during a run must restore the initial state immediately, hold it across a clock edge, and restart the specified sequence after release. Observed: at cycle 412, data is wrong in bit(s) [7, 3, 0]; the other 5 bits are correct.
+In your design, data is assigned in 1 place(s): line 7, a block triggered by posedge clk.
+reset_restart: requirement: reset with either input level must restore and restart the specified behavior. Observed: at cycle 386, data is wrong in bit(s) [7, 6, 4, 3, 2, 0]; the other 2 bits are correct.
+In your design, data is assigned in 1 place(s): line 7, a block triggered by posedge clk.
+run 4 round 2: 1.00; checks=correct; rules=['lfsr:X_BEFORE_FIRST_EDGE', 'lfsr:WRONG_BETWEEN_EDGES_IN_RESET']; input_bytes=2394/5988
+correct
+SOLVED 5/5; final_scores=[1.0, 1.0, 1.0, 1.0, 1.0]; log=/workspace/sean-work/log/runs/md_generic_v4_dynamic_taxonomy_lfsr_20261010T200026Z_1791662426884934708/events.jsonl

@@ -1,0 +1,4 @@
+Detected signature X_BEFORE_FIRST_EDGE: output is X with reset asserted and no clock edge yet.
+Principle: An output required before the first clock edge must become defined independently of a clocked transition.
+Detected signature WRONG_BETWEEN_EDGES_IN_RESET: reset asserted mid-run; output not at reset value before the next edge (only when async reset is required).
+Principle: A reset specified to act independently of the clock must restore the required state between clock edges.

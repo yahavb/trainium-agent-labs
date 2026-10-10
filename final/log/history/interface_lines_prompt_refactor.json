@@ -1,0 +1,12 @@
+[
+  {
+    "problem": "lfsr",
+    "current": "Use module name lfsr with ports: input clk, input reset_n, output data [7:0].",
+    "generated": "Use module name lfsr with ports: input clk, input reset_n, output data [7:0]."
+  },
+  {
+    "problem": "sequence_generator",
+    "current": "Use module name sequence_generator with ports: input clk, input reset_n, input enable, output data [7:0].",
+    "generated": "Use module name sequence_generator with ports: input clk, input reset_n, input enable, output data [7:0]."
+  }
+]
