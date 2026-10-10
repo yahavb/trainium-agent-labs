@@ -34,6 +34,39 @@ import numpy as np
 
 import nkibench
 
+# Knowledge layer (opt-in). "v0" leaves every prompt and every piece of feedback byte-identical to
+# the organizer's loop; "v1" adds the matmul rules card, installed-nki signatures on exceptions and,
+# for levels 5-7, a per-tensor traffic instruction. See nkiknow/.
+KNOWLEDGE = "v0"
+SEED_KERNEL = None
+SECTIONS = {}          # char counts for the attempt just graded / prompt just built
+NATIVE_TOOLS = False
+_DOC_CACHE = {}        # query string -> lookup text, per process (a run)
+_LOG_LOCK = __import__("threading").Lock()
+
+
+def _kv():
+    """Knowledge version as an int: "v0" -> 0 ... "v3" -> 3. Each includes the previous."""
+    return int(KNOWLEDGE[1:])
+
+
+def _reset_sections():
+    SECTIONS.update(lookup=0, traffic=0, docs=0)   # "card" belongs to the prompt, not to a grade
+
+
+SECTIONS["card"] = 0
+_reset_sections()
+
+
+def _lookup_note(error_text, source):
+    """v1 only: append real signatures when the failure raised an exception."""
+    if _kv() < 1:
+        return ""
+    from nkiknow import api_lookup
+    note = api_lookup.signatures_for(error_text, source)
+    SECTIONS["lookup"] += len(note)
+    return (" " + note) if note else ""
+
 MODEL = os.environ.get("KERNEL_AGENT_MODEL", "Qwen/Qwen3-8B")
 
 # The model writes to a hidden reasoning channel before it writes any answer. Measured on this
@@ -52,9 +85,36 @@ REASONING_KEYS = ("reasoning", "reasoning_content")
 WEIGHTS = dict(parses=0.1, rules=0.2, runs=0.2, correct=0.5)
 
 
+
+ALLOC_CHECK = False   # --alloc-check: reject SBUF/PSUM tiles allocated with more than 128 lanes
+
+
+class _AllocWatch:
+    """During simulation, record SBUF/PSUM allocations whose first (lane) dimension exceeds 128.
+    The simulator only checks the slices each instruction touches, so an over-sized allocation passes
+    on CPU but is illegal on the device (gotcha V8)."""
+    def __enter__(self):
+        import nki.language as _nl
+        self.nl, self.orig, self.bad = _nl, _nl.ndarray, []
+        def wrapped(shape, *a, **k):
+            buf = k.get("buffer", a[1] if len(a) > 1 else None)
+            try:
+                lanes = int(tuple(shape)[0])
+            except Exception:
+                lanes = 0
+            if lanes > 128 and buf is not None and buf in (_nl.sbuf, _nl.psum):
+                self.bad.append((tuple(shape), "psum" if buf is _nl.psum else "sbuf"))
+            return self.orig(shape, *a, **k)
+        _nl.ndarray = wrapped
+        return self
+    def __exit__(self, *exc):
+        self.nl.ndarray = self.orig
+        return False
+
 def grade(source, level):
     """Returns (reward, parts, feedback). Feedback is an INSTRUCTION, never just a verdict."""
     parts = dict(parses=False, rules=False, runs=False, correct=False)
+    _reset_sections()
 
     if not source.strip():
         return 0.0, parts, ("No code came back. Reply with one python code block containing the "
@@ -112,26 +172,49 @@ def grade(source, level):
     except Exception as e:
         return (sum(WEIGHTS[k] for k, v in parts.items() if v), parts,
                 f"The file imports but {spec['entry']} could not be loaded: "
-                f"{type(e).__name__}: {e}")
+                f"{type(e).__name__}: {e}" + _lookup_note(f"{type(e).__name__}: {e}", source))
 
     failures, passed, intensity = [], 0, None
     for case in spec["shapes"]:
         args, _ = nkibench.make_inputs(case, level)
         before = [x.copy() if isinstance(x, np.ndarray) else x for x in args]
         want = spec["ref"](*args)
+        watch = _AllocWatch() if ALLOC_CHECK else None
         try:
-            got, counted = nkibench.simulate_and_count(kernel, args)
+            if watch:
+                watch.__enter__()
+            if _kv() >= 1 and level >= 5:
+                from nkiknow import traffic
+                import inspect as _inspect
+                got, counted, attrib = traffic.simulate_and_attribute(
+                    kernel, args, list(_inspect.signature(spec["ref"]).parameters))
+            else:
+                got, counted = nkibench.simulate_and_count(kernel, args)
         except nkibench.NkiMissing as e:
+            if watch:
+                watch.__exit__()
             return (sum(WEIGHTS[k] for k, v in parts.items() if v), parts,
                     f"CANNOT SIMULATE: {e}")
         except Exception as e:
+            if watch:
+                watch.__exit__()
+            # The lookup is attached later, to the one failure the feedback shows; doing it per
+            # shape wasted lookups and over-counted SECTIONS["lookup"] (measured: 3.7k vs ~1.2k).
             failures.append((nkibench.label(case, level),
-                             enrich(f"raised {type(e).__name__}: {e}")))
+                             enrich(f"raised {type(e).__name__}: {e}"),
+                             f"{type(e).__name__}: {e}"))
             continue
+        if watch:
+            watch.__exit__()
         parts["runs"] = True
         m = (nkibench.check_inputs_untouched(before, args)
              or nkibench.describe_mismatch(got, want)
              or nkibench.check_traffic_bar(level, counted, args, want))
+        if (_kv() >= 1 and level >= 5 and m
+                and m.startswith("CORRECT, BUT TOO MUCH HBM TRAFFIC")):
+            note = traffic.explain(attrib, args)
+            if note:
+                m += " " + note
         # A simulator warning about a hardware-correctness hazard counts as a failure even when the
         # numbers happen to match on CPU: the kernel would be wrong on the device.
         hazards = [w for w in counted.get("warnings", [])
@@ -140,16 +223,35 @@ def grade(source, level):
             m = ("CORRECT ON CPU BUT WRONG ON HARDWARE: " + hazards[0]
                  + ". Fix that before anything else -- the simulator agrees with the reference here "
                    "and the device would not.")
+        if watch and watch.bad and not m:
+            shp, mem = watch.bad[0]
+            m = (f"ILLEGAL ON HARDWARE: a {mem.upper()} tile was allocated with shape {shp}, i.e. {shp[0]} lanes; "
+                 f"every SBUF/PSUM tile has at most 128 lanes. The simulator only checked the slices you used. "
+                 f"Allocate tile-sized buffers (at most 128 in the first dimension) inside the loops instead of "
+                 f"one buffer for the whole tensor.")
         if m:
-            failures.append((nkibench.label(case, level), m))
+            failures.append((nkibench.label(case, level), m, None))
             continue
         passed += 1
-        if level >= 3 and counted["bytes"]:
+        if level >= 3 and counted["bytes"] and all(k in case for k in ("M", "K", "N")):
             intensity = nkibench.roofline(
                 nkibench.matmul_flops(case["M"], case["K"], case["N"]), counted["bytes"])
 
     if failures:
-        lbl, first = failures[0]
+        lbl, first, raised = failures[0]
+        # Measured on v2 level 4 (2026-10-10): every NaN kernel wrote `nl.ndarray(...)` inside a
+        # tensor_copy/dma_copy call, so the result went to one fresh tile and the output was filled
+        # from another, empty one. Name that, ahead of everything else.
+        if _kv() >= 1 and re.search(r"(dst|src)\s*=\s*nl\.ndarray\(", source):
+            first = ("Your code allocates a tile inside a call (`dst=nl.ndarray(...)` or "
+                     "`src=nl.ndarray(...)`). Every nl.ndarray(...) creates a NEW, EMPTY tile, so the "
+                     "data copied into one is never seen by the next call. Allocate each tile once, "
+                     "give it a name (`t = nl.ndarray(...)`), and pass that same name to both calls. "
+                     + first)
+        if raised:
+            first += _lookup_note(raised, source)
+        if " was read " in first:   # the traffic note (v1+) on the shown failure only
+            SECTIONS["traffic"] = len(first.split(" was read ", 1)[1]) + 10
         return (sum(WEIGHTS[k] for k, v in parts.items() if v)
                 + WEIGHTS["correct"] * passed / len(spec["shapes"]), parts,
                 f"{passed} of {len(spec['shapes'])} shapes passed. On {lbl}: {first}")
@@ -304,6 +406,15 @@ def enrich(error_text):
                 f"own shape -- use min(limit, size) and let the final chunk be partial -- rather than "
                 f"writing a fixed number. Note the two limits differ: the partition dimension (first) "
                 f"allows at most 128, the free dimension allows more.")
+    m = re.search(r"Matmul (stationary|moving) free dimension (\d+) exceeds (?:gemm_stationary_fmax=|max )(\d+)",
+                  error_text)
+    if m and _kv() >= 1:
+        which, got, mx = m.group(1), int(m.group(2)), int(m.group(3))
+        dim = "M (the stationary tile's second dimension)" if which == "stationary" else \
+              "N (the moving tile's second dimension)"
+        return (error_text + f" One nc_matmul accepts {dim} of at most {mx}, and yours is {got}. Add a loop "
+                f"over that dimension in chunks of at most {mx}, with tiles sized by the chunk, and keep "
+                f"every other loop. Check the other matmul dimensions against their limits too.")
     m = re.search(r"Matmul contraction dimension (\d+) exceeds pmax=(\d+)", error_text)
     if m:
         k, mx = int(m.group(1)), int(m.group(2))
@@ -334,6 +445,9 @@ def enrich(error_text):
                 "first, then a free dimension. A 1-D tile is not allowed, so write "
                 "nl.ndarray((rows, cols), ...) and give a length-N vector the shape (1, N) or "
                 "(N, 1) depending on which axis you are reducing over.")
+    if _kv() >= 1 and "does not support the context manager protocol" in error_text:
+        return (error_text + " NKI loops are ordinary for-loops: write `for k in nl.affine_range(n):`, "
+                "not `with nl.affine_range(n) as k:`.")
     if "cannot reshape array of size" in error_text:
         return (error_text + " Do not reshape. Work with the shapes you were given and slice "
                 "them into tiles, e.g. src=a[0:128, 0:64].")
@@ -392,18 +506,213 @@ def first_prompt(level, terse=0):
         f"Reply with ONE python code block containing the imports and the function. No prose.")
 
 
-def repair_prompt(level, source, feedback):
+SYSTEM_GUIDE = False   # --system-guide (v1d): guide goes in a system message
+TAGGED = False         # --tagged (v1d): XML-like tags around prompt parts
+EXAMPLES3 = False      # --examples3 (v1d): guide with three worked examples
+DIVERSE_SAMPLES = False  # --diverse-samples: rotate general planning cues across samples
+SAMPLING = {"organizer": dict(temperature=0.6, top_p=0.95),
+            "qwen": dict(temperature=0.7, top_p=0.8, top_k=20, min_p=0, presence_penalty=1.0)}
+DIVERSITY_CUES = (
+    "Map each logical axis to an appropriate NKI tile axis.",
+    "Choose the output tile first, then derive matching input tiles.",
+    "Check loop coverage, including tail tiles and boundary conditions.",
+    "Match DMA source and destination tile shapes and element counts.",
+)
+
+
+def diverse_sample_prompts(prompt, n, enabled=False):
+    if not enabled:
+        return [prompt] * n
+    instruction = prompt.rfind("Reply with")
+    prompts = []
+    for i in range(n):
+        cue = DIVERSITY_CUES[i % len(DIVERSITY_CUES)]
+        note = f"Planning focus for this sample: {cue}\n\n"
+        prompts.append(prompt[:instruction] + note + prompt[instruction:] if instruction >= 0
+                       else prompt.rstrip() + "\n\n" + note.rstrip())
+    return prompts
+
+
+def tag_task(prompt):
+    """--tagged: wrap the task text in <task>, with the closing instruction line kept last."""
+    if not TAGGED:
+        return prompt
+    i = prompt.rfind("Reply with")
+    if i <= 0:
+        return f"<task>\n{prompt.strip()}\n</task>"
+    return f"<task>\n{prompt[:i].strip()}\n</task>\n\n{prompt[i:]}"
+
+
+def repair_prompt(level, source, feedback, ledger=None):
     """One named change, and the previous code. No rules list, no reference re-sent.
 
     The lesson this whole repo keeps re-learning: feeding a verifier's report back verbatim
     reproduces the same mistake, because a report says what is wrong and never what to do.
     """
-    return (
-        f"This NKI kernel for {nkibench.LEVELS[level]['op']} is not right yet.\n\n"
-        f"```python\n{source}\n```\n\n"
-        f"A checker reports:\n{feedback}\n\n"
-        f"Change exactly what the checker names and keep everything else identical. Reply with "
-        f"ONE python code block.")
+    last = ("Change exactly what the checker names and keep everything else identical. Reply with "
+            "ONE python code block.")
+    if TAGGED:
+        out = (f"This NKI kernel for {nkibench.LEVELS[level]['op']} is not right yet.\n\n"
+               f"<previous_kernel>\n```python\n{source}\n```\n</previous_kernel>\n\n"
+               f"A checker reports:\n<checker_feedback>\n{feedback}\n</checker_feedback>\n\n")
+        if ledger is not None:
+            out += (f"These approaches have already failed, so do something different:\n"
+                    f"<already_tried>\n{ledger}\n</already_tried>\n\n")
+        return out + last
+    out = (f"This NKI kernel for {nkibench.LEVELS[level]['op']} is not right yet.\n\n"
+           f"```python\n{source}\n```\n\n"
+           f"A checker reports:\n{feedback}\n\n" + last)
+    if ledger is not None:
+        out += (f"\n\nThese approaches have already failed, so do something different:\n"
+                f"{ledger}")
+    return out
+
+
+def matmul_card(level):
+    """v1: the matmul rules card for levels >= 3, else ''."""
+    if _kv() < 1 or level < 3:
+        return ""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "nkiknow", "cards",
+                        "matmul_rules.md")
+    with open(path) as f:
+        return f.read().strip() + "\n\n"
+
+
+def seed_prompt(level, source):
+    return (f"This NKI kernel for {nkibench.LEVELS[level]['op']}:\n\n```python\n{source}\n```\n\n"
+            f"This kernel is correct. Make it move fewer HBM bytes while staying correct. "
+            f"Reply with ONE python code block.")
+
+
+PRIMER = False   # --primer (v1b): NKI primer + a verified multi-tile example, before the card
+
+
+def nki_primer():
+    if not PRIMER or _kv() < 1:
+        return ""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "nkiknow", "cards",
+                        "nki_primer.md")
+    with open(path) as f:
+        return f.read().strip() + "\n\n"
+
+
+GUIDE = False    # --guide (v1c): one general NKI guide for every level, replacing primer + matmul card
+
+
+GUIDE_VERSION = "current"   # --guide-version p3: the exact guide and closing line used by our best L4 run
+
+
+def nki_guide():
+    name = ("nki_guide_p3.md" if GUIDE_VERSION == "p3" else
+            "nki_guide_examples3.md" if EXAMPLES3 else "nki_guide.md")
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "nkiknow", "cards", name)
+    with open(path) as f:
+        text = f.read().strip()
+    if TAGGED:
+        text = f"<nki_guide>\n{text}\n</nki_guide>"
+    return text + "\n\n"
+
+
+def system_guide():
+    """--system-guide (with --guide, knowledge >= v1): the guide text for the system message, else ''."""
+    return nki_guide() if (SYSTEM_GUIDE and GUIDE and _kv() >= 1) else ""
+
+
+def with_knowledge(level, prompt):
+    """Prepend knowledge: --guide gives the general NKI guide (no per-operation card); otherwise the v1
+    matmul card (and, with --primer, the primer). v0 returns the prompt untouched."""
+    if GUIDE and _kv() >= 1:
+        entry = nkibench.LEVELS[level]["entry"]
+        if GUIDE_VERSION == "p3":
+            prompt = prompt.rstrip() + "\n\n" + PLAN_LAST_P3
+        else:
+            prompt = (prompt.rstrip() + "\n\n" + PLAN_LAST
+                      + f"\nThe function must be named exactly `{entry}` and decorated with `@nki.jit`.")
+        card = nki_guide()
+        if SYSTEM_GUIDE:
+            SECTIONS["card"] = len(card)
+            card = ""        # sent as the system message by ask()
+            if _kv() >= 3:
+                card = LOOKUP_PARAGRAPH + "\n\n"
+            return card + prompt
+    else:
+        card = nki_primer() + matmul_card(level)
+    SECTIONS["card"] = len(card)
+    if _kv() >= 3:
+        card += LOOKUP_PARAGRAPH + "\n\n"
+    return card + prompt
+
+
+PLAN_LAST_P3 = ("Begin your code block with comment lines that plan the kernel: every tensor and tile with its shape, "
+                "each instruction's dimension limits (lanes <= 128; matmul K <= 128, M <= 128, N <= 512), and one loop "
+                "for every dimension that can exceed its limit. Then write the code. The examples above are for "
+                "other operations: reuse their patterns, never their slices or variable lists.")
+
+
+PLAN_LAST = ("Begin your code block with comment lines that plan the kernel: every tensor and tile with its shape, "
+             "each instruction's dimension limits (lanes <= 128; matmul K <= 128, M <= 128, N <= 512), and one loop "
+             "for every dimension that can exceed its limit. Then write the code. The examples above are for "
+             "other operations: reuse their patterns, never their slices or variable lists.\n"
+             "Before replying, check your code: (1) every tile, including result and accumulator tiles, is tile-sized (never the whole output's shape), has at most 128 lanes, and every operand is within "
+             "its instruction's limit; (2) each reduction loop is inside the output-tile loops and the output is "
+             "written after it; (3) every tile is allocated once by name, never inside a call; (4) every tensor is "
+             "sliced by its own dimensions; (5) loops are `for ... in nl.affine_range(...)` with no `if` on the "
+             "loop index.")
+
+
+LOOKUP_PARAGRAPH = (
+    "If you need NKI documentation before writing code, reply with only lines of the form "
+    "`LOOKUP <api name or topic>` (at most 3) and nothing else; the answers will be sent to you. "
+    "Otherwise reply with the code block.")
+LOOKUP_RE = re.compile(r"^\s*`?LOOKUP\s+(.+?)`?\s*$", re.M)
+MAX_LOOKUP_EXCHANGES = 2
+LOOKUP_TOTAL_TOKENS = 700
+
+
+def doc_lookup(query, max_tokens=300):
+    """retrieve.lookup with a per-run cache. Never returns text sourced from a downloads/ dir."""
+    key = (query, max_tokens)
+    if key not in _DOC_CACHE:
+        from nkiknow import retrieve
+        text = retrieve.lookup(query, max_tokens=max_tokens) or ""
+        assert not re.search(r"\[source: [^\]]*downloads/", text), "lookup leaked a downloads/ file"
+        _DOC_CACHE[key] = text
+    return _DOC_CACHE[key]
+
+
+def docs_query(feedback):
+    """Retrieval query from a failure: the exception line if there is one, else the first line."""
+    lines = [l.strip() for l in (feedback or "").splitlines() if l.strip()]
+    pick = next((l for l in lines if re.search(r"\b\w*(Error|Exception)\b", l)),
+                lines[0] if lines else "")
+    return re.sub(r"\s+", " ", pick)[:200]
+
+
+def docs_note(feedback):
+    """v2: documentation retrieved for this failure, or ''."""
+    q = docs_query(feedback)
+    text = doc_lookup(q, 300).strip() if q else ""
+    return ("\n\nRelevant NKI documentation:\n" + text) if text else ""
+
+
+def parse_lookups(reply):
+    """v3: 1-3 LOOKUP lines and no code block -> the queries; otherwise []."""
+    if CODE_BLOCK.search(reply or ""):
+        return []
+    qs = [m.strip() for m in LOOKUP_RE.findall(reply or "")]
+    return qs if 1 <= len(qs) <= 3 else []
+
+
+def run_lookups(queries):
+    """Answers for one exchange, total capped at LOOKUP_TOTAL_TOKENS (~4 chars per token)."""
+    left, out = LOOKUP_TOTAL_TOKENS, []
+    for q in queries:
+        if left <= 0:
+            break
+        t = doc_lookup(q, min(300, left)).strip()
+        left -= max(1, len(t) // 4)
+        out.append(f"## {q}\n{t or '(nothing found)'}")
+    return "\n\n".join(out)
 
 
 CODE_BLOCK = re.compile(r"```(?:python)?\s*(.*?)```", re.S)
@@ -430,23 +739,54 @@ def extract_code(text):
 
 # ---------------------------------------------------------------- the model
 
-def ask(a, prompt):
+def ask(a, prompt, messages=None, tools=None, raw=False):
     import httpx
     # enable_thinking=False matters. Qwen3 reasons before answering, and with thinking on it
     # spent the whole budget there: the first cluster run returned "No code came back" at 54.7s
     # over and over, plus truncated fragments (invalid decimal literal, unterminated string).
     # Keep prompt + answer inside the server's context, or the answer is silently cut off and
     # every parse error below is really a budget error. Repair prompts grow with the kernel.
-    est_prompt = len(prompt) // 4
-    budget = min(a.max_tokens, max(256, a.context - est_prompt - 64))
+    sysmsg = system_guide()
+    if messages is None:
+        messages = ([{"role": "system", "content": sysmsg}] if sysmsg else []) + \
+                   [{"role": "user", "content": prompt}]
+    prompt_chars = sum(len(m.get("content") or "") +
+                       (len(json.dumps(m["tool_calls"])) if m.get("tool_calls") else 0)
+                       for m in messages)
+    if tools:
+        prompt_chars += len(json.dumps(tools))
+    # chars/3, not /4: the NKI guide is code and markdown, which tokenizes denser than prose. With /4 a
+    # 5,693-token repair prompt was estimated low and the request overflowed the 8,192 context (HTTP 400).
+    est_prompt = prompt_chars // 3
+    remaining = a.context - est_prompt - 64
+    if remaining < 256:
+        raise SystemExit(f"prompt is ~{est_prompt} tokens; fewer than 256 answer tokens fit "
+                         f"in the {a.context}-token context")
+    budget = min(a.max_tokens, remaining)
     if budget < a.max_tokens:
         print(f"    (prompt is ~{est_prompt} tokens, so the answer budget is capped at {budget} "
               f"to stay inside the {a.context}-token context)")
-    body = dict(model=a.model, messages=[{"role": "user", "content": prompt}],
-                max_tokens=budget, temperature=0.6, top_p=0.95,
+    body = dict(model=a.model, messages=messages,
+                max_tokens=budget, **SAMPLING[getattr(a, "sampling", "organizer")],
                 chat_template_kwargs={"enable_thinking": a.think})
+    if tools:
+        body["tools"] = tools
     r = httpx.post(f"{a.base.rstrip('/')}/chat/completions", json=body,
                    timeout=900, verify=False)
+    # If the server still says the request is too long, shrink the answer budget to what it reports and retry
+    # instead of ending the whole run on a budget estimate.
+    for _ in range(3):
+        if r.status_code != 400 or "maximum context length" not in r.text:
+            break
+        mm = re.search(r"prompt contains at least (\d+) input tokens", r.text)
+        if not mm:
+            break
+        body["max_tokens"] = a.context - int(mm.group(1)) - 64
+        if body["max_tokens"] < 256:
+            break
+        print(f"    (context overflow: retrying with max_tokens={body['max_tokens']})")
+        r = httpx.post(f"{a.base.rstrip('/')}/chat/completions", json=body,
+                       timeout=900, verify=False)
     if r.status_code != 200:
         raise SystemExit(f"the endpoint returned HTTP {r.status_code}:\n{r.text[:600]}")
     payload = r.json()
@@ -466,13 +806,80 @@ def ask(a, prompt):
         print(f"    (empty answer, {len(reasoning)} chars of hidden reasoning, "
               f"finish={ch.get('finish_reason')} — shorten the prompt rather than raising the "
               f"budget)")
+    if raw:
+        return content, msg.get("tool_calls") or [], msg
     return content
 
 
-def ask_parallel(a, prompt, n):
+LOOKUP_TOOL = [{"type": "function", "function": {
+    "name": "lookup", "parameters": {"type": "object",
+                                     "properties": {"query": {"type": "string"}},
+                                     "required": ["query"]}}}]
+
+
+def _log_lookup(log, level, rnd, queries, text):
+    if log is None:
+        return
+    with _LOG_LOCK:
+        log.write(json.dumps(dict(type="lookup", level=level, round=rnd, queries=queries,
+                                  tokens=len(text) // 4, docs=text, knowledge=KNOWLEDGE)) + "\n")
+        log.flush()
+
+
+def ask_native(a, prompt, level=None, rnd=None, log=None):
+    """--native-tools: OpenAI tool calls, max 2 tool turns. Falls back to plain ask() if the
+    server rejects tools or never returns tool_calls (the text protocol then applies)."""
+    sysmsg = system_guide()
+    messages = ([{"role": "system", "content": sysmsg}] if sysmsg else []) + \
+               [{"role": "user", "content": prompt}]
+    for _ in range(MAX_LOOKUP_EXCHANGES):
+        try:
+            content, tcs, msg = ask(a, prompt, messages=messages, tools=LOOKUP_TOOL, raw=True)
+        except SystemExit:
+            return ask(a, prompt)          # server lacks tool support
+        if not tcs:
+            return content
+        messages.append({"role": "assistant", "content": content or None, "tool_calls": tcs})
+        qs, got = [], ""
+        for tc in tcs[:3]:
+            try:
+                q = str(json.loads(tc["function"]["arguments"] or "{}").get("query", ""))
+            except (ValueError, KeyError, TypeError, AttributeError):
+                q = ""
+            text = run_lookups([q]) if q else "(no query)"
+            qs.append(q)
+            got += text
+            messages.append({"role": "tool", "tool_call_id": tc.get("id", ""), "content": text})
+        _log_lookup(log, level, rnd, qs, got)
+    return ask(a, prompt, messages=messages)   # no tools offered: force the answer
+
+
+def ask_one(a, prompt, level=None, rnd=None, log=None):
+    """One sample. v3 answers LOOKUP replies (not graded rounds, at most 2 exchanges)."""
+    if _kv() < 3:
+        return ask(a, prompt)
+    if NATIVE_TOOLS:
+        content = ask_native(a, prompt, level, rnd, log)
+    else:
+        content = ask(a, prompt)
+    docs = ""
+    for _ in range(MAX_LOOKUP_EXCHANGES):
+        qs = parse_lookups(content)
+        if not qs:
+            break
+        text = run_lookups(qs)
+        _log_lookup(log, level, rnd, qs, text)
+        docs += ("\n\n" if docs else "") + text
+        content = ask(a, prompt + "\n\nDocumentation you requested:\n" + docs)
+    return content
+
+
+def ask_parallel(a, prompt, n, level=None, rnd=None, log=None):
     import concurrent.futures as cf
+    prompts = prompt if isinstance(prompt, list) else [prompt] * n
     with cf.ThreadPoolExecutor(max_workers=n) as ex:
-        return [f.result() for f in [ex.submit(ask, a, prompt) for _ in range(n)]]
+        return [f.result() for f in [ex.submit(ask_one, a, prompts[i], level, rnd, log)
+                                     for i in range(n)]]
 
 
 def offline_answers(level, n, rnd):
@@ -490,22 +897,35 @@ def offline_answers(level, n, rnd):
 def solve(a, level, log):
     print(f"\n=========== level {level}: {nkibench.LEVELS[level]['op']} ===========")
     terse = a.terse
-    prompt = first_prompt(level, terse)
+    prompt = (seed_prompt(level, open(SEED_KERNEL).read()) if SEED_KERNEL
+              else tag_task(first_prompt(level, terse)))
+    prompt = with_knowledge(level, prompt)
     best = (0.0, None, "")
     tried, streak, seen = [], 0, {}
     latest = ("", "")
     for rnd in range(a.rounds):
         t0 = time.perf_counter()
+        sample_prompts = diverse_sample_prompts(prompt, a.samples, DIVERSE_SAMPLES)
         replies = (offline_answers(level, a.samples, rnd) if a.offline
-                   else ask_parallel(a, prompt, a.samples))
+                   else ask_parallel(a, sample_prompts, a.samples, level, rnd, log))
         graded = []
-        for reply in replies:
+        for sample_prompt, reply in zip(sample_prompts, replies):
             src = extract_code(reply)
             reward, parts, feedback = grade(src, level)
+            docs = ""
+            if _kv() >= 2 and reward < sum(WEIGHTS.values()) - 1e-9:
+                docs = docs_note(feedback)
+                feedback += docs
+            sec = dict(card=SECTIONS["card"], lookup=SECTIONS["lookup"],
+                       traffic=SECTIONS["traffic"], code=len(src), feedback=len(feedback))
+            if _kv() >= 2:
+                sec["docs"] = len(docs)
             graded.append((reward, src, feedback, parts))
             log.write(json.dumps(dict(level=level, round=rnd, reward=reward, parts=parts,
-                                      prompt_chars=len(prompt), reply_chars=len(reply),
-                                      code=src, feedback=feedback)) + "\n")
+                                      prompt_chars=len(sample_prompt), reply_chars=len(reply),
+                                      prompt=sample_prompt, reply=reply, system=system_guide(),
+                                      code=src, feedback=feedback,
+                                      knowledge=KNOWLEDGE, sections=sec)) + "\n")
         log.flush()
         graded.sort(key=lambda g: g[0], reverse=True)
         top = graded[0]
@@ -549,9 +969,7 @@ def solve(a, level, log):
             # answer. Measured: the same TypeError 19 rounds running. Changing the prompt is the
             # only thing that can change the answer, so say what has already been tried.
             ledger = "\n".join(f"- {t[:160]}" for t in dict.fromkeys(tried))
-            prompt = (repair_prompt(level, latest[0], latest[1])
-                      + f"\n\nThese approaches have already failed, so do something different:\n"
-                        f"{ledger}")
+            prompt = with_knowledge(level, repair_prompt(level, latest[0], latest[1], ledger))
             print(f"  same failure {repeats}x — adding a ledger of {len(set(tried))} failed "
                   f"attempts to break the repeat")
             continue
@@ -560,10 +978,10 @@ def solve(a, level, log):
             # 202-character prompt and, under greedy sampling, the identical non-answer six
             # rounds running. Shorten and re-ask instead.
             terse = min(terse + 1, 2)
-            prompt = first_prompt(level, terse)
+            prompt = with_knowledge(level, tag_task(first_prompt(level, terse)))
             print(f"  no code yet, so re-asking with a shorter prompt (terseness {terse})")
         else:
-            prompt = repair_prompt(level, latest[0], latest[1])
+            prompt = with_knowledge(level, repair_prompt(level, latest[0], latest[1]))
     print(f"  not solved in {a.rounds} rounds; best reward {best[0]:.2f}")
     return best[0], a.rounds
 
@@ -596,7 +1014,53 @@ def main():
     ap.add_argument("--think", action="store_true",
                     help="let the model reason first; costs budget, and it ran out")
     ap.add_argument("--offline", action="store_true")
+    ap.add_argument("--knowledge", choices=("v0", "v1", "v2", "v3"), default="v0",
+                    help="v0: unchanged prompts and feedback. v1: matmul rules card (levels >= 3), "
+                         "installed-nki signatures on exceptions, per-tensor traffic note (5-7). "
+                         "v2: + retrieved NKI docs appended to failure feedback. "
+                         "v3: + model may reply LOOKUP <topic> to fetch docs (not a graded round).")
+    ap.add_argument("--native-tools", action="store_true",
+                    help="v3: offer a `lookup` function via OpenAI tool calls (max 2 turns); "
+                         "falls back to the text protocol if the server has no tool support")
+    ap.add_argument("--seed-kernel", default=None, metavar="PATH",
+                    help="start from this correct kernel and ask for fewer HBM bytes")
+    ap.add_argument("--guide-version", choices=("current", "p3"), default="current",
+                    help="p3: the guide and closing line of our best L4 run (official checker: solved 1/3, mean 0.83)")
+    ap.add_argument("--alloc-check", action="store_true",
+                    help="reject SBUF/PSUM tiles allocated with more than 128 lanes (illegal on hardware)")
+    ap.add_argument("--guide", action="store_true",
+                    help="v1c: general NKI guide for every level instead of primer + matmul card (needs v1+)")
+    ap.add_argument("--sampling", choices=("organizer", "qwen"), default="organizer",
+                    help="v1d: organizer = temp 0.6/top_p 0.95; qwen = Qwen3 non-thinking card values + presence_penalty 1")
+    ap.add_argument("--system-guide", action="store_true",
+                    help="v1d: send the guide as a system message (needs --guide and v1+)")
+    ap.add_argument("--tagged", action="store_true", help="v1d: XML-like tags around prompt parts")
+    ap.add_argument("--examples3", action="store_true",
+                    help="v1d: guide with three worked examples (needs --guide)")
+    ap.add_argument("--diverse-samples", action="store_true",
+                    help="add a different general NKI planning cue to each sample prompt")
+    ap.add_argument("--primer", action="store_true",
+                    help="v1b: prepend an NKI primer and a verified multi-tile example (needs v1+)")
+    ap.add_argument("--ladder-fix", action="store_true",
+                    help="use the corrected levels 5-7 (larger shapes, per-shape limits); "
+                         "see nkiknow/ladder_fix.py")
     a = ap.parse_args()
+    global KNOWLEDGE, SEED_KERNEL, NATIVE_TOOLS
+    KNOWLEDGE, SEED_KERNEL, NATIVE_TOOLS = a.knowledge, a.seed_kernel, a.native_tools
+    global PRIMER
+    PRIMER = a.primer
+    global GUIDE
+    GUIDE = a.guide
+    global ALLOC_CHECK
+    ALLOC_CHECK = a.alloc_check
+    global GUIDE_VERSION
+    GUIDE_VERSION = a.guide_version
+    global SYSTEM_GUIDE, TAGGED, EXAMPLES3, DIVERSE_SAMPLES
+    SYSTEM_GUIDE, TAGGED, EXAMPLES3 = a.system_guide, a.tagged, a.examples3
+    DIVERSE_SAMPLES = a.diverse_samples
+    if a.ladder_fix:
+        from nkiknow import ladder_fix
+        ladder_fix.apply()
 
     if not a.offline:
         # Validate before the first request. An empty or scheme-less value produces a hostname
