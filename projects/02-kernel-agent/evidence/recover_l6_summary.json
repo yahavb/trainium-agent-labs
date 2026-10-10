@@ -1,0 +1,16 @@
+{
+  "solved": false,
+  "rounds": 6,
+  "asked": 6,
+  "matches": 6,
+  "fallbacks": 0,
+  "choices": [
+    "stack_stationary_operand",
+    "stack_moving_operand_symmetrically",
+    "continue_from_best",
+    "stack_moving_operand_symmetrically",
+    "continue_from_best",
+    "stack_moving_operand_symmetrically"
+  ],
+  "best_progress": 0.9349
+}
