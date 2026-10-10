@@ -3,19 +3,24 @@
 *Final for the experiments, Oct 10 2026, 15:35. Everything was measured on seat-102's Trainium2 chip,
 using P1's referee (`speedcheck.py` at `referee-timing` 76b2227: device clock, interleaved A/B, held-out
 shapes for every would-be "faster"). The exception is anything marked otherwise. All P2 work is on this
-one branch.*
+one branch. Every result is labelled by whose it is: AWS's design (expert-derived), the search's discovery,
+or P2's engineering.*
 
 ## The headline
 
-On Qwen3-8B's per-core matmul shapes (gate_up and q_proj at 256 tokens, timed together):
+On Qwen3-8B's per-core matmul shapes (gate_up and q_proj at 256 tokens, timed together). The first column
+says whose result each row is (definitions in section 4):
 
-| Kernel | Time | vs start | How we got it |
-|---|---|---|---|
-| `matmul_start` (the tiled tutorial kernel) | 960.5 us | 1.00x | the baseline every speedup is measured against |
-| AWS's fully optimised tutorial kernel, as shipped | 385.6 us | 2.49x | `matmul_expert.py` (fp32 accumulation) |
-| **Best block sizes**: random search found it, the sweep confirmed it | **280.3 us** | **3.43x** | `m1 n12 k4`, the best of all 62 legal settings |
-| **Both physical cores of the NeuronCore (LNC=2)** | **192.2 us** | **5.0x** | `matmul_expert_lnc2.py`, launched as `kernel[2]` |
+| Kind | Kernel | Time | vs start | What it adds |
+|---|---|---|---|---|
+| Baseline | `matmul_start`, the tiled tutorial kernel | 960.5 us | 1.00x | the yardstick |
+| **Expert-derived** | AWS's fully optimised tutorial kernel as shipped (`matmul_expert.py`, with P2's fp32 accumulation fix) | 385.6 us | 2.49x | AWS's design: none of this 2.49x is a discovery |
+| **Search discovery** | arm c's best block sizes, one per run (3 runs x 24 attempts) | 291.1 / 285.2 / 280.4 us | 3.30x / 3.37x / 3.43x | **1.325x / 1.352x / 1.372x over the expert**, each against its own run's attempt 0 |
+| Ground truth, not a discovery | all 62 legal block sizes timed once (the sweep); the best is `m1 n12 k4` | 280.3 us | 3.43x | 1.375x over the expert: the most that block sizes can give |
+| **Expert-derived + P2 engineering** | the expert split over both physical cores (`matmul_expert_lnc2.py`, launched as `kernel[2]`) | 192.2 us | 5.0x | 1.50x over the same kernel on one physical core; not a full referee verdict |
 
+- **The search's claim is the last column: 1.325x-1.372x on top of AWS's kernel** (median 1.352x), not the
+  3.4x vs start. Most of that 3.4x is AWS's design.
 - AWS's own blocking ranks **#29 of 62** at this shape: mid-pack.
 - AWS's kernel *as published* **fails the referee's precision check**: bf16 accumulation, 5.3 bf16 ulps against a limit of 4.
 
@@ -38,20 +43,27 @@ On Qwen3-8B's per-core matmul shapes (gate_up and q_proj at 256 tokens, timed to
 
 ## 2. Results (chip, seat-102)
 
-**Arm c: random search over the expert's block caps.** Three repeats of 24 referee evaluations each,
-cores 0-2 at once. Every repeat beat AWS's default by 33-37%:
+**Search discoveries: arm c, random search over the expert's block caps.** Three repeats of 24 referee
+evaluations each, on cores 0-2 at once.
+- Attempt 0 of every run is the expert as shipped, so it is expert-derived: it measured 2.493x, 2.490x and
+  2.496x vs start.
+- Attempts 1-23 are the search. Its discovery is its best **over that run's own attempt 0**, both timed in the
+  same session. The dashboard's tuning study measures it the same way, and `search.py --summarize` prints it.
 
-| Seed | Best verified | On attempt | Rank among all 62 | Share of the best |
-|---|---|---|---|---|
-| 0 | `m2 n4 k16` 3.303x | 23 | #4 | 96.4% |
-| 1 | `m1 n6 k4` 3.367x | 9 | #3 | 98.3% |
-| 2 | `m1 n12 k4` 3.425x | 10 | **#1** | 100% |
-| **Spread** | min 3.303x, **median 3.367x**, max 3.425x | | | |
+| Seed | Best verified | **Over the expert** (its attempt 0) | vs start | On attempt | Rank among all 62 | Share of the best |
+|---|---|---|---|---|---|---|
+| 0 | `m2 n4 k16` | **1.325x** | 3.303x | 23 | #4 | 96.4% |
+| 1 | `m1 n6 k4` | **1.352x** | 3.367x | 9 | #3 | 98.3% |
+| 2 | `m1 n12 k4` | **1.372x** | 3.425x | 10 | **#1** | 100% |
+| **Spread** | | min 1.325x, **median 1.352x**, max 1.372x | min 3.303x, median 3.367x, max 3.425x | | | |
 
-**Framing (agreed with P4):** this arm *tunes the expert's block sizes*. It starts from AWS's design, at
-2.49x. That is a separate claim from "the model improves the start kernel".
+**Framing (agreed with P4):** this arm *tunes the expert's block sizes*. It starts from AWS's design at
+2.49x, so of each run's 3.3-3.4x vs start, only the 1.325-1.372x on top is the search's. That is a separate
+claim from "the model improves the start kernel".
 
-**The ground truth: an exhaustive sweep.** All 62 SBUF-fitting triples, split over four NeuronCores.
+**The ground truth: an exhaustive sweep.** All 62 SBUF-fitting triples, split over four NeuronCores. It
+measures the whole space, so it is not a discovery by any arm: it shows how close each run got. Its best is
+1.375x over the expert as shipped.
 
 | Rank | Caps | Time | vs start |
 |---|---|---|---|
@@ -65,8 +77,8 @@ cores 0-2 at once. Every repeat beat AWS's default by 33-37%:
 The winners take the whole N dimension, or half of it, in one block, unlike AWS's 2 tiles. At 256 tokens
 there is little M to reuse.
 
-**Both physical cores (LNC=2).** The same kernel and the same caps (`m2 n6 k16` per program), launched
-plainly and as `kernel[2]` (`tools/lnc2_probe.py --validate`, core 3):
+**Expert-derived + P2 engineering: both physical cores (LNC=2).** The same kernel and the same caps
+(`m2 n6 k16` per program), launched plainly and as `kernel[2]` (`tools/lnc2_probe.py --validate`, core 3):
 
 | Shape | One physical core | Both physical cores | Gain | Host-clock cross-check |
 |---|---|---|---|---|
@@ -75,6 +87,11 @@ plainly and as `kernel[2]` (`tools/lnc2_probe.py --validate`, core 3):
 | **Total** | 288.3 us | **192.2 us** | **1.50x** | 89.4 TFLOP/s on one logical core (peak 2 x 79) |
 
 - Both outputs were correct, by the referee's own check.
+- **Whose 5.0x it is:**
+  - 2.49x is AWS's design: 960.5 to 385.6 us.
+  - About 1.34x is the block sizes: 385.6 to 288.3 us at LNC=1. `m2 n6 k16` is the best of the archived
+    first random-search run; the sweep ranks it #6 of 62.
+  - 1.50x is the second core, which is P2's split: 288.3 to 192.2 us.
 - The two physical cores share one HBM stack, which is why the gain is 1.5x and not 2x.
 - **A plain NKI launch at LNC=2 leaves half of every NeuronCore idle.** Every other kernel in the project
   runs that way, the referee's included.
@@ -91,20 +108,25 @@ plainly and as `kernel[2]` (`tools/lnc2_probe.py --validate`, core 3):
 
 **Held-out grid** (`results_heldout_matmul.json`: 6 shapes never used for tuning, hostile inputs, timed
 against start at each shape):
-- the expert passes 6/6, at 1.28x to 3.79x;
-- AWS as published fails only at K=6144 (4.9 bf16 ulps), where the laptop emulation predicted 4.7.
+- the expert (expert-derived) passes 6/6, at 1.28x to 3.79x;
+- AWS as published fails only at K=6144 (4.9 bf16 ulps), where the laptop emulation predicted 4.7;
+- each arm's best, the search discoveries included, is still to run (section 6, item 2).
 
 ## 3. Findings worth telling the room
 
-1. **AWS's published fully optimised matmul loses precision at Qwen3's K.**
+1. **AWS's published fully optimised matmul loses precision at Qwen3's K, and refuses Qwen3's 256-token
+   shapes** (bugs in AWS's code; P2's fixes).
    - It rounds every K-block's partial sum to bf16.
    - Its own test (K=1024, one block) never takes that path.
    - The referee measured 5.3 ulps at K=2048, and 4.9 at K=6144 under hostile inputs.
    - fp32 accumulation fixes it at no measurable speed cost (within 3%).
-2. **AWS's default blocking is mid-pack: #29 of 62 at Qwen3's gate_up shape.** 24 random tries reliably land
-   within 4% of the best, and one repeat found it outright.
-3. **Half of every NeuronCore sits idle under a plain launch.** `kernel[2]` gives 1.50x more on the same kernel:
-   5.0x the start kernel, cross-checked on two clocks.
+   - Its fixed block sizes assert M % 2048 == 0, so no Qwen3 shape at 256 tokens runs at all. The expert takes
+     them as caps, fitted to each shape.
+2. **AWS's default blocking is mid-pack: #29 of 62 at Qwen3's 256-token shapes** (search discovery). 24 random
+   tries reliably land within 4% of the best, 1.325x-1.372x over AWS's default, and one repeat found the best
+   outright.
+3. **Half of every NeuronCore sits idle under a plain launch** (P2 engineering). `kernel[2]` gives 1.50x more on
+   the same kernel: 5.0x the start kernel, cross-checked on two clocks.
 4. **Hostile inputs hide precision loss.**
    - Large magnitudes swamp the rounding errors: bf16 accumulation measured 3.4-3.5 ulps under P1's hostile
      pattern, against 9-13 on ordinary inputs (emulated at K=4096-6144).
@@ -120,14 +142,36 @@ against start at each shape):
 
 - **Spread, not one run:** 3 repeats per arm, and min, median and max reported.
 - **One referee for every arm.** All of arm c ran on P1's 76b2227, merged before the runs. An earlier seed-0
-  run on an older referee is archived in `logs/seat-102/archive/` and is not used.
+  run on an older referee is archived in `logs/seat-102/archive/` and is not counted in arm c. Its best,
+  `m2 n6 k16`, became the LNC=2 kernel's caps.
+- **Every evaluation is published** in `logs/seat-102/` (commit 234d059): 134 records with code, verdict and
+  timings, plus the archive. `python search.py --summarize "logs/seat-102/*.jsonl"` reproduces section 2 from
+  them, including each run's gain over its own attempt 0.
+- **The busy-core fix** (Nihal's `fix/p2-search-cores`, commit e369e5f) is merged into this branch. Its remote
+  branch was deleted after the merge.
+  - **Before the fix:** when the referee failed 3 times on a candidate (no free core, say), the candidate was
+    skipped and not replaced, so a run could spend less than its budget unnoticed.
+  - **After the fix:** the next triple of the same seeded order takes its place. The run stops if attempt 0
+    cannot be judged, or if 3 candidates in a row fail. `heldout_grid.py` binds a core before its first cell,
+    instead of writing "no free NeuronCore" cells as failures.
+  - **The published runs predate it, and it would not have changed them.** They started between 14:51 and
+    15:09 EDT, and the fix landed at 15:09:41. Every run logged its full budget: attempts 0-23 in each of the
+    3 runs, and all 62 settings in the sweep. So no candidate was skipped. The held-out grid's one failing
+    cell is a real precision failure, not a busy core.
+  - Every run from now on uses it, including the held-out grid at 17:30.
 - **2 of 134 evaluations were spoiled by `git pull` while a check ran.**
   - The referee flags its own changed files as tampering, and reports `rules`.
   - **The two:** seed 1 attempt 9, and sweep shard 1 attempt 12.
   - **What we did:** re-judged them with the same code and the same referee (`tools/recheck_spoiled.py`).
     The fresh records replace them; the originals are in `logs/seat-102/archive/`.
   - **The lesson:** never pull into the referee's folder while it runs.
-- **Labels:**
+- **Labels: whose result is it?**
+  - *Expert-derived:* AWS designed it. This covers the expert as shipped, AWS as published, and anything built
+    on them. Attempt 0 of every random-search run is the expert, so it never counts as a discovery.
+  - *Search discovery:* what arm c found in attempts 1-23, reported as its best over that run's attempt 0.
+  - *Ground truth:* the sweep times every setting. It measures the space; it discovers nothing.
+  - *P2 engineering:* changes made by hand: the fp32 accumulation fix, fitting the caps to each shape, the
+    LNC=2 split and the copy floor.
   - The LNC=2 numbers come from P1's timer and the referee's correctness check at the two timing shapes.
     They are **not a full referee verdict**: the referee launches kernels at LNC=1, and held-out shapes were
     not run for LNC=2.
