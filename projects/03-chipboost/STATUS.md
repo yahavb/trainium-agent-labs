@@ -1,6 +1,7 @@
 # CHIPBOOST status: P1 (`referee-timing`)
 
-*Updated Oct 10 2026, measured on seat-100 (trn2.48xlarge node, 1 Trainium2 device, 4 logical cores, LNC=2, 96 GB).*
+*Updated Oct 10 2026. Historical measurements below are from seat-100 (trn2.48xlarge node,
+1 Trainium2 device, 4 logical cores, LNC=2, 96 GB). Current acceptance results are recorded in P1-HANDOFF.md.*
 
 ## Summary
 
@@ -9,7 +10,48 @@
 | 13:30 gate: on-chip timing works | **PASSED** |
 | `timing.py`: device-side timer | Done, selftest passes |
 | `speedcheck.py`: the referee | Done, verified on the start kernel, a faster case and a cheat |
-| Red-team suite (P3), full validation | In progress (verification agents) |
+| Hardened referee regression | Historical results saved in `results_p1.json` (see below) |
+| Throughput implementation | Done in `76b2227`: worker, parallel compilation, threaded inputs |
+| Current signoff | See `P1-HANDOFF.md` for scope, evidence, and remaining limitations |
+
+### Feedback correction
+
+The outer-loop reuse diagnosis now lives in `speedcheck.py`'s `instruction_given`, rather than only
+in the simulator fallback used by P3. Recognized excess rhs traffic is tied to reuse across `m`;
+remaining lhsT traffic is tied to reuse across `n`. The instruction explicitly preserves distinct
+K tiles and the contraction loop. Conservative AST guards avoid guessing for unfamiliar kernels.
+CPU coverage: `python projects/03-chipboost/tests/test_feedback.py`.
+
+Hardware verification on seat-100/core 2 passed all four representative cases: baseline, reordered
+loops, lhsT already hoisted, and rhs already hoisted. Each remained correct on the chip and returned
+the expected diagnosis through `instruction_given`; records and source hash are in `feedback_validation.json`.
+Repeat with `CHIPBOOST_SEAT=100 python verify_feedback.py --core 2 --out /tmp/feedback-validation.json`
+from this directory after checking that core 2 is free. These are feedback acceptance checks, not model
+optimization results.
+
+The comparison launched from `434e5f9` remains pinned to the earlier feedback and cannot establish
+whether this correction improves model outcomes. Its results must be labeled accordingly.
+
+### Targeted DMA mismatch feedback (v2 queued)
+
+The exact simulator `AssertionError` reporting `src=65536, dst=16384` now selects the
+referee-authored `DMA_TILE_SHAPE_MISMATCH` instruction. It explains the 4x element mismatch,
+gives the [128, 512] source / [128, 128] tile as an example, and asks for matching slices
+or a legal matching allocation while preserving all K contributions. Element counts do not
+prove axis dimensions. Other stages, exception types, counts, or extra exception text retain
+the generic instruction; candidate-controlled text remains quoted data and the verdict remains `wrong`.
+
+Six CPU tests pass: `python projects/03-chipboost/tests/test_dma_feedback.py`, including replay
+of the recorded seat-100 failure, adversarial messages, and the actual failure-to-record wiring.
+The DMA-only v2 referee arm is queued behind completion of the pinned comparison; it preserves
+that comparison's model, baseline, P3 source, and budget, without including the outer-loop
+feedback change above. No model improvement from this message change has been established.
+Queue PID 810896 on seat-100 waits for `/tmp/p1-comparison-20261010-2` and then uses core 3
+for 3 repeats of 8 evaluations, writing `/tmp/p1-referee-dma-v2-20261010-1`.
+The real failing candidate was replayed through the sandboxed referee on seat-100/core 2:
+it remained `wrong` and returned the named instruction. This is a simulator rejection before
+device timing, not a speed measurement. Evidence and the isolated source diff are in
+`experiments/dma-feedback-v2/`; protocol and limitations are in `REFEREE-V2.md`.
 
 ## Environment facts (measured, not assumed)
 
@@ -41,9 +83,10 @@ Start kernel = `reference_level4.py` (tiled matmul), bf16 inputs.
 
 ## Referee (`speedcheck.py`)
 
-Stages, stopping at the first failure: rules -> simulator (bytes over **all** DMA ops, inputs untouched)
--> chip correctness at the timing shapes -> held-out shapes with hostile values -> interleaved timing vs the
-baseline -> one named change.
+Current stages, stopping at the first failure: rules -> simulator (bytes over **all** DMA ops, inputs untouched)
+-> chip correctness at the timing shapes -> interleaved timing vs baseline -> held-out with hostile values
+only for a would-be `faster` -> one named change. The current noise floor is 1%, with `no_gain` inside the
+band. The tables below retain the original measurements and verdict names from before that change.
 
 | Test | Result |
 |---|---|
@@ -105,12 +148,12 @@ start. About 109 candidates/hour today. Compiles parallelise: 8 compiles take 25
 **Threshold finding:** max(5%, 2xIQR) always resolves to 5%, about 170x the measured A/A noise. So a real
 2-4% speedup is reported `slower`. Use max(1%, 2xIQR) plus `no_gain` (master's schema already has it).
 
-**Speedups, ranked (estimated together: ~400-600 candidates/hour):**
+**Speedups, ranked (historical estimate together: ~400-600 candidates/hour, not a measured throughput claim):**
 1. Held-out only for a would-be `faster`. **Done** in the hardened referee.
-2. Persistent referee worker with a watchdog, so the 6-13 s runtime start is paid once.
-3. Baseline NEFF, model and inputs cached per shape (the hardened referee caches the NEFF on disk).
-4. Compile in parallel threads.
-5. Fail fast on a candidate over 3x slower; cut the default timeout to ~180 s.
+2. Persistent referee worker with a watchdog: **implemented**, runtime start paid once per worker.
+3. Baseline NEFF cached on disk. Persistent baseline models/input caching remains a possible optimization.
+4. Compile in parallel threads: **implemented**, up to 8; input generation is threaded too.
+5. Fail fast on a candidate over 3x slower: **implemented**. Child wall timeout remains 600 s, not 180 s.
 
 ## Hardening: what the verification agents found, and what changed
 
@@ -180,9 +223,9 @@ Plus: the kill runs as the sandbox uid (atomic against forks), the referee reaps
 - c5a/c5b (`dma_compute` loads) at ~1.86x deserve a human look at why.
 - A `check_isolated` timeout kills the referee but leaves its child bounded only by RLIMIT_CPU.
 
-## Next
+## Handoff
 
-- Verification agents: red-team cheats, false-reject tests, load and speed tests (results to be added here).
-- Hand to P2: put `kernels/matmul_start.py` and `shapes.py` in place (the referee falls back to
-  `reference_level4.py` and its built-in matmul spec until then).
-- Hand to P3: wire `agent.py` grading to `speedcheck.check_isolated`.
+P2 (`origin/kernels-search` at `919c6be`) already includes the current referee, kernels/shapes, and uses
+`RefereeWorker`. P3 (`origin/redteam-agent` at `2ce9416`) already includes the current referee and uses
+`check_isolated`, retries infrastructure failures, and sends only `instruction_given` to the model.
+See `P1-HANDOFF.md` for current validation evidence and the command to repeat acceptance on a seat.
