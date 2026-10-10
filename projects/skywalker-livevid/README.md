@@ -20,6 +20,43 @@ decoder sharing two of the cores. The right-hand column is how each stage was ve
 
 ![LiveVid system architecture](docs/system_design.png)
 
+**Streaming pipeline.** One Trainium2 chip at LNC=2 exposes four NeuronCores. The 30 DiT blocks of the causal
+Wan2.1 1.3B model are split across them as a 4-stage pipeline, and each chunk runs NC0 to NC3 twice, at
+timesteps t = 700 and then t = 500.
+
+| Core | Holds | Time per chunk |
+|---|---|---|
+| NC0 | blocks 0-7, KV x 8 in HBM | 2 x 43.6 ms |
+| NC1 | blocks 8-15, KV x 8 in HBM | 2 x 35.8 ms |
+| NC2 | blocks 16-22 + TAEHV encoder, KV x 7 in HBM | |
+| NC3 | blocks 23-29 + TAEHV decoder, KV x 7 in HBM | |
+
+- Activations hop between cores as `[1, 1024, 1536]` bf16 tensors, 3.1 MB per hop.
+- Each core's KV cache uses aliased graph inputs and outputs, so it stays in HBM instead of crossing to the
+  host on every call.
+- Four 512x512 RGB frames go in at the encoder on NC2, and four frames come out of the decoder on NC3.
+- The pipeline driver runs one process per NeuronCore. It owns the t = 700, 500 schedule and the RoPE cos/sin
+  tables, warms up on two latents on CPU, and writes timings to `results/*.json`. Runs are started from a
+  laptop over `kubectl exec`.
+
+**Verification and side measurements.**
+
+- CPU fp32 reference: the original repo code, matched at a minimum cosine of 0.99996.
+- Untuned baseline: per-layer graphs with the caches going through the host, measured at 5.62 FPS on another seat.
+- `neuron-profile`: a block call was 37% compute and 63% host-to-chip copies before the caches were kept
+  resident.
+- `neuron-monitor`: 56-65% utilization per core, with NC3 (the decoder core) the busiest.
+
+**What it is built on.**
+
+- [StreamDiffusionV2](https://github.com/chenfengxu714/StreamDiffusionV2) at `6961a5c`: causal Wan2.1 1.3B
+  (30 DiT blocks), a 6-frame KV ring with 3 attention sinks, the TAEHV tiny video VAE (`taew2_1`), and the CPU
+  fp32 pipeline used as our reference.
+- `livevid-trainium`, our port (three branches merged): tensor-only blocks with SDPA and real RoPE, aliased
+  I/O for the HBM-resident KV cache, 8-layer graphs in a 4-stage pipeline, and a parity harness on every stage.
+- The Neuron SDK in the pod: torch-neuronx 2.9 and neuronx-cc 2.27, `neuron-profile`, `neuron-monitor`, and an
+  `islpy` 2026.1 pin to work around a compiler issue.
+
 ## Tier 1: SD-Turbo restyling with a live webcam demo
 
 - Three graphs compiled separately with `torch_neuronx.trace` (bf16, fixed shapes, batch 1): TAESD encoder,
