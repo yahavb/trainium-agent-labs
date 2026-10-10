@@ -44,14 +44,14 @@ What it checks, and why:
 |---|---|---|---|
 | `base_l1`, `card`, `names`, `v4` | no thinking; feedback changes added one at a time | 0.30 | Wrong algorithm: one `nc_matmul` per window. All 4 samples were identical, so best-of-4 gave nothing. Precise feedback fixed each error in one round, but a new one appeared every time. |
 | `plan`, `plan6` | `--plan`, 2 samples | 0.30 | **Right algorithm from round 0** (strided view + reduce). Fixed one error per round, then reached the "tiles need 2 dimensions" wall and the reduce-axis wall. `plan6` stopped early because the tie-break kept the stuck sample and dropped the one that was progressing. |
-| `merge_multi` | `--plan-merge`, temperatures 0.6/0.75/0.9/1.0, no static check | **0.50** (round 3) | **The only run where a kernel executed.** The output was NaN because the result of `nl.sum` was thrown away. It got there with a reshape that is semantically wrong (it relabels the data instead of forming 2×2 windows). Rounds 4–5 regressed (it invented `nl.assign`). |
+| `merge_multi` | `--plan-merge`, temperatures 0.6/0.75/0.9/1.0, no static check | **0.50** (round 3) | **The only run where a kernel executed** (not replicated, see `merge_multi_rep`). The output was NaN because the result of `nl.sum` was thrown away. It got there with a reshape that is semantically wrong (it relabels the data instead of forming 2×2 windows). Rounds 4–5 regressed (it invented `nl.assign`). |
 | `merge_single` | `--plan-merge`, all temperatures 0.6 | 0.30 | `.ap` partition stride, 5 rounds. |
 | `merge_words` | `--plan-merge --spec words` | 0.30 | Chose a per-window loop and hit the 2-dimension wall 4 rounds in a row (give-up). |
 | `merge_static` | `--plan-merge` + static check | 0.30 | API errors were all gone by round 3, then `.ap` partition stride for every remaining round. In rounds 1–4 all 4 samples were identical. |
-| `merge_history` | + `--history 3` | 0.30 by round 4 | Went back to `nisa.multiply` in round 3 even though the history showed it had failed in round 1. *(running at deadline)* |
-| `merge_multi_rep` | same as `merge_multi` (replication) | *running* | |
-| `merge_t10` | static check, all temperatures 1.0 | *running* | |
-| `merge_tmix` | static check, 0.6–1.0 (replicates `merge_static`) | *running* | |
+| `merge_history` | + `--history 3` | 0.30 | Chose a per-window loop. **All 6 rounds** hit the 2-dimension wall: `nl.sum(view, axis=[1])` returns a 1-D `(C,)` tile, and the model never used `keepdims=` even though the feedback listed it. In round 3 it went back to `nisa.multiply`, although the history block showed round 1's code with that exact error. History did not prevent going back. |
+| `merge_multi_rep` | same as `merge_multi` (replication) | 0.30 after 5 of 6 rounds | **The 0.50 did not replicate.** It hit a different wall almost every round: reduce axis `(2,4)` → 2-dimension wall → "partition dim must be preserved" → 2-dimension wall → `dma_copy` element count. *(round 5 running at deadline)* |
+| `merge_t10` | static check, all temperatures 1.0 | 0.30 after 4 of 6 rounds | Same path as `merge_static`: rounds 0–2 fixing API errors flagged by the static check, then the `.ap` partition stride in round 3. *(running at deadline)* |
+| `merge_tmix` | static check, 0.6–1.0 (replicates `merge_static`) | 0.30 after 4 of 6 rounds | `.ap` partition stride in rounds 1–3, bouncing between `[[1,32],[2,16],[2,16]]` and `[[2,16],[2,16],[1,32]]`. *(running at deadline)* |
 
 Time per round with `--plan-merge` and 4 thoughts was about 430–455 s. With 2 thoughts it was about 155 s. The seat is saturated: running 4 at once costs about as much as running them one after another.
 
@@ -68,12 +68,13 @@ Time per round with `--plan-merge` and 4 thoughts was about 430–455 s. With 2 
 4. **Merging the thoughts collapses diversity.** After one shared summary, the 4 code samples are usually identical whatever the temperature. `--plan-merge` therefore behaves like *one* sample per round, and a wrong summary takes every sample down with it.
 5. **Our own feedback can create bugs.** "Remove `dst=`" led to `nl.sum` being called with its result thrown away, and the output became NaN. We now word every hint around what the function *returns*.
 6. **The reference code carries useful structure.** Replacing it with the model's own description led to a worse algorithm.
-7. **Variance is large; n is small.** Two runs with identical settings (seats 182 and 184 before history takes effect) hit different first errors at round 0. Our only 0.50 is one run and is being replicated. With 1–2 runs per configuration we report behaviour, and we **do not** rank configurations by score.
+7. **Showing failed attempts was not enough to stop the model going back to them** (`merge_history`). An explicit, precise hint seems to matter more than memory.
+8. **Variance is large; n is small.** Two runs with identical settings (seats 182 and 184 before history takes effect) hit different first errors at round 0. Our only 0.50 (`merge_multi`) **did not replicate** in `merge_multi_rep`. The three runs with the static check on (`merge_static`, `merge_tmix`, `merge_t10`) all ended at the same `.ap` wall, whether the temperatures were mixed or all 1.0. So the walls in finding 3 are reproducible, while the score is not. With 1–2 runs per configuration we report behaviour, and we **do not** rank configurations by score.
 
 ## 5. Next steps (not done)
 
 - **Explain the `.ap` stride unit when that error appears.** Either attach the real NKI docstring, or restate the error with the numbers worked out for this tile ("one partition step = H·W = 1024 elements, one row = W, one column = 1"), in the style of finding 1.
-- **A hint for reductions over non-last axes.**
+- **A hint for reductions over non-last axes, and for the 2-dimension wall after a reduction** ("`nl.sum(..., keepdims=True)` keeps the tile 2-D").
 - **A value-kind check in the static checker** (tile vs number).
 - **Keep diversity through the merge:** one summary per thought, or break ties toward the sample whose error is *new*.
 - **More replications per configuration** before comparing scores.
