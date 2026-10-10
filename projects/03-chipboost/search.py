@@ -240,36 +240,62 @@ def seat_from_hostname():
 
 
 def summarize(paths):
-    """Rank every timed triple in sweep / attempt logs: the ground truth arm c is measured against."""
+    """Arm c's report from sweep and attempt logs. The sweep (run ids matmul-sweep-*) is the ground truth:
+    every SBUF-fitting triple timed once. Each random-search run is then placed against it: its best
+    verified triple, the attempt it came on, and that triple's rank among all of them. Triples are keyed by
+    what they RUN as at the primary shape (the expert's caps 16, 2, 8 run as 2, 2, 8)."""
     import glob
-    best = {}
+    tiles = tile_counts(shapes.cases("matmul", "timing")[0])
     files = sorted({f for p in paths for f in glob.glob(p)})
+    runs = {}
     for path in files:
         for line in open(path):
             try:
                 rec = json.loads(line)
-            except ValueError:
+                caps = effective(read_caps(rec["code"]), tiles)
+            except (ValueError, KeyError, TypeError):
                 continue
-            if rec.get("kernel") != "matmul" or rec.get("arm") != "random_search" or not rec.get("code"):
-                continue
-            try:
-                caps = read_caps(rec["code"])
-            except ValueError:
-                continue
-            ok = rec.get("verdict") in ("faster", "slower", "no_gain") and rec.get("speedup") is not None
-            row = dict(caps=caps, verdict=rec.get("verdict"), speedup=rec.get("speedup") if ok else None,
-                       us=rec.get("time_us_median") if ok else None, run=rec.get("run_id"))
-            key = (caps, row["run"])
-            best[key] = row
-    rows = sorted(best.values(), key=lambda r: -(r["speedup"] or 0))
-    print(f"{len(rows)} timed or rejected candidates from {len(files)} file(s)")
-    seen = {}
-    for rank, r in enumerate(rows, 1):
-        seen.setdefault(r["caps"], rank)
-        sp = f"{r['speedup']:.3f}x" if r["speedup"] is not None else "-"
-        us = f"{r['us']:.1f} us" if r["us"] is not None else "-"
-        print(f"  #{rank:<3} caps {caps_str(r['caps']):<12} {r['verdict'] or '?':<12} {us:>10} {sp:>8}  {r['run']}")
-    return rows
+            if rec.get("kernel") == "matmul" and rec.get("arm") == "random_search":
+                runs.setdefault(rec.get("run_id") or "?", []).append(dict(rec, caps=caps))
+
+    truth = {}
+    for rid, recs in runs.items():
+        if rid.startswith("matmul-sweep-"):
+            for r in recs:
+                truth[r["caps"]] = r
+    timed = sorted((r for r in truth.values() if r.get("speedup") is not None
+                    and r.get("verdict") in ("faster", "no_gain", "slower")), key=lambda r: -r["speedup"])
+    rank = {r["caps"]: i for i, r in enumerate(timed, 1)}
+    print(f"{len(files)} file(s); the sweep covers {len(truth)} triple(s), {len(timed)} of them timed")
+    for i, r in enumerate(timed[:10], 1):
+        print(f"  sweep #{i:<3} {caps_str(r['caps']):<12} {r['verdict']:<8} {r['time_us_median']:8.1f} us "
+              f"{r['speedup']:6.3f}x")
+    expert = effective((16, 2, 8), tiles)
+    if timed:
+        print(f"  ground truth: {caps_str(timed[0]['caps'])} at {timed[0]['speedup']:.3f}x; the expert as shipped "
+              f"({caps_str(expert)}) ranks #{rank.get(expert, '?')} of {len(timed)}")
+
+    print()
+    bests = []
+    for rid, recs in sorted(runs.items()):
+        if rid.startswith("matmul-sweep-"):
+            continue
+        recs.sort(key=lambda r: r.get("attempt_no") or 0)
+        ver = [r for r in recs if r.get("verdict") == "faster" and r.get("speedup") is not None]
+        if not ver:
+            print(f"  {rid}: {len(recs)} evaluations, no verified speedup")
+            continue
+        b = max(ver, key=lambda r: r["speedup"])
+        bests.append(b["speedup"])
+        where = f"rank #{rank[b['caps']]} of {len(timed)} in the sweep" if b["caps"] in rank else "not in the sweep"
+        share = f", {b['speedup'] / timed[0]['speedup']:.1%} of the ground truth" if timed else ""
+        print(f"  {rid}: {len(recs)} evaluations; best verified {caps_str(b['caps'])} {b['speedup']:.3f}x "
+              f"at attempt {b.get('attempt_no')}; {where}{share}")
+    if bests:
+        bests.sort()
+        print(f"  random search, {len(bests)} run(s): best verified min {bests[0]:.3f}x, "
+              f"median {bests[len(bests) // 2]:.3f}x, max {bests[-1]:.3f}x")
+    return runs
 
 
 def resolve_seat(seat, required):
