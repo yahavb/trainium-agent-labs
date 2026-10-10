@@ -1,0 +1,116 @@
+
+=========== level 1: calm (located feedback, rep 1) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.20 rules CROSSED lcb +0  (51s)
+   feedback: Rule broken: CROSSED, 24000 times; 24000 in total. First at step 0: bid 1000 >= ask 1000. Any violation zeroes the profit score. Fix: after all adjustments, if bid >= ask then move one of them so bid < ask.
+round 1 [repair] s0 SOLVED | s1 SOLVED  (51s)
+=> level 1: VERIFIED on dev after 4 attempts; held-out PASS (lcb +106); 3703 tokens, 103s
+
+=========== level 2: trend (located feedback, rep 1) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.20 rules CROSSED lcb +0  (57s)
+   feedback: Rule broken: CROSSED, 24000 times; 24000 in total. First at step 0: bid 1000 >= ask 1000. Any violation zeroes the profit score. Fix: after all adjustments, if bid >= ask then move one of them so bid < ask.
+round 1 [repair] s0 SOLVED | s1 SOLVED  (49s)
+=> level 2: VERIFIED on dev after 4 attempts; held-out PASS (lcb +74); 3703 tokens, 107s
+
+=========== level 3: informed (located feedback, rep 1) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.20 rules CROSSED lcb +0  (57s)
+   feedback: Rule broken: CROSSED, 24000 times; 24000 in total. First at step 0: bid 1000 >= ask 1000. Any violation zeroes the profit score. Fix: after all adjustments, if bid >= ask then move one of them so bid < ask.
+round 1 [repair] s0 0.60 profit LOSS_ADVERSE lcb -354 | s1 0.60 profit LOSS_ADVERSE lcb -160  (50s)
+   feedback: izes[0] (or bought with the reverse), 324 fills per episode, the mid then moved -1.54 ticks per fill in your favour within 10 steps (negative = against you); your other fills made +0.77. The displayed sizes predict the next move and your quotes ignore them (correlation of your quote centre with the imbalance +0.48). Shift both quotes toward the heavier side, and be slow to sell into heavy bids or buy into heavy asks.
+round 2 [repair] s0 0.71 profit LOSS lcb -22 | s1 0.20 rules TAKES lcb -56  (66s)
+   feedback: Profit per episode -2 ± 10 (standard error), so the 95% lower bound is -22; it must be above 0. 56% of episodes made money. You earned +1 at the moment of your fills and -2 from price moves while holding inventory. No single mechanism explains the loss; reduce risk before chasing edge.
+round 3 [repair] s0 0.65 profit LOSS_ADVERSE lcb -41 | s1 0.71 profit LOSS lcb -22  (65s)
+   feedback: Profit per episode -2 ± 10 (standard error), so the 95% lower bound is -22; it must be above 0. 56% of episodes made money. You earned +1 at the moment of your fills and -2 from price moves while holding inventory. No single mechanism explains the loss; reduce risk before chasing edge.
+round 4 [repair] s0 0.71 profit LOSS lcb -22 | s1 0.71 profit LOSS lcb -22  (65s)
+   feedback: Profit per episode -2 ± 10 (standard error), so the 95% lower bound is -22; it must be above 0. 56% of episodes made money. You earned +1 at the moment of your fills and -2 from price moves while holding inventory. No single mechanism explains the loss; reduce risk before chasing edge.
+round 5 [restart] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (51s)
+   feedback: NameError: name 'max_order_size' is not defined on line 14 of your code, at step 0 (inventory 0, best_bid 999, best_ask 1001). At that step mid_history had only 2 entries: the first steps of an episode have a short history, so guard any window you take.
+=> level 3: NOT VERIFIED, best score 0.71; held-out fail (lcb -24); 13247 tokens, 354s
+
+log: /workspace/projects/market-maker-agent/runs/C-1.jsonl
+
+=========== level 1: calm (located feedback, rep 2) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (56s)
+   feedback: TypeError: unsupported operand type(s) for //: 'str' and 'int' on line 6 of your code, at step 0 (inventory 0, best_bid 999, best_ask 1001). At that step mid_history had only 1 entries: the first steps of an episode have a short history, so guard any window you take.
+round 1 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (55s)
+   feedback: TypeError: unsupported operand type(s) for //: 'str' and 'int' on line 6 of your code, at step 0 (inventory 0, best_bid 999, best_ask 1001). At that step mid_history had only 1 entries: the first steps of an episode have a short history, so guard any window you take.
+round 2 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (49s)
+   feedback: TypeError: unsupported operand type(s) for //: 'str' and 'int' on line 6 of your code, at step 0 (inventory 0, best_bid 999, best_ask 1001). At that step mid_history had only 1 entries: the first steps of an episode have a short history, so guard any window you take.
+round 3 [restart] s0 0.60 profit LOSS lcb +0 | s1 0.10 runs EXCEPTION  (77s)
+   feedback: Profit per episode +0 ± 0 (standard error), so the 95% lower bound is +0; it must be above 0. 0% of episodes made money. You earned +0 at the moment of your fills and +0 from price moves while holding inventory. No single mechanism explains the loss; reduce risk before chasing edge.
+round 4 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (47s)
+   feedback: Profit per episode +0 ± 0 (standard error), so the 95% lower bound is +0; it must be above 0. 0% of episodes made money. You earned +0 at the moment of your fills and +0 from price moves while holding inventory. No single mechanism explains the loss; reduce risk before chasing edge.
+round 5 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (47s)
+   feedback: Profit per episode +0 ± 0 (standard error), so the 95% lower bound is +0; it must be above 0. 0% of episodes made money. You earned +0 at the moment of your fills and +0 from price moves while holding inventory. No single mechanism explains the loss; reduce risk before chasing edge.
+=> level 1: NOT VERIFIED, best score 0.60; held-out fail (lcb +0); 12274 tokens, 332s
+
+=========== level 2: trend (located feedback, rep 2) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (57s)
+   feedback: TypeError: unsupported operand type(s) for //: 'str' and 'int' on line 6 of your code, at step 0 (inventory 0, best_bid 999, best_ask 1001). At that step mid_history had only 1 entries: the first steps of an episode have a short history, so guard any window you take.
+round 1 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (56s)
+   feedback: TypeError: unsupported operand type(s) for //: 'str' and 'int' on line 6 of your code, at step 0 (inventory 0, best_bid 999, best_ask 1001). At that step mid_history had only 1 entries: the first steps of an episode have a short history, so guard any window you take.
+round 2 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (50s)
+   feedback: TypeError: unsupported operand type(s) for //: 'str' and 'int' on line 6 of your code, at step 0 (inventory 0, best_bid 999, best_ask 1001). At that step mid_history had only 1 entries: the first steps of an episode have a short history, so guard any window you take.
+round 3 [restart] s0 0.60 profit LOSS lcb +0 | s1 0.10 runs EXCEPTION  (80s)
+   feedback: Profit per episode +0 ± 0 (standard error), so the 95% lower bound is +0; it must be above 0. 0% of episodes made money. You earned +0 at the moment of your fills and +0 from price moves while holding inventory. No single mechanism explains the loss; reduce risk before chasing edge.
+round 4 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (46s)
+   feedback: Profit per episode +0 ± 0 (standard error), so the 95% lower bound is +0; it must be above 0. 0% of episodes made money. You earned +0 at the moment of your fills and +0 from price moves while holding inventory. No single mechanism explains the loss; reduce risk before chasing edge.
+round 5 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (45s)
+   feedback: Profit per episode +0 ± 0 (standard error), so the 95% lower bound is +0; it must be above 0. 0% of episodes made money. You earned +0 at the moment of your fills and +0 from price moves while holding inventory. No single mechanism explains the loss; reduce risk before chasing edge.
+=> level 2: NOT VERIFIED, best score 0.60; held-out fail (lcb +0); 12160 tokens, 335s
+
+=========== level 3: informed (located feedback, rep 2) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (56s)
+   feedback: TypeError: unsupported operand type(s) for //: 'str' and 'int' on line 6 of your code, at step 0 (inventory 0, best_bid 999, best_ask 1001). At that step mid_history had only 1 entries: the first steps of an episode have a short history, so guard any window you take.
+round 1 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (54s)
+   feedback: TypeError: unsupported operand type(s) for //: 'str' and 'int' on line 6 of your code, at step 0 (inventory 0, best_bid 999, best_ask 1001). At that step mid_history had only 1 entries: the first steps of an episode have a short history, so guard any window you take.
+round 2 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (49s)
+   feedback: TypeError: unsupported operand type(s) for //: 'str' and 'int' on line 6 of your code, at step 0 (inventory 0, best_bid 999, best_ask 1001). At that step mid_history had only 1 entries: the first steps of an episode have a short history, so guard any window you take.
+round 3 [restart] s0 0.60 profit LOSS lcb +0 | s1 0.10 runs EXCEPTION  (80s)
+   feedback: Profit per episode +0 ± 0 (standard error), so the 95% lower bound is +0; it must be above 0. 0% of episodes made money. You earned +0 at the moment of your fills and +0 from price moves while holding inventory. No single mechanism explains the loss; reduce risk before chasing edge.
+round 4 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (48s)
+   feedback: Profit per episode +0 ± 0 (standard error), so the 95% lower bound is +0; it must be above 0. 0% of episodes made money. You earned +0 at the moment of your fills and +0 from price moves while holding inventory. No single mechanism explains the loss; reduce risk before chasing edge.
+round 5 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (47s)
+   feedback: Profit per episode +0 ± 0 (standard error), so the 95% lower bound is +0; it must be above 0. 0% of episodes made money. You earned +0 at the moment of your fills and +0 from price moves while holding inventory. No single mechanism explains the loss; reduce risk before chasing edge.
+=> level 3: NOT VERIFIED, best score 0.60; held-out fail (lcb +0); 12287 tokens, 335s
+
+log: /workspace/projects/market-maker-agent/runs/C-2.jsonl
+
+=========== level 1: calm (located feedback, rep 3) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.20 rules CROSSED lcb +0  (58s)
+   feedback: Rule broken: CROSSED, 24000 times; 24000 in total. First at step 0: bid 1000 >= ask 1000. Any violation zeroes the profit score. Fix: after all adjustments, if bid >= ask then move one of them so bid < ask.
+round 1 [repair] s0 SOLVED | s1 SOLVED  (49s)
+=> level 1: VERIFIED on dev after 4 attempts; held-out PASS (lcb +106); 3703 tokens, 108s
+
+=========== level 2: trend (located feedback, rep 3) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.20 rules CROSSED lcb +0  (58s)
+   feedback: Rule broken: CROSSED, 24000 times; 24000 in total. First at step 0: bid 1000 >= ask 1000. Any violation zeroes the profit score. Fix: after all adjustments, if bid >= ask then move one of them so bid < ask.
+round 1 [repair] s0 SOLVED | s1 SOLVED  (50s)
+=> level 2: VERIFIED on dev after 4 attempts; held-out PASS (lcb +74); 3703 tokens, 109s
+
+=========== level 3: informed (located feedback, rep 3) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (57s)
+   feedback: TypeError: unsupported operand type(s) for //: 'str' and 'int' on line 6 of your code, at step 0 (inventory 0, best_bid 999, best_ask 1001). At that step mid_history had only 1 entries: the first steps of an episode have a short history, so guard any window you take.
+round 1 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (57s)
+   feedback: TypeError: unsupported operand type(s) for //: 'str' and 'int' on line 6 of your code, at step 0 (inventory 0, best_bid 999, best_ask 1001). At that step mid_history had only 1 entries: the first steps of an episode have a short history, so guard any window you take.
+round 2 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (49s)
+   feedback: TypeError: unsupported operand type(s) for //: 'str' and 'int' on line 6 of your code, at step 0 (inventory 0, best_bid 999, best_ask 1001). At that step mid_history had only 1 entries: the first steps of an episode have a short history, so guard any window you take.
+round 3 [restart] s0 0.60 profit LOSS lcb +0 | s1 0.10 runs EXCEPTION  (59s)
+   feedback: Profit per episode +0 ± 0 (standard error), so the 95% lower bound is +0; it must be above 0. 0% of episodes made money. You earned +0 at the moment of your fills and +0 from price moves while holding inventory. No single mechanism explains the loss; reduce risk before chasing edge.
+round 4 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (48s)
+   feedback: Profit per episode +0 ± 0 (standard error), so the 95% lower bound is +0; it must be above 0. 0% of episodes made money. You earned +0 at the moment of your fills and +0 from price moves while holding inventory. No single mechanism explains the loss; reduce risk before chasing edge.
+round 5 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (48s)
+   feedback: Profit per episode +0 ± 0 (standard error), so the 95% lower bound is +0; it must be above 0. 0% of episodes made money. You earned +0 at the moment of your fills and +0 from price moves while holding inventory. No single mechanism explains the loss; reduce risk before chasing edge.
+=> level 3: NOT VERIFIED, best score 0.60; held-out fail (lcb +0); 12168 tokens, 318s
+
+log: /workspace/projects/market-maker-agent/runs/C-3.jsonl
+
+rep level claim              held-out
+  1     1 VERIFIED on dev    PASS
+  1     2 VERIFIED on dev    PASS
+  1     3 NOT VERIFIED       fail
+  2     1 NOT VERIFIED       fail
+  2     2 NOT VERIFIED       fail
+  2     3 NOT VERIFIED       fail
+  3     1 VERIFIED on dev    PASS
+  3     2 VERIFIED on dev    PASS
+  3     3 NOT VERIFIED       fail

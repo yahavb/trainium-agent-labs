@@ -1,0 +1,107 @@
+
+=========== level 1: calm (located feedback, rep 1) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (56s)
+   feedback: TypeError: unsupported operand type(s) for //: 'str' and 'int' on line 6 of your code, at step 0 (inventory 0, best_bid 999, best_ask 1001). At that step mid_history had only 1 entries: the first steps of an episode have a short history, so guard any window you take.
+round 1 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (56s)
+   feedback: TypeError: unsupported operand type(s) for //: 'str' and 'int' on line 6 of your code, at step 0 (inventory 0, best_bid 999, best_ask 1001). At that step mid_history had only 1 entries: the first steps of an episode have a short history, so guard any window you take.
+round 2 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (76s)
+   feedback: TypeError: unsupported operand type(s) for //: 'str' and 'int' on line 6 of your code, at step 0 (inventory 0, best_bid 999, best_ask 1001). At that step mid_history had only 1 entries: the first steps of an episode have a short history, so guard any window you take.
+round 3 [restart] s0 0.60 profit NO_FILLS lcb +0 | s1 0.10 runs EXCEPTION  (103s)
+   feedback:  is +0; it must be above 0. 0% of episodes made money. You earned +0 at the moment of your fills and +0 from price moves while holding inventory. You traded only 0.0 times per episode: both quotes sit where nobody trades. A market sell fills a bid only at best_bid (half the time) or above it (first in line); a bid below best_bid never fills, and asks mirror this. Quote at best_bid/best_ask and manage risk from there.
+round 4 [repair] s0 0.60 profit NO_FILLS lcb +0 | s1 0.60 profit NO_FILLS lcb +0  (47s)
+   feedback:  is +0; it must be above 0. 0% of episodes made money. You earned +0 at the moment of your fills and +0 from price moves while holding inventory. You traded only 0.0 times per episode: both quotes sit where nobody trades. A market sell fills a bid only at best_bid (half the time) or above it (first in line); a bid below best_bid never fills, and asks mirror this. Quote at best_bid/best_ask and manage risk from there.
+round 5 [repair] s0 0.60 profit NO_FILLS lcb +0 | s1 0.60 profit NO_FILLS lcb +0  (93s)
+   feedback:  is +0; it must be above 0. 0% of episodes made money. You earned +0 at the moment of your fills and +0 from price moves while holding inventory. You traded only 0.0 times per episode: both quotes sit where nobody trades. A market sell fills a bid only at best_bid (half the time) or above it (first in line); a bid below best_bid never fills, and asks mirror this. Quote at best_bid/best_ask and manage risk from there.
+=> level 1: NOT VERIFIED, best score 0.60; held-out fail (lcb +0); 12368 tokens, 433s
+
+=========== level 2: trend (located feedback, rep 1) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.20 rules CROSSED lcb +0  (71s)
+   feedback: Rule broken: CROSSED, 24000 times; 24000 in total. First at step 0: bid 1000 >= ask 1000. Any violation zeroes the profit score. Fix: after all adjustments, if bid >= ask then move one of them so bid < ask.
+round 1 [repair] s0 SOLVED | s1 SOLVED  (76s)
+=> level 2: VERIFIED on dev after 4 attempts; held-out PASS (lcb +74); 3703 tokens, 149s
+
+=========== level 3: informed (located feedback, rep 1) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (82s)
+   feedback: TypeError: unsupported operand type(s) for //: 'str' and 'int' on line 6 of your code, at step 0 (inventory 0, best_bid 999, best_ask 1001). At that step mid_history had only 1 entries: the first steps of an episode have a short history, so guard any window you take.
+round 1 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (85s)
+   feedback: TypeError: unsupported operand type(s) for //: 'str' and 'int' on line 6 of your code, at step 0 (inventory 0, best_bid 999, best_ask 1001). At that step mid_history had only 1 entries: the first steps of an episode have a short history, so guard any window you take.
+round 2 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (82s)
+   feedback: TypeError: unsupported operand type(s) for //: 'str' and 'int' on line 6 of your code, at step 0 (inventory 0, best_bid 999, best_ask 1001). At that step mid_history had only 1 entries: the first steps of an episode have a short history, so guard any window you take.
+round 3 [restart] s0 0.60 profit NO_FILLS lcb +0 | s1 0.10 runs EXCEPTION  (86s)
+   feedback:  is +0; it must be above 0. 0% of episodes made money. You earned +0 at the moment of your fills and +0 from price moves while holding inventory. You traded only 0.0 times per episode: both quotes sit where nobody trades. A market sell fills a bid only at best_bid (half the time) or above it (first in line); a bid below best_bid never fills, and asks mirror this. Quote at best_bid/best_ask and manage risk from there.
+round 4 [repair] s0 0.60 profit NO_FILLS lcb +0 | s1 0.60 profit NO_FILLS lcb +0  (100s)
+   feedback:  is +0; it must be above 0. 0% of episodes made money. You earned +0 at the moment of your fills and +0 from price moves while holding inventory. You traded only 0.0 times per episode: both quotes sit where nobody trades. A market sell fills a bid only at best_bid (half the time) or above it (first in line); a bid below best_bid never fills, and asks mirror this. Quote at best_bid/best_ask and manage risk from there.
+round 5 [repair] s0 0.60 profit NO_FILLS lcb +0 | s1 0.60 profit NO_FILLS lcb +0  (94s)
+   feedback:  is +0; it must be above 0. 0% of episodes made money. You earned +0 at the moment of your fills and +0 from price moves while holding inventory. You traded only 0.0 times per episode: both quotes sit where nobody trades. A market sell fills a bid only at best_bid (half the time) or above it (first in line); a bid below best_bid never fills, and asks mirror this. Quote at best_bid/best_ask and manage risk from there.
+=> level 3: NOT VERIFIED, best score 0.60; held-out fail (lcb +0); 12262 tokens, 530s
+
+log: /workspace/projects/market-maker-agent/runs/C2-1.jsonl
+
+=========== level 1: calm (located feedback, rep 2) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.20 rules CROSSED lcb +0  (99s)
+   feedback: Rule broken: CROSSED, 24000 times; 24000 in total. First at step 0: bid 1000 >= ask 1000. Any violation zeroes the profit score. Fix: after all adjustments, if bid >= ask then move one of them so bid < ask.
+round 1 [repair] s0 SOLVED | s1 SOLVED  (99s)
+=> level 1: VERIFIED on dev after 4 attempts; held-out PASS (lcb +106); 3703 tokens, 199s
+
+=========== level 2: trend (located feedback, rep 2) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.20 rules CROSSED lcb +0  (90s)
+   feedback: Rule broken: CROSSED, 24000 times; 24000 in total. First at step 0: bid 1000 >= ask 1000. Any violation zeroes the profit score. Fix: after all adjustments, if bid >= ask then move one of them so bid < ask.
+round 1 [repair] s0 SOLVED | s1 SOLVED  (96s)
+=> level 2: VERIFIED on dev after 4 attempts; held-out PASS (lcb +74); 3703 tokens, 187s
+
+=========== level 3: informed (located feedback, rep 2) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.20 rules CROSSED lcb +0  (112s)
+   feedback: Rule broken: CROSSED, 24000 times; 24000 in total. First at step 0: bid 1000 >= ask 1000. Any violation zeroes the profit score. Fix: after all adjustments, if bid >= ask then move one of them so bid < ask.
+round 1 [repair] s0 0.60 profit LOSS_ADVERSE lcb -354 | s1 0.60 profit LOSS_ADVERSE lcb -160  (104s)
+   feedback: izes[0] (or bought with the reverse), 324 fills per episode, the mid then moved -1.54 ticks per fill in your favour within 10 steps (negative = against you); your other fills made +0.77. The displayed sizes predict the next move and your quotes ignore them (correlation of your quote centre with the imbalance +0.48). Shift both quotes toward the heavier side, and be slow to sell into heavy bids or buy into heavy asks.
+round 2 [repair] s0 0.60 profit LOSS_ADVERSE lcb -200 | s1 0.20 rules TAKES lcb -56  (125s)
+   feedback: izes[0] (or bought with the reverse), 169 fills per episode, the mid then moved -0.73 ticks per fill in your favour within 10 steps (negative = against you); your other fills made +0.71. The displayed sizes predict the next move and your quotes ignore them (correlation of your quote centre with the imbalance -0.44). Shift both quotes toward the heavier side, and be slow to sell into heavy bids or buy into heavy asks.
+round 3 [repair] s0 0.60 profit LOSS_ADVERSE lcb -200 | s1 0.10 runs EXCEPTION  (138s)
+   feedback: izes[0] (or bought with the reverse), 169 fills per episode, the mid then moved -0.73 ticks per fill in your favour within 10 steps (negative = against you); your other fills made +0.71. The displayed sizes predict the next move and your quotes ignore them (correlation of your quote centre with the imbalance -0.44). Shift both quotes toward the heavier side, and be slow to sell into heavy bids or buy into heavy asks.
+round 4 [restart] s0 0.10 runs EXCEPTION | s1 0.20 rules OFF_TICK,INVENTORY_LIMIT lcb -311  (87s)
+   feedback: Rule broken: OFF_TICK, 33691 times (also INVENTORY_LIMIT x1646); 35337 in total. First at step 8: bid=997.1 is not a whole number of ticks. Any violation zeroes the profit score. Fix: prices are whole ticks: wrap them in int(...) after math.floor or math.ceil.
+round 5 [repair] s0 0.20 rules INVENTORY_LIMIT lcb -753 | s1 0.20 rules INVENTORY_LIMIT lcb -753  (99s)
+   feedback: Rule broken: INVENTORY_LIMIT, 14177 times; 14177 in total. First at step 26: inventory -6 with ask_size 5 could reach -11, under the limit -10. Any violation zeroes the profit score. Fix: cap bid_size at max_inventory - inventory and ask_size at max_inventory + inventory (0 means that side is not quoted).
+=> level 3: NOT VERIFIED, best score 0.60; held-out fail (lcb -335); 13016 tokens, 666s
+
+log: /workspace/projects/market-maker-agent/runs/C2-2.jsonl
+
+=========== level 1: calm (located feedback, rep 3) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.20 rules CROSSED lcb +0  (113s)
+   feedback: Rule broken: CROSSED, 24000 times; 24000 in total. First at step 0: bid 1000 >= ask 1000. Any violation zeroes the profit score. Fix: after all adjustments, if bid >= ask then move one of them so bid < ask.
+round 1 [repair] s0 SOLVED | s1 SOLVED  (120s)
+=> level 1: VERIFIED on dev after 4 attempts; held-out PASS (lcb +106); 3703 tokens, 234s
+
+=========== level 2: trend (located feedback, rep 3) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.20 rules CROSSED lcb +0  (107s)
+   feedback: Rule broken: CROSSED, 24000 times; 24000 in total. First at step 0: bid 1000 >= ask 1000. Any violation zeroes the profit score. Fix: after all adjustments, if bid >= ask then move one of them so bid < ask.
+round 1 [repair] s0 SOLVED | s1 SOLVED  (96s)
+=> level 2: VERIFIED on dev after 4 attempts; held-out PASS (lcb +74); 3703 tokens, 204s
+
+=========== level 3: informed (located feedback, rep 3) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.20 rules CROSSED lcb +0  (103s)
+   feedback: Rule broken: CROSSED, 24000 times; 24000 in total. First at step 0: bid 1000 >= ask 1000. Any violation zeroes the profit score. Fix: after all adjustments, if bid >= ask then move one of them so bid < ask.
+round 1 [repair] s0 0.60 profit LOSS_ADVERSE lcb -354 | s1 0.60 profit LOSS_ADVERSE lcb -160  (122s)
+   feedback: izes[0] (or bought with the reverse), 324 fills per episode, the mid then moved -1.54 ticks per fill in your favour within 10 steps (negative = against you); your other fills made +0.77. The displayed sizes predict the next move and your quotes ignore them (correlation of your quote centre with the imbalance +0.48). Shift both quotes toward the heavier side, and be slow to sell into heavy bids or buy into heavy asks.
+round 2 [repair] s0 0.60 profit LOSS_ADVERSE lcb -395 | s1 0.20 rules TAKES lcb +49  (130s)
+   feedback: izes[0] (or bought with the reverse), 301 fills per episode, the mid then moved -1.63 ticks per fill in your favour within 10 steps (negative = against you); your other fills made +0.96. The displayed sizes predict the next move and your quotes ignore them (correlation of your quote centre with the imbalance +0.10). Shift both quotes toward the heavier side, and be slow to sell into heavy bids or buy into heavy asks.
+round 3 [repair] s0 0.60 profit LOSS_ADVERSE lcb -395 | s1 0.60 profit LOSS_ADVERSE lcb -395  (119s)
+   feedback: izes[0] (or bought with the reverse), 301 fills per episode, the mid then moved -1.63 ticks per fill in your favour within 10 steps (negative = against you); your other fills made +0.96. The displayed sizes predict the next move and your quotes ignore them (correlation of your quote centre with the imbalance +0.10). Shift both quotes toward the heavier side, and be slow to sell into heavy bids or buy into heavy asks.
+round 4 [restart] s0 0.10 runs EXCEPTION | s1 0.20 rules OFF_TICK,INVENTORY_LIMIT lcb -311  (89s)
+   feedback: Rule broken: CROSSED, 16 times (also OFF_TICK x33910, TAKES x64, INVENTORY_LIMIT x1653); 35643 in total. First at step 0: bid 997 >= ask 202. Any violation zeroes the profit score. Fix: after all adjustments, if bid >= ask then move one of them so bid < ask.
+round 5 [repair] s0 0.20 rules OFF_TICK,INVENTORY_LIMIT lcb -311 | s1 0.20 rules OFF_TICK,INVENTORY_LIMIT lcb -311  (104s)
+   feedback: Rule broken: TAKES, 80 times (also OFF_TICK x34022, INVENTORY_LIMIT x1653); 35755 in total. First at step 0: ask 202 <= market best bid 999: that takes liquidity; a market maker only posts. Any violation zeroes the profit score. Fix: keep bid <= best_ask - 1 and ask >= best_bid + 1 after every adjustment.
+=> level 3: NOT VERIFIED, best score 0.60; held-out fail (lcb -335); 12866 tokens, 669s
+
+log: /workspace/projects/market-maker-agent/runs/C2-3.jsonl
+
+rep level claim              held-out
+  1     1 NOT VERIFIED       fail
+  1     2 VERIFIED on dev    PASS
+  1     3 NOT VERIFIED       fail
+  2     1 VERIFIED on dev    PASS
+  2     2 VERIFIED on dev    PASS
+  2     3 NOT VERIFIED       fail
+  3     1 VERIFIED on dev    PASS
+  3     2 VERIFIED on dev    PASS
+  3     3 NOT VERIFIED       fail
