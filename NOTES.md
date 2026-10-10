@@ -48,7 +48,7 @@ level 4   0.62   0.62   0/5，全部 0.62
 - ⚠️ `references/downloads/*_nki_kernels.py`（average_pool2d、matmul、transpose2d）基本就是 level 1–4 的标准答案，**不能放进 prompt**（等于泄题），只给人看
 
 **正在做 / 下一步**
-1. [进行中] 做「编造的名字 → 正确写法」对照表（从 baseline 收集 + 查官方文档 + pod 验证），接进 checker 的反馈 → `analysis/api_name_fixes.md`
+1. [对照表已完成 `analysis/api_name_fixes.md`，待接进 `enrich()`] 编造的名字只有 4 种（nisa.multiply 36、transpose_moving 13、nisa.scalar_mul 12、tile_size() 1）；0.6.0 里 `nl.multiply` 可直接调用，`nc_matmul` 的转置参数叫 `is_transpose`
 2. 精简 API 卡片（level 1–4 用到的十几个函数，约 300 token）放进 prompt
 3. 改反馈的优先级：L4「tile 超过 128 行」（离解出来最近）→「拷贝大小不一致」（影响三关）→ L1 编造函数
 4. agent 加 token 分段统计（prompt 里规则说明 / 上次代码 / 报错 / 失败记录各多少）和置信度输出
