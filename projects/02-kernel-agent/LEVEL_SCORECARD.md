@@ -1,5 +1,7 @@
 # Level scorecard
 
+**Headline:** Our autonomous NKI agent (Qwen3-8B + planner + automatic legalizer) produced simulator-verified 1.00 kernels on Levels 1–7 of 8 (Level 1 via warm start). Each kernel is locked and re-verified with the unchanged checker. The generated planner, which derives plans automatically from the task spec and the installed SDK, reproduces 1.00 on Levels 1–3 so far. Level 8: 0.30.
+
 ## Current system: generated planner + legalizer, base Qwen3-8B on Trainium2 (as of 21:50 UTC; L4/L7/L8 use the reordered generator)
 
 | Level | Score | Shapes | Run |
