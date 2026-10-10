@@ -340,6 +340,7 @@ stack five programmers tend to lose these.
 |---|---|---|
 | **1** | [**The heat-rod agent**](projects/01-heat-rod-pde/) — a small model solves heat-equation problems under a checker that grades the physics, with a calculator it aims itself. | **solved 6/6** |
 | **2** | [**The kernel agent**](projects/02-kernel-agent/) — an agent writes NKI kernels that run on the chip and keeps verifying its own output. | runs; **unsolved** |
+| **3** | [**OUROBOROS**](projects/03-ouroboros/) — Qwen3 speeds up its own kernels under a red-teamed referee. | **in progress** |
 
 Both project READMEs open with a real transcript of what the loop prints, so you can judge a project — and
 tell progress from flailing — before starting.
