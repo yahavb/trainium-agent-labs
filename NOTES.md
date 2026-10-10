@@ -66,12 +66,12 @@ final = **0eb2695** (tag `final`). Runs per level come from 96a9fc9 (L1, L3, L4;
 
 | run set | commit | level | seats | solved | scores (after N rounds) | re-audit |
 |---|---|---|---|---|---|---|
-| v8.3 L2 (all) | 5c3aba2 | L2 | 117 x6, 119 x4 | **8/10** | 117: 1(3),1(2),1(4),1(5),.5,1(2); 119: 1(3),1(1),.5,1(2) | PASS (27 kernels over v8.2/v8.3/final_all, 116-119) |
+| v8.3 L2 (all) | 5c3aba2 | L2 | 117 x6, 119 x5 | **9/11** | 117: 1(3),1(2),1(4),1(5),.5,1(2); 119: 1(3),1(1),.5,1(2),1(2) | PASS (27 kernels over v8.2/v8.3/final_all, 116-119) |
 | v8.5 L2 | 0eb2695 | L2 | 117 x3, 118 x3 (+2 partial L2d, stopped) | **4/6** | 117: 1(5),1(3),1(3); 118: .30, .50, 1(2) | not run (out of time) |
 | WARM L5-7 | 15fb0d5 | L5 / L6 / L7 | 115-119 | **0** | L5 best .88 (6 runs), L6 best .75 (6), L7 best .75 (6; plus partial warm_L7 on 117) | - |
 | held-out L9-14 | 0eb2695 | L9-L14 | 119, 115, 117, 118 | L9 **2/2**, L10 **1/1**, L11 0/1 (.67), L12 0/2 (.50, .30), L13 0/1 (.50), L14 0/1 (.50) | L9 1(3),1(3); L10 1(3) | L9, L10: PASS by a fresh-process `grade()` (plain `scripts/reaudit.py` cannot load levels 9-14: KeyError 9) |
 
-- The two extra v8.3 runs count: 117 `v83_L2d` and 119 `v83_L2b` (its log sits in the seat-119 set) have the same switch line and md5 87ddb0, and each wrote its SOLVED line before anything was stopped (119's at 17:08; the 17:13 stop hit the queued `v82x_L1`).
+- The extra v8.3 runs count: 117 `v83_L2d`, 119 `v83_L2b` and 119 `v83_L2c` have the same switch line and md5 87ddb0, and each wrote its SOLVED line before anything was stopped (119's at 17:08 and 17:11, per seat-119's `v82_queue.log`). The 17:13 stop hit 119's `v83_L2d`, which has only a start line and is excluded. (Corrected from 8/10 after exec 2 counted the queue log.)
 - v8.5's one added sentence (level 2, "returned ()") never fired: no v8.5 attempt hit "returned ()". So the v8.5 L2 runs are v8.4/v8.3 L2 runs, not evidence for the change.
 - L9 and L10: held-out verdict UNVERIFIED ("no held-out check ran": the held-out set has no levels 9-14); verdict_nki VERIFIED, 15/15 extra cases, lowers for trn2. L12 stalls on `s = s + 1e-6` TypeError (tile plus Python float).
 - Seat-115 served with `--max-num-seqs 8` (others 4); its runs: warm_* and final_L10/L14.
