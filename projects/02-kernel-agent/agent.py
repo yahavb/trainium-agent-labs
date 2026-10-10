@@ -139,7 +139,7 @@ def explain(exc, path, source, prefix="raised ", add_fix=True):
                      else "That is the line to change.")
             text += f"{LOCATED}{where[0]} of your kernel: `{where[1]}`. {close}"
             if at_least("directed2"):
-                text += signatures_on(where[1])
+                text += called_names_on(where[1]) + signatures_on(where[1])
         elif not explain.warned:
             explain.warned = True
             frames = [f"{os.path.basename(f.f_code.co_filename)}:{n}"
@@ -152,6 +152,28 @@ def explain(exc, path, source, prefix="raised ", add_fix=True):
 explain.warned = False
 
 
+def called_names_on(line):
+    """Names on a line that are CALLED but are not functions, as a sentence, or ''.
+
+    Seen on a seat: `data=nl.float32(0.5)` raised "'str' object is not callable" two rounds
+    running. nl.float32 is the NAME of a dtype. Nothing in that error says so.
+    """
+    import importlib
+    out = []
+    for alias, name in dict.fromkeys(re.findall(r"\b(nl|nisa)\.(\w+)\s*\(", line)):
+        try:
+            mod = importlib.import_module("nki.language" if alias == "nl" else "nki.isa")
+        except Exception:
+            continue
+        obj = getattr(mod, name, None)
+        if obj is not None and not callable(obj):
+            what = "the name of a dtype" if isinstance(obj, str) else "a value"
+            out.append(f" `{alias}.{name}` is {what}, not a function, so it cannot be called. "
+                       f"Remove the call: write the plain number where you wrote "
+                       f"`{alias}.{name}(...)`.")
+    return "".join(out)
+
+
 def signatures_on(line):
     """The real signatures of the nl/nisa functions called on a line, as a sentence, or ''."""
     sigs = []
@@ -162,7 +184,7 @@ def signatures_on(line):
             if sig.startswith(long):
                 sig = short + sig[len(long):]
         if "(" in sig and sig not in sigs:
-            sigs.append(sig if len(sig) <= 260 else sig[:257] + "...")
+            sigs.append(sig if len(sig) <= 400 else sig[:397] + "...")
     if not sigs:
         return ""
     return (" For reference, the real signature" + (" is " if len(sigs) == 1 else "s are ")
@@ -403,6 +425,23 @@ def directed(error_text):
                     f"to be IDENTICAL. Make them match: either allocate the destination as "
                     f"nl.ndarray({src}, dtype=..., buffer=nl.sbuf), or copy a slice whose shape "
                     f"is {dst}.")
+    if at_least("directed2"):
+        # Seen on a seat, level 1 under `directed`, one per round, none with usable advice:
+        #   tensor_scalar() missing 1 required positional argument: 'operand0'
+        #   'float' object has no attribute 'shape'      (old advice: "use the nl/nisa functions",
+        #                                                 so it wrapped the number in nl.float32())
+        m = re.search(r"(\w+)\(\) missing \d+ required (?:positional |keyword-only )?arguments?: "
+                      r"(.+)$", error_text)
+        if m:
+            return (error_text + f" `{m.group(1)}` was called without {m.group(2)}. Add "
+                    f"{'it' if ' and ' not in m.group(2) and ',' not in m.group(2) else 'them'} "
+                    f"by keyword and leave the other arguments as they are.")
+        m = re.search(r"'(float|int)' object has no attribute '(\w+)'", error_text)
+        if m:
+            return (error_text + f" A plain number was passed where a tile is required. On that "
+                    f"line, the argument that takes a tile must be given a tile you allocated "
+                    f"with nl.ndarray, and the plain number belongs in the argument that takes a "
+                    f"constant. Do not wrap the number in anything.")
     m = re.search(r"module '([\w.]+)' has no attribute '(\w+)'", error_text)
     if m:
         import difflib
