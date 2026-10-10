@@ -2,16 +2,18 @@
 
 **Team:** _(names)_  ·  **Hardware:** one Trainium2 chip (seat-17), vLLM, Qwen3-8B, TP=2, 4 concurrent requests  ·  **Date:** 10 Oct 2026
 
-> **Status:** one run per configuration. Replication on two further disjoint question sets is
-> in progress (section 6). Until it lands, treat every percentage as a single measurement.
+> **Status:** replicated on three disjoint sets of 60 held-out questions (180 in total), one run
+> per configuration per set. Ranges below are across the three sets.
 
 ## Headline
 
-On 60 questions it was never tuned on (28 unanswerable, 32 answerable), a **label-free verifier
-plus "refuse when unverified" cut hallucinations by 71% (17 → 5)** and raised the share of given
-answers that were right from **34% to 64%**. The price is coverage: correct answers to answerable
-questions fell **12 → 9** and refusals rose **5 → 20**, at 1.35× the model calls. It is a point
-on a risk–coverage curve, not a free win. The model's weights were never changed.
+Across 180 held-out questions in three independent sets (87 unanswerable, 93 answerable), a
+**label-free verifier plus "refuse when unverified" cut hallucinations by 75% (56 → 14; −71%,
+−74%, −80% on the three sets)** and raised the share of given answers that were right from
+**36% to 63%**. Total correct rose 98 → 107. The price is coverage, and it replicated too: correct
+answers to answerable questions fell **38 → 24 of 93**, refusals rose **13 → 59**, at about 1.5×
+the model calls. It is a point on a risk–coverage curve, not a free win. Almost all of the cost
+falls on two-hop HotpotQA questions. The model's weights were never changed.
 
 ---
 
@@ -83,6 +85,30 @@ balances it.
 | answerable questions answered right | **12/32** | 9/32 |
 | calls / question | 1.7 | 2.3 |
 
+**Pooled over the three held-out sets (180 questions)**
+
+| dataset | n | plain right / halluc / refused | fail-closed right / halluc / refused |
+|---|---|---|---|
+| faith-unans (unanswerable) | 60 | 43 / 17 / 0 | **59 / 1 / 0** |
+| squad2 unanswerable | 27 | 17 / 10 / 0 | **24 / 3 / 0** |
+| squad2 answerable | 33 | 20 / 7 / 1 | 17 / 3 / 13 |
+| hotpot (answerable, 2-hop) | 60 | 18 / 22 / 12 | 7 / 7 / **46** |
+| **total** | **180** | **98 / 56 / 13** | **107 / 14 / 59** |
+
+| per set (offset) | hallucinated | change | answerable right | refused | given answers right | calls / q |
+|---|---|---|---|---|---|---|
+| 52 | 17 → 5 | −71% | 12 → 9 of 32 | 5 → 20 | 34% → 64% | 1.7 → 2.3 |
+| 112 | 19 → 5 | −74% | 12 → 8 of 31 | 4 → 18 | 34% → 62% | 1.6 → 2.4 |
+| 172 | 20 → 4 | −80% | 14 → 7 of 30 | 4 → 21 | 38% → 64% | 1.6 → 2.5 |
+| **pooled** | **56 → 14** | **−75%** | **38 → 24 of 93** | **13 → 59** | **36% → 63%** | **~1.6 → ~2.4** |
+
+Reading it: on unanswerable questions the agent now handles 83 of 87 correctly (was 60) and
+hallucinates on 4 (was 27). On answerable questions it is right less often (24 vs 38 of 93) but,
+when it does answer, it is right more often. Always answering `NOT_IN_CONTEXT` would score 87/180;
+fail-closed scores 107/180, plain 98/180. **The cost is concentrated in HotpotQA:** fail-closed
+refuses 46 of its 60 questions, because the checklist verifier marks details that need two
+sentences bridged as NOT STATED. On SQuAD answerable questions the cost is 3 fewer right of 33.
+
 ## 4. Failure taxonomy
 
 | failure | where | what happens |
@@ -97,7 +123,9 @@ balances it.
 
 ## 5. Limitations
 
-- **Single run per configuration;** replication pending (section 6).
+- **One run per configuration per question set.** The three sets agree closely, but repeats on the
+  same questions were not run (samples were identical in every case inspected, so they would
+  likely reproduce the same answers).
 - **Small n,** especially answerable questions in Test A (7).
 - **The checklist prompt was written after reading the 12 dev failures**; Tests A and B are the
   unbiased measurements.
@@ -106,15 +134,21 @@ balances it.
 - **The quote format itself is hard for two-hop answers:** plain HotpotQA scores 6/20 under it.
 - Results with the gold-label loop (pilot) are upper bounds, not deployable numbers.
 
-## 6. Replication (pending)
+## 6. Replication
 
-Same configurations on two further disjoint sets of 60 (`--offset 112`, `--offset 172`).
+Same configurations on three disjoint sets of 60 (`--offset 52`, `112`, `172`): 20 FaithEval-
+unanswerable, 20 HotpotQA and 20 SQuAD 2.0 questions each.
 
 | question set | plain right / halluc / refused | fail-closed right / halluc / refused | hallucination change |
 |---|---|---|---|
 | offset 52 (Test B) | 32 / 17 / 5 | 35 / 5 / 20 | −71% |
-| offset 112 | _pending_ | _pending_ | |
-| offset 172 | _pending_ | _pending_ | |
+| offset 112 | 33 / 19 / 4 | 37 / 5 / 18 | −74% |
+| offset 172 | 33 / 20 / 4 | 35 / 4 / 21 | −80% |
+| **pooled (180)** | **98 / 56 / 13** | **107 / 14 / 59** | **−75%** |
+
+**Next step the data points to:** a verifier that accepts details bridged across two quotes
+(HotpotQA), measured on the same three sets. The FaithEval and SQuAD-unanswerable gains should hold;
+the question is how many of the 46 HotpotQA refusals it recovers.
 
 ## 7. Reproduce
 
@@ -126,6 +160,7 @@ C="--data faith-unans+squad2+hotpot --n 60 --offset 52 --label-free --samples 1 
 python agent.py $C                                  --log b_plain.jsonl
 python agent.py $C --verify checklist --fail-closed --log b_fc.jsonl
 python compare.py b_plain b_fc
+# replication: repeat with --offset 112 and --offset 172 (logs r112_*, r172_*)
 ```
 
 **References.** CRITIC (Gou et al., 2023) · RARR (Gao et al., 2022) · Chain-of-Verification
