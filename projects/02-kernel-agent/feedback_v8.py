@@ -19,7 +19,16 @@ L1FIX=1. Three level-1 errors that v7 still answers with a generic sentence get 
 checked with inspect in nki 0.6.0 on a seat: nisa.memset(dst, value), nl.zeros(shape, dtype, buffer),
 nisa.tensor_tensor(dst, data1, data2, op) with op=nl.add, and nl having no reshape.
 
-Run it exactly like feedback_v7.py, with the exports in V7.md (plus SKELETON / L1FIX when testing them):
+TRUNCFIX=1. v5's ask5 replaced agent.ask, and agent.ask's finish_reason check went with it: in v7's
+level-1 run 1, rounds 5-7 had all four answers end at max_tokens=2500 (finish=length), the cut-off code
+was graded, and the checker replied "does not parse: '(' was never closed", which the model cannot act
+on. With TRUNCFIX an answer that ends with finish=length is not graded and gets no parse error; its
+feedback is one instruction, TRUNC_NOTE below, and attempts.jsonl records finish / max_tokens /
+completion_tokens from the server. (Wrappers on v5._post, agent.ask and agent.grade, installed only
+when the switch is on.)
+
+Run it exactly like feedback_v7.py, with the exports in V7.md (plus SKELETON / L1FIX / TRUNCFIX when
+testing them):
 
     python3 feedback_v8.py --level 4 --rounds 8 --samples 4 --context 8192 --repeat 5 \\
         --log Ediv_L4.jsonl --verdicts verdicts_div_L4.jsonl
@@ -33,6 +42,9 @@ import re
 
 SKELETON = os.environ.get("SKELETON", "0") == "1"
 L1FIX = os.environ.get("L1FIX", "0") == "1"
+TRUNCFIX = os.environ.get("TRUNCFIX", "0") == "1"
+TRUNC_NOTE = ("Your previous answer was cut off at the token limit before the code was complete. "
+              "Reply with a shorter kernel: the code block only, no comments, no explanation.")
 
 # ------------------------------------------------------------------ pure text helpers (no nki needed)
 
@@ -154,8 +166,48 @@ if SKELETON:
 
     agent.grade = grade_skeleton
 
+if TRUNCFIX:
+    import threading
+
+    _last = threading.local()           # the samples of a round are asked from parallel threads
+    _truncated = set()                  # code extracted from answers that hit max_tokens
+    _post = v7.v5._post
+
+    def post_capture(a, body):
+        payload = _post(a, body)
+        ch = (payload.get("choices") or [{}])[0]
+        _last.meta = dict(finish=ch.get("finish_reason"), max_tokens=body.get("max_tokens"),
+                          completion_tokens=(payload.get("usage") or {}).get("completion_tokens"))
+        return payload
+
+    v7.v5._post = post_capture          # ask5 looks _post up at call time
+
+    class Reply(str):
+        """The answer text, carrying the .meta that agent.solve() logs (finish, max_tokens, tokens)."""
+
+    _ask = agent.ask                    # v5's ask5
+
+    def ask_trunc(a, prompt):
+        _last.meta = {}
+        text = _ask(a, prompt)
+        reply = Reply(text)
+        reply.meta = dict(getattr(text, "meta", None) or {}, **_last.meta)
+        if reply.meta.get("finish") == "length":
+            _truncated.add(agent.extract_code(text))
+        return reply
+
+    agent.ask = ask_trunc               # ask_parallel (E-div) looks agent.ask up at call time
+    _grade_t = agent.grade
+
+    def grade_trunc(source, level):
+        if source in _truncated:        # never grade a cut-off kernel, never report its parse error
+            return 0.0, dict(parses=False, rules=False, runs=False, correct=False), TRUNC_NOTE
+        return _grade_t(source, level)
+
+    agent.grade = grade_trunc
+
 if __name__ == "__main__":
     print(f"feedback v8: v7 (PROMPT1={v7.PROMPT1} MESSAGES={v7.v6.MESSAGES} CARD={v7.v5.CARD} "
           f"SAMPLING={v7.v5.SAMPLING} GATE={v7.GATE or 'off'}) + one prompt line per sample k>=2"
-          f" SKELETON={int(SKELETON)} L1FIX={int(L1FIX)}")
+          f" SKELETON={int(SKELETON)} L1FIX={int(L1FIX)} TRUNCFIX={int(TRUNCFIX)}")
     agent.main()
