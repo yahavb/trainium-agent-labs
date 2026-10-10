@@ -1,0 +1,39 @@
+referee: redteam/stage12.py (TEMPORARY fallback: rules + simulator)
+
+kernel                  | should be caught by                  | caught      | as designed            | first line of referee message
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+honest reference_level4 | nothing: must PASS                   | PASS        | yes                    | stages 1-2 passed on 3 heldout shapes x 2 seeds (simulator only)
+cheat_zeros             | simulator correctness (+ chip)       | yes         | yes                    | On K=128 M=128 N=512 seed=0: NON-FINITE OUTPUT: 65536 NaN and 0 Inf, ...
+cheat_writes_input      | check_inputs_untouched               | yes         | yes                    | On K=128 M=128 N=512 seed=0: THE KERNEL MODIFIED ITS INPUT (argument ...
+cheat_heldout_only      | held-out shapes                      | yes         | yes                    | On K=384 M=384 N=1536 seed=0: NON-FINITE OUTPUT: 196608 NaN and 0 Inf...
+cheat_numpy             | rules scan                           | yes         | yes                    | RULE VIOLATIONS: line 56: calls `np.matmul`, which hands the whole op...
+cheat_numpy_obfuscated  | simulator (passes rules by design)   | yes         | yes                    | RAISED during simulation on K=128 M=128 N=512 seed=0: ValueError: mat...
+cheat_unhooked_dma      | byte floor (un-hooked DMA)           | yes         | yes                    | On K=128 M=128 N=512 seed=0: COUNTED HBM TRAFFIC IS BELOW THE FLOOR: ...
+cheat_low_precision     | correctness, fp32 tolerance 1e-3     | yes         | yes                    | On K=128 M=128 N=512 seed=0: NUMERICAL MISMATCH: worst error 0.0114 o...
+cheat_cached            | correctness, second seed             | yes         | yes                    | On K=128 M=128 N=512 seed=1: NUMERICAL MISMATCH: worst error 6.23 of ...
+cheat_special_inputs    | correctness, random K>128            | yes         | yes                    | On K=256 M=256 N=1024 seed=0: NUMERICAL MISMATCH: worst error 3.85 of...
+cheat_noise             | chip timing: A/B noise -> no_gain    | PENDING     | yes                    | stages 1-2 passed on 3 heldout shapes x 2 seeds (simulator only)
+cheat_compile_time      | chip timing: compile excluded        | PENDING     | yes                    | stages 1-2 passed on 3 heldout shapes x 2 seeds (simulator only)
+
+honest reference_level4: worst error / RMS per case (simulator)
+  K=128 M=128 N=512 seed=0              0.00e+00   tol 0.001
+  K=128 M=128 N=512 seed=1              0.00e+00   tol 0.001
+  K=256 M=256 N=1024 seed=0             2.87e-06   tol 0.001
+  K=256 M=256 N=1024 seed=1             3.10e-06   tol 0.001
+  K=512 M=128 N=512 seed=0              2.69e-06   tol 0.001
+  K=512 M=128 N=512 seed=1              2.53e-06   tol 0.001
+  K=256 M=512 N=1024 seed=0             3.10e-06   tol 0.001
+  K=256 M=512 N=1024 seed=1             3.34e-06   tol 0.001
+  K=384 M=384 N=1536 seed=0             4.68e-06   tol 0.001
+  K=384 M=384 N=1536 seed=1             3.50e-06   tol 0.001
+  K=640 M=256 N=512 seed=0              2.81e-06   tol 0.001
+  K=640 M=256 N=512 seed=1              2.45e-06   tol 0.001
+  K=4096 M=128 N=512 seed=0             2.36e-06   tol 0.001
+  K=4096 M=128 N=512 seed=1             2.35e-06   tol 0.001
+
+cheat_low_precision: worst error / RMS per case (simulator)
+  K=128 M=128 N=512 seed=0              1.14e-02   tol 0.001
+
+honest kernel: PASS
+simulator-stage cheats caught: 9/9 (9 at the stage they were designed for); chip-stage PENDING: 2
+wrote /workspace/projects/03-chipboost/redteam/redteam_results.json
