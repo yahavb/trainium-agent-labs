@@ -9,13 +9,22 @@ import sys
 import time
 
 
+def evaluate_startup(worker, path, baseline_source, acceptance):
+    """Reuse acceptance only for the exact normalized baseline source; never import a candidate."""
+    if Path(path).read_text() == baseline_source:
+        return dict(acceptance), True
+    return worker.check(path), False
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', required=True)
     parser.add_argument('--p3', default=None,
                         help="P3 repo root for diagnose.py and redteam/stage12.py; default: --root, if it has them")
     parser.add_argument('--out', required=True)
+    parser.add_argument('--start', default=None, help='Frozen candidate to continue; timing baseline stays reference_level4.py')
     parser.add_argument('--core', type=int, required=True)
+    parser.add_argument('--seat', type=int, default=100)
     parser.add_argument('--think', action='store_true')
     parser.add_argument('--max-tokens', type=int, default=2500)
     parser.add_argument('--label', default='full_feedback_and_repair_controller_pilot')
@@ -29,7 +38,7 @@ def main():
     import fcntl
     lock = open(f'/tmp/p1-comparison-core{a.core}.lock', 'w')
     fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    os.environ.update(CHIPBOOST_CORE=str(a.core), CHIPBOOST_SEAT='100')
+    os.environ.update(CHIPBOOST_CORE=str(a.core), CHIPBOOST_SEAT=str(a.seat))
     sys.path.insert(0, str(root))
     import speedcheck as sc
     import schema
@@ -37,10 +46,17 @@ def main():
     agent = importlib.util.module_from_spec(spec)
     os.environ['CHIPBOOST_P3'] = str(Path(a.p3).resolve() / 'projects/03-chipboost') if a.p3 else str(root)
     spec.loader.exec_module(agent)
-    out.mkdir(exist_ok=False)   # only once the agent imports, so a failed import leaves --out reusable
     baseline = root.parent/'02-kernel-agent/reference_level4.py'
-    state = dict(phase='acceptance', pid=os.getpid(), core=a.core, budget=a.budget, samples=a.samples,
+    start = Path(a.start).resolve() if a.start else baseline
+    start_bytes, start_source = start.read_bytes(), start.read_text()
+    baseline_source = baseline.read_text()
+    out.mkdir(exist_ok=False)   # import and start validation must succeed before reserving --out
+    state = dict(phase='acceptance', pid=os.getpid(), core=a.core, seat=a.seat, budget=a.budget, samples=a.samples,
                  treatment=a.label, tag=a.tag, think=a.think, max_tokens=a.max_tokens,
+                 start_path=str(start), start_sha256=hashlib.sha256(start_bytes).hexdigest(),
+                 start_text_sha256=hashlib.sha256(start_source.encode()).hexdigest(),
+                 baseline_path=str(baseline),
+                 startup_counted_as_kernel_attempt=False,
                  warning='Exploratory multi-change treatment; not DMA-only v2 or original comparison',
                  model='Qwen/Qwen3-8B', sources={str(p.relative_to(root.parent)):hashlib.sha256(p.read_bytes()).hexdigest()
                  for p in (root/'speedcheck.py', root/a.agent_file, baseline,
@@ -59,9 +75,18 @@ def main():
                 pending_start = True
                 def check_isolated(self, path, **kwargs):
                     if self.pending_start:
-                        assert Path(path).read_text() == baseline.read_text()
-                        self.pending_start = False
-                        return dict(acceptance)
+                        assert Path(path).read_text() == start_source, 'startup source changed after manifest'
+                        record, reused = evaluate_startup(worker, path, baseline_source, acceptance)
+                        if record is not None:
+                            self.pending_start = False
+                            (out/'startup.json').write_text(json.dumps(dict(
+                                record=record, acceptance_reused=reused,
+                                counted_as_kernel_attempt=False, start_path=str(start)), indent=2)+'\n')
+                        else:
+                            with (out/'infrastructure.jsonl').open('a') as f:
+                                f.write(json.dumps(dict(timestamp=time.time(), stage='startup',
+                                    error=worker.last_error, counted_as_kernel_attempt=False))+'\n')
+                        return record
                     record = worker.check(path)
                     if record is None:
                         with (out/'infrastructure.jsonl').open('a') as f:
@@ -73,9 +98,9 @@ def main():
             state.update(phase='running', worker_pid=worker._p.pid)
             save()
             sys.argv = [a.agent_file, '--arm', 'referee', '--budget', str(a.budget), '--repeat', '1',
-                        '--samples', str(a.samples), '--give-up-after', '0', '--start', str(baseline),
+                        '--samples', str(a.samples), '--give-up-after', '0', '--start', str(start),
                         '--base', 'http://localhost:8000/v1', '--model', state['model'],
-                        '--max-tokens', str(a.max_tokens), '--context', '8192', '--seat', '100',
+                        '--max-tokens', str(a.max_tokens), '--context', '8192', '--seat', str(a.seat),
                         '--log', str(out/'pilot.jsonl')]
             if a.think:
                 sys.argv.append('--think')

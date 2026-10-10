@@ -965,6 +965,31 @@ def _matmul_structure_failure(e, src):
                     "no outputs. Add `return result` at function scope after all output-tile loops, "
                     "returning the shared-HBM tensor that receives the computed tiles. Do not return "
                     "inside a tile loop or return a temporary SBUF/PSUM tile.")
+        contraction = re.fullmatch(
+            r"Matmul contraction dimension mismatch: stationary\[0\]=([1-9][0-9]{0,11}) "
+            r"!= moving\[0\]=([1-9][0-9]{0,11})", msg)
+        if (e.get("stage") == "simulate" and e.get("type") == "AssertionError"
+                and contraction and int(contraction[1]) != int(contraction[2])):
+            assignments = [n for n in nodes if isinstance(n, ast.Assign)]
+            bad_layout = any(
+                len(n.targets) == 1 and isinstance(n.targets[0], ast.Name)
+                and n.targets[0].id == "rhs_tiles" and isinstance(n.value, ast.Call)
+                and ast.unparse(n.value.func) == "nl.ndarray" and n.value.args
+                and ast.unparse(n.value.args[0]) == "(K // TILE_K, TILE_K, TILE_N)"
+                and any(kw.arg == "buffer" and ast.unparse(kw.value) == "nl.sbuf"
+                        for kw in n.value.keywords) for n in assignments)
+            bad_slice = any(ast.unparse(n) == "rhs_tile = rhs_tiles[k, :, :]" for n in assignments)
+            matmul = any(isinstance(n, ast.Call) and ast.unparse(n.func) == "nisa.nc_matmul"
+                         and any(kw.arg == "moving" and ast.unparse(kw.value) == "rhs_tile"
+                                 for kw in n.keywords) for n in nodes)
+            if bad_layout and bad_slice and matmul:
+                return ("RHS_PARTITION_AXIS: the stacked RHS buffer puts the K-tile count on its "
+                        "first, partition axis; indexing rhs_tiles[k, :, :] selects that axis instead "
+                        "of preserving the contraction rows. Allocate rhs_tiles with shape "
+                        "(TILE_K, K // TILE_K, TILE_N) and use rhs_tiles[:, k, :] in BOTH the DMA "
+                        "destination and the moving matmul operand. Keep stationary and moving "
+                        "contraction rows on axis 0, preserve every K slice, and bound resident "
+                        "tiles to fit SBUF.")
         out_of_bounds = (r"Out-of-bound access for tensor `[A-Za-z_][A-Za-z_0-9]{0,63}` on dimension 1: "
                          r"index range \[[0-9]{1,12}, [0-9]{1,12}\] exceed dimension size of [1-9][0-9]{0,11}\.")
         if not (e.get("stage") == "simulate" and e.get("type") == "AssertionError"
