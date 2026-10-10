@@ -110,6 +110,14 @@ def grade(source, level):
                 f"`import nki`, `import nki.language as nl`, and `import nki.isa as nisa`. "
                 f"Use exactly those three.")
     except Exception as e:
+        if level == 4 and isinstance(e, NameError) and "nki" in str(e):
+            return (sum(WEIGHTS[k] for k, v in parts.items() if v), parts,
+                "The replacement file is missing the required NKI imports. A complete "
+                "file must begin with these exact lines, before @nki.jit:\n"
+                "import nki\n"
+                "import nki.language as nl\n"
+                "import nki.isa as nisa\n"
+                "Then define the decorated kernel. Return the imports and function together.")
         return (sum(WEIGHTS[k] for k, v in parts.items() if v), parts,
                 f"The file imports but {spec['entry']} could not be loaded: "
                 f"{type(e).__name__}: {e}")
@@ -143,7 +151,8 @@ def grade(source, level):
                  + ". Fix that before anything else -- the simulator agrees with the reference here "
                    "and the device would not.")
         if m:
-            failures.append((nkibench.label(case, level), m))
+            failures.append((nkibench.label(case, level),
+                             enrich(m, level=level) if level == 4 else m))
             continue
         passed += 1
         if level >= 3 and counted["bytes"]:
@@ -206,6 +215,66 @@ def copy_kernel(a):
 """
 
 
+TILED_MATMUL_METHOD = """Read K, M = lhsT.shape and K_rhs, N = rhs.shape; return an (M, N) output.
+Tile all three dimensions: K at most 128, M at most 128, N at most 512 per tile.
+For each (M, N) output tile, allocate ONE float32 PSUM tile outside its K loop.
+Accumulate all K tiles into it, then copy and store the completed output tile.
+Use ceiling division (size+tile_size-1)//tile_size and Python min for edge sizes.
+M=128 must execute an M tile; M//512 is zero and leaves output unwritten.
+Slice lhsT as [k_start:k_end, m_start:m_end], since its axes are (K, M).
+"""
+
+TILED_MATMUL_API_CARD = """Use separate buffers with these tile shapes:
+  stationary input SBUF: (tile_k, tile_m), loaded from lhsT's K and M ranges
+  moving input SBUF:     (tile_k, tile_n), loaded from rhs's K and N ranges
+  accumulator PSUM:     (tile_m, tile_n), dtype nl.float32
+  result SBUF:          (tile_m, tile_n), dtype lhsT.dtype
+  returned shared HBM:  (M, N), dtype lhsT.dtype
+Allocate with nl.ndarray(shape, dtype=..., buffer=region), choosing nl.sbuf,
+nl.psum or nl.shared_hbm for the region according to the buffer's role.
+Use nl.affine_range for tile loops; derive bounds and partial-tile sizes from
+the input dimensions. Every DMA source slice must match its destination tile.
+Inside the K loop, dma_copy both input tiles, then call
+nisa.nc_matmul(dst=accumulator, stationary=left_tile, moving=right_tile).
+After that loop, use nisa.tensor_copy(dst=result_sbuf, src=accumulator).
+The result SBUF must match the accumulator's shape, not an input tile's shape.
+Store it with nisa.dma_copy into the matching M and N slice of the HBM output.
+"""
+
+
+# Escalation aid for repeated level-4 failures. This is a scaffold, not a fallback
+# implementation: the model must complete it, and every candidate still goes through
+# the normal rules, simulator and numeric checks.
+TILED_MATMUL_SKELETON = """Use this structure to repair the kernel. Fill every TODO; do not use
+fixed test-shape sizes. The level's shapes are divisible by these hardware tile limits.
+
+```python
+@nki.jit
+def nki_matmul_tiled_(lhsT, rhs):
+    K, M = lhsT.shape
+    K_rhs, N = rhs.shape
+    assert K == K_rhs
+    TILE_M = nl.tile_size.gemm_stationary_fmax
+    TILE_K = nl.tile_size.pmax
+    TILE_N = nl.tile_size.gemm_moving_fmax
+    out = nl.ndarray((M, N), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+
+    for mi in nl.affine_range(M // TILE_M):
+        m0 = mi * TILE_M
+        for ni in nl.affine_range(N // TILE_N):
+            n0 = ni * TILE_N
+            # Allocate this ONCE per output tile, before the K loop.
+            acc = nl.ndarray((TILE_M, TILE_N), dtype=nl.float32, buffer=nl.psum)
+            for ki in nl.affine_range(K // TILE_K):
+                k0 = ki * TILE_K
+                # TODO: allocate SBUF operands (TILE_K,TILE_M) and (TILE_K,TILE_N),
+                # then DMA matching lhsT and rhs slices into them.
+                # TODO: nc_matmul adds this K tile into the same acc PSUM.
+                pass
+            # TODO: allocate a result SBUF (TILE_M,TILE_N), tensor_copy acc into it,
+            # then DMA it to out[m0:m0+TILE_M, n0:n0+TILE_N].
+    return out
+```
 TRANSPOSE_METHOD = """Transpose the two free axes WITHIN each partition row. The input and output
 both have shape [P, F1*F2]; shape2D contains the Python integers (F1, F2).
 Keep partition rows in place. A row-major position (i, j) becomes position (j, i)
@@ -325,6 +394,20 @@ def real_signature(func_name):
 
 def enrich(error_text, level=None):
     """Add the real names when the failure is an invented API call."""
+    if level == 4 and (
+            "NON-FINITE OUTPUT" in error_text
+            or "module 'nki.isa' has no attribute 'fill'" in error_text
+            or "module 'nki.language' has no attribute 'temporary'" in error_text):
+        return (error_text + " Check whether the output-writing loops execute: "
+                "M=128 with M//512 gives zero iterations, leaving all output unwritten. "
+                "Use tile_m<=128 and ceiling division for tile counts, with bounded "
+                "edge slices. Allocate one PSUM per (M, N) tile outside its K loop; "
+                "load both operands, perform nc_matmul for every K tile, then "
+                "tensor_copy to a matching SBUF and dma_copy to the output slice. "
+                "The shipped matmul pattern needs no manual fill. nisa.fill and "
+                "nl.temporary do not exist, and copying a fresh uninitialized "
+                "ndarray does not initialize anything to zero. Ensure every "
+                "output element is written before returning.")
     if "'MemoryRegion' object is not callable" in error_text:
         return (error_text + " nl.sbuf, nl.psum and nl.shared_hbm are memory regions, not "
                 "functions. Do not call them. Allocate with "
@@ -345,6 +428,12 @@ def enrich(error_text, level=None):
                   r"got src=(\d+), dst=(\d+)", error_text)
     if m:
         src, dst = int(m.group(1)), int(m.group(2))
+        if level == 4:
+            return (error_text + f" This copy moves {src} elements into a {dst}-element tile. "
+                    "For tiled matmul, match lhsT slices to (tile_k, tile_m) SBUF tiles "
+                    "and rhs slices to (tile_k, tile_n) SBUF tiles. Match each result "
+                    "tile to an output slice of (tile_m, tile_n). Tile M and N as well "
+                    "as K; copying a whole input only works when that input fits one tile.")
         if level == 2:
             return (error_text + " Input x has shape (P, F1*F2), not (F1, F2). "
                     "Load x[start:start+rows, :] into a (rows, F1*F2) SBUF tile, "
@@ -382,6 +471,13 @@ def enrich(error_text, level=None):
                   r"indexing result of shape \((\d+),?\)", error_text)
     if m:
         val, dst = int(m.group(1)), int(m.group(2))
+        if level == 4:
+            return (error_text + f" The copied value has {val} elements but the destination "
+                    f"has {dst}. Check the PSUM-to-SBUF tensor_copy: its result needs "
+                    "a separate SBUF tile with the SAME shape as the PSUM tile, "
+                    "(tile_m, tile_n). An input tile has shape (tile_k, tile_m) or "
+                    "(tile_k, tile_n); do not reuse it for this result. Store the "
+                    "result SBUF into the matching M and N output slice after the K loop.")
         if level == 2:
             return (error_text + " A partition row holds F1*F2 elements; copying it into "
                     "a 128-row tile does not broadcast it. Keep both transpose SBUF "
@@ -499,6 +595,18 @@ def first_prompt(level, terse=0):
     """
     s = nkibench.LEVELS[level]
     import inspect
+    if level == 4:
+        card = TILED_MATMUL_API_CARD if terse == 0 else (
+            "Use distinct (tile_k, tile_m) and (tile_k, tile_n) input SBUF tiles, "
+            "a (tile_m, tile_n) float32 PSUM accumulator and a separate matching "
+            "result SBUF tile. dma_copy loads inputs; nc_matmul accumulates; "
+            "tensor_copy transfers PSUM to result SBUF; dma_copy stores its output slice.\n")
+        if terse >= 2:
+            card = "Copy each completed PSUM tile into a separate same-shaped SBUF tile, then DMA it to its output slice.\n"
+        return (
+            f"Write an NKI kernel `{s['entry']}` decorated with @nki.jit.\n"
+            f"Match this NumPy reference:\n\n{inspect.getsource(s['ref'])}\n"
+            f"{TILED_MATMUL_METHOD}\n{card}\n"
     if level == 2:
         card = TRANSPOSE_API_CARD if terse == 0 else (
             "Use shape-derived (rows, F) SBUF tiles and matching dma_copy slices. "
@@ -560,12 +668,27 @@ def first_prompt(level, terse=0):
         f"Reply with ONE python code block containing the imports and the function. No prose.")
 
 
-def repair_prompt(level, source, feedback):
+def repair_prompt(level, source, feedback, scaffold=False):
     """One named change, and the previous code. No rules list, no reference re-sent.
 
     The lesson this whole repo keeps re-learning: feeding a verifier's report back verbatim
     reproduces the same mistake, because a report says what is wrong and never what to do.
     """
+    if level == 4:
+        return (
+            f"Repair this tiled NKI matmul:\n\n```python\n{source}\n```\n\n"
+            f"A checker reports:\n{feedback}\n\n"
+            f"{TILED_MATMUL_METHOD}\n{TILED_MATMUL_API_CARD}\n"
+            f"Return a COMPLETE REPLACEMENT FILE, not a function fragment. It MUST begin "
+            f"with these exact imports, in this order, before any decorator or function:\n"
+            f"import nki\n"
+            f"import nki.language as nl\n"
+            f"import nki.isa as nisa\n\n"
+            f"Then include @nki.jit followed by the complete {nkibench.LEVELS[level]['entry']} function.\n"
+            f"{TILED_MATMUL_SKELETON if scaffold else ''}\n"
+            f"Fix the reported failure, buffer allocations and missing or zero-iteration tile loops. "
+            f"Preserve the entry point, arguments and required output dtype. "
+            f"Reply with ONE python code block containing the whole replacement file.")
     if level == 2:
         return (
             f"Repair this NKI per-partition transpose:\n\n```python\n{source}\n```\n\n"
@@ -677,6 +800,7 @@ def solve(a, level, log):
     best = (0.0, None, "")
     tried, streak, seen = [], 0, {}
     latest = ("", "")
+    scaffolded = False
     for rnd in range(a.rounds):
         t0 = time.perf_counter()
         replies = (offline_answers(level, a.samples, rnd) if a.offline
@@ -688,6 +812,7 @@ def solve(a, level, log):
             graded.append((reward, src, feedback, parts))
             log.write(json.dumps(dict(level=level, round=rnd, reward=reward, parts=parts,
                                       prompt_chars=len(prompt), reply_chars=len(reply),
+                                      scaffolded=scaffolded,
                                       code=src, feedback=feedback)) + "\n")
         log.flush()
         graded.sort(key=lambda g: g[0], reverse=True)
@@ -727,16 +852,35 @@ def solve(a, level, log):
             return best[0], rnd + 1
         tried.append(top[2])
         repeats = streak
-        if repeats >= 2 and (best[1] or "").strip():
+        if level == 4 and not scaffolded and (latest[0] or "").strip():
+            # Level 4's first useful failure often names a tile-dimension mistake. Do not
+            # spend another full model round repeating prose guidance: put the explicit
+            # M/N/K loop structure into the very first repair prompt.
+            scaffolded = True
+            ledger = "\n".join(f"- {t[:160]}" for t in dict.fromkeys(tried))
+            prompt = (repair_prompt(level, latest[0], latest[1], scaffold=True)
+                      + f"\n\nThis candidate failed; repair it using the scaffold.\n{ledger}")
+            print("  level 4 escalation: adding the 3D tile-loop scaffold to the first repair")
+            continue
+        repeated_level4_failure = level == 4 and seen[top[2]] >= 2
+        if (repeats >= 2 or repeated_level4_failure) and (best[1] or "").strip():
             # Sampling on this endpoint is greedy, so an unchanged prompt returns an unchanged
             # answer. Measured: the same TypeError 19 rounds running. Changing the prompt is the
             # only thing that can change the answer, so say what has already been tried.
             ledger = "\n".join(f"- {t[:160]}" for t in dict.fromkeys(tried))
-            prompt = (repair_prompt(level, latest[0], latest[1])
+            add_scaffold = level == 4 and not scaffolded
+            scaffolded = scaffolded or add_scaffold
+            prompt = (repair_prompt(level, latest[0], latest[1], scaffold=scaffolded)
                       + f"\n\nThese approaches have already failed, so do something different:\n"
                         f"{ledger}")
-            print(f"  same failure {repeats}x — adding a ledger of {len(set(tried))} failed "
-                  f"attempts to break the repeat")
+            if repeats >= 2:
+                print(f"  same failure {repeats}x — adding a ledger of {len(set(tried))} failed "
+                      f"attempts to break the repeat")
+            else:
+                print(f"  recurring level 4 failure seen {seen[top[2]]}x — adding the failure "
+                      "ledger and scaffold escalation")
+            if add_scaffold:
+                print("  level 4 escalation: adding an explicitly scaffolded 3D tile loop")
             continue
         if not (latest[0] or "").strip():
             # Nothing came back to repair. Asking it to "fix" an empty code block produced a
@@ -746,7 +890,7 @@ def solve(a, level, log):
             prompt = first_prompt(level, terse)
             print(f"  no code yet, so re-asking with a shorter prompt (terseness {terse})")
         else:
-            prompt = repair_prompt(level, latest[0], latest[1])
+            prompt = repair_prompt(level, latest[0], latest[1], scaffold=scaffolded)
     print(f"  not solved in {a.rounds} rounds; best reward {best[0]:.2f}")
     return best[0], a.rounds
 
