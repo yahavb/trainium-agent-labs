@@ -53,8 +53,14 @@ its source element; one or two sentences then say what the kernel computed and w
 (position j*A+i <- x[i*B+j]). No code. Levels 1, 3 and 4 never reach this path, so their requests are
 unchanged.
 
+WARM=1 (levels 5-7 only). Levels 5-7 are level 4's matmul with an HBM traffic bar (1.6x / 1.25x / 1.05x
+the byte floor). Round 0 does not send the first prompt: it sends the repair prompt for the agent's own
+level-4 solve (warm_l4_8339bbd6.py, from a v8.2 run; reaudit PASS, trn2 build and birsim match), renamed
+to the level's entry point, with the checker's verdict on it for that level (correct, but N x the floor).
+No reference or tutorial kernel is shown. Levels 1-4 never call this path.
+
 Run it exactly like feedback_v7.py, with the exports in V7.md (plus SKELETON / L1FIX / TRUNCFIX / MIXSAMP /
-L2HINT / MIX / L2CAT when testing them):
+L2HINT / MIX / L2CAT / WARM when testing them):
 
     python3 feedback_v8.py --level 4 --rounds 8 --samples 4 --context 8192 --repeat 5 \\
         --log Ediv_L4.jsonl --verdicts verdicts_div_L4.jsonl
@@ -73,6 +79,8 @@ MIXSAMP = os.environ.get("MIXSAMP", "0") == "1"
 L2HINT = os.environ.get("L2HINT", "0") == "1"
 MIX = os.environ.get("MIX", "0") == "1"
 L2CAT = os.environ.get("L2CAT", "0") == "1"
+WARM = os.environ.get("WARM", "0") == "1"
+WARM_KERNEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "warm_l4_8339bbd6.py")
 L2_NOTE = (" This level keeps every row where it is: row p of x holds an F1-by-F2 matrix stored row-major "
            "(F1, F2 = shape2D), and row p of the output holds the same F1*F2 values of that small matrix "
            "transposed, i.e. stored column-major. Nothing moves between rows, so the first (partition) "
@@ -317,6 +325,27 @@ if L2CAT:
 
     agent.grade = grade_cat
 
+if WARM:
+    # Levels 5-7 are level 4 with a traffic bar. Instead of the first prompt, round 0 repairs the agent's
+    # OWN level-4 solve (warm_l4_8339bbd6.py: v8.2, seat-119, reaudit PASS, trn2 build + birsim match),
+    # renamed to the level's entry point, with the checker's verdict on it for this level.
+    _first_prompt = agent.first_prompt
+    _warm = {}
+
+    def warm_source(level):
+        src = open(WARM_KERNEL).read()
+        return src.replace("def nki_matmul_tiled_(", f"def {v7.nkibench.LEVELS[level]['entry']}(", 1)
+
+    def first_prompt_warm(level, terse=0, *args, **kw):
+        if level not in (5, 6, 7):
+            return _first_prompt(level, terse, *args, **kw)
+        if level not in _warm:
+            src = warm_source(level)
+            _warm[level] = agent.repair_prompt(level, src, agent.grade(src, level)[2])
+        return _warm[level]
+
+    agent.first_prompt = first_prompt_warm   # solve() and MIX look it up at call time
+
 if L1FIX:
     _enrich = agent.enrich
 
@@ -384,5 +413,5 @@ if __name__ == "__main__":
     print(f"feedback v8: v7 (PROMPT1={v7.PROMPT1} MESSAGES={v7.v6.MESSAGES} CARD={v7.v5.CARD} "
           f"SAMPLING={v7.v5.SAMPLING} GATE={v7.GATE or 'off'}) + one prompt line per sample k>=2"
           f" SKELETON={int(SKELETON)} L1FIX={int(L1FIX)} TRUNCFIX={int(TRUNCFIX)} MIXSAMP={int(MIXSAMP)}"
-          f" L2HINT={int(L2HINT)} MIX={int(MIX)} L2CAT={int(L2CAT)}")
+          f" L2HINT={int(L2HINT)} MIX={int(MIX)} L2CAT={int(L2CAT)} WARM={int(WARM)}")
     agent.main()
