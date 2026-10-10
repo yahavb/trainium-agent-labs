@@ -292,7 +292,7 @@ def grade(source, level):
              or nkibench.describe_mismatch(got, want)
              or nkibench.check_traffic_bar(level, counted, args, want))
         if m and at_least("directed3"):
-            m = directed_mismatch(m, got, want, args, spec)
+            m = directed_mismatch(m, got, want, args, spec, source)
         # A simulator warning about a hardware-correctness hazard counts as a failure even when the
         # numbers happen to match on CPU: the kernel would be wrong on the device.
         hazards = [w for w in counted.get("warnings", [])
@@ -701,7 +701,7 @@ def moved_values(got, want, args, spec):
         return ""
 
 
-def directed_mismatch(message, got, want=None, args=None, spec=None):
+def directed_mismatch(message, got, want=None, args=None, spec=None, source=""):
     """A wrong-answer verdict rewritten from what the output actually contains, or unchanged.
 
     Seen on a seat, level 4 (session 20261010-163428): the model deleted the copy into the output
@@ -721,6 +721,40 @@ def directed_mismatch(message, got, want=None, args=None, spec=None):
     except Exception:
         return message
     head = message.split(" Usually ")[0]
+    if bad == total and at_least("directed4"):
+        # The directed3 message below was WRONG the first time it was used on a seat (level 4,
+        # session 20261010-193145). It says "the array you return was never written". The kernel
+        # did write it. Told by the repo's K-chunk advice to "accumulate", the model had added
+        # accumulate=True to nisa.nc_matmul; every output element became NaN; our message sent it
+        # looking for a missing copy that was not missing, and it stayed there four rounds, at
+        # 0.50, below the 0.62 it had. A kernel identical but for that argument scored 0.75 in the
+        # located run. So: state only what the checker can verify from the kernel it was given.
+        returned = re.findall(r"^\s*return\s+([A-Za-z_]\w*)\s*$", source or "", re.M)
+        name = returned[-1] if returned else None
+        written = bool(name and re.search(rf"\bdst\s*=\s*{re.escape(name)}\b", source))
+        if re.search(r"accumulate\s*=\s*True", source or ""):
+            return (head + f" Every one of the {total} output elements is NaN. Your kernel passes "
+                    f"accumulate=True to nisa.nc_matmul. Remove that argument. With it the result "
+                    f"here is NaN: a newly allocated psum tile holds NaN, and the product is added "
+                    f"to it. Without it, calling nisa.nc_matmul into the same psum tile once per "
+                    f"chunk already adds the chunks together. Change nothing else.")
+        if name and not written:
+            return (head + f" Every one of the {total} output elements is NaN, and `{name}`, the "
+                    f"array you return, is never the dst of any copy in your kernel. Nothing "
+                    f"writes the result into it. After the computation, copy the result in with "
+                    f"nisa.dma_copy(dst={name}[...], src=<an sbuf tile>). A psum tile cannot be "
+                    f"copied to HBM directly: move it into an sbuf tile with nisa.tensor_copy "
+                    f"first. No function zeroes or initialises a tile and none is needed.")
+        opening = ("The array you return is written, so the NaN was already in what was copied "
+                   "into it." if written else
+                   "Either nothing copies a result into the array you return, or what was copied "
+                   "into it was already NaN.")
+        return (head + f" Every one of the {total} output elements is NaN. {opening} A newly allocated "
+                f"tile holds NaN until something writes to it. Work backwards from the final "
+                f"copy: each tile that is read must first have been the dst of a copy or a "
+                f"computation that covered all of it. A loop that runs zero times, or covers "
+                f"only part of a tile, leaves NaN behind. No function zeroes or initialises a "
+                f"tile and none is needed.")
     if bad == total:
         return (head + f" Every one of the {total} output elements is non-finite, which means the "
                 f"array you return was never written: no line copies a result into it. This is "
@@ -806,7 +840,11 @@ def enrich(error_text):
                 f"OUTSIDE the K loop, call nisa.nc_matmul into that same psum tile once per chunk so "
                 f"the partial products add up there, and only after the loop copy it out with "
                 f"nisa.tensor_copy. Do not allocate a new psum tile per chunk and do not write partial "
-                f"results to HBM.")
+                f"results to HBM."
+                # Seen on a seat: after this message the model added accumulate=True to
+                # nisa.nc_matmul and every output element became NaN.
+                + (" Do not add an accumulate argument to nisa.nc_matmul: repeated calls into the "
+                   "same psum tile add up by themselves." if at_least("directed4") else ""))
     m = re.search(r"(\w+) (?:dst|src)? ?must be in \['sbuf', 'psum'\], got shared_hbm", error_text)
     if m:
         return (error_text + f" `nisa.{m.group(1)}` only moves data between on-chip buffers, sbuf and "
