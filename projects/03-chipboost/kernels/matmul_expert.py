@@ -17,7 +17,7 @@ matrix_multiplication_nki_kernels.py, NKI_EXAMPLE_21), with two changes, each ma
 
 Copyright (C) 2024, Amazon.com. All Rights Reserved (the tutorial kernel this adapts).
 
-    python ../02-kernel-agent/nkibench.py --level 9 --check kernels/matmul_expert.py
+    python nkibench.py --level 9 --check kernels/matmul_expert.py
 
 SBUF per partition, bf16 inputs (search.py's filter uses this): lhsT block TBK*TBM*256 B, rhs block
 TBK*TBN*1024 B, float32 accumulators (M/128)*TBN*2048 B.

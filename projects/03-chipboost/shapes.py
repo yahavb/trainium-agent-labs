@@ -44,7 +44,7 @@ import sys
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(HERE, "..", "02-kernel-agent"))
+sys.path.append(os.path.join(HERE, "..", "02-kernel-agent"))   # after our folder: our nkibench.py wins
 import nkibench  # noqa: E402  dev shapes and the --check levels live there
 
 QWEN3_8B = dict(hidden_size=4096, intermediate_size=12288, num_attention_heads=32,

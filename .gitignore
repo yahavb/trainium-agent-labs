@@ -14,8 +14,6 @@ floor.lock.json
 levers.json
 runs/
 .DS_Store
-# Claude Code agent worktrees: local checkouts, never commit (they land as broken gitlinks)
-.claude/worktrees/
 
 # editor swap/backup files — a vim session got one of these committed once
 *.swp
@@ -44,13 +42,3 @@ projects/*/attempts.jsonl
 
 # agent runs started with nohup ... > run.log (README pattern for surviving a dropped kubectl exec)
 run*.log
-
-# chipboost: kernels materialised from logs or templates (the logs keep the code)
-heldout_runs/
-search_runs/
-
-# Local agent checkouts are not source dependencies.
-/.claude/worktrees/
-
-# Team AI-assistant instructions: local only
-/CLAUDE.md
