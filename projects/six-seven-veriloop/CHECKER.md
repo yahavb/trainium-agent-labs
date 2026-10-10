@@ -23,7 +23,9 @@ Each level's `reference.py` lists the test inputs and the correct outputs. Combi
 tested on **every** input combination (mux: 64, adder: 256). Clocked levels use sequences built around the
 traps: the counter wraps 255 → 0, holds with enable off, and is reset mid-count (272 cycles); the traffic
 light gets the pedestrian button on each green cycle in turn, a held button, a reset mid-phase, and 150
-random cycles from a fixed seed (256 cycles). The same tests run every time, so results are comparable.
+random cycles from a fixed seed (256 cycles); the MAC cell gets mixed signs and wraps past both 20-bit
+limits (242 cycles); the FIFO is filled, overfilled, emptied, over-read and read and written in the same
+cycle at full, empty and in between (174 cycles). The same tests run every time, so results are comparable.
 
 **Limit, stated plainly:** passing means *passing these tests*, not a proof of correctness. The tests are
 chosen to hit the edges where generated designs break, and every level ships deliberately broken designs
@@ -51,7 +53,7 @@ the answer copies it instead of fixing the logic.
 | `veriloop/tests/test_compile.py` | 12 designs: good ones compile, each kind of mistake gets the right plain-words message | 12/12, on iverilog 12 (seats) and 13 (Mac) |
 | `veriloop/tests/test_simulate.py` | 11 designs that compile but behave wrongly in different ways are all caught; good ones pass | 11/11 |
 | `veriloop/tests/test_feedback.py` | scores land in the right ranges; A < B < C in information; C never shows more than 3 rows | 9/9 |
-| `veriloop/selftest.py` | **per level**: the spec names every port, the reference is consistent, `good.v` scores 1.0, every `bad_*.v` is caught — at least one by simulation, not only by the compiler | 4/4 levels; 17 broken designs, all caught |
+| `veriloop/selftest.py` | **per level**: the spec names every port, the reference is consistent, `good.v` scores 1.0, every `bad_*.v` is caught — at least one by simulation, not only by the compiler | 6/6 levels; 27 broken designs, all caught |
 
 The experiment runner refuses any level that fails `selftest.py`, so a broken level can never grade the
 model.

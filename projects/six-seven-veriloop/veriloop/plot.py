@@ -18,10 +18,19 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 RESULTS = os.path.join(ROOT, "results")
 
-FEEDBACK = ["A", "B", "C"]
-NAMES = {"A": "A  pass/fail", "B": "B  how many wrong", "C": "C  where it goes wrong"}
+FEEDBACK = ["A", "B", "C", "D"]
+NAMES = {"A": "A  pass/fail", "B": "B  how many wrong", "C": "C  where it goes wrong", "D": "D  why (diagnosis)"}
 # Categorical slots 1-3 of the reference palette (validated all-pairs, light mode: CVD dE >= 9.2).
-COLORS = {"A": "#2a78d6", "B": "#eb6834", "C": "#1baf7a"}
+COLORS = {"A": "#2a78d6", "B": "#eb6834", "C": "#1baf7a", "D": "#4a3aa7"}
+# Short axis names: folder names ("04_traffic_fsm (12 rounds)") collide on the axis.
+SHORT = {"01_mux": "mux", "02_adder": "adder", "03_counter": "counter", "04_traffic_fsm": "traffic light",
+         "05_mac": "MAC cell", "06_fifo": "FIFO"}
+
+
+def short(level):
+    base, _, extra = level.partition(" (")
+    name = SHORT.get(base, base.split("_", 1)[-1].replace("_", " "))
+    return name + ("\n(" + extra if extra else "")
 INK, INK2, GRID, SURFACE = "#0b0b0b", "#52514e", "#e4e3df", "#fcfcfb"
 
 
@@ -77,50 +86,52 @@ def plot(levels, cell, out_png, n_runs, n_seats):
     import matplotlib.pyplot as plt
     from matplotlib.patches import FancyBboxPatch
 
-    plt.rcParams.update({"font.family": "sans-serif", "font.size": 10, "text.color": INK,
+    fbs = [f for f in FEEDBACK if any(cell.get((lv, f), {}).get("n") for lv in levels)]
+    plt.rcParams.update({"font.family": "sans-serif", "font.size": 12, "text.color": INK,
                          "axes.labelcolor": INK2, "xtick.color": INK2, "ytick.color": INK2})
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4.6), facecolor=SURFACE)
-    width, gap = 0.14, 0.03          # thin bars (the band's leftover stays air), a surface gap between neighbours
+    # Two panels stacked, each full width: every bar label has room (side by side they overlapped).
+    fig, axes = plt.subplots(2, 1, figsize=(15, 10.5), facecolor=SURFACE)
+    gap = 0.03
+    width = min(0.13, (0.8 - gap * (len(fbs) - 1)) / len(fbs))   # thin bars; the leftover band stays air
     xs = range(len(levels))
-    panels = [("Solved (% of runs)", lambda c: 100 * c["solved"] / c["n"], 100,
-               lambda c: f"{c['solved']}/{c['n']}"),
-              ("Mean best score (0–1)", lambda c: sum(c["scores"]) / len(c["scores"]), 1.0,
-               lambda c: f"{sum(c['scores']) / len(c['scores']):.2f}")]
-    for ax, (title, value, top, label) in zip(axes, panels):
+    panels = [("Solved — runs that passed every test", lambda c: 100 * c["solved"] / c["n"], 100,
+               lambda c: f"{c['solved']}/{c['n']}", "% of runs"),
+              ("Mean best score per run (0–1)", lambda c: sum(c["scores"]) / len(c["scores"]), 1.0,
+               lambda c: f"{sum(c['scores']) / len(c['scores']):.2f}", "score")]
+    for ax, (title, value, top, label, ylab) in zip(axes, panels):
         ax.set_facecolor(SURFACE)
-        for k, fb in enumerate(FEEDBACK):
+        for k, fb in enumerate(fbs):
             for i, lv in enumerate(levels):
                 c = cell.get((lv, fb))
                 if not c or not c["n"]:
                     continue
                 v = value(c)
-                x = i + (k - 1) * (width + gap)
-                h = max(v, top * 0.004)     # a zero still shows a sliver at the baseline
-                # 4px-ish rounded data end, square at the baseline: a rounded box over a square foot
-                ax.add_patch(FancyBboxPatch((x - width / 2, 0), width, h, boxstyle="round,pad=0,rounding_size=0.03",
+                x = i + (k - (len(fbs) - 1) / 2) * (width + gap)
+                h = max(v, top * 0.006)     # a zero still shows a sliver at the baseline
+                ax.add_patch(FancyBboxPatch((x - width / 2, 0), width, h, boxstyle="round,pad=0,rounding_size=0.02",
                                             mutation_aspect=top / 4, linewidth=0, facecolor=COLORS[fb]))
                 ax.add_patch(plt.Rectangle((x - width / 2, 0), width, min(h, top * 0.02), linewidth=0,
                                            facecolor=COLORS[fb]))
-                ax.text(x, v + top * 0.015, label(c), ha="center", va="bottom", fontsize=8, color=INK2)
+                ax.text(x, v + top * 0.02, label(c), ha="center", va="bottom", fontsize=10, color=INK2)
         ax.set_xlim(-0.6, len(levels) - 0.4)
-        ax.set_ylim(0, top * 1.12)
+        ax.set_ylim(0, top * 1.15)
         ax.set_xticks(list(xs))
-        ax.set_xticklabels([lv.split("_", 1)[1].replace("_", " ") if "_" in lv else lv for lv in levels])
-        ax.set_title(title, loc="left", fontsize=11, color=INK, pad=10)
+        ax.set_xticklabels([short(lv) for lv in levels], fontsize=12)
+        ax.set_ylabel(ylab, fontsize=11)
+        ax.set_title(title, loc="left", fontsize=14, color=INK, pad=12)
         ax.grid(axis="y", color=GRID, linewidth=0.8)
         ax.set_axisbelow(True)
         for side in ("top", "right", "left"):
             ax.spines[side].set_visible(False)
         ax.spines["bottom"].set_color(GRID)
         ax.tick_params(length=0)
-    handles = [plt.Rectangle((0, 0), 1, 1, color=COLORS[f]) for f in FEEDBACK]
-    fig.legend(handles, [NAMES[f] for f in FEEDBACK], loc="upper center", ncol=3, frameon=False,
-               bbox_to_anchor=(0.5, 0.99), title="Feedback level", title_fontsize=9)
-    fig.text(0.01, 0.01, f"VeriLoop · Qwen3-8B on AWS Trainium · {n_runs} real runs on {n_seats} seat(s) · "
-             f"6 rounds x 4 attempts per run · numbers on bars: solved/runs and mean score",
-             fontsize=8, color=INK2)
-    fig.tight_layout(rect=(0, 0.04, 1, 0.88))
-    fig.savefig(out_png, dpi=160, facecolor=SURFACE)
+    handles = [plt.Rectangle((0, 0), 1, 1, color=COLORS[f]) for f in fbs]
+    fig.legend(handles, [NAMES[f] for f in fbs], loc="upper center", ncol=len(fbs), frameon=False,
+               bbox_to_anchor=(0.5, 0.995), title="Feedback the model received", title_fontsize=12, fontsize=12)
+    fig.text(0.01, 0.008, f"VeriLoop · Qwen3-8B on AWS Trainium · {n_runs} counted runs · up to 6 rounds × 4 attempts "
+             f"per run (12 rounds where marked) · bar labels: solved/runs and mean best score", fontsize=10, color=INK2)
+    fig.tight_layout(rect=(0, 0.025, 1, 0.93), h_pad=3)
+    fig.savefig(out_png, dpi=150, facecolor=SURFACE)
 
 
 def main():

@@ -53,7 +53,7 @@ Each cell: solved / runs, mean best score (min–max). Graph: `results/graph.png
    disappeared (A 0.69, B 0.64, C 0.65, n = 5 each). For this model, *where* the error is did not beat
    *that* there is one — the loop is limited by the model's idea of the design, not by the feedback.
 3. **The failures are systematic, not random** (`results/TAXONOMY.md`, 1,548 failed attempts, 232 distinct
-   designs). Level 4: 69% hold a light one phase too long (wrong cycle counting). Level 5: every round-1
+   designs). Level 4: in 69% the first error is a light held too long (cycle counting). Level 5: every round-1
    failure is the same — the model widens port `b` to 9 bits, writing in a comment that it is "to handle
    signed multiplication". Level 6: 99% put the wrong byte on `dout` while writing. One wrong idea, repeated —
    which is why the model's own retries rarely escape it.
@@ -73,11 +73,12 @@ Each cell: solved / runs, mean best score (min–max). Graph: `results/graph.png
 
 We re-simulated the most common failing designs (`results/TAXONOMY.md`):
 
-- **Traffic light — a fencepost error.** The most common design (96 attempts) counts from 0 and compares the
-  counter to the full length, so **every phase is one cycle too long**: RED 4, GREEN 5, YELLOW 3 instead of
-  3, 4, 2. A second group gets the timing right except the first RED, because it does not count the reset
-  cycle as RED's first — a rule the spec states but that acts as a trap (~1 in 6 failures). Others mishandle
-  the pedestrian button.
+- **Traffic light — cycle counting.** We classified all 1,296 failed attempts by their light timing. The
+  single most common design (96 attempts) counts from 0 and compares the counter to the full length, so
+  **every phase is one cycle too long** (RED 4, GREEN 5, YELLOW 3 instead of 3, 4, 2) — that exact pattern is
+  19% of failures. 8% miss only the first RED, not counting the reset cycle as RED's first (a rule the spec
+  states). 68% have other timing errors, mostly phases held too long; 3% have the timing right but mishandle
+  the pedestrian button or `walk`.
 - **FIFO — three bugs at once.** The most common design shows `dout` only after a read (the spec: always the
   oldest byte), computes `full`/`empty` from the old count (one cycle late), and loses one of the two count
   updates when reading and writing in the same cycle.

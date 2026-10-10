@@ -36,8 +36,9 @@ COULD NOT VERIFY -- best design passes 0.68 of the score; not solved
 - **Feedback did not turn hard failures into solves:** the traffic-light state machine and the FIFO were never
   solved, with any feedback — not even with 12 rounds (0/15). C's small edge at 6 rounds (0.69 vs 0.65)
   vanished at 12. The MAC cell was fixed on round 2 with A, B and C alike.
-- **The model's mistakes are systematic** — one wrong idea, repeated: on the traffic light, every phase one
-  cycle too long (a counting off-by-one). Feedback that says *where* did not make it see *why*.
+- **The model's mistakes are mostly cycle counting** — on the traffic light, 69% of failures first go wrong by
+  holding a light too long; the most common design has every phase one cycle too long (an off-by-one).
+  Feedback that says *where* did not make it see *why*.
 - **The model does not know when it is wrong** — designs it rated 80–100% confident were right only half the
   time, so only the checker may declare success (`results/calibration.txt`).
 
