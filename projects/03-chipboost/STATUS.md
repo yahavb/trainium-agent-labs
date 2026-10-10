@@ -1,7 +1,7 @@
 # CHIPBOOST status: P1 (`referee-timing`)
 
 *Updated Oct 10 2026. Historical measurements below are from seat-100 (trn2.48xlarge node,
-1 Trainium2 device, 4 logical cores, LNC=2, 96 GB). Current acceptance results are recorded in P1-HANDOFF.md.*
+1 Trainium2 device, 4 logical cores, LNC=2, 96 GB). Current acceptance results are recorded in `p1_acceptance.json`.*
 
 ## Summary
 
@@ -12,7 +12,7 @@
 | `speedcheck.py`: the referee | Done, verified on the start kernel, a faster case and a cheat |
 | Hardened referee regression | Historical results saved in `results_p1.json` (see below) |
 | Throughput implementation | Done in `76b2227`: worker, parallel compilation, threaded inputs |
-| Current signoff | See `P1-HANDOFF.md` for scope, evidence, and remaining limitations |
+| Current signoff | The acceptance checks in `p1_acceptance.json` |
 | Original 72-evaluation comparison | Complete, strict report passed: neither Qwen arm found a speedup; template-control median best 3.125919x |
 | Recovery pilot v3 | Complete: 8 attempts, all `wrong`; no verified improvement |
 | Canceled treatments | Reasoning run: zero graded attempts; queued DMA-only v2 superseded, no comparison results |
@@ -73,7 +73,7 @@ PID `884773`, core 2, output `/tmp/p1-qwen-v2-20261010-1`, eight completed evalu
 The real failing candidate was replayed through the sandboxed referee on seat-100/core 2:
 it remained `wrong` and returned the named instruction. This is a simulator rejection before
 device timing, not a speed measurement. Evidence and the isolated source diff are in
-`experiments/dma-feedback-v2/`; protocol and limitations are in `REFEREE-V2.md`.
+`experiments/dma-feedback-v2/` (cancelled as superseded; no comparison results).
 
 ## Environment facts (measured, not assumed)
 
@@ -250,4 +250,4 @@ Plus: the kill runs as the sandbox uid (atomic against forks), the referee reaps
 P2 (`origin/kernels-search` at `919c6be`) already includes the current referee, kernels/shapes, and uses
 `RefereeWorker`. P3 (`origin/redteam-agent` at `2ce9416`) already includes the current referee and uses
 `check_isolated`, retries infrastructure failures, and sends only `instruction_given` to the model.
-See `P1-HANDOFF.md` for current validation evidence and the command to repeat acceptance on a seat.
+Current validation evidence is in `p1_acceptance.json`.

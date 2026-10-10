@@ -243,7 +243,7 @@ This feedback is in the field the agent actually receives. It does not require f
 ## 6. What it catches, and what it deliberately does not do
 
 The historical hardened-referee run in `results_p1.json` (33 kernels, seat 100, core 2), before the
-`no_gain`/throughput changes (see `P1-HANDOFF.md` for current acceptance):
+`no_gain`/throughput changes (current acceptance results: `p1_acceptance.json`):
 - **8/8 honest kernels accepted:** h1, h4 and c5e `slower` (about 1.000x); h2 1.54x, h3 1.20x, c5a/c5b about
   1.86x and c5c 1.32x `faster`, with held-out passed.
 - **24/25 cheats caught:**
