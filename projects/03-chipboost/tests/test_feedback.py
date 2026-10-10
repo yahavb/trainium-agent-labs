@@ -99,6 +99,13 @@ class FeedbackTests(unittest.TestCase):
                         self.sources["h2"].replace("nl.affine_range(M // TILE_M)", "nl.affine_range(1)")):
             self.assertNotIn("slice depends", self.instruction("h2", src=changed))
 
+    def test_deep_expression_gives_no_claim_instead_of_crashing(self):
+        # Legal Python that compiles, but is too deep for a recursive AST walk: no diagnosis, no crash.
+        deep = "z = " + " + ".join(["0"] * 3000)
+        source = self.sources["h2"].replace("K, M = lhsT.shape", f"K, M = lhsT.shape\n  {deep}")
+        self.assertIn(deep, source)
+        self.assertNotIn("slice depends", self.instruction("h2", src=source))
+
     def test_source_is_never_executed(self):
         source = "raise RuntimeError('MUST NOT EXECUTE')\n" + self.sources["h2"]
         self.assertIn("rhs slice depends", self.instruction("h2", src=source))

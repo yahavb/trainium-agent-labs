@@ -20,6 +20,12 @@ def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def pinned_digest(path):
+    """SHA-256 in the CRLF form the pins were taken in (seat-100's snapshots); git checkouts are LF."""
+    lf = Path(path).read_bytes().replace(b"\r\n", b"\n")
+    return hashlib.sha256(lf.replace(b"\n", b"\r\n")).hexdigest()
+
+
 def check_pure_delta(original, treatment):
     """Only the two DMA constants and _child_failure may differ semantically."""
     allowed = {"_DMA_4X_ERROR", "_DMA_4X_INSTR"}
@@ -48,12 +54,12 @@ def preflight(a):
     baseline = p1.parent / "02-kernel-agent/reference_level4.py"
     assert len(a.expected_referee_sha256) == 64
     assert a.expected_referee_sha256 != ORIGINAL_REFEREE, "Treatment must contain the DMA mapping"
-    assert digest(p1 / "speedcheck.py") == a.expected_referee_sha256
+    assert pinned_digest(p1 / "speedcheck.py") == a.expected_referee_sha256
     original_referee = Path(previous["baseline"]).parent.parent / "03-chipboost/speedcheck.py"
-    assert digest(original_referee) == ORIGINAL_REFEREE
+    assert pinned_digest(original_referee) == ORIGINAL_REFEREE
     check_pure_delta(original_referee.read_text(), (p1 / "speedcheck.py").read_text())
-    assert digest(p3 / "agent.py") == previous["agent_sha256"], "Keep original P3 agent"
-    assert digest(baseline) == BASELINE
+    assert pinned_digest(p3 / "agent.py") == previous["agent_sha256"], "Keep original P3 agent"
+    assert pinned_digest(baseline) == BASELINE
     src = baseline.read_text().encode("utf-8")
     assert hashlib.sha256(src).hexdigest() == CANDIDATE
     # Verify actual records as well as the terminal status marker.
