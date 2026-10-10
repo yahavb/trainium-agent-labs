@@ -1046,6 +1046,7 @@ h3{font-size:13px;margin:8px 0 2px}
 .kblock+.kblock{margin-top:4px}
 h3.sep{margin-top:12px;padding-top:10px;border-top:1px solid var(--grid)}
 .pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(480px,100%),1fr));gap:4px 20px}
+.pair .kblock{max-width:640px}   /* one kernel alone must not stretch to twice its drawn size */
 .legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--ink-2);margin:0 0 4px}
 .key{display:inline-flex;align-items:center;gap:5px}
 .key svg{width:14px;height:14px;flex:none}
