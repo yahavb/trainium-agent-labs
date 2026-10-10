@@ -8,7 +8,7 @@ probe and agent tools we used on seat 212.
 
 | File | Purpose |
 | --- | --- |
-| `candidate_adapter.py` | Adapter for `runners/trainium_runner.py`. Runs the CPU fixture's inputs on Trainium. `--precision float32` or `bfloat16` (compiler auto-cast) |
+| `candidate_adapter.py` | Adapter for `runners/trainium_runner.py`. Runs the CPU fixture's inputs on Trainium. Use `--precision fp32` or `bf16-autocast` |
 | `samudra_core.py` | Standalone inference copy of the `samudra_om4_v2` UNet. Same parameter names as Samudra, so checkpoints load strictly. Bit-identical to the original modules (`verify_vs_original.py`) |
 | `verify_vs_original.py` | Checks `samudra_core.py` against a Samudra checkout: `python verify_vs_original.py <samudra-root>` |
 | `bench.py` | Benchmark plus check against our own CPU reference (random inputs or real weights via `--hf onedeg`). Appends to `results.jsonl` |
@@ -43,8 +43,12 @@ Run from `projects/03-mechanical-sympathy`:
 NEURON_RT_VISIBLE_CORES=2 python runners/trainium_runner.py \
   --adapter trainium/candidate_adapter.py --fixture fixtures/cpu_reference.npz \
   --candidate-output runs/trainium/candidate.npz --metrics-json runs/trainium/metrics.json \
-  --precision float32
+  --precision fp32
 ```
+
+Use `bf16-autocast` for the compiler auto-cast run. Run the checker in
+`--diagnostic-only` mode before the team freezes precision tolerances. The
+diagnostic report has no correctness pass and no performance result.
 
 The first call compiles for about 5 minutes; later runs use the Neuron compile cache. Set
 `SAMUDRA_CKPT` if the checkpoint is not at the manifest's `checkpoint.path_on_seat`.
