@@ -532,6 +532,12 @@ def _slice_from_src_slice(value):
     if not isinstance(value, ast.Tuple):
         return None
     parts = list(value.elts)
+    if len(parts) == 5:
+        return ast.Tuple(elts=[
+            parts[0],
+            ast.Slice(lower=parts[1], upper=parts[3], step=None),
+            ast.Slice(lower=parts[2], upper=parts[4], step=None),
+        ], ctx=ast.Load())
     dims = []
     if len(parts) % 2 == 1:
         dims.append(parts.pop(0))
@@ -777,14 +783,16 @@ def choose_repair_base(top, best, latest, repeats, archive=None):
     """Choose which candidate to repair using verifier outcomes, not prompt wording."""
     top_reward, top_src, top_feedback, top_parts = top
     best_reward, best_src, best_feedback, best_parts = best
-    archived = strongest_archived_candidate(archive or {})
-    if archived and (archived[1] or "").strip():
-        return (archived[1], archived[2]), "candidate_archive"
     if not (top_src or "").strip():
         return latest, "latest_empty"
+    if repeats < 2:
+        return (top_src, top_feedback), "latest"
+    archived = strongest_archived_candidate(archive or {})
+    if archived and (archived[1] or "").strip() and archived[2] != top_feedback:
+        return (archived[1], archived[2]), "candidate_archive"
     if (best_src or "").strip():
         return (best_src, best_feedback), "best"
-    return (top_src, top_feedback), "latest_no_best"
+    return (top_src, top_feedback), "latest_repeat"
 
 
 # ---------------------------------------------------------------- prompting
