@@ -1021,9 +1021,16 @@ def sample_temps(a, n):
     """--portfolio: one temperature per sample. Measured over 866 attempts: in 70% of rounds all four
     samples at temperature 0.6 were the SAME kernel, character for character -- four generations
     paid for one attempt. Spreading the temperatures makes the four samples four real attempts."""
-    if getattr(a, "portfolio", False):
-        return [PORTFOLIO_TEMPS[i % len(PORTFOLIO_TEMPS)] for i in range(n)]
-    return [0.6] * n
+    base = ([PORTFOLIO_TEMPS[i % len(PORTFOLIO_TEMPS)] for i in range(n)] if getattr(a, "portfolio", False)
+            else [0.6] * n)
+    # Per-process jitter (±3%). Measured: every freshly started vllm-neuron server begins from the same
+    # random state (a per-server --seed had no effect; per-request seeds crash it), so four seats sending
+    # the same requests drew byte-identical samples. A different temperature changes the very first
+    # sampled token, so each process explores on its own. Drawn once per process, logged per attempt.
+    return [round(t * TEMP_JITTER, 4) if t > 0 else t for t in base]
+
+
+TEMP_JITTER = 1 + (int.from_bytes(os.urandom(2), "little") / 65535 - 0.5) * 0.06
 
 
 # --prompt-portfolio: measured, different temperatures still gave 1-3 distinct kernels out of 4 -- this
