@@ -35,3 +35,11 @@ The live solve-rate improvement is **not yet measured**. Compare the five-run
 solve rate against an unchanged baseline. The harness uses a shared
 `/tmp/_agent_level2.py` path, so separate working directories alone do not make
 concurrent agent runs safe.
+
+## Baseline runs 2 and 3
+
+Run 2 repeatedly copied a 12-element partition row into a 1,536-element
+PSUM tile. Feedback now identifies that intermediate copy and supplies matching
+2-D SBUF column views and the flattened transpose offsets. Run 3 solved all
+four shapes at round 0 without this patch; it is baseline variance, not evidence
+that the branch improved the model. Live branch comparison remains pending.

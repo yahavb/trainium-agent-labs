@@ -308,6 +308,14 @@ def enrich(error_text, level=None):
                   r"indexing result of shape \((\d+),?\)", error_text)
     if m:
         val, dst = int(m.group(1)), int(m.group(2))
+        if level == 2:
+            return (error_text + " A partition row holds F1*F2 elements; copying it into "
+                    "a 128-row tile does not broadcast it. Keep both transpose SBUF "
+                    "tiles shaped (rows, F1*F2), with rows=min(128, P-start). "
+                    "Copy input_tile[:, nl.ds(i*F2+j, 1)] to "
+                    "output_tile[:, nl.ds(j*F1+i, 1)] using nisa.tensor_copy. "
+                    "Both views have shape (rows, 1). Then DMA the output tile "
+                    "to out[start:start+rows, :]. PSUM is unnecessary here.")
         return (error_text + f" You assigned {val} elements into a slice that holds {dst}. Assignment "
                 f"does not reshape or broadcast either: the slice on the left and the value on the "
                 f"right must have the SAME shape. If the value is bigger, you are writing a whole tile "
