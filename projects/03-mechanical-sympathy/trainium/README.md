@@ -11,6 +11,8 @@ probe and agent tools we used on seat 212.
 | `candidate_adapter.py` | Adapter for `runners/trainium_runner.py`. Runs the CPU fixture's inputs on Trainium. `--precision float32` or `bfloat16` (compiler auto-cast) |
 | `samudra_core.py` | Standalone inference copy of the `samudra_om4_v2` UNet. Same parameter names as Samudra, so checkpoints load strictly. Bit-identical to the original modules (`verify_vs_original.py`) |
 | `verify_vs_original.py` | Checks `samudra_core.py` against a Samudra checkout: `python verify_vs_original.py <samudra-root>` |
+| `samudra_tiled.py` | Optional latitude-band tiling of the large UNet blocks (see "Segmenting and tiling" below). Used by `bench.py --tile-rows` |
+| `test_tiled.py` | CPU check that the tiled model matches the untiled one: `python test_tiled.py --ckpt <ema_ckpt.pt>` |
 | `bench.py` | Benchmark plus check against our own CPU reference (random inputs or real weights via `--hf onedeg`). Appends to `results.jsonl` |
 | `status.py` | Shows what is running and whether each `--tag` run finished, is running, or crashed |
 | `probe_ops.py` | Compiles single ops or model slices on the chip in seconds and compares them with the CPU |
@@ -69,6 +71,49 @@ python -c "import agent_loop as al; print(al.grade(open('card_check_kernel.py').
 The agent needs the seat's vLLM server (Qwen3-8B, `./serve.sh`) and the organizers'
 `/workspace/projects/02-kernel-agent`. It does not need a free NeuronCore, because kernels are
 graded in the NKI CPU simulator.
+
+## Segmenting and tiling (seat-211)
+
+At 1 degree the two full-resolution ConvNeXt blocks have 84 MB and 145 MB intermediate tensors,
+far more than on-chip memory, and the device profile shows about 55 GB of spill per forward pass
+(`runners/profiling.py`, `PROFILING.md`). Two ways to give the compiler smaller problems:
+
+- **Segmenting** (`--segments 1`): a `torch_xla.sync()` after every UNet layer, so each layer is
+  compiled as its own graph. The math is unchanged.
+- **Tiling** (`--tile-rows R`): `samudra_tiled.py` runs each large block on bands of `R` latitude
+  rows. Each band carries the halo its two 3x3 convolutions need; rows beyond a pole are zeroed
+  before each 3x3 convolution, as the original pads its intermediate tensor. `--tile-band-cut 1`
+  adds a `torch_xla.sync()` after each band (only with `--segments 1`). Tiling refuses
+  InstanceNorm blocks, which are not row-local. `test_tiled.py` shows the tiled model is
+  bit-identical to the untiled one on the CPU for 15, 20, 45 and 90 row bands (1e-6 relative
+  for 10 rows).
+
+Results with `bench.py --grid 1deg --ckpt <onedeg ema_ckpt.pt>`, fp32, batch 1, random inputs,
+core 2, median of 20 passes after 3 warm-up passes. Every run passed the check against the
+untiled CPU reference (relative RMS error 1.2e-6, land exactly zero). One run per row.
+
+| Configuration | Median ms | Speedup vs plain |
+| --- | ---: | ---: |
+| Plain | 230.3 | 1.00x |
+| `--segments 1` | **138.2** | **1.67x** |
+| `--tile-rows 20` | 238.5 | 0.97x |
+| `--tile-rows 45` | 156.2 | 1.47x |
+| `--segments 1 --tile-rows 20` | 151.2 | 1.52x |
+| `--segments 1 --tile-rows 20 --tile-band-cut 1` | 140.8 | 1.64x |
+| `--segments 1 --tile-rows 45` | 146.8 | 1.57x |
+| `--segments 1 --tile-rows 45 --tile-band-cut 1` | 139.8 | 1.65x |
+
+Segmenting alone is the fastest. Tiling helps without segmenting when bands are large enough
+(45 rows), but adds nothing on top of segmenting. Without a cut between bands the compiler may
+interleave them; the cuts recover most of the loss. Why segmenting helps has not been profiled
+yet. The segments runs compiled in about 100-140 s instead of about 300 s, because the
+per-layer graphs of untiled layers were already in the compile cache.
+
+```bash
+PYTHONPATH=/workspace/xla_plugin python bench.py --device cpu --grid 1deg --ckpt $CK   # reference
+PYTHONPATH=/workspace/xla_plugin python bench.py --device neuron --grid 1deg --ckpt $CK --cores 2 \
+  --segments 1 --tile-rows 45 --tile-band-cut 1
+```
 
 ## Things to know
 

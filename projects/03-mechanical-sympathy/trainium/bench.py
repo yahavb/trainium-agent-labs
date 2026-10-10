@@ -102,6 +102,14 @@ def main():
     ap.add_argument("--segments", type=int, default=0,
                     help="neuron only: 1 = compile each UNet layer as its own graph (cuts device "
                          "memory; needed for 0.5deg fp32 and 0.25deg on a 24 GB logical core)")
+    ap.add_argument("--tile-rows", type=int, default=0,
+                    help="0 = off. Run large UNet blocks in latitude bands of this many rows "
+                         "(samudra_tiled.py); the CPU reference stays untiled")
+    ap.add_argument("--tile-band-cut", type=int, default=0,
+                    help="neuron only: 1 = also put a graph boundary (torch_xla.sync) after "
+                         "each band, so bands cannot be interleaved by the compiler")
+    ap.add_argument("--tile-min-pixels", type=int, default=64800,
+                    help="tile blocks on grids with at least this many cells (64800 = 1deg level 0)")
     ap.add_argument("--tol", type=float, default=3e-2, help="pass if rel RMS error <= tol")
     ap.add_argument("--tag", default="")
     args = ap.parse_args()
@@ -124,6 +132,12 @@ def main():
 
     H, W = GRIDS[args.grid]
     model = build(torch, args)
+    tiled_blocks = []
+    if args.tile_rows:
+        from samudra_tiled import tile_large_blocks
+        tiled = tile_large_blocks(model, (H, W), args.tile_rows, args.tile_min_pixels)
+        tiled_blocks = [m for m in model.modules() if hasattr(m, "band_rows")]
+        print(f"tiled {len(tiled)} blocks in bands of {args.tile_rows} rows:", *tiled, sep="\n  ")
     prog, bnd, mask = make_inputs(torch, args, H, W)
     n_params = sum(p.numel() for p in model.parameters())
     refdir = Path("refs"); refdir.mkdir(exist_ok=True)
@@ -131,13 +145,15 @@ def main():
     rec = {"device": args.device, "grid": args.grid, "H": H, "W": W, "batch": args.batch,
            "params_M": round(n_params / 1e6, 2), "tag": args.tag, "time": time.strftime("%H:%M:%S"),
            "weights": args.hf or (Path(args.ckpt).name if args.ckpt else "random"),
-           "prog_ch": args.prog_ch, "bnd_ch": args.bnd_ch}
+           "prog_ch": args.prog_ch, "bnd_ch": args.bnd_ch,
+           "tile_rows": args.tile_rows, "tile_min_pixels": args.tile_min_pixels if args.tile_rows else None,
+           "tile_band_cut": bool(args.tile_band_cut)}
 
     if args.device == "cpu":
         with torch.inference_mode():
             out = model(prog, bnd, mask)
             rec.update(timeit(lambda: model(prog, bnd, mask), args.iters, args.warmup))
-        if not args.bf16:
+        if not args.bf16 and not args.tile_rows:
             torch.save({"out": out}, ref_path)
             print(f"reference saved to {ref_path} (fp32 CPU)")
         rec["threads"] = torch.get_num_threads()
@@ -161,6 +177,9 @@ def main():
         k_d = mask.to(dev)
 
         cut = torch_xla.sync if args.segments else None
+        if args.tile_band_cut:
+            for blk in tiled_blocks:
+                blk.band_cut = torch_xla.sync
 
         def step():
             y = m_dev(p_d, b_d, k_d, cut=cut)
