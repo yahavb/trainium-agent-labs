@@ -105,6 +105,92 @@ class Loaded:
         return _stats([d * 1000.0 for d in b.durations_ms])
 
 
+class InterfaceError(RuntimeError):
+    pass
+
+
+class Neff:
+    """A compiled kernel file, loaded and driven by the referee WITHOUT importing the candidate's code.
+
+    An untrusted process compiles the candidate to a NEFF; this checks the NEFF's interface against what
+    the op requires, feeds it the referee's own inputs and reads the output back. Every run starts from an
+    output buffer refilled with fresh random garbage, so a kernel cannot skip work when it sees its output
+    already holds an answer (it scored 26x that way when outputs were poisoned once and then reused)."""
+
+    def __init__(self, neff_path, inputs, out_shape, out_dtype, seed=0):
+        from nki.runtime import SpikeModel, SpikeTensor
+        _pick_core()
+        self.model = SpikeModel.load_from_neff(neff_path, core_id=0)
+        if self.model.alias_info:
+            raise InterfaceError(f"the output is aliased to an input ({self.model.alias_info}): the kernel writes "
+                                 f"its result into its input. Allocate a new output in nl.shared_hbm.")
+        info_in, info_out = self.model.input_tensors_info, self.model.output_tensors_info
+        if set(info_in) != set(inputs):
+            raise InterfaceError(f"kernel inputs are {sorted(info_in)}, expected {sorted(inputs)}")
+        for n, a in inputs.items():
+            if tuple(info_in[n].shape) != a.shape or info_in[n].size != a.nbytes:
+                raise InterfaceError(f"input {n} is {tuple(info_in[n].shape)} ({info_in[n].size} bytes), "
+                                     f"expected {a.shape} ({a.nbytes} bytes)")
+        if len(info_out) != 1:
+            raise InterfaceError(f"kernel returns {len(info_out)} outputs, expected 1")
+        self.oname, o = next(iter(info_out.items()))
+        self.dtype = np.dtype(out_dtype)
+        if tuple(o.shape) != tuple(out_shape) or o.size != int(np.prod(out_shape)) * self.dtype.itemsize:
+            raise InterfaceError(f"output is {tuple(o.shape)} ({o.size} bytes), expected {tuple(out_shape)} "
+                                 f"{self.dtype}")
+        self.shape = tuple(out_shape)
+        self.inputs = {n: SpikeTensor.from_numpy(a, name=n, core_id=0) for n, a in inputs.items()}
+        self.out = SpikeTensor.from_numpy(np.zeros(self.shape, self.dtype), name=self.oname, core_id=0)
+        self._rng = np.random.default_rng(seed)
+
+    def set_inputs(self, inputs):
+        for n, a in inputs.items():
+            self.inputs[n].write_from_numpy(a)
+
+    def read_inputs(self):
+        return {n: t.numpy() for n, t in self.inputs.items()}
+
+    def _poison(self):
+        self.out.write_from_numpy((self._rng.standard_normal(self.shape) * 1e3).astype(self.dtype))
+
+    def run(self):
+        self._poison()
+        self.model(self.inputs, outputs={self.oname: self.out})
+        return self.out.numpy()
+
+    def time_fresh(self, n, verify=None, feed=None):
+        """n single device-timed runs, each from a freshly poisoned output. `feed(j)` -> (key, inputs) swaps in
+        a different input set before run j (host write, not timed); `verify(out, key)` checks every output."""
+        us = []
+        for j in range(n):
+            key = None
+            if feed is not None:
+                key, inp = feed(j)
+                self.set_inputs(inp)
+            self._poison()
+            b = self.model.benchmark(self.inputs, outputs={self.oname: self.out},
+                                     warmup_iter=0, benchmark_iter=1, mode="device")
+            us += [d * 1000.0 for d in b.durations_ms]
+            if verify is not None:
+                verify(self.out.numpy(), key)
+        return us
+
+
+def time_ab_fresh(a, b, rounds=3, n=10, verify_a=None, verify_b=None, feed=None):
+    """Interleave baseline a and candidate b (a b a b ...). Every run starts from fresh output garbage; with
+    `feed`, both arms see the same sequence of different input sets, so a kernel cannot return a result it
+    computed on an earlier call; every run is verified."""
+    a.run()
+    b.run()                                   # one untimed run each: warm instruction caches
+    sa, sb = [], []
+    for r in range(rounds):
+        f = (lambda j, r=r: feed(r * n + j)) if feed is not None else None
+        sa += a.time_fresh(n, verify_a, f)
+        sb += b.time_fresh(n, verify_b, f)
+    A, B = _stats(sa), _stats(sb)
+    return dict(a=A, b=B, speedup=A["median_us"] / B["median_us"])
+
+
 def _stats(us):
     s = sorted(us)
     q = lambda p: s[min(len(s) - 1, int(p * len(s)))]
