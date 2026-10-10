@@ -1,0 +1,67 @@
+Trainium2, one NeuronCore-v3. HW = doc peaks (floor, no fixed cost); MODEL = rates the compiler's latency model charges (+2.6 us fixed).
+  ridge (TensorE flops / HBM byte), bfloat16: HW 210, MODEL 214
+  ridge (TensorE flops / HBM byte), float32: HW 53, MODEL 214
+
+softmax over last axis 128x4096 float32
+  work: tensor 0.0 MFLOP, vector 1.05 M elem, scalar 0.52 M elem, HBM 4096 KiB   assignment [('row max', 'vector'), ('exp(x-max) + fused row sum', 'scalar'), ('x * 1/sum', 'vector')]
+  note: exp on VectorE (nisa.exponential) is NeuronCore-v4+ only (isa/__init__.pyi:2272)
+  HW    tensor   0.00 us vector   4.27 us scalar   3.41 us hbm  11.18 us -> hbm    floor 11.18 us
+  MODEL tensor   0.00 us vector   4.27 us scalar   6.83 us hbm  11.40 us -> hbm    floor 14.00 us
+
+softmax over last axis 512x1024 float32
+  work: tensor 0.0 MFLOP, vector 1.05 M elem, scalar 0.52 M elem, HBM 4096 KiB   assignment [('row max', 'vector'), ('exp(x-max) + fused row sum', 'scalar'), ('x * 1/sum', 'vector')]
+  note: exp on VectorE (nisa.exponential) is NeuronCore-v4+ only (isa/__init__.pyi:2272)
+  HW    tensor   0.00 us vector   4.27 us scalar   3.41 us hbm  11.18 us -> hbm    floor 11.18 us
+  MODEL tensor   0.00 us vector   4.27 us scalar   6.83 us hbm  11.40 us -> hbm    floor 14.00 us
+
+softmax over last axis 128x4096 bfloat16
+  work: tensor 0.0 MFLOP, vector 1.05 M elem, scalar 0.52 M elem, HBM 2048 KiB   assignment [('row max', 'vector'), ('exp(x-max) + fused row sum', 'scalar'), ('x * 1/sum', 'vector')]
+  note: exp on VectorE (nisa.exponential) is NeuronCore-v4+ only (isa/__init__.pyi:2272)
+  HW    tensor   0.00 us vector   2.13 us scalar   3.41 us hbm   5.59 us -> hbm    floor 5.59 us
+  MODEL tensor   0.00 us vector   4.27 us scalar   6.83 us hbm   5.70 us -> scalar floor 9.43 us
+
+conv11x11/s4 3->64 on 63x63 +bias+relu+maxpool3/2 -> 64x7x7 float32
+  work: tensor 10.5 MFLOP, vector 0.03 M elem, scalar 0.01 M elem, HBM 150 KiB   assignment [('bias+relu (evicts PSUM)', 'scalar'), ('maxpool along W', 'vector'), ('maxpool along H', 'vector')]
+  note: conv output 64x15x15; contraction 363 pads to 384, Cout 64 pads to 128: PE array at most 47% occupied
+  note: assumes the im2col patches are formed on-chip (input read from HBM once)
+  HW    tensor   1.11 us vector   0.12 us scalar   0.09 us hbm   0.41 us -> tensor floor 1.11 us
+  MODEL tensor   0.28 us vector   0.24 us scalar   0.09 us hbm   0.42 us -> hbm    floor 3.02 us
+
+conv5x5/s1 64->192 on 27x27 +bias+relu+maxpool3/2 -> 192x13x13 float32
+  work: tensor 447.9 MFLOP, vector 0.30 M elem, scalar 0.14 M elem, HBM 1510 KiB   assignment [('bias+relu (evicts PSUM)', 'scalar'), ('maxpool along W', 'vector'), ('maxpool along H', 'vector')]
+  note: conv output 192x27x27; contraction 1600 pads to 1664, Cout 192 pads to 256: PE array at most 72% occupied
+  note: assumes the im2col patches are formed on-chip (input read from HBM once)
+  HW    tensor  31.05 us vector   1.22 us scalar   0.91 us hbm   4.12 us -> tensor floor 31.05 us
+  MODEL tensor   7.90 us vector   2.44 us scalar   0.91 us hbm   4.20 us -> tensor floor 10.50 us
+
+conv5x5/s1 64->192 on 27x27 +bias+relu+maxpool3/2 -> 192x13x13 bfloat16
+  work: tensor 447.9 MFLOP, vector 0.44 M elem, scalar 0.00 M elem, HBM 755 KiB   assignment [('bias+relu (evicts PSUM)', 'vector'), ('maxpool along W', 'vector'), ('maxpool along H', 'vector')]
+  note: conv output 192x27x27; contraction 1600 pads to 1664, Cout 192 pads to 256: PE array at most 72% occupied
+  note: assumes the im2col patches are formed on-chip (input read from HBM once)
+  HW    tensor   7.90 us vector   0.89 us scalar   0.00 us hbm   2.06 us -> tensor floor 7.90 us
+  MODEL tensor   7.90 us vector   2.44 us scalar   0.91 us hbm   2.10 us -> tensor floor 10.50 us
+
+matmul M=128 K=128 N=512 float32
+  work: tensor 16.8 MFLOP, vector 0.07 M elem, scalar 0.00 M elem, HBM 576 KiB   assignment [('PSUM -> SBUF eviction', 'vector')]
+  HW    tensor   0.84 us vector   0.27 us scalar   0.00 us hbm   1.57 us -> hbm    floor 1.57 us
+  MODEL tensor   0.21 us vector   0.00 us scalar   0.43 us hbm   1.60 us -> hbm    floor 4.20 us
+
+matmul M=128 K=512 N=512 float32
+  work: tensor 67.1 MFLOP, vector 0.07 M elem, scalar 0.00 M elem, HBM 1536 KiB   assignment [('PSUM -> SBUF eviction', 'vector')]
+  HW    tensor   3.36 us vector   0.27 us scalar   0.00 us hbm   4.19 us -> hbm    floor 4.19 us
+  MODEL tensor   0.85 us vector   0.00 us scalar   0.43 us hbm   4.27 us -> hbm    floor 6.87 us
+
+matmul M=512 K=256 N=1024 float32
+  work: tensor 268.4 MFLOP, vector 0.52 M elem, scalar 0.00 M elem, HBM 3584 KiB   assignment [('PSUM -> SBUF eviction', 'vector')]
+  HW    tensor  13.42 us vector   2.13 us scalar   0.00 us hbm   9.79 us -> tensor floor 13.42 us
+  MODEL tensor   3.41 us vector   0.00 us scalar   3.41 us hbm   9.97 us -> hbm    floor 12.57 us
+
+matmul M=512 K=256 N=1024 bfloat16
+  work: tensor 268.4 MFLOP, vector 0.52 M elem, scalar 0.00 M elem, HBM 1792 KiB   assignment [('PSUM -> SBUF eviction', 'vector')]
+  HW    tensor   3.41 us vector   1.07 us scalar   0.00 us hbm   4.89 us -> hbm    floor 4.89 us
+  MODEL tensor   3.41 us vector   0.00 us scalar   3.41 us hbm   4.99 us -> hbm    floor 7.59 us
+
+matmul M=2048 K=2048 N=2048 bfloat16
+  work: tensor 17179.9 MFLOP, vector 4.19 M elem, scalar 0.00 M elem, HBM 24576 KiB   assignment [('PSUM -> SBUF eviction', 'vector')]
+  HW    tensor 218.45 us vector   8.53 us scalar   0.00 us hbm  67.11 us -> tensor floor 218.45 us
+  MODEL tensor 218.45 us vector   0.00 us scalar  27.31 us hbm  68.39 us -> tensor floor 221.05 us
