@@ -54,6 +54,8 @@ baseline 回溯校准（b39989f）：3 次解出置信度 0.90，保留集 16/16
 | 14:30– | 115 的 v7 L2/L9 跑完后：拉日志，用我们的 nkibench 对 1.0 的 kernel 做 reaudit 和保留集检查 | 执行 1 | 这几次解出在审计后还算不算数 |
 | **15:05** | **D2** v7 每个 level 对比 baseline，采用还是回滚；排第 3 轮 | 总规划 | |
 | 15:10–16:10 | **第 3 轮（最后一轮）**：v7 L2 ×5（我们的 harness）+ 针对最大剩余卡点的一处改动。16:10 没出结果的不进最终版 | 执行 1 | 按 §4 格式回报 |
+| ✅ 14:05 | token 统计加 `--usage`：从 v7 的 USAGE_LOG 取服务器给的准确 token（494d9e9） | 执行 2 | |
+| 14:08–14:30 | 模拟目标检查：baseline 和 E-A 在设 trn2、不设 trn2 两种情况下各重新打分一遍，看结果变不变 | 执行 2 | analysis/sim_target_check.md，一句结论 |
 | 15:00–16:00 | 失败加恢复素材：从日志里挑 2–3 段完整过程（失败的 kernel → checker 原话 → 回传的指令 → 修好的那一轮），附每轮 token | 执行 2 | 每段能定位到 文件/run/level/round |
 | 15:30 | 用第一份新格式日志出 token 分配图草稿 | 执行 2 | analysis/ 下 .png + .csv |
 | **16:10** | **D3** 定最终版：包含哪些 commit、最终命令行 | 总规划 + teoguo | 写进 §5 |
@@ -112,7 +114,7 @@ baseline 回溯校准（b39989f）：3 次解出置信度 0.90，保留集 16/16
 
 L1 每次都跑满 8 轮，最慢，所以拆到两个座位。最坏耗时按每轮约 55 秒、一个服务只有一个 agent 进程估算。
 
-**冻结前检查**（每个座位一行）：只有一个 vLLM，READY，启动参数和 baseline 相同（TP2/8192/seqs 4）· 没有别的 agent 进程 · `git rev-parse HEAD` 等于 tag `final` · `--selftest` PASS · `--level 4 --eval reference_level4.py` 16/16 · 旧日志已拉回 · 凭证新鲜。
+**冻结前检查**（每个座位一行）：只有一个 vLLM，READY，启动参数和 baseline 相同（TP2/8192/seqs 4）· 没有别的 agent 进程 · `git rev-parse HEAD` 等于 tag `final` · `--selftest` PASS · `--level 4 --eval reference_level4.py` 16/16 · V7.md 的 export 都设了（尤其 USAGE_LOG，最终 token 图靠它）· 旧日志已拉回 · 凭证新鲜。
 
 ## 6. 决策点
 
