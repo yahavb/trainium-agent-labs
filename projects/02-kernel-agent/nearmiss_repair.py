@@ -164,9 +164,10 @@ def main():
         record = dict(round=rnd, worst=ev["worst_waste"], progress=prg, diagnosis=diag,
                       per_case=ev["per_case"], accepted=ev["accepted"],
                       elapsed=round(time.perf_counter() - t0, 1))
-        if ev["accepted"] and ev["worst_waste"] is not None and ev["worst_waste"] < 2.0:
+        if candidate_valid(ev) and ev["worst_waste"] is not None and ev["worst_waste"] < 2.0:
             print(f"\nSOLVED: verified improvement at {ev['worst_waste']:.2f}x (all shapes "
-                  f"accepted). Winner written to {a.output}/winner.py")
+                  f"correct; level gate {'met' if ev['accepted'] else 'not met'}). Winner "
+                  f"written to {a.output}/winner.py")
             with open(os.path.join(a.output, "winner.py"), "w") as f:
                 f.write(src)
             record["outcome"] = "solved"
