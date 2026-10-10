@@ -339,6 +339,26 @@ Removed context that was too level-specific for a generic kernel agent:
 This may reduce immediate benchmark accuracy, but it is more defensible for a generic kernel-writing
 agent and avoids solution-code leakage.
 
+## Generic docs pack
+
+Removed per-level docs selection from the initial prompt.
+
+`--prompt-style docs` now passes the same generic docs pack for every level:
+
+- `api_core`
+- `dma_copy_shape`
+- `tile_rank`
+- `tile_limits`
+- `access_patterns`
+- `reduction_patterns`
+- `reduction_axis`
+- `matmul_psum`
+- `matmul_tiling`
+- `signatures`
+
+The only level-specific content left in the initial prompt is the NumPy operation reference and
+entry point, which define the task.
+
 ## Context manager improvements: keys, ledger, retrieval, report
 
 Added normalized failure keys and a compressed unique ledger.

@@ -142,14 +142,18 @@ LEVEL_START_CARDS = {
     4: [],
 }
 
-DOCS_EXTRA_CARDS = {
-    1: ["api_core", "dma_copy_shape", "tile_rank", "access_patterns", "reduction_patterns",
-        "reduction_axis", "signatures"],
-    2: ["api_core", "dma_copy_shape", "tile_rank", "signatures"],
-    3: ["api_core", "dma_copy_shape", "matmul_psum", "signatures"],
-    4: ["api_core", "dma_copy_shape", "tile_limits", "matmul_psum", "matmul_tiling",
-        "signatures"],
-}
+GENERIC_DOCS_CARDS = [
+    "api_core",
+    "dma_copy_shape",
+    "tile_rank",
+    "tile_limits",
+    "access_patterns",
+    "reduction_patterns",
+    "reduction_axis",
+    "matmul_psum",
+    "matmul_tiling",
+    "signatures",
+]
 
 
 # ---------------------------------------------------------------- reward
@@ -716,7 +720,7 @@ def prompt_accounting(reference="", code="", feedback="", cards="", ledger="", i
 def start_card_names(level, style="minimal"):
     names = list(LEVEL_START_CARDS.get(level, []))
     if style == "docs":
-        names += DOCS_EXTRA_CARDS.get(level, [])
+        names += GENERIC_DOCS_CARDS
     deduped = []
     for name in names:
         if name not in deduped:
