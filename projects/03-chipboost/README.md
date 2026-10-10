@@ -11,7 +11,7 @@ seen. It happened on two independent agent loops, P1's and P3's.
 Built at Hack the Chip (NYU × Annapurna Labs), 10 October 2026, by a team of five. Every number below is
 measured on the chip unless marked [sim]. Nothing is projected. The one-page note is [`NOTE.md`](NOTE.md).
 
-![Results summary from the dashboard](dashboard/screenshots/results.png)
+![The dashboard: headline results, the AWS bug, and the speed ladder to 5.00×](dashboard/screenshots/dashboard-top.png)
 
 ## Results at a glance
 
@@ -63,6 +63,8 @@ REFEREE (speedcheck.py), stops at the first failure:
 ```
 
 ## What each of us did
+
+![Agent optimisation by version, how the winning runs climbed, the search agent, and the winning kernels](dashboard/screenshots/dashboard-agents.png)
 
 ### P1: the referee, its feedback, and the model comparison ([likhith2366](https://github.com/likhith2366))
 
@@ -180,7 +182,7 @@ Files:
 Files: [`dashboard/index.html`](dashboard/index.html), [`dashboard/results.html`](dashboard/results.html),
 [`NOTE.md`](NOTE.md).
 
-![The full dashboard](dashboard/screenshots/dashboard-full.png)
+![Dashboard summary: speed ladder, held-out shapes, block tuning, and the referee](dashboard/screenshots/results.png)
 
 ### Review and integration ([anihal](https://github.com/anihal))
 

@@ -1252,7 +1252,7 @@ footer{color:var(--muted);font-size:11.5px;margin-top:4px}
 .hero-card svg text.big{font-size:15px}
 .hero-card svg text.ann{fill:var(--ink-1);font-size:11px;font-weight:600}
 .hero-card svg text.dot-ok{fill:#fff;font-size:10px;font-weight:700}
-.bar-plain{fill:var(--neutral-bar);opacity:.45}.bar-top{fill:var(--s3)}.bar-default{fill:var(--ink-1)}
+.bar-plain{fill:var(--neutral-bar);opacity:.45}.bar-top{fill:var(--s3)}.bar-qwen{fill:var(--s1)}.bar-default{fill:var(--ink-1)}
 .hero-wall{gap:6px;margin-top:8px}.hero-wall .chip{width:24px;height:24px;font-size:13px}
 h2.section{font-size:15px;color:var(--ink-2);font-weight:600;margin:6px 0 10px}
 main.results-only{max-width:1180px}
@@ -1537,25 +1537,53 @@ def seeded_caption(s):
             f"({names}); {'one went beyond it' if beat_seed(runs) else 'none went beyond it'}.")
 
 
+def ladder(summary, results):
+    """Start kernel -> Qwen3-8B's verified kernel -> AWS's expert -> P2's block tuning -> both physical cores."""
+    m = results["kernels"].get("matmul") or {}
+    lnc = (m.get("expert_derived") or {}).get("lnc2") or {}
+    nums = [float(x) for x in re.findall(r"([\d.]+) us", lnc.get("breakdown", ""))] +            [float(x) for x in re.findall(r"-> ([\d.]+) \(", lnc.get("breakdown", ""))]
+    s = summary.get("matmul")
+    qx = max((r["best_x"] for a in MODEL_ARMS for r in (s["arms"].get(a) or []) if r["n_verified"]), default=None) if s else None
+    if len(nums) < 4 or not qx:
+        return "", None, None
+    start, expert, tuned, both = nums[0], nums[1], nums[2], nums[3]
+    rows = [("Start kernel", "NKI tutorial matmul", start, "bar-plain"),
+            ("Qwen3-8B's kernel", "written by the model, verified", start / qx, "bar-qwen"),
+            ("AWS expert kernel", "AWS's optimised design, fp32 fix", expert, "bar-plain"),
+            ("+ block tuning (P2)", "best block sizes from the search", tuned, "bar-top"),
+            ("+ both physical cores", "LNC=2 · P2, not a referee verdict", both, "bar-top")]
+    W, L, rh = 560, 250, 46
+    H = rh * len(rows) + 8
+    top = max(start / v for _, _, v, _ in rows)
+    sx = lambda x: (W - L - 70) * x / top
+    g = []
+    for i, (name, desc, us, cls) in enumerate(rows):
+        y = 6 + i * rh
+        x = start / us
+        g.append(f'<text x="{L - 12}" y="{y + 17}" text-anchor="end" class="row-label">{esc(name)}</text>'
+                 f'<text x="{L - 12}" y="{y + 31}" text-anchor="end" class="tick">{esc(desc)}</text>'
+                 f'<g class="mark" tabindex="0" data-tip="{tip(fmt_x(x) + " the start kernel", name, f"{us:.1f} µs on the chip")}">'
+                 f'<rect x="{L}" y="{y + 8}" width="{max(sx(x), 3):.1f}" height="24" rx="4" class="{cls}"/></g>'
+                 f'<text x="{L + sx(x) + 8:.1f}" y="{y + 25}" class="value strong">{fmt_x(x)}</text>')
+    svg = f'<svg viewBox="0 0 {W} {H}" role="img" aria-label="matmul speedup ladder">{"".join(g)}</svg>'
+    return svg, qx, start / both
+
+
 def hero(summary, results, tune, sweep):
     """The page's opening: four headline numbers and four charts, every value computed from the logs."""
-    s = summary.get("matmul")
-    fb_svg, fb = hero_feedback(s) if s else ("", None)
+    lad, qx, bestx = ladder(summary, results)
     control, cheats, caught, pending = redteam_split(results["redteam"]) if results["redteam"] else ([], [], 0, 0)
     tuned = median(r["best"] for r in tune["runs"]) if tune and tune["runs"] else None
     ranks = sorted(r["rank"] for r in tune["runs"] if r.get("rank")) if tune else []
     nums = []
-    if fb:
-        nums.append((f'{fb["base_k"]} / {fb["base_n"]}', "runs reached a faster kernel with the original feedback"))
-        if fb["top"] and fb["top"][1]:
-            name, wins, rs = fb["top"]
-            nums.append((fmt_x(max(x["best_x"] for x in wins)),
-                         f"best kernel Qwen3-8B wrote, verified on the chip · {len(wins)} of {len(rs)} runs with "
-                         f"{name}"))
+    if qx:
+        nums.append((fmt_x(qx), "Qwen3-8B made its own matmul faster on the chip · verified, two agents (P1, P3)"))
+    if bestx:
+        nums.append((fmt_x(bestx), "fastest matmul on the chip: AWS design + P2's block tuning + both cores"))
     if tuned:
-        nums.append((f"{(tuned - 1) * 100:+.0f}%", "block tuning over AWS's default, median of 3 runs"))
+        nums.append((f"{(tuned - 1) * 100:+.0f}%", "P2's block tuning over AWS's default, median of 3 runs"))
     if cheats:
-        nums.append((f"{caught} / {len(cheats)}", f"planted cheats caught · {sum(c['state'] == 'pass' for c in control)}"
+        nums.append((f"{caught} / {len(cheats)}", f"planted cheats caught by P1's referee · {sum(c['state'] == 'pass' for c in control)}"
                                                  f" / {len(control)} honest kernels accepted"))
     strip = '<div class="hero-nums">' + "".join(
         f'<div class="hero-num"><div class="n">{esc(v)}</div><div class="c">{esc(c)}</div></div>' for v, c in nums) + "</div>"
@@ -1568,10 +1596,10 @@ def hero(summary, results, tune, sweep):
             '<p class="how wall-key">✓ caught · ✗ missed · – not caught, gained no speed · round ✓ honest kernel '
             'accepted</p>')
     cards = [
-        ("Feedback decides whether the loop works",
-         "One dot per run of Qwen3-8B (8 attempts each), from the start kernel. Green: the run produced a kernel the "
-         "referee verified faster on the chip and correct on unseen shapes." + seeded_caption(s), fb_svg),
-        ("Correct on shapes it never saw",
+        (f"From the start kernel to {fmt_x(bestx)}" if bestx else "Speedups",
+         "Matmul speed on the Trainium2 chip, Qwen3-8B's shapes, against the NKI tutorial kernel. Hover a bar for "
+         "its time.", lad),
+        ("Correct on shapes it never saw, and a bug in AWS's kernel",
          "Speedup over the start kernel at 6 held-out shapes with hostile inputs. Red: wrong at that shape "
          "(bf16 ulps against a limit of 4).", hero_heldout(results)),
         (f"Block tuning: {(tuned - 1) * 100:+.0f}% over AWS's default" if tuned else "Block tuning",
@@ -1659,6 +1687,15 @@ projections, if any, are labelled as such.</footer>
 """
 
 
+def d3_dashboard(records, results, inputs, sweep):
+    import d3page
+    summary = summarize(records)
+    tune = tuning(summary, list(sweep))
+    meta = (f"Built {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')} · {len(records):,} attempts · "
+            f"{len(inputs)} files · measured on the chip")
+    return d3page.page(d3page.data(sys.modules[__name__], summary, results, tune, list(sweep), records, meta))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("logs", nargs="*", help="attempts*.jsonl files (default: every one under 03-chipboost/)")
@@ -1723,7 +1760,7 @@ def main():
 
     out = Path(a.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(build(records, results, notes, fake, inputs, sweep), encoding="utf-8")
+    out.write_text(d3_dashboard(records, results, inputs, sweep), encoding="utf-8")   # the D3 dashboard
     # The results alone, beside it: what the README's screenshots are taken from.
     (out.parent / "results.html").write_text(build(records, results, notes, fake, inputs, sweep, results_only=True),
                                              encoding="utf-8")
