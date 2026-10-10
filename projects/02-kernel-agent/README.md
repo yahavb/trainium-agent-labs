@@ -632,3 +632,59 @@ specify the constraints in the prompt and it produces nothing; omit them and it 
 confident and illegal. What worked was generating naively, letting the **verifier** find the violation,
 and sending back one surgical instruction naming only the change. **Constraints belong in your
 verifier, not in your generation prompt.** Project 1 hit the same wall three more times.
+
+
+---
+
+## Added tooling (team plan implementation)
+
+Everything below is **off by default**, so the baseline runs exactly as before. Each lever is a
+flag, so the baseline stays runnable and every change is attributable (experiment protocol rule 1).
+
+### Measurement
+```bash
+./run_exp.sh base_L4 --level 4 --rounds 8 --samples 4 --context 8192 --repeat 5
+python analyze.py logs/base_L4.jsonl        # solve RATE + 95% CI, taxonomy, prompt-segment sizes
+python read_failures.py logs/base_L4.jsonl --worst   # read the failing kernels
+```
+`agent.py` now logs `exp`, `run`, `sample`, `t` and `seg_chars` on every line (needed to split a
+`--repeat` log into runs and to plot where the prompt tokens went). Always run through
+`run_exp.sh` or pass `--exp`/`--log`.
+
+### Agent levers (plan Tier 1–2)
+```bash
+python agent.py --level 3 --tools doc                 # DOC: <name> -> real NKI signature + docstring
+python agent.py --level 3 --tools doc,probe           # also ```probe``` snippets under nki.simulate
+python agent.py --level 4 --tiles                     # offer nkitile.tiles(n,size) as a helper
+python agent.py --all   --skills                      # curriculum: solved kernels seed later levels
+python agent.py --level 2 --beam 2                    # repair top-2 distinct candidates each round
+python agent.py --level 2 --temperature 0.7 --top-p 0.8 --top-k 20   # Qwen non-thinking sampling
+```
+Tools are a *utility the model aims itself*, not a hint or the answer — DOC answers exactly what was
+asked, PROBE lets it run a 5-line experiment, `tiles` gets the ragged edge right by construction.
+
+### Held-out generalisation set
+```bash
+python agent.py --heldout --rounds 8 --samples 4 --context 8192 --repeat 3
+```
+Levels 10–13: ragged matmul, elementwise relu-affine (control), row-wise softmax (hostile ±180
+inputs), RMSNorm (all-zero hostile row). Never tune feedback on these — they measure whether the
+agent generalises.
+
+### Honesty: kill matrix + calibration ladder
+```bash
+python mutants.py --rules-only          # off-device: 5 planted bugs the static scan must catch
+python mutants.py                       # in the pod: adds the numeric mutants
+python agent.py --all --calibration     # labels each solved kernel VERIFIED-COMPILED / SIMULATED-* / FAILED
+python calibrate.py skills/level4.py --level 4   # fresh-seed re-check + compile gate on one kernel
+```
+
+### Deliverable scaffolds
+`CHECKER.md` (what the checker accepts/rejects and why, + the kill matrix) and `NOTE.md` (the
+one-page result with rates and spread) are ready to fill in.
+
+### What needs the pod / a device
+`nkibench.py`'s simulation, `tools.py` PROBE, `mutants.py` numeric rows, and `calibrate.py`'s
+compile/device rungs all import `nki`. They degrade with a clear message off-device; run them in a
+seat pod to exercise them for real. On-device **timing** (layers 2–3) is still not built — see the
+plan's S2.

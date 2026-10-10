@@ -33,6 +33,8 @@ import time
 import numpy as np
 
 import nkibench
+import skills
+import tools as agent_tools
 
 MODEL = os.environ.get("KERNEL_AGENT_MODEL", "Qwen/Qwen3-8B")
 
@@ -134,11 +136,11 @@ def grade(source, level):
                     f"CANNOT SIMULATE: {e}")
         except Exception as e:
             failures.append((nkibench.label(case, level),
-                             enrich(f"raised {type(e).__name__}: {e}", level=level)))
+                             enrich(f"raised {type(e).__name__}: {e}", level)))
             continue
         parts["runs"] = True
         m = (nkibench.check_inputs_untouched(before, args)
-             or nkibench.describe_mismatch(got, want)
+             or nkibench.describe_mismatch(got, want, op=spec["op"])
              or nkibench.check_traffic_bar(level, counted, args, want))
         # A simulator warning about a hardware-correctness hazard counts as a failure even when the
         # numbers happen to match on CPU: the kernel would be wrong on the device.
@@ -155,7 +157,7 @@ def grade(source, level):
                              enrich(m, level=level) if level == 4 else m))
             continue
         passed += 1
-        if level >= 3 and counted["bytes"]:
+        if level >= 3 and counted["bytes"] and {"M", "K", "N"} <= set(case):
             intensity = nkibench.roofline(
                 nkibench.matmul_flops(case["M"], case["K"], case["N"]), counted["bytes"])
 
@@ -180,6 +182,9 @@ def grade(source, level):
 # tile.mean -- none of which exist. A short card of what IS real costs ~200 tokens and is
 # documentation rather than the answer.
 API_CARD = """Available NKI functions:
+
+  This is NKI 0.6 (import nki). There is no neuronxcc, no nl.mgrid or nl.arange, and nisa.* calls
+  take dst= and return nothing (do not assign their result).
 
   @nki.jit                                  decorate the entry point
   nl.ndarray(shape, dtype=..., buffer=b)    allocate; b is nl.sbuf, nl.psum or nl.shared_hbm
@@ -215,139 +220,31 @@ def copy_kernel(a):
 """
 
 
-TILED_MATMUL_METHOD = """Read K, M = lhsT.shape and K_rhs, N = rhs.shape; return an (M, N) output.
-Tile all three dimensions: K at most 128, M at most 128, N at most 512 per tile.
-For each (M, N) output tile, allocate ONE float32 PSUM tile outside its K loop.
-Accumulate all K tiles into it, then copy and store the completed output tile.
-Use ceiling division (size+tile_size-1)//tile_size and Python min for edge sizes.
-M=128 must execute an M tile; M//512 is zero and leaves output unwritten.
-Slice lhsT as [k_start:k_end, m_start:m_end], since its axes are (K, M).
-"""
+# A shape/role contract for average pooling, mirroring the dedicated-card pattern used for the
+# matmul levels. Measured on level 1: the model sizes its SBUF tile to the OUTPUT and copies the
+# whole INPUT in (dma_copy src>dst), because nothing tells it that pooling loads the full input and
+# reduces afterwards. The card gives each tile a role, shape and buffer, so the roles cannot blur.
+POOL_SHAPES = ("The input is (C, H, W); the output is (C, H // pool_size, W // pool_size). "
+               "Pooling does NOT shrink the data on load -- it loads everything, then reduces.")
 
-TILED_MATMUL_API_CARD = """Use separate buffers with these tile shapes:
-  stationary input SBUF: (tile_k, tile_m), loaded from lhsT's K and M ranges
-  moving input SBUF:     (tile_k, tile_n), loaded from rhs's K and N ranges
-  accumulator PSUM:     (tile_m, tile_n), dtype nl.float32
-  result SBUF:          (tile_m, tile_n), dtype lhsT.dtype
-  returned shared HBM:  (M, N), dtype lhsT.dtype
-Allocate with nl.ndarray(shape, dtype=..., buffer=region), choosing nl.sbuf,
-nl.psum or nl.shared_hbm for the region according to the buffer's role.
-Use nl.affine_range for tile loops; derive bounds and partial-tile sizes from
-the input dimensions. Every DMA source slice must match its destination tile.
-Inside the K loop, dma_copy both input tiles, then call
-nisa.nc_matmul(dst=accumulator, stationary=left_tile, moving=right_tile).
-After that loop, use nisa.tensor_copy(dst=result_sbuf, src=accumulator).
-The result SBUF must match the accumulator's shape, not an input tile's shape.
-Store it with nisa.dma_copy into the matching M and N slice of the HBM output.
-"""
+POOL_API_CARD = """Allocate tiles with these roles -- do not reuse one for another:
+  in_tile:  shape in_tensor.shape = (C, H, W),              dtype in_tensor.dtype, buffer nl.sbuf
+  out_tile: shape (C, H // pool_size, W // pool_size),       dtype in_tensor.dtype, buffer nl.sbuf
+  output:   shape (C, H // pool_size, W // pool_size),       dtype in_tensor.dtype, buffer nl.shared_hbm
 
-
-# Escalation aid for repeated level-4 failures. This is a scaffold, not a fallback
-# implementation: the model must complete it, and every candidate still goes through
-# the normal rules, simulator and numeric checks.
-TILED_MATMUL_SKELETON = """Use this structure to repair the kernel. Fill every TODO; do not use
-fixed test-shape sizes. The level's shapes are divisible by these hardware tile limits.
-
-```python
-@nki.jit
-def nki_matmul_tiled_(lhsT, rhs):
-    K, M = lhsT.shape
-    K_rhs, N = rhs.shape
-    assert K == K_rhs
-    TILE_M = nl.tile_size.gemm_stationary_fmax
-    TILE_K = nl.tile_size.pmax
-    TILE_N = nl.tile_size.gemm_moving_fmax
-    out = nl.ndarray((M, N), dtype=lhsT.dtype, buffer=nl.shared_hbm)
-
-    for mi in nl.affine_range(M // TILE_M):
-        m0 = mi * TILE_M
-        for ni in nl.affine_range(N // TILE_N):
-            n0 = ni * TILE_N
-            # Allocate this ONCE per output tile, before the K loop.
-            acc = nl.ndarray((TILE_M, TILE_N), dtype=nl.float32, buffer=nl.psum)
-            for ki in nl.affine_range(K // TILE_K):
-                k0 = ki * TILE_K
-                # TODO: allocate SBUF operands (TILE_K,TILE_M) and (TILE_K,TILE_N),
-                # then DMA matching lhsT and rhs slices into them.
-                # TODO: nc_matmul adds this K tile into the same acc PSUM.
-                pass
-            # TODO: allocate a result SBUF (TILE_M,TILE_N), tensor_copy acc into it,
-            # then DMA it to out[m0:m0+TILE_M, n0:n0+TILE_N].
-    return out
-```
-TRANSPOSE_METHOD = """Transpose the two free axes WITHIN each partition row. The input and output
-both have shape [P, F1*F2]; shape2D contains the Python integers (F1, F2).
-Keep partition rows in place. A row-major position (i, j) becomes position (j, i)
-in a flattened F2-by-F1 output row. Derive each flat offset using that row's width.
-"""
-
-TRANSPOSE_API_CARD = """NKI transpose primitives:
-  Work tiles live in SBUF: nl.ndarray((rows, F), dtype=x.dtype, buffer=nl.sbuf). Only the
-    returned `out` uses shared_hbm. Never write to x, and end with `return out`.
-  Move ALL rows at once with full-partition column views tile[:, nl.ds(c, 1)]; a view that
-    covers only partition 0 leaves the other rows unwritten (NaN).
-  Allocate input and output SBUF tiles with shape (rows, F), where F=x.shape[1].
-  Use the actual partition count: rows=min(128, P-start), using Python min.
-  nisa.dma_copy(dst=input_tile, src=x[start:start+rows, :]) loads a matching tile.
-  For SBUF-to-SBUF element movement, use nisa.tensor_copy(dst=, src=).
-  tile[:, nl.ds(offset, 1)] selects one free-axis column and preserves a 2-D tile.
-  Iterate the F1 and F2 positions with nl.affine_range and derive source and
-    destination offsets separately. Write into a separate output SBUF tile.
-  nisa.dma_copy(dst=out[start:start+rows, :], src=output_tile) stores the tile.
-  out is nl.ndarray(x.shape, dtype=x.dtype, buffer=nl.shared_hbm).
-Shape sizes and offsets are Python integers; nl.min/nl.max reduce tensors.
-"""
-
-
-def transpose_result_hint(msg):
-    """Level 2 only: say WHY the checker's generic verdict happened for a transpose kernel.
-
-    Measured on seat 21: kernels wrote the result back into x with dma_copy(dst=x[...]) and
-    returned x or nothing ("MODIFIED ITS INPUT"), and kernels that copied only partition 0 with
-    tile[nl.ds(0, 1), c] left every other row uninitialised ("NON-FINITE", first NaN at row 1).
-    The generic messages blame PSUM or give no cause, so the model repeated both.
-    """
-    if "THE KERNEL MODIFIED ITS INPUT" in msg:
-        return (msg + " For this level: do not use x as a destination anywhere (no "
-                "dma_copy(dst=x[...]), no x[...] = ...). Load x into an SBUF tile, build the "
-                "transposed row layout in a SECOND SBUF tile, then "
-                "out = nl.ndarray(x.shape, dtype=x.dtype, buffer=nl.shared_hbm); "
-                "nisa.dma_copy(dst=out, src=output_tile); return out.")
-    if "NON-FINITE OUTPUT" in msg:
-        return (msg + " For this level the cause is output memory that was never written, not "
-                "PSUM. Two common ways: (1) a view like tile[nl.ds(0, 1), c] or "
-                "output_tile[i, c] touches one partition only; (2) the copies write into the "
-                "INPUT tile (e.g. input_tile[...] = input_tile[...]) so the output tile that is "
-                "stored stays empty. Every copy must read from the input tile and write the "
-                "output tile, on whole-partition column views: "
-                "nisa.tensor_copy(dst=output_tile[:, nl.ds(j*F1+i, 1)], "
-                "src=input_tile[:, nl.ds(i*F2+j, 1)]) for each (i, j). Then "
-                "nisa.dma_copy(dst=out, src=output_tile) with the full (rows, F) tile.")
-    return msg
-
-
-MATMUL_SHAPES = """This is a single-tile matmul. Read K, M = lhsT.shape and K_rhs, N = rhs.shape.
-The input shapes are (K, M) and (K, N); the output shape is (M, N).
-lhsT.shape[1:] is only (M,), so it is not a valid result shape.
-The left input already has the layout nc_matmul needs: K is the partition axis
-of BOTH inputs. The supported level-3 inputs fit one hardware tile.
-"""
-
-MATMUL_API_CARD = """Allocate separate tiles for these roles:
-  left:   shape (K, M), dtype lhsT.dtype, buffer nl.sbuf
-  right:  shape (K, N), dtype rhs.dtype,  buffer nl.sbuf
-  accum:  shape (M, N), dtype nl.float32, buffer nl.psum
-  result: shape (M, N), dtype lhsT.dtype, buffer nl.sbuf
-  output: shape (M, N), dtype lhsT.dtype, buffer nl.shared_hbm
-Use nl.ndarray(shape, dtype=..., buffer=...) for allocations.
-Load each input into its own matching SBUF tile with nisa.dma_copy(dst=, src=).
-Keep both input tiles alive until matmul: loading rhs into the left tile overwrites
-lhsT. Allocate from each input shape, not fixed hardware maxima.
-Call nisa.nc_matmul(dst=accum, stationary=left, moving=right).
-Copy accum to the separate result SBUF tile with nisa.tensor_copy(dst=, src=),
-then store result to output with nisa.dma_copy(dst=, src=) and return output.
-Both result copies preserve the (M, N) shape; an input tile has a different role
-and shape, so using it as the result buffer loses the required dimensions.
+The sequence:
+  1. in_tile = nl.ndarray(in_tensor.shape, dtype=in_tensor.dtype, buffer=nl.sbuf)
+     nisa.dma_copy(dst=in_tile, src=in_tensor)        # load the FULL input, no shrinking
+  2. build a strided view that groups each pool_size x pool_size window onto the LAST two axes:
+     view = in_tile.ap([[H*W, C], [pool_size*W, H//pool_size], [pool_size, W//pool_size],
+                        [W, pool_size], [1, pool_size]])
+  3. summed = nl.sum(view, axis=[3, 4])              # reduce over the two pool axes
+  4. out_tile = nl.ndarray(summed.shape, dtype=in_tensor.dtype, buffer=nl.sbuf)
+     nisa.tensor_scalar(dst=out_tile, data=summed, op0=nl.multiply,
+                        operand0=1.0 / (pool_size * pool_size))   # average = sum / pool_size^2
+  5. output = nl.ndarray(out_tile.shape, dtype=in_tensor.dtype, buffer=nl.shared_hbm)
+     nisa.dma_copy(dst=output, src=out_tile); return output
+Derive C, H, W from in_tensor.shape; do not hard-code sizes.
 """
 
 
@@ -394,20 +291,28 @@ def real_signature(func_name):
 
 def enrich(error_text, level=None):
     """Add the real names when the failure is an invented API call."""
-    if level == 4 and (
-            "NON-FINITE OUTPUT" in error_text
-            or "module 'nki.isa' has no attribute 'fill'" in error_text
-            or "module 'nki.language' has no attribute 'temporary'" in error_text):
-        return (error_text + " Check whether the output-writing loops execute: "
-                "M=128 with M//512 gives zero iterations, leaving all output unwritten. "
-                "Use tile_m<=128 and ceiling division for tile counts, with bounded "
-                "edge slices. Allocate one PSUM per (M, N) tile outside its K loop; "
-                "load both operands, perform nc_matmul for every K tile, then "
-                "tensor_copy to a matching SBUF and dma_copy to the output slice. "
-                "The shipped matmul pattern needs no manual fill. nisa.fill and "
-                "nl.temporary do not exist, and copying a fresh uninitialized "
-                "ndarray does not initialize anything to zero. Ensure every "
-                "output element is written before returning.")
+    # Wrong number of entry-point parameters. Measured: the model wrote def ...(x) for a level
+    # whose reference takes (x, pool_size), so the harness passed 2 args to a 1-arg function. Name
+    # the exact signature the entry point must have -- it is the reference's, verbatim.
+    m = re.search(r"(\w+)\(\) takes (\d+) positional arguments? but (\d+) (?:was|were) given",
+                  error_text)
+    if m and level is not None:
+        import inspect
+        ref = nkibench.LEVELS[level]["ref"]
+        params = list(inspect.signature(ref).parameters)
+        entry = nkibench.LEVELS[level]["entry"]
+        return (error_text + f" The entry point must accept the SAME arguments as the reference: "
+                f"write `def {entry}({', '.join(params)}):`. The harness calls your kernel with "
+                f"{len(params)} argument(s) ({', '.join(params)}), so a signature with fewer "
+                f"parameters raises this. Keep all of them even if the shape is implied by a tensor.")
+    m = re.search(r"(\w+)\(\) missing \d+ required positional argument", error_text)
+    if m and level is not None:
+        import inspect
+        ref = nkibench.LEVELS[level]["ref"]
+        params = list(inspect.signature(ref).parameters)
+        entry = nkibench.LEVELS[level]["entry"]
+        return (error_text + f" Your entry point declares more parameters than the harness passes. "
+                f"Use exactly the reference's signature: `def {entry}({', '.join(params)}):`.")
     if "'MemoryRegion' object is not callable" in error_text:
         return (error_text + " nl.sbuf, nl.psum and nl.shared_hbm are memory regions, not "
                 "functions. Do not call them. Allocate with "
@@ -428,28 +333,21 @@ def enrich(error_text, level=None):
                   r"got src=(\d+), dst=(\d+)", error_text)
     if m:
         src, dst = int(m.group(1)), int(m.group(2))
-        if level == 4:
-            return (error_text + f" This copy moves {src} elements into a {dst}-element tile. "
-                    "For tiled matmul, match lhsT slices to (tile_k, tile_m) SBUF tiles "
-                    "and rhs slices to (tile_k, tile_n) SBUF tiles. Match each result "
-                    "tile to an output slice of (tile_m, tile_n). Tile M and N as well "
-                    "as K; copying a whole input only works when that input fits one tile.")
-        if level == 2:
-            return (error_text + " Input x has shape (P, F1*F2), not (F1, F2). "
-                    "Load x[start:start+rows, :] into a (rows, F1*F2) SBUF tile, "
-                    "where rows=min(128, P-start). A single row slice must retain "
-                    "shape (1, F1*F2). Do not shrink the destination to (F1, F2) "
-                    "while copying all P rows, or crop x to x[:F1, :F2]: that loses "
-                    "partitions and free-axis values. Transpose within each row "
-                    "into a separate same-shaped SBUF, then DMA matching rows out.")
-        if level == 3:
-            return (error_text + f" The source has {src} elements but the destination has {dst}. "
-                    "For this single-tile matmul, load lhsT into a (K, M) SBUF tile and rhs "
-                    "into a different (K, N) SBUF tile. The PSUM result, result SBUF tile "
-                    "and returned HBM output must all be (M, N). Derive K and M from "
-                    "lhsT.shape and N from rhs.shape[1]; match each copy to its own tensor. "
-                    "Keep the two input buffers distinct: loading rhs into the same "
-                    "buffer or an overlapping view destroys lhsT before matmul.")
+        if level == 1 and src > dst:
+            # Measured on level 1: the model sized the SBUF tile to the OUTPUT (pooled) shape and
+            # then copied the whole INPUT into it (src=32768 into dst=16384). Pooling does not shrink
+            # on load -- it loads everything and reduces afterwards. Name that idiom.
+            return (error_text + f" You copied {src} input elements into a tile that holds only "
+                    f"{dst}, which is the OUTPUT (pooled) size. Average pooling does not shrink the "
+                    f"data when it loads it -- it loads the FULL input, then reduces. So: allocate "
+                    f"the SBUF tile with the INPUT's own shape, "
+                    f"in_tile = nl.ndarray(in_tensor.shape, dtype=in_tensor.dtype, buffer=nl.sbuf), "
+                    f"and nisa.dma_copy(dst=in_tile, src=in_tensor). The averaging happens AFTER the "
+                    f"load: build a strided view of the pool windows with in_tile.ap([...]) that "
+                    f"groups each pool_size x pool_size window onto the last axes, then "
+                    f"nl.sum(view, axis=[...]) over those axes and scale by 1/(pool_size*pool_size). "
+                    f"The separate, smaller OUTPUT tile is what you write the reduced result into "
+                    f"before dma_copy'ing it out.")
         return (error_text + f" The tile you allocated holds {dst} elements but you copied {src} "
                 f"into it. nisa.dma_copy does not slice or broadcast: allocate the destination with "
                 f"EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a "
@@ -585,7 +483,49 @@ def enrich(error_text, level=None):
                 f"`{m.group(2)}`. Use the nl/nisa functions instead.")
     return error_text
 
-def first_prompt(level, terse=0):
+def _assemble(a, segments):
+    """Join named prompt segments, dropping empties, and record their sizes on `a` for logging.
+
+    The challenge doc calls a plot of tokens-per-segment "the single most interesting artifact you
+    can bring", so every prompt is built from named parts and their char counts are logged.
+    """
+    a._last_seg = {k: len(v) for k, v in segments.items() if v}
+    return "\n\n".join(v for v in segments.values() if v)
+
+
+def _extras(a, level):
+    """Optional prompt segments from the flag-gated tools: the tiling helper and the skill example.
+    Both are offered as utilities/templates, never as the answer."""
+    tiles_seg = ""
+    if getattr(a, "tiles", False) and level >= 3:
+        tiles_seg = (
+            "You MAY use a tiling helper: `from nkitile import tiles`. `tiles(n, size)` returns a "
+            "list of (start, length) pairs covering 0..n, the last one partial when n is not a "
+            "multiple of size, e.g. tiles(300, 128) == [(0,128),(128,128),(256,44)]. Loop over it "
+            "to cover a dimension in tiles and get the ragged final tile right automatically:\n"
+            "  for m0, mm in tiles(M, 128):\n"
+            "      ...  # allocate a tile of the chunk's own size mm and slice [m0:m0+mm]\n"
+            "You still choose the loops, the layout, the PSUM accumulation and the copy-out.")
+    skill_seg = skills.example_block(level) if getattr(a, "skills", False) else ""
+    return tiles_seg, skill_seg
+
+
+def _tools_preamble(a):
+    """Instruction telling the model it may call the enabled tools before writing code."""
+    bits = []
+    if "doc" in a.tools:
+        bits.append("To check an API, write a line `DOC: <name>` (e.g. `DOC: nisa.nc_matmul`), up "
+                    "to 3, and you will be given the real signature and docstring.")
+    if "probe" in a.tools:
+        bits.append("To test an idea, put a tiny @nki.jit snippet in a ```probe``` block (up to 2); "
+                    "it is run under nki.simulate and you get its printed shapes/values/errors.")
+    if not bits:
+        return ""
+    return ("Before writing the kernel you may use these tools; ask only what you are unsure of, "
+            "then write the kernel.\n" + "\n".join("- " + b for b in bits))
+
+
+def first_prompt(level, terse=0, a=None):
     """Deliberately short, and it does NOT list the rules.
 
     Measured twice in this repo: hand a model an enumerated list of prohibitions and it audits
@@ -595,50 +535,19 @@ def first_prompt(level, terse=0):
     """
     s = nkibench.LEVELS[level]
     import inspect
-    if level == 4:
-        card = TILED_MATMUL_API_CARD if terse == 0 else (
-            "Use distinct (tile_k, tile_m) and (tile_k, tile_n) input SBUF tiles, "
-            "a (tile_m, tile_n) float32 PSUM accumulator and a separate matching "
-            "result SBUF tile. dma_copy loads inputs; nc_matmul accumulates; "
-            "tensor_copy transfers PSUM to result SBUF; dma_copy stores its output slice.\n")
-        if terse >= 2:
-            card = "Copy each completed PSUM tile into a separate same-shaped SBUF tile, then DMA it to its output slice.\n"
-        return (
-            f"Write an NKI kernel `{s['entry']}` decorated with @nki.jit.\n"
-            f"Match this NumPy reference:\n\n{inspect.getsource(s['ref'])}\n"
-            f"{TILED_MATMUL_METHOD}\n{card}\n"
-    if level == 2:
-        card = TRANSPOSE_API_CARD if terse == 0 else (
-            "Use shape-derived (rows, F) SBUF tiles and matching dma_copy slices. "
-            "Use nisa.tensor_copy with tile[:, nl.ds(offset, 1)] for column moves. "
-            "Use Python min for integer bounds; nl.min is a tensor reduction.\n")
-        if terse >= 2:
-            card = "Copy columns with nisa.tensor_copy and nl.ds(offset, 1); keep tile sizes equal to their slices.\n"
-        return (
-            f"Write an NKI kernel `{s['entry']}` decorated with @nki.jit.\n"
-            f"Match this NumPy reference:\n\n{inspect.getsource(s['ref'])}\n"
-            f"{TRANSPOSE_METHOD}\n{card}\n"
-    if level == 3:
-        card = MATMUL_API_CARD if terse == 0 else (
-            "Use separate input SBUF tiles, a float32 (M, N) PSUM tile, and separate "
-            "(M, N) result SBUF and HBM tiles. dma_copy loads inputs; "
-            "nc_matmul(dst=, stationary=, moving=) writes PSUM; tensor_copy moves "
-            "PSUM to result SBUF; dma_copy stores the result in HBM.\n")
-        if terse >= 2:
-            card = "Use nc_matmul into float32 PSUM, tensor_copy into a separate (M, N) SBUF tile, then dma_copy to HBM.\n"
-        return (
-            f"Write an NKI kernel `{s['entry']}` decorated with @nki.jit.\n"
-            f"Match this NumPy reference:\n\n{inspect.getsource(s['ref'])}\n"
-            f"{MATMUL_SHAPES}\n{card}\n"
-            f"Import nki, nki.language as nl, and nki.isa as nisa. "
-            f"Reply with ONE complete python code block.")
+    tiles_seg, skill_seg = _extras(a, level) if a is not None else ("", "")
+    tools_seg = _tools_preamble(a) if a is not None else ""
     if terse >= 2:
         # Last resort. Measured on this endpoint: one-sentence prompts answered in 300-700
         # tokens while every structured, rule-carrying prompt spiralled.
-        return (f"Write a Python function `{s['entry']}` decorated with @nki.jit that computes "
-                f"the same thing as this, using nki.language as nl and nki.isa as nisa:\n\n"
-                f"{inspect.getsource(s['ref'])}\n"
-                f"Reply with one python code block.")
+        pool_hint = (" The input is (C,H,W); the output is (C,H//p,W//p); load the FULL input then "
+                     "reduce each pxp window, never size the loaded tile to the output."
+                     if level == 1 else "")
+        return _assemble(a or _Dummy(), dict(
+            task=(f"Write a Python function `{s['entry']}` decorated with @nki.jit that computes "
+                  f"the same thing as this, using nki.language as nl and nki.isa as nisa:\n\n"
+                  f"{inspect.getsource(s['ref'])}{pool_hint}"),
+            reply="Reply with one python code block."))
     if terse >= 1:
         # The matmul memory rules are the substance of levels 3 and 4, and the short prompt has to
         # carry them: measured, the agent cycled between "dst must be in ['psum']" and "moving must
@@ -646,70 +555,62 @@ def first_prompt(level, terse=0):
         mm = ("nisa.nc_matmul(dst=, stationary=, moving=) needs dst in nl.psum and both operands "
               "in nl.sbuf. So: dma_copy the operands HBM->sbuf, allocate a psum tile, nc_matmul "
               "into it, tensor_copy psum->sbuf, then dma_copy sbuf->the shared_hbm output you "
-              "return. The left operand is already transposed, with K on the partition axis.\n"
+              "return. The left operand is already transposed, with K on the partition axis."
               if level >= 3 else "")
-        return (f"Write an AWS Neuron NKI kernel: a function `{s['entry']}` decorated with "
-                f"@nki.jit that computes what this reference computes.\n\n"
-                f"{inspect.getsource(s['ref'])}\n"
-                f"Allocate with nl.ndarray(shape, dtype=..., buffer=nl.sbuf), move data with "
-                f"nisa.dma_copy(dst=, src=), loop with nl.affine_range(n). A tile's partition "
-                f"dimension is at most {nkibench.PMAX}.\n{mm}\n"
-                f"Reply with one python code block.")
-    return (
-        f"Write an AWS Neuron NKI kernel.\n\n"
-        f"Operation: {s['op']}\n"
-        f"Entry point: a function named `{s['entry']}`, decorated with `@nki.jit`.\n"
-        f"It must compute exactly what this NumPy reference computes:\n\n"
-        f"{inspect.getsource(s['ref'])}\n"
-        f"Hardware limits: a tile's partition dimension is at most {nkibench.PMAX}. For matmul, "
-        f"the stationary free dimension is at most {nkibench.GEMM_STATIONARY_FMAX} and the "
-        f"moving free dimension at most {nkibench.GEMM_MOVING_FMAX}.\n\n"
-        f"Import nki, nki.language as nl, and nki.isa as nisa.\n\n{API_CARD}\n\n"
-        f"Reply with ONE python code block containing the imports and the function. No prose.")
+        # Level 1's substance is the pooling access pattern: load the whole input, reduce after.
+        pool = (POOL_SHAPES + " Load the full input into an in_tensor.shape SBUF tile, then build "
+                "an in_tile.ap([...]) view that groups each pool window onto the last axes and "
+                "nl.sum over them, scaling by 1/(pool_size*pool_size). Write that into a SEPARATE "
+                "smaller output tile." if level == 1 else "")
+        return _assemble(a or _Dummy(), dict(
+            task=(f"Write an AWS Neuron NKI kernel: a function `{s['entry']}` decorated with "
+                  f"@nki.jit that computes what this reference computes.\n\n"
+                  f"{inspect.getsource(s['ref'])}"),
+            rules=(f"Allocate with nl.ndarray(shape, dtype=..., buffer=nl.sbuf), move data with "
+                   f"nisa.dma_copy(dst=, src=), loop with nl.affine_range(n). A tile's partition "
+                   f"dimension is at most {nkibench.PMAX}."),
+            matmul=mm, pool=pool, tiles=tiles_seg, skill=skill_seg, tools=tools_seg,
+            reply="Reply with one python code block."))
+    # Level 1 gets the dedicated pooling card instead of the generic API card, mirroring the
+    # matmul levels' dedicated card -- same pattern, different operation.
+    pool_card = (POOL_SHAPES + "\n\n" + POOL_API_CARD) if level == 1 else ""
+    return _assemble(a or _Dummy(), dict(
+        task=(f"Write an AWS Neuron NKI kernel.\n\n"
+              f"Operation: {s['op']}\n"
+              f"Entry point: a function named `{s['entry']}`, decorated with `@nki.jit`.\n"
+              f"It must compute exactly what this NumPy reference computes:\n\n"
+              f"{inspect.getsource(s['ref'])}"),
+        rules=(f"Hardware limits: a tile's partition dimension is at most {nkibench.PMAX}. For "
+               f"matmul, the stationary free dimension is at most {nkibench.GEMM_STATIONARY_FMAX} "
+               f"and the moving free dimension at most {nkibench.GEMM_MOVING_FMAX}.\n\n"
+               f"Import nki, nki.language as nl, and nki.isa as nisa."),
+        api_card=pool_card or API_CARD, tiles=tiles_seg, skill=skill_seg, tools=tools_seg,
+        reply="Reply with ONE python code block containing the imports and the function. No prose."))
 
 
-def repair_prompt(level, source, feedback, scaffold=False):
+class _Dummy:
+    """Lets first_prompt record segment sizes even when no args object is passed (e.g. a test)."""
+    _last_seg = {}
+
+
+def repair_prompt(level, source, feedback, a=None, ledger=""):
     """One named change, and the previous code. No rules list, no reference re-sent.
 
     The lesson this whole repo keeps re-learning: feeding a verifier's report back verbatim
     reproduces the same mistake, because a report says what is wrong and never what to do.
     """
-    if level == 4:
-        return (
-            f"Repair this tiled NKI matmul:\n\n```python\n{source}\n```\n\n"
-            f"A checker reports:\n{feedback}\n\n"
-            f"{TILED_MATMUL_METHOD}\n{TILED_MATMUL_API_CARD}\n"
-            f"Return a COMPLETE REPLACEMENT FILE, not a function fragment. It MUST begin "
-            f"with these exact imports, in this order, before any decorator or function:\n"
-            f"import nki\n"
-            f"import nki.language as nl\n"
-            f"import nki.isa as nisa\n\n"
-            f"Then include @nki.jit followed by the complete {nkibench.LEVELS[level]['entry']} function.\n"
-            f"{TILED_MATMUL_SKELETON if scaffold else ''}\n"
-            f"Fix the reported failure, buffer allocations and missing or zero-iteration tile loops. "
-            f"Preserve the entry point, arguments and required output dtype. "
-            f"Reply with ONE python code block containing the whole replacement file.")
-    if level == 2:
-        return (
-            f"Repair this NKI per-partition transpose:\n\n```python\n{source}\n```\n\n"
-            f"A checker reports:\n{feedback}\n\n"
-            f"{TRANSPOSE_METHOD}\n{TRANSPOSE_API_CARD}\n"
-            f"Fix the error and the index mapping while keeping the entry point, arguments, "
-            f"output shape and input dtype. You may replace incorrect allocations or loops. "
-    if level == 3:
-        return (
-            f"Repair this single-tile NKI matmul:\n\n```python\n{source}\n```\n\n"
-            f"A checker reports:\n{feedback}\n\n"
-            f"{MATMUL_SHAPES}\n{MATMUL_API_CARD}\n"
-            f"Fix the reported allocation and any dependent buffer shapes or copies. "
-            f"Preserve the entry point, arguments and required output dtype. "
-            f"Reply with ONE complete python code block.")
-    return (
-        f"This NKI kernel for {nkibench.LEVELS[level]['op']} is not right yet.\n\n"
-        f"```python\n{source}\n```\n\n"
-        f"A checker reports:\n{feedback}\n\n"
-        f"Change exactly what the checker names and keep everything else identical. Reply with "
-        f"ONE python code block.")
+    # Level 1 re-asserts the pooling shape contract on repair (one line, not the full card), so a
+    # fix to the DMA size cannot drift the roles apart -- the same reason the matmul levels re-send
+    # their contract. Other levels keep the minimal repair prompt the repo settled on.
+    contract = POOL_SHAPES if level == 1 else ""
+    return _assemble(a or _Dummy(), dict(
+        task=f"This NKI kernel for {nkibench.LEVELS[level]['op']} is not right yet.",
+        prev_code=f"```python\n{source}\n```",
+        feedback=f"A checker reports:\n{feedback}",
+        contract=contract,
+        ledger=ledger,
+        reply=("Change exactly what the checker names and keep everything else identical. Reply "
+               "with ONE python code block.")))
 
 
 CODE_BLOCK = re.compile(r"```(?:python)?\s*(.*?)```", re.S)
@@ -749,8 +650,10 @@ def ask(a, prompt):
         print(f"    (prompt is ~{est_prompt} tokens, so the answer budget is capped at {budget} "
               f"to stay inside the {a.context}-token context)")
     body = dict(model=a.model, messages=[{"role": "user", "content": prompt}],
-                max_tokens=budget, temperature=0.6, top_p=0.95,
+                max_tokens=budget, temperature=a.temperature, top_p=a.top_p,
                 chat_template_kwargs={"enable_thinking": a.think})
+    if a.top_k is not None:
+        body["top_k"] = a.top_k
     r = httpx.post(f"{a.base.rstrip('/')}/chat/completions", json=body,
                    timeout=900, verify=False)
     if r.status_code != 200:
@@ -781,6 +684,26 @@ def ask_parallel(a, prompt, n):
         return [f.result() for f in [ex.submit(ask, a, prompt) for _ in range(n)]]
 
 
+def ask_with_tools(a, prompt, n):
+    """One tool round-trip, then the kernel. If no tools are enabled this is just ask_parallel.
+
+    The model may answer the tool-preamble with DOC:/```probe``` requests; we resolve them against
+    the installed SDK and append the results to the prompt before asking for the kernel. The tool
+    output is tracked as its own prompt segment so the token-breakdown plot shows its cost.
+    """
+    if not a.tools:
+        return ask_parallel(a, prompt, n)
+    # A single cheap probe of what the model wants to look up (1 sample; the asks are usually the
+    # same regardless of sampling, and this keeps the round-trip from doubling cost per sample).
+    first = ask(a, prompt)
+    tool_out = agent_tools.gather_tool_output(first, a.tools)
+    if tool_out:
+        print(f"  tools: resolved {len(tool_out)} chars of DOC/PROBE output into the prompt")
+        prompt = _assemble(a, dict(base=prompt, tool_output=tool_out,
+                                   go="Now write the kernel. Reply with ONE python code block."))
+    return ask_parallel(a, prompt, n)
+
+
 def offline_answers(level, n, rnd):
     """No model. Replays the shipped reference, preceded by a deliberately broken version, so the
     loop and the feedback path can be exercised with no endpoint. Never report a number."""
@@ -793,32 +716,52 @@ def offline_answers(level, n, rnd):
 
 # ---------------------------------------------------------------- the loop
 
-def solve(a, level, log):
+def solve(a, level, log, rep=0):
     print(f"\n=========== level {level}: {nkibench.LEVELS[level]['op']} ===========")
     terse = a.terse
-    prompt = first_prompt(level, terse)
+    prompt = first_prompt(level, terse, a)
     best = (0.0, None, "")
     tried, streak, seen = [], 0, {}
     latest = ("", "")
-    scaffolded = False
+    beam = []            # top-K distinct (reward, src, feedback) kept across rounds for --beam
     for rnd in range(a.rounds):
         t0 = time.perf_counter()
-        replies = (offline_answers(level, a.samples, rnd) if a.offline
-                   else ask_parallel(a, prompt, a.samples))
+        if a.offline:
+            replies = offline_answers(level, a.samples, rnd)
+        elif a.beam > 1 and beam:
+            # Beam search: repair every kept candidate, not just the latest, with samples each.
+            replies = []
+            for _, bsrc, bfb in beam:
+                replies += ask_parallel(a, repair_prompt(level, bsrc, bfb, a), a.samples)
+        else:
+            replies = ask_with_tools(a, prompt, a.samples)
         graded = []
-        for reply in replies:
+        for s_i, reply in enumerate(replies):
             src = extract_code(reply)
             reward, parts, feedback = grade(src, level)
             graded.append((reward, src, feedback, parts))
-            log.write(json.dumps(dict(level=level, round=rnd, reward=reward, parts=parts,
+            # exp/run/sample/t let a --repeat log be split back into runs, which is what makes a
+            # solve RATE computable from the log (see analyze.py). Without them a repeated run is
+            # one undifferentiated stream and the rate -- the only honest number -- is lost.
+            log.write(json.dumps(dict(exp=a.exp, run=rep, level=level, round=rnd, sample=s_i,
+                                      reward=reward, parts=parts, t=round(time.time(), 1),
                                       prompt_chars=len(prompt), reply_chars=len(reply),
-                                      scaffolded=scaffolded,
+                                      seg_chars=getattr(a, "_last_seg", {}),
                                       code=src, feedback=feedback)) + "\n")
         log.flush()
         graded.sort(key=lambda g: g[0], reverse=True)
         top = graded[0]
         if top[0] > best[0]:
             best = (top[0], top[1], top[2])
+        # Beam: keep the top-K DISTINCT candidates (by code) for next round's repairs.
+        if a.beam > 1:
+            seen_src, beam = set(), []
+            for reward, src, feedback, _ in graded:
+                if (src or "").strip() and src not in seen_src:
+                    seen_src.add(src)
+                    beam.append((reward, src, feedback))
+                if len(beam) >= a.beam:
+                    break
         # Repair the LATEST attempt, not the best one. Rebuilding from the best attempt with the
         # best attempt's feedback is a fixed point: once a round scores worse, the prompt stops
         # changing, and a greedy model then returns the same answer forever. Measured: level 2
@@ -838,6 +781,8 @@ def solve(a, level, log):
             print("  ---------------- the kernel ----------------")
             print(textwrap.indent(top[1], "  "))
             print("  -------------------------------------------")
+            if getattr(a, "skills", False) or getattr(a, "calibration", False):
+                skills.save(level, top[1])      # curriculum reuse and/or calibration input
             return top[0], rnd + 1
         seen[top[2]] = seen.get(top[2], 0) + 1
         streak = streak + 1 if same else 1
@@ -867,30 +812,21 @@ def solve(a, level, log):
             # Sampling on this endpoint is greedy, so an unchanged prompt returns an unchanged
             # answer. Measured: the same TypeError 19 rounds running. Changing the prompt is the
             # only thing that can change the answer, so say what has already been tried.
-            ledger = "\n".join(f"- {t[:160]}" for t in dict.fromkeys(tried))
-            add_scaffold = level == 4 and not scaffolded
-            scaffolded = scaffolded or add_scaffold
-            prompt = (repair_prompt(level, latest[0], latest[1], scaffold=scaffolded)
-                      + f"\n\nThese approaches have already failed, so do something different:\n"
-                        f"{ledger}")
-            if repeats >= 2:
-                print(f"  same failure {repeats}x — adding a ledger of {len(set(tried))} failed "
-                      f"attempts to break the repeat")
-            else:
-                print(f"  recurring level 4 failure seen {seen[top[2]]}x — adding the failure "
-                      "ledger and scaffold escalation")
-            if add_scaffold:
-                print("  level 4 escalation: adding an explicitly scaffolded 3D tile loop")
+            ledger = ("These approaches have already failed, so do something different:\n"
+                      + "\n".join(f"- {t[:160]}" for t in dict.fromkeys(tried)))
+            prompt = repair_prompt(level, latest[0], latest[1], a, ledger)
+            print(f"  same failure {repeats}x — adding a ledger of {len(set(tried))} failed "
+                  f"attempts to break the repeat")
             continue
         if not (latest[0] or "").strip():
             # Nothing came back to repair. Asking it to "fix" an empty code block produced a
             # 202-character prompt and, under greedy sampling, the identical non-answer six
             # rounds running. Shorten and re-ask instead.
             terse = min(terse + 1, 2)
-            prompt = first_prompt(level, terse)
+            prompt = first_prompt(level, terse, a)
             print(f"  no code yet, so re-asking with a shorter prompt (terseness {terse})")
         else:
-            prompt = repair_prompt(level, latest[0], latest[1], scaffold=scaffolded)
+            prompt = repair_prompt(level, latest[0], latest[1], a)
     print(f"  not solved in {a.rounds} rounds; best reward {best[0]:.2f}")
     return best[0], a.rounds
 
@@ -911,6 +847,8 @@ def main():
                          "result: measured, the same config scored 1.00, 1.00 and 0.50 on level 2 "
                          "across three runs with no code change.")
     ap.add_argument("--log", default="attempts.jsonl")
+    ap.add_argument("--exp", default="baseline",
+                    help="experiment name, written on every log line so runs can be compared")
     ap.add_argument("--give-up-after", type=int, default=4,
                     help="stop a level after this many identical failures in a row. Measured: 15 "
                          "was pure waste, because the prompt had stopped changing.")
@@ -923,7 +861,34 @@ def main():
     ap.add_argument("--think", action="store_true",
                     help="let the model reason first; costs budget, and it ran out")
     ap.add_argument("--offline", action="store_true")
+    # --- plan backlog, all OFF by default so the baseline stays runnable (protocol rule 1) ---
+    ap.add_argument("--tools", default="",
+                    help="comma-separated tools the model aims itself: doc,probe. DOC resolves "
+                         "real NKI signatures/docstrings; PROBE runs a snippet under nki.simulate. "
+                         "A pre-generation round lets the model ask before it writes the kernel.")
+    ap.add_argument("--tiles", action="store_true",
+                    help="offer the nkitile.tiles(n,size) helper in the first prompt (a tool, not "
+                         "a worked example). Targets the level-4 'one tile for the whole tensor' wall.")
+    ap.add_argument("--skills", action="store_true",
+                    help="curriculum: save solved kernels and seed later levels with the nearest "
+                         "OTHER solved kernel. Never seeds a reference or same-level tutorial kernel.")
+    ap.add_argument("--beam", type=int, default=1,
+                    help="keep the top-K distinct candidates and repair all of them each round, "
+                         "instead of only the latest. Same wall-clock when K*samples == server seqs.")
+    ap.add_argument("--heldout", action="store_true",
+                    help="run the held-out levels (ragged matmul + added ops) instead of 1-4, to "
+                         "test generalisation on operations never tuned on.")
+    ap.add_argument("--calibration", action="store_true",
+                    help="print a calibration label per level (VERIFIED-COMPILED / SIMULATED-ONLY "
+                         "/ FAILED) derived from evidence, and re-check solved kernels on fresh seeds.")
+    ap.add_argument("--temperature", type=float, default=0.6)
+    ap.add_argument("--top-p", type=float, default=0.95)
+    ap.add_argument("--top-k", type=int, default=None,
+                    help="pass top_k to the server (Qwen non-thinking recommends 20). Only honoured "
+                         "if the server respects per-request sampling params -- check first.")
     a = ap.parse_args()
+    a.tools = {t.strip() for t in a.tools.split(",") if t.strip()}
+    a._last_seg = {}
 
     if not a.offline:
         # Validate before the first request. An empty or scheme-less value produces a hostname
@@ -947,7 +912,15 @@ def main():
     else:
         print("*** OFFLINE: replaying the reference kernel. Numbers are meaningless. ***")
 
-    levels = sorted(nkibench.LEVELS)[:4] if a.all else [a.level or 1]
+    if a.heldout:
+        levels = [n for n in sorted(nkibench.LEVELS) if n >= 10]
+        if not levels:
+            sys.exit("no held-out levels (>=10) are registered. They are added in nkibench.py "
+                     "under 'held-out and hostile evaluation set'.")
+    elif a.all:
+        levels = sorted(nkibench.LEVELS)[:4]
+    else:
+        levels = [a.level or 1]
     full = sum(WEIGHTS.values())
     history = {lv: [] for lv in levels}
 
@@ -957,7 +930,7 @@ def main():
                 print(f"\n################ run {rep + 1} of {a.repeat} ################")
             results = []
             for level in levels:
-                results.append((level,) + solve(a, level, log))
+                results.append((level,) + solve(a, level, log, rep))
                 history[level].append(results[-1][1])
 
             print("\n=========== summary ===========")
@@ -977,6 +950,23 @@ def main():
                   f"best {max(got):.2f}  worst {min(got):.2f}  "
                   f"mean {sum(got) / len(got):.2f}  all={[round(r, 2) for r in got]}")
         print("\n  Report the rate, not your best run. A level that solves 1 in 3 times is not solved.")
+
+    if getattr(a, "calibration", False):
+        # Say how sure we are, from evidence: fresh-seed re-check and a compile gate on each solved
+        # kernel. This is the honesty deliverable -- a SIMULATED-ONLY kernel is reported as such.
+        import calibrate
+        print(f"\n=========== calibration ladder ===========")
+        for lv in levels:
+            path = os.path.join(skills.SKILL_DIR, f"level{lv}.py")
+            if not os.path.exists(path):
+                print(f"  level {lv}: FAILED (no kernel solved this run)")
+                continue
+            try:
+                label, note = calibrate.label_for(path, lv)
+            except Exception as e:
+                label, note = "UNKNOWN", f"calibration error: {type(e).__name__}: {e}"
+            print(f"  level {lv}: {label}  ({note})")
+
     print(f"\nattempts logged to {a.log}")
 
 
