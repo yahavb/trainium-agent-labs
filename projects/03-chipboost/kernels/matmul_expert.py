@@ -12,8 +12,8 @@ matrix_multiplication_nki_kernels.py, NKI_EXAMPLE_21), with two changes, each ma
    what it costs.
 2. The block sizes are CAPS. At each shape the kernel uses the largest block that divides it, so every
    candidate search.py proposes is legal at every shape (the tutorial asserts M % 2048 == 0, which no
-   Qwen3 shape at 512 tokens meets). With the caps below, the primary shape K=4096 M=512 N=6144 runs
-   with 4 x 2 x 8 tiles per block.
+   Qwen3 shape at 256 tokens meets). With the caps below, the primary shape K=4096 M=256 N=6144 runs
+   with 2 x 2 x 8 tiles per block.
 
 Copyright (C) 2024, Amazon.com. All Rights Reserved (the tutorial kernel this adapts).
 

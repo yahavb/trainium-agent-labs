@@ -6,8 +6,12 @@ search) use the helpers at the bottom.
 
 Qwen3-8B, served on one chip at tensor parallelism 2, so every matmul is a PER-CORE shape. Values from
 the model's config.json, verified in the pod with --verify-config: hidden 4096, intermediate 12288,
-32 query heads, 8 KV heads, head_dim 128, rms_norm_eps 1e-6. Timing is at 256 prompt tokens, where P1
-measured the timer's noise at 0.0-0.2%; other token counts are held out.
+32 query heads, 8 KV heads, head_dim 128, rms_norm_eps 1e-6. Matmul is timed at 256 prompt tokens,
+where P1 measured the timer's noise at 0.0-0.2%. RMSNorm and its copy floor are timed at 2048 tokens:
+at 256 a copy took 20.6 us, mostly the ~17 us launch cost, which would hide any speedup.
+
+The referee's speedup is total time over an op's time_shapes, so the biggest shape weighs most: for
+matmul, gate_up is 72% of the start kernel's 960 us.
 
 Per op, three shape lists, and they mean different things:
 
@@ -43,7 +47,8 @@ import nkibench  # noqa: E402  dev shapes and the --check levels live there
 QWEN3_8B = dict(hidden_size=4096, intermediate_size=12288, num_attention_heads=32,
                 num_key_value_heads=8, head_dim=128, rms_norm_eps=1e-6, torch_dtype="bfloat16")
 TP = 2          # serve.sh: --tensor-parallel-size 2
-TOKENS = 256    # prompt tokens at the timing shapes
+TOKENS = 256    # prompt tokens at the matmul timing shapes
+NORM_TOKENS = 2048   # prompt tokens at the RMSNorm / copy timing shapes
 EPS = QWEN3_8B["rms_norm_eps"]
 
 # Per-core projection shapes under TP=2, as (K, N) of y[M, N] = x[M, K] @ W[K, N].
@@ -181,24 +186,25 @@ OPS = {
         make_inputs=_rmsnorm_inputs, ref=_rmsnorm_ref,
         flops=lambda s: 4 * s[0] * s[1],
         sim_shapes=_dev(10),
-        time_shapes=[(TOKENS, 4096), (TOKENS * 32 // TP, 128)],
-        heldout_shapes=[(127, 4096), (129, 4096), (1, 4096), (1000, 128), (2048, 4096)],
+        time_shapes=[(NORM_TOKENS, 4096), (NORM_TOKENS * 32 // TP, 128)],
+        heldout_shapes=[(127, 4096), (129, 4096), (1, 4096), (1000, 128), (TOKENS, 4096)],
         tol=nkibench.LEVELS[10]["tol"],
-        labels={(TOKENS, 4096): "input_layernorm, 256 tokens",
-                (TOKENS * 32 // TP, 128): "q_norm per head, 256 tokens",
+        labels={(NORM_TOKENS, 4096): "input_layernorm, 2048 tokens",
+                (NORM_TOKENS * 32 // TP, 128): "q_norm per head, 2048 tokens",
                 (127, 4096): "one row short of a tile", (129, 4096): "one row past a tile",
                 (1, 4096): "decode: a single token", (1000, 128): "k_norm-like, ragged",
-                (2048, 4096): "long prompt"},
+                (TOKENS, 4096): "short prompt, 256 tokens"},
     ),
     "copy": dict(
         level=11, entry="copy_floor", names=("x",),
         make_inputs=_copy_inputs, ref=_copy_ref,
         flops=lambda s: 0,
         sim_shapes=_dev(11),
-        time_shapes=[(TOKENS, 4096), (TOKENS * 32 // TP, 128)],   # = RMSNorm's: its floor
+        time_shapes=[(NORM_TOKENS, 4096), (NORM_TOKENS * 32 // TP, 128)],   # = RMSNorm's: its floor
         heldout_shapes=[(129, 4096), (1, 4096)],
         tol=nkibench.LEVELS[11]["tol"],
-        labels={(TOKENS, 4096): "= rmsnorm, 256 tokens", (TOKENS * 32 // TP, 128): "= q_norm",
+        labels={(NORM_TOKENS, 4096): "= rmsnorm, 2048 tokens",
+                (NORM_TOKENS * 32 // TP, 128): "= q_norm, 2048 tokens",
                 (129, 4096): "one row past a tile", (1, 4096): "a single row"},
     ),
     "swiglu": dict(

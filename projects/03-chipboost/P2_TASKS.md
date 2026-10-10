@@ -15,6 +15,13 @@
 >    would count the float32 reference as the output size. Held-out cases carry `hostile=True`.
 > 5. `check_kernels.py`: also check `kernels/matmul_expert_aws.py` (op `matmul`).
 > 6. vLLM holds NeuronCores **0-1** on the seat pods (P1 measured), not 2-3: anything on the device uses 2.
+> 8. **From REVIEW.md (on master, merged into this branch):** loops call the referee with
+>    `heldout=False` (about half the compiles, and held-out shapes never leak into messages); at the end,
+>    run `check_isolated(best, heldout=True)` once on the best kernel and write the result to
+>    `logs/seat-<N>/search_results.json` as `{"heldout": [{"kernel": "matmul", "which": "random_search best",
+>    "shape": "all held-out", "passed": <bool>, "speedup": <the best's speedup>}]}` (the dashboard reads every
+>    `*results*.json`). `--budget` counts referee calls, the same budget as `agent.py`. The SBUF filter leaves
+>    62 of the 72 triples; REVIEW counted 62 independently.
 > 7. **Logs (P4's dashboard):** each seat writes `logs/seat-<N>/attempts.jsonl`, so merges never
 >    conflict. `search.py`'s `--out` defaults to `logs/seat-<seat>/attempts.jsonl` (create the folder).
 >    `check_kernels.py --json` is P2 data for the dashboard: not attempts.
@@ -90,7 +97,7 @@ They are **caps**: at each shape the kernel uses the largest divisor of the tile
 ## Task 1: `search.py`, arm (c): random search, no AI
 
 ```
-python search.py --budget 24 --seed 0 --seat 102 --out attempts.jsonl [--no-heldout] [--stub] [--dry-run]
+python search.py --budget 24 --seed 0 --seat 102 [--out logs/seat-102/attempts.jsonl] [--heldout-every] [--stub] [--dry-run]
 ```
 
 1. **Space.** At the primary shape, tile counts are M 2, N 12, K 32. A candidate is a triple
@@ -116,7 +123,7 @@ python search.py --budget 24 --seed 0 --seat 102 --out attempts.jsonl [--no-held
    regex-replacing the three cap lines in `kernels/matmul_expert.py` (fail loudly if the three lines are
    not found exactly once each). Call the referee:
    `speedcheck.check_isolated(path, op="matmul", baseline="kernels/matmul_start.py",
-   heldout=not args.no_heldout)`.
+   heldout=args.heldout_every)` (default False: see item 8 at the top).
 5. **Log.** One JSON line per attempt to `--out`: the referee's record, with these overwritten:
    `seat`, `kernel="matmul"`, `arm="random_search"`, `run_id` (`--run-id`, default
    `matmul-random-<seed>-<unix time>`), `attempt_no`, `round=attempt_no`, `prompt_tokens=None`,

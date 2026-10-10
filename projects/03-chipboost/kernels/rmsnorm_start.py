@@ -1,22 +1,8 @@
 """
-CHIPBOOST start kernel for RMSNorm, Qwen3-8B's normalisation: y = x * rsqrt(mean(x^2) + eps) * w.
-
-Plain and correct on purpose. Every RMSNorm speedup is measured against this, and its slowness is the
-room the agent has. Where the time goes, cheapest fix first:
-
-  - the weight row is copied to the 128 partitions with 128 separate DMAs, once;
-  - the row tiles are a plain Python loop, so tile i+1's load cannot overlap tile i's compute;
-  - x^2 is written out to a full float32 tile only to be summed, then x is scaled in float32 and
-    multiplied by w in a second pass: three full passes over every tile on the engines.
-
-The floor it is chasing is kernels/copy_floor.py's time for the same bytes: RMSNorm must read x once
-and write y once, and nothing can make that faster.
+CHIPBOOST RMSNorm start kernel, Qwen3-8B's normalisation: y = x * rsqrt(mean(x^2) + eps) * w.
+x is [rows, D] in bf16, w is [1, D], eps is 1e-6. rows need not be a multiple of 128.
 
     python ../02-kernel-agent/nkibench.py --level 10 --check kernels/rmsnorm_start.py
-
-x is [rows, D] and rows need not be a multiple of 128: the last tile uses only its real rows, so
-nothing is read past the end of x or written past the end of y. w is [1, D]. eps is Qwen3-8B's 1e-6;
-do not drop it, quiet rows need it.
 """
 
 import nki

@@ -3,6 +3,22 @@
 *Updated Oct 10 2026, about 13:30. Measured on seat-102 with P1's referee (`speedcheck.py`: device clock,
 interleaved A/B), branch `kernels-search` at 2fb343c. Every number below is from the chip unless marked.*
 
+## REVIEW.md items for P2: status
+
+`REVIEW.md` (on master, merged into this branch) listed five items for P2. Where each stands:
+
+| # | Item | Status |
+|---|---|---|
+| 1 | Measure the expert on the chip; drop it if under ~1.3x | **Done.** 2.494x faster, correct on 8 chip shapes. Numbers below and in `results_p2.json` |
+| 2 | Strip the hints from the start kernels: they leak the fix into the model-alone arm | **Done.** Their docstrings now say only what they compute: matmul_start ~320 tokens, rmsnorm_start ~410. The "why slow" analysis is below, where the model never reads it |
+| 3 | RMSNorm and copy timing shapes too small: a ~17 us launch cost hides any speedup | **Done.** Timing is now at 2048 tokens: 2048x4096 and q_norm's 32768x128. 256 tokens moved to held-out. **The RMSNorm numbers below are the old 256-token ones; re-measure** |
+| 4 | The score sums the timing shapes, so gate_up dominates | **Stated.** gate_up is 72% of the start kernel's 960 us (here and in `shapes.py`) |
+| 5 | Cut `matmul_expert_aws.py`; fix the expert's docstring | **Docstring fixed.** The AWS kernel is **kept on purpose**: it is AWS's own published tutorial kernel, not a planted cheat, and rerunning it is the evidence for finding 1. No loop runs it, so it costs nothing |
+
+Loop items for `search.py` (on the second agent's `p2-tools` branch): `heldout=False` inside the loop and
+one held-out check of the best kernel at the end; `--budget` counted in referee calls, shared with
+`agent.py`; logs in `logs/seat-102/`. The SBUF filter leaves 62 of 72 triples, matching REVIEW's count.
+
 ## Summary
 
 | Item | State |
@@ -26,7 +42,8 @@ interleaved A/B), branch `kernels-search` at 2fb343c. Every number below is from
 | `matmul_expert` | **280.4 us (45.9 TFLOP/s)** | **104.7 us (41.0 TFLOP/s)** | **385.1 us** | **faster, 2.494x** |
 | `matmul_expert_aws` | not timed | not timed | not timed | **wrong: 5.3 bf16 ulps** |
 
-**RMSNorm** against its floor (a copy of the same bytes):
+**RMSNorm** against its floor (a copy of the same bytes). **Old timing shapes (256 tokens), kept for the
+record; the timing shapes are now 2048 tokens, re-measure:**
 
 | Kernel | input_layernorm 256x4096 | q_norm 4096x128 | Sum |
 |---|---|---|---|
@@ -40,6 +57,16 @@ interleaved A/B), branch `kernels-search` at 2fb343c. Every number below is from
   matmul shapes with hostile values: odd 10/5/5 tile counts, a single N-tile, K=6144 in 6 blocks. For RMSNorm,
   the 5 held-out shapes are 127, 129 and 1 rows, a ragged 1000x128, and 2048 rows, all with quiet, loud and
   silent rows.
+
+**Why the start kernels are slow** (kept out of their docstrings so the model never reads it):
+
+- **matmul_start:** every (m, n) output tile reloads its whole row of lhsT tiles and column of rhs tiles,
+  so the same bytes are fetched M/128 and N/512 times. The expert blocks M, N and K to reuse them.
+- **rmsnorm_start:**
+  - the weight row reaches the 128 partitions through 128 separate DMAs;
+  - the row tiles run in a plain Python loop, so one tile's load cannot overlap the previous tile's compute;
+  - every tile takes three full passes (square-and-sum, scale, weight);
+  - at q_norm's 128 columns, each row is only 256 bytes.
 
 ## Findings worth telling the room
 
@@ -90,6 +117,8 @@ python speedcheck.py --op copy --check kernels/copy_floor.py --baseline kernels/
 
 ## Next
 
-1. Run the packed `copy_floor` on the chip and update `results_p2.json`.
-2. Merge `p2-tools` and run `search.py` against the referee on the same budget as the agent arms.
-3. Stretch: `kernels/swiglu_start.py`.
+1. Re-measure `rmsnorm_start` and the copy floors at the 2048-token timing shapes; update `results_p2.json`.
+2. Merge `p2-tools` into this branch and run `search.py` against the referee, on the same budget as the
+   agent arms.
+3. No code goes to master, only docs: teammates who need P2's code merge `kernels-search` into their own
+   branch.

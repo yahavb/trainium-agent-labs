@@ -1,16 +1,9 @@
 """
-CHIPBOOST start kernel for matmul: the level-4 tiled kernel, unchanged except for its name.
-
-Every matmul speedup is measured against this. It is dtype-generic (it allocates with lhsT.dtype and
-accumulates in float32 PSUM), so it runs the bf16 Qwen3 shapes as-is.
-
-Adapted from the AWS Neuron NKI tutorial matrix_multiplication/matrix_multiplication_nki_kernels.py
-(projects/02-kernel-agent/reference_level4.py). Copyright (C) 2024, Amazon.com. All Rights Reserved.
+CHIPBOOST matmul start kernel: the tiled kernel from the AWS Neuron NKI tutorial
+(matrix_multiplication_nki_kernels.py, as projects/02-kernel-agent/reference_level4.py).
+Copyright (C) 2024, Amazon.com. All Rights Reserved.
 
     python ../02-kernel-agent/nkibench.py --level 9 --check kernels/matmul_start.py
-
-Why it is slow, which is the room the agent has: every (m, n) output tile re-loads its whole row of
-lhsT tiles and column of rhs tiles from HBM, so the same bytes cross the bus M/128 and N/512 times.
 """
 
 import nki
