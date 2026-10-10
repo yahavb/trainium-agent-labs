@@ -15,7 +15,7 @@ A thread ends when:
   - max_no_gain checks pass without progress ("no_gain"), or max_attempts checks in all. Progress
     is the check stage reached as well as the reward (see progress()): the reward is coarse, and a
     kernel moving from an invented name to a shape error to wrong values is getting somewhere at the
-    same 0.30 -- "expect the failure to move rather than vanish" (README, hint 9);
+    same 0.30 -- "expect the failure to move rather than vanish" (README-task.md, hint 9);
   - the debugger says the approach is wrong; the reviewer gives up on bytes;
   - three answers in a row have no code ("empty_answers");
   - the level's call budget runs out, or model calls keep failing ("budget", "http_errors"): checked

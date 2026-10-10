@@ -117,7 +117,7 @@ Measured on seat-35:
 
   No level-1 run has solved it. The baseline is 0.30 on every run, a wall, so 0.50 is a real change, but
   the others are single runs.
-- **Not measured yet:** levels 2–4 with agent2. The README's warning applies (a worked example once took
+- **Not measured yet:** levels 2–4 with agent2. README-task.md's warning applies (a worked example once took
   level 2 from 4/5 to 0/5), so measure `--all` before claiming anything.
 
 ## Lessons from the READMEs, and where agent2 stands
