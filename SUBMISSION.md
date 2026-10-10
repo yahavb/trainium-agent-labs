@@ -178,8 +178,8 @@ Rounds count from 0. [[TBD: compare.py table and log paths]]
 | repair prompt (`REPAIR_PROMPT=theirs`) | 1.0, round 0 | 1.0, round 2 |
 | sampling settings (`SAMPLING=theirs`) | 1.0, round 0 | 1.0, round 2; rounds 0–1 identical to v7 |
 
-Level 3 needs exactly one layer, the worked example in the first prompt; without it the model makes the
-baseline's level-3 mistakes again. Level 4 needs no single layer: the example and the all-dims tiling
+Level 3 needs exactly one layer, the worked example in the first prompt; without it, level 3 stays
+unsolved at 0.30. [[TBD: its failure modes]] Level 4 needs no single layer: the example and the all-dims tiling
 message each save two rounds, and v7's longer first prompt costs one. Changing the sampling settings
 changes nothing, which is the greedy server again.
 
