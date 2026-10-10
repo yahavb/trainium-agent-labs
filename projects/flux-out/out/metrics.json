@@ -1,0 +1,24 @@
+{
+  "model": "black-forest-labs/FLUX.1-dev",
+  "size": 1024,
+  "steps": 25,
+  "tp": 4,
+  "num_images": 4,
+  "download_s": 0.25234310000087135,
+  "compile_s": 1.0855288120073965,
+  "load_s": 50.309700168989366,
+  "latency_s": [
+    7.301951727989945,
+    7.4940930279990425,
+    7.562256680990686,
+    7.646152332992642
+  ],
+  "first_image_s": 7.301951727989945,
+  "latency_mean_s": 7.56750068066079,
+  "latency_p50_s": 7.562256680990686,
+  "latency_max_s": 7.646152332992642,
+  "ms_per_step": 302.7000272264316,
+  "images_per_s": 0.13214402511460105,
+  "images_per_min": 7.928641506876064,
+  "steady_state_excludes_first": true
+}
