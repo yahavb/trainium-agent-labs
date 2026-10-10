@@ -38,6 +38,9 @@ practice 1%). `faster` iff total speedup >= threshold and no shape is below 1/th
 <= 1/threshold. Everything else is `no_gain`. Measured: the start kernel against itself gives `no_gain` (1.000x).
 Exit codes: 0 for faster / no_gain / slower, 1 for rules / wrong / heldout_fail, 3 for a referee error.
 
+For `no_gain` and `slower`, correctness covers the checked simulator/timing shapes only; held-out is not
+run. A fail-fast `slower` carries verified probe timings rather than the full interleaved sample.
+
 **Speedup is always measured against the baseline (the start kernel), not your previous best.** If
 `speedup` is 1.5, the kernel is 1.5x faster than the start kernel. If the loop wants "better than my best", it
 has to compare `speedup` values itself.
@@ -66,8 +69,12 @@ Agent loops should write their own line (below).
 ### Python
 
 ```python
-speedcheck.check_isolated(path, op="matmul", timeout=1800, baseline=None)   # USE THIS IN LOOPS
+speedcheck.check_isolated(path, op="matmul", timeout=1800, baseline=None)   # one-shot checks
 speedcheck.check(path, op="matmul", baseline=None, rounds=3, verbose=False) # in-process, for debugging
+
+# Preferred for repeated checks: pays the runtime start once, holds one core until closed.
+with speedcheck.RefereeWorker(op="matmul", core=3) as worker:
+    rec = worker.check(path)  # record, or None; worker.last_error explains infrastructure failures
 ```
 
 - `check_isolated` runs the CLI in a **fresh process per candidate**, so device memory is released and the core
@@ -78,6 +85,9 @@ speedcheck.check(path, op="matmul", baseline=None, rounds=3, verbose=False) # in
   `code_hash`, `sim_ok` and `chip_ok` are `None`.
 - `check` returns the same record but raises `RefereeError` on infrastructure failure. Any other exception
   means a referee bug. It keeps the NeuronCore bound for the rest of your Python process.
+- `RefereeWorker` has the same record/None contract, a 1800 s per-check watchdog, 300 s startup timeout,
+  and recycles after 50 checks by default. A watchdog timeout returns `wrong`, kills the worker and its
+  sandbox descendants, and starts a replacement on the next call. Always close it (use `with`).
 - There is **no `shapes=`, `heldout=` or `--no-heldout`** (REVIEW.md mentions `heldout=False`; it does not
   exist). Held-out runs automatically, and only for a would-be `faster`.
 - `baseline` defaults to `kernels/<op>_start.py`. For matmul, while that file is missing (as on this branch),
@@ -95,8 +105,8 @@ Field meanings for the dashboard:
 - `time_us_median` and `baseline_us_same_session` are **sums over the timing shapes**, in microseconds.
   Gate/up is about 72% of the matmul total.
 - `speedup` is baseline total / candidate total.
-- `time_us_iqr` is the candidate total x the worst relative IQR of either arm on any shape, a conservative
-  value.
+- `time_us_iqr` is the sum of candidate IQRs across timing shapes. The verdict threshold separately uses
+  the worst relative IQR of either arm on any timing shape.
 - Per-shape speedups appear only in `referee_message`. Held-out shapes are never timed.
 
 Working out which stage caught a kernel (P3's red-team table):
@@ -147,13 +157,13 @@ def grade(code, *, arm, run_id, attempt_no, round_, prompt=None, response=None, 
 | Referee timing core | **2**, falling back to **3**. `CHIPBOOST_CORE=N` tries **only** N, with no fallback. |
 | Referee processes per seat | **At most two**, one per free core. A third gets "no free NeuronCore": `None` / exit code 3. |
 | Sandbox child | `NEURON_RT_VISIBLE_CORES=0` (vLLM's core), so it cannot use the device |
-| User | **Run as root in the seat pod.** The sandbox needs root and `setpriv`. Without them the child runs **unsandboxed as your user, with no warning**. That is acceptable only for your own hand-written kernels, never for model output. |
+| User | **Run as root in the seat pod.** The sandbox needs root and `setpriv`. Without them the referee raises `RefereeError`. `CHIPBOOST_ALLOW_UNSANDBOXED=1` explicitly opts out and prints a warning; use only for trusted local development. |
 | `CHIPBOOST_SEAT` | Seat number, written to `seat` |
 | `CHIPBOOST_CACHE` | Baseline NEFF cache, default `/tmp/chipboost_cache`, root-only (0700). Keyed on the baseline's bytes, shape and NKI version, so editing the baseline invalidates it. |
 | Side effect as root | Removes group/other write permission from world-writable non-sticky directories above the referee (e.g. `/workspace`), and from the NKI compile caches in `/var/tmp`. This is deliberate. |
 | Interference | vLLM under load changes core-2 timings by 0.0%. You do not need to wait for vLLM to be idle. |
 
-**Time per check, today:** about 30-35 s through `check_isolated`, and **compile dominates**. In-process
+**Historical timing before the throughput changes:** about 30-35 s through `check_isolated`, and **compile dominates**. In-process
 measurement: 24.4 s, of which compile was 19.9 s and timing 0.7 s. Each fresh process adds 6-13 s of runtime
 start. The two baseline compiles are paid only on the first check, because they are cached on disk. A
 would-be `faster` pays extra for held-out: one more sandboxed child and 3-5 compiles at about 2-2.6 s each
@@ -165,9 +175,10 @@ would-be `faster` pays extra for held-out: one more sandboxed child and 3-5 comp
 |---|---|
 | Done | Held-out runs only for a would-be `faster` |
 | Done | Baseline NEFF cached on disk |
-| Planned (STATUS.md "Speedups, ranked") | A persistent referee worker (pays the runtime start once) |
-| Planned | Parallel compiles: 8 compiles took 25 s serially and 8.5 s with 8 threads |
-| Planned | Fail fast on a candidate more than 3x slower, and a shorter child timeout |
+| Done | Persistent `RefereeWorker` with watchdog and recycling |
+| Done | Up to 8 parallel child compiles; threaded deterministic input generation |
+| Done | Fail fast on a candidate more than 3x slower |
+| Unchanged | Child wall timeout is 600 s; CPU limit is 1200 s; whole-check default is 1800 s |
 
 ## 4. Ops and shapes
 
@@ -200,9 +211,9 @@ the built-in spec key by key. The format follows P2's file:
 
 **Held-out shapes and messages:** the shapes are drawn with the referee's private seed, which never leaves the
 process, so no fixed list exists for a model to learn. A fixed public list was beaten by red-team cheat
-`c3b`. `instruction_given` never names a held-out shape. **`referee_message` does** name them, in `faster`
-messages ("correct everywhere, including held-out [...]") and in `heldout_fail` messages (`at held-out
-(K, M, N) hostile`). REVIEW.md flagged this. So **do not put `referee_message` in prompts** (see §5).
+`c3b`. Neither `instruction_given` nor `referee_message` names held-out shapes now. The older leak noted
+in REVIEW.md is fixed. Still send only `instruction_given` to the model; human messages can contain
+quoted untrusted candidate text (see §5).
 
 ## 5. Feeding results to the model
 
@@ -220,7 +231,8 @@ messages ("correct everywhere, including held-out [...]") and in `heldout_fail` 
 
 ## 6. What it catches, and what it deliberately does not do
 
-The final run in `results_p1.json` (33 kernels, seat 100, core 2):
+The historical hardened-referee run in `results_p1.json` (33 kernels, seat 100, core 2), before the
+`no_gain`/throughput changes (see `P1-HANDOFF.md` for current acceptance):
 - **8/8 honest kernels accepted:** h1, h4 and c5e `slower` (about 1.000x); h2 1.54x, h3 1.20x, c5a/c5b about
   1.86x and c5c 1.32x `faster`, with held-out passed.
 - **24/25 cheats caught:**
@@ -252,13 +264,11 @@ The final run in `results_p1.json` (33 kernels, seat 100, core 2):
 | `None` with a free core | Exit code 3 for another referee reason (the baseline would not compile or load, no sandbox uid, survivors after SIGKILL), or the referee crashed. Run the CLI directly on the same file. |
 | `rules`: "reaches the module / private attribute", "touches `__x`", "import inside a function", "module-level `For`/`Expr`" | A kernel file may hold only **imports, constant assignments, function definitions and a docstring**. Imports allowed: `nki`, `nki.isa`, `nki.language`, `nki.typing`, `numpy`, `math`, `ml_dtypes`, `from nki import isa/language/typing`. Not allowed: `from nki.isa import dma_copy`, imports inside functions, classes, `global`, `_private` attributes, dunder names other than `__name__`, non-constant default arguments, and decorators that are calls (`@nki.jit(...)` is rejected, `@nki.jit` is fine). `nl.load`/`nl.store` are allowed. |
 | `rules`: "THE CANDIDATE MODIFIED THE REFEREE" for an honest kernel | Something added, removed or changed a `.py`/`.pth`/`.so` file under `projects/03-chipboost/` or `projects/02-kernel-agent/` **while the check ran**: a `git pull`, an edit, or **your loop writing the next candidate there**. Write candidates outside those trees (e.g. `/tmp/chipboost_cands/`). |
-| `wrong`: "timed out after 600s" / "killed by SIGXCPU/SIGKILL" | The sandboxed child hit its limits: 600 s wall time, 600 s CPU, 48 GB memory, 4 GB per file, 2048 processes. Usually an unbounded trace-time loop. |
+| `wrong`: "timed out after 600s" / "killed by SIGXCPU/SIGKILL" | The sandboxed child hit its limits: 600 s wall time, 1200 s CPU, 48 GB memory, 4 GB per file, 4096 processes. Usually an unbounded trace-time loop. |
 | `wrong`: "the check timed out after 1800s" | The whole `check_isolated` call ran out of time. It is logged as `wrong` with null `code_hash`/`sim_ok`, so fill those in. If it repeats on honest kernels, it is infrastructure: check the core and run the selftest. |
 | `wrong`: "A TIMED RUN PRODUCED A WRONG OUTPUT" | The kernel was correct when checked but not when timed: input-dependent shortcuts, or stale state. |
 | `wrong`: "PRECISION LOSS: ... bf16 ulps" | Accumulate in an fp32 PSUM tile across all of K, and round to bf16 once. |
 | Timings look wrong, or after a crash | `python timing.py --selftest --shapes qwen` (as root, in the pod; it needs core 2 or 3). It checks that the output is written and correct, noise is under 5%, time scales with work, and A/A is about 1.0. It must print `TIMER OK` (exit code 0). Use `--shapes small` (the default) for a quick run. |
 
-**Where the code and the docs disagree** (the code wins):
-- STATUS.md lists held-out **before** timing; the code times first and runs held-out only for a would-be
-  `faster`.
-- REVIEW.md's `heldout=False` and `--no-heldout` do not exist.
+**Historical review:** REVIEW.md's `heldout=False` and `--no-heldout` do not exist. The current API is
+documented above; historical measurement tables in STATUS.md retain their original verdict names.
