@@ -20,7 +20,7 @@ into one repair instruction, and tries again: at most 8 rounds of 4 samples per 
 | | |
 |---|---|
 | model | Qwen3-8B, thinking off, served by vLLM on the seat pod's Trainium2 chip: one chip at LNC=2, tensor parallel 2, max-model-len 8192, max-num-seqs 4 |
-| checker | `nkibench.py` on NKI 0.6.0, simulating trn2 (set explicitly for the v7 runs; the baseline and experiment A re-graded under both trn2 and trn3 give identical scores, [analysis/sim_target_check.md](analysis/sim_target_check.md)), with an on-chip allocation audit and a held-out set: [CHECKER.md](projects/02-kernel-agent/CHECKER.md), [EVAL.md](projects/02-kernel-agent/EVAL.md) |
+| checker | `nkibench.py` on NKI 0.6.0, simulating trn2 (on a seat pod NKI picks trn2 from the hardware, which we confirmed with a probe kernel; the v7 runs also set it explicitly; the baseline and experiment A re-graded under trn2 and trn3 give identical scores, [analysis/sim_target_check.md](analysis/sim_target_check.md)), with an on-chip allocation audit and a held-out set: [CHECKER.md](projects/02-kernel-agent/CHECKER.md), [EVAL.md](projects/02-kernel-agent/EVAL.md) |
 | where | [[TBD: 5]] seat pods in parallel, one agent process per model server |
 | speed | about 50 s per round of 4 samples, bound by generation: 13.9 tok/s for one stream, 22.1 tok/s in total for four |
 
@@ -35,7 +35,8 @@ into one repair instruction, and tries again: at most 8 rounds of 4 samples per 
 
 **How many runs, and the spread.** Every cell is 5 independent runs of one configuration. We report the
 rate, never the best run. [[TBD: one sentence on the spread of the final run.]] The baseline was run twice,
-on two seats: [[TBD: replication numbers]].
+on two seats with the organizers' agent: L1 0/5, L2 3/5 and 2/5, L3 0/5, L4 0/5 both times, with identical
+scores on L1, L3 and L4. [[TBD: replication re-graded, analysis/calibration_replica_seat119.md]]
 
 **Reproduce.**
 
