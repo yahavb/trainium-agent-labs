@@ -1,6 +1,6 @@
-# A small-model loop that tunes chip kernels, and what decides whether it works
+# KernelTune: an on-chip kernel autotuner driven by two small models
 
-Hack the Chip (NYU × Annapurna Labs), kernel optimisation track.
+Team Skywalker. Hack the Chip (NYU × Annapurna Labs), kernel optimisation track.
 
 **The pitch in four lines.**
 
