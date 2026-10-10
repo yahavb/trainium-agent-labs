@@ -165,7 +165,23 @@ final agent stacks these layers (full list and sources: [V7.md](projects/02-kern
 | verdict | after each level: a confidence, then extra hostile cases and lowering for trn2 | see §5 |
 | sampling (`SAMPLING=qwen`) | Qwen3's thinking-off sampling settings | none in practice: the server decodes greedily |
 
-[[TBD: ablation table: which of these layers made levels 3 and 4 solvable]]
+**Which layer did it: leave-one-out ablation.** Each row switches one v7 layer back to the organizers'
+original and keeps the rest. Under greedy decoding one run is the trajectory, so each cell is one run.
+Rounds count from 0. [[TBD: compare.py table and log paths]]
+
+| switched back | level 3 | level 4 |
+|---|---|---|
+| nothing (v7) | 1.0, round 0 | 1.0, round 2 |
+| first prompt (`PROMPT1=theirs`) | 1.0, round 0 | 1.0, round 1 |
+| **worked example (`CARD=theirs`)** | **0.30, not solved** | 1.0, round 4 |
+| all-dims tiling message (`MESSAGES=v4`) | 1.0, round 0 | 1.0, round 4 |
+| repair prompt (`REPAIR_PROMPT=theirs`) | 1.0, round 0 | 1.0, round 2 |
+| sampling settings (`SAMPLING=theirs`) | 1.0, round 0 | 1.0, round 2; rounds 0–1 identical to v7 |
+
+Level 3 needs exactly one layer, the worked example in the first prompt; without it the model makes the
+baseline's level-3 mistakes again. Level 4 needs no single layer: the example and the all-dims tiling
+message each save two rounds, and v7's longer first prompt costs one. Changing the sampling settings
+changes nothing, which is the greedy server again.
 
 The rule for feedback: one failure, one instruction, naming the failing line. A verdict ("line 16 calls a
 banned function") is rewritten as an instruction ("change this call; keep everything else"). **For known
