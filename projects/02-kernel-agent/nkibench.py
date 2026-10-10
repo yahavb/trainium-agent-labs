@@ -853,7 +853,10 @@ def verify(path, level_n, tol=2e-2, seed=0):
                              f"RAISED during simulation: {type(e).__name__}: {e}"))
             continue
         audited.append(counted.get("allocations", 0))
-        m = describe_illegal(counted) or describe_mismatch(got, want, tol)
+        # Levels 5-7 are graded on bytes too (agent.grade applies the same bar); without it --check, and
+        # scripts/reaudit.py which calls it, would pass a level-5 kernel that moves level 4's traffic.
+        m = (describe_illegal(counted) or describe_mismatch(got, want, tol)
+             or check_traffic_bar(level_n, counted, args, want))
         if m:
             failures.append((label(case, level_n), m))
             continue

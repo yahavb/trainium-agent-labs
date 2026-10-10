@@ -86,7 +86,8 @@ def pair_verdicts(ours, theirs):
 def scored_stats(pairs, side):
     """Mean confidence, Brier and confident-but-wrong for one side, against OUR held-out result."""
     s = [(x if side == "ours" else y)["confidence"] for x, y in pairs if x.get("heldout_total")]
-    ok = [x["heldout_passed"] == x["heldout_total"] for x, y in pairs if x.get("heldout_total")]
+    ok = [bool(x.get("solved", True)) and x["heldout_passed"] == x["heldout_total"]
+          for x, y in pairs if x.get("heldout_total")]
     if not s:
         return None
     return dict(n=len(s), conf=sum(s) / len(s),
@@ -140,7 +141,9 @@ def verdict_stats(vs):
         return None
     claims = collections.Counter(claim_of(v) for v in vs)
     scored = [v for v in vs if v.get("heldout_total")]
-    ok = lambda v: v["heldout_passed"] == v["heldout_total"]
+    # success = solved on the loop AND every held-out case passed (the VERIFIED claim). On levels 5-7
+    # an unsolved kernel can pass held-out: those shapes do not reach the traffic bar the loop's do.
+    ok = lambda v: bool(v.get("solved", True)) and v["heldout_passed"] == v["heldout_total"]
     brier = (sum((v["confidence"] - ok(v)) ** 2 for v in scored) / len(scored)) if scored else None
     return dict(n=len(vs), claims=claims,
                 confidence=sum(v["confidence"] for v in vs) / len(vs), brier=brier,

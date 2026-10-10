@@ -82,7 +82,7 @@ def main():
               f"{v['claim']}")
 
     scored = [v for v in rows if v["heldout_total"]]
-    ok = lambda v: v["heldout_passed"] == v["heldout_total"]
+    ok = lambda v: bool(v.get("solved", True)) and v["heldout_passed"] == v["heldout_total"]
     brier = (sum((v["confidence"] - ok(v)) ** 2 for v in scored) / len(scored)) if scored else None
     over = [v for v in scored if v["confidence"] >= 0.5 and not ok(v)]
 

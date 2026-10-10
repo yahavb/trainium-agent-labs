@@ -319,7 +319,8 @@ def main():
                          ["level", "value kind", "mode", "cases"]), ""]
         scored = [v for v in verdicts if v.get("heldout_total")]
         if scored:
-            ok = [1.0 if v["heldout_passed"] == v["heldout_total"] else 0.0 for v in scored]
+            ok = [1.0 if v.get("solved", True) and v["heldout_passed"] == v["heldout_total"] else 0.0
+                  for v in scored]
             brier = sum((v["confidence"] - y) ** 2 for v, y in zip(scored, ok)) / len(scored)
             over = sum(1 for v, y in zip(scored, ok) if v["confidence"] >= 0.5 and not y)
             md += [f"Calibration over {len(scored)} verdicts: Brier score {brier:.3f}; "
