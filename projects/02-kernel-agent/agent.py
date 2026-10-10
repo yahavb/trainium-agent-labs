@@ -532,13 +532,71 @@ def repair_card_names(level, category):
     return deduped
 
 
-def compact_ledger(failures, limit=4):
-    seen = []
+def failure_key(feedback):
+    text = compact_feedback(feedback)
+    low = text.lower()
+    if "memoryregion" in low or "not callable" in low:
+        return "signature.memory_region_called"
+    if "missing 1 required positional argument" in low and "dtype" in low:
+        return "signature.ndarray_missing_dtype"
+    if "has no `mean`" in low or "attribute 'mean'" in low:
+        return "reduction.mean_not_supported"
+    if "nki.isa" in low and ("has no `sum`" in low or "has no attribute 'sum'" in low):
+        return "signature.nisa_sum_not_found"
+    if "tensor_reduce axis" in low or "last contiguous" in low:
+        return "reduction.axes_not_trailing"
+    if "same number of elements" in low or "dma_copy requires" in low:
+        return "dma.shape_mismatch"
+    if "at least 2 dimensions" in low or "1-d tile" in low or "1d" in low:
+        return "tile.rank_1d"
+    if "unsupported operand type" in low or "python operators" in low:
+        return "api.python_operator_on_tile"
+    if "has no `shape`" in low or "attribute 'shape'" in low:
+        return "api.instruction_shape"
+    if "nonfinite:" in low or "nan" in low:
+        return "numeric.nonfinite"
+    if "scale:" in low or "consistent scale" in low:
+        return "numeric.scale"
+    if "byte floor" in low or "traffic " in low or " transfers" in low or "issue-bound" in low:
+        return "traffic.hbm"
+    return "generic." + re.sub(r"[^a-z0-9]+", "_", low[:60]).strip("_")
+
+
+def ledger_line(feedback):
+    key = failure_key(feedback)
+    compact = compact_feedback(feedback)
+    summary = {
+        "signature.memory_region_called": "memory regions called as functions; use buffer=nl.sbuf",
+        "signature.ndarray_missing_dtype": "nl.ndarray missing dtype",
+        "reduction.mean_not_supported": ".mean() used on NKI tensor",
+        "signature.nisa_sum_not_found": "used nisa.sum; use nl.sum",
+        "reduction.axes_not_trailing": "nl.sum axes not trailing contiguous",
+        "dma.shape_mismatch": "dma_copy src/dst shapes differ",
+        "tile.rank_1d": "created 1D SBUF/PSUM tile",
+        "api.python_operator_on_tile": "used Python operator on tile",
+        "api.instruction_shape": "read .shape from instruction result",
+        "numeric.nonfinite": "nonfinite output",
+        "numeric.scale": "consistent scale error",
+        "traffic.hbm": "excess HBM traffic",
+    }.get(key, compact[:120])
+    return f"{key}: {summary}"
+
+
+def compact_ledger(failures, limit=5):
+    by_key = {}
     for failure in failures:
-        short = re.sub(r"\s+", " ", failure).strip()[:180]
-        if short and short not in seen:
-            seen.append(short)
-    return "\n".join(f"- {x}" for x in seen[-limit:])
+        by_key[failure_key(failure)] = ledger_line(failure)
+    return "\n".join(f"- {line}" for line in list(by_key.values())[-limit:])
+
+
+def retrieved_card_names(level, category, feedback="", source="", max_cards=5):
+    names = repair_card_names(level, category)
+    names += select_context_cards(level, feedback=feedback, source=source, max_cards=max_cards)
+    deduped = []
+    for name in names:
+        if name not in deduped:
+            deduped.append(name)
+    return deduped[:max_cards]
 
 
 def known_invalid_patterns(failures):
@@ -741,7 +799,7 @@ def repair_prompt(level, source, feedback, tried=None):
     """
     compact = compact_feedback(feedback)
     category, instruction = distill_failure(compact)
-    card_names = repair_card_names(level, category)
+    card_names = retrieved_card_names(level, category, feedback=compact, source=source)
     cards = render_context_cards(card_names)
     ledger = compact_ledger(tried or [])
     ledger_text = f"\n\nPrevious unique failures to avoid repeating:\n{ledger}" if ledger else ""
@@ -798,7 +856,7 @@ def audit_context(level):
     )
     for name, feedback in AUDIT_FAILURES.items():
         cat, inst = distill_failure(feedback)
-        cards = repair_card_names(level, cat)
+        cards = retrieved_card_names(level, cat, feedback=feedback, source=source)
         rendered = render_context_cards(cards)
         prompt = repair_prompt(level, source, feedback, tried=[feedback])
         budget = prompt_accounting(code=source, feedback=compact_feedback(feedback),
@@ -832,15 +890,26 @@ def summarize_log(path):
     print("failure categories:")
     for cat, n in sorted(by_cat.items(), key=lambda kv: (-kv[1], kv[0])):
         print(f"  {cat}: {n}")
+    by_key = {}
+    for r in rows:
+        key = r.get("failure_key") or failure_key(r.get("feedback", r.get("compact_feedback", "")))
+        by_key[key] = by_key.get(key, 0) + 1
+    print("failure keys:")
+    for key, n in sorted(by_key.items(), key=lambda kv: (-kv[1], kv[0])):
+        print(f"  {key}: {n}")
 
     print("\nattempts:")
     for r in rows:
         b = r.get("prompt_budget") or {}
         cards = ",".join(r.get("context_cards") or [])
+        docs = b.get("cards", 0) + b.get("core", 0) + b.get("reference", 0)
+        evidence = b.get("feedback", 0) + b.get("ledger", 0)
         print(
             f"  L{r.get('level')} R{r.get('round')}: reward={r.get('reward'):.2f} "
             f"cat={r.get('failure_category', 'unknown')} "
+            f"key={r.get('failure_key', '?')} "
             f"prompt~{b.get('total', len(str(r.get('prompt_chars', ''))) // 4)}tok "
+            f"docs~{docs} evidence~{evidence} code~{b.get('code', 0)} "
             f"cards={cards or 'none'}"
         )
 
@@ -987,6 +1056,7 @@ def solve(a, level, log):
                        context_cards=prompt_cards,
                        prompt_budget=prompt_budget,
                        failure_category=failure_category,
+                       failure_key=failure_key(feedback),
                        repair_instruction=repair_instruction,
                        compact_feedback=compact_feedback(feedback),
                        code=src, feedback=feedback)
@@ -1044,7 +1114,7 @@ def solve(a, level, log):
                       + f"\n\nThese approaches have already failed, so do something different:\n"
                         f"{ledger}")
             cat, inst = distill_failure(latest[1])
-            prompt_cards = repair_card_names(level, cat)
+            prompt_cards = retrieved_card_names(level, cat, feedback=latest[1], source=latest[0])
             prompt_budget = prompt_accounting(
                 code=latest[0], feedback=compact_feedback(latest[1]),
                 cards=render_context_cards(prompt_cards),
@@ -1069,7 +1139,7 @@ def solve(a, level, log):
         else:
             prompt = repair_prompt(level, latest[0], latest[1], tried)
             cat, inst = distill_failure(latest[1])
-            prompt_cards = repair_card_names(level, cat)
+            prompt_cards = retrieved_card_names(level, cat, feedback=latest[1], source=latest[0])
             prompt_budget = prompt_accounting(
                 code=latest[0], feedback=compact_feedback(latest[1]),
                 cards=render_context_cards(prompt_cards),

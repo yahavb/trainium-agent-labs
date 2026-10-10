@@ -316,3 +316,27 @@ Level 1 prompt sizes:
 
 Use this to compare first-attempt reward/error category instead of guessing whether more context
 helps.
+
+## Context manager improvements: keys, ledger, retrieval, report
+
+Added normalized failure keys and a compressed unique ledger.
+
+Examples:
+
+- `signature.memory_region_called`
+- `signature.nisa_sum_not_found`
+- `dma.shape_mismatch`
+- `tile.rank_1d`
+- `reduction.axes_not_trailing`
+
+Repair prompts now use:
+
+- compact checker evidence;
+- retrieved cards from category plus keywords in the error/code;
+- one-line unique ledger entries instead of repeated raw messages.
+
+`--summarize-log` now reports:
+
+- failure categories;
+- failure keys;
+- token split for docs/evidence/code per attempt.
