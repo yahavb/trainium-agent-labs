@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Verifier-grounded online RL controller for projects/02-kernel-agent  (v5).
+Verifier-grounded online RL controller for projects/02-kernel-agent  (v6).
 
 Reuses agent.py (prompts, grader) and nkibench.py (verifier) UNCHANGED. Everything new lives here.
 
@@ -12,9 +12,9 @@ is online policy learning over prompts; it does NOT update model weights. It exp
 
 Run from projects/02-kernel-agent:
   python rl_trace_agent.py --level 2 --rounds 8 --samples 4 --episodes 3 \
-      --context 8192 --seed-references --log rl_level2_v5.jsonl
+      --context 8192 --seed-references --log rl_level2_v6.jsonl
 
-See README-RL-TRACE.md for what changed from v4.1 and why.
+See README-RL-TRACE.md for what changed from v5 and why.
 """
 
 import argparse
@@ -38,14 +38,17 @@ from collections import defaultdict
 import numpy as np
 
 import agent as base_agent
+import holdout as holdout_mod
+import kernel_lint
 import nkibench
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 MODEL = os.environ.get("KERNEL_AGENT_MODEL", getattr(base_agent, "MODEL", "Qwen/Qwen3-8B"))
 
 STRATEGIES = ("direct", "contract_trace", "counterexample", "repair_diagnosis", "exemplar", "reflect")
 TEMPERATURES = ("t=0.3", "t=0.6", "t=0.9")
 MODES = ("reflect", "bandit", "plain")
+HINT_TIERS = ("none", "api", "shape", "algo")        # each tier includes the ones before it
 
 TRACE_FIELDS = (
     "contract", "tile_strategy", "memory_flow", "edge_cases",
@@ -87,6 +90,16 @@ CALL SIGNATURES (exact):
 - nisa.dma_copy(dst=, src=)            HBM <-> SBUF; same number of elements on both sides.
 - nl.ndarray(shape, dtype=, buffer=)   allocate; the first dimension of an sbuf/psum tile is <= 128.
 - nl.affine_range(n)                   the loop; its variable is usable inside nl.ds(...).
+"""
+
+# Documentation of how the CHECKER behaves, not of the algorithm. In the v5 A/B, 58% of attempts died
+# because a fixed tile (128x512, or a loop to 127) was used on the 32x12 test shape.
+SHAPE_RULE_CARD = r"""
+SHAPES: the checker runs your kernel on SEVERAL input shapes, and some are smaller than one tile
+(for example a 32-row input with 12 columns). Never write a literal size for a dimension of the
+input. Read it from the tensor, e.g. `P, F = in_tensor.shape`, and allocate every tile with
+EXACTLY the shape of the data it receives. The 128 and 512 limits are maximums: when a dimension
+is smaller, use it whole.
 """
 
 LEVEL2_ALGO_HINT = r"""
@@ -587,18 +600,36 @@ def explain_permutation(got, inp, shape2D, rows=4, examples=3):
     return " ".join(out)
 
 
+def _frac_correct(got, want, tol=2e-2):
+    """Fraction of output elements within the verifier's tolerance (same scale rule as
+    nkibench.describe_mismatch). 0.0 when the shapes differ."""
+    try:
+        got, want = np.asarray(got, np.float64), np.asarray(want, np.float64)
+        if got.shape != want.shape:
+            return 0.0
+        scale = float(np.sqrt((want ** 2).mean())) or 1.0
+        err = np.abs(got - want) / scale
+        err = np.where(np.isfinite(err), err, np.inf)
+        return float((err <= tol).mean())
+    except Exception:
+        return 0.0
+
+
 def probe_kernel(level, code):
     """Run `code` on every simulator case. Returns the FIRST failure (kind in 'exception' |
-    'mismatch') or {'kind': 'ok'}, plus `cases`: [(label, shape2D_or_None, 'ok'|'fail')], or
-    {'kind': 'unavailable'}. Running all cases is what shows a kernel that only works for some
-    shapes, such as the square one where F1 == F2."""
+    'mismatch') or {'kind': 'ok'}, plus
+      cases:   [(label, shape2D_or_None, 'ok'|'fail')]
+      details: [{label, status: 'ok'|'raised'|'wrong', msg, frac}]   one per case, ALL of them,
+    or {'kind': 'unavailable'}. The verifier reports only the first failing shape; running all of
+    them is what shows a kernel that works for some shapes (the square one, the big one) only.
+    `frac` is the fraction of correct output elements, 1.0 for a pass, 0.0 for a raise."""
     spec = nkibench.LEVELS[level]
     try:
         import nki  # noqa: F401
     except ImportError:
         return {"kind": "unavailable"}
     fd, path = tempfile.mkstemp(suffix=".py", prefix="_rl_probe_")
-    first, cases = None, []
+    first, cases, details = None, [], []
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(code)
@@ -615,17 +646,26 @@ def probe_kernel(level, code):
                 lines = code.splitlines()
                 src = lines[lineno - 1].strip() if lineno and 0 < lineno <= len(lines) else ""
                 cases.append((label, case.get("shape2D"), "fail"))
+                details.append({"label": label, "status": "raised", "frac": 0.0,
+                                "msg": f"{type(e).__name__}: {compact(str(e), 150)}"
+                                       + (f" (line {lineno})" if lineno else "")})
                 first = first or {"kind": "exception", "etype": type(e).__name__, "msg": str(e),
                                   "lineno": lineno, "src": src, "case": case}
                 continue
-            if nkibench.describe_mismatch(got, want):
+            miss = nkibench.describe_mismatch(got, want)
+            if miss:
+                frac = _frac_correct(got, want)
                 cases.append((label, case.get("shape2D"), "fail"))
+                head = miss.splitlines()[0].replace("NUMERICAL MISMATCH: ", "").rstrip(".")
+                details.append({"label": label, "status": "wrong", "frac": frac,
+                                "msg": compact(head, 90) + f"; {frac:.0%} of elements right"})
                 first = first or {"kind": "mismatch", "case": case, "args": args,
                                   "got": np.asarray(got)}
             else:
                 cases.append((label, case.get("shape2D"), "ok"))
+                details.append({"label": label, "status": "ok", "frac": 1.0, "msg": ""})
         out = first or {"kind": "ok"}
-        out["cases"] = cases
+        out["cases"], out["details"] = cases, details
         return out
     except Exception:
         return {"kind": "unavailable"}
@@ -634,6 +674,66 @@ def probe_kernel(level, code):
             os.unlink(path)
         except OSError:
             pass
+
+
+def probe_progress(probe):
+    """Dense score in [0, 1] from a probe: a shape that passes counts 1, one that runs but is wrong
+    counts half its correct-element fraction, one that raises counts 0. None if there is no probe.
+    v5 gave every crash 0.30 and every wrong answer a score that ignored the other shapes."""
+    details = (probe or {}).get("details")
+    if not details:
+        return None
+    return sum(1.0 if d["status"] == "ok" else 0.5 * d["frac"] for d in details) / len(details)
+
+
+def shape_table(probe, limit=4):
+    """The verdict on EVERY checker shape, not only the first one that failed."""
+    details = (probe or {}).get("details") or []
+    if not details or all(d["status"] == "ok" for d in details):
+        return ""
+    rows = []
+    for d in details[:limit]:
+        rows.append(f"{d['label']}: " + ("passes" if d["status"] == "ok"
+                                         else ("RAISES " if d["status"] == "raised" else "wrong: ")
+                                         + d["msg"]))
+    return "PER-SHAPE RESULT (every checker shape, not only the first failure): " + " | ".join(rows)
+
+
+def level_input_shapes(level):
+    """Shapes of the checker's input tensors for `level`, e.g. [(32, 12), (128, 64), ...]."""
+    out = []
+    try:
+        for case in nkibench.LEVELS[level]["shapes"]:
+            args, _ = nkibench.make_inputs(case, level)
+            for a in args:
+                shp = getattr(a, "shape", None)
+                if shp and tuple(shp) not in out:
+                    out.append(tuple(int(x) for x in shp))
+    except Exception:
+        pass
+    return out
+
+
+DMA_RE = re.compile(r"dma_copy requires src and dst to have the same number of elements, "
+                    r"got src=(\d+), dst=(\d+)")
+
+
+def rewrite_tile_feedback(feedback, shapes):
+    """agent.enrich answers a dma_copy size mismatch with an example that allocates a 128x512 tile,
+    which is the very mistake that fills the v5 trace (dst=512, dst=16384, dst=128 against
+    src=384). Replace that advice with the fact: the tile must have the shape of the data."""
+    m = DMA_RE.search(feedback or "")
+    if not m or " The tile you allocated holds" not in feedback:
+        return feedback
+    src, dst = int(m.group(1)), int(m.group(2))
+    head = feedback.split(" The tile you allocated holds")[0]
+    listed = ", ".join(str(s) for s in shapes[:4])
+    return (f"{head} The data being copied has {src} elements but the tile you allocated holds {dst}. "
+            f"A tile's size must come from the data it receives: allocate it with the shape of the "
+            f"tensor or slice being copied (for a whole tensor `x`: "
+            f"`nl.ndarray(x.shape, dtype=x.dtype, buffer=nl.sbuf)`), never with a fixed number. "
+            + (f"This checker's inputs have shapes {listed}; a fixed size fits at most one of them."
+               if listed else ""))
 
 
 OOB_RE = re.compile(r"dimension (\d+): index (?:range \[(\d+), (\d+)\]|(\d+)) exceed dimension size of (\d+)")
@@ -680,7 +780,7 @@ def _shape_pattern(cases):
     return text
 
 
-def located_analysis(level, code, probe, reveal_flow=True):
+def located_analysis(level, code, probe, reveal_flow=True, all_shapes=True):
     parts = []
     if probe["kind"] == "exception":
         where = f"line {probe['lineno']}: `{probe['src']}`" if probe["lineno"] else "inside the kernel"
@@ -692,6 +792,8 @@ def located_analysis(level, code, probe, reveal_flow=True):
         parts.append(explain_permutation(probe["got"], args[0], args[1]))
     if reveal_flow or level != 2:
         parts.append(_shape_pattern(probe.get("cases", [])))
+    if all_shapes:
+        parts.append(shape_table(probe))
     return " ".join(p for p in parts if p)
 
 
@@ -750,8 +852,13 @@ def facts_block(facts):
 
 def build_prompt(args, level, action, anchor_code="", anchor_feedback="", last_feedback="",
                  last_regressed=False, history=(), exemplar=None, stuck=False, diagnosis="",
-                 diag_src="", lessons=(), facts=(), rejected=()):
+                 diag_src="", lessons=(), facts=(), rejected=(), hints=None):
+    hints = hints or args.hints
     if args.mode == "plain":                       # exactly what agent.py would send
+        if stuck and getattr(args, "plain_restart", True):
+            # v5 ignored `stuck` in plain mode, so a STUCK-RESTART row re-sent the same repair
+            # prompt and got the same code back for five rounds. A restart is a fresh first prompt.
+            return base_agent.first_prompt(level, args.terse)
         if anchor_code:
             return base_agent.repair_prompt(level, anchor_code, anchor_feedback)
         return base_agent.first_prompt(level, args.terse)
@@ -786,9 +893,12 @@ def build_prompt(args, level, action, anchor_code="", anchor_feedback="", last_f
         diagnosis_block = "\n" + head + diagnosis + "\n"
 
     cards = FILE_RULES_CARD
-    if args.hints in ("api", "algo"):
+    tier = HINT_TIERS.index(hints) if hints in HINT_TIERS else 0
+    if tier >= 1:
         cards += API_SIGS_CARD
-    if args.hints == "algo" and level == 2:
+    if tier >= 2:
+        cards += SHAPE_RULE_CARD
+    if tier >= 3 and level == 2:
         cards += LEVEL2_ALGO_HINT
     return (
         core + "\n\n" + cards + "\n" + facts_block(facts) + lessons_block(lessons) +
@@ -875,6 +985,44 @@ def group_advantages(rewards):
     std = math.sqrt(sum(x * x for x in raw) / len(rewards))
     norm = [x / std if std > 1e-9 else 0.0 for x in raw]
     return raw, norm
+
+
+def dedup_advantages(rewards, fingerprints):
+    """Advantages over DISTINCT kernels. v5 counted four byte-identical samples as four
+    observations, so one kernel's reward dominated the group mean and std and then was credited to
+    the bandit four times. Here every distinct kernel counts once; duplicates inherit its advantage
+    and are flagged so they are neither exported nor used to update the policy.
+
+    Returns (raw, norm, duplicate_flags)."""
+    first, uniq = {}, []
+    dup = []
+    for i, (r, fp) in enumerate(zip(rewards, fingerprints)):
+        key = fp or "<empty>"
+        if key in first:
+            dup.append(True)
+        else:
+            first[key] = len(uniq)
+            uniq.append(r)
+            dup.append(False)
+    raw_u, norm_u = group_advantages(uniq)
+    raw, norm = [], []
+    for fp in fingerprints:
+        k = first[fp or "<empty>"]
+        raw.append(raw_u[k])
+        norm.append(norm_u[k])
+    return raw, norm, dup
+
+
+def effective_tier(base, escalation, escalate=True, escalate_algo=False):
+    """The hint tier for this round. Each time the episode has been stuck and restarted, climb one
+    tier (none -> api -> shape), because a restart with the same information produces the same
+    kernel. 'algo' (the level-2 algorithm note) is close to giving the answer, so it is reached only
+    with --escalate-algo and every row is logged with the tier it used."""
+    i = HINT_TIERS.index(base) if base in HINT_TIERS else 1
+    if escalate:
+        i += max(0, escalation)
+    cap = len(HINT_TIERS) - 1 if escalate_algo else HINT_TIERS.index("shape")
+    return HINT_TIERS[min(i, max(cap, HINT_TIERS.index(base) if base in HINT_TIERS else 1))]
 
 
 # ---------------------------------------------------------------------------- policy
@@ -1072,6 +1220,19 @@ class Run:
         self.log, self.sft, self.groups, self.rng, self.here = log, sft, groups, rng, here
         self.grade_cache = {}
         self.probe_cache = {}
+        self.holdout_cache = {}
+        self.shapes_cache = {}
+
+    def input_shapes(self, level):
+        if level not in self.shapes_cache:
+            self.shapes_cache[level] = level_input_shapes(level)
+        return self.shapes_cache[level]
+
+    def holdout(self, level, code, fp):
+        key = (level, fp)
+        if key not in self.holdout_cache:
+            self.holdout_cache[key] = holdout_mod.check_holdout(level, code)
+        return self.holdout_cache[key]
 
     def grade(self, level, code, fp):
         key = (level, fp) if fp else None
@@ -1096,16 +1257,32 @@ def _failure_key(category, feedback):
 def run_episode(run, level, episode, run_id):
     args, state = run.args, run.state
     spec = nkibench.LEVELS[level]
-    print(f"\n========== RL trace agent v5 [{args.mode}, hints={args.hints}]: level {level} "
-          f"({spec['op']}) episode {episode + 1}/{args.episodes} ==========")
     plain = args.mode == "plain"
+    analysis_on = not plain and not getattr(args, "no_analysis", False)
+    print(f"\n========== RL trace agent v6 [{args.mode}, hints={args.hints}]: level {level} "
+          f"({spec['op']}) episode {episode + 1}/{args.episodes} ==========")
+    if getattr(args, "independent_episodes", False):
+        # Without this, episode k starts with what episodes 0..k-1 learned, so per-episode solve
+        # rates are not independent samples and an A/B between arms is comparing trajectories.
+        run.strategy.stats.clear()
+        run.temperature.stats.clear()
+        state.lessons.clear()
+        state.facts.clear()
     pool = {} if plain else load_exemplar_pool(state, level, args.seed_references, run.here)
+    shapes = run.input_shapes(level)
     best = {"kernel": 0.0, "code": "", "feedback": "", "analysis": ""}   # best parsed attempt
     last = {"code": "", "feedback": "", "analysis": "", "category": "initial", "regressed": False}
     history, seen, tried_changes, rejected = [], set(), [], []
     fail_streak, last_key = 0, None
     stuck = low_div = verified = False
-    no_improve = 0
+    no_improve = restarts = escalation = samples_used = 0
+    config = dict(variants=not args.no_variants and not plain, same_temp=bool(args.same_temp),
+                  seed_refs=bool(args.seed_references), analysis=analysis_on,
+                  restart=True if not plain else getattr(args, "plain_restart", True),
+                  escalate=bool(getattr(args, "escalate", True)), flow=not args.no_flow,
+                  probe_all=getattr(args, "probe_all", True), trace=bool(args.trace),
+                  holdout=getattr(args, "holdout", "report"),
+                  independent=bool(getattr(args, "independent_episodes", False)))
 
     for round_i in range(args.rounds):
         context = f"level={level}|failure={last['category']}"
@@ -1122,6 +1299,8 @@ def run_episode(run, level, episode, run_id):
         if stuck or low_div:
             temp_name = "t=0.9"                              # identical outputs: widen the sampling
         base_temp = float(temp_name.split("=")[1])
+        hints_now = effective_tier(args.hints, escalation, getattr(args, "escalate", True),
+                                   getattr(args, "escalate_algo", False))
         use_exemplar = action == "exemplar" or (args.mode == "reflect" and args.seed_references)
         exemplar = pick_exemplar(pool, level) if use_exemplar else None
         lessons = state.proven_lessons() if args.mode == "reflect" else []
@@ -1150,8 +1329,12 @@ def run_episode(run, level, episode, run_id):
         prompt_action = action if (action != "reflect" or diagnosis) else "repair_diagnosis"
         prompt = build_prompt(args, level, prompt_action, anchor["code"],
                               anchor["feedback"], last["feedback"], last["regressed"], history,
-                              exemplar, stuck, diagnosis, diag_src, lessons, facts, rejected)
+                              exemplar, stuck, diagnosis, diag_src, lessons, facts, rejected,
+                              hints=hints_now)
         was_stuck, was_low_div = stuck, low_div
+        if stuck:
+            print(f"  restart {restarts}: fresh prompt, hints={hints_now}"
+                  f"{'' if plain else ', with the grounded analysis of the last failure'}")
 
         n = args.samples
         temps = [base_temp] * n if args.same_temp else sample_temps(base_temp, n)
@@ -1159,6 +1342,7 @@ def run_episode(run, level, episode, run_id):
                  for i in range(n)]
         prompts = sample_prompts(prompt, n, not args.no_variants and not plain)
         replies, wall = generate(args, prompts, temps, seeds)
+        samples_used += n
 
         def extract(reply):
             if plain:
@@ -1192,6 +1376,7 @@ def run_episode(run, level, episode, run_id):
                         fps[i] = code_fingerprint(extracted[i][1]) if extracted[i][1].strip() else ""
                         temps[i] = min(1.1, temps[i] + 0.3)
                 resampled = len(redo)
+                samples_used += len(redo)
 
         results = []
         for i, ((reply, finish, budget, est_prompt), (raw_code, code, dropped), fp) in enumerate(
@@ -1201,59 +1386,106 @@ def run_episode(run, level, episode, run_id):
             (kernel, parts, feedback), cached = run.grade(level, code, fp)
             passed = bool(parts.get("correct"))
             category = classify_feedback(feedback, passed, truncated)
-            lint = [] if (plain or passed or not code.strip()) else lint_api(code)
+            lint, hard = [], []
+            if analysis_on and not passed and code.strip():
+                lint = lint_api(code)
             if not passed and not plain:
                 feedback = enrich_feedback(feedback, category, dropped, code)
+                if analysis_on and category == "tile_limits":
+                    feedback = rewrite_tile_feedback(feedback, shapes)
+                    hard = kernel_lint.lint_hardcoded_dims(code, shapes)
                 if lint:
                     feedback = (feedback + " " + format_lint(lint)).strip()
+                if hard:
+                    feedback = (feedback + " " + kernel_lint.format_hardcoded(hard)).strip()
             repeated = bool(fp) and (fp in seen or fps.index(fp) != i)
             hygiene = 1.0 if (parts.get("parses") and not dropped and not truncated) else 0.0
-            progress = progress_score(parts, feedback, passed)
             results.append(dict(
                 reply=reply, finish=finish, truncated=truncated, trace=trace, trace_valid=trace_valid,
                 raw_code=raw_code, code=code, dropped=dropped, kernel=float(kernel), parts=parts,
                 feedback=feedback, category=category, fingerprint=fp, repeated=repeated,
-                hygiene=hygiene, progress=progress, lint=lint, cached=cached, passed=passed,
-                temperature=temps[i], prompt=prompts[i], analysis=""))
+                hygiene=hygiene, lint=lint, hard=hard, cached=cached, passed=passed,
+                temperature=temps[i], prompt=prompts[i], analysis="", probe=None, holdout=None,
+                progress=0.0))
+
+        # Held-out shapes: a kernel that passes the checker's 3-4 shapes may be right only for them.
+        holdout_mode = getattr(args, "holdout", "report")
+        if holdout_mode != "off":
+            for r in results:
+                if r["passed"] and r["code"].strip():
+                    r["holdout"] = run.holdout(level, r["code"], r["fingerprint"])
+                    if holdout_mode == "require" and r["holdout"].get("available") \
+                            and not r["holdout"]["ok"]:
+                        r["passed"], r["category"] = False, "holdout"
+                        r["kernel"] = min(r["kernel"], 0.9)
+                        r["feedback"] = holdout_mod.format_holdout(r["holdout"])
+                        r["analysis"] = r["feedback"]
+
+        # Every failing kernel that runs gets one probe over ALL checker shapes. The verifier shows
+        # only the first failing shape; the probe gives the per-shape table and a dense progress.
+        for r in results:
+            probe = None
+            if analysis_on and getattr(args, "probe_all", True) and not r["passed"] \
+                    and r["kernel"] > 0 and r["category"] in LOCATABLE and r["code"].strip():
+                probe = run.probe(level, r["code"], r["fingerprint"])
+                if probe.get("kind") == "unavailable":
+                    probe = None
+            r["probe"] = probe
+            pp = probe_progress(probe)
+            r["progress"] = pp if pp is not None else progress_score(r["parts"], r["feedback"],
+                                                                      r["passed"])
 
         for r in results:
             r["improved"] = 1.0 if r["kernel"] > best["kernel"] + 1e-9 else 0.0
             r["trace_reward"], r["trace_parts"] = trace_score(r["trace"], level, r["trace_valid"])
             r["rl"] = shaped_reward(r["kernel"], r["trace_reward"], r["progress"],
-                                    0.0 if r["lint"] else 1.0, r["hygiene"], r["improved"], args.trace)
-        raw_adv, norm_adv = group_advantages([r["rl"] for r in results])
+                                    0.0 if (r["lint"] or r["hard"]) else 1.0, r["hygiene"],
+                                    r["improved"], args.trace)
+        raw_adv, norm_adv, dup = dedup_advantages([r["rl"] for r in results],
+                                                  [r["fingerprint"] for r in results])
         distinct = len({r["fingerprint"] for r in results})
 
         top = max(results, key=lambda r: (r["kernel"], r["rl"]))
-        if not plain and not top["passed"] and top["kernel"] > 0 and top["category"] in LOCATABLE:
-            # One re-run of the best failing sample, to say WHERE it fails or HOW its output is wrong.
-            probe = run.probe(level, top["code"], top["fingerprint"])
+        if analysis_on and not top["passed"] and top["kernel"] > 0 \
+                and top["category"] in LOCATABLE:
+            probe = top["probe"] or run.probe(level, top["code"], top["fingerprint"])
             located = located_analysis(level, top["code"], probe, REVEAL_FLOW and not args.no_flow)
-            parts_ = [p for p in (format_lint(top["lint"]), located) if p]
+            parts_ = [p for p in (format_lint(top["lint"]), kernel_lint.format_hardcoded(top["hard"]),
+                                  located) if p]
             top["analysis"] = " ".join(parts_)
             if located:
                 fb = top["feedback"]
                 if "This is NOT a tile-size limit" in located and " You indexed up to " in fb:
                     fb = fb.split(" You indexed up to ")[0]       # generic advice that misleads here
                 top["feedback"] = (fb + " " + located).strip()
-        elif top["lint"]:
-            top["analysis"] = format_lint(top["lint"])
+        elif analysis_on and (top["lint"] or top["hard"]) and not top["analysis"]:
+            top["analysis"] = " ".join(p for p in (format_lint(top["lint"]),
+                                                   kernel_lint.format_hardcoded(top["hard"])) if p)
 
         for i, r in enumerate(results):
-            run.strategy.update(context, action, r["rl"])
-            run.temperature.update(context, temp_name, r["rl"])
+            if not dup[i]:                                   # a duplicate is not a new observation
+                run.strategy.update(context, action, r["rl"])
+                run.temperature.update(context, temp_name, r["rl"])
             for issue in r["lint"]:
                 state.note_fact(issue["sig"])
                 if issue["src"] and issue["src"] not in rejected:
                     rejected.append(issue["src"])
+            hold = r["holdout"] or {}
             row = {
                 "schema_version": SCHEMA_VERSION, "run_id": run_id, "episode": episode,
-                "mode": args.mode, "hints": args.hints, "level": level, "round": round_i, "sample": i,
+                "mode": args.mode, "hints": args.hints, "hints_effective": hints_now,
+                "level": level, "round": round_i, "sample": i,
                 "action": action, "temperature": r["temperature"], "temp_arm": temp_name,
                 "context": context, "stuck": was_stuck, "low_diversity": was_low_div,
+                "restarts": restarts, "escalation": escalation, "duplicate": dup[i],
                 "diagnosis": diagnosis, "diagnosis_source": diag_src, "lesson": rule,
                 "kernel_reward": r["kernel"], "trace_reward": r["trace_reward"],
-                "progress": r["progress"], "lint_clean": not r["lint"], "lint": r["lint"],
+                "progress": r["progress"], "lint_clean": not (r["lint"] or r["hard"]),
+                "lint": r["lint"], "shape_lint": r["hard"],
+                "probe_cases": (r["probe"] or {}).get("details"),
+                "holdout": ({"passed": hold.get("passed"), "total": hold.get("total"),
+                             "ok": hold.get("ok"), "available": hold.get("available")}
+                            if hold else None),
                 "rl_reward": r["rl"], "advantage": raw_adv[i], "advantage_norm": norm_adv[i],
                 "hygiene": r["hygiene"], "improved": r["improved"], "repeated": r["repeated"],
                 "group_distinct": distinct, "resampled": resampled, "grade_cached": r["cached"],
@@ -1262,18 +1494,20 @@ def run_episode(run, level, episode, run_id):
                 "verifier_parts": r["parts"], "failure_category": r["category"],
                 "feedback": r["feedback"], "analysis": r["analysis"], "code": r["code"],
                 "raw_code_differs": r["raw_code"] != r["code"], "sanitizer_dropped": r["dropped"],
-                "truncated": r["truncated"], "finish_reason": r["finish"],
+                "truncated": r["truncated"], "finish_reason": r["finish"], "config": config,
                 "prompt": r["prompt"], "reply": r["reply"][:12000],
                 "elapsed_s": round(wall, 3), "reflect_s": round(reflect_s, 3),
             }
             run.log.write(json.dumps(row, ensure_ascii=False) + "\n")
-            if run.sft and r["kernel"] >= args.sft_min_reward and r["code"].strip():
+            if run.sft and r["kernel"] >= args.sft_min_reward and r["code"].strip() and not dup[i]:
                 run.sft.write(json.dumps({"messages": [{"role": "user", "content": r["prompt"]},
                                                        {"role": "assistant", "content": r["reply"]}],
                                           "reward": r["kernel"], "level": level}) + "\n")
-            flags = "".join([" REPEAT" if r["repeated"] else "", " CUT" if r["truncated"] else "",
+            flags = "".join([" REPEAT" if r["repeated"] else "", " DUP" if dup[i] else "",
+                             " CUT" if r["truncated"] else "",
                              " STUCK-RESTART" if was_stuck else "",
-                             " LINT" if r["lint"] else "", " cached" if r["cached"] else "",
+                             " LINT" if r["lint"] else "", " HARDCODED" if r["hard"] else "",
+                             " cached" if r["cached"] else "",
                              f" stripped={len(r['dropped'])}" if r["dropped"] else ""])
             print(f"  r{round_i}.{i} {action:16s} t={r['temperature']:.2f} kernel={r['kernel']:.2f} "
                   f"prog={r['progress']:.2f} RL={r['rl']:.3f} adv={raw_adv[i]:+.3f} {wall:.0f}s "
@@ -1282,19 +1516,22 @@ def run_episode(run, level, episode, run_id):
             if args.verbose and (r["category"] in ("parse", "truncated") or not r["code"].strip()):
                 print("    reply head:", compact(r["reply"], 240))
         run.log.flush()
+        keep = [i for i in range(n) if not dup[i]]
         if run.groups is not None and n > 1:
             run.groups.write(json.dumps({
                 "level": level, "episode": episode, "round": round_i, "action": action,
-                "distinct": distinct,
-                "completions": [{"prompt": r["prompt"], "reply": r["reply"], "kernel": r["kernel"],
-                                 "reward": r["rl"], "advantage": norm_adv[i],
-                                 "category": r["category"]} for i, r in enumerate(results)]}) + "\n")
+                "distinct": distinct, "hints": hints_now,
+                "completions": [{"prompt": results[i]["prompt"], "reply": results[i]["reply"],
+                                 "kernel": results[i]["kernel"], "reward": results[i]["rl"],
+                                 "advantage": norm_adv[i], "category": results[i]["category"]}
+                                for i in keep]}) + "\n")
             run.groups.flush()
         if run.sft:
             run.sft.flush()
+        std_u = math.sqrt(sum(raw_adv[i] ** 2 for i in keep) / max(1, len(keep)))
         print(f"  group: {distinct}/{n} distinct kernels"
               + (f", {resampled} re-asked after duplicates" if resampled else "")
-              + (f", std(RL)={math.sqrt(sum(a * a for a in raw_adv) / n):.3f}"))
+              + f", std(RL over distinct)={std_u:.3f}")
 
         gain = top["kernel"] - best["kernel"]
         if rule:
@@ -1304,13 +1541,17 @@ def run_episode(run, level, episode, run_id):
             best = {"kernel": top["kernel"], "code": top["code"], "feedback": top["feedback"],
                     "analysis": top["analysis"]}
         no_improve = 0 if gain > 1e-9 else no_improve + 1
+        if gain > 1e-9:
+            restarts = 0
 
         key = _failure_key(top["category"], top["feedback"])
         fail_streak = fail_streak + 1 if key == last_key else 1
         last_key = key
         low_div = distinct < n
+        # v5 waited for 3 identical failures; with a repair prompt that holds the failing code, the
+        # model returned the same kernel from then on, so two is already conclusive.
         stuck = (all(r["repeated"] for r in results) or (n > 1 and distinct == 1 and not top["passed"])
-                 or fail_streak >= 3)
+                 or fail_streak >= 2)
         for r in results:
             if r["fingerprint"]:
                 seen.add(r["fingerprint"])
@@ -1324,15 +1565,28 @@ def run_episode(run, level, episode, run_id):
             verified = True
             state.verified[str(level)] = winner["code"]
             state.save()
-            print("  VERIFIED: every checker shape passed.")
+            hold = winner["holdout"] or {}
+            extra = ""
+            if hold.get("available"):
+                extra = f" Held-out shapes: {hold['passed']}/{hold['total']}."
+            print("  VERIFIED: every checker shape passed." + extra)
             break
+
+        if stuck:
+            restarts += 1
+            escalation += 1
+            max_r = getattr(args, "max_restarts", 2)
+            if max_r and restarts > max_r:
+                print(f"  still stuck after {restarts - 1} restarts with the failure unchanged; "
+                      f"ending the episode (--max-restarts {max_r}).")
+                break
         if args.patience and no_improve >= args.patience:
             print(f"  no improvement for {no_improve} rounds; ending the episode early "
                   f"(--patience {args.patience}).")
             break
 
     print(f"level {level} episode {episode + 1}: best kernel reward={best['kernel']:.3f}"
-          f"{'  (verified)' if verified else ''}")
+          f"{'  (verified)' if verified else ''}  [{samples_used} samples generated]")
     return best["kernel"], verified
 
 
@@ -1361,10 +1615,11 @@ def main():
                              "as a fallback, lesson bank. bandit: UCB over fixed prompt strategies. "
                              "plain: agent.py's own prompts through this harness, for an A/B on the "
                              "same logging.")
-    parser.add_argument("--hints", choices=("none", "api", "algo"), default="api",
-                        help="none: file rules only. api: + exact call signatures (documentation). "
-                             "algo: + the level-2 algorithm note. Ablate this; 'algo' is close to "
-                             "giving the answer.")
+    parser.add_argument("--hints", choices=HINT_TIERS, default="shape",
+                        help="none: file rules only. api: + exact call signatures. shape: + the rule "
+                             "that sizes come from the input tensor (default; v5's 'api' tier plus "
+                             "the lesson of its 58%% tile_limits failures). algo: + the level-2 "
+                             "algorithm note, close to giving the answer. Report the tier you used.")
     parser.add_argument("--trace", action="store_true",
                         help="ask for the structured TRACE note and include it in the reward")
     parser.add_argument("--seed-references", action="store_true",
@@ -1378,8 +1633,29 @@ def main():
                              "batch requests with different temperatures)")
     parser.add_argument("--no-flow", action="store_true",
                         help="level 2: do not tell the model where its output values came from")
-    parser.add_argument("--patience", type=int, default=5,
+    parser.add_argument("--patience", type=int, default=3,
                         help="end an episode after this many rounds without a better kernel (0 = off)")
+    parser.add_argument("--max-restarts", type=int, default=2,
+                        help="end an episode when it is still stuck after this many restarts (0 = off)")
+    parser.add_argument("--no-escalate", dest="escalate", action="store_false",
+                        help="a restart keeps the same hint tier (default: climb one tier per restart, "
+                             "none -> api -> shape)")
+    parser.add_argument("--escalate-algo", action="store_true",
+                        help="let escalation reach the level-2 algorithm note (nearly the answer)")
+    parser.add_argument("--no-plain-restart", dest="plain_restart", action="store_false",
+                        help="plain mode: do not restart with a fresh first prompt when stuck "
+                             "(v5 behaviour: the same repair prompt was re-sent)")
+    parser.add_argument("--no-analysis", action="store_true",
+                        help="skip lint, probe and located analysis: the model sees only the "
+                             "verifier's own text (an ablation of everything computed here)")
+    parser.add_argument("--no-probe-all", dest="probe_all", action="store_false",
+                        help="probe only the best failing sample of a round, not every failing one")
+    parser.add_argument("--holdout", choices=("off", "report", "require"), default="report",
+                        help="run passing kernels on held-out shapes. report: log it. require: a "
+                             "kernel that fails them is a failure and gets the message as feedback")
+    parser.add_argument("--independent-episodes", action="store_true",
+                        help="reset the learned policy, lessons and API facts before every episode, "
+                             "so episodes are independent samples (use for A/B runs)")
     parser.add_argument("--state", default="rl_state.json",
                         help="policy counts, verified kernels, lessons, API facts; '' disables")
     parser.add_argument("--export-sft", default="",

@@ -1,155 +1,173 @@
-# Verifier-grounded RL experiment (v5)
+# Verifier-grounded RL experiment (v6)
 
 Additive experiment for `projects/02-kernel-agent`. It reuses `agent.py` (prompts and grader) and
-`nkibench.py` (verifier) **unchanged**. All new logic is in `rl_trace_agent.py`.
+`nkibench.py` (verifier) **unchanged**. All new logic is in the files below.
 
-## Files to replace
+## Files (replace whole files; nothing else changes)
 
-Replace the entire contents of these files, and add the fourth. Nothing else changes.
-- `projects/02-kernel-agent/rl_trace_agent.py`
-- `projects/02-kernel-agent/summarize_rl_trace.py`
-- `projects/02-kernel-agent/README-RL-TRACE.md` (this file)
-- `projects/02-kernel-agent/test_rl_trace_agent.py` (new; runs with no Neuron SDK and no model)
+| File | Status | What it is |
+|------|--------|-----------|
+| `rl_trace_agent.py` | replaced (v5 -> v6) | the controller |
+| `summarize_rl_trace.py` | replaced | per-sample pass@k with intervals, arm table, confound warnings |
+| `test_rl_trace_agent.py` | replaced | 64 offline tests, no Neuron SDK and no model needed |
+| `README-RL-TRACE.md` | replaced | this file |
+| `kernel_lint.py` | **new** | static check for hard-coded tile sizes |
+| `holdout.py` | **new** | runs a kernel on shapes the checker never showed it |
+| `run_matrix.py` | **new** | arms x levels, interleaved, resumable, with one summary |
 
-## What the v4.1 trace said
+## What the v5 A/B said, and what it did not
 
-`rl_level2_v4.1.jsonl`, level 2, 3 episodes x 8 rounds x 4 samples. Episode 1 never got past
-`ds() missing 1 required positional argument: 'size'`; episode 2 got past it only at round 4. Reading it:
+`plain --hints none` vs `reflect --hints api`, level 2, 5 episodes each, `--no-seed --same-temp`.
 
-1. **The four samples in a round were the same kernel.** `adv=+0.000` on every row of episode 1 (8 of 8 rounds
-   were four identical kernels), and every round at t=0.3 and t=0.6 did the same. A group of identical samples has
-   no baseline, so the advantage is zero by construction: the "RL" had nothing to learn from, and
-   three of the four 70-second generations were wasted. (At t=0.9 diversity appeared, and so did the
-   only progress in the run, 0.30 to 0.50.)
-2. **Nothing told the model what `nl.ds` is.** `ds` appears in v4.1's API card and level-2 note
-   ("`nl.ds(start, 1)` slices") and nowhere in `agent.py`'s own card. The model wrote `ds((src_idx, 1))`,
-   `ds=nl.ds(...)`, `ds(size=...)`, `ds(nl.ds(...))`: at least six different wrong spellings of a two-argument
-   call whose signature was never given. `agent.py`, with no such hint, solves this level 4 of 5
-   (STATE.md). **Inferred, not measured**: the A/B in "Run" below measures it.
-3. **The self-reflection step made it worse.** The 8B reviewer has the same blind spot as the writer.
-   Its `CHANGE` was `ds(nl.ds((1, 1)))` three times, then `ds=nl.ds((1, 1, 1))`, which the next
-   round faithfully implemented. README v4.1 predicted this ("a reviewer with the same blind spot
-   reads the error and misses it again"); the loop still routed every repair through it.
-4. **The errors were filed under `correctness`.** A `TypeError` on every shape is not a wrong answer.
-   The bandit context was `failure=correctness`, so the policy could not tell "my API call is
-   malformed" from "my index arithmetic is off".
-5. **The reward had no gradient inside a failure bucket.** 0.30 (crash) scored RL 0.32 whatever the
-   fix. The one round that mattered, a crash becoming a kernel that runs (0.50), moved RL from 0.32 to
-   0.55 and was followed by 81.8% wrong elements with no hint about *which* ones.
+**The headline was weaker than it looked.**
 
-## What changed in v5
+- Reflect verified 5/5 and plain 3/5, but **every reflect episode verified in round 0 and stopped**, so
+  the repair loop, the restart logic and the lint-in-repair path were never exercised in that arm.
+- Per sample in round 0 (no feedback, so independent draws): plain 3/20 = 15%, reflect 7/20 = 35%.
+  Wilson 95% intervals are [0.05, 0.36] and [0.18, 0.57]; Fisher exact p = 0.27, and samples inside an
+  episode share a prompt, so even that is optimistic. Suggestive, not shown.
+- **The arms differed in more than `--mode` and `--hints`.** `plain` is `agent.py`'s prompt only.
+  `reflect` also adds the rules card, per-sample variant hints, duplicate re-asks, lint, the probe and the
+  located analysis. A gap between them cannot be credited to the API card. v6 lets you ablate each piece
+  (`--no-variants`, `--no-analysis`, `--hints`) and the summary prints what every arm contained.
+- `solved_attempts=14/88` counted cached grades (58/88 rows) and byte-identical samples (48/88 rows) as
+  separate wins.
 
-The principle: **the verifier and the interpreter are more reliable than the model's opinion of its
-own mistake, so everything that can be computed is computed, and the model is asked only when nothing
-else is available.**
+**What the plain arm showed about failure.**
+
+| Observation | Cause | v6 |
+|---|---|---|
+| 58% `tile_limits`, nearly all on shape (32, 12): `got src=384, dst=512 / 16384 / 128`, or "index range [0, 127] exceed dimension size of 32" | the kernel allocates or loops to a fixed size instead of the tensor's own | `kernel_lint` + shape rule + a rewritten message (below) |
+| Episodes 2 and 4: 5 rounds of the identical kernel, flagged `STUCK-RESTART`, each re-sent the same prompt | in `--mode plain`, `build_prompt` returned `agent.py`'s repair prompt and **ignored `stuck`**. The "restart" restarted nothing. | plain now restarts with a fresh first prompt (`--no-plain-restart` restores v5) |
+| The repair prompt contains the failing code, so the model copies it; temperature 0.9 did not help | low-entropy copying; diversity has to come from the prompt, not the sampler | restart = fresh prompt + grounded analysis + one hint tier up |
+| Rounds 2 to 5 of those episodes: zero new information | `--patience 5`, and stuck needed 3 identical failures | stuck = 2 identical failures; episode ends after `--max-restarts 2` unchanged restarts |
+| Group statistics: 4 identical samples counted as 4 observations | `group_advantages` ran over all rows | advantages over **distinct** kernels; duplicates flagged, not exported, not used to update the bandit |
+| `trace_reward 0.0` everywhere | `--trace` was off, the field is a constant 0 | summarizer reports it only for `--trace` rows |
+| "static API finding: 0/74" | not a bug: the failures were wrong **sizes**, and every call had a legal signature. `lint_api` cannot see a bad literal. | `kernel_lint` asks where each size came from |
+
+One thing the v5 text did right and v6 keeps: the verifier and the interpreter are more reliable than the
+model's opinion of its own mistake.
+
+## What changed in v6
 
 | # | Change | Why |
 |---|--------|-----|
-| 1 | `lint_api`: bind every `nki.*` call in the candidate against the real signature (`inspect`), and every attribute against the real module | Names the line, the call, the real signature and the fix, before any model sees the failure. Falls back to a two-entry table when the SDK is not importable. Advisory: a kernel that passes the simulator is never penalised for a finding. |
-| 2 | `probe_kernel` + `located_analysis`: re-run the best failing sample once | For a raise: the failing **line**. For a wrong answer at level 2: `explain_permutation` traces every output value back to the input element it was copied from (inputs are random floats, so this is exact) and says "never moved", "dimensions the wrong way round", "never written", or gives the first wrong positions. "81.8% wrong" becomes a mapping. |
-| 3 | Grounded analysis replaces model reflection when it exists | In `--mode reflect` the model is asked only if lint, location and flow are all silent, and its `CHANGE` is discarded if it breaks the API (`diagnosis_is_sane`) or repeats an earlier change. |
-| 4 | `API_SIGS_CARD` (`--hints api`, default) | Signatures, not an algorithm: `nl.ds(start, size)`, slicing, `tensor_copy(dst=, src=)`. The v4.1 level-2 algorithm note is now `--hints algo`; `--hints none` keeps only the file rules. Ablate them. |
-| 5 | Sample diversity: per-sample temperature spread, per-request `seed`, one-line variant hints (sample 0 keeps the canonical prompt), and a **re-ask for any duplicate** | Gives groups a baseline. `--no-variants` restores the v4.1 behaviour for comparison. |
-| 6 | Grade cache keyed by code fingerprint | Identical code is simulated once. |
-| 7 | Reward: `0.75*kernel + 0.10*progress + 0.05*lint_clean + 0.05*hygiene + 0.05*improved` | `progress` is the fraction of correct elements when the kernel runs (parsed from the verifier's own text), 0.3 if it runs for another reason, 0 if it raises. Verifier still dominates. |
-| 8 | GRPO-style normalised advantage logged next to the raw one | `advantage_norm = (r - mean) / std`, 0 for a flat group. |
-| 9 | New categories `api_signature`, `runtime_error` | Stops filing raises under `correctness`. |
-| 10 | API facts in `rl_state.json` | Calls the checker rejected are stored with their real signature and shown in later prompts, across episodes. Deterministic, so no credit assignment is needed. Rejected lines are also listed as "do not write these again". |
-| 11 | Stuck = identical failure 3 rounds running, not only identical code | v4.1's streak of 8 identical errors with changing code never counted as stuck. |
-| 12 | `--patience 5` | Ends an episode after 5 rounds without a better kernel. v4.1 episode 1 spent 8 rounds, about 10 minutes, on one error. |
-| 13 | `--mode plain` | `agent.py`'s exact prompts through this harness, same logs, for an honest A/B. |
-| 14 | `--export-groups` | One row per sample group with normalised advantages, the input GRPO needs. |
-| 15 | The located analysis runs every shape, not just the first failure | Reports which shapes pass and fail. A kernel that passes only the square shape (F1 == F2) is told that F1 and F2 are interchanged; an out-of-bound index on an axis of length F1 or F2 is explained as a wrong loop bound, and the verifier's generic "tile limits are a maximum" advice is dropped for it. Found in the first real v5 run: the model sat at 1 of 4 shapes for 2 rounds with the analysis saying only where it raised. |
+| 1 | `kernel_lint.lint_hardcoded_dims` | Taint analysis over the kernel: parameters and anything derived from `.shape` are derived; names bound only to constants are constants; an `nl.ndarray` dimension or a slice bound that folds to a constant >= 2 is hard-coded. "Likely" when a checker input is smaller than the literal on that axis. Attached only to failures of category `tile_limits`, never to a kernel that passed. |
+| 2 | `rewrite_tile_feedback` | `agent.enrich` answered a dma size mismatch with an example that allocates a **128x512** tile, the same mistake the trace repeats. v6 replaces it with: the tile must have the shape of the data; here are this checker's input shapes. |
+| 3 | `--hints shape` (new default tier) | `none < api < shape < algo`. `shape` = `api` + one paragraph: the checker runs several shapes, some smaller than a tile; read sizes from the tensor. It documents the checker, not the algorithm. The `api` tier's cards are unchanged from v5, but the rest of the harness changed, so a v6 `api` run is not directly comparable to a v5 one. |
+| 4 | Probe over **all** shapes for every failing sample | The verifier reports the first failing shape. v6 adds `PER-SHAPE RESULT: (32,12): RAISES ... \| (128,64): passes \| ...` and logs `probe_cases`. |
+| 5 | Dense progress from the probe | A shape that passes counts 1, one that runs but is wrong counts half its correct-element fraction, one that raises counts 0. v5 gave every crash 0.30. |
+| 6 | Real restarts | `stuck` now means two identical failures (was three) or an all-identical group. A restart is a fresh prompt (every mode, including plain) carrying the grounded analysis of the last failure. |
+| 7 | Hint escalation | Each restart climbs one tier (`none -> api -> shape`). It stops before `algo`, which is close to the answer, unless `--escalate-algo`. Rows log `hints_effective`, and the summary warns when it differs from the arm's label. `--no-escalate` turns it off. |
+| 8 | Budget | `--patience 3` (was 5) and `--max-restarts 2`. A stuck episode now costs about 3 rounds, not 7+. |
+| 9 | Deduplicated learning signal | `dedup_advantages`; bandit updated once per distinct kernel; `--export-groups` and `--export-sft` skip duplicates. |
+| 10 | Held-out shapes | `holdout.py`: extra shapes per level, graded with a different input seed, never shown in feedback. Shapes the shipped reference kernel fails are excluded from the verdict. `--holdout report` (default) logs it; `require` makes failing it a failure, with the message as feedback. |
+| 11 | `--independent-episodes` | Resets policy, lessons and API facts before each episode. Without it, episode k inherits episodes 0..k-1 and per-episode solve rates are not independent samples. |
+| 12 | `--no-analysis` | Skips lint, probe and analysis: the model sees only the verifier's text. The clean ablation of everything computed here. |
+| 13 | Summarizer | pass@1 and pass@4 from round 0 with a bootstrap interval over episodes; episodes solved with a Wilson interval; failures counted over distinct kernels; arm labels and a confound report. |
+| 14 | `run_matrix.py` | The experiment as a command (below). |
 
-Unchanged from v4.1: sanitizer, extractor, `ShrunkUCB`, lesson bank (now only for model-written
-rules), exemplars, SFT export, episodes.
+Unchanged: sanitizer, extractor, `ShrunkUCB`, lesson bank, exemplars, SFT export, per-request seed, variant
+hints, duplicate re-ask, the level-2 flow check, `--mode bandit`.
 
 ## Run
 
 From `projects/02-kernel-agent`:
 
 ```bash
-python -m py_compile rl_trace_agent.py summarize_rl_trace.py
-python test_rl_trace_agent.py            # 26 tests, no SDK or model needed
+python -m py_compile rl_trace_agent.py summarize_rl_trace.py run_matrix.py kernel_lint.py holdout.py
+python test_rl_trace_agent.py            # 64 tests, offline
 ```
 
-The A/B that tells you whether any of this helps, same endpoint, same budget, 5 episodes each:
+### 1. The comparison you meant to run (level 2)
 
 ```bash
-for arm in "plain --hints none" "reflect --hints none" "reflect --hints api" "bandit --hints api"; do
-  rm -f rl_state.json
-  python rl_trace_agent.py --mode $arm --level 2 --rounds 8 --samples 4 --episodes 5 \
-    --context 8192 --seed-references --export-groups groups_level2.jsonl \
-    --log "rl_level2_v5_${arm// /_}.jsonl"
-done
-python summarize_rl_trace.py rl_level2_v5_*.jsonl
+export KERNEL_AGENT_BASE_URL=http://localhost:8000/v1 KERNEL_AGENT_MODEL=Qwen/Qwen3-8B
+python run_matrix.py --levels 2 --episodes 20 \
+    --arms plain/none plain/api reflect/none reflect/api reflect/shape \
+    -- --context 8192 --no-seed --same-temp
 ```
 
-Read the "Arm comparison" table last. `plain` is the number to beat (STATE.md: 4 of 5). `reflect/none`
-vs `reflect/api` isolates the signature card; add `--hints algo` as a fifth arm only to see what the
-algorithm note is worth, since it is close to giving the answer.
+`plain/api` is `agent.py`'s prompt through this harness, so it ignores the hint tier by design; keep it only
+as a second baseline, or drop it. Isolate one factor at a time with arms that differ in one flag:
 
-Useful while it runs: `Learning signal` in the summary should show far fewer rounds where every
-sample was the same kernel than the 8 of 8 in v4.1 episode 1. If it does not, the endpoint is
-ignoring temperature and seed, and the variant hints plus duplicate re-asks are doing all the work.
+```bash
+--arms reflect/api reflect/api+no-analysis reflect/api+no-variants reflect/shape reflect/shape+no-escalate
+```
+
+### 2. Does it solve the other levels?
+
+```bash
+python run_matrix.py --levels 1 2 3 4 --episodes 6 --arms reflect/shape \
+    -- --context 8192 --no-seed --same-temp
+python summarize_rl_trace.py matrix_runs/*.jsonl --brief
+```
+
+Read per level: `solved` with its interval, and `pass@1 r0`. "Best reward" hides how unreliable a level is.
+Levels 5 to 7 are graded on HBM traffic and 8 is attention; run them after 1 to 4 are solid
+(`--levels 5 6 7 8`; `holdout.py` has shapes for 8 but not for 5 to 7).
+
+### 3. Is a "verified" kernel actually right?
+
+```bash
+python holdout.py --level 2 --check my_kernel.py      # exits 1 if it fails a held-out shape
+```
 
 ### Flags (new or changed)
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `--mode` | `reflect` | `reflect`: grounded analysis, model reflection as a fallback. `bandit`: UCB over strategies. `plain`: agent.py's prompts. |
-| `--hints` | `api` | `none`, `api` (signatures), `algo` (level-2 algorithm note). |
-| `--terse` | 0 | First-prompt length, as in agent.py. v4.1 silently used 1; 0 includes `agent.API_CARD` and its worked `copy_kernel` example. |
-| `--no-variants` | off | Same prompt for every sample, no duplicate re-asks (the v4.1 behaviour). |
-| `--no-seed` | off | Send no per-request `seed` (v5 sends one; some servers reject or crash on it). |
-| `--same-temp` | off | One temperature for all samples in a round (v5 spreads them). |
-| `--no-flow` | off | Level 2: do not tell the model where its output values came from. |
-| `--patience` | 5 | Rounds without improvement before an episode ends; 0 disables. |
-| `--export-groups PATH` | none | Group rows with normalised advantages. |
+| `--hints` | `shape` | `none`, `api`, `shape`, `algo` (see change 3). |
+| `--patience` | 3 | Rounds without a better kernel before the episode ends (0 = off). |
+| `--max-restarts` | 2 | Unchanged restarts before the episode ends (0 = off). |
+| `--no-escalate` | off | A restart keeps its hint tier. |
+| `--escalate-algo` | off | Let escalation reach the level-2 algorithm note. |
+| `--no-plain-restart` | off | v5 behaviour: plain mode re-sends the repair prompt when stuck. |
+| `--no-analysis` | off | No lint, probe or located analysis. |
+| `--no-probe-all` | off | Probe only the best failing sample of a round. |
+| `--holdout` | `report` | `off`, `report`, `require`. |
+| `--independent-episodes` | off | Reset learned state per episode. `run_matrix.py` always sets it. |
 
-Unchanged: `--samples`, `--episodes`, `--rounds`, `--trace`, `--seed-references`, `--state`,
-`--export-sft`, `--sft-min-reward`, `--exploration`, `--verbose`, `--context`, `--max-tokens`.
+Unchanged: `--mode`, `--samples`, `--episodes`, `--rounds`, `--trace`, `--seed-references`, `--state`,
+`--export-sft`, `--export-groups`, `--no-variants`, `--no-seed`, `--same-temp`, `--no-flow`, `--exploration`,
+`--verbose`, `--context`, `--max-tokens`.
 
-## How a round works
-
-1. Choose the action (`reflect`: `direct` in round 0, then `reflect`; `bandit`: UCB; `plain`: none).
-   A second `ShrunkUCB` picks the temperature arm, which is now the **centre** of a per-sample spread.
-2. Build the guidance for the best failing code: the stored grounded analysis (lint + located raise or
-   flow check). Only if there is none, one short model reflection, gated.
-3. Send `--samples` prompts (sample 0 canonical, others with a variant line), re-ask any duplicate.
-4. Extract, sanitize, grade with the unchanged `agent.grade` (cached by fingerprint), classify, lint.
-5. Score, normalise advantages, update the policy and API facts, write the log and group rows.
-6. Re-run the top failing sample once for its located analysis; repair from the best attempt next round.
-
-Each JSONL row (`schema_version` 6) adds `progress`, `lint`, `lint_clean`, `advantage_norm`,
-`group_distinct`, `resampled`, `grade_cached`, `diagnosis_source`, `analysis`, `hints`, `low_diversity`,
-and the per-sample `temperature` (the arm is `temp_arm`).
+Each JSONL row is `schema_version` 7. New fields: `hints_effective`, `restarts`, `escalation`, `duplicate`,
+`shape_lint`, `probe_cases`, `holdout`, `config`. Older logs still load; arms are then labelled from
+`mode/hints` only.
 
 ## Limitations
 
-- **Not run against a model or the real simulator.** The tests use a NumPy stand-in that enforces the
-  signatures the v4.1 verifier printed (`ds(start, size)`, `tensor_copy(dst, src, engine, name)`).
-  They check the harness. Whether the 8B model then solves level 2 is the first real result, and one
-  run is an anecdote.
-- Lint compares against whatever `inspect.signature` reports. If an NKI function is a generic wrapper
-  (`*args, **kwargs`), nothing is flagged; that is a missed finding, not a false one. The summary warns
-  if a verified kernel ever carried a finding.
-- The flow check reveals where each output element came from. That is directional, in the spirit of
-  the heat-rod project's finding that revealing the answer stops the model thinking, but it is level 2
-  only and `--no-flow` turns it off.
-- The `api` card gives the shape of `nl.ds` and slicing. That moves the prompt toward the answer;
-  report which `--hints` tier a result used.
+- **Not run against a model or the real simulator.** The 64 tests use a NumPy stand-in that enforces the
+  signatures and the dma element-count assertion the real verifier printed in your trace. They check the
+  harness. A mock-server smoke test of the real CLI path also passed. Whether v6 raises the level-2 solve
+  rate on Qwen3-8B is exactly what step 1 above measures; I have no number for it.
+- `kernel_lint` is a heuristic. It cannot see a size computed through a helper function or an attribute
+  chain it does not model, and it reports a literal as "likely" only against the checker's input shapes.
+  It is advisory, attached only to kernels that already failed, and the summary warns if a verified kernel
+  ever carried a finding. Levels 3 and 4 legitimately allocate literal 128-row tiles; their findings, if
+  any, will be `tile_limits` failures only.
+- `holdout.py` shapes for levels 3, 4 and 8 are my choices and are untested against the shipped reference
+  kernels on the real SDK. `check_holdout` excludes any shape the reference fails, but run
+  `python holdout.py --level N --check reference_levelN.py` once per level and read the output before
+  trusting a verdict.
+- The per-shape table and the level-2 flow check reveal where outputs came from. That is directional
+  feedback, in the spirit of the heat-rod finding that revealing the answer stops the model thinking.
+  `--no-flow` removes the flow check; `--no-analysis` removes everything computed.
+- Escalation and the `shape` default change what the model is told. Report the tier a result used
+  (`hints_effective`), and do not compare a `shape` result to a v5 `api` result as if only the harness changed.
+- Re-asking a duplicate costs another generation. When the server is effectively deterministic for a prompt
+  the re-ask often returns the same code again; `--no-variants` turns the re-ask off.
 - Still prompt-level learning: no model weights change. `nkibench.py` uses the simulator, so this says
   nothing about real Trainium latency.
-- The level-2 flow check is the only level-specific diagnoser. Levels 1, 3 and 4 get the lint and the
-  located raise, not a flow check.
 
 ## Next steps
 
-1. **One verified level-2 kernel in each arm** and a solve rate per arm. Nothing downstream works at 0.
-2. **GRPO** on `--export-groups` rows, `--samples >= 4`. Needs the Neuron server stopped while training.
-3. **Rejection-sampling fine-tune** on `--export-sft` rows once success is nonzero.
-4. **Mutation search** from the best parsed kernel: N single-line edits, ranked by the verifier. The
-   lint and flow check make good mutation targets.
-5. **Flow checks for levels 1, 3 and 4**: the same "trace each output back to its source" idea works for
-   any pure data-movement kernel; matmul needs a different diagnoser (per-tile error map).
+1. Run section 1 above at 20 episodes per arm and read `pass@1 r0` and its interval before anything else.
+2. Run section 2. If a level sits near 0%, read its `PER-SHAPE RESULT` lines before adding hints: the
+   failure is usually one shape.
+3. GRPO on `--export-groups` rows (`--samples >= 4`; duplicates are already removed). Needs the Neuron
+   server stopped while training.
+4. Rejection-sampling fine-tune on `--export-sft` rows once the solve rate is nonzero.
+5. Flow checks for levels 1, 3 and 4 (trace each output back to its source for data movement; a per-tile
+   error map for matmul). Only level 2 has one.
