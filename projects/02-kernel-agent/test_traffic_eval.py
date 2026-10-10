@@ -321,11 +321,12 @@ class ProgressTests(unittest.TestCase):
         self.assertGreater(ta.progress(self._ev(4, 3, 1.0)),
                            ta.progress(self._ev(4, 4, 2.0)))
 
-    def test_bandit_reward_is_progress_gain(self):
+    def test_bandit_reward_is_absolute_progress(self):
         import traffic_agent as ta
-        self.assertEqual(ta.bandit_reward(None, self._ev(4, 4, 1.0)), 0.0)
-        self.assertEqual(ta.bandit_reward(0.8, self._ev(4, 4, 2.0)), 0.0)
-        self.assertGreater(ta.bandit_reward(0.8, self._ev(4, 4, 1.0)), 0.0)
+        self.assertAlmostEqual(ta.bandit_reward(self._ev(4, 4, 1.0)), 1.0, places=2)
+        self.assertAlmostEqual(ta.bandit_reward(self._ev(4, 4, 2.0)), 0.8, places=2)
+        self.assertGreater(ta.bandit_reward(self._ev(4, 3, 1.0)),
+                           ta.bandit_reward(self._ev(4, 4, 2.0)))
 
 
 class DemoBlockTests(unittest.TestCase):

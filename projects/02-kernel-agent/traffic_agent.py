@@ -364,11 +364,16 @@ def progress(ev):
     return round(0.2 + 0.3 * (ran / total) + 0.3 * (correct / total) + 0.2 * traffic, 4)
 
 
-def bandit_reward(parent_progress, ev):
-    """Clamped gain in tiered progress over the parent; what the bandit learns from."""
-    if parent_progress is None:
-        return 0.0
-    return max(0.0, min(1.0, float(progress(ev)) - float(parent_progress)))
+def bandit_reward(ev):
+    """The bandit's reward: absolute tiered progress of the candidate.
+
+    The first version rewarded progress OVER THE PARENT (the seed at 0.80). Measured in
+    pilot_v2: every partial kernel sits just below the seed (0.55-0.775), so the bandit stayed
+    flat at 0.00 and could not rank its arms. Absolute progress ranks arms by how close their
+    candidates get -- retain_lhs 0.775 vs retain_both 0.55 vs retain_rhs 0.20 in that pilot --
+    which is what the arm choice needs to learn from.
+    """
+    return float(progress(ev))
 
 
 def lesson_for(arm, valid, ev, imp):
@@ -447,7 +452,6 @@ def run_once(a, level, out_dir, rng, counter, opt_seeds):
         if pending and pending["remaining"] > 0:
             arm = pending["arm"]
             parent_worst = pending["worst_waste"]
-            parent_progress = pending.get("progress")
             parent_hash = sha(pending["source"])
             prompt = repair_prompt(pending["source"], pending["feedback"], arm)
             pending["remaining"] -= 1
@@ -464,7 +468,6 @@ def run_once(a, level, out_dir, rng, counter, opt_seeds):
             if parent is None:
                 raise SystemExit("no parent kernel available")
             parent_worst = parent["worst_waste"]
-            parent_progress = parent.get("progress") or progress(parent["eval"])
             parent_hash = parent["hash"]
             rp = report_block(level, parent["eval"], "Parent")
             lines = memory.prompt_lines(a.memory_k) if learning else dict(best=[], failures=[])
@@ -549,7 +552,7 @@ def run_once(a, level, out_dir, rng, counter, opt_seeds):
             valid = candidate_valid(ev)
             imp = improvement(parent_worst, ev)
             prog = progress(ev)
-            reward = bandit_reward(parent_progress, ev)
+            reward = bandit_reward(ev)
             inserted = False
             if valid:
                 inserted = population.insert(dict(
