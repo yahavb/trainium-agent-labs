@@ -100,3 +100,4 @@ python holdout_check.py; python device_check.py; python analysis/trace_analysis.
 | `reference_level8.py` | our hand-written attention kernel (proof of solvability, not an agent result) |
 | `holdout_check.py`, `device_check.py` | the two "is it real?" checks |
 | `ab.py`, `analysis/` | fair A/B runner, attempt-log analysis, chart script |
+| `logs/attempts.tar.gz` | the attempt log: every attempt (2,106) with its code, score and the feedback it got |
