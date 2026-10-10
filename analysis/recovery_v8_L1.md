@@ -1,6 +1,7 @@
 # One failure and the recovery: feedback v8, level 1 (average pooling), solved in round 1
 
-The only level-1 solve in any log we pulled today (all seats, every configuration). Source:
+The first level-1 solve in the logs we pulled today (all seats, every configuration; dated 15:40). A second,
+v8.2's at 16:18 by a different route (the compiler gate's rewrite), is in analysis/recovery_v82_L1.md. Source:
 `runs/seat-116/v8_L1_s116/v8_L1_s116.jsonl` (md5 `73b1f62b2961215bebce66e3aeb14550`, 8 attempts, one run),
 its console log `run_v8_L1_s116.log`, `v8_L1_s116_usage.jsonl` (the server's token counts) and both verdict
 files, dated 15:40. Configuration: `feedback_v8.py` at 6f11031 (with 81c37cf): v7 (`PROMPT1=v2 MESSAGES=v5

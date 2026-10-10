@@ -46,8 +46,9 @@ L1FIX + TRUNCFIX + MIXSAMP + L2HINT. Files: `runs/seat-*/` as listed in the comm
    the slices and loop bounds of v5's tiling code (`affine_range(<…>)`), and the model sat on out-of-bounds
    errors for six rounds (24). It solved 0 of 1 finished runs, against 5/5 without SKELETON.
 4. **What is left at the end.** Level 4's round-0 broadcast mismatch is in every version (18, 20, 18, 7, 7). It is
-   cleared by repair, not prevented. Level 1 is still the hardest: one solve in all of today's logs (v8,
-   analysis/recovery_v8_L1.md), against 0 for the baseline, v7 and v7+E-div.
+   cleared by repair, not prevented. Level 1 is still the hardest: by 16:15, one solve in all of today's logs (v8,
+   analysis/recovery_v8_L1.md), against 0 for the baseline, v7 and v7+E-div. A second came at 16:18 under v8.2,
+   through the compiler gate's rewrite (analysis/recovery_v82_L1.md).
 
 ## How SKELETON broke level 4 (the v8 L4 column)
 
