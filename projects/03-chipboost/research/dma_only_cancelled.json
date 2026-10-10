@@ -1,9 +1,0 @@
-{
-  "phase": "cancelled",
-  "pid": 810896,
-  "core": 3,
-  "predecessor": "/tmp/p1-comparison-20261010-2",
-  "previous_phase": "waiting_for_predecessor",
-  "reason": "User requested integration within one hour; stop exploratory generation / superseded DMA-only queued run",
-  "cancelled_at": 1791663518.1685383
-}

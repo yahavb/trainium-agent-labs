@@ -1,1 +1,0 @@
-{"logged_at": 1791659721.6101005, "kind": "prior_interruption", "observed_at": "2026-10-10T19:01:09Z", "core": 2, "reason": "NRT reported logical core 2 busy; check_isolated returned None", "acceptance_case": "isolated_AA", "counted_as_kernel_attempt": false, "source": "Earlier direct referee diagnostic; no kernel verdict was recorded"}

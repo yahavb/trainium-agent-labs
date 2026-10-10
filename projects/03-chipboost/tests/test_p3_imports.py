@@ -1,4 +1,4 @@
-"""CPU regression: experimental_agent.py and research_agent.py borrow diagnose and stage12 from P3's tree.
+"""CPU regression: experimental_agent.py borrows diagnose and stage12 from P3's tree.
 
 The referee-timing branch does not carry P3's modules, so the pilot must find them through
 CHIPBOOST_P3 (P3's projects/03-chipboost) and fail with a message naming it otherwise.
@@ -14,7 +14,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 
 
-AGENTS = ("experimental_agent", "research_agent")
+AGENTS = ("experimental_agent",)
 
 
 def import_agent(env_p3, module):
