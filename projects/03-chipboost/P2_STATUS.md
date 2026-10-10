@@ -17,7 +17,7 @@ says whose result each row is (definitions in section 4):
 | **Expert-derived** | AWS's fully optimised tutorial kernel as shipped (`matmul_expert.py`, with P2's fp32 accumulation fix) | 385.6 us | 2.49x | AWS's design: none of this 2.49x is a discovery |
 | **Search discovery** | arm c's best block sizes, one per run (3 runs x 24 attempts) | 291.1 / 285.2 / 280.4 us | 3.30x / 3.37x / 3.43x | **1.325x / 1.352x / 1.372x over the expert**, each against its own run's attempt 0 |
 | Ground truth, not a discovery | all 62 legal block sizes timed once (the sweep); the best is `m1 n12 k4` | 280.3 us | 3.43x | 1.375x over the expert: the most that block sizes can give |
-| **Expert-derived + P2 engineering** | the expert split over both physical cores (`matmul_expert_lnc2.py`, launched as `kernel[2]`) | 192.2 us | 5.0x | 1.50x over the same kernel on one physical core; not a full referee verdict |
+| **Expert-derived + P2 engineering** | the expert split over both physical cores (`matmul_expert_lnc2.py`, launched as `kernel[2]`) | 192.2 us | 5.0x | 1.50x over the same kernel on one physical core. **Not a referee verdict** |
 
 - **The search's claim is the last column: 1.325x-1.372x on top of AWS's kernel** (median 1.352x), not the
   3.4x vs start. Most of that 3.4x is AWS's design.
@@ -77,7 +77,7 @@ measures the whole space, so it is not a discovery by any arm: it shows how clos
 The winners take the whole N dimension, or half of it, in one block, unlike AWS's 2 tiles. At 256 tokens
 there is little M to reuse.
 
-**Expert-derived + P2 engineering: both physical cores (LNC=2).** The same kernel and the same caps
+**Expert-derived + P2 engineering: both physical cores (LNC=2). Not a referee verdict.** The same kernel and the same caps
 (`m2 n6 k16` per program), launched plainly and as `kernel[2]` (`tools/lnc2_probe.py --validate`, core 3):
 
 | Shape | One physical core | Both physical cores | Gain | Host-clock cross-check |
@@ -146,7 +146,8 @@ tuning, hostile inputs, each kernel timed A/B against start at that shape. Speed
    outright. **But the winner is shape-specific:** on held-out kv_proj with 1024 tokens it runs at 1.20x,
    against the default's 3.05x. Tune per shape.
 3. **Half of every NeuronCore sits idle under a plain launch** (P2 engineering). `kernel[2]` gives 1.50x more on
-   the same kernel: 5.0x the start kernel, cross-checked on two clocks.
+   the same kernel: 5.0x the start kernel, cross-checked on two clocks. **Not a referee verdict:** P1's timer
+   and the referee's correctness check at the timing shapes only.
 4. **Hostile inputs hide precision loss.**
    - Large magnitudes swamp the rounding errors: bf16 accumulation measured 3.4-3.5 ulps under P1's hostile
      pattern, against 9-13 on ordinary inputs (emulated at K=4096-6144).
@@ -193,7 +194,7 @@ tuning, hostile inputs, each kernel timed A/B against start at that shape. Speed
   - *P2 engineering:* changes made by hand: the fp32 accumulation fix, fitting the caps to each shape, the
     LNC=2 split and the copy floor.
   - The LNC=2 numbers come from P1's timer and the referee's correctness check at the two timing shapes.
-    They are **not a full referee verdict**: the referee launches kernels at LNC=1, and held-out shapes were
+    They are **not a referee verdict**: the referee launches kernels at LNC=1, and held-out shapes were
     not run for LNC=2.
   - No end-to-end Qwen number is claimed.
 - **Running on all four cores:** to use all four NeuronCores, vLLM was stopped on seat-102 (`./serve.sh` brings

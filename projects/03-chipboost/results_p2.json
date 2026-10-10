@@ -19,10 +19,11 @@
         },
         "lnc2": {
           "kind": "expert-derived + P2 engineering",
+          "label": "not a referee verdict",
           "us": 192.2,
           "x_vs_start": 5.0,
           "x_over_same_kernel_lnc1": 1.5,
-          "what": "P2 engineering on the expert: kernels/matmul_expert_lnc2.py launched as kernel[2] on both physical cores, caps m2 n6 k16. Timed by P1's timer with the referee's correctness check at the timing shapes; not a full referee verdict.",
+          "what": "P2 engineering on the expert: kernels/matmul_expert_lnc2.py launched as kernel[2] on both physical cores, caps m2 n6 k16. Timed by P1's timer with the referee's correctness check at the timing shapes. Not a referee verdict.",
           "caps_from": "the best of the archived first random-search run (older referee, not counted in arm c); the sweep ranks m2 n6 k16 6 of 62",
           "breakdown": "960.5 us -> 385.6 (AWS's design, 2.49x) -> 288.3 (block sizes m2 n6 k16 at LNC=1, 1.34x) -> 192.2 (the second physical core, 1.50x)"
         }
