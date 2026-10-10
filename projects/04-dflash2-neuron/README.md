@@ -25,13 +25,15 @@ Measured on one `trn2` chip (seat-40), TP=2, one request at a time, greedy decod
 | Qwen3-8B (baseline) | 51.9 | 51.9 | 1.00x | n/a | 1.00 |
 | Qwen3-8B + DFlash2, 4 draft tokens | 68.9 | 65.7 | **1.33x** | 20.1% (344/1708) | 1.81 |
 | Qwen3-8B + DFlash2, 8 draft tokens | 69.0 | 68.2 | **1.33x** | 11.1% (362/3272) | 1.89 |
+| Qwen3-8B + DFlash2, 15 draft tokens | 67.3 | 65.7 | 1.30x | 6.0% (365/6060) | 1.90 |
 
 ![acceptance by draft position](results/acceptance.svg)
 
-**More drafts don't help yet.** With 8 drafts the target accepts only 18 more tokens than with
-4 (362 vs 344), because positions 5–8 are rarely accepted (17, 9, 6 and 2 times). Each target
-step now verifies 9 tokens instead of 5, which costs about as much as the extra accepted tokens
-save, so throughput stays at 1.33x. Raising acceptance at later positions (see
+**4 draft tokens is the sweet spot for now.** Going from 4 to 8 to 15 drafts adds almost no
+accepted tokens (344 → 362 → 365): positions 5–8 are rarely accepted (17, 9, 6 and 2 times
+with 8 drafts) and positions 9–15 never were. Each extra draft still has to be verified by the
+target (6 tokens per step with 4 drafts, 16 with 15), so throughput stays flat at 1.33x and drops
+to 1.30x at 15. Raising acceptance at later positions (see
 [Limitations](#limitations-and-next-steps)) is what would make longer drafts pay off.
 
 Raw output: [`results/`](results/) (one file per run). Regenerate the table and charts with
@@ -104,10 +106,11 @@ speculative-decoding plumbing and the target-side hidden-state capture interface
   can reach. Adding a non-causal mask for the query block is the most direct way to raise
   acceptance above the current 20%.
 - **Draft count.** The checkpoint was trained for blocks of 16 (`b16`), so up to 15 drafts
-  per step are possible. Measured: 8 drafts give the same 1.33x as 4, because acceptance falls
-  off quickly after position 4. Longer drafts only pay off once acceptance improves.
-- **Tested config:** 1 request, `max_model_len=256`, async scheduling off, 4 and 8 draft tokens.
-  Batching and longer context haven't been measured yet.
+  per step are possible. Measured: 4 and 8 drafts both give 1.33x and 15 gives 1.30x, because
+  acceptance falls off quickly after position 4 and is zero after position 8. Longer drafts only
+  pay off once acceptance improves.
+- **Tested config:** 1 request, `max_model_len=256`, async scheduling off, 4 / 8 / 15 draft
+  tokens. Batching and longer context haven't been measured yet.
 - If the query block reaches past the blocks allocated for a request, the block index is
   clamped to the last allocated block. That can corrupt the draft's own cache (lower acceptance),
   but never the target's.
