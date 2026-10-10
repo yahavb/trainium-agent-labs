@@ -81,9 +81,14 @@ def extract_python_code(text: str) -> str:
     return text.strip()
 
 
-# ---------------------------------------------------------------- Model Client
-def call_model(prompt: str, max_tokens: int = 2500) -> str:
+# ---------------------------------------------------------------- Model Client & Token Instrumentation
+def call_model(prompt: str, max_tokens: int = 2500) -> tuple[str, dict]:
     """Calls OpenAI-compatible vLLM endpoint running on Trainium or shared cluster."""
+    usage = {
+        "prompt_tokens": len(prompt) // 4,
+        "completion_tokens": 0,
+        "total_tokens": len(prompt) // 4
+    }
     try:
         import httpx
         headers = {"Content-Type": "application/json"}
@@ -96,10 +101,16 @@ def call_model(prompt: str, max_tokens: int = 2500) -> str:
         resp = httpx.post(f"{BASE_URL}/chat/completions", json=payload, headers=headers, timeout=60.0)
         resp.raise_for_status()
         data = resp.json()
-        return data["choices"][0]["message"]["content"]
+        content = data["choices"][0]["message"]["content"]
+        if "usage" in data:
+            usage = data["usage"]
+        else:
+            usage["completion_tokens"] = len(content) // 4
+            usage["total_tokens"] = usage["prompt_tokens"] + usage["completion_tokens"]
+        return content, usage
     except Exception as e:
-        print(f"  [WARN] Endpoint call failed ({e}). Falling back to local offline generator.")
-        return ""
+        print(f"  [WARN] Live endpoint call failed ({e}). Falling back to local offline candidate.")
+        return "", usage
 
 
 # ---------------------------------------------------------------- Pre-seeded Offline Candidates
@@ -197,6 +208,11 @@ def run_agent_loop(max_rounds: int = 4, offline: bool = True, log_file: str = "o
                 ref_path = os.path.join(os.path.dirname(__file__), "reference_pipeline.py")
                 with open(ref_path) as f:
                     current_code = f.read()
+            tokens = {
+                "prompt_tokens": len(PROMPT_INITIAL) // 4,
+                "completion_tokens": len(current_code) // 4,
+                "total_tokens": (len(PROMPT_INITIAL) + len(current_code)) // 4
+            }
         else:
             if round_idx == 0:
                 prompt = PROMPT_INITIAL
@@ -205,7 +221,7 @@ def run_agent_loop(max_rounds: int = 4, offline: bool = True, log_file: str = "o
                 last_hint = attempt_history[-1]["hint"]
                 prompt = build_recalibration_prompt(current_code, last_hazard, last_hint, round_idx)
 
-            raw_resp = call_model(prompt)
+            raw_resp, tokens = call_model(prompt)
             current_code = extract_python_code(raw_resp)
 
         # ----------------- GRADE CANDIDATE -----------------
@@ -215,6 +231,7 @@ def run_agent_loop(max_rounds: int = 4, offline: bool = True, log_file: str = "o
         print(f"  Score:      {score:.2f} / 1.00")
         print(f"  Hazard:     {details['hazard_type']}")
         print(f"  Overlap:    {details['overlap_efficiency']*100:.0f}% Engine Concurrency")
+        print(f"  Tokens:     Prompt: {tokens['prompt_tokens']} | Completion: {tokens['completion_tokens']} | Total: {tokens['total_tokens']} / 8192")
         print(f"  Diagnosis:  {verdict[:120]}...")
 
         # Record in Attempt Ledger
@@ -225,6 +242,10 @@ def run_agent_loop(max_rounds: int = 4, offline: bool = True, log_file: str = "o
             "hazard": details["hazard_type"],
             "block_failed": details["block_failed"],
             "overlap_efficiency": details["overlap_efficiency"],
+            "prompt_tokens": tokens["prompt_tokens"],
+            "completion_tokens": tokens["completion_tokens"],
+            "total_tokens": tokens["total_tokens"],
+            "latency_s": round(elapsed, 2),
             "hint": verdict,
             "code_snippet": current_code[:200]
         }
