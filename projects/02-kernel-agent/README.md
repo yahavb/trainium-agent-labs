@@ -9,92 +9,67 @@ splits the work into six roles.
   operation): [README-task.md](README-task.md).
 - **Why agent2 is built this way**, and its implementation status: [DESIGN.md](DESIGN.md).
 
-## Status (2026-10-10 ~22:55 UTC)
+## Status (2026-10-10 ~23:00 UTC)
 
-- **agent2 solved levels 1 and 3 on Qwen3-8B**, in its first run of levels 1–4. `agent.py` solved none
-  of the four in any of its 3 runs on the same server.
-- That is **one run**, so a signal, not a solve rate. Report rates over `--repeat N`, with the spread.
-- Levels 5–8 so far only on Qwen3-32B: level 5 not solved (0.62).
+- **agent2 solved levels 1 and 3 on Qwen3-8B, and level 1 on Qwen3-32B.** `agent.py` solved none of
+  levels 1–4 in any of its 3 runs on the 8B server.
+- Each agent2 result is **one run**: a signal, not a solve rate. Report rates over `--repeat N`, with
+  the spread.
+- The 32B runs of levels 1–4 and of level 6 were still going when this was written.
 
 ## Results
 
-### agent2 on Qwen3-8B, levels 1–4 (seat-35)
+agent2 at `e4edc8c` with default settings (2 threads, up to 4 approaches and 80 model calls per level),
+one run per level, 8K context. Every check is `nki.simulate` on the CPU. The best kernel of each level is
+in [`kernels/`](kernels/) (`_8b` in the name: Qwen3-8B), with its score and caveats in the header. They
+are the agent's output, not reference kernels.
 
-Both agents ran on the same Qwen3-8B server (TP=2, 8K context). agent2 at `e4edc8c`, default settings,
-one run (`agent2-v5-all-1010-2230`). `agent.py` with its defaults (8 rounds × 4 samples), 3 runs
-(`baseline-1010-1700`).
+### Qwen3-8B (seat-35, TP=2)
 
-| Level | Operation | agent2 (1 run) | `agent.py` (3 runs) |
+| Level | Operation | agent2 (1 run) | `agent.py` baseline (3 runs) |
 |---|---|---|---|
-| 1 | average pooling 2D | **solved**, 5 checks, 83 s | 0.30 every run |
-| 2 | 2D transpose | 0.30, 14 checks | 0.30 every run |
-| 3 | matmul, single tile | **solved**, 3 checks, 120 s | 0.30 every run |
-| 4 | matmul, tiled | 0.62, 23 checks | 0.62 at best |
-| | all four | 16.5 min | about 22 min per run |
+| 1 | average pooling 2D | **solved**: 5 checks, 83 s | 0.30 in every run |
+| 2 | 2D transpose | 0.30: 14 checks, 196 s | 0.30 in every run |
+| 3 | matmul, single tile | **solved**: 3 checks, 120 s | 0.30 in every run |
+| 4 | matmul, tiled | 0.62: 23 checks, 592 s | 0.62 at best |
+| 5–8 | | not run | not run |
+| | levels 1–4 in all | 16.5 min | about 22 min per run |
 
-- Both solved kernels pass `nkibench.py --check` (rules clean, every shape). They are in
-  [`kernels/`](kernels/).
-- **Level 1 caveat:** the kernel copies the input into SBUF, reshapes it to `(C, H/p, p, W/p, p)`,
-  permutes the window axes last and takes `nl.mean` over them. It then returns that SBUF tile, with no
-  HBM output and no `dma_copy` out. The simulator and `nkibench` accept this. The device is untested.
-- **Level 3** is clean (an HBM output, exactly the minimum bytes), but hard-codes the level's one test
-  shape.
+- Runs: `agent2-v5-all-1010-2230`, and `baseline-1010-1700` (`agent.py` defaults: 8 rounds × 4 samples).
+- **Level 1:** the kernel copies the input into SBUF, reshapes it to `(C, H/p, p, W/p, p)`, permutes the
+  window axes last and takes `nl.mean` over them. **Caveat:** it returns that SBUF tile, with no HBM
+  output and no `dma_copy` out. The simulator and `nkibench` accept this; the device is untested.
 - **Level 2:** every plan tried to transpose within a partition (`nl.transpose`, `t.ap`). The name index
   offers no transpose instruction at level 2: `nc_transpose` is listed from level 3, and `t.permute` and
   `dma_transpose` are withheld.
-- **Level 4** stopped at 0.62, like `agent.py`, mostly on copy-size and output-shape errors.
+- **Level 3:** clean (an HBM output, exactly the minimum bytes), but hard-codes the one test shape.
+- **Level 4:** mostly copy-size and output-shape errors.
 
-### agent2 on Qwen3-32B (seat-198)
+### Qwen3-32B (seat-198, TP=4, the whole chip)
 
-All of these use Qwen3-32B on seat-198 (TP=4, the whole chip, 8K context). Every check is
-`nki.simulate` on the CPU.
+| Level | Operation | agent2 (1 run) | Planner-only test: names-only index → described index |
+|---|---|---|---|
+| 1 | average pooling 2D | **solved**: 5 checks, 171 s | right names 48% → **100%**; plans with a wrong name 6/8 → **0/8**; wrong-axis reduce 5/8 → **1/8** |
+| 2 | 2D transpose | running at ~23:00 UTC | not tested |
+| 3 | matmul, single tile | not reached yet | not tested |
+| 4 | matmul, tiled | not reached yet | right names 55% → **91%**; plans with a wrong name 8/8 → **2/8**; wrong-axis reduce 4/8 → **0/8** |
+| 5 | matmul, loads hoisted | 0.62 (1 of 4 shapes): 28 checks, 52 calls, 14 min | not tested |
+| 6 | matmul, M and N blocked | running; 0.62 so far | not tested |
+| 7 | matmul, M, N and K blocked | not run | not tested |
+| 8 | single-head attention | not run | not tested |
 
-#### The planner's name index, levels 1 and 4 (planner only)
-
-- **Setup:** 8 single-plan calls per arm and level, with LOOKUP off. The two arms differ only in the
-  index: every nki name with no descriptions (`--index names`), against the described index
-  (`agents2/index.py`, now the default).
-- **No kernels:** it measures the plans only, so a right name is not yet a right kernel.
-
-| | L1 names | L1 described | L4 names | L4 described |
-|---|---|---|---|---|
-| Names that exist, in the right module | 48% | **100%** | 55% | **91%** |
-| Plans with any wrong name | 6/8 | **0/8** | 8/8 | **2/8** |
-| Plans choosing `tensor_partition_reduce` (wrong axis) | 5/8 | **1/8** | 4/8 | **0/8** |
-| Planner prompt, tokens | ~1,166 | ~818 | ~1,199 | ~905 |
-
-- **Level 1:** every described plan reshapes the tile, most also permute, then use `nl.mean` or `nl.sum`.
-  That route passes level 1 when tried by hand: reshape to `(C, H/p, p, W/p, p)`, permute the window
-  axes last, `nl.mean` over them.
-- **Level 4:** the wrong names left are tile methods written as `nl.reshape` / `nl.permute`, which
-  `fix_name()` now corrects. 7 of 8 described plans also added `t.reshape` / `t.permute`, which a
-  tiled matmul doesn't need.
-
-#### The whole agent, levels 5–8
-
-- **Agent:** agent2 at `e4edc8c`, with the default settings: 2 threads, up to 4 approaches and 80
-  model calls per level.
-- **One run per level,** so single runs, not rates.
-
-| Level | Operation | Result | Best | Why it stopped | Checks | Model calls | Time |
-|---|---|---|---|---|---|---|---|
-| 5 | matmul, loads hoisted | **not solved** | 0.62 (1 of 4 shapes) | all 4 approaches used up | 28 | 52 (planner 8, coder 28, debugger 16) | 14 min |
-| 6 | matmul, M and N blocked | not finished at ~22:50 UTC | 0.62 so far: right values on 2 of 4 shapes (it loops over K), but one moves 1.5× the minimum bytes, over the 1.25× limit | | | | |
-| 7 | matmul, M, N and K blocked | not run yet | | | | | |
-| 8 | single-head attention | not run yet | | | | | |
-
-**Level 5 hit the same wall as `agent.py` at level 4:**
-- All 4 approaches ran one `nc_matmul` on whole-input tiles.
-- That passes the only test shape that fits a single tile (K=128, M=128, N=512).
-- It fails as soon as a dimension passes 128: `dma_copy dst partition dimension 256 exceeds maximum
-  128`.
-- No plan tiled M, N and K.
-
-A 32B run of levels 1–4 started at 22:47 UTC and had not finished when this was written.
-
-**Kernels:** each level's best kernel is in [`kernels/`](kernels/), with its score and the checker's
-message in the header (`_8b` in the name for the Qwen3-8B runs). They are the agent's output, not
-reference kernels.
+- **The planner-only test** made 8 single-plan calls per arm and level with LOOKUP off. It measures plans,
+  not kernels: a right name is not yet a right kernel. "Wrong-axis reduce" is a plan choosing
+  `nisa.tensor_partition_reduce`, which reduces across partitions. The described index also cut the
+  planner prompt from ~1,166 to ~818 tokens at level 1, and from ~1,199 to ~905 at level 4.
+  - Level 1: every described plan reshapes the tile, most also permute, then `nl.mean` or `nl.sum`, the
+    route that solved level 1 on both models.
+  - Level 4: 7 of 8 described plans added `t.reshape` / `t.permute`, which a tiled matmul doesn't need.
+- **Level 5 hit `agent.py`'s level-4 wall:** every approach ran one `nc_matmul` on whole-input tiles. That
+  passes the one test shape that fits a single tile and fails once a dimension passes 128 (`dma_copy dst
+  partition dimension 256 exceeds maximum 128`). No plan tiled M, N and K.
+- **Level 6 so far:** it loops over K and accumulates in PSUM, so the values are right on 2 of 4 shapes. But
+  one of those moves 1.5× the minimum bytes (the limit is 1.25×), and it never tiles M.
 
 ## The ladder
 
