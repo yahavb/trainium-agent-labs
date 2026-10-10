@@ -83,6 +83,11 @@ def enrich_feedback(text):
     if "requires HBM or SBUF tensors" in text and "psum" in text:
         out += (" PSUM cannot be copied to HBM directly. Copy PSUM to SBUF with "
                 "nisa.tensor_copy, then SBUF to HBM with nisa.dma_copy.")
+    if "requires src and dst to have the same number of elements" in text:
+        out += (" Destination and source slices must have the SAME shape. For a cache stacked "
+                "along the free dimension: cache = nl.ndarray((128, k_tiles * M), ...); "
+                "nisa.dma_copy(dst=cache[:, kk*M:(kk+1)*M], src=lhsT[kk*128:(kk+1)*128, :]); "
+                "then slice operands as cache[:, kk*M + m0*128 : kk*M + (m0+1)*128].")
     return out
 
 
@@ -184,8 +189,6 @@ def strategy_instruction(arm):
                        "once, then sweep all rhs blocks against it."),
         "bounded_blocking": ("Block the M, N and K loops so tiles stay in SBUF and are reused "
                              "across iterations; never reload a tile that is still resident."),
-        "tidy_only": ("Make the smallest change that removes a redundant load; do not "
-                      "restructure the loops."),
     }[arm]
     return (base + "\n" + guide + "\n\nReply with ONE complete python code block (imports + the "
             "full kernel). After the code block, add exactly two lines:\n"
@@ -225,23 +228,46 @@ def repair_prompt(src, feedback, arm):
             + strategy_instruction(arm))
 
 
-def assemble_prompt(a, counter, api_card, kernel_txt, report_txt, failure_txt,
+def demo_block(demo_path):
+    """A verified example from an EARLIER RUN of this same agent, when one exists.
+
+    Bootstrapping: the first valid improvement the loop produces is written to demo.json and
+    reused as a worked example in later runs. It is labelled as an earlier run of the same
+    model and checker, so no hand-written kernel is ever presented as the model's work.
+    """
+    if not demo_path:
+        return ""
+    try:
+        d = json.load(open(demo_path))
+    except Exception:
+        return ""
+    if not d.get("kernel"):
+        return ""
+    return ("A verified example from an EARLIER RUN of this same agent (same model, same "
+            "checker). It started from the 2.00x seed and made one structural change; the "
+            "checker accepted every shape:\n"
+            f"- change: {d.get('change', 'n/a')}\n"
+            f"- measured: {d.get('measured', 'n/a')}\n\n"
+            f"```python\n{d['kernel']}\n```")
+
+
+def assemble_prompt(a, counter, api_card, demo_txt, kernel_txt, report_txt, failure_txt,
                     memory_best, memory_failures, instruction):
-    """Join prompt sections, trimming (memory first, then the API card) to fit the budget.
+    """Join prompt sections, trimming (memory first, the demo last) to fit the budget.
 
     Never trims the kernel block. Raises if the kernel alone cannot fit.
     """
     while True:
         mem_parts = []
+        if memory_best:
+            mem_parts.append("Closest attempts so far in this run (best progress first):\n"
+                             + "\n".join(f"- {l}" for l in memory_best))
         if memory_failures:
             mem_parts.append("Recent failures in this run (avoid repeating them):\n"
                              + "\n".join(f"- {l}" for l in memory_failures))
-        if memory_best:
-            mem_parts.append("What improved earlier in this run:\n"
-                             + "\n".join(f"- {l}" for l in memory_best))
-        parts = [("api_card", api_card), ("kernel", kernel_txt), ("report", report_txt),
-                 ("failure", failure_txt), ("memory", "\n\n".join(mem_parts)),
-                 ("instruction", instruction)]
+        parts = [("api_card", api_card), ("demo", demo_txt), ("kernel", kernel_txt),
+                 ("report", report_txt), ("failure", failure_txt),
+                 ("memory", "\n\n".join(mem_parts)), ("instruction", instruction)]
         prompt = "\n\n".join(text for _, text in parts if text)
         total = counter.count(prompt)
         if total + a.max_tokens + 64 <= a.context:
@@ -260,6 +286,9 @@ def assemble_prompt(a, counter, api_card, kernel_txt, report_txt, failure_txt,
             continue
         if failure_txt:
             failure_txt = ""
+            continue
+        if demo_txt:
+            demo_txt = ""
             continue
         raise SystemExit(f"the kernel block alone needs {total} tokens, which does not fit the "
                          f"{a.context}-token context with a {a.max_tokens}-token answer")
@@ -306,14 +335,55 @@ def improvement(parent_worst, ev):
     return max(0.0, min(1.0, float(parent_worst) - float(ev["worst_waste"])))
 
 
+def progress(ev):
+    """Tiered progress for the bandit only; population and winner stay valid-only.
+
+    rules clean 0.2, fraction of shapes that ran 0.3, fraction numerically correct 0.3, and
+    traffic credit 0.2 on the correct shapes (0 at 2.00x, 1 at the 1.00x floor). Measured:
+    with a valid-only reward the bandit's landscape was flat 0.00 for 80 attempts; this gives
+    it a gradient from near misses without ever counting a wrong kernel as a win.
+    """
+    if not ev.get("rules_ok"):
+        return 0.0
+    total = max(1, int(ev.get("total") or 1))
+    ran = correct = 0
+    credit = []
+    for c in ev.get("per_case", []):
+        ch = c.get("checks")
+        if ch is None:
+            continue
+        ran += 1
+        if ch["inputs_ok"] and ch["numerics_ok"] and ch["hazard_ok"]:
+            correct += 1
+            w = c.get("waste")
+            if w is not None:
+                credit.append(max(0.0, min(1.0, 2.0 - w)))
+    traffic = (sum(credit) / len(credit)) if credit else 0.0
+    return round(0.2 + 0.3 * (ran / total) + 0.3 * (correct / total) + 0.2 * traffic, 4)
+
+
+def bandit_reward(parent_progress, ev):
+    """Clamped gain in tiered progress over the parent; what the bandit learns from."""
+    if parent_progress is None:
+        return 0.0
+    return max(0.0, min(1.0, float(progress(ev)) - float(parent_progress)))
+
+
 def lesson_for(arm, valid, ev, imp):
+    p = progress(ev)
     if not ev["rules_ok"]:
         return f"{arm}: rule violation: {compact(ev['feedback'], 90)}"
     if not valid:
-        return f"{arm}: incorrect ({ev['failure_kind']}): {compact(ev['feedback'], 90)}"
+        ran = sum(1 for c in ev["per_case"] if c.get("checks") is not None)
+        corr = sum(1 for c in ev["per_case"]
+                   if c.get("checks") and c["checks"]["inputs_ok"]
+                   and c["checks"]["numerics_ok"] and c["checks"]["hazard_ok"])
+        return (f"{arm}: partial (progress {p:.2f}): ran {ran}/{ev['total']}, correct "
+                f"{corr}/{ev['total']}; wall: {compact(ev['feedback'], 70)}")
     if ev["worst_waste"] is None:
         return f"{arm}: correct but traffic unmeasured"
-    return f"{arm}: worst-case {ev['worst_waste']:.2f}x (improvement {imp:+.2f})"
+    return (f"{arm}: worst-case {ev['worst_waste']:.2f}x (improvement {imp:+.2f}, "
+            f"progress {p:.2f})")
 
 
 # ---------------------------------------------------------------- evaluation plumbing
@@ -357,13 +427,15 @@ def run_once(a, level, out_dir, rng, counter, opt_seeds):
     if candidate_valid(seed_ev):
         population.insert(dict(hash=sha(seed_src), source=seed_src, strategy="seed",
                                worst_waste=seed_ev["worst_waste"], valid=True,
-                               eval=seed_ev, path=os.path.join(out_dir, "candidates", "seed.py")))
+                               progress=progress(seed_ev), eval=seed_ev,
+                               path=os.path.join(out_dir, "candidates", "seed.py")))
     seen = {sha(seed_src)}
     last_failure = ""
     pending = None
     rounds_used = 0
     tokens_in = tokens_out = 0
     hit_floor = False
+    best_improvement = None   # (improvement, source, label, eval): first verified win -> demo.json
     run_id = os.path.basename(out_dir)
 
     for rnd in range(a.rounds):
@@ -373,6 +445,7 @@ def run_once(a, level, out_dir, rng, counter, opt_seeds):
         if pending and pending["remaining"] > 0:
             arm = pending["arm"]
             parent_worst = pending["worst_waste"]
+            parent_progress = pending.get("progress")
             parent_hash = sha(pending["source"])
             prompt = repair_prompt(pending["source"], pending["feedback"], arm)
             pending["remaining"] -= 1
@@ -389,12 +462,13 @@ def run_once(a, level, out_dir, rng, counter, opt_seeds):
             if parent is None:
                 raise SystemExit("no parent kernel available")
             parent_worst = parent["worst_waste"]
+            parent_progress = parent.get("progress") or progress(parent["eval"])
             parent_hash = parent["hash"]
             rp = report_block(level, parent["eval"], "Parent")
             lines = memory.prompt_lines(a.memory_k) if learning else dict(best=[], failures=[])
             prompt, prompt_tokens, sections = assemble_prompt(
-                a, counter, API_CARD, kernel_block(level, parent["source"]), rp, last_failure,
-                lines["best"], lines["failures"], strategy_instruction(arm))
+                a, counter, API_CARD, demo_block(a.demo), kernel_block(level, parent["source"]),
+                rp, last_failure, lines["best"], lines["failures"], strategy_instruction(arm))
 
         budget = min(a.max_tokens, max(256, a.context - prompt_tokens - 64))
         try:
@@ -419,13 +493,44 @@ def run_once(a, level, out_dir, rng, counter, opt_seeds):
                           raw_reply=os.path.relpath(raw_path, out_dir),
                           prompt_tokens=prompt_tokens,
                           completion_tokens=int(usage.get("completion_tokens") or 0),
-                          prompt_section_tokens=sections,
+                          prompt_section_tokens=sections, retried=False,
                           elapsed_s=round(time.perf_counter() - t0, 1))
+
+            # One nudge retry when the reply is empty or byte-identical to an earlier candidate.
+            # Measured: 44% of the frozen-batch attempts were duplicates, so half the round
+            # budget re-tested the same kernel. Changing the prompt is the only lever with a
+            # deterministic server.
+            if (not src.strip()) or (sha(src) in seen):
+                nudge = ("\n\nNOTE: your previous reply was the same kernel as an earlier "
+                         "attempt in this run. Keep the same goal, but change at least the tile "
+                         "allocation sizes or the indexing. Reply with ONE complete python code "
+                         "block, then the STRATEGY and CONFIDENCE lines."
+                         if src.strip() else
+                         "\n\nNOTE: your previous reply contained no python code block. Reply "
+                         "with ONE complete python code block, then STRATEGY and CONFIDENCE.")
+                try:
+                    reply2, usage2 = ask(a, prompt + nudge, budget)
+                    tokens_in += int(usage2.get("prompt_tokens") or 0)
+                    tokens_out += int(usage2.get("completion_tokens") or 0)
+                    raw2 = os.path.join(out_dir, "replies", f"r{rnd}_s{i}_retry.txt")
+                    with open(raw2, "w") as f:
+                        f.write(reply2)
+                    src2 = extract_code(reply2)
+                    if src2.strip() and sha(src2) not in seen:
+                        reply, src = reply2, src2
+                        label, conf = parse_reply(reply2)
+                        record.update(raw_reply=os.path.relpath(raw2, out_dir),
+                                      completion_tokens=int(usage2.get("completion_tokens") or 0),
+                                      retried=True, strategy=label, confidence=conf)
+                except Exception as e:
+                    print(f"    retry failed: {type(e).__name__}: {e}")
+
             if not src.strip():
                 record.update(decision="empty", failure_kind="empty")
                 logf.write(json.dumps(record) + "\n")
                 logf.flush()
-                memory.append(dict(ok=False, improvement=0.0, lesson=f"{arm}: empty reply"))
+                memory.append(dict(ok=False, improvement=0.0, progress=0.0,
+                                   lesson=f"{arm}: empty reply"))
                 continue
             code_hash = sha(src)
             if code_hash in seen:
@@ -433,7 +538,7 @@ def run_once(a, level, out_dir, rng, counter, opt_seeds):
                               failure_kind="duplicate")
                 logf.write(json.dumps(record) + "\n")
                 logf.flush()
-                memory.append(dict(ok=False, improvement=0.0,
+                memory.append(dict(ok=False, improvement=0.0, progress=0.0,
                                    lesson=f"{arm}: repeated an earlier candidate (same source)"))
                 continue
             seen.add(code_hash)
@@ -441,16 +546,22 @@ def run_once(a, level, out_dir, rng, counter, opt_seeds):
                                            opt_seeds[0])
             valid = candidate_valid(ev)
             imp = improvement(parent_worst, ev)
+            prog = progress(ev)
+            reward = bandit_reward(parent_progress, ev)
             inserted = False
             if valid:
                 inserted = population.insert(dict(
                     hash=code_hash, source=src, strategy=arm,
-                    worst_waste=ev["worst_waste"], valid=True, eval=ev, path=code_path))
+                    worst_waste=ev["worst_waste"], valid=True, progress=prog,
+                    eval=ev, path=code_path))
                 round_valid.append(dict(src=src, ev=ev, code_path=code_path))
+                if imp > 0 and (best_improvement is None or imp > best_improvement[0]):
+                    best_improvement = (imp, src, label or arm, ev)
             else:
                 round_invalid.append(dict(src=src, ev=ev, code_path=code_path))
-            memory.append(dict(ok=valid, improvement=imp, arm=arm, source_hash=code_hash,
-                               worst_waste=ev["worst_waste"], failure_kind=ev["failure_kind"],
+            memory.append(dict(ok=valid, improvement=imp, progress=prog, arm=arm,
+                               source_hash=code_hash, worst_waste=ev["worst_waste"],
+                               failure_kind=ev["failure_kind"],
                                lesson=lesson_for(arm, valid, ev, imp)))
             record.update(source_hash=code_hash, code=os.path.relpath(code_path, out_dir),
                           bandit_state="learning/bandit.json",
@@ -461,11 +572,12 @@ def run_once(a, level, out_dir, rng, counter, opt_seeds):
                                     for c in ev["per_case"]],
                           failure_kind=ev["failure_kind"], accepted=ev["accepted"],
                           valid=valid, worst_waste=ev["worst_waste"], improvement=imp,
+                          progress=prog, progress_delta=reward,
                           decision="inserted" if inserted else "evaluated",
                           at_floor=at_floor(ev), level_status=level_status(ev))
             logf.write(json.dumps(record) + "\n")
             logf.flush()
-            rewards.append(imp)
+            rewards.append(reward)
             if at_floor(ev):
                 hit_floor = True
                 break
@@ -506,12 +618,23 @@ def run_once(a, level, out_dir, rng, counter, opt_seeds):
                 best = promising[0]
                 fb = enrich_feedback(first_failure(best["ev"]))
                 pending = dict(source=best["src"], feedback=fb, arm=arm,
-                               remaining=2, worst_waste=best["ev"]["worst_waste"])
+                               remaining=3, worst_waste=best["ev"]["worst_waste"],
+                               progress=progress(best["ev"]))
                 last_failure = compact(fb, 220)
                 memory.append(dict(ok=False, improvement=0.0,
                                    lesson=f"repairing the last attempt: {last_failure}"))
 
     logf.close()
+    if best_improvement is not None:
+        imp_best, demo_src, demo_change, demo_ev = best_improvement
+        demo = dict(change=demo_change or "structural change",
+                    measured=f"worst-case {demo_ev['worst_waste']:.2f}x, every shape accepted",
+                    run=run_id, model=a.model, kernel=demo_src)
+        demo_path = os.path.join(os.path.dirname(out_dir), "demo.json")
+        with open(demo_path, "w") as f:
+            json.dump(demo, f, indent=2)
+        print(f"  wrote {demo_path}: the agent's first verified improvement at "
+              f"{demo_ev['worst_waste']:.2f}x becomes a worked example for later runs")
     winner = population.best()
     if winner is None:
         raise SystemExit("no valid candidate was produced (even the seed failed)")
@@ -559,6 +682,8 @@ def main():
     ap.add_argument("--second-parent-prob", type=float, default=0.15)
     ap.add_argument("--tol", type=float, default=2e-2)
     ap.add_argument("--rng-seed", type=int, default=0)
+    ap.add_argument("--demo", default="", help="path to a verified demo.json written by an "
+                    "earlier successful run; reused as a worked example in prompts")
     a = ap.parse_args()
 
     if not a.base:

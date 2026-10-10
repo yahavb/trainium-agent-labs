@@ -236,6 +236,14 @@ python traffic_agent.py --seed-kernel reference_level4.py --rounds 6 --samples 2
 - [x] If the model repeatedly damages arithmetic, narrow the edit to allocations, input loads, and loop placement; preserve the original matmul and final store pattern. Log changes to prompts and restart independent evaluation after tuning.
 
 **Tuning log:** `enrich_feedback()` added to `traffic_agent.py` — simulation exceptions are translated into one named change (partition-dimension wall; PSUM->HBM wall). Prompt layout otherwise unchanged; the recipe appears only in repair feedback, never in generation prompts.
+
+**Tuning log 2 — after the five repeats (0/5 at the floor, 80 attempts, 44% duplicates, every bandit arm at mean reward 0.00):**
+1. **Duplicate nudge retry:** when a reply is empty or byte-identical to an earlier candidate, one more generation is requested with a nudge that names the repetition. Measured waste being recovered: 44% of attempts.
+2. **Tiered progress for the bandit:** rules 0.2 / ran 0.3 / correct fraction 0.3 / traffic credit 0.2 on correct shapes; reward = progress(child) − progress(parent). Population and winner stay valid-only, so no wrong kernel ever counts as a win; the bandit finally has a gradient (the flat 0.00 landscape was the binary-reward failure).
+3. **Near-miss memory:** the "best" prompt section is now ranked by tiered progress instead of valid-only improvements, so it stops being permanently empty. Lessons say what worked ("ran 3/4, correct 2/4 at 1.86x") plus the wall.
+4. **Repair budget 2 → 3**; **arm priority:** `retain_both` first (probe-proven), `tidy_only` dropped after producing nothing in eight measured runs.
+5. **Load idiom in the element-count repair message:** the four-line stacked-cache load/slice pattern (public AWS NKI documentation pattern), shown only in repair feedback, never in generation prompts. Disclosed in the write-up; the model still authors the whole kernel.
+6. **Bootstrapped worked example:** the first verified improvement the loop produces is written to `demo.json` and reused as context in later runs, labelled as an earlier run of the same model and checker. If no improvement exists, no example is injected — nothing hand-written is ever presented as the agent's work.
 - [x] Maintain a fallback with a measured improvement even if the floor remains unreached. Do not replace a verified result with an unverified lower byte estimate.
 
 **Fallback status after three pilots:** no valid improvement was ever produced, so the fallback was the fully verified seed (2.0x) throughout; no below-floor candidate was ever allowed to replace it.

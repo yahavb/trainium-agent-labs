@@ -128,22 +128,22 @@ class AcceptCaseTests(unittest.TestCase):
 
 
 class BanditTests(unittest.TestCase):
-    def test_untried_arms_first_alphabetical(self):
+    def test_untried_arms_in_priority_order(self):
         b = ttl.Bandit()
         seen = []
         for _ in range(len(ttl.ARMS)):
             arm = b.select()
             seen.append(arm)
             b.update(arm, 0.0)
-        self.assertEqual(seen, sorted(ttl.ARMS))
+        self.assertEqual(seen, list(ttl.ARMS))
 
-    def test_equal_means_break_ties_alphabetically(self):
+    def test_equal_means_break_ties_in_priority_order(self):
         b1, b2 = ttl.Bandit(), ttl.Bandit()
-        for arm in sorted(ttl.ARMS):
+        for arm in ttl.ARMS:
             b1.update(arm, 0.5)
             b2.update(arm, 0.5)
-        self.assertEqual(b1.select(), sorted(ttl.ARMS)[0])
-        self.assertEqual(b2.select(), sorted(ttl.ARMS)[0])
+        self.assertEqual(b1.select(), ttl.ARMS[0])
+        self.assertEqual(b2.select(), ttl.ARMS[0])
 
     def test_best_mean_wins_without_exploration(self):
         b = ttl.Bandit(exploration=0.0)
@@ -178,6 +178,13 @@ class MemoryTests(unittest.TestCase):
             m.append(dict(ok=True, improvement=i, lesson=f"l{i}"))
         self.assertEqual(len(m.items), 3)
         self.assertEqual(m.items[0]["lesson"], "l2")
+
+    def test_best_lines_rank_by_progress_not_only_wins(self):
+        m = ttl.Memory(cap=10)
+        m.append(dict(ok=False, improvement=0.0, progress=0.6, lesson="near miss A"))
+        m.append(dict(ok=False, improvement=0.0, progress=0.3, lesson="near miss B"))
+        lines = m.prompt_lines(best_k=1, failures_k=0)
+        self.assertEqual(lines["best"], ["near miss A"])
 
 
 class PopulationTests(unittest.TestCase):
@@ -271,6 +278,54 @@ class RewardTests(unittest.TestCase):
                                                      per_case=[dict(bytes=101, floor=100)])))
         self.assertFalse(traffic_agent.at_floor(dict(accepted=False,
                                                      per_case=[dict(bytes=100, floor=100)])))
+
+
+class ProgressTests(unittest.TestCase):
+    """Tiered progress: the bandit's gradient without counting wrong kernels as wins."""
+
+    @staticmethod
+    def _ev(ran, correct, waste, total=4, rules=True):
+        cases = []
+        for i in range(total):
+            if i < ran:
+                ch = dict(inputs_ok=True, numerics_ok=(i < correct), hazard_ok=True,
+                          traffic_ok=False)
+                cases.append(dict(bytes=None, floor=None,
+                                  waste=(waste if i < correct else None), checks=ch))
+            else:
+                cases.append(dict(bytes=None, floor=None, waste=None, checks=None))
+        return dict(rules_ok=rules, numerics_ok=rules, inputs_ok=rules, hazards_ok=rules,
+                    passed=correct, accepted=False, total=total, per_case=cases,
+                    worst_waste=None, failure_kind=None, feedback="")
+
+    def test_seed_like_scores_0_8(self):
+        import traffic_agent as ta
+        self.assertAlmostEqual(ta.progress(self._ev(4, 4, 2.0)), 0.8, places=2)
+
+    def test_floor_kernel_scores_1_0(self):
+        import traffic_agent as ta
+        self.assertAlmostEqual(ta.progress(self._ev(4, 4, 1.0)), 1.0, places=2)
+
+    def test_rule_failure_scores_zero(self):
+        import traffic_agent as ta
+        self.assertEqual(ta.progress(self._ev(0, 0, None, rules=False)), 0.0)
+
+    def test_partial_near_miss_beats_zero_but_not_the_seed(self):
+        import traffic_agent as ta
+        partial = ta.progress(self._ev(1, 1, 1.0))
+        self.assertGreater(partial, 0.0)
+        self.assertLess(partial, ta.progress(self._ev(4, 4, 2.0)))
+
+    def test_three_correct_shapes_at_floor_beat_the_seed(self):
+        import traffic_agent as ta
+        self.assertGreater(ta.progress(self._ev(4, 3, 1.0)),
+                           ta.progress(self._ev(4, 4, 2.0)))
+
+    def test_bandit_reward_is_progress_gain(self):
+        import traffic_agent as ta
+        self.assertEqual(ta.bandit_reward(None, self._ev(4, 4, 1.0)), 0.0)
+        self.assertEqual(ta.bandit_reward(0.8, self._ev(4, 4, 2.0)), 0.0)
+        self.assertGreater(ta.bandit_reward(0.8, self._ev(4, 4, 1.0)), 0.0)
 
 
 if __name__ == "__main__":

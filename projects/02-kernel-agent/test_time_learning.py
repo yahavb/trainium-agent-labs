@@ -14,14 +14,17 @@ Reward convention used by the loop (traffic_agent.py):
 
 import math
 
-ARMS = ("retain_both", "retain_rhs", "retain_lhs", "bounded_blocking", "tidy_only")
+# Priority order for untried arms. retain_both first: the resident-layout probe proved it can
+# reach the byte floor, and it produced every below-2.0x attempt in the pilots and repeats.
+# tidy_only is dropped: it produced nothing in three pilots and five repeats.
+ARMS = ("retain_both", "retain_rhs", "retain_lhs", "bounded_blocking")
 
 
 class Bandit:
     """UCB1 over the strategy arms.
 
-    Untried arms are picked first, in alphabetical order, so the first len(ARMS) rounds are
-    deterministic. Ties break alphabetically, so the same seeds reproduce the same choices.
+    Untried arms are picked first, in ARMS priority order, so the first len(ARMS) rounds are
+    deterministic. Ties break in the same order, so the same seeds reproduce the same choices.
     """
 
     def __init__(self, arms=ARMS, exploration=1.0):
@@ -32,11 +35,11 @@ class Bandit:
         self.rounds = 0
 
     def select(self):
-        untried = sorted(a for a in self.arms if self.counts[a] == 0)
+        untried = [a for a in self.arms if self.counts[a] == 0]
         if untried:
             return untried[0]
         best, best_score = None, None
-        for a in sorted(self.arms):
+        for a in self.arms:
             mean = self.totals[a] / self.counts[a]
             bonus = self.exploration * math.sqrt(math.log(max(2, self.rounds)) / self.counts[a])
             score = mean + bonus
@@ -72,9 +75,12 @@ class Memory:
             del self.items[: len(self.items) - self.cap]
 
     def prompt_lines(self, best_k=6, failures_k=3):
-        improved = [i for i in self.items
-                    if i.get("ok") and float(i.get("improvement") or 0.0) > 0.0]
-        improved.sort(key=lambda i: -float(i.get("improvement") or 0.0))
+        """Best means closest to the goal by tiered progress, not only valid wins.
+
+        The old filter required improvement > 0, which never happened in any measured run, so
+        the positive half of the prompt was always empty and the model only ever read failures.
+        """
+        ranked = sorted(self.items, key=lambda i: -float(i.get("progress") or 0.0))
         recent_fail = [i for i in self.items if not i.get("ok")]
 
         def clean(seq):
@@ -86,7 +92,7 @@ class Memory:
                     out.append(lesson)
             return out
 
-        return dict(best=clean(improved[:best_k]),
+        return dict(best=clean(ranked[:best_k]),
                     failures=clean(recent_fail[-failures_k:]) if failures_k else [])
 
     def dump(self):
