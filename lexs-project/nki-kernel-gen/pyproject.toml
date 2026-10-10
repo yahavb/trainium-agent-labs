@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nki-kernel-search"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = ["openevolve", "torch", "numpy", "pyyaml"]
+
+[project.optional-dependencies]
+tracking = ["wandb", "matplotlib"]
+server = ["fastapi>=0.115,<1", "pydantic>=2.9,<3", "uvicorn>=0.30,<1", "ngrok>=1.4,<2", "psutil>=6,<8", "openai>=1.60,<3"]
+
+[project.scripts]
+nki-search = "nki_kernel_search.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["nki_kernel_search*"]

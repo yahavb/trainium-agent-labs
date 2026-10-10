@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f6f7f4">
+  <title>NKIEvolve · Trainium kernel lab</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="header">
+    <a class="brand" href="/" aria-label="NKIEvolve home"><span class="brand-mark" aria-hidden="true">N</span><span>NKI<span class="brand-light">Evolve</span></span><span class="tag">KERNEL LAB</span></a>
+    <div class="header-right"><span class="worker"><span class="chip-icon" aria-hidden="true">▦</span> AWS Trainium <span class="muted">/ seat 56</span></span><span id="connection-status" class="status"><i></i>Disconnected</span></div>
+  </header>
+  <main class="shell">
+    <div class="page-heading"><div><p class="eyebrow">FROM OPERATION TO OPTIMIZATION</p><h1>AlphaEvolve for NKI Kernels.</h1><p class="subtitle">Define your operation. Let evolution find a faster NKI implementation.</p></div><span class="hardware-label">NKI × OpenEvolve</span></div>
+
+    <form id="connection-form" class="connection-bar">
+      <div class="connection-title"><span aria-hidden="true">↗</span><div><strong>Connect to your worker</strong><small>Use the API token printed by backend.py.</small></div></div>
+      <label class="sr-only" for="endpoint">Endpoint URL</label><input id="endpoint" type="url" placeholder="https://your-worker.ngrok.app" aria-label="Endpoint URL" required>
+      <label class="sr-only" for="api-token">API access token</label><input id="api-token" type="password" placeholder="API access token" autocomplete="off" required>
+      <button id="connect" class="button secondary" type="submit">Connect <span aria-hidden="true">↗</span></button>
+      <button id="disconnect" class="button quiet" type="button" hidden>Disconnect</button>
+    </form>
+    <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+
+    <div class="navigation-row">
+      <nav class="tabs" role="tablist" aria-label="Kernel workflow">
+        <button id="tab-launcher" class="tab active" role="tab" aria-selected="true" aria-controls="launcher" data-tab="launcher"> <span aria-hidden="true">↗</span> Launcher <span class="tab-number">01</span></button>
+        <button id="tab-logs" class="tab" role="tab" aria-selected="false" aria-controls="logs" data-tab="logs" tabindex="-1"><span aria-hidden="true">⌁</span> Logs <span id="live-dot" class="live-dot" hidden></span><span class="tab-number">02</span></button>
+        <button id="tab-kernel" class="tab" role="tab" aria-selected="false" aria-controls="kernel" data-tab="kernel" tabindex="-1"><span aria-hidden="true">⌘</span> Kernel Code <span class="tab-number">03</span></button>
+      </nav>
+      <div class="run-picker"><label for="run-select">Run</label><select id="run-select" aria-label="Select a run"><option value="">No run selected</option></select><button id="refresh-runs" class="icon-button" title="Refresh runs" aria-label="Refresh runs" disabled>↻</button></div>
+    </div>
+
+    <section id="launcher" class="panel" role="tabpanel" aria-labelledby="tab-launcher">
+      <div class="launcher-grid">
+        <div class="workflow">
+          <div class="card input-card">
+            <div class="card-heading"><div class="section-title"><span class="step">01</span><div><h2>Define the operation</h2><p>Start with code or tell us what you want to compute.</p></div></div><span class="pill">PYTORCH → NKI</span></div>
+            <div class="input-switch" role="group" aria-label="Input mode"><button id="mode-code" class="selected" type="button" aria-pressed="true">&lt;/&gt; PyTorch code</button><button id="mode-description" type="button" aria-pressed="false">✧ Describe a kernel</button></div>
+            <div id="description-pane" hidden>
+              <label for="description">What should your kernel do?</label>
+              <textarea id="description" class="description" maxlength="20000" placeholder="For example: Row-wise softmax over float32 tensors with shapes (128, 512), (256, 1024), and (129, 513). Use a numerically stable implementation and include extreme-value test cases."></textarea>
+              <div class="editor-footer"><span>Include shapes, dtypes, outputs, and edge cases.</span><button id="generate" class="button secondary" type="button" disabled>✧ Generate PyTorch</button></div>
+              <p class="help">Reference generation uses GPT-6 Luna and makes a paid API call. Review the result before evolving.</p>
+            </div>
+            <div id="reference-pane">
+              <div class="editor-bar"><label for="reference-code">reference.py</label><span id="reference-origin">YOUR REFERENCE</span><button id="load-example" class="text-button" type="button">Load example</button></div>
+              <textarea id="reference-code" class="code-editor" spellcheck="false" autocapitalize="off" maxlength="100000" aria-label="PyTorch reference code" placeholder="import torch&#10;&#10;def reference(a, b):&#10;    return a + b&#10;&#10;def cases(seed):&#10;    # Yield representative input tuples&#10;    ..."></textarea>
+              <div class="editor-footer"><span><code>reference(*inputs)</code> + <code>cases(seed)</code> required</span><span id="line-count">1 line</span></div>
+            </div>
+          </div>
+          <div class="card review-card" id="review-card">
+            <div class="section-title"><span class="step">02</span><div><h2>Verify your reference</h2><p>This code is the source of truth for every correctness check.</p></div></div>
+            <label class="check-label"><input type="checkbox" id="verified"><span>I’ve reviewed the operation, input cases, and numerical tolerances.</span></label>
+            <p class="help">Review any assumptions in generated code. Editing the reference requires verification again.</p>
+          </div>
+          <details class="card initial-card"><summary>Optional starting NKI kernel <span class="muted">Otherwise, we generate one</span></summary><label class="sr-only" for="initial-code">Initial NKI kernel</label><textarea id="initial-code" class="code-editor small" spellcheck="false" maxlength="100000" placeholder="def kernel(*inputs):&#10;    # EVOLVE-BLOCK-START&#10;    ...&#10;    # EVOLVE-BLOCK-END"></textarea><p class="help">A plain kernel function with EVOLVE-BLOCK markers. It must pass validation.</p></details>
+        </div>
+        <aside class="card config-card">
+          <div class="section-title"><span class="step">03</span><div><h2>Configure evolution</h2><p>Choose the model and search budget.</p></div></div>
+          <fieldset id="configuration" disabled>
+            <legend class="sr-only">Evolution configuration</legend>
+            <label>Evolution model</label>
+            <div class="model-options">
+              <label class="model-option"><input type="radio" name="model" value="gpt-6-luna" checked><span class="model-symbol">◔</span><span><strong>GPT-6 Luna</strong><small>gpt-6-luna</small></span><span class="radio-mark"></span></label>
+              <label class="model-option"><input type="radio" name="model" value="gpt-6-sol"><span class="model-symbol">☼</span><span><strong>GPT-6 Sol</strong><small>gpt-6-sol</small></span><span class="radio-mark"></span></label>
+              <label class="model-option"><input type="radio" name="model" value="gpt-6-astra"><span class="model-symbol">✧</span><span><strong>GPT-6 Astra</strong><small>gpt-6-astra</small></span><span class="radio-mark"></span></label>
+            </div>
+            <label for="module-name">Run name</label><input id="module-name" value="custom-kernel" pattern="[a-zA-Z0-9_-]{1,80}" maxlength="80" required>
+            <div class="field-pair"><div><label for="iterations">Iterations</label><input id="iterations" type="number" min="1" max="500" value="10" required></div><div><label for="timeout">Eval. timeout <span class="muted">(s)</span></label><input id="timeout" type="number" min="1" max="3600" value="600" required></div></div>
+            <label class="check-label wandb-check"><input id="wandb-enabled" type="checkbox" checked><span>Track in Weights &amp; Biases</span></label>
+          </fieldset>
+          <div class="target"><span class="chip-icon" aria-hidden="true">▦</span><div><strong>AWS Trainium</strong><small>Connected worker · hardware evaluation</small></div></div>
+          <button id="launch" class="button primary launch-button" type="button" disabled>Start evolution <span aria-hidden="true">→</span></button>
+          <p id="launch-hint" class="launch-hint">Connect and verify your reference to continue.</p>
+          <div class="config-note"><span aria-hidden="true">⌁</span><p>Each candidate is checked for correctness, then benchmarked on hardware.</p></div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="logs" class="panel" role="tabpanel" aria-labelledby="tab-logs" hidden>
+      <div class="run-heading"><div><p class="eyebrow">EVOLUTION TELEMETRY</p><h2 id="run-title">Waiting for a run</h2><p id="run-description" class="subtitle">Launch an operation to follow its progress here.</p></div><div class="run-actions"><span id="run-status" class="status">Idle</span><a id="wandb-link" class="button secondary" target="_blank" rel="noopener noreferrer" hidden>Open W&amp;B ↗</a><button id="cancel" class="button danger" disabled>Stop run</button></div></div>
+      <div id="job-error" class="notice error" hidden></div>
+      <div class="stats"><div class="stat"><span>BEST SPEEDUP</span><strong id="best-speedup">—</strong><small>vs. initial NKI kernel</small></div><div class="stat"><span>LOWEST LATENCY</span><strong id="best-latency">—</strong><small>mean of per-shape p50 · µs</small></div><div class="stat"><span>ITERATION</span><strong id="current-iteration">—</strong><small id="iteration-help">0 is the baseline</small></div><div class="stat"><span>CORRECT CANDIDATES</span><strong id="correct-candidates">—</strong><small id="correct-help">Waiting for evaluations</small></div></div>
+      <div class="chart-grid"><div class="card chart-card"><div class="chart-heading"><h3>Speedup over time</h3><span class="chart-unit">× baseline</span></div><div id="speedup-chart" class="chart" role="img" aria-label="Speedup by iteration"><p class="empty-chart">Speedup appears after hardware evaluation.</p></div><div class="legend"><span><i class="candidate"></i>Candidate</span><span><i class="best"></i>Best so far</span><span class="muted">Iteration →</span></div></div><div class="card chart-card"><div class="chart-heading"><h3>Kernel latency</h3><span class="chart-unit">microseconds</span></div><div id="latency-chart" class="chart" role="img" aria-label="Latency by iteration"><p class="empty-chart">Latency appears after hardware evaluation.</p></div><div class="legend"><span><i class="candidate"></i>Candidate</span><span><i class="best"></i>Lowest so far</span><span class="muted">Iteration →</span></div></div></div>
+      <div class="card evaluation-card"><div class="chart-heading"><h3>Evaluations</h3><span id="last-update" class="muted">No data yet</span></div><div class="table-scroll"><table><thead><tr><th>Iteration</th><th>Correctness</th><th>Latency · µs</th><th>Speedup</th><th>Best speedup</th></tr></thead><tbody id="evaluations"><tr><td colspan="5" class="empty-row">Evaluated candidates will appear here.</td></tr></tbody></table></div></div>
+      <div class="console-card"><div class="console-heading"><h3><span class="terminal-dot" aria-hidden="true"></span>Worker output</h3><label class="check-label"><input id="follow-logs" type="checkbox" checked>Auto-scroll</label></div><pre id="console" tabindex="0">Connect and launch a run to see live output.</pre></div>
+    </section>
+
+    <section id="kernel" class="panel" role="tabpanel" aria-labelledby="tab-kernel" hidden>
+      <div class="run-heading"><div><p class="eyebrow">THE RESULT</p><h2>Your optimized kernel</h2><p class="subtitle">The best correct implementation measured during this run.</p></div><div class="run-actions"><button id="copy-kernel" class="button secondary" disabled>Copy code</button><button id="download-kernel" class="button primary" disabled>Download .py ↓</button></div></div>
+      <div id="kernel-summary" class="kernel-summary" hidden><span class="pill green">CORRECTNESS PASSED</span><span id="kernel-performance"></span><span class="muted">Selected by geometric mean speedup</span></div>
+      <div class="kernel-card"><div class="editor-bar"><span>best_kernel.py</span><span id="kernel-state">AWAITING HARDWARE EVALUATION</span></div><div id="kernel-empty" class="kernel-empty"><span aria-hidden="true">&lt;/&gt;</span><h3>A faster kernel starts here.</h3><p>After the first correct hardware evaluation, the best NKI kernel will appear here and update as evolution progresses.</p><button id="back-launcher" class="button secondary">Go to Launcher →</button></div><pre id="kernel-code" class="kernel-code" tabindex="0" hidden><code></code></pre></div>
+      <p class="help kernel-footnote">Performance is measured against the initial NKI kernel on your supplied cases. Validate additional shapes before using it elsewhere.</p>
+    </section>
+    <footer><span>NKIEvolve <span class="muted">/</span> AWS Trainium kernel lab</span><span>Powered by NKI + OpenEvolve</span></footer>
+  </main>
+</body>
+</html>

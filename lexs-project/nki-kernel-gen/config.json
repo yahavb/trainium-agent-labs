@@ -1,0 +1,17 @@
+{
+  "reference": "examples/softmax/reference_pytorch_softmax.py",
+  "module_name": "fused-softmax",
+  "initial_kernel": "examples/softmax/initial_kernel.py",
+  "mode": "hardware",
+  "model": "gpt-6-astra",
+  "iterations": 10,
+  "timeout": 600,
+  "output": "outputs/softmax-astra",
+  "context_files": [],
+  "wandb": {
+    "enabled": true,
+    "entity": "ahackett-santa-clara-university",
+    "project": "trainium-kernels",
+    "mode": "online"
+  }
+}
