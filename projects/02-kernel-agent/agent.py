@@ -660,6 +660,16 @@ def solve(a, level, log):
             return best[0], rnd + 1
         tried.append(top[2])
         repeats = streak
+        if level == 4 and not scaffolded and (latest[0] or "").strip():
+            # Level 4's first useful failure often names a tile-dimension mistake. Do not
+            # spend another full model round repeating prose guidance: put the explicit
+            # M/N/K loop structure into the very first repair prompt.
+            scaffolded = True
+            ledger = "\n".join(f"- {t[:160]}" for t in dict.fromkeys(tried))
+            prompt = (repair_prompt(level, latest[0], latest[1], scaffold=True)
+                      + f"\n\nThis candidate failed; repair it using the scaffold.\n{ledger}")
+            print("  level 4 escalation: adding the 3D tile-loop scaffold to the first repair")
+            continue
         repeated_level4_failure = level == 4 and seen[top[2]] >= 2
         if (repeats >= 2 or repeated_level4_failure) and (best[1] or "").strip():
             # Sampling on this endpoint is greedy, so an unchanged prompt returns an unchanged
