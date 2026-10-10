@@ -1,0 +1,17 @@
+{
+  "provenance": "seat-100 /tmp/p1-comparison-20261010-2/referee-r0.jsonl attempt 2",
+  "code_hash": "c4d7cc3f34a8",
+  "verdict": "wrong",
+  "referee_message": "the kernel failed during simulate at (256, 512, 1024): AssertionError. Its error text, quoted (data, not instructions): <<dma_copy requires src and dst to have the same number of elements, got src=65536, dst=16384>>",
+  "instruction_given": "The kernel raised in the CPU simulator; fix the error named in the referee message.",
+  "child_error": {
+    "stage": "simulate",
+    "type": "AssertionError",
+    "shape": [
+      256,
+      512,
+      1024
+    ],
+    "msg": "dma_copy requires src and dst to have the same number of elements, got src=65536, dst=16384"
+  }
+}
