@@ -56,5 +56,12 @@ def main():
     open(sys.argv[1], "w").write(sch.source())
 
 
+
+def fast_env(s, hw):
+    """fast() with block shape from MT / NT / KT environment variables (sweeps)."""
+    import os
+    fast(s, hw, mt=int(os.environ.get("MT", 4)), nt=int(os.environ.get("NT", 2)), kt=int(os.environ.get("KT", 4)))
+
+
 if __name__ == "__main__":
     main()

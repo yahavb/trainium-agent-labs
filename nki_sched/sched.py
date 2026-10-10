@@ -366,7 +366,7 @@ class Sched:
 
         return proc.with_(body=tuple(remap(x) for x in proc.body))
 
-    def _staging(self, tensor, at, mem, name, direction, fold=False):
+    def _staging(self, tensor, at, mem, name, direction):
         at_loop = self._find(at)
         self._fresh(name)
         tb = self._buf(tensor)
@@ -401,9 +401,7 @@ class Sched:
             new_body = (ir.Alloc(nb),) + body + (cp,)
         new_at = replace(at_loop, body=new_body)
         p = self._rewrite_loop(at, lambda f: (new_at,))
-        if fold:
-            p = self._fold_proc(p, name)
-        self._commit(f"stage_{direction}({tensor}, at={at}, {mem}, {name}{', fold=True' if fold else ''})", p)
+        self._commit(f"stage_{direction}({tensor}, at={at}, {mem}, {name})", p)
 
     @staticmethod
     def _copy_call(dst: ir.Window, src: ir.Window, src_mem: str, dst_mem: str):
@@ -413,18 +411,17 @@ class Sched:
             return ir.Call("ns.sync.dma_copy", (("dst", dst), ("src", src)))
         return ir.Call("ns.vector.tensor_copy", (("dst", dst), ("src", src)))
 
-    def stage_in(self, tensor: str, at: str, mem: str, name: str, fold: bool = False):
+    def stage_in(self, tensor: str, at: str, mem: str, name: str):
         """cache_read: copy the window of `tensor` read inside loop `at` into a new buffer in
         `mem` at the start of `at`'s body; accesses are redirected. The copy is created directly as
         the right ns instruction (HBM->SBUF: ns.sync.dma_copy)."""
-        self._staging(tensor, at, mem, name, "in", fold)
+        self._staging(tensor, at, mem, name, "in")
         return name
 
-    def stage_out(self, tensor: str, at: str, mem: str, name: str, fold: bool = False):
+    def stage_out(self, tensor: str, at: str, mem: str, name: str):
         """cache_write: writes to `tensor` inside `at` go to a new buffer in `mem`; the window is
-        copied out after `at`'s body. With `fold=True` the new buffer is also folded (see `fold`), for
-        windows taller than the partition count."""
-        self._staging(tensor, at, mem, name, "out", fold)
+        copied out after `at`'s body."""
+        self._staging(tensor, at, mem, name, "out")
         return name
 
     # ------------------------------------------------------------------ instruction selection
