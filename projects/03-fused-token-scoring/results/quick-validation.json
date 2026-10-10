@@ -1,0 +1,62 @@
+{
+  "timestamp_utc": "2026-10-10T19:28:49.545413+00:00",
+  "execution": "Trainium2 hardware",
+  "atol": 0.001,
+  "rtol": 0.0001,
+  "row_tile": 128,
+  "vocab_tile": 8192,
+  "invalid_input_rejections": 10,
+  "comparisons": [
+    {
+      "case": "random-3x17",
+      "kernel": "fused_score",
+      "shape": [
+        3,
+        17
+      ],
+      "config": {
+        "row_tile": 128,
+        "vocab_tile": 8192
+      },
+      "passed": true,
+      "max_abs_error": {
+        "logprobs": 2.8848648071289062e-05,
+        "entropy": 2.86102294921875e-05
+      }
+    },
+    {
+      "case": "random-3x17",
+      "kernel": "separate_score",
+      "shape": [
+        3,
+        17
+      ],
+      "config": {
+        "row_tile": 128,
+        "vocab_tile": 8192
+      },
+      "passed": true,
+      "max_abs_error": {
+        "logprobs": 2.8848648071289062e-05,
+        "entropy": 2.86102294921875e-05
+      }
+    },
+    {
+      "case": "random-3x17",
+      "kernel": "aws_separate_score",
+      "shape": [
+        3,
+        17
+      ],
+      "config": {
+        "row_tile": 128,
+        "vocab_tile": 8192
+      },
+      "passed": true,
+      "max_abs_error": {
+        "logprobs": 2.8848648071289062e-05,
+        "entropy": 2.86102294921875e-05
+      }
+    }
+  ]
+}

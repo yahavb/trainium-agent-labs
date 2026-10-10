@@ -1,0 +1,6002 @@
+[
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 42,
+    "nc_idx": 0,
+    "nc_local_id": 42,
+    "tracking_id": 42,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5299,
+      "nc_timestamp_ns": 17897262623654
+    },
+    "timestamp_ns": 1791661020901911529
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 43,
+    "nc_idx": 0,
+    "nc_local_id": 43,
+    "tracking_id": 42,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897262750424
+    },
+    "timestamp_ns": 1791661020902038299
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 46,
+    "nc_idx": 0,
+    "nc_local_id": 46,
+    "tracking_id": 46,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5299,
+      "nc_timestamp_ns": 17897262624715
+    },
+    "timestamp_ns": 1791661020901911715
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 47,
+    "nc_idx": 0,
+    "nc_local_id": 47,
+    "tracking_id": 46,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897262749090
+    },
+    "timestamp_ns": 1791661020902036090
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 110,
+    "nc_idx": 0,
+    "nc_local_id": 110,
+    "tracking_id": 110,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5300,
+      "nc_timestamp_ns": 17897262832150
+    },
+    "timestamp_ns": 1791661020902120883
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 111,
+    "nc_idx": 0,
+    "nc_local_id": 111,
+    "tracking_id": 110,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897262958592
+    },
+    "timestamp_ns": 1791661020902247325
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 114,
+    "nc_idx": 0,
+    "nc_local_id": 114,
+    "tracking_id": 114,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5300,
+      "nc_timestamp_ns": 17897262833183
+    },
+    "timestamp_ns": 1791661020902120621
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 115,
+    "nc_idx": 0,
+    "nc_local_id": 115,
+    "tracking_id": 114,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897262957004
+    },
+    "timestamp_ns": 1791661020902244442
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 178,
+    "nc_idx": 0,
+    "nc_local_id": 178,
+    "tracking_id": 178,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5301,
+      "nc_timestamp_ns": 17897263030237
+    },
+    "timestamp_ns": 1791661020902318546
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 179,
+    "nc_idx": 0,
+    "nc_local_id": 179,
+    "tracking_id": 178,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897263156928
+    },
+    "timestamp_ns": 1791661020902445237
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 182,
+    "nc_idx": 0,
+    "nc_local_id": 182,
+    "tracking_id": 182,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5301,
+      "nc_timestamp_ns": 17897263031270
+    },
+    "timestamp_ns": 1791661020902318730
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 183,
+    "nc_idx": 0,
+    "nc_local_id": 183,
+    "tracking_id": 182,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897263155625
+    },
+    "timestamp_ns": 1791661020902443085
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 246,
+    "nc_idx": 0,
+    "nc_local_id": 246,
+    "tracking_id": 246,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5302,
+      "nc_timestamp_ns": 17897263234785
+    },
+    "timestamp_ns": 1791661020902523035
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 247,
+    "nc_idx": 0,
+    "nc_local_id": 247,
+    "tracking_id": 246,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897263361101
+    },
+    "timestamp_ns": 1791661020902649351
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 250,
+    "nc_idx": 0,
+    "nc_local_id": 250,
+    "tracking_id": 250,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5302,
+      "nc_timestamp_ns": 17897263235766
+    },
+    "timestamp_ns": 1791661020902523205
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 251,
+    "nc_idx": 0,
+    "nc_local_id": 251,
+    "tracking_id": 250,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897263360403
+    },
+    "timestamp_ns": 1791661020902647842
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 314,
+    "nc_idx": 0,
+    "nc_local_id": 314,
+    "tracking_id": 314,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5303,
+      "nc_timestamp_ns": 17897263433558
+    },
+    "timestamp_ns": 1791661020902721738
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 315,
+    "nc_idx": 0,
+    "nc_local_id": 315,
+    "tracking_id": 314,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897263560479
+    },
+    "timestamp_ns": 1791661020902848659
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 318,
+    "nc_idx": 0,
+    "nc_local_id": 318,
+    "tracking_id": 318,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5303,
+      "nc_timestamp_ns": 17897263434592
+    },
+    "timestamp_ns": 1791661020902721915
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 319,
+    "nc_idx": 0,
+    "nc_local_id": 319,
+    "tracking_id": 318,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897263559195
+    },
+    "timestamp_ns": 1791661020902846518
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 382,
+    "nc_idx": 0,
+    "nc_local_id": 382,
+    "tracking_id": 382,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5304,
+      "nc_timestamp_ns": 17897263632211
+    },
+    "timestamp_ns": 1791661020902920478
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 383,
+    "nc_idx": 0,
+    "nc_local_id": 383,
+    "tracking_id": 382,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897263758502
+    },
+    "timestamp_ns": 1791661020903046769
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 386,
+    "nc_idx": 0,
+    "nc_local_id": 386,
+    "tracking_id": 386,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5304,
+      "nc_timestamp_ns": 17897263633271
+    },
+    "timestamp_ns": 1791661020902920700
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 387,
+    "nc_idx": 0,
+    "nc_local_id": 387,
+    "tracking_id": 386,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897263757022
+    },
+    "timestamp_ns": 1791661020903044451
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 450,
+    "nc_idx": 0,
+    "nc_local_id": 450,
+    "tracking_id": 450,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5305,
+      "nc_timestamp_ns": 17897263829380
+    },
+    "timestamp_ns": 1791661020903118123
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 451,
+    "nc_idx": 0,
+    "nc_local_id": 451,
+    "tracking_id": 450,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897263955748
+    },
+    "timestamp_ns": 1791661020903244491
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 454,
+    "nc_idx": 0,
+    "nc_local_id": 454,
+    "tracking_id": 454,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5305,
+      "nc_timestamp_ns": 17897263830423
+    },
+    "timestamp_ns": 1791661020903117899
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 455,
+    "nc_idx": 0,
+    "nc_local_id": 455,
+    "tracking_id": 454,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897263954336
+    },
+    "timestamp_ns": 1791661020903241812
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 518,
+    "nc_idx": 0,
+    "nc_local_id": 518,
+    "tracking_id": 518,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5306,
+      "nc_timestamp_ns": 17897264026819
+    },
+    "timestamp_ns": 1791661020903315326
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 519,
+    "nc_idx": 0,
+    "nc_local_id": 519,
+    "tracking_id": 518,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897264154021
+    },
+    "timestamp_ns": 1791661020903442528
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 522,
+    "nc_idx": 0,
+    "nc_local_id": 522,
+    "tracking_id": 522,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5306,
+      "nc_timestamp_ns": 17897264027847
+    },
+    "timestamp_ns": 1791661020903315150
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 523,
+    "nc_idx": 0,
+    "nc_local_id": 523,
+    "tracking_id": 522,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897264152492
+    },
+    "timestamp_ns": 1791661020903439795
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 586,
+    "nc_idx": 0,
+    "nc_local_id": 586,
+    "tracking_id": 586,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5307,
+      "nc_timestamp_ns": 17897264225065
+    },
+    "timestamp_ns": 1791661020903513259
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 587,
+    "nc_idx": 0,
+    "nc_local_id": 587,
+    "tracking_id": 586,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897264351674
+    },
+    "timestamp_ns": 1791661020903639868
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 590,
+    "nc_idx": 0,
+    "nc_local_id": 590,
+    "tracking_id": 590,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5307,
+      "nc_timestamp_ns": 17897264226042
+    },
+    "timestamp_ns": 1791661020903513435
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 591,
+    "nc_idx": 0,
+    "nc_local_id": 591,
+    "tracking_id": 590,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897264350159
+    },
+    "timestamp_ns": 1791661020903637552
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 654,
+    "nc_idx": 0,
+    "nc_local_id": 654,
+    "tracking_id": 654,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5308,
+      "nc_timestamp_ns": 17897264424742
+    },
+    "timestamp_ns": 1791661020903713071
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 655,
+    "nc_idx": 0,
+    "nc_local_id": 655,
+    "tracking_id": 654,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897264551822
+    },
+    "timestamp_ns": 1791661020903840151
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 658,
+    "nc_idx": 0,
+    "nc_local_id": 658,
+    "tracking_id": 658,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5308,
+      "nc_timestamp_ns": 17897264425756
+    },
+    "timestamp_ns": 1791661020903713171
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 659,
+    "nc_idx": 0,
+    "nc_local_id": 659,
+    "tracking_id": 658,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897264550206
+    },
+    "timestamp_ns": 1791661020903837621
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 722,
+    "nc_idx": 0,
+    "nc_local_id": 722,
+    "tracking_id": 722,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5309,
+      "nc_timestamp_ns": 17897264622956
+    },
+    "timestamp_ns": 1791661020903911653
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 723,
+    "nc_idx": 0,
+    "nc_local_id": 723,
+    "tracking_id": 722,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897264750013
+    },
+    "timestamp_ns": 1791661020904038710
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 726,
+    "nc_idx": 0,
+    "nc_local_id": 726,
+    "tracking_id": 726,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5309,
+      "nc_timestamp_ns": 17897264624046
+    },
+    "timestamp_ns": 1791661020903911430
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 727,
+    "nc_idx": 0,
+    "nc_local_id": 727,
+    "tracking_id": 726,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897264748604
+    },
+    "timestamp_ns": 1791661020904035988
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 790,
+    "nc_idx": 0,
+    "nc_local_id": 790,
+    "tracking_id": 790,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5310,
+      "nc_timestamp_ns": 17897264820955
+    },
+    "timestamp_ns": 1791661020904109212
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 791,
+    "nc_idx": 0,
+    "nc_local_id": 791,
+    "tracking_id": 790,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897264947908
+    },
+    "timestamp_ns": 1791661020904236165
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 794,
+    "nc_idx": 0,
+    "nc_local_id": 794,
+    "tracking_id": 794,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5310,
+      "nc_timestamp_ns": 17897264822002
+    },
+    "timestamp_ns": 1791661020904109383
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 795,
+    "nc_idx": 0,
+    "nc_local_id": 795,
+    "tracking_id": 794,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897264947059
+    },
+    "timestamp_ns": 1791661020904234440
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 858,
+    "nc_idx": 0,
+    "nc_local_id": 858,
+    "tracking_id": 858,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5311,
+      "nc_timestamp_ns": 17897265020470
+    },
+    "timestamp_ns": 1791661020904308825
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 859,
+    "nc_idx": 0,
+    "nc_local_id": 859,
+    "tracking_id": 858,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897265147193
+    },
+    "timestamp_ns": 1791661020904435548
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 862,
+    "nc_idx": 0,
+    "nc_local_id": 862,
+    "tracking_id": 862,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5311,
+      "nc_timestamp_ns": 17897265021485
+    },
+    "timestamp_ns": 1791661020904309002
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 863,
+    "nc_idx": 0,
+    "nc_local_id": 863,
+    "tracking_id": 862,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897265146167
+    },
+    "timestamp_ns": 1791661020904433684
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 926,
+    "nc_idx": 0,
+    "nc_local_id": 926,
+    "tracking_id": 926,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5312,
+      "nc_timestamp_ns": 17897265217168
+    },
+    "timestamp_ns": 1791661020904505892
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 927,
+    "nc_idx": 0,
+    "nc_local_id": 927,
+    "tracking_id": 926,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897265343979
+    },
+    "timestamp_ns": 1791661020904632703
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 930,
+    "nc_idx": 0,
+    "nc_local_id": 930,
+    "tracking_id": 930,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5312,
+      "nc_timestamp_ns": 17897265218239
+    },
+    "timestamp_ns": 1791661020904505678
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 931,
+    "nc_idx": 0,
+    "nc_local_id": 931,
+    "tracking_id": 930,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897265342657
+    },
+    "timestamp_ns": 1791661020904630096
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 994,
+    "nc_idx": 0,
+    "nc_local_id": 994,
+    "tracking_id": 994,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5313,
+      "nc_timestamp_ns": 17897265413489
+    },
+    "timestamp_ns": 1791661020904702226
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 995,
+    "nc_idx": 0,
+    "nc_local_id": 995,
+    "tracking_id": 994,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897265540555
+    },
+    "timestamp_ns": 1791661020904829292
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 998,
+    "nc_idx": 0,
+    "nc_local_id": 998,
+    "tracking_id": 998,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5313,
+      "nc_timestamp_ns": 17897265414513
+    },
+    "timestamp_ns": 1791661020904701965
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 999,
+    "nc_idx": 0,
+    "nc_local_id": 999,
+    "tracking_id": 998,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897265539100
+    },
+    "timestamp_ns": 1791661020904826552
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1062,
+    "nc_idx": 0,
+    "nc_local_id": 1062,
+    "tracking_id": 1062,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5314,
+      "nc_timestamp_ns": 17897265612167
+    },
+    "timestamp_ns": 1791661020904900531
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1063,
+    "nc_idx": 0,
+    "nc_local_id": 1063,
+    "tracking_id": 1062,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897265738382
+    },
+    "timestamp_ns": 1791661020905026746
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1066,
+    "nc_idx": 0,
+    "nc_local_id": 1066,
+    "tracking_id": 1066,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5314,
+      "nc_timestamp_ns": 17897265613187
+    },
+    "timestamp_ns": 1791661020904900713
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1067,
+    "nc_idx": 0,
+    "nc_local_id": 1067,
+    "tracking_id": 1066,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897265737552
+    },
+    "timestamp_ns": 1791661020905025078
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1130,
+    "nc_idx": 0,
+    "nc_local_id": 1130,
+    "tracking_id": 1130,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5315,
+      "nc_timestamp_ns": 17897265809125
+    },
+    "timestamp_ns": 1791661020905097821
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1131,
+    "nc_idx": 0,
+    "nc_local_id": 1131,
+    "tracking_id": 1130,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897265936182
+    },
+    "timestamp_ns": 1791661020905224878
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1134,
+    "nc_idx": 0,
+    "nc_local_id": 1134,
+    "tracking_id": 1134,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5315,
+      "nc_timestamp_ns": 17897265810205
+    },
+    "timestamp_ns": 1791661020905097607
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1135,
+    "nc_idx": 0,
+    "nc_local_id": 1135,
+    "tracking_id": 1134,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897265934782
+    },
+    "timestamp_ns": 1791661020905222184
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1198,
+    "nc_idx": 0,
+    "nc_local_id": 1198,
+    "tracking_id": 1198,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5316,
+      "nc_timestamp_ns": 17897266006727
+    },
+    "timestamp_ns": 1791661020905295004
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1199,
+    "nc_idx": 0,
+    "nc_local_id": 1199,
+    "tracking_id": 1198,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897266133964
+    },
+    "timestamp_ns": 1791661020905422241
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1202,
+    "nc_idx": 0,
+    "nc_local_id": 1202,
+    "tracking_id": 1202,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5316,
+      "nc_timestamp_ns": 17897266007788
+    },
+    "timestamp_ns": 1791661020905295199
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1203,
+    "nc_idx": 0,
+    "nc_local_id": 1203,
+    "tracking_id": 1202,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897266132820
+    },
+    "timestamp_ns": 1791661020905420231
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1266,
+    "nc_idx": 0,
+    "nc_local_id": 1266,
+    "tracking_id": 1266,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5317,
+      "nc_timestamp_ns": 17897266204324
+    },
+    "timestamp_ns": 1791661020905493020
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1267,
+    "nc_idx": 0,
+    "nc_local_id": 1267,
+    "tracking_id": 1266,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897266330925
+    },
+    "timestamp_ns": 1791661020905619621
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1270,
+    "nc_idx": 0,
+    "nc_local_id": 1270,
+    "tracking_id": 1270,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5317,
+      "nc_timestamp_ns": 17897266205367
+    },
+    "timestamp_ns": 1791661020905492806
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1271,
+    "nc_idx": 0,
+    "nc_local_id": 1271,
+    "tracking_id": 1270,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897266329943
+    },
+    "timestamp_ns": 1791661020905617382
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1334,
+    "nc_idx": 0,
+    "nc_local_id": 1334,
+    "tracking_id": 1334,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5318,
+      "nc_timestamp_ns": 17897266402635
+    },
+    "timestamp_ns": 1791661020905691292
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1335,
+    "nc_idx": 0,
+    "nc_local_id": 1335,
+    "tracking_id": 1334,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897266528804
+    },
+    "timestamp_ns": 1791661020905817461
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1338,
+    "nc_idx": 0,
+    "nc_local_id": 1338,
+    "tracking_id": 1338,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5318,
+      "nc_timestamp_ns": 17897266403655
+    },
+    "timestamp_ns": 1791661020905691127
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1339,
+    "nc_idx": 0,
+    "nc_local_id": 1339,
+    "tracking_id": 1338,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897266526988
+    },
+    "timestamp_ns": 1791661020905814460
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1402,
+    "nc_idx": 0,
+    "nc_local_id": 1402,
+    "tracking_id": 1402,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5319,
+      "nc_timestamp_ns": 17897266598872
+    },
+    "timestamp_ns": 1791661020905887164
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1403,
+    "nc_idx": 0,
+    "nc_local_id": 1403,
+    "tracking_id": 1402,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897266725399
+    },
+    "timestamp_ns": 1791661020906013691
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1406,
+    "nc_idx": 0,
+    "nc_local_id": 1406,
+    "tracking_id": 1406,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5319,
+      "nc_timestamp_ns": 17897266599923
+    },
+    "timestamp_ns": 1791661020905887348
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1407,
+    "nc_idx": 0,
+    "nc_local_id": 1407,
+    "tracking_id": 1406,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897266724447
+    },
+    "timestamp_ns": 1791661020906011872
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1470,
+    "nc_idx": 0,
+    "nc_local_id": 1470,
+    "tracking_id": 1470,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5320,
+      "nc_timestamp_ns": 17897266796580
+    },
+    "timestamp_ns": 1791661020906084810
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1471,
+    "nc_idx": 0,
+    "nc_local_id": 1471,
+    "tracking_id": 1470,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897266923453
+    },
+    "timestamp_ns": 1791661020906211683
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1474,
+    "nc_idx": 0,
+    "nc_local_id": 1474,
+    "tracking_id": 1474,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5320,
+      "nc_timestamp_ns": 17897266797641
+    },
+    "timestamp_ns": 1791661020906084986
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1475,
+    "nc_idx": 0,
+    "nc_local_id": 1475,
+    "tracking_id": 1474,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897266921800
+    },
+    "timestamp_ns": 1791661020906209145
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1538,
+    "nc_idx": 0,
+    "nc_local_id": 1538,
+    "tracking_id": 1538,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5321,
+      "nc_timestamp_ns": 17897266994745
+    },
+    "timestamp_ns": 1791661020906283066
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1539,
+    "nc_idx": 0,
+    "nc_local_id": 1539,
+    "tracking_id": 1538,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897267121788
+    },
+    "timestamp_ns": 1791661020906410109
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1542,
+    "nc_idx": 0,
+    "nc_local_id": 1542,
+    "tracking_id": 1542,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5321,
+      "nc_timestamp_ns": 17897266995910
+    },
+    "timestamp_ns": 1791661020906283110
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1543,
+    "nc_idx": 0,
+    "nc_local_id": 1543,
+    "tracking_id": 1542,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897267120833
+    },
+    "timestamp_ns": 1791661020906408033
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1606,
+    "nc_idx": 0,
+    "nc_local_id": 1606,
+    "tracking_id": 1606,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5322,
+      "nc_timestamp_ns": 17897267206122
+    },
+    "timestamp_ns": 1791661020906494402
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1607,
+    "nc_idx": 0,
+    "nc_local_id": 1607,
+    "tracking_id": 1606,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897267332494
+    },
+    "timestamp_ns": 1791661020906620774
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1610,
+    "nc_idx": 0,
+    "nc_local_id": 1610,
+    "tracking_id": 1610,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5322,
+      "nc_timestamp_ns": 17897267207197
+    },
+    "timestamp_ns": 1791661020906494573
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1611,
+    "nc_idx": 0,
+    "nc_local_id": 1611,
+    "tracking_id": 1610,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897267330975
+    },
+    "timestamp_ns": 1791661020906618351
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1674,
+    "nc_idx": 0,
+    "nc_local_id": 1674,
+    "tracking_id": 1674,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5323,
+      "nc_timestamp_ns": 17897267402957
+    },
+    "timestamp_ns": 1791661020906691686
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1675,
+    "nc_idx": 0,
+    "nc_local_id": 1675,
+    "tracking_id": 1674,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897267529238
+    },
+    "timestamp_ns": 1791661020906817967
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1678,
+    "nc_idx": 0,
+    "nc_local_id": 1678,
+    "tracking_id": 1678,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5323,
+      "nc_timestamp_ns": 17897267404000
+    },
+    "timestamp_ns": 1791661020906691423
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1679,
+    "nc_idx": 0,
+    "nc_local_id": 1679,
+    "tracking_id": 1678,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897267527855
+    },
+    "timestamp_ns": 1791661020906815278
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1742,
+    "nc_idx": 0,
+    "nc_local_id": 1742,
+    "tracking_id": 1742,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5324,
+      "nc_timestamp_ns": 17897267601440
+    },
+    "timestamp_ns": 1791661020906889749
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1743,
+    "nc_idx": 0,
+    "nc_local_id": 1743,
+    "tracking_id": 1742,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897267727872
+    },
+    "timestamp_ns": 1791661020907016181
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1746,
+    "nc_idx": 0,
+    "nc_local_id": 1746,
+    "tracking_id": 1746,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5324,
+      "nc_timestamp_ns": 17897267602427
+    },
+    "timestamp_ns": 1791661020906889935
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1747,
+    "nc_idx": 0,
+    "nc_local_id": 1747,
+    "tracking_id": 1746,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897267726291
+    },
+    "timestamp_ns": 1791661020907013799
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1810,
+    "nc_idx": 0,
+    "nc_local_id": 1810,
+    "tracking_id": 1810,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5325,
+      "nc_timestamp_ns": 17897267799025
+    },
+    "timestamp_ns": 1791661020907087697
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1811,
+    "nc_idx": 0,
+    "nc_local_id": 1811,
+    "tracking_id": 1810,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897267925460
+    },
+    "timestamp_ns": 1791661020907214132
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1814,
+    "nc_idx": 0,
+    "nc_local_id": 1814,
+    "tracking_id": 1814,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5325,
+      "nc_timestamp_ns": 17897267800124
+    },
+    "timestamp_ns": 1791661020907087379
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1815,
+    "nc_idx": 0,
+    "nc_local_id": 1815,
+    "tracking_id": 1814,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897267924499
+    },
+    "timestamp_ns": 1791661020907211754
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1878,
+    "nc_idx": 0,
+    "nc_local_id": 1878,
+    "tracking_id": 1878,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5326,
+      "nc_timestamp_ns": 17897267995979
+    },
+    "timestamp_ns": 1791661020907284262
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1879,
+    "nc_idx": 0,
+    "nc_local_id": 1879,
+    "tracking_id": 1878,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897268122149
+    },
+    "timestamp_ns": 1791661020907410432
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1882,
+    "nc_idx": 0,
+    "nc_local_id": 1882,
+    "tracking_id": 1882,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5326,
+      "nc_timestamp_ns": 17897267997026
+    },
+    "timestamp_ns": 1791661020907284433
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1883,
+    "nc_idx": 0,
+    "nc_local_id": 1883,
+    "tracking_id": 1882,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897268121088
+    },
+    "timestamp_ns": 1791661020907408495
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1946,
+    "nc_idx": 0,
+    "nc_local_id": 1946,
+    "tracking_id": 1946,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5327,
+      "nc_timestamp_ns": 17897268193471
+    },
+    "timestamp_ns": 1791661020907482170
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1947,
+    "nc_idx": 0,
+    "nc_local_id": 1947,
+    "tracking_id": 1946,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897268321470
+    },
+    "timestamp_ns": 1791661020907610169
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 1950,
+    "nc_idx": 0,
+    "nc_local_id": 1950,
+    "tracking_id": 1950,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5327,
+      "nc_timestamp_ns": 17897268194458
+    },
+    "timestamp_ns": 1791661020907481965
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 1951,
+    "nc_idx": 0,
+    "nc_local_id": 1951,
+    "tracking_id": 1950,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897268320183
+    },
+    "timestamp_ns": 1791661020907607690
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2014,
+    "nc_idx": 0,
+    "nc_local_id": 2014,
+    "tracking_id": 2014,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5328,
+      "nc_timestamp_ns": 17897268398010
+    },
+    "timestamp_ns": 1791661020907686129
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2015,
+    "nc_idx": 0,
+    "nc_local_id": 2015,
+    "tracking_id": 2014,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897268524320
+    },
+    "timestamp_ns": 1791661020907812439
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2018,
+    "nc_idx": 0,
+    "nc_local_id": 2018,
+    "tracking_id": 2018,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5328,
+      "nc_timestamp_ns": 17897268398921
+    },
+    "timestamp_ns": 1791661020907686315
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2019,
+    "nc_idx": 0,
+    "nc_local_id": 2019,
+    "tracking_id": 2018,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897268523203
+    },
+    "timestamp_ns": 1791661020907810597
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2082,
+    "nc_idx": 0,
+    "nc_local_id": 2082,
+    "tracking_id": 2082,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5329,
+      "nc_timestamp_ns": 17897268595772
+    },
+    "timestamp_ns": 1791661020907884502
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2083,
+    "nc_idx": 0,
+    "nc_local_id": 2083,
+    "tracking_id": 2082,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897268722698
+    },
+    "timestamp_ns": 1791661020908011428
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2086,
+    "nc_idx": 0,
+    "nc_local_id": 2086,
+    "tracking_id": 2086,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5329,
+      "nc_timestamp_ns": 17897268596824
+    },
+    "timestamp_ns": 1791661020907884241
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2087,
+    "nc_idx": 0,
+    "nc_local_id": 2087,
+    "tracking_id": 2086,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897268721484
+    },
+    "timestamp_ns": 1791661020908008901
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2150,
+    "nc_idx": 0,
+    "nc_local_id": 2150,
+    "tracking_id": 2150,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5330,
+      "nc_timestamp_ns": 17897268794026
+    },
+    "timestamp_ns": 1791661020908082395
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2151,
+    "nc_idx": 0,
+    "nc_local_id": 2151,
+    "tracking_id": 2150,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897268920766
+    },
+    "timestamp_ns": 1791661020908209135
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2154,
+    "nc_idx": 0,
+    "nc_local_id": 2154,
+    "tracking_id": 2154,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5330,
+      "nc_timestamp_ns": 17897268795102
+    },
+    "timestamp_ns": 1791661020908082576
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2155,
+    "nc_idx": 0,
+    "nc_local_id": 2155,
+    "tracking_id": 2154,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897268919201
+    },
+    "timestamp_ns": 1791661020908206675
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2218,
+    "nc_idx": 0,
+    "nc_local_id": 2218,
+    "tracking_id": 2218,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5331,
+      "nc_timestamp_ns": 17897268991815
+    },
+    "timestamp_ns": 1791661020908280522
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2219,
+    "nc_idx": 0,
+    "nc_local_id": 2219,
+    "tracking_id": 2218,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897269117606
+    },
+    "timestamp_ns": 1791661020908406313
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2222,
+    "nc_idx": 0,
+    "nc_local_id": 2222,
+    "tracking_id": 2222,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5331,
+      "nc_timestamp_ns": 17897268992839
+    },
+    "timestamp_ns": 1791661020908280308
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2223,
+    "nc_idx": 0,
+    "nc_local_id": 2223,
+    "tracking_id": 2222,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897269116910
+    },
+    "timestamp_ns": 1791661020908404379
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2286,
+    "nc_idx": 0,
+    "nc_local_id": 2286,
+    "tracking_id": 2286,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5332,
+      "nc_timestamp_ns": 17897269189392
+    },
+    "timestamp_ns": 1791661020908477677
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2287,
+    "nc_idx": 0,
+    "nc_local_id": 2287,
+    "tracking_id": 2286,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897269315945
+    },
+    "timestamp_ns": 1791661020908604230
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2290,
+    "nc_idx": 0,
+    "nc_local_id": 2290,
+    "tracking_id": 2290,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5332,
+      "nc_timestamp_ns": 17897269190444
+    },
+    "timestamp_ns": 1791661020908477863
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2291,
+    "nc_idx": 0,
+    "nc_local_id": 2291,
+    "tracking_id": 2290,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897269314588
+    },
+    "timestamp_ns": 1791661020908602007
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2354,
+    "nc_idx": 0,
+    "nc_local_id": 2354,
+    "tracking_id": 2354,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5333,
+      "nc_timestamp_ns": 17897269386988
+    },
+    "timestamp_ns": 1791661020908675315
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2355,
+    "nc_idx": 0,
+    "nc_local_id": 2355,
+    "tracking_id": 2354,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897269513224
+    },
+    "timestamp_ns": 1791661020908801551
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2358,
+    "nc_idx": 0,
+    "nc_local_id": 2358,
+    "tracking_id": 2358,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5333,
+      "nc_timestamp_ns": 17897269388257
+    },
+    "timestamp_ns": 1791661020908675689
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2359,
+    "nc_idx": 0,
+    "nc_local_id": 2359,
+    "tracking_id": 2358,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897269512373
+    },
+    "timestamp_ns": 1791661020908799805
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2422,
+    "nc_idx": 0,
+    "nc_local_id": 2422,
+    "tracking_id": 2422,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5334,
+      "nc_timestamp_ns": 17897269584121
+    },
+    "timestamp_ns": 1791661020908872494
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2423,
+    "nc_idx": 0,
+    "nc_local_id": 2423,
+    "tracking_id": 2422,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897269710558
+    },
+    "timestamp_ns": 1791661020908998931
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2426,
+    "nc_idx": 0,
+    "nc_local_id": 2426,
+    "tracking_id": 2426,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5334,
+      "nc_timestamp_ns": 17897269585178
+    },
+    "timestamp_ns": 1791661020908872666
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2427,
+    "nc_idx": 0,
+    "nc_local_id": 2427,
+    "tracking_id": 2426,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897269708823
+    },
+    "timestamp_ns": 1791661020908996311
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2490,
+    "nc_idx": 0,
+    "nc_local_id": 2490,
+    "tracking_id": 2490,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5335,
+      "nc_timestamp_ns": 17897269780473
+    },
+    "timestamp_ns": 1791661020909069196
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2491,
+    "nc_idx": 0,
+    "nc_local_id": 2491,
+    "tracking_id": 2490,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897269907367
+    },
+    "timestamp_ns": 1791661020909196090
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2494,
+    "nc_idx": 0,
+    "nc_local_id": 2494,
+    "tracking_id": 2494,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5335,
+      "nc_timestamp_ns": 17897269781533
+    },
+    "timestamp_ns": 1791661020909068925
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2495,
+    "nc_idx": 0,
+    "nc_local_id": 2495,
+    "tracking_id": 2494,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897269905917
+    },
+    "timestamp_ns": 1791661020909193309
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2558,
+    "nc_idx": 0,
+    "nc_local_id": 2558,
+    "tracking_id": 2558,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5336,
+      "nc_timestamp_ns": 17897269978584
+    },
+    "timestamp_ns": 1791661020909266868
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2559,
+    "nc_idx": 0,
+    "nc_local_id": 2559,
+    "tracking_id": 2558,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897270104867
+    },
+    "timestamp_ns": 1791661020909393151
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2562,
+    "nc_idx": 0,
+    "nc_local_id": 2562,
+    "tracking_id": 2562,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5336,
+      "nc_timestamp_ns": 17897269979626
+    },
+    "timestamp_ns": 1791661020909267062
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2563,
+    "nc_idx": 0,
+    "nc_local_id": 2563,
+    "tracking_id": 2562,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897270103525
+    },
+    "timestamp_ns": 1791661020909390961
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2626,
+    "nc_idx": 0,
+    "nc_local_id": 2626,
+    "tracking_id": 2626,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5337,
+      "nc_timestamp_ns": 17897270175730
+    },
+    "timestamp_ns": 1791661020909464115
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2627,
+    "nc_idx": 0,
+    "nc_local_id": 2627,
+    "tracking_id": 2626,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897270304500
+    },
+    "timestamp_ns": 1791661020909592885
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2630,
+    "nc_idx": 0,
+    "nc_local_id": 2630,
+    "tracking_id": 2630,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5337,
+      "nc_timestamp_ns": 17897270176773
+    },
+    "timestamp_ns": 1791661020909464300
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2631,
+    "nc_idx": 0,
+    "nc_local_id": 2631,
+    "tracking_id": 2630,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897270303737
+    },
+    "timestamp_ns": 1791661020909591264
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2694,
+    "nc_idx": 0,
+    "nc_local_id": 2694,
+    "tracking_id": 2694,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5338,
+      "nc_timestamp_ns": 17897270376775
+    },
+    "timestamp_ns": 1791661020909665359
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2695,
+    "nc_idx": 0,
+    "nc_local_id": 2695,
+    "tracking_id": 2694,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897270503027
+    },
+    "timestamp_ns": 1791661020909791611
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2698,
+    "nc_idx": 0,
+    "nc_local_id": 2698,
+    "tracking_id": 2698,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5338,
+      "nc_timestamp_ns": 17897270377785
+    },
+    "timestamp_ns": 1791661020909665193
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2699,
+    "nc_idx": 0,
+    "nc_local_id": 2699,
+    "tracking_id": 2698,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897270502000
+    },
+    "timestamp_ns": 1791661020909789408
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2762,
+    "nc_idx": 0,
+    "nc_local_id": 2762,
+    "tracking_id": 2762,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5339,
+      "nc_timestamp_ns": 17897270575446
+    },
+    "timestamp_ns": 1791661020909864119
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2763,
+    "nc_idx": 0,
+    "nc_local_id": 2763,
+    "tracking_id": 2762,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897270701891
+    },
+    "timestamp_ns": 1791661020909990564
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2766,
+    "nc_idx": 0,
+    "nc_local_id": 2766,
+    "tracking_id": 2766,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5339,
+      "nc_timestamp_ns": 17897270576469
+    },
+    "timestamp_ns": 1791661020909863865
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2767,
+    "nc_idx": 0,
+    "nc_local_id": 2767,
+    "tracking_id": 2766,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897270700357
+    },
+    "timestamp_ns": 1791661020909987753
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2830,
+    "nc_idx": 0,
+    "nc_local_id": 2830,
+    "tracking_id": 2830,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5340,
+      "nc_timestamp_ns": 17897270774055
+    },
+    "timestamp_ns": 1791661020910062405
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2831,
+    "nc_idx": 0,
+    "nc_local_id": 2831,
+    "tracking_id": 2830,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897270900768
+    },
+    "timestamp_ns": 1791661020910189118
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2834,
+    "nc_idx": 0,
+    "nc_local_id": 2834,
+    "tracking_id": 2834,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5340,
+      "nc_timestamp_ns": 17897270775126
+    },
+    "timestamp_ns": 1791661020910062590
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2835,
+    "nc_idx": 0,
+    "nc_local_id": 2835,
+    "tracking_id": 2834,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897270899542
+    },
+    "timestamp_ns": 1791661020910187006
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2898,
+    "nc_idx": 0,
+    "nc_local_id": 2898,
+    "tracking_id": 2898,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5341,
+      "nc_timestamp_ns": 17897270971794
+    },
+    "timestamp_ns": 1791661020910260498
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2899,
+    "nc_idx": 0,
+    "nc_local_id": 2899,
+    "tracking_id": 2898,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897271098199
+    },
+    "timestamp_ns": 1791661020910386903
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2902,
+    "nc_idx": 0,
+    "nc_local_id": 2902,
+    "tracking_id": 2902,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5341,
+      "nc_timestamp_ns": 17897270972977
+    },
+    "timestamp_ns": 1791661020910260188
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2903,
+    "nc_idx": 0,
+    "nc_local_id": 2903,
+    "tracking_id": 2902,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897271097816
+    },
+    "timestamp_ns": 1791661020910385027
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2966,
+    "nc_idx": 0,
+    "nc_local_id": 2966,
+    "tracking_id": 2966,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5342,
+      "nc_timestamp_ns": 17897271180510
+    },
+    "timestamp_ns": 1791661020910468699
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2967,
+    "nc_idx": 0,
+    "nc_local_id": 2967,
+    "tracking_id": 2966,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897271306950
+    },
+    "timestamp_ns": 1791661020910595139
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 2970,
+    "nc_idx": 0,
+    "nc_local_id": 2970,
+    "tracking_id": 2970,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5342,
+      "nc_timestamp_ns": 17897271181473
+    },
+    "timestamp_ns": 1791661020910468871
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 2971,
+    "nc_idx": 0,
+    "nc_local_id": 2971,
+    "tracking_id": 2970,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897271305712
+    },
+    "timestamp_ns": 1791661020910593110
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3034,
+    "nc_idx": 0,
+    "nc_local_id": 3034,
+    "tracking_id": 3034,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5343,
+      "nc_timestamp_ns": 17897271379870
+    },
+    "timestamp_ns": 1791661020910668584
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3035,
+    "nc_idx": 0,
+    "nc_local_id": 3035,
+    "tracking_id": 3034,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897271506037
+    },
+    "timestamp_ns": 1791661020910794751
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3038,
+    "nc_idx": 0,
+    "nc_local_id": 3038,
+    "tracking_id": 3038,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5343,
+      "nc_timestamp_ns": 17897271380941
+    },
+    "timestamp_ns": 1791661020910668379
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3039,
+    "nc_idx": 0,
+    "nc_local_id": 3039,
+    "tracking_id": 3038,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897271504910
+    },
+    "timestamp_ns": 1791661020910792348
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3102,
+    "nc_idx": 0,
+    "nc_local_id": 3102,
+    "tracking_id": 3102,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5344,
+      "nc_timestamp_ns": 17897271577571
+    },
+    "timestamp_ns": 1791661020910866304
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3103,
+    "nc_idx": 0,
+    "nc_local_id": 3103,
+    "tracking_id": 3102,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897271704194
+    },
+    "timestamp_ns": 1791661020910992927
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3106,
+    "nc_idx": 0,
+    "nc_local_id": 3106,
+    "tracking_id": 3106,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5344,
+      "nc_timestamp_ns": 17897271578556
+    },
+    "timestamp_ns": 1791661020910866089
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3107,
+    "nc_idx": 0,
+    "nc_local_id": 3107,
+    "tracking_id": 3106,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897271703088
+    },
+    "timestamp_ns": 1791661020910990621
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3170,
+    "nc_idx": 0,
+    "nc_local_id": 3170,
+    "tracking_id": 3170,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5345,
+      "nc_timestamp_ns": 17897271775214
+    },
+    "timestamp_ns": 1791661020911063513
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3171,
+    "nc_idx": 0,
+    "nc_local_id": 3171,
+    "tracking_id": 3170,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897271902333
+    },
+    "timestamp_ns": 1791661020911190632
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3174,
+    "nc_idx": 0,
+    "nc_local_id": 3174,
+    "tracking_id": 3174,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5345,
+      "nc_timestamp_ns": 17897271776266
+    },
+    "timestamp_ns": 1791661020911063689
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3175,
+    "nc_idx": 0,
+    "nc_local_id": 3175,
+    "tracking_id": 3174,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897271901511
+    },
+    "timestamp_ns": 1791661020911188934
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3238,
+    "nc_idx": 0,
+    "nc_local_id": 3238,
+    "tracking_id": 3238,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5346,
+      "nc_timestamp_ns": 17897271974452
+    },
+    "timestamp_ns": 1791661020911262597
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3239,
+    "nc_idx": 0,
+    "nc_local_id": 3239,
+    "tracking_id": 3238,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897272100770
+    },
+    "timestamp_ns": 1791661020911388915
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3242,
+    "nc_idx": 0,
+    "nc_local_id": 3242,
+    "tracking_id": 3242,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5346,
+      "nc_timestamp_ns": 17897271975301
+    },
+    "timestamp_ns": 1791661020911262776
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3243,
+    "nc_idx": 0,
+    "nc_local_id": 3243,
+    "tracking_id": 3242,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897272099846
+    },
+    "timestamp_ns": 1791661020911387321
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3306,
+    "nc_idx": 0,
+    "nc_local_id": 3306,
+    "tracking_id": 3306,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5347,
+      "nc_timestamp_ns": 17897272180347
+    },
+    "timestamp_ns": 1791661020911468993
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3307,
+    "nc_idx": 0,
+    "nc_local_id": 3307,
+    "tracking_id": 3306,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897272307301
+    },
+    "timestamp_ns": 1791661020911595947
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3310,
+    "nc_idx": 0,
+    "nc_local_id": 3310,
+    "tracking_id": 3310,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5347,
+      "nc_timestamp_ns": 17897272181352
+    },
+    "timestamp_ns": 1791661020911468769
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3311,
+    "nc_idx": 0,
+    "nc_local_id": 3311,
+    "tracking_id": 3310,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897272305643
+    },
+    "timestamp_ns": 1791661020911593060
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3374,
+    "nc_idx": 0,
+    "nc_local_id": 3374,
+    "tracking_id": 3374,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5348,
+      "nc_timestamp_ns": 17897272378729
+    },
+    "timestamp_ns": 1791661020911667419
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3375,
+    "nc_idx": 0,
+    "nc_local_id": 3375,
+    "tracking_id": 3374,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897272506119
+    },
+    "timestamp_ns": 1791661020911794809
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3378,
+    "nc_idx": 0,
+    "nc_local_id": 3378,
+    "tracking_id": 3378,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5348,
+      "nc_timestamp_ns": 17897272379800
+    },
+    "timestamp_ns": 1791661020911667214
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3379,
+    "nc_idx": 0,
+    "nc_local_id": 3379,
+    "tracking_id": 3378,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897272504349
+    },
+    "timestamp_ns": 1791661020911791763
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3442,
+    "nc_idx": 0,
+    "nc_local_id": 3442,
+    "tracking_id": 3442,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5349,
+      "nc_timestamp_ns": 17897272575832
+    },
+    "timestamp_ns": 1791661020911864581
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3443,
+    "nc_idx": 0,
+    "nc_local_id": 3443,
+    "tracking_id": 3442,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897272701981
+    },
+    "timestamp_ns": 1791661020911990730
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3446,
+    "nc_idx": 0,
+    "nc_local_id": 3446,
+    "tracking_id": 3446,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5349,
+      "nc_timestamp_ns": 17897272576874
+    },
+    "timestamp_ns": 1791661020911864357
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3447,
+    "nc_idx": 0,
+    "nc_local_id": 3447,
+    "tracking_id": 3446,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897272700450
+    },
+    "timestamp_ns": 1791661020911987933
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3510,
+    "nc_idx": 0,
+    "nc_local_id": 3510,
+    "tracking_id": 3510,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5350,
+      "nc_timestamp_ns": 17897272772876
+    },
+    "timestamp_ns": 1791661020912061542
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3511,
+    "nc_idx": 0,
+    "nc_local_id": 3511,
+    "tracking_id": 3510,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897272899242
+    },
+    "timestamp_ns": 1791661020912187908
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3514,
+    "nc_idx": 0,
+    "nc_local_id": 3514,
+    "tracking_id": 3514,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5350,
+      "nc_timestamp_ns": 17897272773848
+    },
+    "timestamp_ns": 1791661020912061376
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3515,
+    "nc_idx": 0,
+    "nc_local_id": 3515,
+    "tracking_id": 3514,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897272898359
+    },
+    "timestamp_ns": 1791661020912185887
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3578,
+    "nc_idx": 0,
+    "nc_local_id": 3578,
+    "tracking_id": 3578,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5351,
+      "nc_timestamp_ns": 17897272970320
+    },
+    "timestamp_ns": 1791661020912259058
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3579,
+    "nc_idx": 0,
+    "nc_local_id": 3579,
+    "tracking_id": 3578,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897273097381
+    },
+    "timestamp_ns": 1791661020912386119
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3582,
+    "nc_idx": 0,
+    "nc_local_id": 3582,
+    "tracking_id": 3582,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5351,
+      "nc_timestamp_ns": 17897272971353
+    },
+    "timestamp_ns": 1791661020912258796
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3583,
+    "nc_idx": 0,
+    "nc_local_id": 3583,
+    "tracking_id": 3582,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897273096451
+    },
+    "timestamp_ns": 1791661020912383894
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3646,
+    "nc_idx": 0,
+    "nc_local_id": 3646,
+    "tracking_id": 3646,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5352,
+      "nc_timestamp_ns": 17897273168971
+    },
+    "timestamp_ns": 1791661020912457729
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3647,
+    "nc_idx": 0,
+    "nc_local_id": 3647,
+    "tracking_id": 3646,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897273295951
+    },
+    "timestamp_ns": 1791661020912584709
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3650,
+    "nc_idx": 0,
+    "nc_local_id": 3650,
+    "tracking_id": 3650,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5352,
+      "nc_timestamp_ns": 17897273169976
+    },
+    "timestamp_ns": 1791661020912457465
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3651,
+    "nc_idx": 0,
+    "nc_local_id": 3651,
+    "tracking_id": 3650,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897273294575
+    },
+    "timestamp_ns": 1791661020912582064
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3714,
+    "nc_idx": 0,
+    "nc_local_id": 3714,
+    "tracking_id": 3714,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5353,
+      "nc_timestamp_ns": 17897273367762
+    },
+    "timestamp_ns": 1791661020912656433
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3715,
+    "nc_idx": 0,
+    "nc_local_id": 3715,
+    "tracking_id": 3714,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897273494008
+    },
+    "timestamp_ns": 1791661020912782679
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3718,
+    "nc_idx": 0,
+    "nc_local_id": 3718,
+    "tracking_id": 3718,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5353,
+      "nc_timestamp_ns": 17897273368814
+    },
+    "timestamp_ns": 1791661020912656218
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3719,
+    "nc_idx": 0,
+    "nc_local_id": 3719,
+    "tracking_id": 3718,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897273492965
+    },
+    "timestamp_ns": 1791661020912780369
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3782,
+    "nc_idx": 0,
+    "nc_local_id": 3782,
+    "tracking_id": 3782,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5354,
+      "nc_timestamp_ns": 17897273565826
+    },
+    "timestamp_ns": 1791661020912854135
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3783,
+    "nc_idx": 0,
+    "nc_local_id": 3783,
+    "tracking_id": 3782,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897273692185
+    },
+    "timestamp_ns": 1791661020912980494
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3786,
+    "nc_idx": 0,
+    "nc_local_id": 3786,
+    "tracking_id": 3786,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5354,
+      "nc_timestamp_ns": 17897273566863
+    },
+    "timestamp_ns": 1791661020912854212
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3787,
+    "nc_idx": 0,
+    "nc_local_id": 3787,
+    "tracking_id": 3786,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897273691173
+    },
+    "timestamp_ns": 1791661020912978522
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3850,
+    "nc_idx": 0,
+    "nc_local_id": 3850,
+    "tracking_id": 3850,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5355,
+      "nc_timestamp_ns": 17897273762862
+    },
+    "timestamp_ns": 1791661020913051629
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3851,
+    "nc_idx": 0,
+    "nc_local_id": 3851,
+    "tracking_id": 3850,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897273889470
+    },
+    "timestamp_ns": 1791661020913178237
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3854,
+    "nc_idx": 0,
+    "nc_local_id": 3854,
+    "tracking_id": 3854,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5355,
+      "nc_timestamp_ns": 17897273763906
+    },
+    "timestamp_ns": 1791661020913051366
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3855,
+    "nc_idx": 0,
+    "nc_local_id": 3855,
+    "tracking_id": 3854,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897273887969
+    },
+    "timestamp_ns": 1791661020913175429
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3918,
+    "nc_idx": 0,
+    "nc_local_id": 3918,
+    "tracking_id": 3918,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5356,
+      "nc_timestamp_ns": 17897273961349
+    },
+    "timestamp_ns": 1791661020913250111
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3919,
+    "nc_idx": 0,
+    "nc_local_id": 3919,
+    "tracking_id": 3918,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897274087983
+    },
+    "timestamp_ns": 1791661020913376745
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3922,
+    "nc_idx": 0,
+    "nc_local_id": 3922,
+    "tracking_id": 3922,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5356,
+      "nc_timestamp_ns": 17897273962392
+    },
+    "timestamp_ns": 1791661020913249887
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3923,
+    "nc_idx": 0,
+    "nc_local_id": 3923,
+    "tracking_id": 3922,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897274086423
+    },
+    "timestamp_ns": 1791661020913373918
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3986,
+    "nc_idx": 0,
+    "nc_local_id": 3986,
+    "tracking_id": 3986,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5357,
+      "nc_timestamp_ns": 17897274158589
+    },
+    "timestamp_ns": 1791661020913446920
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3987,
+    "nc_idx": 0,
+    "nc_local_id": 3987,
+    "tracking_id": 3986,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897274284792
+    },
+    "timestamp_ns": 1791661020913573123
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 3990,
+    "nc_idx": 0,
+    "nc_local_id": 3990,
+    "tracking_id": 3990,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5357,
+      "nc_timestamp_ns": 17897274159641
+    },
+    "timestamp_ns": 1791661020913447105
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 3991,
+    "nc_idx": 0,
+    "nc_local_id": 3991,
+    "tracking_id": 3990,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897274283661
+    },
+    "timestamp_ns": 1791661020913571125
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4054,
+    "nc_idx": 0,
+    "nc_local_id": 4054,
+    "tracking_id": 4054,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5358,
+      "nc_timestamp_ns": 17897274357179
+    },
+    "timestamp_ns": 1791661020913645883
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4055,
+    "nc_idx": 0,
+    "nc_local_id": 4055,
+    "tracking_id": 4054,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897274484658
+    },
+    "timestamp_ns": 1791661020913773362
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4058,
+    "nc_idx": 0,
+    "nc_local_id": 4058,
+    "tracking_id": 4058,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5358,
+      "nc_timestamp_ns": 17897274358179
+    },
+    "timestamp_ns": 1791661020913645652
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4059,
+    "nc_idx": 0,
+    "nc_local_id": 4059,
+    "tracking_id": 4058,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897274483534
+    },
+    "timestamp_ns": 1791661020913771007
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4122,
+    "nc_idx": 0,
+    "nc_local_id": 4122,
+    "tracking_id": 4122,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5359,
+      "nc_timestamp_ns": 17897274555649
+    },
+    "timestamp_ns": 1791661020913844402
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4123,
+    "nc_idx": 0,
+    "nc_local_id": 4123,
+    "tracking_id": 4122,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897274681803
+    },
+    "timestamp_ns": 1791661020913970556
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4126,
+    "nc_idx": 0,
+    "nc_local_id": 4126,
+    "tracking_id": 4126,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5359,
+      "nc_timestamp_ns": 17897274556711
+    },
+    "timestamp_ns": 1791661020913844197
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4127,
+    "nc_idx": 0,
+    "nc_local_id": 4127,
+    "tracking_id": 4126,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897274680622
+    },
+    "timestamp_ns": 1791661020913968108
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4190,
+    "nc_idx": 0,
+    "nc_local_id": 4190,
+    "tracking_id": 4190,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5360,
+      "nc_timestamp_ns": 17897274753768
+    },
+    "timestamp_ns": 1791661020914042535
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4191,
+    "nc_idx": 0,
+    "nc_local_id": 4191,
+    "tracking_id": 4190,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897274880385
+    },
+    "timestamp_ns": 1791661020914169152
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4194,
+    "nc_idx": 0,
+    "nc_local_id": 4194,
+    "tracking_id": 4194,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5360,
+      "nc_timestamp_ns": 17897274754839
+    },
+    "timestamp_ns": 1791661020914042321
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4195,
+    "nc_idx": 0,
+    "nc_local_id": 4195,
+    "tracking_id": 4194,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897274879120
+    },
+    "timestamp_ns": 1791661020914166602
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4258,
+    "nc_idx": 0,
+    "nc_local_id": 4258,
+    "tracking_id": 4258,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5361,
+      "nc_timestamp_ns": 17897274949957
+    },
+    "timestamp_ns": 1791661020914238218
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4259,
+    "nc_idx": 0,
+    "nc_local_id": 4259,
+    "tracking_id": 4258,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897275076882
+    },
+    "timestamp_ns": 1791661020914365143
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4262,
+    "nc_idx": 0,
+    "nc_local_id": 4262,
+    "tracking_id": 4262,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5361,
+      "nc_timestamp_ns": 17897274950944
+    },
+    "timestamp_ns": 1791661020914238394
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4263,
+    "nc_idx": 0,
+    "nc_local_id": 4263,
+    "tracking_id": 4262,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897275075673
+    },
+    "timestamp_ns": 1791661020914363123
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4326,
+    "nc_idx": 0,
+    "nc_local_id": 4326,
+    "tracking_id": 4326,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5362,
+      "nc_timestamp_ns": 17897275156178
+    },
+    "timestamp_ns": 1791661020914444501
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4327,
+    "nc_idx": 0,
+    "nc_local_id": 4327,
+    "tracking_id": 4326,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897275282122
+    },
+    "timestamp_ns": 1791661020914570445
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4330,
+    "nc_idx": 0,
+    "nc_local_id": 4330,
+    "tracking_id": 4330,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5362,
+      "nc_timestamp_ns": 17897275157224
+    },
+    "timestamp_ns": 1791661020914444661
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4331,
+    "nc_idx": 0,
+    "nc_local_id": 4331,
+    "tracking_id": 4330,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897275281106
+    },
+    "timestamp_ns": 1791661020914568543
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4394,
+    "nc_idx": 0,
+    "nc_local_id": 4394,
+    "tracking_id": 4394,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5363,
+      "nc_timestamp_ns": 17897275357798
+    },
+    "timestamp_ns": 1791661020914646394
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4395,
+    "nc_idx": 0,
+    "nc_local_id": 4395,
+    "tracking_id": 4394,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897275485382
+    },
+    "timestamp_ns": 1791661020914773978
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4398,
+    "nc_idx": 0,
+    "nc_local_id": 4398,
+    "tracking_id": 4398,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5363,
+      "nc_timestamp_ns": 17897275358775
+    },
+    "timestamp_ns": 1791661020914646180
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4399,
+    "nc_idx": 0,
+    "nc_local_id": 4399,
+    "tracking_id": 4398,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897275484376
+    },
+    "timestamp_ns": 1791661020914771781
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4462,
+    "nc_idx": 0,
+    "nc_local_id": 4462,
+    "tracking_id": 4462,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5364,
+      "nc_timestamp_ns": 17897275556641
+    },
+    "timestamp_ns": 1791661020914845290
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4463,
+    "nc_idx": 0,
+    "nc_local_id": 4463,
+    "tracking_id": 4462,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897275682703
+    },
+    "timestamp_ns": 1791661020914971352
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4466,
+    "nc_idx": 0,
+    "nc_local_id": 4466,
+    "tracking_id": 4466,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5364,
+      "nc_timestamp_ns": 17897275557561
+    },
+    "timestamp_ns": 1791661020914845028
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4467,
+    "nc_idx": 0,
+    "nc_local_id": 4467,
+    "tracking_id": 4466,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897275681807
+    },
+    "timestamp_ns": 1791661020914969274
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4530,
+    "nc_idx": 0,
+    "nc_local_id": 4530,
+    "tracking_id": 4530,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5365,
+      "nc_timestamp_ns": 17897275753426
+    },
+    "timestamp_ns": 1791661020915042154
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4531,
+    "nc_idx": 0,
+    "nc_local_id": 4531,
+    "tracking_id": 4530,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897275880906
+    },
+    "timestamp_ns": 1791661020915169634
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4534,
+    "nc_idx": 0,
+    "nc_local_id": 4534,
+    "tracking_id": 4534,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5365,
+      "nc_timestamp_ns": 17897275754421
+    },
+    "timestamp_ns": 1791661020915041940
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4535,
+    "nc_idx": 0,
+    "nc_local_id": 4535,
+    "tracking_id": 4534,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897275879274
+    },
+    "timestamp_ns": 1791661020915166793
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4598,
+    "nc_idx": 0,
+    "nc_local_id": 4598,
+    "tracking_id": 4598,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5366,
+      "nc_timestamp_ns": 17897275952380
+    },
+    "timestamp_ns": 1791661020915241107
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4599,
+    "nc_idx": 0,
+    "nc_local_id": 4599,
+    "tracking_id": 4598,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897276079099
+    },
+    "timestamp_ns": 1791661020915367826
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4602,
+    "nc_idx": 0,
+    "nc_local_id": 4602,
+    "tracking_id": 4602,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5366,
+      "nc_timestamp_ns": 17897275953475
+    },
+    "timestamp_ns": 1791661020915240942
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4603,
+    "nc_idx": 0,
+    "nc_local_id": 4603,
+    "tracking_id": 4602,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897276077606
+    },
+    "timestamp_ns": 1791661020915365073
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4666,
+    "nc_idx": 0,
+    "nc_local_id": 4666,
+    "tracking_id": 4666,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5367,
+      "nc_timestamp_ns": 17897276150294
+    },
+    "timestamp_ns": 1791661020915438861
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4667,
+    "nc_idx": 0,
+    "nc_local_id": 4667,
+    "tracking_id": 4666,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897276276437
+    },
+    "timestamp_ns": 1791661020915565004
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4670,
+    "nc_idx": 0,
+    "nc_local_id": 4670,
+    "tracking_id": 4670,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5367,
+      "nc_timestamp_ns": 17897276151158
+    },
+    "timestamp_ns": 1791661020915438600
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4671,
+    "nc_idx": 0,
+    "nc_local_id": 4671,
+    "tracking_id": 4670,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897276275479
+    },
+    "timestamp_ns": 1791661020915562921
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4734,
+    "nc_idx": 0,
+    "nc_local_id": 4734,
+    "tracking_id": 4734,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5368,
+      "nc_timestamp_ns": 17897276347527
+    },
+    "timestamp_ns": 1791661020915635832
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4735,
+    "nc_idx": 0,
+    "nc_local_id": 4735,
+    "tracking_id": 4734,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897276474057
+    },
+    "timestamp_ns": 1791661020915762362
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4738,
+    "nc_idx": 0,
+    "nc_local_id": 4738,
+    "tracking_id": 4738,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5368,
+      "nc_timestamp_ns": 17897276348551
+    },
+    "timestamp_ns": 1791661020915636018
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4739,
+    "nc_idx": 0,
+    "nc_local_id": 4739,
+    "tracking_id": 4738,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897276472500
+    },
+    "timestamp_ns": 1791661020915759967
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4802,
+    "nc_idx": 0,
+    "nc_local_id": 4802,
+    "tracking_id": 4802,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5369,
+      "nc_timestamp_ns": 17897276545192
+    },
+    "timestamp_ns": 1791661020915833930
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4803,
+    "nc_idx": 0,
+    "nc_local_id": 4803,
+    "tracking_id": 4802,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897276671329
+    },
+    "timestamp_ns": 1791661020915960067
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4806,
+    "nc_idx": 0,
+    "nc_local_id": 4806,
+    "tracking_id": 4806,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5369,
+      "nc_timestamp_ns": 17897276546207
+    },
+    "timestamp_ns": 1791661020915833707
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4807,
+    "nc_idx": 0,
+    "nc_local_id": 4807,
+    "tracking_id": 4806,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897276670644
+    },
+    "timestamp_ns": 1791661020915958144
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4870,
+    "nc_idx": 0,
+    "nc_local_id": 4870,
+    "tracking_id": 4870,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5370,
+      "nc_timestamp_ns": 17897276741818
+    },
+    "timestamp_ns": 1791661020916030453
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4871,
+    "nc_idx": 0,
+    "nc_local_id": 4871,
+    "tracking_id": 4870,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897276868742
+    },
+    "timestamp_ns": 1791661020916157377
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4874,
+    "nc_idx": 0,
+    "nc_local_id": 4874,
+    "tracking_id": 4874,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5370,
+      "nc_timestamp_ns": 17897276742858
+    },
+    "timestamp_ns": 1791661020916030338
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4875,
+    "nc_idx": 0,
+    "nc_local_id": 4875,
+    "tracking_id": 4874,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897276867366
+    },
+    "timestamp_ns": 1791661020916154846
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4938,
+    "nc_idx": 0,
+    "nc_local_id": 4938,
+    "tracking_id": 4938,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5371,
+      "nc_timestamp_ns": 17897276939479
+    },
+    "timestamp_ns": 1791661020916227812
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4939,
+    "nc_idx": 0,
+    "nc_local_id": 4939,
+    "tracking_id": 4938,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897277065962
+    },
+    "timestamp_ns": 1791661020916354295
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 4942,
+    "nc_idx": 0,
+    "nc_local_id": 4942,
+    "tracking_id": 4942,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5371,
+      "nc_timestamp_ns": 17897276940521
+    },
+    "timestamp_ns": 1791661020916227997
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 4943,
+    "nc_idx": 0,
+    "nc_local_id": 4943,
+    "tracking_id": 4942,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897277064718
+    },
+    "timestamp_ns": 1791661020916352194
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5006,
+    "nc_idx": 0,
+    "nc_local_id": 5006,
+    "tracking_id": 5006,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5372,
+      "nc_timestamp_ns": 17897277137457
+    },
+    "timestamp_ns": 1791661020916425791
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5007,
+    "nc_idx": 0,
+    "nc_local_id": 5007,
+    "tracking_id": 5006,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897277264218
+    },
+    "timestamp_ns": 1791661020916552552
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5010,
+    "nc_idx": 0,
+    "nc_local_id": 5010,
+    "tracking_id": 5010,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5372,
+      "nc_timestamp_ns": 17897277138453
+    },
+    "timestamp_ns": 1791661020916425967
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5011,
+    "nc_idx": 0,
+    "nc_local_id": 5011,
+    "tracking_id": 5010,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897277263263
+    },
+    "timestamp_ns": 1791661020916550777
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5074,
+    "nc_idx": 0,
+    "nc_local_id": 5074,
+    "tracking_id": 5074,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5373,
+      "nc_timestamp_ns": 17897277334671
+    },
+    "timestamp_ns": 1791661020916623348
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5075,
+    "nc_idx": 0,
+    "nc_local_id": 5075,
+    "tracking_id": 5074,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897277460656
+    },
+    "timestamp_ns": 1791661020916749333
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5078,
+    "nc_idx": 0,
+    "nc_local_id": 5078,
+    "tracking_id": 5078,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5373,
+      "nc_timestamp_ns": 17897277335638
+    },
+    "timestamp_ns": 1791661020916623134
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5079,
+    "nc_idx": 0,
+    "nc_local_id": 5079,
+    "tracking_id": 5078,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897277459822
+    },
+    "timestamp_ns": 1791661020916747318
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5142,
+    "nc_idx": 0,
+    "nc_local_id": 5142,
+    "tracking_id": 5142,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5374,
+      "nc_timestamp_ns": 17897277531789
+    },
+    "timestamp_ns": 1791661020916820107
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5143,
+    "nc_idx": 0,
+    "nc_local_id": 5143,
+    "tracking_id": 5142,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897277657655
+    },
+    "timestamp_ns": 1791661020916945973
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5146,
+    "nc_idx": 0,
+    "nc_local_id": 5146,
+    "tracking_id": 5146,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5374,
+      "nc_timestamp_ns": 17897277532798
+    },
+    "timestamp_ns": 1791661020916820278
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5147,
+    "nc_idx": 0,
+    "nc_local_id": 5147,
+    "tracking_id": 5146,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897277656939
+    },
+    "timestamp_ns": 1791661020916944419
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5210,
+    "nc_idx": 0,
+    "nc_local_id": 5210,
+    "tracking_id": 5210,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5375,
+      "nc_timestamp_ns": 17897277728641
+    },
+    "timestamp_ns": 1791661020917017373
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5211,
+    "nc_idx": 0,
+    "nc_local_id": 5211,
+    "tracking_id": 5210,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897277855382
+    },
+    "timestamp_ns": 1791661020917144114
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5214,
+    "nc_idx": 0,
+    "nc_local_id": 5214,
+    "tracking_id": 5214,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5375,
+      "nc_timestamp_ns": 17897277729637
+    },
+    "timestamp_ns": 1791661020917017159
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5215,
+    "nc_idx": 0,
+    "nc_local_id": 5215,
+    "tracking_id": 5214,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897277854508
+    },
+    "timestamp_ns": 1791661020917142030
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5278,
+    "nc_idx": 0,
+    "nc_local_id": 5278,
+    "tracking_id": 5278,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5376,
+      "nc_timestamp_ns": 17897277927080
+    },
+    "timestamp_ns": 1791661020917215424
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5279,
+    "nc_idx": 0,
+    "nc_local_id": 5279,
+    "tracking_id": 5278,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897278053355
+    },
+    "timestamp_ns": 1791661020917341699
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5282,
+    "nc_idx": 0,
+    "nc_local_id": 5282,
+    "tracking_id": 5282,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5376,
+      "nc_timestamp_ns": 17897277928094
+    },
+    "timestamp_ns": 1791661020917215609
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5283,
+    "nc_idx": 0,
+    "nc_local_id": 5283,
+    "tracking_id": 5282,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897278051874
+    },
+    "timestamp_ns": 1791661020917339389
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5346,
+    "nc_idx": 0,
+    "nc_local_id": 5346,
+    "tracking_id": 5346,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5377,
+      "nc_timestamp_ns": 17897278122472
+    },
+    "timestamp_ns": 1791661020917411250
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5347,
+    "nc_idx": 0,
+    "nc_local_id": 5347,
+    "tracking_id": 5346,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897278249444
+    },
+    "timestamp_ns": 1791661020917538222
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5350,
+    "nc_idx": 0,
+    "nc_local_id": 5350,
+    "tracking_id": 5350,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5377,
+      "nc_timestamp_ns": 17897278123496
+    },
+    "timestamp_ns": 1791661020917410979
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5351,
+    "nc_idx": 0,
+    "nc_local_id": 5351,
+    "tracking_id": 5350,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897278248084
+    },
+    "timestamp_ns": 1791661020917535567
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5414,
+    "nc_idx": 0,
+    "nc_local_id": 5414,
+    "tracking_id": 5414,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5378,
+      "nc_timestamp_ns": 17897278320147
+    },
+    "timestamp_ns": 1791661020917608769
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5415,
+    "nc_idx": 0,
+    "nc_local_id": 5415,
+    "tracking_id": 5414,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897278446910
+    },
+    "timestamp_ns": 1791661020917735532
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5418,
+    "nc_idx": 0,
+    "nc_local_id": 5418,
+    "tracking_id": 5418,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5378,
+      "nc_timestamp_ns": 17897278321062
+    },
+    "timestamp_ns": 1791661020917608594
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5419,
+    "nc_idx": 0,
+    "nc_local_id": 5419,
+    "tracking_id": 5418,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897278446024
+    },
+    "timestamp_ns": 1791661020917733556
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5482,
+    "nc_idx": 0,
+    "nc_local_id": 5482,
+    "tracking_id": 5482,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5379,
+      "nc_timestamp_ns": 17897278518602
+    },
+    "timestamp_ns": 1791661020917806895
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5483,
+    "nc_idx": 0,
+    "nc_local_id": 5483,
+    "tracking_id": 5482,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897278645031
+    },
+    "timestamp_ns": 1791661020917933324
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5486,
+    "nc_idx": 0,
+    "nc_local_id": 5486,
+    "tracking_id": 5486,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5379,
+      "nc_timestamp_ns": 17897278519616
+    },
+    "timestamp_ns": 1791661020917807090
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5487,
+    "nc_idx": 0,
+    "nc_local_id": 5487,
+    "tracking_id": 5486,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897278643984
+    },
+    "timestamp_ns": 1791661020917931458
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5550,
+    "nc_idx": 0,
+    "nc_local_id": 5550,
+    "tracking_id": 5550,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5380,
+      "nc_timestamp_ns": 17897278716877
+    },
+    "timestamp_ns": 1791661020918005204
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5551,
+    "nc_idx": 0,
+    "nc_local_id": 5551,
+    "tracking_id": 5550,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897278843309
+    },
+    "timestamp_ns": 1791661020918131636
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5554,
+    "nc_idx": 0,
+    "nc_local_id": 5554,
+    "tracking_id": 5554,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5380,
+      "nc_timestamp_ns": 17897278717910
+    },
+    "timestamp_ns": 1791661020918005389
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5555,
+    "nc_idx": 0,
+    "nc_local_id": 5555,
+    "tracking_id": 5554,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897278841892
+    },
+    "timestamp_ns": 1791661020918129371
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5618,
+    "nc_idx": 0,
+    "nc_local_id": 5618,
+    "tracking_id": 5618,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5381,
+      "nc_timestamp_ns": 17897278913425
+    },
+    "timestamp_ns": 1791661020918201822
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5619,
+    "nc_idx": 0,
+    "nc_local_id": 5619,
+    "tracking_id": 5618,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897279040151
+    },
+    "timestamp_ns": 1791661020918328548
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5622,
+    "nc_idx": 0,
+    "nc_local_id": 5622,
+    "tracking_id": 5622,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5381,
+      "nc_timestamp_ns": 17897278914458
+    },
+    "timestamp_ns": 1791661020918201998
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5623,
+    "nc_idx": 0,
+    "nc_local_id": 5623,
+    "tracking_id": 5622,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897279038815
+    },
+    "timestamp_ns": 1791661020918326355
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5686,
+    "nc_idx": 0,
+    "nc_local_id": 5686,
+    "tracking_id": 5686,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5382,
+      "nc_timestamp_ns": 17897279111061
+    },
+    "timestamp_ns": 1791661020918399799
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5687,
+    "nc_idx": 0,
+    "nc_local_id": 5687,
+    "tracking_id": 5686,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897279237730
+    },
+    "timestamp_ns": 1791661020918526468
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5690,
+    "nc_idx": 0,
+    "nc_local_id": 5690,
+    "tracking_id": 5690,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5382,
+      "nc_timestamp_ns": 17897279112107
+    },
+    "timestamp_ns": 1791661020918399632
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5691,
+    "nc_idx": 0,
+    "nc_local_id": 5691,
+    "tracking_id": 5690,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897279236144
+    },
+    "timestamp_ns": 1791661020918523669
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5754,
+    "nc_idx": 0,
+    "nc_local_id": 5754,
+    "tracking_id": 5754,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5383,
+      "nc_timestamp_ns": 17897279313712
+    },
+    "timestamp_ns": 1791661020918602430
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5755,
+    "nc_idx": 0,
+    "nc_local_id": 5755,
+    "tracking_id": 5754,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897279440258
+    },
+    "timestamp_ns": 1791661020918728976
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5758,
+    "nc_idx": 0,
+    "nc_local_id": 5758,
+    "tracking_id": 5758,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5383,
+      "nc_timestamp_ns": 17897279314698
+    },
+    "timestamp_ns": 1791661020918602169
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5759,
+    "nc_idx": 0,
+    "nc_local_id": 5759,
+    "tracking_id": 5758,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897279439452
+    },
+    "timestamp_ns": 1791661020918726923
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5822,
+    "nc_idx": 0,
+    "nc_local_id": 5822,
+    "tracking_id": 5822,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5384,
+      "nc_timestamp_ns": 17897279511363
+    },
+    "timestamp_ns": 1791661020918799622
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5823,
+    "nc_idx": 0,
+    "nc_local_id": 5823,
+    "tracking_id": 5822,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897279638244
+    },
+    "timestamp_ns": 1791661020918926503
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5826,
+    "nc_idx": 0,
+    "nc_local_id": 5826,
+    "tracking_id": 5826,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5384,
+      "nc_timestamp_ns": 17897279512349
+    },
+    "timestamp_ns": 1791661020918799798
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5827,
+    "nc_idx": 0,
+    "nc_local_id": 5827,
+    "tracking_id": 5826,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897279636628
+    },
+    "timestamp_ns": 1791661020918924077
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5890,
+    "nc_idx": 0,
+    "nc_local_id": 5890,
+    "tracking_id": 5890,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5385,
+      "nc_timestamp_ns": 17897279708865
+    },
+    "timestamp_ns": 1791661020918997255
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5891,
+    "nc_idx": 0,
+    "nc_local_id": 5891,
+    "tracking_id": 5890,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897279834974
+    },
+    "timestamp_ns": 1791661020919123364
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5894,
+    "nc_idx": 0,
+    "nc_local_id": 5894,
+    "tracking_id": 5894,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5385,
+      "nc_timestamp_ns": 17897279709936
+    },
+    "timestamp_ns": 1791661020918997431
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5895,
+    "nc_idx": 0,
+    "nc_local_id": 5895,
+    "tracking_id": 5894,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897279834297
+    },
+    "timestamp_ns": 1791661020919121792
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5958,
+    "nc_idx": 0,
+    "nc_local_id": 5958,
+    "tracking_id": 5958,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5386,
+      "nc_timestamp_ns": 17897279906910
+    },
+    "timestamp_ns": 1791661020919195538
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5959,
+    "nc_idx": 0,
+    "nc_local_id": 5959,
+    "tracking_id": 5958,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897280033393
+    },
+    "timestamp_ns": 1791661020919322021
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 5962,
+    "nc_idx": 0,
+    "nc_local_id": 5962,
+    "tracking_id": 5962,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5386,
+      "nc_timestamp_ns": 17897279907910
+    },
+    "timestamp_ns": 1791661020919195372
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 5963,
+    "nc_idx": 0,
+    "nc_local_id": 5963,
+    "tracking_id": 5962,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897280032131
+    },
+    "timestamp_ns": 1791661020919319593
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 6026,
+    "nc_idx": 0,
+    "nc_local_id": 6026,
+    "tracking_id": 6026,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5387,
+      "nc_timestamp_ns": 17897280104737
+    },
+    "timestamp_ns": 1791661020919393002
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 6027,
+    "nc_idx": 0,
+    "nc_local_id": 6027,
+    "tracking_id": 6026,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897280230922
+    },
+    "timestamp_ns": 1791661020919519187
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 6030,
+    "nc_idx": 0,
+    "nc_local_id": 6030,
+    "tracking_id": 6030,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5387,
+      "nc_timestamp_ns": 17897280105507
+    },
+    "timestamp_ns": 1791661020919392830
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 6031,
+    "nc_idx": 0,
+    "nc_local_id": 6031,
+    "tracking_id": 6030,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897280229759
+    },
+    "timestamp_ns": 1791661020919517082
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 6094,
+    "nc_idx": 0,
+    "nc_local_id": 6094,
+    "tracking_id": 6094,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5388,
+      "nc_timestamp_ns": 17897280303094
+    },
+    "timestamp_ns": 1791661020919591888
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 6095,
+    "nc_idx": 0,
+    "nc_local_id": 6095,
+    "tracking_id": 6094,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897280429807
+    },
+    "timestamp_ns": 1791661020919718601
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 6098,
+    "nc_idx": 0,
+    "nc_local_id": 6098,
+    "tracking_id": 6098,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5388,
+      "nc_timestamp_ns": 17897280304305
+    },
+    "timestamp_ns": 1791661020919591589
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 6099,
+    "nc_idx": 0,
+    "nc_local_id": 6099,
+    "tracking_id": 6098,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897280429043
+    },
+    "timestamp_ns": 1791661020919716327
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 6162,
+    "nc_idx": 0,
+    "nc_local_id": 6162,
+    "tracking_id": 6162,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5389,
+      "nc_timestamp_ns": 17897280502625
+    },
+    "timestamp_ns": 1791661020919791344
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 6163,
+    "nc_idx": 0,
+    "nc_local_id": 6163,
+    "tracking_id": 6162,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897280629341
+    },
+    "timestamp_ns": 1791661020919918060
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 6166,
+    "nc_idx": 0,
+    "nc_local_id": 6166,
+    "tracking_id": 6166,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5389,
+      "nc_timestamp_ns": 17897280503668
+    },
+    "timestamp_ns": 1791661020919791130
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 6167,
+    "nc_idx": 0,
+    "nc_local_id": 6167,
+    "tracking_id": 6166,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897280628233
+    },
+    "timestamp_ns": 1791661020919915695
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 6230,
+    "nc_idx": 0,
+    "nc_local_id": 6230,
+    "tracking_id": 6230,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5390,
+      "nc_timestamp_ns": 17897280701478
+    },
+    "timestamp_ns": 1791661020919990148
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 6231,
+    "nc_idx": 0,
+    "nc_local_id": 6231,
+    "tracking_id": 6230,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897280828359
+    },
+    "timestamp_ns": 1791661020920117029
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 6234,
+    "nc_idx": 0,
+    "nc_local_id": 6234,
+    "tracking_id": 6234,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5390,
+      "nc_timestamp_ns": 17897280702478
+    },
+    "timestamp_ns": 1791661020919989916
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 6235,
+    "nc_idx": 0,
+    "nc_local_id": 6235,
+    "tracking_id": 6234,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897280826845
+    },
+    "timestamp_ns": 1791661020920114283
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 6298,
+    "nc_idx": 0,
+    "nc_local_id": 6298,
+    "tracking_id": 6298,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5391,
+      "nc_timestamp_ns": 17897280898371
+    },
+    "timestamp_ns": 1791661020920187144
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 6299,
+    "nc_idx": 0,
+    "nc_local_id": 6299,
+    "tracking_id": 6298,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897281025435
+    },
+    "timestamp_ns": 1791661020920314208
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 6302,
+    "nc_idx": 0,
+    "nc_local_id": 6302,
+    "tracking_id": 6302,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5391,
+      "nc_timestamp_ns": 17897280899414
+    },
+    "timestamp_ns": 1791661020920186929
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 6303,
+    "nc_idx": 0,
+    "nc_local_id": 6303,
+    "tracking_id": 6302,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897281024320
+    },
+    "timestamp_ns": 1791661020920311835
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 6366,
+    "nc_idx": 0,
+    "nc_local_id": 6366,
+    "tracking_id": 6366,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5392,
+      "nc_timestamp_ns": 17897281100159
+    },
+    "timestamp_ns": 1791661020920388539
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 6367,
+    "nc_idx": 0,
+    "nc_local_id": 6367,
+    "tracking_id": 6366,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897281227200
+    },
+    "timestamp_ns": 1791661020920515580
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 6370,
+    "nc_idx": 0,
+    "nc_local_id": 6370,
+    "tracking_id": 6370,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5392,
+      "nc_timestamp_ns": 17897281101230
+    },
+    "timestamp_ns": 1791661020920388724
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 6371,
+    "nc_idx": 0,
+    "nc_local_id": 6371,
+    "tracking_id": 6370,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897281226161
+    },
+    "timestamp_ns": 1791661020920513655
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 6434,
+    "nc_idx": 0,
+    "nc_local_id": 6434,
+    "tracking_id": 6434,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5393,
+      "nc_timestamp_ns": 17897281298552
+    },
+    "timestamp_ns": 1791661020920587326
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 6435,
+    "nc_idx": 0,
+    "nc_local_id": 6435,
+    "tracking_id": 6434,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897281425661
+    },
+    "timestamp_ns": 1791661020920714435
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 6438,
+    "nc_idx": 0,
+    "nc_local_id": 6438,
+    "tracking_id": 6438,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5393,
+      "nc_timestamp_ns": 17897281299575
+    },
+    "timestamp_ns": 1791661020920587055
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 6439,
+    "nc_idx": 0,
+    "nc_local_id": 6439,
+    "tracking_id": 6438,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897281424279
+    },
+    "timestamp_ns": 1791661020920711759
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 6502,
+    "nc_idx": 0,
+    "nc_local_id": 6502,
+    "tracking_id": 6502,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5394,
+      "nc_timestamp_ns": 17897281497422
+    },
+    "timestamp_ns": 1791661020920786112
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 6503,
+    "nc_idx": 0,
+    "nc_local_id": 6503,
+    "tracking_id": 6502,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897281623870
+    },
+    "timestamp_ns": 1791661020920912560
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 6506,
+    "nc_idx": 0,
+    "nc_local_id": 6506,
+    "tracking_id": 6506,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5394,
+      "nc_timestamp_ns": 17897281498374
+    },
+    "timestamp_ns": 1791661020920785946
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 6507,
+    "nc_idx": 0,
+    "nc_local_id": 6507,
+    "tracking_id": 6506,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897281621925
+    },
+    "timestamp_ns": 1791661020920909497
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 6570,
+    "nc_idx": 0,
+    "nc_local_id": 6570,
+    "tracking_id": 6570,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5395,
+      "nc_timestamp_ns": 17897281694769
+    },
+    "timestamp_ns": 1791661020920983072
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 6571,
+    "nc_idx": 0,
+    "nc_local_id": 6571,
+    "tracking_id": 6570,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897281821026
+    },
+    "timestamp_ns": 1791661020921109329
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 6574,
+    "nc_idx": 0,
+    "nc_local_id": 6574,
+    "tracking_id": 6574,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5395,
+      "nc_timestamp_ns": 17897281695811
+    },
+    "timestamp_ns": 1791661020920983258
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 6575,
+    "nc_idx": 0,
+    "nc_local_id": 6575,
+    "tracking_id": 6574,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897281819699
+    },
+    "timestamp_ns": 1791661020921107146
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 6638,
+    "nc_idx": 0,
+    "nc_local_id": 6638,
+    "tracking_id": 6638,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5396,
+      "nc_timestamp_ns": 17897281892080
+    },
+    "timestamp_ns": 1791661020921180419
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 6639,
+    "nc_idx": 0,
+    "nc_local_id": 6639,
+    "tracking_id": 6638,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897282018514
+    },
+    "timestamp_ns": 1791661020921306853
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 6642,
+    "nc_idx": 0,
+    "nc_local_id": 6642,
+    "tracking_id": 6642,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5396,
+      "nc_timestamp_ns": 17897281893114
+    },
+    "timestamp_ns": 1791661020921180605
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 6643,
+    "nc_idx": 0,
+    "nc_local_id": 6643,
+    "tracking_id": 6642,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897282017612
+    },
+    "timestamp_ns": 1791661020921305103
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 6706,
+    "nc_idx": 0,
+    "nc_local_id": 6706,
+    "tracking_id": 6706,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5397,
+      "nc_timestamp_ns": 17897282112365
+    },
+    "timestamp_ns": 1791661020921400751
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 6707,
+    "nc_idx": 0,
+    "nc_local_id": 6707,
+    "tracking_id": 6706,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897282238900
+    },
+    "timestamp_ns": 1791661020921527286
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 6710,
+    "nc_idx": 0,
+    "nc_local_id": 6710,
+    "tracking_id": 6710,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5397,
+      "nc_timestamp_ns": 17897282113398
+    },
+    "timestamp_ns": 1791661020921400926
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 6711,
+    "nc_idx": 0,
+    "nc_local_id": 6711,
+    "tracking_id": 6710,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897282237593
+    },
+    "timestamp_ns": 1791661020921525121
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 6774,
+    "nc_idx": 0,
+    "nc_local_id": 6774,
+    "tracking_id": 6774,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 4,
+      "exec_id": 5398,
+      "nc_timestamp_ns": 17897282310796
+    },
+    "timestamp_ns": 1791661020921599130
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 6775,
+    "nc_idx": 0,
+    "nc_local_id": 6775,
+    "tracking_id": 6774,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897282437569
+    },
+    "timestamp_ns": 1791661020921725903
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "start",
+    "id": 6778,
+    "nc_idx": 0,
+    "nc_local_id": 6778,
+    "tracking_id": 6778,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "device_core_idx": 5,
+      "exec_id": 5398,
+      "nc_timestamp_ns": 17897282311796
+    },
+    "timestamp_ns": 1791661020921599301
+  },
+  {
+    "event_type": "nc_exec_running",
+    "phase": "stop",
+    "id": 6779,
+    "nc_idx": 0,
+    "nc_local_id": 6779,
+    "tracking_id": 6778,
+    "thread_id": 91129,
+    "worker_gid": 0,
+    "data": {
+      "nc_timestamp_ns": 17897282436363
+    },
+    "timestamp_ns": 1791661020921723868
+  }
+]
