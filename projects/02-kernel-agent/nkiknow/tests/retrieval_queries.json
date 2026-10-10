@@ -1,0 +1,357 @@
+[
+ {
+  "query": "'MemoryRegion' object is not callable",
+  "kind": "error",
+  "expect": [
+   {
+    "file": "neuron-nki-docs/"
+   },
+   {
+    "file": "neuron-nki-docs/references/programming/api/api-nki-language-memory.md"
+   },
+   {
+    "file": "neuron-nki-writing/references/memory-patterns.md"
+   }
+  ]
+ },
+ {
+  "query": "module 'nki.language' has no attribute 'dot'",
+  "kind": "error",
+  "expect": [
+   {
+    "file": "neuron-nki-writing/references/api-translation.md"
+   },
+   {
+    "file": "neuron-nki-docs/references/programming/api/nki.language.md"
+   },
+   {
+    "file": "neuron-nki-docs/references/programming/api/api-nki-isa-tensor.md",
+    "anchor": "nki-isa-nc_matmul"
+   }
+  ]
+ },
+ {
+  "query": "dst must be in ['psum'], got sbuf",
+  "kind": "error",
+  "expect": [
+   {
+    "file": "neuron-nki-docs/references/programming/api/api-nki-isa-tensor.md",
+    "anchor": "nki-isa-nc_matmul"
+   },
+   {
+    "file": "neuron-nki-writing/references/common-patterns.md"
+   },
+   {
+    "file": "neuron-nki-writing/references/memory-patterns.md"
+   }
+  ]
+ },
+ {
+  "query": "moving must be in ['sbuf']",
+  "kind": "error",
+  "expect": [
+   {
+    "file": "neuron-nki-docs/references/programming/api/api-nki-isa-tensor.md",
+    "anchor": "nki-isa-nc_matmul"
+   },
+   {
+    "file": "neuron-nki-writing/references/common-patterns.md"
+   },
+   {
+    "file": "neuron-nki-writing/references/api-translation.md"
+   }
+  ]
+ },
+ {
+  "query": "Matmul contraction dimension 256 exceeds pmax=128",
+  "kind": "error",
+  "expect": [
+   {
+    "file": "neuron-nki-docs/references/programming/api/api-nki-isa-tensor.md",
+    "anchor": "nki-isa-nc_matmul"
+   },
+   {
+    "file": "neuron-nki-writing/references/common-patterns.md"
+   },
+   {
+    "file": "neuron-nki-writing/references/indexing-patterns.md"
+   }
+  ]
+ },
+ {
+  "query": "dma_copy requires src and dst to have the same number of elements",
+  "kind": "error",
+  "expect": [
+   {
+    "file": "neuron-nki-docs/references/programming/api/api-nki-isa-memory.md",
+    "anchor": "nki-isa-dma_copy"
+   },
+   {
+    "file": "neuron-nki-docs/references/programming/nki-dma-overview.md"
+   },
+   {
+    "file": "neuron-nki-writing/references/memory-patterns.md"
+   }
+  ]
+ },
+ {
+  "query": "partition dimension 256 exceeds maximum 128",
+  "kind": "error",
+  "expect": [
+   {
+    "file": "neuron-nki-writing/references/indexing-patterns.md"
+   },
+   {
+    "file": "neuron-nki-writing/references/transpose-and-layout.md"
+   },
+   {
+    "file": "neuron-nki-docs/SKILL.md"
+   }
+  ]
+ },
+ {
+  "query": "Out-of-bound access for tensor",
+  "kind": "error",
+  "expect": [
+   {
+    "file": "neuron-nki-docs/references/programming/api/api-nki-isa-memory.md"
+   },
+   {
+    "file": "neuron-nki-docs/references/debugging/error-codes/EVRF031.md"
+   },
+   {
+    "file": "neuron-nki-writing/references/indexing-patterns.md"
+   }
+  ]
+ },
+ {
+  "query": "reduce_op cannot be specified when reduce_cmd is idle",
+  "kind": "error",
+  "expect": [
+   {
+    "file": "neuron-nki-docs/references/programming/api/api-nki-isa-scalar.md",
+    "anchor": "nki-isa-activation"
+   }
+  ]
+ },
+ {
+  "query": "how to accumulate the matmul result across K tiles in PSUM",
+  "kind": "concept",
+  "expect": [
+   {
+    "file": "neuron-nki-writing/references/common-patterns.md"
+   },
+   {
+    "file": "neuron-nki-writing/references/memory-patterns.md"
+   },
+   {
+    "file": "neuron-nki-docs/references/programming/api/api-nki-isa-tensor.md",
+    "anchor": "nki-isa-nc_matmul"
+   }
+  ]
+ },
+ {
+  "query": "hoist loads out of the inner loop to avoid reloading the same tile",
+  "kind": "concept",
+  "expect": [
+   {
+    "file": "neuron-nki-docs/references/programming/tutorials/matrix_multiplication.md"
+   },
+   {
+    "file": "neuron-nki-docs/references/programming/tutorials/kernel-optimization.md"
+   }
+  ]
+ },
+ {
+  "query": "how much SBUF capacity per partition is available",
+  "kind": "concept",
+  "expect": [
+   {
+    "file": "neuron-nki-docs/references/architecture/trainium2_arch.md"
+   },
+   {
+    "file": "neuron-nki-docs/references/architecture/trainium3_arch.md"
+   },
+   {
+    "file": "neuron-nki-docs/references/programming/memory-hierarchy-overview.md"
+   },
+   {
+    "file": "neuron-nki-docs/SKILL.md"
+   }
+  ]
+ },
+ {
+  "query": "difference between affine_range and sequential_range loops",
+  "kind": "concept",
+  "expect": [
+   {
+    "file": "neuron-nki-docs/references/programming/api/api-nki-language-dims.md"
+   },
+   {
+    "file": "neuron-nki-docs/references/programming/nki-language-guide.md"
+   }
+  ]
+ },
+ {
+  "query": "get the top 8 largest values per partition max8",
+  "kind": "concept",
+  "expect": [
+   {
+    "file": "neuron-nki-docs/references/programming/api/api-nki-isa-utility.md",
+    "anchor": "nki-isa-max8"
+   }
+  ]
+ },
+ {
+  "query": "apply activation function with bias and scale",
+  "kind": "concept",
+  "expect": [
+   {
+    "file": "neuron-nki-docs/references/programming/api/api-nki-isa-scalar.md",
+    "anchor": "nki-isa-activation"
+   }
+  ]
+ },
+ {
+  "query": "copy a tile from PSUM to SBUF with tensor_copy",
+  "kind": "concept",
+  "expect": [
+   {
+    "file": "neuron-nki-docs/references/programming/api/api-nki-isa-tensor.md",
+    "anchor": "nki-isa-tensor_copy"
+   },
+   {
+    "file": "neuron-nki-writing/references/memory-patterns.md"
+   },
+   {
+    "file": "neuron-nki-writing/references/common-patterns.md"
+   }
+  ]
+ },
+ {
+  "query": "slice a tensor for dma_copy between HBM and SBUF",
+  "kind": "concept",
+  "expect": [
+   {
+    "file": "neuron-nki-docs/references/programming/api/api-nki-isa-memory.md",
+    "anchor": "nki-isa-dma_copy"
+   },
+   {
+    "file": "neuron-nki-writing/references/memory-patterns.md"
+   },
+   {
+    "file": "neuron-nki-docs/references/programming/nki-dma-overview.md"
+   }
+  ]
+ },
+ {
+  "query": "block the M and N dimensions to reuse loaded tiles",
+  "kind": "concept",
+  "expect": [
+   {
+    "file": "neuron-nki-docs/references/programming/tutorials/matrix_multiplication.md"
+   },
+   {
+    "file": "neuron-nki-docs/references/programming/tutorials/kernel-optimization.md"
+   }
+  ]
+ },
+ {
+  "query": "transposed lhsT layout stationary operand for matmul",
+  "kind": "concept",
+  "expect": [
+   {
+    "file": "neuron-nki-docs/references/programming/api/api-nki-isa-tensor.md",
+    "anchor": "nki-isa-nc_matmul"
+   },
+   {
+    "file": "neuron-nki-writing/references/transpose-and-layout.md"
+   },
+   {
+    "file": "neuron-nki-docs/references/programming/tutorials/matrix_multiplication.md"
+   }
+  ]
+ },
+ {
+  "query": "how to transpose a tile with nc_transpose",
+  "kind": "concept",
+  "expect": [
+   {
+    "file": "neuron-nki-writing/references/transpose-and-layout.md"
+   },
+   {
+    "file": "neuron-nki-docs/references/programming/api/api-nki-isa-tensor.md",
+    "anchor": "nki-isa-nc_transpose"
+   }
+  ]
+ },
+ {
+  "query": "PSUM free dimension limit 512 per bank",
+  "kind": "concept",
+  "expect": [
+   {
+    "file": "neuron-nki-docs/SKILL.md"
+   },
+   {
+    "file": "neuron-nki-writing/references/memory-patterns.md"
+   },
+   {
+    "file": "neuron-nki-docs/references/programming/api/api-nki-isa-tensor.md",
+    "anchor": "nki-isa-nc_matmul"
+   }
+  ]
+ },
+ {
+  "query": "nisa.nc_matmul",
+  "kind": "symbol",
+  "expect": [
+   {
+    "file": "neuron-nki-docs/references/programming/api/api-nki-isa-tensor.md",
+    "anchor": "nki-isa-nc_matmul"
+   }
+  ]
+ },
+ {
+  "query": "what does nl.ndarray with buffer=nl.psum allocate",
+  "kind": "concept",
+  "expect": [
+   {
+    "file": "neuron-nki-writing/references/memory-patterns.md"
+   },
+   {
+    "file": "neuron-nki-writing/references/common-patterns.md"
+   },
+   {
+    "file": "neuron-nki-docs/references/programming/api/api-nki-language-memory.md"
+   }
+  ]
+ },
+ {
+  "query": "tile size limits for stationary and moving tensors in matmul",
+  "kind": "concept",
+  "expect": [
+   {
+    "file": "neuron-nki-docs/references/programming/api/api-nki-isa-tensor.md",
+    "anchor": "nki-isa-nc_matmul"
+   },
+   {
+    "file": "neuron-nki-docs/references/programming/tutorials/matrix_multiplication.md"
+   },
+   {
+    "file": "neuron-nki-writing/references/performance-basics.md"
+   }
+  ]
+ },
+ {
+  "query": "zero-initialize psum before accumulating or use accumulate flag",
+  "kind": "concept",
+  "expect": [
+   {
+    "file": "neuron-nki-writing/references/common-patterns.md"
+   },
+   {
+    "file": "neuron-nki-writing/references/memory-patterns.md"
+   }
+  ]
+ }
+]
