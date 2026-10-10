@@ -24,7 +24,10 @@ Per op, three shape lists, and they mean different things:
 
 The spec keys are the referee's contract; do not rename them: level, entry, names,
 make_inputs(shape, seed, hostile=False) -> {argument name: array}, ref(inputs) -> float32 reference,
-flops(shape), sim_shapes, time_shapes, heldout_shapes, tol.
+out(shape) -> (output shape, dtype), flops(shape), sim_shapes, time_shapes, tol, and
+heldout(rng, n, exclude) -> n fresh shapes. The hardened referee asserts every one of them at import, for
+every op, and draws its held-out shapes fresh on every check: a fixed list was learnable. heldout_shapes
+is the fixed, reproducible list heldout_grid.py uses for the dashboard's end-of-run grid.
 
 Out of scope today: decode-time matmuls, where M is the batch (4 here), not a multiple of 128.
 
@@ -154,6 +157,37 @@ def _swiglu_ref(inp):
         return g / (np.float32(1.0) + np.exp(-g)) * inp["up"].astype(np.float32)
 
 
+# ---------------------------------------------------------------- held-out samplers
+#
+# heldout(rng, n, exclude) -> n distinct shapes not in exclude, drawn fresh per check by the referee.
+# Matmul draws from every legal tile multiple (P1's ranges); the row-wise ops from every row count,
+# ragged included, at Qwen3's widths.
+
+def _distinct(draw, n, exclude):
+    out = []
+    while len(out) < n:
+        s = draw()
+        if s not in exclude and s not in out:
+            out.append(s)
+    return out
+
+
+def _matmul_heldout(r, n, exclude):
+    return _distinct(lambda: (128 * int(r.integers(4, 49)), 128 * int(r.integers(1, 5)),
+                              512 * int(r.integers(1, 13))), n, exclude)
+
+
+def _rows_heldout(widths, max_rows):
+    def draw(r, n, exclude):
+        return _distinct(lambda: (int(r.integers(1, max_rows + 1)), widths[int(r.integers(0, len(widths)))]),
+                         n, exclude)
+    return draw
+
+
+def _same_out(shape):
+    return (tuple(shape), _bf16())
+
+
 # ---------------------------------------------------------------- the registry
 
 def _dev(level):
@@ -166,6 +200,7 @@ OPS = {
     "matmul": dict(
         level=9, entry="nki_matmul_tiled_", names=("lhsT", "rhs"),
         make_inputs=_matmul_inputs, ref=_matmul_ref,
+        out=lambda s: ((s[1], s[2]), _bf16()), heldout=_matmul_heldout,
         flops=lambda s: 2 * s[0] * s[1] * s[2],
         sim_shapes=_dev(9),
         time_shapes=[_mm("gate_up", TOKENS), _mm("q_proj", TOKENS)],
@@ -184,6 +219,7 @@ OPS = {
     "rmsnorm": dict(
         level=10, entry="qwen3_rmsnorm", names=("x", "w"),
         make_inputs=_rmsnorm_inputs, ref=_rmsnorm_ref,
+        out=_same_out, heldout=_rows_heldout((128, 4096), 4096),
         flops=lambda s: 4 * s[0] * s[1],
         sim_shapes=_dev(10),
         time_shapes=[(NORM_TOKENS, 4096), (NORM_TOKENS * 32 // TP, 128)],
@@ -198,6 +234,7 @@ OPS = {
     "copy": dict(
         level=11, entry="copy_floor", names=("x",),
         make_inputs=_copy_inputs, ref=_copy_ref,
+        out=_same_out, heldout=_rows_heldout((128, 4096), 4096),
         flops=lambda s: 0,
         sim_shapes=_dev(11),
         time_shapes=[(NORM_TOKENS, 4096), (NORM_TOKENS * 32 // TP, 128)],   # = RMSNorm's: its floor
@@ -210,6 +247,7 @@ OPS = {
     "swiglu": dict(
         level=12, entry="qwen3_swiglu", names=("gate", "up"),
         make_inputs=_swiglu_inputs, ref=_swiglu_ref,
+        out=_same_out, heldout=_rows_heldout((12288 // TP,), 2048),
         flops=lambda s: 5 * s[0] * s[1],
         sim_shapes=_dev(12),
         time_shapes=[(TOKENS, 12288 // TP)],
