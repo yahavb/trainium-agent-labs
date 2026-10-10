@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kernel-agent v2 — runs</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body data-palette="#3987e5,#d95926,#199e70,#c98500,#d55181,#008300" data-mode="dark">
+<header class="top">
+  <h1>kernel-agent v2</h1>
+  <span class="sub">traces from runs/ — results at the top</span>
+  <span class="spacer"></span>
+  <span class="live idle" id="live"><span class="dot"></span>idle</span>
+  <label class="sub" style="display:flex;align-items:center;gap:6px;">
+    <input type="checkbox" id="auto" checked> auto
+  </label>
+</header>
+
+<main>
+  <section>
+    <h2>Results</h2>
+    <div class="kpis" id="kpis"></div>
+  </section>
+
+  <section class="row">
+    <div class="panel">
+      <h3>Tokens per attempt, by component</h3>
+      <p class="hint">estimated chars/4 per prompt part; the API's own count is the line.
+         The challenge calls this graph the most interesting artifact — where the window
+         went, per attempt.</p>
+      <div id="tokchart"></div>
+      <div class="legend" id="toklegend"></div>
+    </div>
+    <div class="panel">
+      <h3>Failure taxonomy, all runs</h3>
+      <p class="hint">every failed attempt, grouped by named mode.</p>
+      <div id="taxchart"></div>
+    </div>
+  </section>
+
+  <section class="row">
+    <div class="panel">
+      <h3>Runs</h3>
+      <p class="hint">click a row to open its traces below.</p>
+      <table id="runstable">
+        <thead><tr>
+          <th>run</th><th>model</th><th>levels</th><th>cfg</th><th>solved</th>
+          <th>attempts</th><th>status</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="panel">
+      <h3>Calibration</h3>
+      <p class="hint">confidence claims vs verified result. A wrong &lsquo;high&rsquo; is
+         scored worse than an honest &lsquo;low&rsquo;.</p>
+      <div id="calibration"></div>
+    </div>
+  </section>
+
+  <section id="trace-section" style="display:none">
+    <h2>Traces — <span id="trace-run-name"></span></h2>
+    <div id="trace"></div>
+  </section>
+</main>
+
+<footer>
+  agent: <code class="inline">python agent.py --all --rounds 8 --samples 4</code>
+  &middot; sync from the pod: <code class="inline">./sync.sh down</code>
+  &middot; this page polls every 3 s while a run is live.
+</footer>
+
+<script src="/app.js"></script>
+</body>
+</html>
