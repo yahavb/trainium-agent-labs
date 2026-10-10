@@ -1,0 +1,4 @@
+{"layers": 4, "t": 100, "rel_l2_vs_hf_fp32": 0.5210290551185608, "max_rel": 0.154780313372612, "rel_l2_torch_bf16_ref_vs_hf": 0.007455927319824696, "rel_l2_kernel_vs_torch_bf16_ref": 0.5185503363609314}
+{"layers": 4, "t": 100, "rel_l2_vs_hf_fp32": 0.004709569271653891, "max_rel": 0.0046458314172923565, "rel_l2_torch_bf16_ref_vs_hf": 0.010054092854261398, "rel_l2_kernel_vs_torch_bf16_ref": 0.01144324615597725}
+{"layers": 36, "t": 100, "rel_l2_vs_hf_fp32": 0.009949509054422379, "max_rel": 0.007453971542418003, "next_token_hf": " Kernel", "next_token_kernel": " Kernel", "argmax_match": true, "top5_overlap": 5, "logits_rel_l2": 0.00986951868981123}
+{"layers": 36, "t": 100, "rel_l2_vs_hf_fp32": 0.008997977711260319, "max_rel": 0.0056260996498167515, "next_token_hf": " Kernel", "next_token_kernel": " Kernel", "argmax_match": true, "top5_overlap": 5, "logits_rel_l2": 0.009012043476104736}

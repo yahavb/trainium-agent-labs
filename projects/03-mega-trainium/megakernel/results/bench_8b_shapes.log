@@ -1,0 +1,136 @@
+WARNING:root:Defaulting to PJRT_DEVICE=CPU
+INFO 10-10 15:46:15 [__init__.py:44] Available plugins for group vllm.platform_plugins:
+INFO 10-10 15:46:15 [__init__.py:46] - neuron -> vllm_neuron:register
+INFO 10-10 15:46:15 [__init__.py:49] All plugins in this group will be loaded. Set `VLLM_PLUGINS` to control which plugins to load.
+INFO 10-10 15:46:15 [__init__.py:237] Platform plugin neuron is activated
+2026-10-10 15:46:15,910 - INFO - port_hold_patch.py:204 - Port-hold patch applied (EADDRINUSE file-rendezvous)
+2026-10-10 15:46:15,910 - INFO - port_hold_patch.py:204 - Port-hold patch applied (EADDRINUSE file-rendezvous)
+2026-10-10 15:46:24,701 - INFO - xla_collectives.py:214 - ✓ Custom XLA implementations registered via torch.library.impl (all_reduce, all_gather, reduce_scatter, all_to_all)
+2026-10-10 15:46:24,706 - INFO - backend.py:226 - Compilation cache key: f39de8e073895359ebfe4e4422ed01cd
+2026-10-10 15:46:24,709 - INFO - backend.py:241 - Local cache hit for key: f39de8e073895359ebfe4e4422ed01cd
+L=1: per-op torch.compile(neuron_libtorch): 1.208 ms  (compile 0.4s)
+2026-10-10 15:46:32,588 - INFO - backend.py:226 - Compilation cache key: 1675636a99b963cdaf0da03323e3c8dc
+2026-10-10 15:46:32,588 - INFO - cache.py:84 - Local cache miss for key: 1675636a99b963cdaf0da03323e3c8dc
+2026-10-10 15:46:32,589 - INFO - cache.py:346 - Acquired compilation lock for cache: /root/.cache/neuron_libtorch/neuron/compile_cache/1675636a99b963cdaf0da03323e3c8dc
+2026-10-10 15:46:32,594 - INFO - capture_backend.py:223 - FX graph - /root/.cache/neuron_libtorch/neuron/compile_cache/1675636a99b963cdaf0da03323e3c8dc/fxgraph.txt
+2026-10-10 15:46:32,595 - INFO - capture_backend.py:247 - Example inputs - /root/.cache/neuron_libtorch/neuron/compile_cache/1675636a99b963cdaf0da03323e3c8dc/example_inputs.txt
+2026-10-10 15:46:32,602 - INFO - capture_backend.py:201 - FX Pass metadata: {'device_rewriter': {'rewrite_count': 0}, 'nki_kernel_backend_config_pass': {'kernel_call_count': 1}, 'aliasing_output_rewrite': {'io_map': {}, 'original_output_count': 1}, 'inplace_to_outofplace': {}, 'collective_replica_groups': {'resolved_count': 0}}
+2026-10-10 15:46:32,639 - INFO - backend.py:415 - Compiling...
+2026-10-10 15:46:42,882 - INFO - backend.py:444 - Compilation complete in 10.24 seconds
+2026-10-10 15:46:42,882 - INFO - backend.py:692 - Compilation time split - FX to HLO: 0.04s | Compile: [91m10.24[0ms | Total: [91m10.28[0ms
+2026-10-10 15:46:42,882 - INFO - cache.py:644 - Stored compilation artifacts in local cache: /root/.cache/neuron_libtorch/neuron/compile_cache/1675636a99b963cdaf0da03323e3c8dc
+L=1: megakernel (one launch): 0.914 ms  (compile 18.3s)
+L=1: HBM floor at 736 GB/s = 0.530 ms;  weights 0.39 GB
+2026-10-10 15:46:46,899 - INFO - backend.py:226 - Compilation cache key: 8130a39a0a78ba3824c16ff55e9f148d
+2026-10-10 15:46:46,899 - INFO - cache.py:84 - Local cache miss for key: 8130a39a0a78ba3824c16ff55e9f148d
+2026-10-10 15:46:46,900 - INFO - cache.py:346 - Acquired compilation lock for cache: /root/.cache/neuron_libtorch/neuron/compile_cache/8130a39a0a78ba3824c16ff55e9f148d
+2026-10-10 15:46:46,909 - INFO - capture_backend.py:223 - FX graph - /root/.cache/neuron_libtorch/neuron/compile_cache/8130a39a0a78ba3824c16ff55e9f148d/fxgraph.txt
+2026-10-10 15:46:46,909 - INFO - capture_backend.py:247 - Example inputs - /root/.cache/neuron_libtorch/neuron/compile_cache/8130a39a0a78ba3824c16ff55e9f148d/example_inputs.txt
+2026-10-10 15:46:46,953 - INFO - capture_backend.py:201 - FX Pass metadata: {'device_rewriter': {'rewrite_count': 2}, 'nki_kernel_backend_config_pass': {'kernel_call_count': 0}, 'aliasing_output_rewrite': {'io_map': {}, 'original_output_count': 1}, 'inplace_to_outofplace': {}, 'collective_replica_groups': {'resolved_count': 0}}
+2026-10-10 15:46:46,987 - INFO - backend.py:415 - Compiling...
+2026-10-10 15:47:00,414 - INFO - backend.py:444 - Compilation complete in 13.43 seconds
+2026-10-10 15:47:00,415 - INFO - backend.py:692 - Compilation time split - FX to HLO: 0.03s | Compile: [91m13.43[0ms | Total: [91m13.46[0ms
+2026-10-10 15:47:00,415 - INFO - cache.py:644 - Stored compilation artifacts in local cache: /root/.cache/neuron_libtorch/neuron/compile_cache/8130a39a0a78ba3824c16ff55e9f148d
+L=2: per-op torch.compile(neuron_libtorch): 2.630 ms  (compile 14.0s)
+2026-10-10 15:47:15,421 - INFO - backend.py:226 - Compilation cache key: 3a829817b0652e57570ae1312bb12d32
+2026-10-10 15:47:15,421 - INFO - cache.py:84 - Local cache miss for key: 3a829817b0652e57570ae1312bb12d32
+2026-10-10 15:47:15,422 - INFO - cache.py:346 - Acquired compilation lock for cache: /root/.cache/neuron_libtorch/neuron/compile_cache/3a829817b0652e57570ae1312bb12d32
+2026-10-10 15:47:15,428 - INFO - capture_backend.py:223 - FX graph - /root/.cache/neuron_libtorch/neuron/compile_cache/3a829817b0652e57570ae1312bb12d32/fxgraph.txt
+2026-10-10 15:47:15,428 - INFO - capture_backend.py:247 - Example inputs - /root/.cache/neuron_libtorch/neuron/compile_cache/3a829817b0652e57570ae1312bb12d32/example_inputs.txt
+2026-10-10 15:47:15,435 - INFO - capture_backend.py:201 - FX Pass metadata: {'device_rewriter': {'rewrite_count': 0}, 'nki_kernel_backend_config_pass': {'kernel_call_count': 1}, 'aliasing_output_rewrite': {'io_map': {}, 'original_output_count': 1}, 'inplace_to_outofplace': {}, 'collective_replica_groups': {'resolved_count': 0}}
+2026-10-10 15:47:15,441 - INFO - backend.py:415 - Compiling...
+2026-10-10 15:47:31,392 - INFO - backend.py:444 - Compilation complete in 15.95 seconds
+2026-10-10 15:47:31,392 - INFO - backend.py:692 - Compilation time split - FX to HLO: 0.01s | Compile: [91m15.95[0ms | Total: [91m15.96[0ms
+2026-10-10 15:47:31,392 - INFO - cache.py:644 - Stored compilation artifacts in local cache: /root/.cache/neuron_libtorch/neuron/compile_cache/3a829817b0652e57570ae1312bb12d32
+L=2: megakernel (one launch): 1.659 ms  (compile 31.0s)
+L=2: HBM floor at 736 GB/s = 1.060 ms;  weights 0.77 GB
+2026-10-10 15:47:37,548 - INFO - backend.py:226 - Compilation cache key: 07a1454aaa9f4f9ec0dd82647b9da053
+2026-10-10 15:47:37,548 - INFO - cache.py:84 - Local cache miss for key: 07a1454aaa9f4f9ec0dd82647b9da053
+2026-10-10 15:47:37,549 - INFO - cache.py:346 - Acquired compilation lock for cache: /root/.cache/neuron_libtorch/neuron/compile_cache/07a1454aaa9f4f9ec0dd82647b9da053
+2026-10-10 15:47:37,566 - INFO - capture_backend.py:223 - FX graph - /root/.cache/neuron_libtorch/neuron/compile_cache/07a1454aaa9f4f9ec0dd82647b9da053/fxgraph.txt
+2026-10-10 15:47:37,566 - INFO - capture_backend.py:247 - Example inputs - /root/.cache/neuron_libtorch/neuron/compile_cache/07a1454aaa9f4f9ec0dd82647b9da053/example_inputs.txt
+2026-10-10 15:47:37,647 - INFO - capture_backend.py:201 - FX Pass metadata: {'device_rewriter': {'rewrite_count': 4}, 'nki_kernel_backend_config_pass': {'kernel_call_count': 0}, 'aliasing_output_rewrite': {'io_map': {}, 'original_output_count': 1}, 'inplace_to_outofplace': {}, 'collective_replica_groups': {'resolved_count': 0}}
+2026-10-10 15:47:37,691 - INFO - backend.py:415 - Compiling...
+2026-10-10 15:48:00,958 - INFO - backend.py:444 - Compilation complete in 23.27 seconds
+2026-10-10 15:48:00,958 - INFO - backend.py:692 - Compilation time split - FX to HLO: 0.04s | Compile: [91m23.27[0ms | Total: [91m23.31[0ms
+2026-10-10 15:48:00,959 - INFO - cache.py:644 - Stored compilation artifacts in local cache: /root/.cache/neuron_libtorch/neuron/compile_cache/07a1454aaa9f4f9ec0dd82647b9da053
+L=4: per-op torch.compile(neuron_libtorch): 5.036 ms  (compile 24.3s)
+2026-10-10 15:48:32,398 - INFO - backend.py:226 - Compilation cache key: 295886eadc415b1e03244fbb4775496b
+2026-10-10 15:48:32,398 - INFO - cache.py:84 - Local cache miss for key: 295886eadc415b1e03244fbb4775496b
+2026-10-10 15:48:32,399 - INFO - cache.py:346 - Acquired compilation lock for cache: /root/.cache/neuron_libtorch/neuron/compile_cache/295886eadc415b1e03244fbb4775496b
+2026-10-10 15:48:32,405 - INFO - capture_backend.py:223 - FX graph - /root/.cache/neuron_libtorch/neuron/compile_cache/295886eadc415b1e03244fbb4775496b/fxgraph.txt
+2026-10-10 15:48:32,405 - INFO - capture_backend.py:247 - Example inputs - /root/.cache/neuron_libtorch/neuron/compile_cache/295886eadc415b1e03244fbb4775496b/example_inputs.txt
+2026-10-10 15:48:32,412 - INFO - capture_backend.py:201 - FX Pass metadata: {'device_rewriter': {'rewrite_count': 0}, 'nki_kernel_backend_config_pass': {'kernel_call_count': 1}, 'aliasing_output_rewrite': {'io_map': {}, 'original_output_count': 1}, 'inplace_to_outofplace': {}, 'collective_replica_groups': {'resolved_count': 0}}
+2026-10-10 15:48:32,419 - INFO - backend.py:415 - Compiling...
+2026-10-10 15:49:05,075 - INFO - backend.py:444 - Compilation complete in 32.66 seconds
+2026-10-10 15:49:05,075 - INFO - backend.py:692 - Compilation time split - FX to HLO: 0.01s | Compile: [91m32.66[0ms | Total: [91m32.66[0ms
+2026-10-10 15:49:05,076 - INFO - cache.py:644 - Stored compilation artifacts in local cache: /root/.cache/neuron_libtorch/neuron/compile_cache/295886eadc415b1e03244fbb4775496b
+L=4: megakernel (one launch): 3.118 ms  (compile 64.1s)
+L=4: HBM floor at 736 GB/s = 2.120 ms;  weights 1.54 GB
+[
+ {
+  "layers": 1,
+  "H": 4096,
+  "I": 12288,
+  "q": 32,
+  "kv": 8,
+  "d": 128,
+  "S_ctx": 1024,
+  "S_max": 2048,
+  "weight_bytes": 385875968,
+  "kv_read_bytes": 4194304,
+  "hbm_floor_ms_at_736GBps": 0.53,
+  "baseline_compile_s": 0.4,
+  "baseline_ms": 1.208,
+  "mega_compile_s": 18.3,
+  "mega_ms": 0.914
+ },
+ {
+  "layers": 2,
+  "H": 4096,
+  "I": 12288,
+  "q": 32,
+  "kv": 8,
+  "d": 128,
+  "S_ctx": 1024,
+  "S_max": 2048,
+  "weight_bytes": 771751936,
+  "kv_read_bytes": 8388608,
+  "hbm_floor_ms_at_736GBps": 1.06,
+  "baseline_compile_s": 14.0,
+  "baseline_ms": 2.63,
+  "mega_compile_s": 31.0,
+  "mega_ms": 1.659
+ },
+ {
+  "layers": 4,
+  "H": 4096,
+  "I": 12288,
+  "q": 32,
+  "kv": 8,
+  "d": 128,
+  "S_ctx": 1024,
+  "S_max": 2048,
+  "weight_bytes": 1543503872,
+  "kv_read_bytes": 16777216,
+  "hbm_floor_ms_at_736GBps": 2.12,
+  "baseline_compile_s": 24.3,
+  "baseline_ms": 5.036,
+  "mega_compile_s": 64.1,
+  "mega_ms": 3.118
+ }
+]
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.

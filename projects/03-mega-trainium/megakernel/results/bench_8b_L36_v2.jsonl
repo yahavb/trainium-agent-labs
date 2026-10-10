@@ -1,0 +1,1 @@
+{"layers": 36, "kernel": "qwen3_decode_layers", "mega_kw": {}, "H": 4096, "I": 12288, "q": 32, "kv": 8, "d": 128, "S_ctx": 1024, "S_max": 2048, "weight_bytes": 13891534848, "kv_read_bytes": 150994944, "hbm_floor_ms_at_736GBps": 19.08, "mega_compile_s": 638.5, "mega_ms": 24.998}

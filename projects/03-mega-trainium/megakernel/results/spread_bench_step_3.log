@@ -1,0 +1,16 @@
+WARNING:root:Defaulting to PJRT_DEVICE=CPU
+INFO 10-10 20:07:09 [__init__.py:44] Available plugins for group vllm.platform_plugins:
+INFO 10-10 20:07:09 [__init__.py:46] - neuron -> vllm_neuron:register
+INFO 10-10 20:07:09 [__init__.py:49] All plugins in this group will be loaded. Set `VLLM_PLUGINS` to control which plugins to load.
+INFO 10-10 20:07:09 [__init__.py:237] Platform plugin neuron is activated
+2026-10-10 20:07:09,983 - INFO - port_hold_patch.py:204 - Port-hold patch applied (EADDRINUSE file-rendezvous)
+2026-10-10 20:07:09,983 - INFO - port_hold_patch.py:204 - Port-hold patch applied (EADDRINUSE file-rendezvous)
+HBM floor (layers + LM head + KV, at 736 GB/s): 20.77 ms
+2026-10-10 20:08:12,998 - INFO - xla_collectives.py:214 - ✓ Custom XLA implementations registered via torch.library.impl (all_reduce, all_gather, reduce_scatter, all_to_all)
+2026-10-10 20:08:13,068 - INFO - backend.py:226 - Compilation cache key: aae2161d31c392b6d89a2906d007198c
+2026-10-10 20:08:13,072 - INFO - backend.py:241 - Local cache hit for key: aae2161d31c392b6d89a2906d007198c
+per-op torch.compile full step: 47.504 ms (compile 9.1s)
+2026-10-10 20:08:24,447 - INFO - backend.py:226 - Compilation cache key: 684543f04e9fccad6ad99b3ef3b596cb
+2026-10-10 20:08:24,447 - INFO - backend.py:241 - Local cache hit for key: 684543f04e9fccad6ad99b3ef3b596cb
+one-launch decode step: 27.714 ms (compile 2.3s)
+{"layers": 36, "hwdge_oproj": false, "resident": true, "tiled_head": false, "S_ctx": 1024, "weight_bytes": 15136194560, "kv_read_bytes": 150994944, "hbm_floor_ms_at_736GBps": 20.771, "baseline_compile_s": 9.1, "baseline_ms": 47.504, "mega_compile_s": 2.3, "mega_ms": 27.714}

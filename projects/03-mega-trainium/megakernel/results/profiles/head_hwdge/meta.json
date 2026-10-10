@@ -1,0 +1,14 @@
+{
+ "tag": "head_hwdge",
+ "kernel": "qwen3_decode_step:qwen3_head_parts",
+ "layers": 0,
+ "H": 4096,
+ "I": 12288,
+ "q": 32,
+ "kv": 8,
+ "d": 128,
+ "S_ctx": 1024,
+ "S_max": 2048,
+ "neff": "/workspace/projects/03-megakernel/results/profiles/head_hwdge/kernel.neff",
+ "ntff": "/workspace/projects/03-megakernel/results/profiles/head_hwdge/profile_exec_2.ntff"
+}

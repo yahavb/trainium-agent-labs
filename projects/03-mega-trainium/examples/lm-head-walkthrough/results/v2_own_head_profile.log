@@ -1,0 +1,24 @@
+compile+run 34s
+2026/10/10 21:46:50 WARN: OapiRequestValidatorWithOptions called with an OpenAPI spec that has `Servers` set. This may lead to an HTTP 400 with `no matching operation was found` when sending a valid request, as the validator performs `Host` header validation. If you're expecting `Host` header validation, you can silence this warning by setting `Options.SilenceServersWarning = true`. See https://github.com/deepmap/oapi-codegen/issues/882 for more information.
+All of the available Neuron Explorer metrics are viewable as Parquet files.
+These are saved to: /root/mega-trainium/megakernel/results/profiles/ex_head_tiled/parquet/profiles/global/ex_head_tiled@latest
+Schema info is available in these places:
+  1. Installed-version schema: run `neuron-explorer --show-profile-schema`
+  2. The SchemaFields table in the output Parquet (one row per table/field, queryable via DuckDB, the Database Viewer widget, or the API server)
+  3. Online reference: https://awsdocs-neuron.readthedocs-hosted.com/en/latest/tools/neuron-explorer/profile-schema-reference.html
+  Note: the online reference may not exactly match your installed neuron-explorer version.
+View profile at http://localhost:3001/profile/ex_head_tiled (start the server first with: neuron-explorer view --data-path /root/mega-trainium/megakernel/results/profiles/ex_head_tiled/parquet)
+{
+ "tag": "ex_head_tiled",
+ "kernel": "qwen3_decode_step:qwen3_head_parts_tiled",
+ "layers": 1,
+ "H": 4096,
+ "I": 12288,
+ "q": 32,
+ "kv": 8,
+ "d": 128,
+ "S_ctx": 1024,
+ "S_max": 2048,
+ "neff": "/root/mega-trainium/megakernel/results/profiles/ex_head_tiled/kernel.neff",
+ "ntff": "/root/mega-trainium/megakernel/results/profiles/ex_head_tiled/profile_exec_2.ntff"
+}

@@ -1,0 +1,10 @@
+ "S_ctx": 1024,
+ "S_max": 2048,
+ "neff": "/workspace/projects/03-megakernel/results/profiles/base_L1/kernel.neff",
+ "ntff": "/workspace/projects/03-megakernel/results/profiles/base_L1/profile_exec_2.ntff"
+}
+ "S_ctx": 1024,
+ "S_max": 2048,
+ "neff": "/workspace/projects/03-megakernel/results/profiles/base_L2/kernel.neff",
+ "ntff": "/workspace/projects/03-megakernel/results/profiles/base_L2/profile_exec_2.ntff"
+}

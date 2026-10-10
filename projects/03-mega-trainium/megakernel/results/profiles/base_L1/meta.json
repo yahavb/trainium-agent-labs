@@ -1,0 +1,14 @@
+{
+ "tag": "base_L1",
+ "kernel": "qwen3_megakernel:qwen3_decode_layers",
+ "layers": 1,
+ "H": 4096,
+ "I": 12288,
+ "q": 32,
+ "kv": 8,
+ "d": 128,
+ "S_ctx": 1024,
+ "S_max": 2048,
+ "neff": "/workspace/projects/03-megakernel/results/profiles/base_L1/kernel.neff",
+ "ntff": "/workspace/projects/03-megakernel/results/profiles/base_L1/profile_exec_2.ntff"
+}

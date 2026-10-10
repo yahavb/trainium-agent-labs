@@ -1,0 +1,96 @@
+WARNING:root:Defaulting to PJRT_DEVICE=CPU
+INFO 10-10 19:36:26 [__init__.py:44] Available plugins for group vllm.platform_plugins:
+INFO 10-10 19:36:26 [__init__.py:46] - neuron -> vllm_neuron:register
+INFO 10-10 19:36:26 [__init__.py:49] All plugins in this group will be loaded. Set `VLLM_PLUGINS` to control which plugins to load.
+INFO 10-10 19:36:26 [__init__.py:237] Platform plugin neuron is activated
+2026-10-10 19:36:26,405 - INFO - port_hold_patch.py:204 - Port-hold patch applied (EADDRINUSE file-rendezvous)
+2026-10-10 19:36:26,405 - INFO - port_hold_patch.py:204 - Port-hold patch applied (EADDRINUSE file-rendezvous)
+HBM floor (layers + LM head + KV, at 736 GB/s): 20.77 ms
+2026-10-10 19:37:39,345 - INFO - xla_collectives.py:214 - ✓ Custom XLA implementations registered via torch.library.impl (all_reduce, all_gather, reduce_scatter, all_to_all)
+2026-10-10 19:37:39,415 - INFO - backend.py:226 - Compilation cache key: aae2161d31c392b6d89a2906d007198c
+2026-10-10 19:37:39,420 - INFO - backend.py:241 - Local cache hit for key: aae2161d31c392b6d89a2906d007198c
+per-op torch.compile full step: 47.579 ms (compile 9.2s)
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling t2026-10-10 19:42:56,165 - INFO - backend.py:226 - Compilation cache key: 684543f04e9fccad6ad99b3ef3b596cb
+2026-10-10 19:42:56,165 - INFO - cache.py:84 - Local cache miss for key: 684543f04e9fccad6ad99b3ef3b596cb
+2026-10-10 19:42:56,166 - INFO - cache.py:346 - Acquired compilation lock for cache: /root/.cache/neuron_libtorch/neuron/compile_cache/684543f04e9fccad6ad99b3ef3b596cb
+2026-10-10 19:42:56,171 - INFO - capture_backend.py:223 - FX graph - /root/.cache/neuron_libtorch/neuron/compile_cache/684543f04e9fccad6ad99b3ef3b596cb/fxgraph.txt
+2026-10-10 19:42:56,171 - INFO - capture_backend.py:247 - Example inputs - /root/.cache/neuron_libtorch/neuron/compile_cache/684543f04e9fccad6ad99b3ef3b596cb/example_inputs.txt
+2026-10-10 19:42:56,184 - INFO - capture_backend.py:201 - FX Pass metadata: {'device_rewriter': {'rewrite_count': 0}, 'nki_kernel_backend_config_pass': {'kernel_call_count': 1}, 'aliasing_output_rewrite': {'io_map': {}, 'original_output_count': 2}, 'inplace_to_outofplace': {}, 'collective_replica_groups': {'resolved_count': 0}}
+2026-10-10 19:42:56,225 - INFO - backend.py:415 - Compiling...
+2026-10-10 19:49:12,889 - INFO - backend.py:444 - Compilation complete in 376.66 seconds
+2026-10-10 19:49:12,889 - INFO - backend.py:692 - Compilation time split - FX to HLO: 0.04s | Compile: [91m376.67[0ms | Total: [91m376.71[0ms
+2026-10-10 19:49:12,890 - INFO - cache.py:644 - Stored compilation artifacts in local cache: /root/.cache/neuron_libtorch/neuron/compile_cache/684543f04e9fccad6ad99b3ef3b596cb
+one-launch decode step: 27.739 ms (compile 686.6s)
+{"layers": 36, "hwdge_oproj": false, "resident": true, "S_ctx": 1024, "weight_bytes": 15136194560, "kv_read_bytes": 150994944, "hbm_floor_ms_at_736GBps": 20.771, "baseline_compile_s": 9.2, "baseline_ms": 47.579, "mega_compile_s": 686.6, "mega_ms": 27.739}
+ransposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.

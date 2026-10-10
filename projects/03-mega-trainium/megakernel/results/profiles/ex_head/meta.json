@@ -1,0 +1,14 @@
+{
+ "tag": "ex_head",
+ "kernel": "qwen3_decode_step:qwen3_head_parts",
+ "layers": 1,
+ "H": 4096,
+ "I": 12288,
+ "q": 32,
+ "kv": 8,
+ "d": 128,
+ "S_ctx": 1024,
+ "S_max": 2048,
+ "neff": "/root/mega-trainium/megakernel/results/profiles/ex_head/kernel.neff",
+ "ntff": "/root/mega-trainium/megakernel/results/profiles/ex_head/profile_exec_2.ntff"
+}

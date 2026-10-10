@@ -1,0 +1,10 @@
+# neuron compile/metric artifacts written by runs started from this directory
+c[0-9a-f]*/
+global_metric_store.json
+__pycache__/
+# profiler artifacts (regenerate with kernels/profile_mega.py); summary/bounds/meta JSON are kept
+results/profiles/*/inspect/
+results/profiles/*/parquet/
+results/profiles/*/*.ntff
+results/profiles/*/*.neff
+neuronxcc-*/

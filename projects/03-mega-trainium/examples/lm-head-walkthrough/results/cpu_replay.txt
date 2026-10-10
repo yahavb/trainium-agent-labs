@@ -1,0 +1,56 @@
+v0  nkilib output_projection_tkg (the library head)
+  device symptom: W_lm streamed by software DGE, 4,129 GpSimd DMA_DIRECT2D issued one at a time, ~230 GB/s per core
+  heuristics.retrieve('software DGE gpsimd dma_direct2d slow weight streaming')
+    [dge-swdge-consumes-gpsimd] Expect software DGE (gather/scatter, dynamic addressing) to consume GpSimd cycles and SBUF descriptor space; in GpSimd-bound kernels it becomes the bo
+        fix: Reduce indirect DMA count (gather larger contiguous blocks per index), move other GpSimd work to VectorE/ScalarE, or use scalar_offset+hwdge where the
+    [em-gpsimd-role] Reserve GpSimd for work the other engines cannot express (iota, triangular/causal masks, custom C++ ops, software DGE) and read per-instruction costs 
+        fix: nisa.iota / nisa.affine_select style ops on GpSimd; keep GpSimd free if the kernel relies on swdge gathers.
+    [op-gather-scatter-is-the-weak-spot] Treat gather/scatter/indirect patterns (embedding lookups, paged KV cache, interpolation, grid-sample) as the hardest class to make fast: they require
+        fix: Restructure data so indices select large contiguous blocks (>= 2 KiB per partition), gather 128 rows per DMA, hoist index generation, and keep GpSimd 
+
+v1  same head, weight DMAs on hardware DGE, two queues
+  device symptom: still DMA-bound; each transfer moves ~1.2 KB per partition
+  heuristics.retrieve('dma bytes per partition contiguous small transfers')
+    [dma-4kib-per-partition-saturates] Shape DMA transfers to cover as many partitions as possible with >= 4 KiB per partition (2 KiB minimum recommended) to approach peak bandwidth.
+        fix: Batch multiple tiles into one dma_copy: fp32 >= 512 elems, bf16 >= 1024, fp8 >= 2048 per partition for 2 KiB.
+    [dge-small-strided-gathers-are-descriptor-bound] Design gather-style memory-bound kernels (paged KV, embeddings, interpolation, grid-sample) around descriptor rate: one indirect DMA per index row is 
+        fix: Gather 128 rows per DMA (vector_offset of shape [128,1]) with the widest contiguous row slice possible; prefer block-contiguous layouts (e.g. page siz
+    [gpsimd-sb2sb-sendrecv-small-transfers] Use dma_engine=nisa.dma_engine.gpsimd_dma for LNC sendrecv when the per-partition free size is <= 256 elements (<=1024 bytes); otherwise use the regul
+        fix: if free_elems <= 256: nisa.sendrecv(..., dma_engine=nisa.dma_engine.gpsimd_dma) else nisa.sendrecv(...)
+
+v2a own head, first version: host-pre-tiled weights (32 KB contiguous per partition), weights stationary,
+    4 vocab tiles accumulating in one [P, 4] PSUM tile
+  nkiequiv check lm_head_core_shared_psum --profile small   (0.35 s wall)
+    verdict: EQUIVALENT  (accept)
+    all 32 output elements equal over the reals at profile 'small'
+    numerics: pass  cand rel err 7.1e-08, ref rel err 7.1e-08, limit 1e-05
+  device symptom: 14.5% rel-L2, tiles 0-2 of every 4-tile block lost one k-contribution
+  heuristics.retrieve('psum accumulation groups share one psum tile wrong result')
+    [mm-eight-outstanding-groups] Rotate output tiles across the 8 PSUM banks (8 x 2 KiB per partition) so TensorE can start the next accumulation group while VectorE/ScalarE evict the
+        fix: Allocate PSUM result tiles per (m,n) tile inside the loop so the allocator double/triple-buffers banks.
+    [cp-psum-accumulate-semantics] When reusing a PSUM tile across accumulation groups, be explicit with accumulate=False on the first matmul of each group (or allocate a fresh PSUM til
+        fix: nisa.nc_matmul(dst=psum, ..., accumulate=False) for k==0, accumulate=True otherwise.
+    [psum-bank-size-2kib-and-bank-cycling] Treat a PSUM bank as 2 KiB per partition (512 fp32) and place concurrent accumulations or transposes in different banks via address=(0, bank*2048) or 
+        fix: Allocate psum_bank_i = nl.ndarray(..., buffer=nl.psum, address=(0, i * 2048)) and alternate banks across concurrent groups.
+
+v2  own head, one PSUM tile per vocab tile (the fix)
+  nkiequiv check lm_head_core --profile small   (0.33 s wall)
+    verdict: EQUIVALENT  (accept)
+    all 32 output elements equal over the reals at profile 'small'
+    numerics: pass  cand rel err 7.1e-08, ref rel err 7.1e-08, limit 1e-05
+  nkiequiv check lm_head_core --profile full   (21.63 s wall)
+    verdict: EQUIVALENT  (accept)
+    all 1024 output elements equal over the reals at profile 'full'
+    numerics: pass  cand rel err 1.17e-07, ref rel err 1.21e-07, limit 1e-05
+
+control: v2 with one k-tile skipped (a deliberate bug the proof must reject)
+  nkiequiv check lm_head_core_skip_k --profile small   (0.35 s wall)
+    verdict: NOT_EQUIVALENT
+    output 0[0,0] differs: reference 0.629984, candidate 0.600097 (32 elements differ on inputs normal/seed=0)
+
+v3  v2 inside the full one-launch step, in the generate loop
+  device symptom: out-of-bounds indirect DMA (scalar DGE, GpSimd), nrta 1006, on the second token
+  heuristics.for_error('nrta 1006 out-of-bounds indirect DMA, scalar DGE on GpSimd, hardware DGE queues in the same kernel')
+    [dma-dge-mode-selection] Choose dge_mode deliberately: none (runtime pre-generated descriptors, static addresses only), swdge (GpSimd generates, needed for gather/scatter), hw
+    [op-gather-scatter-is-the-weak-spot] Treat gather/scatter/indirect patterns (embedding lookups, paged KV cache, interpolation, grid-sample) as the hardest class to make fast: they require
+    [dge-hwdge-trigger-from-scalar] Trigger hardware-DGE DMAs from ScalarE (engine=nisa.engine.scalar) when ScalarE has earlier independent compute, so descriptor generation hides behind

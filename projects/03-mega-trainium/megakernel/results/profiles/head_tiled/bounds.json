@@ -1,0 +1,205 @@
+{
+ "tag": "head_tiled",
+ "kernel": "qwen3_decode_step:qwen3_head_parts_tiled",
+ "layers": 0,
+ "necessary_MB": 1244.7,
+ "cores": {
+  "0": {
+   "bounds": {
+    "total_us": 2229.4,
+    "memory_bound_us": 2162.4,
+    "memory_bound_ideal_us": 1437.8,
+    "memory_no_reloads_us": 1430.7,
+    "compute_bound_us": 539.4,
+    "compute_ideal_flops_us": 7.9,
+    "compute_ideal_useful_us": 7.9,
+    "perfect_pipeline_us": 2162.4
+   },
+   "engine_active_us": {
+    "tensor": 539.4,
+    "vector": 103.2,
+    "scalar": 45.9,
+    "gpsimd": 5.2,
+    "sync": 45.6,
+    "dma": 2162.4
+   },
+   "bottleneck": "dma",
+   "dma_moved_MB": 625.4,
+   "dma_packets": 155,
+   "dma_avg_packet_B": 4035108,
+   "achieved_GBps": 280.5,
+   "phases": {
+    "start": {
+     "wall_us": 14.79,
+     "dma_active_us": 0.0,
+     "dma_MB": 0.0,
+     "n_windows": 1,
+     "tensor_us": 1.58,
+     "vector_us": 2.18,
+     "scalar_us": 1.9,
+     "gpsimd_us": 2.01,
+     "sync_us": 1.88,
+     "achieved_GBps": 0.0
+    },
+    "glue": {
+     "wall_us": 2207.03,
+     "dma_active_us": 2154.97,
+     "dma_MB": 621.24,
+     "n_windows": 7,
+     "tensor_us": 537.22,
+     "vector_us": 100.31,
+     "scalar_us": 42.08,
+     "gpsimd_us": 3.05,
+     "sync_us": 43.11,
+     "achieved_GBps": 281.48
+    },
+    "attn": {
+     "wall_us": 7.62,
+     "dma_active_us": 7.48,
+     "dma_MB": 4.2,
+     "n_windows": 6,
+     "tensor_us": 0.62,
+     "vector_us": 0.72,
+     "scalar_us": 1.88,
+     "gpsimd_us": 0.15,
+     "sync_us": 0.62,
+     "achieved_GBps": 551.22
+    }
+   },
+   "dma_idle": {
+    "total_us": 66.9,
+    "n_gaps": 4,
+    "largest_us": [
+     34.5,
+     15.9,
+     8.5,
+     8.0
+    ],
+    "by_source_us": {
+     "(no source)": 58.4,
+     "kernels/qwen3_decode_step.py:361": 8.5
+    }
+   },
+   "top_dma_variables": {
+    "W_tiled": {
+     "MB": 624.95,
+     "packets": 149
+    },
+    "output_1": {
+     "MB": 0.46,
+     "packets": 2
+    },
+    "embed": {
+     "MB": 0.01,
+     "packets": 1
+    },
+    "g_final": {
+     "MB": 0.01,
+     "packets": 1
+    },
+    "hidden": {
+     "MB": 0.01,
+     "packets": 1
+    },
+    "output_0": {
+     "MB": 0.01,
+     "packets": 1
+    }
+   }
+  },
+  "1": {
+   "bounds": {
+    "total_us": 2224.3,
+    "memory_bound_us": 1916.5,
+    "memory_bound_ideal_us": 1437.1,
+    "memory_no_reloads_us": 1430.7,
+    "compute_bound_us": 540.7,
+    "compute_ideal_flops_us": 7.9,
+    "compute_ideal_useful_us": 7.9,
+    "perfect_pipeline_us": 1916.5
+   },
+   "engine_active_us": {
+    "tensor": 540.7,
+    "vector": 98.3,
+    "scalar": 45.8,
+    "gpsimd": 2.7,
+    "sync": 44.7,
+    "dma": 1916.5
+   },
+   "bottleneck": "dma",
+   "dma_moved_MB": 625.1,
+   "dma_packets": 152,
+   "dma_avg_packet_B": 4112633,
+   "achieved_GBps": 281.0,
+   "phases": {
+    "start": {
+     "wall_us": 15.0,
+     "dma_active_us": 0.0,
+     "dma_MB": 0.0,
+     "n_windows": 1,
+     "tensor_us": 2.47,
+     "vector_us": 1.79,
+     "scalar_us": 1.81,
+     "gpsimd_us": 1.91,
+     "sync_us": 1.78,
+     "achieved_GBps": 0.0
+    },
+    "attn": {
+     "wall_us": 1.79,
+     "dma_active_us": 1.53,
+     "dma_MB": 0.0,
+     "n_windows": 5,
+     "tensor_us": 0.64,
+     "vector_us": 0.63,
+     "scalar_us": 0.71,
+     "gpsimd_us": 0.19,
+     "sync_us": 0.22,
+     "achieved_GBps": 0.0
+    },
+    "glue": {
+     "wall_us": 2207.55,
+     "dma_active_us": 1915.0,
+     "dma_MB": 625.12,
+     "n_windows": 5,
+     "tensor_us": 537.55,
+     "vector_us": 95.89,
+     "scalar_us": 43.24,
+     "gpsimd_us": 0.65,
+     "sync_us": 42.7,
+     "achieved_GBps": 283.17
+    }
+   },
+   "dma_idle": {
+    "total_us": 307.6,
+    "n_gaps": 3,
+    "largest_us": [
+     278.9,
+     15.9,
+     12.8
+    ],
+    "by_source_us": {
+     "(no source)": 294.8,
+     "kernels/qwen3_decode_step.py:361": 12.8
+    }
+   },
+   "top_dma_variables": {
+    "W_tiled": {
+     "MB": 624.95,
+     "packets": 149
+    },
+    "output_1": {
+     "MB": 0.15,
+     "packets": 1
+    },
+    "g_final": {
+     "MB": 0.01,
+     "packets": 1
+    },
+    "hidden": {
+     "MB": 0.01,
+     "packets": 1
+    }
+   }
+  }
+ }
+}

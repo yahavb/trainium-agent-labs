@@ -1,0 +1,37 @@
+WARNING:root:Defaulting to PJRT_DEVICE=CPU
+INFO 10-10 16:05:30 [__init__.py:44] Available plugins for group vllm.platform_plugins:
+INFO 10-10 16:05:30 [__init__.py:46] - neuron -> vllm_neuron:register
+INFO 10-10 16:05:30 [__init__.py:49] All plugins in this group will be loaded. Set `VLLM_PLUGINS` to control which plugins to load.
+INFO 10-10 16:05:30 [__init__.py:237] Platform plugin neuron is activated
+2026-10-10 16:05:30,175 - INFO - port_hold_patch.py:204 - Port-hold patch applied (EADDRINUSE file-rendezvous)
+2026-10-10 16:05:30,175 - INFO - port_hold_patch.py:204 - Port-hold patch applied (EADDRINUSE file-rendezvous)
+2026-10-10 16:06:24,538 - INFO - xla_collectives.py:214 - ✓ Custom XLA implementations registered via torch.library.impl (all_reduce, all_gather, reduce_scatter, all_to_all)
+2026-10-10 16:06:24,608 - INFO - backend.py:226 - Compilation cache key: 2f0c39a39a788bd558a5d38b1de9b243
+2026-10-10 16:06:24,608 - INFO - cache.py:84 - Local cache miss for key: 2f0c39a39a788bd558a5d38b1de9b243
+2026-10-10 16:06:24,609 - INFO - cache.py:346 - Acquired compilation lock for cache: /root/.cache/neuron_libtorch/neuron/compile_cache/2f0c39a39a788bd558a5d38b1de9b243
+2026-10-10 16:06:24,701 - INFO - capture_backend.py:223 - FX graph - /root/.cache/neuron_libtorch/neuron/compile_cache/2f0c39a39a788bd558a5d38b1de9b243/fxgraph.txt
+2026-10-10 16:06:24,701 - INFO - capture_backend.py:247 - Example inputs - /root/.cache/neuron_libtorch/neuron/compile_cache/2f0c39a39a788bd558a5d38b1de9b243/example_inputs.txt
+2026-10-10 16:06:25,430 - INFO - capture_backend.py:201 - FX Pass metadata: {'device_rewriter': {'rewrite_count': 36}, 'nki_kernel_backend_config_pass': {'kernel_call_count': 0}, 'aliasing_output_rewrite': {'io_map': {}, 'original_output_count': 1}, 'inplace_to_outofplace': {}, 'collective_replica_groups': {'resolved_count': 0}}
+2026-10-10 16:06:25,870 - INFO - backend.py:415 - Compiling...
+2026-10-10 16:10:18,114 - INFO - backend.py:444 - Compilation complete in 232.24 seconds
+2026-10-10 16:10:18,114 - INFO - backend.py:692 - Compilation time split - FX to HLO: 0.43s | Compile: [91m232.25[0ms | Total: [91m232.68[0ms
+2026-10-10 16:10:18,114 - INFO - cache.py:644 - Stored compilation artifacts in local cache: /root/.cache/neuron_libtorch/neuron/compile_cache/2f0c39a39a788bd558a5d38b1de9b243
+L=36: per-op torch.compile(neuron_libtorch): 45.348 ms  (compile 241.9s)
+L=36: HBM floor at 736 GB/s = 19.080 ms;  weights 13.89 GB
+[
+ {
+  "layers": 36,
+  "H": 4096,
+  "I": 12288,
+  "q": 32,
+  "kv": 8,
+  "d": 128,
+  "S_ctx": 1024,
+  "S_max": 2048,
+  "weight_bytes": 13891534848,
+  "kv_read_bytes": 150994944,
+  "hbm_floor_ms_at_736GBps": 19.08,
+  "baseline_compile_s": 241.9,
+  "baseline_ms": 45.348
+ }
+]
