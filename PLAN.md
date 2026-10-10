@@ -68,6 +68,7 @@ baseline 回溯校准（b39989f）：3 次解出置信度 0.90，保留集 16/16
 | ✅ 15:11 | v8 三个开关都已推送：SKELETON、L1FIX（b318e20）、TRUNCFIX（90b8c0a），默认关；E-div 在 feedback_v8.py 里常开 | 执行 1 | |
 | ⚠ 15:10 | liuyq 推了 89417dd：改了 v7 自己的 gate_nki.py，加一条 L1 规则——「每个 channel 单独 reduce」的写法模拟器放行、trn2 完整编译会拒，记 0.95 并回传改写代码。她那边 L1 4/10 对 0/10（完整编译验证），L2 5/10 对 8/10。HEAD 部署的 v7/v8 都会带上它；执行 2 离线核验会不会误伤（15:30） | liuyq / 执行 2 | analysis/gate_l1_check.md |
 | 15:15–15:45 | **D3a 快速测：只测我们的 v8**（teoguo 15:20：重点是做出我们自己的 v8 并测它）。**v8 = feedback_v8 + SKELETON + TRUNCFIX + L1FIX**（E-div 常开），代码 = HEAD（含 liuyq 的 89417dd，已核验不误伤，7bc96df），export 照 V7.md。117：v8 L1 ×1；118：v8 L4 ×2（关键）；119：v8 L3 ×1，再跑 v8 L1 ×1；116：v7 L2 相邻两个 run 轨迹相同就停，然后跑 v8 L2 ×2。v8 不行就退回 v7 | 执行 1 | level × 分数、第几轮解出、分钟数、截断次数、模型补对骨架几次 |
+| ⚠ 15:25 | liuyq 推了 81c37cf，改了 feedback_v8.py：SKELETON=1 时 gate 的改写（含她的 L1 改写）保持完整代码。**接受**：gate 只在 kernel 已经全对之后才出声，给的是编译器层面的修复。L1 的 v8 run 一律用含 81c37cf 的版本；117 那个如果是旧版本就跑完当对照。每个 v8 run 都要标明版本 | 总规划 → 执行 1 | 回报里每个 run 带 feedback_v8.py 的 md5 |
 | **15:40** | **D3a** E-div、SKELETON、L1FIX 各自采用还是不用。E-div：L3、L4 各 ≥4/5 且 L2 ≥2/5。SKELETON：L4 仍解出，并且没有任何一级变差。L1FIX：L1 有进展（分数升高或解出），其他级不变 | 总规划 + teoguo | |
 | 15:45–16:10 | v8（采用的开关全开）在 L1、L4 上各跑 5 次，L1 和 L4 各拆到 2 个座位（开了 E-div 样本才真正不同，拆分才有意义） | 执行 1 | 按 §4 格式回报，带不同轨迹数 |
 | 15:05–15:50 | **v7 逐项消融**：greedy 下每个变体跑 1 次就是那条轨迹。A1 PROMPT1=theirs、A2 CARD=theirs、A3 MESSAGES=v4、A4 REPAIR_PROMPT=theirs、A5 SAMPLING=theirs，各跑 L3 和 L4。回答「v7 里哪一项让 L3/L4 解出来」，方法分靠它；别的队在 L4 上做了 6 种反馈形式的对照 | 执行 1 | 一张表：变体 × L3/L4 的分数、第几轮解出、从第几轮和 v7 分叉 |
