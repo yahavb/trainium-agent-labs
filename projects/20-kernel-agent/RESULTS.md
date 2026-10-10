@@ -33,11 +33,11 @@ stage-by-stage plan in the prompt.
 ![How fast](assets/chart_2_speed.png)
 
 **Is it real?**
-* **Unseen and hostile inputs** (`holdout_check.py`): 228 cases — new sizes, a dimension of 1, ×50/×100
+* **Unseen and hostile inputs** (`checks/holdout_check.py`): 228 cases — new sizes, a dimension of 1, ×50/×100
   scaling, large means, constant rows. **210 pass, none gives wrong numbers**; the 18 failures are sizes that
-  aren't multiples of the tile size. Level 8 adds 24 more (`tests/check_attention.py`: zero-Q, constant-V,
+  aren't multiples of the tile size. Level 8 adds 24 more (`checks/check_attention.py`: zero-Q, constant-V,
   permuted K/V, large logits, odd shapes): 24/24.
-* **On the real Trainium2 chip** (`device_check.py`, `results/device/`): every level's current kernel is
+* **On the real Trainium2 chip** (`checks/device_check.py`, `results/device/`): every level's current kernel is
   correct on every official shape — **37 of 37 cases** (errors ≤ 3e-5 of the output's size): 34 in the full
   run, plus the re-solved level 11 (3/3) in a second run. (`all_levels.json` lists the level-8 kernel under
   its old file name; it is the same file as `solved/level08_attention.py`.) This caught one thing the simulator missed: the first level-11
@@ -45,7 +45,7 @@ stage-by-stage plan in the prompt.
   Lint now flags it; the agent's re-solve compiles and runs.
 * **Tolerance:** max |error| ≤ 0.02 × the reference output's RMS. Correct kernels land at 1e-7 – 3e-5 (CPU and
   device); every wrong variant in the mutation suite lands at 4.4 – 66 — two orders of magnitude either side.
-* **Does the checker catch real bugs?** `mutation_check.py` puts 13 attention bugs from our logs into the
+* **Does the checker catch real bugs?** `checks/mutation_check.py` puts 13 attention bugs from our logs into the
   level-8 kernel: **13/13 named in the right category**, with one documented blind spot (skipping the max
   subtraction passes, because no test input overflows exp).
 
@@ -120,7 +120,7 @@ with the stage plan **1,441**. The bloated level-8 prompt failed; the shorter, e
 * Most changes are switches (`--lint`, `--level-hints`, `--blocks`, …). Always on: the scoring fixes above,
   the level-2 text fix, and stricter re-checks.
 
-## Next steps (from an independent audit of the level-8 failures)
+## Next steps: solve level 8 without the stage plan (from an independent audit of its failures)
 
 * Level 8 fails on composition, not maths: it pastes the scores block's HBM stores into the middle of
   attention, sizes P as (seq, dim), and transposes V instead of P. Give **composable SBUF-to-SBUF stages**
@@ -139,25 +139,28 @@ python agent.py --level 2 $COMMON --repeat 6 --echo-check
 python agent.py --level 7 $COMMON --repeat 2 --seed-from solved/level04_matmul_tiled.py
 python agent.py --level 11 $COMMON --repeat 3 --blocks solved/level09_transpose_tensor_engine.py,solved/level03_matmul_single_tile.py
 python agent.py --level 8 $COMMON --repeat 2 --attention-plan
-python mutation_check.py; python holdout_check.py; python tests/check_attention.py solved/level08_attention.py
-NEURON_PLATFORM_TARGET_OVERRIDE=trn2 NEURON_RT_NUM_CORES=1 python device_check.py      # a free NeuronCore
+python checks/mutation_check.py; python checks/holdout_check.py; python checks/check_attention.py solved/level08_attention.py
+NEURON_PLATFORM_TARGET_OVERRIDE=trn2 NEURON_RT_NUM_CORES=1 python checks/device_check.py   # a free NeuronCore
 ```
 
 ## Files
 
-| file | what it is |
-|---|---|
-| `agent.py` | the loop, with our changes |
-| `nkibench.py` | the checker (bug fixes, stricter re-checks, levels 9–11) |
-| `lint.py` | the static check: every memory, shape and API mistake at once, with AWS doc excerpts |
-| `solved/` | every program the agent wrote that passed, with its re-check printout |
-| `holdout_check.py`, `device_check.py` | the two "is it real?" checks |
-| `ab.py`, `analysis/` | fair A/B runner, attempt-log analysis, chart script |
-| `mutation_check.py` | seeds 13 observed attention bugs into the level-8 kernel; the checker must name each |
-| `tests/`, `results/seat97-repair/` | level-8 independent checks (CPU and device) and the seat-97 evidence |
-| `optimized/` | four of the agent's kernels optimized by hand (team-written, labelled as such) |
-| `results/device/` | the real-chip results for every kernel |
-| `logs/attempts.tar.gz` | the attempt log: every attempt with its code, score, tokens and the feedback it got |
+```
+projects/20-kernel-agent/
+├── RESULTS.md            this note
+├── agent.py              the agent loop (prompting, retries, sample selection, telemetry)
+├── nkibench.py           the checker: references, test shapes, rules, simulator, tolerance, traffic bar
+├── lint.py               static check before simulation: every memory/shape/API mistake at once
+├── checks/               is it real?  holdout_check (228 unseen/hostile cases) · check_attention (24 level-8
+│                         cases) · mutation_check (13 seeded bugs) · device_check (+ level-8 device runner)
+├── solved/               every kernel the agent wrote that passed, with its re-check printout
+├── optimized/            four of those kernels optimized by hand (team-written, labelled)
+├── results/              device/ (real-chip results) · seat97-repair/ (level-8 evidence)
+├── logs/                 attempt log (1,418 attempts) + summary of the 1,096 failed level-8 attempts
+├── analysis/             trace_analysis (failure taxonomy), make_charts, ab (A/B runner)
+├── assets/               the diagram and charts
+└── reference_level1-4.py, kernelbench.py, try_level.py, CHALLENGE-kernel-agent.md   (from the original repo)
+```
 
 ## Rubric checklist
 
@@ -165,9 +168,9 @@ NEURON_PLATFORM_TARGET_OVERRIDE=trn2 NEURON_RT_NUM_CORES=1 python device_check.p
 |---|---|
 | the agent | `agent.py` (+ `lint.py`) |
 | verification harness, tolerance and reasoning | `nkibench.py`; tolerance and its justification under "Is it real?" |
-| eval set incl. hostile values | `holdout_check.py` (228 cases), `tests/check_attention.py` (24), `mutation_check.py` (13 bugs) |
-| failure taxonomy with counts | chart "What the model got wrong" (`assets/chart_4_failures.png`), `analysis/trace_analysis.py` |
+| eval set incl. hostile values | `checks/holdout_check.py` (228 cases), `checks/check_attention.py` (24), `checks/mutation_check.py` (13 bugs) |
+| failure taxonomy with counts | chart "What the model got wrong" (`assets/chart_4_failures.png`), `logs/level8_failures_summary.json`, `analysis/trace_analysis.py` |
 | token instrumentation | "Token budget" above; per attempt in the log |
-| attempt log | `logs/attempts.tar.gz`, `results/seat97-repair/agent-planned.jsonl` |
+| attempt log | `logs/attempts.tar.gz` (+ `logs/level8_failures_summary.json`), `results/seat97-repair/agent-planned.jsonl` |
 | one-page reproduction note | "Rerun it" above |
 | does the agent know when it failed? | it reports SOLVED only when every shape passes the harness, otherwise the best score and the failure; nothing is called verified that the harness did not pass |
