@@ -107,10 +107,13 @@ Keep the module name and existing ports unless my request says to change them.
 Return the complete updated module."""
 
 
-def fix_prompt(spec, code, fb):
-    """From verify.py's for_feedback.json: the spec, the failing design, and what the test saw."""
+def fix_prompt(spec, code, fb, hints=None):
+    """From verify.py's for_feedback.json: the spec, the failing design, and what the test saw.
+    hints: the feedback step's suggestions (feedback_result.json), if it ran."""
     lines = fb.get("mismatches") or fb.get("result", "").splitlines()
     shown = "\n".join(lines[:10])
+    if hints:
+        shown += "\n\nDiagnosis from the feedback step:\n" + "\n".join(f"- {h}" for h in hints[:5])
     return build_prompt(f"""It must do this:
 {spec}
 
@@ -190,7 +193,13 @@ def fix(a):
     fb = json.load(open(p("for_feedback.json")))
     spec = fb.get("spec") or open(p("spec.txt")).read()
     old = fb.get("design") or open(p("design.v")).read()
-    prompt = fix_prompt(spec, old, fb)
+    hints = []
+    if os.path.exists(p("feedback_result.json")):
+        try:
+            hints = json.load(open(p("feedback_result.json"))).get("suggestions") or []
+        except Exception:
+            hints = []
+    prompt = fix_prompt(spec, old, fb, hints)
     print(f"fixing {d} (score {fb.get('score', 0):.3f})...", flush=True)
     t0 = time.time()
     try:
@@ -207,6 +216,8 @@ def fix(a):
     open(p("design_prev.v"), "w").write(old)
     open(p("design.v"), "w").write(design)
     os.remove(p("for_feedback.json"))     # used up; verify.py writes a fresh one if it still fails
+    if os.path.exists(p("feedback_result.json")):
+        os.remove(p("feedback_result.json"))
     print("-" * 40 + "\n" + design + "-" * 40)
     print(f"wrote {d}/design.v (previous kept as design_prev.v)")
     print(f"next: python verify.py {d}")
