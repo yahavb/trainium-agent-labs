@@ -21,7 +21,7 @@ Every change is behind a flag, so each one can be switched on or off as a single
 | **History.** Earlier failed attempts (code + error only, no model-written diagnosis, deduplicated, capped at 6000 characters) go into the repair prompt. | `--history N` (0) | Stops the model returning to code that already failed. Diagnoses were left out because a wrong diagnosis would mislead it. |
 | **Readable transcript.** Every run writes `<log>.txt` with the prompt, thinking, summary, each distinct reply and its feedback, for every round. | automatic | To see what the model actually saw and did. |
 
-## 2. The checker and why it is built this way
+## 2. The static checker
 
 `static_check(source)` runs on the model's code **before** the simulator and never changes the reward. It only adds text to the feedback when the kernel is not correct:
 
