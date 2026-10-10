@@ -11,13 +11,15 @@ Controller for the optimization loop:
 
 Vprev is ALWAYS a verified circuit. Unverified Qwen output never replaces it.
 
+Member 3's check runs her comparator.py (or compare_verilog.py), which must sit next to vagent.py.
+Default location: same folder as this file. Override with COMPARE_SCRIPT=/path/to/script.py
+
 Use from the team's main program:
     from optimize_agent import run
-    from member3_file import check          # Member 3's real function
-    final_path = run("member2_output.json", checker=check)
+    final_path = run("member2_output.json")    # None = Member 3 rejected (see opt_work/selected.v)
 
 Or from the terminal:
-    python optimize_agent.py member2_output.json --checker member3_file:check
+    python optimize_agent.py member2_output.json
 """
 
 import argparse
@@ -25,12 +27,61 @@ import importlib
 import json
 import os
 import shutil
+import subprocess
+import sys
 
 from qwen_client import optimize_verilog
 from yosys_checker import count_cells, synthesize
 
 MAX_ROUNDS = 8
 WORK_DIR = "opt_work"
+
+# Member 3's script, found in the same folder as this file as comparator.py or compare_verilog.py.
+# Override with:  export COMPARE_SCRIPT=/path/to/script.py
+_HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def _find_compare_script():
+    if os.environ.get("COMPARE_SCRIPT"):
+        return os.environ["COMPARE_SCRIPT"]
+    for name in ("comparator.py", "compare_verilog.py"):
+        path = os.path.join(_HERE, name)
+        if os.path.isfile(path):
+            return path
+    raise FileNotFoundError(f"Member 3's comparator.py / compare_verilog.py not found in {_HERE}")
+
+
+def member3_check(vprev, vnew, testbench):
+    """
+    Run Member 3's compare_verilog.py as its own process.
+    Exit code 0 = approved.
+    Exit code 2 = rejected. Her script then writes the last verified design to selected.v.
+    Any other exit code = the checker itself broke -> RuntimeError.
+    """
+    script = os.path.abspath(_find_compare_script())
+    out_dir = os.path.abspath(os.path.dirname(vnew))
+    tag = os.path.splitext(os.path.basename(vnew))[0]          # e.g. round_3
+    cmd = [
+        sys.executable, script,
+        "--original", os.path.abspath(vprev),
+        "--optimized", os.path.abspath(vnew),
+        "--tb", os.path.abspath(testbench),
+        "--result", os.path.join(out_dir, f"verification_{tag}.json"),
+        "--selected", os.path.join(out_dir, "selected.v"),
+    ]
+    # Run from her script's folder so it can import vagent.py
+    result = subprocess.run(cmd, cwd=os.path.dirname(script),
+                            capture_output=True, text=True, timeout=900)
+    output = (result.stdout + result.stderr).strip()
+    if output:
+        print("[member3] " + output.replace("\n", "\n[member3] "))
+
+    if result.returncode == 0:
+        return True          # approved
+    elif result.returncode == 2:
+        return False         # genuine rejection
+    else:
+        raise RuntimeError(f"Member 3's checker failed with exit code {result.returncode}")
 
 # Key names in Member 2's JSON. Change these to match her real JSON.
 VERILOG_KEYS = ["verilog", "verilog_path", "vprev", "design", "rtl"]
@@ -64,7 +115,7 @@ def read_member2_json(json_path):
     return vprev, tb
 
 
-def run(json_path, checker, max_rounds=MAX_ROUNDS, work_dir=WORK_DIR):
+def run(json_path, checker=member3_check, max_rounds=MAX_ROUNDS, work_dir=WORK_DIR):
     """
     json_path : Member 2's JSON with paths to the verified Verilog and its testbench
     checker   : Member 3's function, called as checker(vprev_path, vnew_path, testbench_path).
@@ -122,8 +173,8 @@ def run(json_path, checker, max_rounds=MAX_ROUNDS, work_dir=WORK_DIR):
         try:
             approved = checker(vprev, vnew, testbench)
         except Exception as e:
-            print(f"[agent] Member 3's checker raised an error: {e}")
-            approved = None
+            # A technical error is NOT a rejection, so don't pretend it is
+            raise RuntimeError(f"Member 3's checker failed: {e}") from e
 
         if not approved:
             # Member 3 handles returning the last working circuit to the user
@@ -150,8 +201,10 @@ def _load_checker(spec):
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("member2_json", help="Member 2's JSON with the Verilog and testbench paths")
-    p.add_argument("--checker", required=True,
-                   help="Member 3's function as module:function, e.g. member3_checker:check")
+    p.add_argument("--checker", default=None,
+                   help="Optional: a different checker function as module:function "
+                        "(default: run Member 3's compare_verilog.py)")
     p.add_argument("--max-rounds", type=int, default=MAX_ROUNDS)
     args = p.parse_args()
-    run(args.member2_json, _load_checker(args.checker), max_rounds=args.max_rounds)
+    checker = _load_checker(args.checker) if args.checker else member3_check
+    run(args.member2_json, checker, max_rounds=args.max_rounds)
