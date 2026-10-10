@@ -419,6 +419,24 @@ def directed(error_text):
     """
     if "dma_copy requires src and dst to have the same number of elements" in error_text:
         dst, src = _shape(nkibench.LAST_DMA.get("dst")), _shape(nkibench.LAST_DMA.get("src"))
+        if dst and src and at_least("directed2"):
+            # Seen on a seat, level 3 under `directed`: one (128, 512) tile used for BOTH operands,
+            # (128, 64) and (128, 512). Told "allocate it as (128, 64), or copy a slice of shape
+            # (128, 512)", the model flipped between the two for six rounds, because the second
+            # option is impossible when the source is the smaller one, and neither says the real
+            # fix: one tile per tensor.
+            if int(np.prod(src)) < int(np.prod(dst)):
+                return (error_text + f" The destination has shape {dst} but the piece copied into "
+                        f"it has shape {src}, which is smaller. nisa.dma_copy needs IDENTICAL "
+                        f"shapes and cannot fill part of a tile. Allocate a separate tile for this "
+                        f"copy with exactly the source's shape: nl.ndarray({src}, dtype=..., "
+                        f"buffer=nl.sbuf). If one tile is being used for two different tensors, "
+                        f"stop doing that: every tensor you load needs its own tile, allocated "
+                        f"with that tensor's own shape.")
+            return (error_text + f" The destination has shape {dst} but the piece copied into it "
+                    f"has shape {src}, which is larger. nisa.dma_copy needs IDENTICAL shapes. "
+                    f"Either allocate the destination as nl.ndarray({src}, dtype=..., "
+                    f"buffer=nl.sbuf), or copy only a slice of the source whose shape is {dst}.")
         if dst and src:
             return (error_text + f" The destination you allocated has shape {dst} and the piece "
                     f"you are copying into it has shape {src}. nisa.dma_copy needs the two shapes "
@@ -426,6 +444,20 @@ def directed(error_text):
                     f"nl.ndarray({src}, dtype=..., buffer=nl.sbuf), or copy a slice whose shape "
                     f"is {dst}.")
     if at_least("directed2"):
+        # Seen on a seat, level 4 under `directed`: the model chunked K correctly and reached 0.75
+        # (2 of 4 shapes), then hit this with no advice at all beyond the quoted line.
+        m = re.search(r"Matmul (stationary|moving) free dimension (\d+) exceeds", error_text)
+        if m:
+            sm, mm = nkibench.GEMM_STATIONARY_FMAX, nkibench.GEMM_MOVING_FMAX
+            return (error_text + f" One nisa.nc_matmul call accepts at most {sm} on the stationary "
+                    f"operand's free dimension (M) and at most {mm} on the moving operand's free "
+                    f"dimension (N); you passed {m.group(2)} on the {m.group(1)} one. Keep your "
+                    f"loop over K as it is and add loops over the output: split M into chunks of "
+                    f"at most {sm} and N into chunks of at most {mm}. For each (M chunk, N chunk) "
+                    f"pair, allocate a psum tile of that chunk's shape, run the K loop into it "
+                    f"using only the matching columns of each operand -- stationary=...[k0:k1, "
+                    f"m0:m1] and moving=...[k0:k1, n0:n1] -- then copy that result to its own "
+                    f"slice of the output, out[m0:m1, n0:n1].")
         # Seen on a seat, level 1 under `directed`, one per round, none with usable advice:
         #   tensor_scalar() missing 1 required positional argument: 'operand0'
         #   'float' object has no attribute 'shape'      (old advice: "use the nl/nisa functions",

@@ -6,6 +6,8 @@
 #                                      1. directed2            -> results-directed2/   (12 rounds)
 #                                      2. enriched, located    -> results-baselines/   (8 rounds)
 #   bash after_directed.sh status    one view of all three result folders
+#   bash after_directed.sh refresh   after a `git pull` that changed the checker: restart directed2
+#                                    with the new code if it has already started
 #
 # directed2 goes first because it is the best chance of solving a level; the two baselines follow.
 # One job at a time: two runs sharing the model were measured at 4 minutes a round instead of 1.
@@ -35,16 +37,35 @@ if [ "${1:-}" = "status" ]; then
   exit 0
 fi
 
+start_d2_then_baselines() {
+  OUT=results-directed2 MODES=directed2 REPEAT=1 AGENT_ARGS="$D2_ARGS" bash go.sh
+  GO_WAIT_FOR=results-directed2 OUT=results-baselines MODES="enriched located" REPEAT=1 \
+    AGENT_ARGS="$BASE_ARGS" bash go.sh
+}
+
 if [ "${1:-}" = "_wait" ]; then
   echo "waiting for 'directed' to finish, since $(date +%H:%M:%S)"
   while ! grep -q "feedback=directed finished" results/ablation.log 2>/dev/null; do sleep 10; done
   sleep 5                                   # let its taxonomy file finish writing
   echo "'directed' finished at $(date +%H:%M:%S); stopping the runs queued behind it"
   bash go.sh stop
-  OUT=results-directed2 MODES=directed2 REPEAT=1 AGENT_ARGS="$D2_ARGS" bash go.sh
-  GO_WAIT_FOR=results-directed2 OUT=results-baselines MODES="enriched located" REPEAT=1 \
-    AGENT_ARGS="$BASE_ARGS" bash go.sh
+  start_d2_then_baselines
   echo "hand-over done at $(date +%H:%M:%S)"
+  exit 0
+fi
+
+if [ "${1:-}" = "refresh" ]; then
+  # Run after `git pull` when the checker's messages changed. A run that has already started keeps
+  # the code it loaded, so directed2 is restarted from the top if it is under way; the baselines
+  # queued behind it are stopped first so they do not jump in and share the model.
+  if [ ! -d results-directed2 ]; then
+    echo "directed2 has not started yet, so it will pick up the new code by itself. Nothing to do."
+    exit 0
+  fi
+  OUT=results-baselines bash go.sh stop
+  OUT=results-directed2 bash go.sh stop
+  echo "Restarting directed2 with the new code; its earlier attempts are kept in a previous-* folder."
+  start_d2_then_baselines
   exit 0
 fi
 
