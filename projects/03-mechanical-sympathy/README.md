@@ -104,9 +104,23 @@ checker with:
 python checker.py \
   --manifest fixtures/manifest.json \
   --candidate runs/trainium/candidate.npz \
+  --precision bf16-autocast \
   --performance-json runs/trainium/metrics.json \
   --json-out runs/trainium/check.json
 ```
+
+Use `--precision fp32` for the fp32 candidate. The checker selects the matching
+entry in `precision_tolerances`. Keep the manifest in draft while the tolerances
+are not set. To inspect numerical errors before tolerances are frozen, use:
+
+```bash
+python checker.py --manifest fixtures/manifest.json \
+  --candidate runs/trainium/calibration/bf16-autocast/candidate.npz \
+  --precision bf16-autocast --diagnostic-only
+```
+
+Diagnostic mode reports error values only. It does not give a correctness pass
+or a performance result.
 
 Exit status `0` means correct. Exit status `1` means a correctness failure.
 Exit status `2` means the reference or checker configuration is not ready.
@@ -140,9 +154,12 @@ python agent.py \
   --experiment trainium-v0 \
   --adapter trainium/candidate_adapter.py \
   --fixture fixtures/cpu_reference.npz \
-  --precision bfloat16 \
+  --precision bf16-autocast \
   --workload single-step
 ```
+
+Use `fp32` for the comparison attempt. The first correctly checked
+`bf16-autocast` attempt is Trainium v0.
 
 The controller appends the result to `results/attempts.csv`. It adds timing
 only when correctness passes.

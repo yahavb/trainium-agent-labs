@@ -5,11 +5,11 @@ exact inputs stored in the CPU fixture (prognostic, boundary, label_mask).
 
     python runners/trainium_runner.py --adapter trainium/candidate_adapter.py \
         --fixture fixtures/cpu_reference.npz --candidate-output runs/trainium/candidate.npz \
-        --metrics-json runs/trainium/metrics.json --precision float32
+        --metrics-json runs/trainium/metrics.json --precision fp32
 
 Precision (--precision):
-  float32          plain fp32 on the chip (rel. RMS error vs CPU ~1e-6 on our tests)
-  bfloat16         fp32 model, compiler auto-casts matmuls/convs to bf16
+  fp32             plain fp32 on the chip (rel. RMS error vs CPU ~1e-6 on our tests)
+  bf16-autocast    fp32 model, compiler auto-casts matmuls/convs to bf16
                    (NEURON_CC_FLAGS=--auto-cast=matmult --auto-cast-type=bf16; ~1% rel. RMS).
                    Whole-model bf16 (model.to(bfloat16)) crashes neuronx-cc 2.27 on the 1-degree
                    grid with NCC_IBIR229, so it is not offered here.
@@ -61,10 +61,12 @@ def prepare(inputs, context):
     precision = str(context.get("precision", "float32")).lower()
     if precision in ("float32", "fp32"):
         cc_flags = ""
-    elif precision in ("bfloat16", "bf16", "autocast-bf16"):
+    elif precision in ("bfloat16", "bf16", "autocast-bf16", "bf16-autocast"):
         cc_flags = AUTOCAST_BF16
     else:
-        raise ValueError(f"unsupported precision {precision!r}: use float32 or bfloat16")
+        raise ValueError(
+            f"unsupported precision {precision!r}: use fp32 or bf16-autocast"
+        )
 
     # Device setup must happen before torch_xla is imported.
     os.environ.setdefault("PJRT_DEVICE", "NEURON")

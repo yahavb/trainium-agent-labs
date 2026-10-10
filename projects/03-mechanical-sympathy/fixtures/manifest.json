@@ -23,10 +23,15 @@
     "output_steps": 2
   },
   "samudra_commit": "6b88f2c0204828ef77d41b3ab2733679615f53e8",
-  "tolerance": {
-    "atol": null,
-    "rtol": null,
-    "derivation": "Run the CPU fixture twice. Freeze tolerances above observed CPU repeatability and document the Trainium precision."
+  "precision_tolerances": {
+    "fp32": {
+      "atol": null,
+      "rtol": null
+    },
+    "bf16-autocast": {
+      "atol": null,
+      "rtol": null
+    }
   },
   "repeatability": {
     "runs": 2,
@@ -37,5 +42,5 @@
       "c6c43040fc96178a72d118c820acaa046f0e1c4429aa598a6b58c2751a2c9571"
     ]
   },
-  "notes": "The CPU reference is repeatable. The checker still refuses candidates until the team selects Trainium precision, sets atol and rtol, and changes status to frozen. The 43.7 MB fixture is regenerated on each pod and is not committed."
+  "notes": "The CPU reference is repeatable. Keep status as draft until tolerances for both precision modes are reviewed and set. The checker refuses graded candidates until their precision tolerance is set and the manifest is frozen. Use checker.py --diagnostic-only to inspect errors without a pass or performance result. The 43.7 MB fixture is regenerated on each pod and is not committed."
 }

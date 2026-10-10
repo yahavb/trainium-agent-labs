@@ -165,6 +165,8 @@ def main() -> int:
             str(args.manifest.resolve()),
             "--candidate",
             str(candidate),
+            "--precision",
+            args.precision,
             "--performance-json",
             str(metrics_path),
             "--json-out",

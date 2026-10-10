@@ -47,7 +47,10 @@ class TrainiumRunnerContractTest(unittest.TestCase):
                         "reference_sha256": reference_hash,
                         "prediction_key": "prediction",
                         "coordinate_keys": ["time", "variables"],
-                        "tolerance": {"atol": 0.0, "rtol": 0.0},
+                        "precision_tolerances": {
+                            "fp32": {"atol": 0.0, "rtol": 0.0},
+                            "bf16-autocast": {"atol": 0.0, "rtol": 0.0},
+                        },
                     }
                 ),
                 encoding="utf-8",
@@ -108,6 +111,8 @@ class TrainiumRunnerContractTest(unittest.TestCase):
                     str(manifest),
                     "--candidate",
                     str(candidate),
+                    "--precision",
+                    "fp32",
                     "--performance-json",
                     str(metrics),
                     "--json-out",

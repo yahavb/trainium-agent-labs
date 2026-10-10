@@ -30,6 +30,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--reference", type=Path)
     parser.add_argument("--candidate", type=Path, required=True)
+    parser.add_argument("--precision", required=True)
+    parser.add_argument(
+        "--diagnostic-only",
+        action="store_true",
+        help="Report numerical error without applying tolerances or exposing performance.",
+    )
     parser.add_argument("--performance-json", type=Path)
     parser.add_argument("--json-out", type=Path)
     return parser.parse_args()
@@ -73,24 +79,47 @@ def resolve_reference(manifest_path: Path, manifest: dict[str, Any]) -> Path:
     return (project_root / configured).resolve()
 
 
-def validate_manifest(manifest: dict[str, Any]) -> tuple[float, float, str, list[str]]:
+def validate_manifest(
+    manifest: dict[str, Any], precision: str, diagnostic_only: bool = False
+) -> tuple[float | None, float | None, str, list[str]]:
     if manifest.get("schema_version") != 1:
         raise ValueError("Manifest schema_version must be 1")
-    if manifest.get("status") != "frozen":
+    status = manifest.get("status")
+    if diagnostic_only:
+        if status not in ("draft", "frozen"):
+            raise ValueError("Manifest status must be 'draft' or 'frozen'")
+    elif status != "frozen":
         raise ValueError(
             "CPU reference is not frozen. Set numeric tolerances and hashes, "
             "then set manifest status to 'frozen'."
         )
 
-    tolerance = manifest.get("tolerance")
-    if not isinstance(tolerance, dict):
-        raise ValueError("Manifest tolerance must be an object")
-    atol = tolerance.get("atol")
-    rtol = tolerance.get("rtol")
-    if not isinstance(atol, (int, float)) or not isinstance(rtol, (int, float)):
-        raise ValueError("Manifest atol and rtol must be numeric")
-    if atol < 0 or rtol < 0 or not math.isfinite(atol) or not math.isfinite(rtol):
-        raise ValueError("Manifest atol and rtol must be finite and non-negative")
+    tolerance_map = manifest.get("precision_tolerances")
+    if not isinstance(tolerance_map, dict):
+        if not diagnostic_only:
+            raise ValueError("Manifest precision_tolerances must be an object")
+        tolerance_map = {}
+    tolerance = tolerance_map.get(precision)
+    if diagnostic_only:
+        atol = rtol = None
+    elif not isinstance(tolerance, dict):
+        raise ValueError(f"Manifest has no tolerance entry for precision {precision!r}")
+    else:
+        atol = tolerance.get("atol")
+        rtol = tolerance.get("rtol")
+
+    if diagnostic_only:
+        pass
+    elif not isinstance(atol, (int, float)) or not isinstance(rtol, (int, float)):
+        raise ValueError(
+            f"Manifest tolerances for precision {precision!r} must be numeric"
+        )
+    if not diagnostic_only and (
+        atol < 0 or rtol < 0 or not math.isfinite(atol) or not math.isfinite(rtol)
+    ):
+        raise ValueError(
+            f"Manifest tolerances for precision {precision!r} must be finite and non-negative"
+        )
 
     prediction_key = manifest.get("prediction_key")
     coordinate_keys = manifest.get("coordinate_keys")
@@ -100,14 +129,23 @@ def validate_manifest(manifest: dict[str, Any]) -> tuple[float, float, str, list
         isinstance(key, str) and key for key in coordinate_keys
     ):
         raise ValueError("Manifest coordinate_keys must be a list of strings")
-    return float(atol), float(rtol), prediction_key, coordinate_keys
+    return (
+        None if atol is None else float(atol),
+        None if rtol is None else float(rtol),
+        prediction_key,
+        coordinate_keys,
+    )
 
 
 def compare(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     np = load_numpy()
     manifest_path = args.manifest.resolve()
     manifest = load_json(manifest_path)
-    atol, rtol, prediction_key, coordinate_keys = validate_manifest(manifest)
+    if args.diagnostic_only and args.performance_json is not None:
+        raise ValueError("--performance-json cannot be used with --diagnostic-only")
+    atol, rtol, prediction_key, coordinate_keys = validate_manifest(
+        manifest, args.precision, args.diagnostic_only
+    )
     reference_path = (
         args.reference.resolve()
         if args.reference is not None
@@ -124,7 +162,7 @@ def compare(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     actual_hash = sha256(reference_path)
     if not isinstance(expected_hash, str) or expected_hash != actual_hash:
         raise ValueError(
-            "CPU reference SHA-256 does not match the frozen manifest. "
+            "CPU reference SHA-256 does not match the manifest. "
             f"Expected {expected_hash!r}, found {actual_hash}."
         )
 
@@ -139,7 +177,7 @@ def compare(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     if missing_reference or missing_candidate:
         result = {
             "status": "failed",
-            "correctness_score": 0.0,
+            "correctness_score": None if args.diagnostic_only else 0.0,
             "reason": "missing required arrays",
             "missing_reference": missing_reference,
             "missing_candidate": missing_candidate,
@@ -170,9 +208,8 @@ def compare(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
         "coordinates_match": not coordinate_failures,
         "coordinate_failures": coordinate_failures,
         "candidate_finite": finite,
-        "atol": atol,
-        "rtol": rtol,
-        "correctness_score": 0.0,
+        "precision": args.precision,
+        "correctness_score": None if args.diagnostic_only else 0.0,
         "performance": None,
     }
 
@@ -190,12 +227,27 @@ def compare(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     actual64 = actual.astype(np.float64, copy=False)
     difference = actual64 - expected64
     absolute_error = np.abs(difference)
-    allowed_error = atol + rtol * np.abs(expected64)
-    within = absolute_error <= allowed_error
-    fraction_within = float(np.mean(within))
     rmse = float(np.sqrt(np.mean(np.square(difference))))
     reference_rms = float(np.sqrt(np.mean(np.square(expected64))))
     normalized_rmse = rmse / reference_rms if reference_rms else rmse
+    if args.diagnostic_only:
+        result.update(
+            {
+                "status": "diagnostic",
+                "reason": "diagnostic-only; no tolerance verdict was applied",
+                "rmse": rmse,
+                "normalized_rmse": normalized_rmse,
+                "max_abs_error": float(np.max(absolute_error)),
+                "values_compared": int(expected.size),
+            }
+        )
+        return 0, result
+
+    result["atol"] = atol
+    result["rtol"] = rtol
+    allowed_error = atol + rtol * np.abs(expected64)
+    within = absolute_error <= allowed_error
+    fraction_within = float(np.mean(within))
     passed = bool(np.all(within))
 
     result.update(
