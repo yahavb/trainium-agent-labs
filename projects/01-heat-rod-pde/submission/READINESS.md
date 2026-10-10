@@ -36,7 +36,7 @@ These are team standards, not additional official deliverables.
 | Timeout/service failure/unsolved separated | PASS in revised runners; historical timeout retained |
 | Full logs, exact commands, revisions and configuration | PARTIAL — historical feedback and captured invocation gaps; all-team archive not certified |
 | Benefits, costs and possible regressions explained | PASS — RUNTIME_FIXES.md; no new live-performance claim |
-| No unauthorized main/master merge | PASS — PR #4 remains open |
+| No automatic merge by this assistant | PASS — this assistant did not merge; GitHub records PR #4 merged by chain567 at 2026-10-10T19:14:37Z |
 | Independent run count and result spread | DISCLOSED — one execution per variant/configuration, no repeat variability estimate |
 | Committed and backed-up runtime | PASS — 2d1a68a on challenge1-runtime-resilience; submission documents added on the same branch |
 
@@ -89,7 +89,8 @@ start new inference, recreate lost logs, or modify the benchmark figures.
 - Fixed requirements: ../PROJECT_BASELINE.md; project agent guidance: ../AGENTS.md.
 - Runtime fixes: 2d1a68a694ba1d9619fd954a30663e60e7119d6c.
 - Branch: challenge1-runtime-resilience.
-- Review: https://github.com/ChenYujunjks/trainium-agent-labs/pull/4 (not merged).
+- Runtime review: https://github.com/ChenYujunjks/trainium-agent-labs/pull/4, merged externally as b94759c18e91139a128ed260b6a7dd18ba59148d while this documentation was being prepared.
+- Submission documentation is a separate proposed change on the same branch; no automatic merge is requested. This audit does not certify the repository collaborator's internal approval process.
 - Checker: ../pdecheck.py; explanation: CHECKER.md.
 - Note: ONE_PAGE_NOTE.md.
 - Log audit: reference-log-audit.json; hashes describe local checkout bytes.
