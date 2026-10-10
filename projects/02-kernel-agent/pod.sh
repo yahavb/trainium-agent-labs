@@ -18,6 +18,8 @@
 #                                    kernel in NAME.jsonl. Calls no model; safe beside a run.
 #   ./pod.sh findings                run findings/run_findings.py on the real simulator; saves
 #                                    results/seat-N/findings.out. Needs no model; safe beside a run.
+#   ./pod.sh device                  stop the model server and run findings/device_check.py on the
+#                                    real chip; saves results/seat-N/device.out
 #   ./pod.sh stop                    stop the run going on this seat. Its log so far is kept.
 #   ./pod.sh status [NAME]           is a run going, and the last lines of its output
 #   ./pod.sh pull NAME               copy NAME.jsonl and NAME.out into results/seat-$SEAT/
@@ -145,6 +147,16 @@ case "${1:-}" in
     kubectl exec "$POD" -- cat "$REMOTE/findings.out" > "$RESULTS/$POD/findings.out"
     echo "saved to $RESULTS/$POD/findings.out"
     ;;
+  device)
+    # The model server holds NeuronCores; a kernel cannot run on the chip while it does. The runs
+    # are finished, so stop it, then run findings/device_check.py on the chip.
+    in_pod "pkill -f '[p]ython agent.py' || true; cd /workspace && ./serve.sh --stop; sleep 5; cd $REMOTE && \
+            NEURON_PLATFORM_TARGET_OVERRIDE=trn2 NEURON_RT_NUM_CORES=1 timeout 1500 python findings/device_check.py > device.out 2>&1; \
+            echo \"device check exit \$?\"; sed -n '/SUMMARY/,\$p' device.out"
+    mkdir -p "$RESULTS/$POD"
+    kubectl exec "$POD" -- cat "$REMOTE/device.out" > "$RESULTS/$POD/device.out"
+    echo "saved to $RESULTS/$POD/device.out"
+    ;;
   stop)
     # [p]ython, so the pattern cannot match the shell that is carrying this very command.
     in_pod "pkill -f '[p]ython agent.py' && echo 'stopped the run on $POD' || echo 'no run was going on $POD'"
@@ -174,6 +186,6 @@ case "${1:-}" in
     echo "$RESULTS/$POD/${3:-$(basename "$SRC")}"
     ;;
   *)
-    sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,32p' "$0" | sed 's/^# \{0,1\}//'
     ;;
 esac

@@ -17,8 +17,22 @@ from . import isa, language, typing  # noqa: F401
 __version__ = "0.0-fake"
 
 
+class _Jitted:
+    """kernel(*args) runs as Python; kernel[grid](*args) imitates a device launch by simulating."""
+    def __init__(self, fn):
+        self.fn = fn
+        self.__name__ = fn.__name__
+        self.__code__ = fn.__code__
+
+    def __call__(self, *args, **kw):
+        return self.fn(*args, **kw)
+
+    def __getitem__(self, grid):
+        return lambda *args: simulate(self.fn)(*args)
+
+
 def jit(fn):
-    return fn
+    return _Jitted(fn)
 
 
 def simulate(kernel):
