@@ -1,0 +1,74 @@
+{
+  "yeast_01": {
+    "key_sentences": [
+      "Beyond that, the ability of the system to effectively generate output pulses in response to repeated stimuli is demonstrated, reporting one event per two hours.",
+      "However, fast RNA fluctuations indicate cell responses in less than three minutes, demonstrating the potential for much higher rates in the future."
+    ],
+    "main_findings": [],
+    "numerical_results": [],
+    "uncertainty_or_limitations": []
+  },
+  "yeast_02": {
+    "key_sentences": [
+      "Our results suggest that the pinch-off mechanism may be assisted by a pearling-like instability.",
+      "We rule out two of the three competing proposals for the organization of the actin filament network during the elongation stage."
+    ],
+    "main_findings": [],
+    "numerical_results": [],
+    "uncertainty_or_limitations": []
+  },
+  "yeast_03": {
+    "key_sentences": [
+      "At the Golgi apparatus newly synthesized proteins are sorted between those transported to the plasma membrane (PM), or the external medium, via the exocytosis or secretory pathway (SEC), and those targeted to the vacuole either through endosomes (vacuolar protein sorting or VPS pathway) or directly (alkaline phosphatase or ALP pathway).",
+      "Plasma membrane proteins can be internalized by endocytosis (END) and transported to endosomes where they are sorted between those targeted for vacuolar degradation and those redirected to the Golgi (recycling or RCY pathway)."
+    ],
+    "main_findings": [],
+    "numerical_results": [],
+    "uncertainty_or_limitations": []
+  },
+  "yeast_04": {
+    "key_sentences": [
+      "It has been shown that EIS provides more information about ionic dynamics of metabolic processes and requires less complex measurements.",
+      "The conducted experiments demonstrated the sensitivity of this approach for assessing biophotonic phenomena, non-chemical water treatments and impact of environmental stressors."
+    ],
+    "main_findings": [],
+    "numerical_results": [],
+    "uncertainty_or_limitations": []
+  },
+  "yeast_05": {
+    "key_sentences": [
+      "Our method enables the rapid construction of an artificial gene from a promoter and an open reading frame (ORF) cassette by one-step recombination reaction in vitro.",
+      "We showed that these factors can be regulated by doxycycline and degraded rapidly after addition of auxin to the medium."
+    ],
+    "main_findings": [],
+    "numerical_results": [],
+    "uncertainty_or_limitations": []
+  },
+  "yeast_06": {
+    "key_sentences": [
+      "Second, the dynamical structure exhibits a metabolic invariant which constrains the functional attributes of the enzymes.",
+      "Finally, in accordance with the classical biochemical studies, our numerical analysis reveals in a quantitative manner that the enzyme phosphofructokinase is the key-core of the metabolic system, behaving for all conditions as the main source of the effective causal flows in yeast glycolysis."
+    ],
+    "main_findings": [],
+    "numerical_results": [],
+    "uncertainty_or_limitations": []
+  },
+  "yeast_07": {
+    "key_sentences": [
+      "More recently, the physical linkage of the structural genes GAL1, GAL7, and GAL10 in diverse budding yeast genomes has been used as a model for understanding the evolution of gene clustering.",
+      "In this opinion, we summarize exciting recent work on three different aspects of this iconic pathway's evolution: gene cluster organization, GAL gene regulation, and the population genetics of the GAL pathway."
+    ],
+    "main_findings": [],
+    "numerical_results": [],
+    "uncertainty_or_limitations": []
+  },
+  "yeast_08": {
+    "key_sentences": [
+      "We report that both cis and trans-acting regulatory divergence in translation are abundant, affecting at least 35% of genes.",
+      "The majority of translational divergence acts to buffer changes in mRNA abundance, suggesting a widespread role for stabilizing selection acting across regulatory levels."
+    ],
+    "main_findings": [],
+    "numerical_results": [],
+    "uncertainty_or_limitations": []
+  }
+}
