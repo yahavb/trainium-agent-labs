@@ -448,7 +448,10 @@ level(9, "Qwen3-8B matmul, bf16", "qwen3_matmul",
       "the whole matmul ladder at real sizes: hoisting, blocking M and N, blocking K. The start "
       "kernel is the level-4 tiled kernel; the expert ceiling is the tutorial's fully optimised one.",
       ref_matmul,
-      [dict(K=512, M=256, N=1024), dict(K=1024, M=128, N=2048), dict(K=256, M=512, N=512)],
+      # The last shape is 2048 deep, so blocked kernels split K into more than one block and the
+      # cross-block accumulation path is exercised in dev, not first met at the held-out shapes.
+      [dict(K=512, M=256, N=1024), dict(K=1024, M=128, N=2048), dict(K=256, M=512, N=512),
+       dict(K=2048, M=128, N=512)],
       _MATMUL_BANNED,
       "lhsT arrives transposed [K, M], like level 4. K and M are multiples of 128 and N of 512.",
       make_args=_args_matmul_bf16, tol=BF16_MATMUL_TOL)
