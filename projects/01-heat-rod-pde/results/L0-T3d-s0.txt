@@ -1,0 +1,41 @@
+
+=========== level0.1 ===========
+Solve the heat equation on a rod.
+
+  u_t = 1 * u_xx,   for 0 < x < 1, t > 0
+  u(0, t) = 0 and u(1, t) = 0
+  u(x, 0) = sin(3*pi*x)
+
+
+round 0: rewards [1.0, 1.0, 1.0, 1.0]  mean 1.00  best 1.0  4 tool call(s)  224 tokens  (11.5s)
+SOLVED: u(x, t) = exp(-9*pi**2*t)*sin(3*pi*x)
+
+=========== level0.2 ===========
+Solve the heat equation on a rod.
+
+  u_t = 1/2 * u_xx,   for 0 < x < 2, t > 0
+  u(0, t) = 0 and u(2, t) = 0
+  u(x, 0) = sin(pi*x)
+
+
+round 0: rewards [1.0, 1.0, 1.0, 1.0]  mean 1.00  best 1.0  4 tool call(s)  224 tokens  (11.3s)
+SOLVED: u(x, t) = exp(-pi**2*t/2)*sin(pi*x)
+
+=========== level0.3 ===========
+Solve the heat equation on a rod.
+
+  u_t = 1/2 * u_xx,   for 0 < x < 1, t > 0
+  u(0, t) = 0 and u(1, t) = 0
+  u(x, 0) = sin(pi*x) - sin(3*pi*x) + 3*sin(5*pi*x)
+
+
+round 0: rewards [1.0, 1.0, 1.0, 1.0]  mean 1.00  best 1.0  4 tool call(s)  288 tokens  (15.0s)
+SOLVED: u(x, t) = exp(-pi**2*t/2)*sin(pi*x) - exp(-9*pi**2*t/2)*sin(3*pi*x) + 3*exp(-25*pi**2*t/2)*sin(5*pi*x)
+
+=========== summary: level 0, seed 0, arm L0-T3d ===========
+  level0.1     reward 1.0 after 1 round(s)  11s  SOLVED
+  level0.2     reward 1.0 after 1 round(s)  11s  SOLVED
+  level0.3     reward 1.0 after 1 round(s)  15s  SOLVED
+  solved 3/3
+
+attempts logged to results/L0-T3d-20261010-212148-48114.jsonl

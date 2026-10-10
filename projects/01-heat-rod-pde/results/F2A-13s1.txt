@@ -1,0 +1,29 @@
+
+=========== level1.3 ===========
+Solve the heat equation on a rod.
+
+  u_t = 1 * u_xx,   for 0 < x < 2, t > 0
+  u(0, t) = 0 and u(2, t) = 0
+  u(x, 0) = -x**2 + 2*x
+
+The starting shape is not a single sine wave, so the answer is a sum of the allowed waves, each with its own coefficient and its own decay rate. Keep enough terms that the starting shape matches to within 0.5 percent.
+Each coefficient is an integral: c_n = (2/2) * Integral(u(x, 0) * sin(n*pi*x/2), (x, 0, 2)). Work it out for n = 1, 2, 3, ... instead of guessing, and simplify each one to a number.
+
+On the last line write exactly
+  u(x, t) = <expression>
+Write every term out with its numbers filled in, in Python syntax, like this:
+  u(x, t) = 3*exp(-2*pi**2*t)*sin(pi*x) - 0.5*exp(-8*pi**2*t)*sin(2*pi*x)
+Use exp, sin, cos, pi and ** for powers. No summation sign, no unknown constants, no LaTeX.
+
+round 0: rewards [0.6, 0.6, 0.6, 0.6]  mean 0.60  best 0.6  32 tool call(s)  1632 tokens  (76.5s)
+  best: 32/pi**3*exp(-pi**2*t)*sin(pi*x/2) + 32/(27*pi**3)*exp(-9*pi**2*t)*sin(3*pi*x/2) + 32/(125*pi**3)*exp(-25*pi**2*t)*sin(5*pi*x/2) + 32/(343*pi**3)*exp(-49*pi**2*t)*sin(7*pi*x/2)
+  checker: The equation u_t = 1*u_xx does not hold: at x=0.907, t=0.0125, u_t - 1*u_xx = -5.972 instead of 0. Term by term: the sin(pi*x/2) term decays too fast; the sin(3*pi*x/2) term decays too fast; the sin(7*pi*x/2) term decays too fast. Each term decays at its own rate, and that rate is k times the square of the frequency in that same term's sine. Check that the frequency in each exponent matches the frequency of the wave it multiplies.
+
+round 1: rewards [0.4, 0.6, 1.0, 0.6]  mean 0.65  best 1.0  23 tool call(s)  2200 tokens  (119.3s)
+SOLVED: u(x, t) = (32/pi**3)*exp(- (pi/2)**2 * t )*sin(pi*x/2) + (32/(27*pi**3))*exp(- (3*pi/2)**2 * t )*sin(3*pi*x/2) + (32/(125*pi**3))*exp(- (5*pi/2)**2 * t )*sin(5*pi*x/2) + (32/(343*pi**3))*exp(- (7*pi/2)**2 * t )*sin(7*pi*x/2)
+
+=========== summary: level 1, seed 1, arm F2A ===========
+  level1.3     reward 1.0 after 2 round(s)  196s  SOLVED
+  solved 1/1
+
+attempts logged to results/F2A-20261010-213217-49381.jsonl

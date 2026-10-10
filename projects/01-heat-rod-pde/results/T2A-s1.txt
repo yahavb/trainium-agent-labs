@@ -1,0 +1,75 @@
+
+=========== level1.1 ===========
+Solve the heat equation on a rod.
+
+  u_t = 2 * u_xx,   for 0 < x < 2, t > 0
+  u(0, t) = 0 and u_x(2, t) = 0
+  u(x, 0) = sin(3*pi*x/4)
+
+One end is insulated: its condition is on the slope, not the value.
+
+
+round 0: rewards [0.6, 0.6, 0.6, 0.6]  mean 0.60  best 0.6  4 tool call(s)  300 tokens  (16.3s)
+  best: {"pde": "heat", "method": "eigenfunction_expansion", "k": "2", "L": "2", "initial": "sin(3*pi*x/4)", "left": "dirichlet", "right": "neumann", "eigenfunction": "sqrt(2)*sin(n*pi*x/2)"}
+  checker: At the right end x=2, the slope u_x should be 0 but is +3.739 at t=0.0079. At t=0 the answer differs from the required starting shape by 16.22 percent, and it must be under 0.0001 percent. Term by term: the terms sin(15*pi*x/4), sin(13*pi*x/4), sin(11*pi*x/4), sin(9*pi*x/4) should not be there at all. Solver note: You stated the right end is neumann, but the slope X_n' at x = 2 is (-1)**n*sqrt(2)*pi*n/2, which is not 0 for every n, so your eigenfunction does not satisfy that end condition.
+
+round 1: rewards [0.6, 0.6, 0.6, 0.6]  mean 0.60  best 0.6  4 tool call(s)  296 tokens  (17.0s)
+  best: {"pde": "heat", "method": "eigenfunction_expansion", "k": "2", "L": "2", "initial": "sin(3*pi*x/4)", "left": "dirichlet", "right": "neumann", "eigenfunction": "sqrt(2)*sin(n*pi*x/2)"}
+  checker: At the right end x=2, the slope u_x should be 0 but is +3.739 at t=0.0079. At t=0 the answer differs from the required starting shape by 16.22 percent, and it must be under 0.0001 percent. Term by term: the terms sin(15*pi*x/4), sin(13*pi*x/4), sin(11*pi*x/4), sin(9*pi*x/4) should not be there at all. Solver note: You stated the right end is neumann, but the slope X_n' at x = 2 is (-1)**n*sqrt(2)*pi*n/2, which is not 0 for every n, so your eigenfunction does not satisfy that end condition.
+
+round 2: rewards [0.6, 0.6, 0.6, 0.6]  mean 0.60  best 0.6  4 tool call(s)  296 tokens  (16.6s)
+  best: {"pde": "heat", "method": "eigenfunction_expansion", "k": "2", "L": "2", "initial": "sin(3*pi*x/4)", "left": "dirichlet", "right": "neumann", "eigenfunction": "sqrt(2)*sin(n*pi*x/2)"}
+  checker: At the right end x=2, the slope u_x should be 0 but is +3.739 at t=0.0079. At t=0 the answer differs from the required starting shape by 16.22 percent, and it must be under 0.0001 percent. Term by term: the terms sin(15*pi*x/4), sin(13*pi*x/4), sin(11*pi*x/4), sin(9*pi*x/4) should not be there at all. Solver note: You stated the right end is neumann, but the slope X_n' at x = 2 is (-1)**n*sqrt(2)*pi*n/2, which is not 0 for every n, so your eigenfunction does not satisfy that end condition.
+
+round 3: rewards [0.6, 0.6, 0.6, 0.6]  mean 0.60  best 0.6  4 tool call(s)  296 tokens  (16.5s)
+  best: {"pde": "heat", "method": "eigenfunction_expansion", "k": "2", "L": "2", "initial": "sin(3*pi*x/4)", "left": "dirichlet", "right": "neumann", "eigenfunction": "sqrt(2)*sin(n*pi*x/2)"}
+  checker: At the right end x=2, the slope u_x should be 0 but is +3.739 at t=0.0079. At t=0 the answer differs from the required starting shape by 16.22 percent, and it must be under 0.0001 percent. Term by term: the terms sin(15*pi*x/4), sin(13*pi*x/4), sin(11*pi*x/4), sin(9*pi*x/4) should not be there at all. Solver note: You stated the right end is neumann, but the slope X_n' at x = 2 is (-1)**n*sqrt(2)*pi*n/2, which is not 0 for every n, so your eigenfunction does not satisfy that end condition.
+not solved in 4 rounds; best reward 0.6
+
+=========== level1.2 ===========
+Solve the heat equation on a rod.
+
+  u_t = 2 * u_xx,   for 0 < x < 3, t > 0
+  u(0, t) = 0 and u_x(3, t) = 0
+  u(x, 0) = 2*sin(pi*x/2) + sin(5*pi*x/6)
+
+One end is insulated: its condition is on the slope, not the value.
+
+
+round 0: rewards [0.6, 0.6, 0.6, 0.6]  mean 0.60  best 0.6  4 tool call(s)  332 tokens  (18.7s)
+  best: {"pde": "heat", "method": "eigenfunction_expansion", "k": "2", "L": "3", "initial": "2*sin(pi*x/2) + sin(5*pi*x/6)", "left": "dirichlet", "right": "neumann", "eigenfunction": "sqrt(2/L)*sin(n*pi*x/L)"}
+  checker: At the right end x=3, the slope u_x should be 0 but is +3.241 at t=0.0178. At t=0 the answer differs from the required starting shape by 7.21 percent, and it must be under 0.0001 percent. Term by term: the terms sin(5*pi*x/2), sin(13*pi*x/6), sin(11*pi*x/6), sin(3*pi*x/2) should not be there at all. Solver note: You stated the right end is neumann, but the slope X_n' at x = 3 is (-1)**n*sqrt(6)*pi*n/9, which is not 0 for every n, so your eigenfunction does not satisfy that end condition.
+
+round 1: rewards [0.6, 0.6, 0.6, 0.6]  mean 0.60  best 0.6  4 tool call(s)  330 tokens  (18.6s)
+  best: {"pde": "heat", "method": "eigenfunction_expansion", "k": "2", "L": "3", "initial": "2*sin(pi*x/2) + sin(5*pi*x/6)", "left": "dirichlet", "right": "neumann", "eigenfunction": "sqrt(2/L)*sin(n*pi*x/L)"}
+  checker: At the right end x=3, the slope u_x should be 0 but is +3.241 at t=0.0178. At t=0 the answer differs from the required starting shape by 7.21 percent, and it must be under 0.0001 percent. Term by term: the terms sin(5*pi*x/2), sin(13*pi*x/6), sin(11*pi*x/6), sin(3*pi*x/2) should not be there at all. Solver note: You stated the right end is neumann, but the slope X_n' at x = 3 is (-1)**n*sqrt(6)*pi*n/9, which is not 0 for every n, so your eigenfunction does not satisfy that end condition.
+
+round 2: rewards [0.6, 0.6, 0.6, 0.6]  mean 0.60  best 0.6  4 tool call(s)  330 tokens  (18.7s)
+  best: {"pde": "heat", "method": "eigenfunction_expansion", "k": "2", "L": "3", "initial": "2*sin(pi*x/2) + sin(5*pi*x/6)", "left": "dirichlet", "right": "neumann", "eigenfunction": "sqrt(2/L)*sin(n*pi*x/L)"}
+  checker: At the right end x=3, the slope u_x should be 0 but is +3.241 at t=0.0178. At t=0 the answer differs from the required starting shape by 7.21 percent, and it must be under 0.0001 percent. Term by term: the terms sin(5*pi*x/2), sin(13*pi*x/6), sin(11*pi*x/6), sin(3*pi*x/2) should not be there at all. Solver note: You stated the right end is neumann, but the slope X_n' at x = 3 is (-1)**n*sqrt(6)*pi*n/9, which is not 0 for every n, so your eigenfunction does not satisfy that end condition.
+
+round 3: rewards [0.6, 0.6, 0.6, 0.6]  mean 0.60  best 0.6  4 tool call(s)  330 tokens  (18.6s)
+  best: {"pde": "heat", "method": "eigenfunction_expansion", "k": "2", "L": "3", "initial": "2*sin(pi*x/2) + sin(5*pi*x/6)", "left": "dirichlet", "right": "neumann", "eigenfunction": "sqrt(2/L)*sin(n*pi*x/L)"}
+  checker: At the right end x=3, the slope u_x should be 0 but is +3.241 at t=0.0178. At t=0 the answer differs from the required starting shape by 7.21 percent, and it must be under 0.0001 percent. Term by term: the terms sin(5*pi*x/2), sin(13*pi*x/6), sin(11*pi*x/6), sin(3*pi*x/2) should not be there at all. Solver note: You stated the right end is neumann, but the slope X_n' at x = 3 is (-1)**n*sqrt(6)*pi*n/9, which is not 0 for every n, so your eigenfunction does not satisfy that end condition.
+not solved in 4 rounds; best reward 0.6
+
+=========== level1.3 ===========
+Solve the heat equation on a rod.
+
+  u_t = 1 * u_xx,   for 0 < x < 2, t > 0
+  u(0, t) = 0 and u(2, t) = 0
+  u(x, 0) = -x**2 + 2*x
+
+The starting shape is not a single sine wave, so the answer is a sum of the allowed waves, each with its own coefficient and its own decay rate. Keep enough terms that the starting shape matches to within 0.5 percent.
+
+
+round 0: rewards [1.0, 1.0, 1.0, 1.0]  mean 1.00  best 1.0  4 tool call(s)  284 tokens  (14.4s)
+SOLVED: u(x, t) = 32*exp(-pi**2*t/4)*sin(pi*x/2)/pi**3 + 32*exp(-9*pi**2*t/4)*sin(3*pi*x/2)/(27*pi**3) + 32*exp(-25*pi**2*t/4)*sin(5*pi*x/2)/(125*pi**3) + 32*exp(-49*pi**2*t/4)*sin(7*pi*x/2)/(343*pi**3) + 32*exp(-81*pi**2*t/4)*sin(9*pi*x/2)/(729*pi**3)
+
+=========== summary: level 1, seed 1, arm T2A ===========
+  level1.1     reward 0.6 after 4 round(s)  67s
+  level1.2     reward 0.6 after 4 round(s)  75s
+  level1.3     reward 1.0 after 1 round(s)  14s  SOLVED
+  solved 1/3
+
+attempts logged to results/T2A-20261010-200603-41079.jsonl

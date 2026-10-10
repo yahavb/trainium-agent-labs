@@ -1,0 +1,41 @@
+
+=========== level1.1 ===========
+Solve the heat equation on a rod.
+
+  u_t = 1 * u_xx,   for 0 < x < 1, t > 0
+  u(0, t) = 0 and u_x(1, t) = 0
+  u(x, 0) = sin(pi*x/2)
+
+One end is insulated: its condition is on the slope, not the value.
+
+On the last line write exactly
+  u(x, t) = <expression>
+Write every term out with its numbers filled in, in Python syntax, like this:
+  u(x, t) = 3*exp(-2*pi**2*t)*sin(pi*x) - 0.5*exp(-8*pi**2*t)*sin(2*pi*x)
+Use exp, sin, cos, pi and ** for powers. No summation sign, no unknown constants, no LaTeX.
+
+round 0: rewards [0.0, 1.0, 0.0, 0.0]  mean 0.25  best 1.0  0 tool call(s)  4624 tokens  (214.9s)
+SOLVED: u(x, t) = sin(pi*x/2)*exp(-pi**2*t/4)
+
+=========== level1.2 ===========
+Solve the heat equation on a rod.
+
+  u_t = 3/2 * u_xx,   for 0 < x < 3, t > 0
+  u(0, t) = 0 and u_x(3, t) = 0
+  u(x, 0) = sin(pi*x/6) + 2*sin(5*pi*x/6)
+
+One end is insulated: its condition is on the slope, not the value.
+
+On the last line write exactly
+  u(x, t) = <expression>
+Write every term out with its numbers filled in, in Python syntax, like this:
+  u(x, t) = 3*exp(-2*pi**2*t)*sin(pi*x) - 0.5*exp(-8*pi**2*t)*sin(2*pi*x)
+Use exp, sin, cos, pi and ** for powers. No summation sign, no unknown constants, no LaTeX.
+
+round 0: rewards [0.0, 0.0, 0.0, 0.6]  mean 0.15  best 0.6  3 tool call(s)  5320 tokens  (252.0s)
+  best: exp(-25*pi**2*t/6)*cos(5*pi*x/3) + exp(-3*pi**2*t/2)*cos(pi*x)
+  checker: At the left end x=0, u should be 0 but is +0.4886 at t=0.0608. At t=0 the answer differs from the required starting shape by 139.66 percent, and it must be under 0.0001 percent. Term by term: the coefficient of sin(5*pi*x/6) has the wrong sign; the coefficient of sin(pi*x/6) has the wrong sign; the terms sin(11*pi*x/6), sin(7*pi*x/6) should not be there at all.
+
+round 1: rewards [0.0, 0.0, 0.2, 0.0]  mean 0.05  best 0.2  3 tool call(s)  4898 tokens  (222.3s)
+  best: (8/(3*pi))*exp(- (pi**2 * 3/2)*t )*sin(pi*x/3) - (16/(21*pi))*exp(- (4*pi**2 * 3/2)*t )*sin(2*pi*x/3) - (16/(15*pi))*exp(- (25*pi**2 * 3/2)*t )*sin(5*pi*x/3)
+  checker: The equation u_t = 3/2*u_xx does not hold: at x=1.631, t=0.0608, u_t - 3/2*u_xx = -4.593 instead of 0. Term by term: the sin(pi*x/6) term decays too fast; the sin(pi*x/2) term decays too fast; the sin(5*pi*x/6) term decays too fast; the sin(7*pi*x/6) term decays too slowly. Each term decays at its own rate, and that rate is k times the square of the frequency in that same term's sine. Check that the frequency in each exponent matches the frequency of the wave it multiplies. At the right end x=3, the slope u_x should be 0 but is -0.3753 at t=0.0608. At t=0 the answer differs from the required starting shape by 105.52 percent, and it must be under 0.0001 percent. Term by term: the coefficient of sin(5*pi*x/6) has the wrong sign; the coefficient of sin(pi*x/6) is too small; the terms sin(pi*x/2), sin(3*pi*x/2) should not be there at all.

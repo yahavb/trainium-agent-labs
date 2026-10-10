@@ -53,6 +53,7 @@ def extract(text):
     if not hits:
         return None
     s = hits[-1].strip().strip("`$ ").rstrip(".")
+    s = re.sub(r"^[*_]+|[*_]+$", "", s).strip().rstrip(".")   # **u(x, t) = ...** is markdown, not maths
     return s.replace("^", "**").replace("\\pi", "pi").replace("π", "pi")
 
 
@@ -218,7 +219,12 @@ def _num(expr, X, T):
     return np.broadcast_to(out, np.shape(X))
 
 
-def prompt_of(p):
+EXAMPLE = "3*exp(-2*pi**2*t)*sin(pi*x) - 0.5*exp(-8*pi**2*t)*sin(2*pi*x)"
+
+
+def prompt_of(p, style="expression", example=EXAMPLE):
+    """style="expression" (default, unchanged): ask for a u(x, t) line. style="spec": the problem
+    statement only, for the solver-tool modes, where the model writes a spec instead of an answer."""
     left = "u(0, t) = 0" if p["left"] == "dirichlet" else "u_x(0, t) = 0"
     right = (f"u({sp.sstr(p['L'])}, t) = 0" if p["right"] == "dirichlet"
              else f"u_x({sp.sstr(p['L'])}, t) = 0")
@@ -229,20 +235,23 @@ def prompt_of(p):
         notes.append("The starting shape is not a single sine wave, so the answer is a sum "
                      "of the allowed waves, each with its own coefficient and its own decay "
                      f"rate. Keep enough terms that the starting shape matches to within "
-                     f"{p['tol'] * 100:g} percent.\n" + coeff_method(p))
+                     f"{p['tol'] * 100:g} percent." + ("\n" + coeff_method(p) if style == "expression" else ""))
     note = ("\n" + "\n".join(notes) + "\n") if notes else ""
     # The worked example is doing real work here. Asked without one, Qwen3-8B answered
     # level1.2 with "X(x)T(t)" and then with a LaTeX sum over undetermined coefficients
     # A_n -- correct derivations, but nothing a checker can evaluate. Showing the shape of
     # an acceptable answer is far more effective than forbidding the alternatives.
-    return (f"Solve the heat equation on a rod.\n\n"
+    head = (f"Solve the heat equation on a rod.\n\n"
             f"  u_t = {sp.sstr(p['k'])} * u_xx,   for 0 < x < {sp.sstr(p['L'])}, t > 0\n"
             f"  {left} and {right}\n"
-            f"  u(x, 0) = {sp.sstr(p['f'])}\n{note}\n"
+            f"  u(x, 0) = {sp.sstr(p['f'])}\n{note}")
+    if style == "spec":
+        return head
+    return (f"{head}\n"
             f"On the last line write exactly\n"
             f"  u(x, t) = <expression>\n"
             f"Write every term out with its numbers filled in, in Python syntax, like this:\n"
-            f"  u(x, t) = 3*exp(-2*pi**2*t)*sin(pi*x) - 0.5*exp(-8*pi**2*t)*sin(2*pi*x)\n"
+            f"  u(x, t) = {example}\n"
             f"Use exp, sin, cos, pi and ** for powers. No summation sign, no unknown "
             f"constants, no LaTeX.")
 

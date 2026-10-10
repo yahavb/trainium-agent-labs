@@ -1,0 +1,41 @@
+
+=========== level1.1 ===========
+Solve the heat equation on a rod.
+
+  u_t = 1 * u_xx,   for 0 < x < 1, t > 0
+  u(0, t) = 0 and u_x(1, t) = 0
+  u(x, 0) = sin(pi*x/2)
+
+One end is insulated: its condition is on the slope, not the value.
+
+
+round 0: rewards [0.6, 0.6, 0.6, 0.6]  mean 0.60  best 0.6  4 tool call(s)  284 tokens  (21.1s)
+  best: {"pde": "heat", "method": "eigenfunction_expansion", "k": "1", "L": "1", "initial": "sin(pi*x/2)", "left": "dirichlet", "right": "neumann", "eigenfunction": "sqrt(2)*sin(n*pi*x)"}
+  checker: At the right end x=1, the slope u_x should be 0 but is -6.638 at t=0.0068. At t=0 the answer differs from the required starting shape by 16.18 percent, and it must be under 0.0001 percent. Term by term: the terms sin(15*pi*x/2), sin(13*pi*x/2), sin(11*pi*x/2), sin(9*pi*x/2) should not be there at all.
+
+round 1: rewards [0.6, 0.6, 0.6, 0.6]  mean 0.60  best 0.6  4 tool call(s)  284 tokens  (18.5s)
+  best: {"pde": "heat", "method": "eigenfunction_expansion", "k": "1", "L": "1", "initial": "sin(pi*x/2)", "left": "dirichlet", "right": "neumann", "eigenfunction": "sqrt(2)*sin(n*pi*x)"}
+  checker: At the right end x=1, the slope u_x should be 0 but is -6.638 at t=0.0068. At t=0 the answer differs from the required starting shape by 16.18 percent, and it must be under 0.0001 percent. Term by term: the terms sin(15*pi*x/2), sin(13*pi*x/2), sin(11*pi*x/2), sin(9*pi*x/2) should not be there at all.
+
+round 2: rewards [0.6, 0.6, 0.6, 0.6]  mean 0.60  best 0.6  4 tool call(s)  284 tokens  (17.9s)
+  best: {"pde": "heat", "method": "eigenfunction_expansion", "k": "1", "L": "1", "initial": "sin(pi*x/2)", "left": "dirichlet", "right": "neumann", "eigenfunction": "sqrt(2)*sin(n*pi*x)"}
+  checker: At the right end x=1, the slope u_x should be 0 but is -6.638 at t=0.0068. At t=0 the answer differs from the required starting shape by 16.18 percent, and it must be under 0.0001 percent. Term by term: the terms sin(15*pi*x/2), sin(13*pi*x/2), sin(11*pi*x/2), sin(9*pi*x/2) should not be there at all.
+
+round 3: rewards [0.6, 0.6, 0.6, 0.6]  mean 0.60  best 0.6  4 tool call(s)  284 tokens  (18.7s)
+  best: {"pde": "heat", "method": "eigenfunction_expansion", "k": "1", "L": "1", "initial": "sin(pi*x/2)", "left": "dirichlet", "right": "neumann", "eigenfunction": "sqrt(2)*sin(n*pi*x)"}
+  checker: At the right end x=1, the slope u_x should be 0 but is -6.638 at t=0.0068. At t=0 the answer differs from the required starting shape by 16.18 percent, and it must be under 0.0001 percent. Term by term: the terms sin(15*pi*x/2), sin(13*pi*x/2), sin(11*pi*x/2), sin(9*pi*x/2) should not be there at all.
+not solved in 4 rounds; best reward 0.6
+
+=========== level1.2 ===========
+Solve the heat equation on a rod.
+
+  u_t = 3/2 * u_xx,   for 0 < x < 3, t > 0
+  u(0, t) = 0 and u_x(3, t) = 0
+  u(x, 0) = sin(pi*x/6) + 2*sin(5*pi*x/6)
+
+One end is insulated: its condition is on the slope, not the value.
+
+
+round 0: rewards [0.6, 0.6, 0.6, 0.6]  mean 0.60  best 0.6  4 tool call(s)  344 tokens  (22.3s)
+  best: {"pde": "heat", "method": "eigenfunction_expansion", "k": "3/2", "L": "3", "initial": "sin(pi*x/6) + 2*sin(5*pi*x/6)", "left": "dirichlet", "right": "neumann", "eigenfunction": "sqrt(2/L)*sin(n*pi*x/L)"}
+  checker: At the right end x=3, the slope u_x should be 0 but is -2.378 at t=0.0608. At t=0 the answer differs from the required starting shape by 21.83 percent, and it must be under 0.0001 percent. Term by term: the terms sin(5*pi*x/2), sin(13*pi*x/6), sin(11*pi*x/6), sin(3*pi*x/2) should not be there at all.

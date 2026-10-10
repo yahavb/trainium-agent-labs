@@ -1,0 +1,47 @@
+
+=========== level1.1 ===========
+Solve the heat equation on a rod.
+
+  u_t = 1 * u_xx,   for 0 < x < 1, t > 0
+  u(0, t) = 0 and u_x(1, t) = 0
+  u(x, 0) = sin(3*pi*x/2)
+
+One end is insulated: its condition is on the slope, not the value.
+
+
+round 0: rewards [1.0, 1.0, 1.0, 1.0]  mean 1.00  best 1.0  4 tool call(s)  292 tokens  (14.4s)
+SOLVED: u(x, t) = exp(-9*pi**2*t/4)*sin(3*pi*x/2)
+
+=========== level1.2 ===========
+Solve the heat equation on a rod.
+
+  u_t = 1 * u_xx,   for 0 < x < 2, t > 0
+  u(0, t) = 0 and u_x(2, t) = 0
+  u(x, 0) = sin(pi*x/4) + 2*sin(5*pi*x/4)
+
+One end is insulated: its condition is on the slope, not the value.
+
+
+round 0: rewards [1.0, 1.0, 1.0, 1.0]  mean 1.00  best 1.0  4 tool call(s)  336 tokens  (16.5s)
+SOLVED: u(x, t) = exp(-pi**2*t/16)*sin(pi*x/4) + 2*exp(-25*pi**2*t/16)*sin(5*pi*x/4)
+
+=========== level1.3 ===========
+Solve the heat equation on a rod.
+
+  u_t = 2 * u_xx,   for 0 < x < 1, t > 0
+  u(0, t) = 0 and u(1, t) = 0
+  u(x, 0) = -x**2 + x
+
+The starting shape is not a single sine wave, so the answer is a sum of the allowed waves, each with its own coefficient and its own decay rate. Keep enough terms that the starting shape matches to within 0.5 percent.
+
+
+round 0: rewards [1.0, 1.0, 1.0, 1.0]  mean 1.00  best 1.0  4 tool call(s)  280 tokens  (14.1s)
+SOLVED: u(x, t) = 8*exp(-2*pi**2*t)*sin(pi*x)/pi**3 + 8*exp(-18*pi**2*t)*sin(3*pi*x)/(27*pi**3) + 8*exp(-50*pi**2*t)*sin(5*pi*x)/(125*pi**3) + 8*exp(-98*pi**2*t)*sin(7*pi*x)/(343*pi**3) + 8*exp(-162*pi**2*t)*sin(9*pi*x)/(729*pi**3)
+
+=========== summary: level 1, seed 2, arm T3 ===========
+  level1.1     reward 1.0 after 1 round(s)  14s  SOLVED
+  level1.2     reward 1.0 after 1 round(s)  17s  SOLVED
+  level1.3     reward 1.0 after 1 round(s)  14s  SOLVED
+  solved 3/3
+
+attempts logged to results/T3-20261010-201218-41938.jsonl

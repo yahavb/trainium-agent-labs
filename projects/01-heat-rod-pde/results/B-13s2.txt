@@ -1,0 +1,39 @@
+
+=========== level1.3 ===========
+Solve the heat equation on a rod.
+
+  u_t = 2 * u_xx,   for 0 < x < 1, t > 0
+  u(0, t) = 0 and u(1, t) = 0
+  u(x, 0) = -x**2 + x
+
+The starting shape is not a single sine wave, so the answer is a sum of the allowed waves, each with its own coefficient and its own decay rate. Keep enough terms that the starting shape matches to within 0.5 percent.
+Each coefficient is an integral: c_n = (2/1) * Integral(u(x, 0) * sin(n*pi*x/1), (x, 0, 1)). Work it out for n = 1, 2, 3, ... instead of guessing, and simplify each one to a number.
+
+On the last line write exactly
+  u(x, t) = <expression>
+Write every term out with its numbers filled in, in Python syntax, like this:
+  u(x, t) = 3*exp(-2*pi**2*t)*sin(pi*x) - 0.5*exp(-8*pi**2*t)*sin(2*pi*x)
+Use exp, sin, cos, pi and ** for powers. No summation sign, no unknown constants, no LaTeX.
+
+round 0: rewards [0.8, 0.8, 0.8, 0.8]  mean 0.80  best 0.8  20 tool call(s)  820 tokens  (39.5s)
+  best: (4/pi**3)*exp(-2*pi**2*t)*sin(pi*x) + (4/(27*pi**3))*exp(-18*pi**2*t)*sin(3*pi*x) + (4/(125*pi**3))*exp(-50*pi**2*t)*sin(5*pi*x)
+  checker: At t=0 the answer differs from the required starting shape by 50.00 percent, and it must be under 0.5 percent. Term by term: the coefficient of sin(pi*x) is too small; the coefficient of sin(3*pi*x) is too small; the coefficient of sin(5*pi*x) is too small; sin(7*pi*x) is missing and belongs in the sum. Each coefficient is an integral: c_n = (2/1) * Integral(u(x, 0) * sin(n*pi*x/1), (x, 0, 1)). Work it out for n = 1, 2, 3, ... instead of guessing, and simplify each one to a number.
+
+round 1: rewards [0.8, 0.8, 0.8, 0.8]  mean 0.80  best 0.8  20 tool call(s)  1032 tokens  (48.8s)
+  best: (4/pi**3)*exp(-2*pi**2*t)*sin(pi*x) + (4/(27*pi**3))*exp(-18*pi**2*t)*sin(3*pi*x) + (4/(125*pi**3))*exp(-50*pi**2*t)*sin(5*pi*x) + (4/(343*pi**3))*exp(-98*pi**2*t)*sin(7*pi*x) + (4/(729*pi**3))*exp(-162*pi**2*t)*sin(9*pi*x)
+  checker: At t=0 the answer differs from the required starting shape by 50.00 percent, and it must be under 0.5 percent. Term by term: the coefficient of sin(pi*x) is too small; the coefficient of sin(3*pi*x) is too small; the coefficient of sin(5*pi*x) is too small; the coefficient of sin(7*pi*x) is too small. Each coefficient is an integral: c_n = (2/1) * Integral(u(x, 0) * sin(n*pi*x/1), (x, 0, 1)). Work it out for n = 1, 2, 3, ... instead of guessing, and simplify each one to a number.
+
+round 2: rewards [0.8, 0.8, 0.8, 0.8]  mean 0.80  best 0.8  20 tool call(s)  1177 tokens  (59.1s)
+  best: (4/pi**3)*exp(-2*pi**2*t)*sin(pi*x) + (4/(27*pi**3))*exp(-18*pi**2*t)*sin(3*pi*x) + (4/(125*pi**3))*exp(-50*pi**2*t)*sin(5*pi*x) + (4/(343*pi**3))*exp(-98*pi**2*t)*sin(7*pi*x) + (4/(729*pi**3))*exp(-162*pi**2*t)*sin(9*pi*x) + (4/(1331*pi**3))*exp(-242*pi**2*t)*sin(11*pi*x) + (4/(2025*pi**3))*exp(-338*pi**2*t)*sin(13*pi*x) + (4/(3136*pi**3))*exp(-450*pi**2*t)*sin(15*pi*x) + (4/(4624*pi**3))*exp(-578*pi**2*t)*sin(17*pi*x) + (4/(6400*pi**3))*exp(-722*pi**2*t)*sin(19*pi*x)
+  checker: At t=0 the answer differs from the required starting shape by 50.00 percent, and it must be under 0.5 percent. Term by term: the coefficient of sin(pi*x) is too small; the coefficient of sin(3*pi*x) is too small; the coefficient of sin(5*pi*x) is too small; the coefficient of sin(7*pi*x) is too small. Each coefficient is an integral: c_n = (2/1) * Integral(u(x, 0) * sin(n*pi*x/1), (x, 0, 1)). Work it out for n = 1, 2, 3, ... instead of guessing, and simplify each one to a number.
+
+round 3: rewards [0.8, 0.8, 0.8, 0.8]  mean 0.80  best 0.8  32 tool call(s)  2136 tokens  (98.2s)
+  best: (4/pi**3)*exp(-2*pi**2*t)*sin(pi*x) + (4/(27*pi**3))*exp(-18*pi**2*t)*sin(3*pi*x) + (4/(125*pi**3))*exp(-50*pi**2*t)*sin(5*pi*x) + (4/(343*pi**3))*exp(-98*pi**2*t)*sin(7*pi*x) + (4/(729*pi**3))*exp(-162*pi**2*t)*sin(9*pi*x) + (4/(1331*pi**3))*exp(-242*pi**2*t)*sin(11*pi*x) + (4/(2025*pi**3))*exp(-338*pi**2*t)*sin(13*pi*x) + (4/(3136*pi**3))*exp(-450*pi**2*t)*sin(15*pi*x) + (4/(4624*pi**3))*exp(-578*pi**2*t)*sin(17*pi*x) + (4/(6400*pi**3))*exp(-722*pi**2*t)*sin(19*pi*x)
+  checker: At t=0 the answer differs from the required starting shape by 50.00 percent, and it must be under 0.5 percent. Term by term: the coefficient of sin(pi*x) is too small; the coefficient of sin(3*pi*x) is too small; the coefficient of sin(5*pi*x) is too small; the coefficient of sin(7*pi*x) is too small. Each coefficient is an integral: c_n = (2/1) * Integral(u(x, 0) * sin(n*pi*x/1), (x, 0, 1)). Work it out for n = 1, 2, 3, ... instead of guessing, and simplify each one to a number.
+not solved in 4 rounds; best reward 0.8
+
+=========== summary: level 1, seed 2, arm B ===========
+  level1.3     reward 0.8 after 4 round(s)  246s
+  solved 0/1
+
+attempts logged to results/B-20261010-201934-42556.jsonl

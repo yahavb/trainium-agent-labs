@@ -1,0 +1,137 @@
+
+=========== level1.1 ===========
+Solve the heat equation on a rod.
+
+  u_t = 2 * u_xx,   for 0 < x < 2, t > 0
+  u(0, t) = 0 and u_x(2, t) = 0
+  u(x, 0) = sin(3*pi*x/4)
+
+One end is insulated: its condition is on the slope, not the value.
+
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused  request failed 3 times: ConnectError: [Errno 111] Connection refused  request failed 3 times: ConnectError: [Errno 111] Connection refused
+
+
+
+round 0: rewards [0.0, 0.0, 0.0, 0.0]  mean 0.00  best 0.0  0 tool call(s)  0 tokens  (12.1s)
+  best: null
+  checker: No spec found. Reply with one JSON object with the fields pde, method, k, L, initial, left, right, eigenfunction.
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+
+round 1: rewards [0.0, 0.0, 0.0, 0.0]  mean 0.00  best 0.0  0 tool call(s)  0 tokens  (12.0s)
+  best: null
+  checker: No spec found. Reply with one JSON object with the fields pde, method, k, L, initial, left, right, eigenfunction.
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+
+round 2: rewards [0.0, 0.0, 0.0, 0.0]  mean 0.00  best 0.0  0 tool call(s)  0 tokens  (12.0s)
+  best: null
+  checker: No spec found. Reply with one JSON object with the fields pde, method, k, L, initial, left, right, eigenfunction.
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+
+round 3: rewards [0.0, 0.0, 0.0, 0.0]  mean 0.00  best 0.0  0 tool call(s)  0 tokens  (12.0s)
+  best: null
+  checker: No spec found. Reply with one JSON object with the fields pde, method, k, L, initial, left, right, eigenfunction.
+not solved in 4 rounds; best reward 0.0
+
+=========== level1.2 ===========
+Solve the heat equation on a rod.
+
+  u_t = 2 * u_xx,   for 0 < x < 3, t > 0
+  u(0, t) = 0 and u_x(3, t) = 0
+  u(x, 0) = 2*sin(pi*x/2) + sin(5*pi*x/6)
+
+One end is insulated: its condition is on the slope, not the value.
+
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+
+round 0: rewards [0.0, 0.0, 0.0, 0.0]  mean 0.00  best 0.0  0 tool call(s)  0 tokens  (12.0s)
+  best: null
+  checker: No spec found. Reply with one JSON object with the fields pde, method, k, L, initial, left, right, eigenfunction.
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+
+round 1: rewards [0.0, 0.0, 0.0, 0.0]  mean 0.00  best 0.0  0 tool call(s)  0 tokens  (12.0s)
+  best: null
+  checker: No spec found. Reply with one JSON object with the fields pde, method, k, L, initial, left, right, eigenfunction.
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused  request failed 3 times: ConnectError: [Errno 111] Connection refused
+
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+
+round 2: rewards [0.0, 0.0, 0.0, 0.0]  mean 0.00  best 0.0  0 tool call(s)  0 tokens  (12.0s)
+  best: null
+  checker: No spec found. Reply with one JSON object with the fields pde, method, k, L, initial, left, right, eigenfunction.
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+
+round 3: rewards [0.0, 0.0, 0.0, 0.0]  mean 0.00  best 0.0  0 tool call(s)  0 tokens  (12.0s)
+  best: null
+  checker: No spec found. Reply with one JSON object with the fields pde, method, k, L, initial, left, right, eigenfunction.
+not solved in 4 rounds; best reward 0.0
+
+=========== level1.3 ===========
+Solve the heat equation on a rod.
+
+  u_t = 1 * u_xx,   for 0 < x < 2, t > 0
+  u(0, t) = 0 and u(2, t) = 0
+  u(x, 0) = -x**2 + 2*x
+
+The starting shape is not a single sine wave, so the answer is a sum of the allowed waves, each with its own coefficient and its own decay rate. Keep enough terms that the starting shape matches to within 0.5 percent.
+
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused  request failed 3 times: ConnectError: [Errno 111] Connection refused
+
+
+round 0: rewards [0.0, 0.0, 0.0, 0.0]  mean 0.00  best 0.0  0 tool call(s)  0 tokens  (12.0s)
+  best: null
+  checker: No spec found. Reply with one JSON object with the fields pde, method, k, L, initial, left, right, eigenfunction.
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+
+round 1: rewards [0.0, 0.0, 0.0, 0.0]  mean 0.00  best 0.0  0 tool call(s)  0 tokens  (12.0s)
+  best: null
+  checker: No spec found. Reply with one JSON object with the fields pde, method, k, L, initial, left, right, eigenfunction.
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+
+round 2: rewards [0.0, 0.0, 0.0, 0.0]  mean 0.00  best 0.0  0 tool call(s)  0 tokens  (12.0s)
+  best: null
+  checker: No spec found. Reply with one JSON object with the fields pde, method, k, L, initial, left, right, eigenfunction.
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+  request failed 3 times: ConnectError: [Errno 111] Connection refused
+
+round 3: rewards [0.0, 0.0, 0.0, 0.0]  mean 0.00  best 0.0  0 tool call(s)  0 tokens  (12.0s)
+  best: null
+  checker: No spec found. Reply with one JSON object with the fields pde, method, k, L, initial, left, right, eigenfunction.
+not solved in 4 rounds; best reward 0.0
+
+=========== summary: level 1, seed 1, arm T3 ===========
+  level1.1     reward 0.0 after 4 round(s)  48s
+  level1.2     reward 0.0 after 4 round(s)  48s
+  level1.3     reward 0.0 after 4 round(s)  48s
+  solved 0/3
+
+attempts logged to results/T3-20261010-194413-35085.jsonl

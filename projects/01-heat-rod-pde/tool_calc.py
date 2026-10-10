@@ -75,7 +75,7 @@ def compute(expr_str):
     return out
 
 
-ASK = re.compile(r"^\s*COMPUTE:\s*(.+?)\s*$", re.M)
+ASK = re.compile(r"^[\s*_`>#-]*COMPUTE[\s*_`]*:[\s*_`]*(.*?)\s*$", re.M)
 
 INSTRUCTIONS = (
     "You have a calculator. To get an exact value, write a line of the form\n"
@@ -90,7 +90,20 @@ INSTRUCTIONS = (
 
 def requests_in(text):
     """The COMPUTE: lines a reply is asking for."""
-    return [m.group(1).strip() for m in ASK.finditer(text or "")][:8]
+    lines, out = (text or "").splitlines(), []
+    for i, line in enumerate(lines):
+        m = ASK.match(line)
+        if not m:
+            continue
+        expr, j = m.group(1).strip("`* "), i + 1
+        while not expr and j < len(lines):        # **COMPUTE:** then the expression, maybe fenced
+            cand = lines[j].strip()
+            j += 1
+            if not cand.startswith("```"):
+                expr = cand.strip("`* ")
+        if expr:
+            out.append(expr)
+    return out[:8]
 
 
 def answer_block(asks):

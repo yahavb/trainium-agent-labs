@@ -1,0 +1,59 @@
+
+=========== level1.1 ===========
+Solve the heat equation on a rod.
+
+  u_t = 1 * u_xx,   for 0 < x < 1, t > 0
+  u(0, t) = 0 and u_x(1, t) = 0
+  u(x, 0) = sin(pi*x/2)
+
+One end is insulated: its condition is on the slope, not the value.
+
+
+round 0: rewards [0.6, 0.6, 0.6, 0.6]  mean 0.60  best 0.6  4 tool call(s)  284 tokens  (15.5s)
+  best: {"pde": "heat", "method": "eigenfunction_expansion", "k": "1", "L": "1", "initial": "sin(pi*x/2)", "left": "dirichlet", "right": "neumann", "eigenfunction": "sqrt(2)*sin(n*pi*x)"}
+  checker: At the right end x=1, the slope u_x should be 0 but is -6.638 at t=0.0068. At t=0 the answer differs from the required starting shape by 16.18 percent, and it must be under 0.0001 percent. Term by term: the terms sin(15*pi*x/2), sin(13*pi*x/2), sin(11*pi*x/2), sin(9*pi*x/2) should not be there at all. Solver note: You stated the right end is neumann, but the slope X_n' at x = 1 is (-1)**n*sqrt(2)*pi*n, which is not 0 for every n, so your eigenfunction does not satisfy that end condition.
+
+round 1: rewards [1.0, 1.0, 1.0, 1.0]  mean 1.00  best 1.0  4 tool call(s)  292 tokens  (14.2s)
+SOLVED: u(x, t) = exp(-pi**2*t/4)*sin(pi*x/2)
+
+=========== level1.2 ===========
+Solve the heat equation on a rod.
+
+  u_t = 3/2 * u_xx,   for 0 < x < 3, t > 0
+  u(0, t) = 0 and u_x(3, t) = 0
+  u(x, 0) = sin(pi*x/6) + 2*sin(5*pi*x/6)
+
+One end is insulated: its condition is on the slope, not the value.
+
+
+round 0: rewards [0.6, 0.6, 0.6, 0.6]  mean 0.60  best 0.6  4 tool call(s)  344 tokens  (19.1s)
+  best: {"pde": "heat", "method": "eigenfunction_expansion", "k": "3/2", "L": "3", "initial": "sin(pi*x/6) + 2*sin(5*pi*x/6)", "left": "dirichlet", "right": "neumann", "eigenfunction": "sqrt(2/L)*sin(n*pi*x/L)"}
+  checker: At the right end x=3, the slope u_x should be 0 but is -2.378 at t=0.0608. At t=0 the answer differs from the required starting shape by 21.83 percent, and it must be under 0.0001 percent. Term by term: the terms sin(5*pi*x/2), sin(13*pi*x/6), sin(11*pi*x/6), sin(3*pi*x/2) should not be there at all. Solver note: You stated the right end is neumann, but the slope X_n' at x = 3 is (-1)**n*sqrt(6)*pi*n/9, which is not 0 for every n, so your eigenfunction does not satisfy that end condition.
+
+round 1: rewards [0.6, 0.6, 0.6, 0.6]  mean 0.60  best 0.6  4 tool call(s)  344 tokens  (18.8s)
+  best: {"pde": "heat", "method": "eigenfunction_expansion", "k": "3/2", "L": "3", "initial": "sin(pi*x/6) + 2*sin(5*pi*x/6)", "left": "dirichlet", "right": "neumann", "eigenfunction": "sqrt(2/L)*cos(n*pi*x/L)"}
+  checker: At the left end x=0, u should be 0 but is +0.5431 at t=0.1022. At t=0 the answer differs from the required starting shape by 56.39 percent, and it must be under 0.0001 percent. Term by term: the coefficient of sin(pi*x/6) has the wrong sign; the coefficient of sin(5*pi*x/6) is too small; the terms sin(pi*x/2), sin(7*pi*x/6) should not be there at all. Solver note: You stated the left end is dirichlet, but X_n at x = 0 is sqrt(6)/3, which is not 0 for every n, so your eigenfunction does not satisfy that end condition.
+
+round 2: rewards [1.0, 1.0, 1.0, 1.0]  mean 1.00  best 1.0  4 tool call(s)  372 tokens  (18.0s)
+SOLVED: u(x, t) = exp(-pi**2*t/24)*sin(pi*x/6) + 2*exp(-25*pi**2*t/24)*sin(5*pi*x/6)
+
+=========== level1.3 ===========
+Solve the heat equation on a rod.
+
+  u_t = 2 * u_xx,   for 0 < x < 2, t > 0
+  u(0, t) = 0 and u(2, t) = 0
+  u(x, 0) = -x**2 + 2*x
+
+The starting shape is not a single sine wave, so the answer is a sum of the allowed waves, each with its own coefficient and its own decay rate. Keep enough terms that the starting shape matches to within 0.5 percent.
+
+
+round 0: rewards [1.0, 1.0, 1.0, 1.0]  mean 1.00  best 1.0  4 tool call(s)  284 tokens  (14.2s)
+SOLVED: u(x, t) = 32*exp(-pi**2*t/2)*sin(pi*x/2)/pi**3 + 32*exp(-9*pi**2*t/2)*sin(3*pi*x/2)/(27*pi**3) + 32*exp(-25*pi**2*t/2)*sin(5*pi*x/2)/(125*pi**3) + 32*exp(-49*pi**2*t/2)*sin(7*pi*x/2)/(343*pi**3) + 32*exp(-81*pi**2*t/2)*sin(9*pi*x/2)/(729*pi**3)
+
+=========== summary: level 1, seed 0, arm T2c ===========
+  level1.1     reward 1.0 after 2 round(s)  30s  SOLVED
+  level1.2     reward 1.0 after 3 round(s)  56s  SOLVED
+  level1.3     reward 1.0 after 1 round(s)  14s  SOLVED
+  solved 3/3
+
+attempts logged to results/T2c-20261010-204713-45335.jsonl
