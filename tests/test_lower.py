@@ -25,7 +25,7 @@ def win(name, *shape):
     (buf("t", 129, 8, mem=ir.SBUF), NC_DEFAULT, "partition dimension"),
     (buf("t", 8, 8, mem=ir.SBUF), NC_TINY, "partition dimension"),            # tiny config: pmax = 4
     (buf("t", 128, 8, mem=ir.PSUM, dtype="bf16"), NC_DEFAULT, "must be f32"),
-    (buf("t", 128, 513, mem=ir.PSUM), NC_DEFAULT, "one bank"),                 # 513 * 4 B > 2 KiB
+    (buf("t", 128, 4097, mem=ir.PSUM), NC_DEFAULT, "banks"),                  # 4097 * 4 B > 8 banks x 2 KiB
 ])
 def test_check_hw_rejects(alloc, hw, message):
     with pytest.raises(HardwareError, match=message):

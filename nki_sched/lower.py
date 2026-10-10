@@ -32,8 +32,9 @@ def check_hw(proc: ir.Proc, hw: HardwareConfig):
             free = 1
             for d in b.shape[1:]:
                 free *= d.const
-            if free * DTYPE_BYTES["f32"] > hw.psum_bank_bytes:
-                raise HardwareError(f"{b.name} @ PSUM needs {free * 4} B/partition > one bank ({hw.psum_bank_bytes} B)")
+            cap = hw.psum_banks * hw.psum_bank_bytes
+            if free * DTYPE_BYTES["f32"] > cap:
+                raise HardwareError(f"{b.name} @ PSUM needs {free * 4} B/partition > the {hw.psum_banks} banks x {hw.psum_bank_bytes} B of PSUM ({cap} B)")
     for s in ir.walk(proc.body):
         if isinstance(s, ir.Call):
             ins = INSTRS.get(s.instr)
@@ -53,22 +54,42 @@ def check_hw(proc: ir.Proc, hw: HardwareConfig):
                     raise HardwareError(f"{s.instr}: operand windows must be 2-D with constant sizes")
                 if k != k2 or dshape != (m, n):
                     raise HardwareError(f"{s.instr}: inconsistent shapes stationary[{k},{m}] moving[{k2},{n}] dst{list(dshape)}")
+                _check_one_bank(dst, bufs[dst.buf], hw)
                 if k > hw.pmax or m > hw.stationary_fmax or n > hw.moving_fmax:
                     raise HardwareError(f"{s.instr}: tile k={k} m={m} n={n} exceeds caps ({hw.pmax}, {hw.stationary_fmax}, {hw.moving_fmax})")
+
+
+def _check_one_bank(w: ir.Window, b: ir.Buffer, hw: HardwareConfig):
+    """A matmul accumulation group cannot straddle PSUM banks: the flattened free offset of the
+    destination window must be bank-aligned (up to the window's own extent) for every iteration."""
+    be = hw.psum_bank_bytes // DTYPE_BYTES["f32"]
+    free = [d.const for d in b.shape[1:]]
+    off = Aff(0)
+    stride = 1
+    for d in range(len(free), 0, -1):
+        off = off + w.lo[d] * stride
+        stride *= free[d - 1]
+    last = max((d for d in range(1, len(w.size)) if d not in w.points), default=None)
+    ext = w.size[last].const if last is not None else 1
+    if any(c % be for _, c in off.terms) or off.const % be + ext > be:
+        raise HardwareError(
+            f"ns.tensor.matmul: dst window {w.buf}[...] at free offset {off} (extent {ext}) can straddle a PSUM bank "
+            f"({be} f32 per bank); align the tile loop to the bank size")
 
 
 # ---------------------------------------------------------------- window of an affine loop nest access
 def nest_window(buf: str, idx: tuple, extents: dict):
     """Window covered by buf[idx] as the loops in `extents` (var->extent) sweep. Each loop var must
     appear alone with coefficient 1 in one dim. Returns (Window, [var or None per dim])."""
-    lo, size, vars_ = [], [], []
+    lo, size, vars_, points = [], [], [], []
     used = set()
-    for e in idx:
+    for d, e in enumerate(idx):
         hit = [(a.name, c) for a, c in e.terms if isinstance(a, Var) and a.name in extents]
         if not hit:
             lo.append(e)
             size.append(Aff(1))
             vars_.append(None)
+            points.append(d)
         elif len(hit) == 1 and hit[0][1] == 1 and hit[0][0] not in used:
             v = hit[0][0]
             used.add(v)
@@ -79,7 +100,7 @@ def nest_window(buf: str, idx: tuple, extents: dict):
             return None, None
     if used != set(extents):
         return None, None
-    return ir.Window(buf, tuple(lo), tuple(size)), vars_
+    return ir.Window(buf, tuple(lo), tuple(size), tuple(points)), vars_
 
 
 def _perfect_chain(s: ir.For):
@@ -105,7 +126,7 @@ def copy_nest_to_call(s: ir.For, bufs: dict):
     ext = {c.var: c.extent for c in chain}
     dw, dvars = nest_window(a.buf, a.idx, ext)
     sw, svars = nest_window(rhs.buf, rhs.idx, ext)
-    if dw is None or sw is None or dvars != svars or None in dvars:
+    if dw is None or sw is None or [v for v in dvars if v] != [v for v in svars if v]:
         return None
     dm, sm = bufs[a.buf].mem, bufs[rhs.buf].mem
     ddt = bufs[a.buf].dtype

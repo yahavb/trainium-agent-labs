@@ -10,7 +10,7 @@ from dataclasses import replace
 from typing import Callable, Optional
 
 from . import ir
-from .analysis import AnalysisError, const_int, injective, loop_ranges, region
+from .analysis import AnalysisError, const_int, dim_interval, injective, loop_ranges, region
 from .emit import emit_nki
 from .expr import Aff, Var, var
 from .hw import INSTRS, NC_DEFAULT, HardwareConfig
@@ -307,7 +307,66 @@ class Sched:
         p = self.proc.with_(body=tuple(ir.map_stmts(self.proc.body, f)))
         self._commit(f"set_memory({buf}, {mem})", p)
 
-    def _staging(self, tensor, at, mem, name, direction):
+    def fold(self, buf: str, tile: Optional[int] = None):
+        self._commit(f"fold({buf}, {self.hw.pmax if tile is None else tile})", self._fold_proc(self.proc, buf, tile))
+
+    def _fold_proc(self, proc: ir.Proc, buf: str, tile: Optional[int] = None) -> ir.Proc:
+        """Re-layout an on-chip buffer whose axis 0 is a multiple of `tile` (default `hw.pmax`) as
+        `[tile, T, ...]`: row `tile*t + r` moves to `[r, t, ...]`. This is how a block of several
+        partition tiles (e.g. a 512-row PSUM accumulator or output tile) is held on a 128-partition
+        memory. Every access must split cleanly: its axis-0 offset is `tile*q + r` with `q` free of
+        the loops that sweep within a tile and `r` provably inside `[0, tile)`; windows must not
+        straddle a tile boundary."""
+        b = ir.buffers_of(proc)[buf]
+        if b.role != "temp":
+            raise ScheduleError(f"fold({buf}): only temporaries can be re-laid out")
+        tile = self.hw.pmax if tile is None else tile
+        rows = self._const(b.shape[0], f"fold({buf}): axis 0 of '{buf}'")
+        if rows % tile or rows == tile:
+            raise ScheduleError(f"fold({buf}): axis 0 has {rows} rows, which must be a multiple (> 1) of the tile size {tile}")
+        ranges = loop_ranges(proc.body)
+
+        def divide(e: Aff, size: Aff):
+            q, r = Aff(e.const // tile), Aff(e.const % tile)
+            for atom, c in e.terms:
+                if c % tile == 0:
+                    q = q + Aff.of(atom) * (c // tile)
+                else:
+                    r = r + Aff.of(atom) * c
+            try:
+                lo, span = dim_interval(r, ranges)
+            except AnalysisError as ex:
+                raise ScheduleError(f"fold({buf}): {ex}") from None
+            if not (lo.is_const and span.is_const and size.is_const) or lo.const < 0 or lo.const + span.const + size.const - 1 > tile:
+                raise ScheduleError(
+                    f"fold({buf}): axis-0 access '{e}' (window size {size}) is not confined to one {tile}-row tile; "
+                    f"split the loop that indexes axis 0 by {tile} first")
+            return q, r
+
+        def fidx(idx):
+            q, r = divide(idx[0], Aff(1))
+            return (r, q) + tuple(idx[1:])
+
+        def fwin(w):
+            q, r = divide(w.lo[0], w.size[0])
+            pts = tuple(sorted([p + 1 if p >= 1 else p for p in w.points] + [1]))
+            return ir.Window(w.buf, (r, q) + tuple(w.lo[1:]), (w.size[0], Aff(1)) + tuple(w.size[1:]), pts)
+
+        def remap(s):
+            if isinstance(s, ir.For):
+                return replace(s, body=tuple(remap(x) for x in s.body))
+            if isinstance(s, ir.Alloc) and s.buf.name == buf:
+                return ir.Alloc(b.with_(shape=(Aff(tile), Aff(rows // tile)) + tuple(b.shape[1:])))
+            if isinstance(s, (ir.Assign, ir.Reduce)):
+                rhs = ir._remap_expr(s.rhs, buf, buf, fidx)
+                return type(s)(s.buf, fidx(s.idx) if s.buf == buf else s.idx, rhs)
+            if isinstance(s, ir.Call):
+                return ir.Call(s.instr, tuple((rl, fwin(w) if w.buf == buf else w) for rl, w in s.args), s.attrs)
+            return s
+
+        return proc.with_(body=tuple(remap(x) for x in proc.body))
+
+    def _staging(self, tensor, at, mem, name, direction, fold=False):
         at_loop = self._find(at)
         self._fresh(name)
         tb = self._buf(tensor)
@@ -342,7 +401,9 @@ class Sched:
             new_body = (ir.Alloc(nb),) + body + (cp,)
         new_at = replace(at_loop, body=new_body)
         p = self._rewrite_loop(at, lambda f: (new_at,))
-        self._commit(f"stage_{direction}({tensor}, at={at}, {mem}, {name})", p)
+        if fold:
+            p = self._fold_proc(p, name)
+        self._commit(f"stage_{direction}({tensor}, at={at}, {mem}, {name}{', fold=True' if fold else ''})", p)
 
     @staticmethod
     def _copy_call(dst: ir.Window, src: ir.Window, src_mem: str, dst_mem: str):
@@ -352,17 +413,18 @@ class Sched:
             return ir.Call("ns.sync.dma_copy", (("dst", dst), ("src", src)))
         return ir.Call("ns.vector.tensor_copy", (("dst", dst), ("src", src)))
 
-    def stage_in(self, tensor: str, at: str, mem: str, name: str):
+    def stage_in(self, tensor: str, at: str, mem: str, name: str, fold: bool = False):
         """cache_read: copy the window of `tensor` read inside loop `at` into a new buffer in
         `mem` at the start of `at`'s body; accesses are redirected. The copy is created directly as
         the right ns instruction (HBM->SBUF: ns.sync.dma_copy)."""
-        self._staging(tensor, at, mem, name, "in")
+        self._staging(tensor, at, mem, name, "in", fold)
         return name
 
-    def stage_out(self, tensor: str, at: str, mem: str, name: str):
+    def stage_out(self, tensor: str, at: str, mem: str, name: str, fold: bool = False):
         """cache_write: writes to `tensor` inside `at` go to a new buffer in `mem`; the window is
-        copied out after `at`'s body."""
-        self._staging(tensor, at, mem, name, "out")
+        copied out after `at`'s body. With `fold=True` the new buffer is also folded (see `fold`), for
+        windows taller than the partition count."""
+        self._staging(tensor, at, mem, name, "out", fold)
         return name
 
     # ------------------------------------------------------------------ instruction selection
@@ -453,20 +515,51 @@ class Sched:
         if found.get("init") != 1:
             raise ScheduleError(f"fold_init({buf}): expected exactly one full zero-initialisation nest, found {found.get('init', 0)}")
         n_mm = []
+        bufs = ir.buffers_of(self.proc)
 
-        def f(s):
-            if isinstance(s, ir.Call) and s.instr == "ns.tensor.matmul" and s.arg("dst").buf == buf:
-                if not s.arg("dst").is_full(bufs):
-                    raise ScheduleError(f"fold_init({buf}): matmul writes only part of '{buf}'; first-write-overwrite would be unsound")
-                n_mm.append(1)
-                return replace(s, attrs=tuple((k, v) for k, v in s.attrs if k != "accumulate") + (("accumulate", None),))
-            return None
+        def rec2(stmts, stack):
+            out = []
+            for s in stmts:
+                if isinstance(s, ir.For):
+                    s = replace(s, body=tuple(rec2(s.body, stack + [s])))
+                elif isinstance(s, ir.Call) and s.instr == "ns.tensor.matmul" and s.arg("dst").buf == buf:
+                    if not self._tiles_buffer(s.arg("dst"), bufs[buf], {l.var: l.extent for l in stack}):
+                        raise ScheduleError(
+                            f"fold_init({buf}): the matmuls do not write every element of '{buf}' as non-overlapping whole tiles; "
+                            f"first-write-overwrite would leave stale data")
+                    n_mm.append(1)
+                    s = replace(s, attrs=tuple((k, v) for k, v in s.attrs if k != "accumulate") + (("accumulate", None),))
+                out.append(s)
+            return out
 
-        body = tuple(ir.map_stmts(body, f))
+        body = tuple(rec2(body, []))
         if not n_mm:
             raise ScheduleError(f"fold_init({buf}): no ns.tensor.matmul accumulates into '{buf}' (replace the update nest first)")
         # every other access to buf must be a read after the matmuls (checked by the oracle step too)
         self._commit(f"fold_init({buf})", self.proc.with_(body=body))
+
+    @staticmethod
+    def _tiles_buffer(w: ir.Window, b: ir.Buffer, loops: dict) -> bool:
+        """Do the windows `w` takes as the enclosing `loops` run tile `b` exactly (every element
+        once per sweep of the loops that move it)? Per dimension the moving loop coefficients must
+        form a mixed-radix system starting at the window size and ending at the buffer extent."""
+        for d, (lo, z) in enumerate(zip(w.lo, w.size)):
+            full = b.shape[d]
+            if not (full.is_const and z.is_const and lo.const == 0):
+                return False
+            terms = []
+            for atom, c in lo.terms:
+                if not (isinstance(atom, Var) and atom.name in loops and loops[atom.name].is_const):
+                    return False
+                terms.append((c, loops[atom.name].const))
+            span = z.const
+            for c, ext in sorted(terms):
+                if c != span:
+                    return False
+                span *= ext
+            if span != full.const:
+                return False
+        return True
 
     def hoist(self, buf: str, to: Optional[str]):
         """Re-stage `buf` (created by stage_in) at the outer loop `to`: its fill moves out of every
