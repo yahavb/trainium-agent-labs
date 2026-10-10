@@ -55,3 +55,9 @@ message-treatment comparison with those limitations; it is not a deterministic c
 The original three-arm reporting script intentionally requires its pinned referee hash and nine
 runs. Do not relabel or concatenate these v2 logs to make them pass that original protocol. Keep
 v2's state, source diff, hashes, acceptance and infrastructure records beside its three log files.
+
+Line endings: every pinned SHA-256 here and in `run_comparison.py` (referee, baseline, P3 agent, P2
+search, `be620d…` treatment) is of the CRLF form of the file, as the seat-100 snapshots were written.
+Both launchers hash in that form (`pinned_digest`), so a plain LF git checkout passes too. To rebuild the
+treatment: `git show 434e5f9:projects/03-chipboost/speedcheck.py > speedcheck.py && patch -p1 < dma-only.patch`
+(the patch is plain LF; `tests/test_pinned_hashes.py` checks it reproduces `be620d…`).

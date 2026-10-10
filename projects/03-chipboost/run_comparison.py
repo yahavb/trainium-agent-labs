@@ -15,6 +15,13 @@ import time
 import urllib.request
 
 
+def pinned_digest(path):
+    """SHA-256 in the CRLF form the pins were taken in (seat-100's snapshots); git checkouts are LF.
+    Recorded hashes use the same form, so run_referee_v2.py can compare against this run's state."""
+    lf = Path(path).read_bytes().replace(b"\r\n", b"\n")
+    return hashlib.sha256(lf.replace(b"\n", b"\r\n")).hexdigest()
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     for name in ("p1", "p2", "p3", "out"):
@@ -62,7 +69,7 @@ def main():
     sys.path.insert(0, str(roots["p1"]))
     import speedcheck as sc
     import schema
-    digest = hashlib.sha256((roots["p1"] / "speedcheck.py").read_bytes()).hexdigest()
+    digest = pinned_digest(roots["p1"] / "speedcheck.py")
     assert digest == "5f366558ae933c88262bbde806afbcd4a568fdbfab4fc3395951f1b3799d71be"
     baseline = roots["p1"].parent / "02-kernel-agent/reference_level4.py"
     # The original acceptance script used read_text/write_text; preserve that candidate exactly.
@@ -72,7 +79,7 @@ def main():
     candidate = out / "acceptance_candidate.py"
     candidate.write_bytes(src)
     state.update(referee_sha256=digest, candidate_sha256=hashlib.sha256(src).hexdigest(),
-                 baseline=str(baseline), baseline_sha256=hashlib.sha256(baseline.read_bytes()).hexdigest())
+                 baseline=str(baseline), baseline_sha256=pinned_digest(baseline))
     with urllib.request.urlopen(a.base.rstrip("/") + "/models", timeout=15) as response:
         models = json.load(response)
     assert a.model in [m["id"] for m in models["data"]], "Requested model is not served"
@@ -87,8 +94,8 @@ def main():
         search = load("comparison_search", roots["p2"] / "search.py")
     finally:
         sys.modules["nkibench"] = pinned_nkibench
-    state["agent_sha256"] = hashlib.sha256((roots["p3"] / "agent.py").read_bytes()).hexdigest()
-    state["search_sha256"] = hashlib.sha256((roots["p2"] / "search.py").read_bytes()).hexdigest()
+    state["agent_sha256"] = pinned_digest(roots["p3"] / "agent.py")
+    state["search_sha256"] = pinned_digest(roots["p2"] / "search.py")
     state["search_design"] = "P2 expert-template cap search; same timing baseline, different candidate prior from agent arms"
 
     with sc.RefereeWorker(core=a.core, baseline=str(baseline),
