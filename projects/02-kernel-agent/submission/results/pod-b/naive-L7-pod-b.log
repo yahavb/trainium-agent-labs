@@ -1,0 +1,40 @@
+
+=== run 1/5  level 7: matmul  [naive, ve22ccab872] ===
+L7 #1 in=126 [task=114] out=212 15.3s  FAIL rule:whole-array
+L7 #2 in=527 [task=82 code=211 feed=221] out=577 41.4s  FAIL timeout
+L7 #3 in=539 [task=82 code=272 feed=171] out=596 42.7s  FAIL rule:whole-array
+L7 #4 in=532 [task=82 code=216 feed=221] out=592 42.5s  FAIL rule:whole-array
+L7 #5 in=539 [task=82 code=295 feed=149] out=624 44.7s  FAIL rule:whole-array
+   STUCK: 'rule:whole-array' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 5 attempt(s), 2263 in / 2601 out tokens
+
+=== run 2/5  level 7: matmul  [naive, ve22ccab872] ===
+L7 #1 in=118 [task=106] out=268 19.3s  FAIL crash:ValueError
+L7 #2 in=532 [task=82 code=267 feed=170] out=468 33.6s  FAIL crash:ValueError
+L7 #3 in=543 [task=82 code=294 feed=154] out=592 42.5s  FAIL rule:whole-array
+L7 #4 in=532 [task=82 code=281 feed=156] out=590 42.3s  PASS dev; holdout 7/10
+   => dev-only (confidence 0.30) after 4 attempt(s), 1725 in / 1918 out tokens
+
+=== run 3/5  level 7: matmul  [naive, ve22ccab872] ===
+L7 #1 in=116 [task=104] out=255 18.4s  FAIL numeric:tag:multi-k-tile
+L7 #2 in=628 [task=82 code=254 feed=279] out=750 53.7s  FAIL numeric:tag:multi-k-tile
+L7 #3 in=667 [task=82 code=293 feed=279] out=673 48.2s  PASS dev; holdout 7/10
+   => dev-only (confidence 0.30) after 3 attempt(s), 1411 in / 1678 out tokens
+
+=== run 4/5  level 7: matmul  [naive, ve22ccab872] ===
+L7 #1 in=117 [task=105] out=272 19.6s  PASS dev; holdout 7/10
+   => dev-only (confidence 0.30) after 1 attempt(s), 117 in / 272 out tokens
+
+=== run 5/5  level 7: matmul  [naive, ve22ccab872] ===
+L7 #1 in=117 [task=105] out=215 15.5s  FAIL rule:whole-array
+L7 #2 in=544 [task=82 code=214 feed=235] out=550 39.5s  FAIL rule:whole-array
+L7 #3 in=506 [task=82 code=262 feed=149] out=3000 214.2s  NO CODE (truncated)
+L7 #4 in=506 [task=82 code=262 feed=149] out=944 67.5s  FAIL rule:whole-array (repeat code)
+L7 #5 in=506 [task=82 code=262 feed=149] out=1173 83.9s  FAIL rule:whole-array (repeat code)
+L7 #6 in=506 [task=82 code=262 feed=149] out=608 43.6s  FAIL rule:whole-array (repeat code)
+   STUCK: 'rule:whole-array' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 6 attempt(s), 2685 in / 6490 out tokens
+
+=== summary over 5 run(s) ===
+  L7 matmul       verified 0/5  mean attempts when verified nan  statuses ['stuck', 'dev-only', 'dev-only', 'dev-only', 'stuck']
+log: runs/naive-L7-pod-b.jsonl  (code version e22ccab872)

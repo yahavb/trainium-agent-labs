@@ -1,0 +1,65 @@
+
+=== run 1/5  level 9: band_attention  [ours, v99f950b1da] ===
+L9 #1 in=181 [task=169] out=423 30.4s cached  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (6 violations: layout, matmul-op, max-like, sum-like, whole-array), so patching i...
+L9 #2 in=891 [task=151 code=422 feed=305] out=502 36.0s  PASS dev; holdout 7/7
+   => verified (confidence 0.95) after 2 attempt(s), 1072 in / 925 out tokens
+
+=== run 2/5  level 9: band_attention  [ours, v99f950b1da] ===
+L9 #1 in=173 [task=161] out=3000 214.2s cached  NO CODE (truncated)
+L9 #2 in=142 [task=130] out=224 16.2s cached  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (5 violations: fancy-index, linalg, max-like, sum-like), so patching it one line ...
+L9 #3 in=689 [task=151 code=223 feed=302] out=553 39.6s  FAIL numeric:other
+      -> The results are wrong
+L9 #4 in=686 [task=151 code=352 feed=170] out=667 47.8s  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (6 violations: layout, matmul-op, max-like, sum-like, whole-array), so patching i...
+L9 #5 in=700 [task=151 code=209 feed=305 ledg=22] out=558 40.0s  FAIL rule:broadcast
+      -> Elementwise operands must have identical shapes; scalars are fine (np.add on operands of shapes (0,) and (1,))
+L9 #6 in=696 [task=151 code=317 feed=215] out=535 38.4s  PASS dev; holdout 7/7
+   => verified (confidence 0.95) after 6 attempt(s), 3086 in / 5537 out tokens
+
+=== run 3/5  level 9: band_attention  [ours, v99f950b1da] ===
+L9 #1 in=171 [task=159] out=351 25.2s cached  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (9 violations: layout, max-like, newaxis, sum-like, whole-array), so patching it ...
+L9 #2 in=818 [task=151 code=350 feed=304] out=604 43.3s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L9 #3 in=777 [task=151 code=398 feed=215] out=586 42.0s  FAIL numeric:nonfinite
+      -> Some outputs are nan or inf although the true answer is finite: a step overflows for these inputs
+L9 #4 in=764 [task=151 code=442 feed=158] out=579 41.5s  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (10 violations: layout, max-like, newaxis, sum-like, whole-array), so patching it...
+L9 #5 in=760 [task=151 code=252 feed=306 ledg=38] out=637 45.6s  PASS dev; holdout 7/7
+   => verified (confidence 0.95) after 5 attempt(s), 3290 in / 2757 out tokens
+
+=== run 4/5  level 9: band_attention  [ours, v99f950b1da] ===
+L9 #1 in=172 [task=160] out=203 14.7s cached  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (5 violations: fancy-index, matmul-op, max-like, sum-like), so patching it one li...
+L9 #2 in=669 [task=151 code=202 feed=303] out=398 28.6s  PASS dev; holdout 7/7
+   => verified (confidence 0.95) after 2 attempt(s), 841 in / 601 out tokens
+
+=== run 5/5  level 9: band_attention  [ours, v99f950b1da] ===
+L9 #1 in=172 [task=160] out=212 15.3s cached  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (5 violations: linalg, max-like, sum-like, whole-array), so patching it one line ...
+L9 #2 in=677 [task=151 code=211 feed=302] out=592 42.4s  FAIL numeric:other
+      -> The results are wrong
+L9 #3 in=689 [task=151 code=355 feed=170] out=1026 73.4s  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (9 violations: layout, matmul-op, max-like, newaxis, sum-like, whole-array), so p...
+L9 #4 in=713 [task=151 code=219 feed=308 ledg=22] out=658 47.1s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L9 #5 in=766 [task=151 code=387 feed=215] out=567 40.6s  FAIL numeric:nonfinite
+      -> Some outputs are nan or inf although the true answer is finite: a step overflows for these inputs
+L9 #6 in=759 [task=151 code=437 feed=158] out=542 38.9s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L9 #7 in=685 [task=151 code=239 feed=221 ledg=61] out=498 35.7s  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L9 #8 in=579 [task=151 code=323 feed=92] out=478 34.3s  FAIL rule:broadcast
+      -> Elementwise operands must have identical shapes; scalars are fine (np.add on operands of shapes (8,) and (128,))
+L9 #9 in=748 [task=151 code=356 feed=228] out=591 42.4s  FAIL rule:broadcast
+      -> Elementwise operands must have identical shapes; scalars are fine (np.add on operands of shapes (8,) and (128,))
+L9 #10 in=871 [task=151 code=407 feed=228 ledg=72] out=768 55.0s  FAIL rule:broadcast
+      -> Elementwise operands must have identical shapes; scalars are fine (np.add on operands of shapes (8,) and (128,))
+   STUCK: 'rule:broadcast' 3 attempts in a row without progress; more of the same won't help
+   => stuck (confidence 0.00) after 10 attempt(s), 6659 in / 5932 out tokens
+
+=== summary over 5 run(s) ===
+  L9 band_attention verified 4/5  mean attempts when verified 3.8  statuses ['verified', 'verified', 'verified', 'verified', 'stuck']
+log: runs/ours-L9-pod-c.jsonl  (code version 99f950b1da)

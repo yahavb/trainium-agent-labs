@@ -1,0 +1,78 @@
+
+=== run 1/5  level 1: relu_affine ===
+L1 #1 in=107 [task=95] out=180 65.9s  FAIL rule:escape
+      -> Remove `np.asarray`; work directly on slices of the input arrays.
+L1 #2 in=294 [task=68 code=179 feed=34] out=167 42.5s  PASS dev; holdout 30/30
+   => verified (confidence 0.95) after 2 attempt(s), 401 in / 347 out tokens
+
+=== run 1/5  level 2: row_sum ===
+L2 #1 in=108 [task=96] out=134 84.1s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L2 #2 in=314 [task=69 code=133 feed=99] out=161 54.5s  FAIL crash:IndexError
+      -> The kernel raises IndexError: index 512 is out of bounds for axis 1 with size 188 at line 16 `acc += tile[:, col]`
+L2 #3 in=351 [task=69 code=160 feed=109] out=266 100.7s  PASS dev; holdout 21/21
+   => verified (confidence 0.95) after 3 attempt(s), 773 in / 561 out tokens
+
+=== run 1/5  level 3: row_max ===
+L3 #1 in=108 [task=96] out=143 30.2s  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L3 #2 in=309 [task=69 code=142 feed=85] out=178 23.6s  FAIL crash:ValueError
+      -> The kernel raises ValueError: setting an array element with a sequence
+L3 #3 in=348 [task=69 code=177 feed=89] out=244 80.8s  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L3 #4 in=371 [task=69 code=179 feed=80 ledg=30] out=337 75.8s  FAIL numeric:other
+      -> The results are wrong
+L3 #5 in=356 [task=69 code=158 feed=116] out=352 80.7s  FAIL numeric:other
+      -> The results are wrong
+L3 #6 in=425 [task=69 code=176 feed=116 ledg=51] out=430 94.8s  FAIL numeric:other
+      -> The results are wrong
+   STUCK: 'numeric:other' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 6 attempt(s), 1917 in / 1684 out tokens
+
+=== run 2/5  level 1: relu_affine ===
+L1 #1 in=107 [task=95] out=180 35.7s  FAIL rule:escape
+      -> Remove `np.asarray`; work directly on slices of the input arrays.
+L1 #2 in=294 [task=68 code=179 feed=34] out=167 22.7s  PASS dev; holdout 30/30
+   => verified (confidence 0.95) after 2 attempt(s), 401 in / 347 out tokens
+
+=== run 2/5  level 2: row_sum ===
+L2 #1 in=108 [task=96] out=134 53.0s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L2 #2 in=314 [task=69 code=133 feed=99] out=161 69.5s  FAIL crash:IndexError
+      -> The kernel raises IndexError: index 512 is out of bounds for axis 1 with size 188 at line 16 `acc += tile[:, col]`
+L2 #3 in=351 [task=69 code=160 feed=109] out=269 65.5s  FAIL rule:sum-like
+      -> Replace `.sum()` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L2 #4 in=368 [task=69 code=140 feed=94 ledg=52] out=341 67.2s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L2 #5 in=430 [task=69 code=171 feed=98 ledg=79] out=329 58.5s  PASS dev; holdout 21/21
+   => verified (confidence 0.95) after 5 attempt(s), 1571 in / 1234 out tokens
+
+=== run 2/5  level 3: row_max ===
+L3 #1 in=108 [task=96] out=143 34.6s  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L3 #2 in=309 [task=69 code=142 feed=85] out=178 84.5s  FAIL crash:ValueError
+      -> The kernel raises ValueError: setting an array element with a sequence
+L3 #3 in=348 [task=69 code=177 feed=89] out=301 56.1s  FAIL numeric:other
+      -> The results are wrong
+L3 #4 in=391 [task=69 code=193 feed=116] out=386 77.8s  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L3 #5 in=330 [task=69 code=141 feed=85 ledg=22] out=164 41.4s  FAIL numeric:other
+      -> The results are wrong
+L3 #6 in=420 [task=69 code=163 feed=116 ledg=59] out=532 136.0s  FAIL numeric:other
+      -> The results are wrong
+L3 #7 in=415 [task=69 code=152 feed=116 ledg=65] out=580 80.6s  FAIL numeric:other (repeat code)
+      -> The results are wrong
+   STUCK: 'numeric:other' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 7 attempt(s), 2321 in / 2284 out tokens
+
+=== run 3/5  level 1: relu_affine ===
+L1 #1 in=107 [task=95] out=180 15.0s  FAIL rule:escape
+      -> Remove `np.asarray`; work directly on slices of the input arrays.
+L1 #2 in=294 [task=68 code=179 feed=34] out=167 91.1s  PASS dev; holdout 30/30
+   => verified (confidence 0.95) after 2 attempt(s), 401 in / 347 out tokens
+
+=== run 3/5  level 2: row_sum ===
+L2 #1 in=108 [task=96] out=134 42.2s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L2 #2 in=314 [task=69 code=133 feed=99] out=161 26.8s  FAIL crash:IndexError
+      -> The kernel raises IndexError: index 512 is out of bounds for axis 1 with size 188 at line 16 `acc += tile[:, col]`

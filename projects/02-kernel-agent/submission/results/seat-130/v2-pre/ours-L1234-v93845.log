@@ -1,0 +1,93 @@
+
+=== run 1/5  level 1: relu_affine  [ours, v93845c17a6] ===
+L1 #1 in=107 [task=95] out=180 65.9s cached  FAIL rule:escape
+      -> Remove `np.asarray`; work directly on slices of the input arrays.
+L1 #2 in=294 [task=68 code=179 feed=34] out=167 42.5s cached  PASS dev; holdout 30/30
+   => verified (confidence 0.95) after 2 attempt(s), 401 in / 347 out tokens
+
+=== run 1/5  level 2: row_sum  [ours, v93845c17a6] ===
+L2 #1 in=108 [task=96] out=134 84.1s cached  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L2 #2 in=314 [task=69 code=133 feed=99] out=161 54.5s cached  FAIL crash:IndexError
+      -> The kernel raises IndexError: index 512 is out of bounds for axis 1 with size 188 at line 16 `acc += tile[:, col]`
+L2 #3 in=351 [task=69 code=160 feed=109] out=266 100.7s cached  PASS dev; holdout 21/21
+   => verified (confidence 0.95) after 3 attempt(s), 773 in / 561 out tokens
+
+=== run 1/5  level 3: row_max  [ours, v93845c17a6] ===
+L3 #1 in=108 [task=96] out=143 30.2s cached  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L3 #2 in=309 [task=69 code=142 feed=85] out=178 23.6s cached  FAIL crash:ValueError
+      -> The kernel raises ValueError: setting an array element with a sequence
+L3 #3 in=348 [task=69 code=177 feed=89] out=244 80.8s cached  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L3 #4 in=371 [task=69 code=179 feed=80 ledg=30] out=337 75.8s cached  FAIL numeric:tile-overwrite
+      -> Each wrong row's result is the result over the last column tile only: the per-row result is overwritten for every column tile instead of combined across tiles
+L3 #5 in=450 [task=69 code=158 feed=210] out=3000 425.4s cached  NO CODE (truncated)
+L3 #6 in=505 [task=79 code=158 feed=210 ledg=45] out=159 78.6s cached  FAIL numeric:tile-overwrite (repeat code)
+      -> Each wrong row's result is the result over the last column tile only: the per-row result is overwritten for every column tile instead of combined across tiles
+L3 #7 in=535 [task=85 code=158 feed=210 ledg=69] out=215 27.6s cached  FAIL numeric:tile-overwrite
+      -> Each wrong row's result is the result over the last column tile only: the per-row result is overwritten for every column tile instead of combined across tiles
+L3 #8 in=599 [task=69 code=214 feed=210 ledg=93] out=450 96.6s  PASS dev; holdout 18/18
+   => verified (confidence 0.95) after 8 attempt(s), 3225 in / 4726 out tokens
+
+=== run 1/5  level 4: rmsnorm  [ours, v93845c17a6] ===
+L4 #1 in=155 [task=143] out=198 83.9s  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L4 #2 in=447 [task=116 code=197 feed=121] out=248 17.9s  FAIL crash:IndexError
+      -> The kernel raises IndexError: index 512 is out of bounds for axis 1 with size 188 at line 22 `acc[r] += x_tile[r, c]`
+L4 #3 in=503 [task=116 code=247 feed=127] out=423 30.4s  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (7,)  at line 28 `y[i:end_i, j:end_j] = x_tile / rms * g[j:end_j]`
+L4 #4 in=524 [task=116 code=257 feed=138] out=640 45.9s  FAIL rule:layout
+      -> Remove `.reshape()`
+L4 #5 in=544 [task=116 code=311 feed=104] out=278 20.0s  FAIL numeric:other
+      -> The results are wrong
+L4 #6 in=549 [task=116 code=277 feed=143] out=680 48.7s  FAIL numeric:other (repeat code)
+      -> The results are wrong
+L4 #7 in=593 [task=132 code=277 feed=143 ledg=28] out=278 20.0s  FAIL numeric:other (repeat code)
+      -> The results are wrong
+   STUCK: 'numeric:other' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 7 attempt(s), 3315 in / 2745 out tokens
+
+=== run 2/5  level 1: relu_affine  [ours, v93845c17a6] ===
+L1 #1 in=99 [task=87] out=222 16.0s  FAIL rule:escape
+      -> Remove `np.asarray`; work directly on slices of the input arrays.
+L1 #2 in=336 [task=68 code=221 feed=34] out=209 15.1s  PASS dev; holdout 30/30
+   => verified (confidence 0.95) after 2 attempt(s), 435 in / 431 out tokens
+
+=== run 2/5  level 2: row_sum  [ours, v93845c17a6] ===
+L2 #1 in=100 [task=88] out=134 9.8s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L2 #2 in=314 [task=69 code=133 feed=99] out=161 69.5s cached  FAIL crash:IndexError
+      -> The kernel raises IndexError: index 512 is out of bounds for axis 1 with size 188 at line 16 `acc += tile[:, col]`
+L2 #3 in=351 [task=69 code=160 feed=109] out=269 65.5s cached  FAIL rule:sum-like
+      -> Replace `.sum()` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L2 #4 in=368 [task=69 code=140 feed=94 ledg=52] out=341 67.2s cached  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L2 #5 in=430 [task=69 code=171 feed=98 ledg=79] out=329 58.5s cached  PASS dev; holdout 21/21
+   => verified (confidence 0.95) after 5 attempt(s), 1563 in / 1234 out tokens
+
+=== run 2/5  level 3: row_max  [ours, v93845c17a6] ===
+L3 #1 in=100 [task=88] out=181 13.1s  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L3 #2 in=347 [task=69 code=180 feed=85] out=226 16.3s  FAIL rule:max-like
+      -> Replace `.max()` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L3 #3 in=431 [task=69 code=225 feed=79 ledg=45] out=321 23.1s  FAIL numeric:tile-overwrite
+      -> Each wrong row's result is the result over the last column tile only: the per-row result is overwritten for every column tile instead of combined across tiles
+L3 #4 in=554 [task=69 code=262 feed=210] out=405 29.1s  FAIL numeric:nonfinite
+      -> Some outputs are nan or inf although the true answer is finite
+L3 #5 in=558 [task=69 code=258 feed=218] out=442 31.7s  PASS dev; holdout 18/18
+   => verified (confidence 0.95) after 5 attempt(s), 1990 in / 1575 out tokens
+
+=== run 2/5  level 4: rmsnorm  [ours, v93845c17a6] ===
+L4 #1 in=147 [task=135] out=222 16.0s  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L4 #2 in=471 [task=116 code=221 feed=121] out=271 19.5s  FAIL crash:IndexError
+      -> The kernel raises IndexError: index 512 is out of bounds for axis 1 with size 188 at line 23 `acc[r] += tile_x[r, c]`
+L4 #3 in=526 [task=116 code=270 feed=127] out=420 30.2s  FAIL crash:IndexError
+      -> The kernel raises IndexError: index 512 is out of bounds for axis 1 with size 188 at line 23 `acc[r] += tile_x[r, c] ** 2  # Use squared value for RMS`
+L4 #4 in=627 [task=116 code=281 feed=137 ledg=80] out=472 33.9s  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L4 #5 in=549 [task=116 code=245 feed=122 ledg=53] out=278 20.0s  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (7,)  at line 28 `tile_y = tile_x / rms * g[j:end_col]`
+L4 #6 in=537 [task=116 code=277 feed=131] out=529 37.9s  FAIL rule:layout
+      -> Remove `.reshape()`
