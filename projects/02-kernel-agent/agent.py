@@ -241,7 +241,7 @@ def available_names(dotted):
     elsewhere = [q for q in names.get(attr, []) if q != f"{here}.{attr}"]
     if elsewhere:
         return (f" `{attr}` is not in `{mod_name}` but it IS real: write `{elsewhere[0]}`, not "
-                f"`{here}.{attr}`. Keep the rest of that line as it is.")
+                f"`{here}.{attr}`.")
 
     # 2. The closest names across nki, nl and nisa, each written with its module. Word parts
     #    first: scalar_mul shares "scalar" with tensor_scalar and "mul" starts multiply, yet
@@ -280,6 +280,29 @@ def real_signature(func_name):
     return ""
 
 
+def argument_list(func_name):
+    """Every argument of an NKI function, split into required and optional, written as a kernel
+    writes the call (nisa.x / nl.x). Returns (call_name, required, optional) or None."""
+    import inspect
+    for mod_name, alias in (("nki.isa", "nisa"), ("nki.language", "nl"), ("nki", "nki")):
+        try:
+            mod = __import__(mod_name, fromlist=["x"])
+        except Exception:
+            continue
+        fn = getattr(mod, func_name, None)
+        if fn is None:
+            continue
+        try:
+            params = inspect.signature(fn).parameters.values()
+        except (TypeError, ValueError):
+            return None
+        plain = [p for p in params if p.kind not in (p.VAR_POSITIONAL, p.VAR_KEYWORD)]
+        required = [p.name for p in plain if p.default is p.empty]
+        optional = [f"{p.name}={p.default!r}" for p in plain if p.default is not p.empty]
+        return f"{alias}.{func_name}", required, optional
+    return None
+
+
 def enrich(error_text):
     """Add the real names when the failure is an invented API call."""
     if "'MemoryRegion' object is not callable" in error_text:
@@ -287,6 +310,23 @@ def enrich(error_text):
                 "functions. Do not call them. Allocate with "
                 "nl.ndarray(shape, dtype=nl.float32, buffer=nl.sbuf) and pass the region as the "
                 "buffer= argument.")
+    # Measured on level 1: told only "tensor_scalar() missing 1 required positional argument:
+    # 'operand0'", the model added operand0 and left data=0.5 alone, so the next round failed on
+    # data. Name every argument the function takes, so all of them can be checked in one round.
+    m = re.search(r"(\w+)\(\) missing \d+ required (?:positional |keyword-only )?arguments?: (.+)",
+                  error_text)
+    if m:
+        missing = re.findall(r"'(\w+)'", m.group(2))
+        info = argument_list(m.group(1))
+        if not info:
+            return error_text + f" Add the missing argument(s): {', '.join(missing)}."
+        call, required, optional = info
+        return (error_text + f" Add {', '.join(f'`{a}=`' for a in missing)}. {call} takes these "
+                f"REQUIRED arguments: {', '.join(required)}"
+                + (f"; and these optional ones: {', '.join(optional)}" if optional else "")
+                + f". Pass every argument by keyword, and check that each one holds the right kind "
+                  f"of value: a tile where the function works on data, a number where it takes a "
+                  f"constant.")
     m = re.search(r"(\w+)\(\) got an unexpected keyword argument '(\w+)'", error_text)
     if m:
         sig = real_signature(m.group(1))
@@ -433,6 +473,11 @@ def repair_prompt(level, source, feedback, card=True):
     The lesson this whole repo keeps re-learning: feeding a verifier's report back verbatim
     reproduces the same mistake, because a report says what is wrong and never what to do.
 
+    The closing line used to be "Change exactly what the checker names and keep everything else
+    identical". Measured on level 1, the model then refused to touch anything the feedback did not
+    name -- data=0.5 survived three rounds -- and returned identical code when the feedback was
+    vague. It now asks only for the necessary changes.
+
     card=True re-sends API_CARD (~400 tokens). Measured on level 1 without it: from round 1 on the
     model no longer saw the card, and guessed nisa.multiply, op=nisa.multiply and nisa.scalar_mul
     for three rounds, although the card's nisa.tensor_scalar line is the real call.
@@ -444,8 +489,8 @@ def repair_prompt(level, source, feedback, card=True):
         f"```python\n{source}\n```\n\n"
         f"{api}"
         f"A checker reports:\n{feedback}\n\n"
-        f"Change exactly what the checker names and keep everything else identical. Reply with "
-        f"ONE python code block.")
+        f"Make only the changes that are necessary to fix this. Reply with ONE python code "
+        f"block.")
 
 
 CODE_BLOCK = re.compile(r"```(?:python)?\s*(.*?)```", re.S)
