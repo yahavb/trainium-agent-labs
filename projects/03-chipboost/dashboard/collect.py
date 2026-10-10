@@ -3,7 +3,7 @@
 dashboard/collect.py -- the live page in one command: every seat's logs out of its pod, every branch's
 results files out of git, then dashboard/index.html built from exactly those files.
 
-    python dashboard/collect.py --seats 100 101 102 103       # in the terminal that has the AWS credentials
+    python dashboard/collect.py                               # the team's seats, in the terminal with the AWS credentials
     python dashboard/collect.py --seats 102 --pod-dir 102=/workspace/chipboost/projects/03-chipboost
     python dashboard/collect.py --no-pods                     # git only: results files, no pod logs
 
@@ -26,6 +26,7 @@ HERE = Path(__file__).resolve().parent
 PROJECT = HERE.parent
 OUT = HERE / "collected"
 POD_DIR = "/workspace/chipboost/projects/03-chipboost"   # where the fork is cloned inside the seat pods
+SEATS = [100, 101, 102]   # P1, P3 (referee and model_alone), P2 (random search and the sweep)
 
 
 def run(cmd, cwd, text=True):
@@ -92,7 +93,7 @@ def from_pods(seats, pod_dirs):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--seats", nargs="*", type=int, default=[], help="seat numbers to copy logs from")
+    ap.add_argument("--seats", nargs="*", type=int, default=SEATS, help=f"seats to copy logs from (default {SEATS})")
     ap.add_argument("--pod-dir", action="append", default=[], metavar="SEAT=DIR",
                     help=f"where the repo's 03-chipboost folder is in that seat's pod (default {POD_DIR})")
     ap.add_argument("--no-pods", action="store_true", help="git only")
