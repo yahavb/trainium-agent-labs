@@ -126,7 +126,7 @@ def grade(source, level):
                     f"CANNOT SIMULATE: {e}")
         except Exception as e:
             failures.append((nkibench.label(case, level),
-                             enrich(f"raised {type(e).__name__}: {e}")))
+                             enrich(f"raised {type(e).__name__}: {e}", level=level)))
             continue
         parts["runs"] = True
         m = (nkibench.check_inputs_untouched(before, args)
@@ -204,6 +204,30 @@ def copy_kernel(a):
 """
 
 
+TILED_MATMUL_METHOD = """Read K, M = lhsT.shape and K_rhs, N = rhs.shape; return an (M, N) output.
+Tile all three dimensions: K at most 128, M at most 128, N at most 512 per tile.
+For each (M, N) output tile, allocate ONE float32 PSUM tile outside its K loop.
+Accumulate all K tiles into it, then copy and store the completed output tile.
+"""
+
+TILED_MATMUL_API_CARD = """Use separate buffers with these tile shapes:
+  stationary input SBUF: (tile_k, tile_m), loaded from lhsT's K and M ranges
+  moving input SBUF:     (tile_k, tile_n), loaded from rhs's K and N ranges
+  accumulator PSUM:     (tile_m, tile_n), dtype nl.float32
+  result SBUF:          (tile_m, tile_n), dtype lhsT.dtype
+  returned shared HBM:  (M, N), dtype lhsT.dtype
+Allocate with nl.ndarray(shape, dtype=..., buffer=region), choosing nl.sbuf,
+nl.psum or nl.shared_hbm for the region according to the buffer's role.
+Use nl.affine_range for tile loops; derive bounds and partial-tile sizes from
+the input dimensions. Every DMA source slice must match its destination tile.
+Inside the K loop, dma_copy both input tiles, then call
+nisa.nc_matmul(dst=accumulator, stationary=left_tile, moving=right_tile).
+After that loop, use nisa.tensor_copy(dst=result_sbuf, src=accumulator).
+The result SBUF must match the accumulator's shape, not an input tile's shape.
+Store it with nisa.dma_copy into the matching M and N slice of the HBM output.
+"""
+
+
 def available_names(dotted):
     """Turn 'no attribute X' into 'here are the real ones'.
 
@@ -245,7 +269,7 @@ def real_signature(func_name):
     return ""
 
 
-def enrich(error_text):
+def enrich(error_text, level=None):
     """Add the real names when the failure is an invented API call."""
     if "'MemoryRegion' object is not callable" in error_text:
         return (error_text + " nl.sbuf, nl.psum and nl.shared_hbm are memory regions, not "
@@ -267,6 +291,12 @@ def enrich(error_text):
                   r"got src=(\d+), dst=(\d+)", error_text)
     if m:
         src, dst = int(m.group(1)), int(m.group(2))
+        if level == 4:
+            return (error_text + f" This copy moves {src} elements into a {dst}-element tile. "
+                    "For tiled matmul, match lhsT slices to (tile_k, tile_m) SBUF tiles "
+                    "and rhs slices to (tile_k, tile_n) SBUF tiles. Match each result "
+                    "tile to an output slice of (tile_m, tile_n). Tile M and N as well "
+                    "as K; copying a whole input only works when that input fits one tile.")
         return (error_text + f" The tile you allocated holds {dst} elements but you copied {src} "
                 f"into it. nisa.dma_copy does not slice or broadcast: allocate the destination with "
                 f"EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a "
@@ -288,6 +318,13 @@ def enrich(error_text):
                   r"indexing result of shape \((\d+),?\)", error_text)
     if m:
         val, dst = int(m.group(1)), int(m.group(2))
+        if level == 4:
+            return (error_text + f" The copied value has {val} elements but the destination "
+                    f"has {dst}. Check the PSUM-to-SBUF tensor_copy: its result needs "
+                    "a separate SBUF tile with the SAME shape as the PSUM tile, "
+                    "(tile_m, tile_n). An input tile has shape (tile_k, tile_m) or "
+                    "(tile_k, tile_n); do not reuse it for this result. Store the "
+                    "result SBUF into the matching M and N output slice after the K loop.")
         return (error_text + f" You assigned {val} elements into a slice that holds {dst}. Assignment "
                 f"does not reshape or broadcast either: the slice on the left and the value on the "
                 f"right must have the SAME shape. If the value is bigger, you are writing a whole tile "
@@ -356,6 +393,20 @@ def first_prompt(level, terse=0):
     """
     s = nkibench.LEVELS[level]
     import inspect
+    if level == 4:
+        card = TILED_MATMUL_API_CARD if terse == 0 else (
+            "Use distinct (tile_k, tile_m) and (tile_k, tile_n) input SBUF tiles, "
+            "a (tile_m, tile_n) float32 PSUM accumulator and a separate matching "
+            "result SBUF tile. dma_copy loads inputs; nc_matmul accumulates; "
+            "tensor_copy transfers PSUM to result SBUF; dma_copy stores its output slice.\n")
+        if terse >= 2:
+            card = "Copy each completed PSUM tile into a separate same-shaped SBUF tile, then DMA it to its output slice.\n"
+        return (
+            f"Write an NKI kernel `{s['entry']}` decorated with @nki.jit.\n"
+            f"Match this NumPy reference:\n\n{inspect.getsource(s['ref'])}\n"
+            f"{TILED_MATMUL_METHOD}\n{card}\n"
+            f"Import nki, nki.language as nl, and nki.isa as nisa. "
+            f"Reply with ONE complete python code block.")
     if terse >= 2:
         # Last resort. Measured on this endpoint: one-sentence prompts answered in 300-700
         # tokens while every structured, rule-carrying prompt spiralled.
@@ -398,6 +449,14 @@ def repair_prompt(level, source, feedback):
     The lesson this whole repo keeps re-learning: feeding a verifier's report back verbatim
     reproduces the same mistake, because a report says what is wrong and never what to do.
     """
+    if level == 4:
+        return (
+            f"Repair this tiled NKI matmul:\n\n```python\n{source}\n```\n\n"
+            f"A checker reports:\n{feedback}\n\n"
+            f"{TILED_MATMUL_METHOD}\n{TILED_MATMUL_API_CARD}\n"
+            f"Fix the reported copy and any incorrect buffer allocations or missing tile loops. "
+            f"Preserve the entry point, arguments and required output dtype. "
+            f"Reply with ONE complete python code block.")
     return (
         f"This NKI kernel for {nkibench.LEVELS[level]['op']} is not right yet.\n\n"
         f"```python\n{source}\n```\n\n"
