@@ -51,6 +51,6 @@ Unsolved runs are confidence 0 and fail held-out by construction, so they pull t
 
 ## Notes
 
-- Input: runs/seat-119/replica/attempts.jsonl -- a teammate re-ran the baseline on seat-119 with upstream 8f1ca41 (--all --repeat 5, same settings as the seat-116 baseline). That code predates c39c0ce, so every attempt was re-graded here from a fresh path with the current checker (allocation audit on), NEURON_PLATFORM_TARGET_OVERRIDE=trn2, NKI 0.6.0 in Docker.
+- Input: runs/seat-119/replica/attempts.jsonl -- a teammate re-ran the baseline on seat-119 with upstream 8f1ca41 (levels 1-4, 5 runs, up to 8 rounds of 4 samples, per its run.log and attempts; the context setting is not recorded in either). That code predates c39c0ce, so every attempt was re-graded here from a fresh path with the current checker (allocation audit on), NEURON_PLATFORM_TARGET_OVERRIDE=trn2, NKI 0.6.0 in Docker.
 - Confidence weights fixed in 7868c08, before this run; confidence() unchanged since.
 - The 2 level-2 solves are 2 distinct kernels; one of them (sha1 97daf585c6) is also a seat-116 baseline solve. All 420 attempts re-grade exactly as logged, so the replica's numbers (L1 0/5, L2 2/5 [1.00 0.30 0.30 1.00 0.30], L3 0/5, L4 0/5 [0.62 x4, 0.50]) stand.
