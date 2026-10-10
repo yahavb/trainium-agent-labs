@@ -9,25 +9,39 @@
     "rmsnorm": {
       "start_us": 114.3,
       "expert_us": null,
-      "floor_us": 72.1
+      "floor_us": 38.4
     }
   },
   "detail": {
     "source": "chip",
     "seat": 102,
-    "measured": "2026-10-10 about 13:25 EDT, branch kernels-search at 2fb343c, P1's speedcheck.py (device clock, interleaved A/B, 3 rounds)",
+    "measured": "2026-10-10 13:25-13:40 EDT, branch kernels-search, P1's speedcheck.py (device clock, interleaved A/B, 3 rounds)",
     "times_are": "the sum over each op's time_shapes in shapes.py, the same sum the referee's speedup uses",
     "matmul": {
-      "gate_up 4096x256x6144": {"start_us": 691.7, "expert_us": 280.4},
-      "q_proj 4096x256x2048": {"start_us": 268.8, "expert_us": 104.7},
+      "gate_up 4096x256x6144": {
+        "start_us": 691.7,
+        "expert_us": 280.4
+      },
+      "q_proj 4096x256x2048": {
+        "start_us": 268.8,
+        "expert_us": 104.7
+      },
       "expert": "kernels/matmul_expert.py: AWS's SDK 2.32 fully optimised tutorial matmul, accumulating K-blocks in fp32. Correct on 8 chip shapes, worst 0.50 bf16 ulps.",
       "expert_as_published": "kernels/matmul_expert_aws.py: same kernel with AWS's bf16 K-block accumulation. Referee verdict WRONG: 5.3 bf16 ulps at K=2048 (limit 4).",
       "floor": "not measured: no matmul floor is claimed"
     },
     "rmsnorm": {
-      "input_layernorm 256x4096": {"start_us": 46.8, "floor_us": 20.5},
-      "q_norm 4096x128": {"start_us": 67.2, "floor_us": 51.6},
-      "floor": "kernels/copy_tiled.py, one 128-row tile per DMA pair, at the same shapes. The packed kernels/copy_floor.py is not measured yet and should lower the q_norm floor."
+      "input_layernorm 256x4096": {
+        "start_us": 46.8,
+        "floor_us": 20.6,
+        "floor_kernel": "copy_tiled"
+      },
+      "q_norm 4096x128": {
+        "start_us": 67.2,
+        "floor_us": 17.8,
+        "floor_kernel": "copy_floor, packed, 1 chunk"
+      },
+      "floor": "The fastest copy of the same bytes measured per shape (seat-102, P1's referee): copy_tiled 20.6 us at 256x4096, packed copy_floor 17.8 us at 4096x128 (tiled took 51.7 us there: 256-byte rows). copy_floor now packs in >= 2 overlapping chunks to win both shapes; not yet measured."
     }
   }
 }
