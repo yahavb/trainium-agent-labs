@@ -34,6 +34,7 @@ import nkibench
 import test_time_learning as ttl
 import traffic_eval
 from agent import API_CARD, extract_code
+from agent import enrich as _agent_enrich
 
 MODEL = os.environ.get("KERNEL_AGENT_MODEL", "Qwen/Qwen3-8B")
 
@@ -56,13 +57,17 @@ def first_failure(ev):
 
 
 def enrich_feedback(text):
-    """Turn the two walls this simulator raised in the pilot into instructions.
+    """Turn simulator exceptions into instructions.
 
-    Measured in the pilot: given the raw exception ("partition dimension 256 exceeds maximum
-    128"), the model abandoned the approach entirely and tried something else (PSUM straight to
-    HBM), which failed differently. The repo's recurring lesson applies: a verdict is not an
-    instruction. These translations name the one change, like agent.py's enrich() does for the
-    general agent.
+    Measured in the pilot and the tuned pilot: raw exceptions make the small model abandon a
+    working approach ("partition dimension 256 exceeds maximum 128" -> it tried PSUM straight
+    to HBM) or fix the wrong axis ("same number of elements" -> it kept a wrong destination
+    shape). The repo's recurring lesson: a verdict is not an instruction.
+
+    The partition wall gets the task-specific recipe that the probe validated; everything else
+    delegates to the general agent's enrich(), which already translates element-count
+    mismatches, out-of-bounds indexing, broadcast mismatches, invented APIs, and memory
+    placement errors into named changes.
     """
     m = re.search(r"dma_copy (\w+) partition dimension (\d+) exceeds maximum (\d+)", text)
     if m:
@@ -74,10 +79,11 @@ def enrich_feedback(text):
                 f"chunk by chunk with dma_copy(dst=cache[:, kk*M:(kk+1)*M], "
                 f"src=lhsT[kk*128:(kk+1)*128, :]), and sliced for the matmul as "
                 f"cache[:, kk*M + m0*128 : kk*M + (m0+1)*128].")
+    out = _agent_enrich(text)
     if "requires HBM or SBUF tensors" in text and "psum" in text:
-        return (text + " PSUM cannot be copied to HBM directly. Copy PSUM to SBUF with "
+        out += (" PSUM cannot be copied to HBM directly. Copy PSUM to SBUF with "
                 "nisa.tensor_copy, then SBUF to HBM with nisa.dma_copy.")
-    return text
+    return out
 
 
 # ---------------------------------------------------------------- token accounting
@@ -484,8 +490,14 @@ def run_once(a, level, out_dir, rng, counter, opt_seeds):
 
         if round_valid:
             pending = None            # a repair succeeded; stop repairing
-        elif not (pending and pending["remaining"] > 0):
-            # No active repair: queue one bounded repair of the closest invalid attempt this
+        elif pending is not None:
+            # Mid-repair: keep the two-round budget, but a spent repair returns to normal
+            # exploration instead of chaining a new repair (measured: chained repairs ate the
+            # whole round budget and the bandit never tried its other arms).
+            if pending["remaining"] <= 0:
+                pending = None
+        else:
+            # Normal round: queue one bounded repair of the closest invalid attempt this
             # round (rules-clean and simulated, so it is close rather than nonsense).
             promising = [c for c in round_invalid if c["ev"]["rules_ok"] and c["ev"]["per_case"]]
             if promising:

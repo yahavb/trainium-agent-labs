@@ -228,6 +228,13 @@ class RewardTests(unittest.TestCase):
         msg2 = traffic_agent.enrich_feedback(psum)
         self.assertIn("nisa.tensor_copy", msg2)
 
+    def test_feedback_enrichment_delegates_element_mismatch(self):
+        import traffic_agent
+        raw = ("raised AssertionError: dma_copy requires src and dst to have the same number "
+               "of elements, got src=65536, dst=16384")
+        msg = traffic_agent.enrich_feedback(raw)
+        self.assertIn("EXACTLY the shape", msg)
+
     @staticmethod
     def _ev(bytes_, floor, checks_ok=True, accepted=False, worst=1.0):
         checks = dict(inputs_ok=checks_ok, numerics_ok=checks_ok, hazard_ok=checks_ok,
