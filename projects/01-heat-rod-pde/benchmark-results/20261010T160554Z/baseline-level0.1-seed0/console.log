@@ -1,0 +1,22 @@
+
+=========== level0.1 ===========
+Solve the heat equation on a rod.
+
+  u_t = 1 * u_xx,   for 0 < x < 1, t > 0
+  u(0, t) = 0 and u(1, t) = 0
+  u(x, 0) = sin(3*pi*x)
+
+On the last line write exactly
+  u(x, t) = <expression>
+Write every term out with its numbers filled in, in Python syntax, like this:
+  u(x, t) = 3*exp(-2*pi**2*t)*sin(pi*x) - 0.5*exp(-8*pi**2*t)*sin(2*pi*x)
+Use exp, sin, cos, pi and ** for powers. No summation sign, no unknown constants, no LaTeX.
+
+round 0: rewards [1.0, 1.0]  mean 1.00  best 1.0  3 tool call(s)  (39.7s)
+SOLVED: u(x, t) = exp(-9*pi**2*t)*sin(3*pi*x)
+
+=========== summary: level 0 ===========
+  level0.1     reward 1.0 after 1 round(s)  SOLVED
+  solved 1/1
+
+attempts logged to benchmark-results/20261010T160554Z/baseline-level0.1-seed0/attempts.jsonl

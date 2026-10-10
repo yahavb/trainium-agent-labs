@@ -1,0 +1,372 @@
+{
+  "settings": {
+    "model": "Qwen/Qwen3-8B",
+    "seat": 85,
+    "samples": 2,
+    "rounds": 3,
+    "max_tokens": 512,
+    "tool_steps": 1,
+    "timeout_per_case_seconds": 180,
+    "concise": false,
+    "offline": false
+  },
+  "results": [
+    {
+      "variant": "baseline",
+      "level": 0,
+      "sub": 1,
+      "seed": 0,
+      "samples": 2,
+      "max_rounds": 3,
+      "tool_steps": 1,
+      "status": "solved",
+      "exit_code": 0,
+      "seconds": 39.56161874400277,
+      "reward": 1.0,
+      "rounds": 1,
+      "validation": {
+        "accepted": true,
+        "parts": {
+          "equation": true,
+          "left_bc": true,
+          "right_bc": true,
+          "start_shape": true
+        },
+        "errors": {
+          "equation": 0.0,
+          "left_bc": 0.0,
+          "right_bc": 3.673940071099029e-16
+        },
+        "start_error": 0.0,
+        "validation_seed": 9173,
+        "points": 384,
+        "shape_points": 1601
+      }
+    },
+    {
+      "variant": "improved",
+      "level": 0,
+      "sub": 1,
+      "seed": 0,
+      "samples": 2,
+      "max_rounds": 3,
+      "tool_steps": 1,
+      "status": "solved",
+      "exit_code": 0,
+      "seconds": 36.576427578009316,
+      "problem": "level0.1",
+      "reward": 1.0,
+      "rounds": 1,
+      "requests": 4,
+      "errors": 0,
+      "answer": "exp(-(3*pi)**2*t)*sin(3*pi*x)",
+      "validation": {
+        "accepted": true,
+        "parts": {
+          "equation": true,
+          "left_bc": true,
+          "right_bc": true,
+          "start_shape": true
+        },
+        "errors": {
+          "equation": 0.0,
+          "left_bc": 0.0,
+          "right_bc": 3.673940071099029e-16
+        },
+        "start_error": 0.0,
+        "validation_seed": 9173,
+        "points": 384,
+        "shape_points": 1601
+      }
+    },
+    {
+      "variant": "baseline",
+      "level": 0,
+      "sub": 2,
+      "seed": 0,
+      "samples": 2,
+      "max_rounds": 3,
+      "tool_steps": 1,
+      "status": "unsolved",
+      "exit_code": 0,
+      "seconds": 128.2196930860082,
+      "reward": 0.0,
+      "rounds": 3
+    },
+    {
+      "variant": "improved",
+      "level": 0,
+      "sub": 2,
+      "seed": 0,
+      "samples": 2,
+      "max_rounds": 3,
+      "tool_steps": 1,
+      "status": "solved",
+      "exit_code": 0,
+      "seconds": 70.23809893900761,
+      "problem": "level0.2",
+      "reward": 1.0,
+      "rounds": 2,
+      "requests": 6,
+      "errors": 0,
+      "answer": "exp(-pi**2/2 * t)*sin(pi*x)",
+      "validation": {
+        "accepted": true,
+        "parts": {
+          "equation": true,
+          "left_bc": true,
+          "right_bc": true,
+          "start_shape": true
+        },
+        "errors": {
+          "equation": 0.0,
+          "left_bc": 0.0,
+          "right_bc": 2.449293549947589e-16
+        },
+        "start_error": 0.0,
+        "validation_seed": 9173,
+        "points": 384,
+        "shape_points": 1601
+      }
+    },
+    {
+      "variant": "baseline",
+      "level": 0,
+      "sub": 3,
+      "seed": 0,
+      "samples": 2,
+      "max_rounds": 3,
+      "tool_steps": 1,
+      "status": "solved",
+      "exit_code": 0,
+      "seconds": 75.80615878300159,
+      "reward": 1.0,
+      "rounds": 2,
+      "validation": {
+        "accepted": true,
+        "parts": {
+          "equation": true,
+          "left_bc": true,
+          "right_bc": true,
+          "start_shape": true
+        },
+        "errors": {
+          "equation": 2.6467716907063733e-14,
+          "left_bc": 0.0,
+          "right_bc": 3.184081255954543e-16
+        },
+        "start_error": 8.309307342148453e-17,
+        "validation_seed": 9173,
+        "points": 384,
+        "shape_points": 1601
+      }
+    },
+    {
+      "variant": "improved",
+      "level": 0,
+      "sub": 3,
+      "seed": 0,
+      "samples": 2,
+      "max_rounds": 3,
+      "tool_steps": 1,
+      "status": "solved",
+      "exit_code": 0,
+      "seconds": 71.99722442899656,
+      "problem": "level0.3",
+      "reward": 1.0,
+      "rounds": 2,
+      "requests": 4,
+      "errors": 0,
+      "answer": "exp(-pi**2/2*t)*sin(pi*x) - exp(-9*pi**2/2*t)*sin(3*pi*x) + 3*exp(-25*pi**2/2*t)*sin(5*pi*x)",
+      "validation": {
+        "accepted": true,
+        "parts": {
+          "equation": true,
+          "left_bc": true,
+          "right_bc": true,
+          "start_shape": true
+        },
+        "errors": {
+          "equation": 3.410605131648481e-14,
+          "left_bc": 0.0,
+          "right_bc": 3.184081255954543e-16
+        },
+        "start_error": 0.0,
+        "validation_seed": 9173,
+        "points": 384,
+        "shape_points": 1601
+      }
+    },
+    {
+      "variant": "baseline",
+      "level": 1,
+      "sub": 1,
+      "seed": 0,
+      "samples": 2,
+      "max_rounds": 3,
+      "tool_steps": 1,
+      "status": "unsolved",
+      "exit_code": 0,
+      "seconds": 120.51637097499042,
+      "reward": 0.0,
+      "rounds": 3
+    },
+    {
+      "variant": "improved",
+      "level": 1,
+      "sub": 1,
+      "seed": 0,
+      "samples": 2,
+      "max_rounds": 3,
+      "tool_steps": 1,
+      "status": "budget_timeout",
+      "seconds": 180.00677421000728
+    },
+    {
+      "variant": "baseline",
+      "level": 1,
+      "sub": 2,
+      "seed": 0,
+      "samples": 2,
+      "max_rounds": 3,
+      "tool_steps": 1,
+      "status": "unsolved",
+      "exit_code": 0,
+      "seconds": 120.45712199399713,
+      "reward": 0.0,
+      "rounds": 3
+    },
+    {
+      "variant": "improved",
+      "level": 1,
+      "sub": 2,
+      "seed": 0,
+      "samples": 2,
+      "max_rounds": 3,
+      "tool_steps": 1,
+      "status": "unsolved",
+      "exit_code": 0,
+      "seconds": 119.9936664350098,
+      "problem": "level1.2",
+      "reward": 0.0,
+      "rounds": 3,
+      "requests": 6,
+      "errors": 0,
+      "answer": null
+    },
+    {
+      "variant": "baseline",
+      "level": 1,
+      "sub": 3,
+      "seed": 0,
+      "samples": 2,
+      "max_rounds": 3,
+      "tool_steps": 1,
+      "status": "unsolved",
+      "exit_code": 0,
+      "seconds": 103.936909637996,
+      "reward": 0.6,
+      "rounds": 3
+    },
+    {
+      "variant": "improved",
+      "level": 1,
+      "sub": 3,
+      "seed": 0,
+      "samples": 2,
+      "max_rounds": 3,
+      "tool_steps": 1,
+      "status": "unsolved",
+      "exit_code": 0,
+      "seconds": 57.94685753399972,
+      "problem": "level1.3",
+      "reward": 0.6,
+      "rounds": 3,
+      "requests": 12,
+      "errors": 0,
+      "answer": "32/pi**3*exp(-2*pi**2*t)*sin(pi*x/2) + 32/(27*pi**3)*exp(-8*pi**2*t)*sin(3*pi*x/2) + 32/(125*pi**3)*exp(-18*pi**2*t)*sin(5*pi*x/2)"
+    },
+    {
+      "variant": "baseline",
+      "level": 1,
+      "sub": 3,
+      "seed": 1,
+      "samples": 2,
+      "max_rounds": 3,
+      "tool_steps": 1,
+      "status": "unsolved",
+      "exit_code": 0,
+      "seconds": 125.86795569799142,
+      "reward": 0.6,
+      "rounds": 3
+    },
+    {
+      "variant": "improved",
+      "level": 1,
+      "sub": 3,
+      "seed": 1,
+      "samples": 2,
+      "max_rounds": 3,
+      "tool_steps": 1,
+      "status": "unsolved",
+      "exit_code": 0,
+      "seconds": 86.09849611700338,
+      "problem": "level1.3",
+      "reward": 0.6,
+      "rounds": 3,
+      "requests": 12,
+      "errors": 0,
+      "answer": "32/pi**3*exp(-pi**2*t)*sin(pi*x/2) + 32/(27*pi**3)*exp(-9*pi**2*t)*sin(3*pi*x/2) + 32/(125*pi**3)*exp(-25*pi**2*t)*sin(5*pi*x/2) + 32/(343*pi**3)*exp(-49*pi**2*t)*sin(7*pi*x/2)"
+    },
+    {
+      "variant": "baseline",
+      "level": 1,
+      "sub": 3,
+      "seed": 2,
+      "samples": 2,
+      "max_rounds": 3,
+      "tool_steps": 1,
+      "status": "solved",
+      "exit_code": 0,
+      "seconds": 99.1127477120026,
+      "reward": 1.0,
+      "rounds": 3,
+      "validation": {
+        "accepted": true,
+        "parts": {
+          "equation": true,
+          "left_bc": true,
+          "right_bc": true,
+          "start_shape": true
+        },
+        "errors": {
+          "equation": 6.661338147750939e-15,
+          "left_bc": 0.0,
+          "right_bc": 1.4962816153607307e-16
+        },
+        "start_error": 0.0009755076716617258,
+        "validation_seed": 9173,
+        "points": 384,
+        "shape_points": 1601
+      }
+    },
+    {
+      "variant": "improved",
+      "level": 1,
+      "sub": 3,
+      "seed": 2,
+      "samples": 2,
+      "max_rounds": 3,
+      "tool_steps": 1,
+      "status": "unsolved",
+      "exit_code": 0,
+      "seconds": 64.3553000640095,
+      "problem": "level1.3",
+      "reward": 0.8,
+      "rounds": 3,
+      "requests": 12,
+      "errors": 0,
+      "answer": "(4/pi**3)*exp(-2*pi**2*t)*sin(pi*x) + (4/(343*pi**3))*exp(-98*pi**2*t)*sin(7*pi*x) + (4/(125*pi**3))*exp(-50*pi**2*t)*sin(5*pi*x) + (4/(27*pi**3))*exp(-18*pi**2*t)*sin(3*pi*x)"
+    }
+  ]
+}

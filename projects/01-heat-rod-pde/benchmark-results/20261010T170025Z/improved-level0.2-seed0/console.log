@@ -1,0 +1,34 @@
+level0.2 round 0: rewards [0.0, 0.0], errors 0
+level0.2 round 1: rewards [0.4, 1.0], errors 0
+[
+  {
+    "problem": "level0.2",
+    "seed": 0,
+    "status": "solved",
+    "reward": 1.0,
+    "rounds": 2,
+    "requests": 6,
+    "errors": 0,
+    "seconds": 70.23809893900761,
+    "answer": "exp(-pi**2/2 * t)*sin(pi*x)",
+    "validation": {
+      "accepted": true,
+      "parts": {
+        "equation": true,
+        "left_bc": true,
+        "right_bc": true,
+        "start_shape": true
+      },
+      "errors": {
+        "equation": 0.0,
+        "left_bc": 0.0,
+        "right_bc": 2.449293549947589e-16
+      },
+      "start_error": 0.0,
+      "validation_seed": 9173,
+      "points": 384,
+      "shape_points": 1601
+    }
+  }
+]
+Artifacts: benchmark-results/20261010T170025Z/improved-level0.2-seed0/20261010T170351Z-b2ebf337

@@ -1,0 +1,10 @@
+# Keep regenerated runs out of ordinary commits; selected evidence is added explicitly.
+__pycache__/
+results/
+benchmark-results/
+default-smoke/
+benchmark-console*.log
+default-smoke-console.log
+attempts.jsonl
+comparison-runs/
+run*.log

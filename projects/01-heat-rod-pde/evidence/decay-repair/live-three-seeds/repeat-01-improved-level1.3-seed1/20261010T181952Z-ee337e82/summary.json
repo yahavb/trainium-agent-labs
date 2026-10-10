@@ -1,0 +1,38 @@
+{
+  "run_id": "20261010T181952Z-ee337e82",
+  "settings": {
+    "level": 1,
+    "sub": 3,
+    "all": false,
+    "seed": 1,
+    "repeat": 1,
+    "samples": 2,
+    "workers": 2,
+    "rounds": 3,
+    "retries": 0,
+    "timeout": 600.0,
+    "max_tokens": 1200,
+    "tool_steps": 1,
+    "no_tools": false,
+    "concise": false,
+    "decay_repair": false,
+    "model": "Qwen/Qwen3-8B",
+    "base": "http://localhost:8000/v1",
+    "output": "/workspace/team87-decay-comparison-20261010/comparison-runs/20261010T181758Z-botinvv8/repeat-01-improved-level1.3-seed1"
+  },
+  "results": [
+    {
+      "problem": "level1.3",
+      "seed": 1,
+      "status": "unsolved",
+      "reward": 0.6,
+      "original_reward": 0.6,
+      "validation_status": "not_run",
+      "rounds": 3,
+      "requests": 12,
+      "errors": 0,
+      "seconds": 86.0250001050008,
+      "answer": "32/pi**3*exp(-pi**2*t)*sin(pi*x/2) + 32/(27*pi**3)*exp(-9*pi**2*t)*sin(3*pi*x/2) + 32/(125*pi**3)*exp(-25*pi**2*t)*sin(5*pi*x/2) + 32/(343*pi**3)*exp(-49*pi**2*t)*sin(7*pi*x/2)"
+    }
+  ]
+}

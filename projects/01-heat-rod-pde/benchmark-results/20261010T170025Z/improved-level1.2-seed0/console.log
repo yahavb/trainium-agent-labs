@@ -1,0 +1,17 @@
+level1.2 round 0: rewards [0.0, 0.0], errors 0
+level1.2 round 1: rewards [0.0, 0.0], errors 0
+level1.2 round 2: rewards [0.0, 0.0], errors 0
+[
+  {
+    "problem": "level1.2",
+    "seed": 0,
+    "status": "unsolved",
+    "reward": 0.0,
+    "rounds": 3,
+    "requests": 6,
+    "errors": 0,
+    "seconds": 119.9936664350098,
+    "answer": null
+  }
+]
+Artifacts: benchmark-results/20261010T170025Z/improved-level1.2-seed0/20261010T171431Z-8ab09004
