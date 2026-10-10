@@ -842,7 +842,98 @@ def _waste(diag):
     return counter.get("bytes", 0) / floor if floor else 1.0
 
 
-def one_instruction(counter, args, want, flops, chip=None):
+def _outer_reuse(src, args, op):
+    """Recognize only direct tiled matmul loads; parse source, never import or execute it.
+
+    Aggregate DMA bytes cannot identify an operand. Require a source slice independent of
+    the surrounding reuse loop, and leave unfamiliar/conditional indexing undiagnosed.
+    """
+    if op != "matmul" or not src or len(args) != 2:
+        return None
+    try:
+        tree = ast.parse(src)
+        K, M = args[0].shape
+        K2, N = args[1].shape
+    except (SyntaxError, ValueError, AttributeError):
+        return None
+    if K != K2:
+        return None
+    entries = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "nki_matmul_tiled_"]
+    if len(entries) != 1:
+        return None
+    entry = entries[0]
+    # The shape bounds below assume the hardware's canonical 128-row/512-column tiles.
+    # Do not infer independence if the kernel assigns to loop indices or changes those tiles.
+    tile_values = {"TILE_M": "nl.tile_size.gemm_stationary_fmax",
+                   "TILE_K": "nl.tile_size.pmax", "TILE_N": "nl.tile_size.gemm_moving_fmax"}
+    tile_assignments = {name: 0 for name in tile_values}
+    for node in ast.walk(entry):
+        if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign, ast.NamedExpr)):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            names = {x.id for target in targets for x in ast.walk(target) if isinstance(x, ast.Name)}
+            if names & {"m", "n", "k"}:
+                return None
+            for name in names & tile_values.keys():
+                if (not isinstance(node, ast.Assign) or len(node.targets) != 1
+                        or not isinstance(node.targets[0], ast.Name)
+                        or ast.dump(node.value) != ast.dump(ast.parse(tile_values[name], mode="eval").body)):
+                    return None
+                tile_assignments[name] += 1
+    if any(count != 1 for count in tile_assignments.values()):
+        return None
+    reloads = set()
+
+    def walk(node, loops=(), conditional=False):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+            return  # An uncalled nested helper is not evidence of a transfer.
+        if isinstance(node, ast.For) and isinstance(node.target, ast.Name):
+            if node.target.id in ("m", "n"):
+                bound = "M // TILE_M" if node.target.id == "m" else "N // TILE_N"
+                expected = ast.parse(f"nl.affine_range({bound})", mode="eval").body
+                if ast.dump(node.iter) != ast.dump(expected):
+                    return
+            loops = loops + (node.target.id,)
+        conditional = conditional or isinstance(node, (ast.If, ast.IfExp, ast.While))
+        if isinstance(node, ast.Call) and not conditional:
+            fn = node.func
+            direct = isinstance(fn, ast.Attribute) and isinstance(fn.value, ast.Name)
+            if direct and (fn.value.id, fn.attr) in (("nisa", "dma_copy"), ("nl", "load")):
+                pos = 1 if fn.attr == "dma_copy" else 0
+                source = next((kw.value for kw in node.keywords if kw.arg == "src"),
+                              node.args[pos] if len(node.args) > pos else None)
+                if isinstance(source, ast.Subscript) and isinstance(source.value, ast.Name):
+                    names = {x.id for x in ast.walk(source.slice) if isinstance(x, ast.Name)}
+                    # k changes the contraction tile: it must remain a loop, never be hoisted away.
+                    if loops.count("k") == 1 and "k" in names:
+                        if (source.value.id == "rhs" and loops.count("m") == loops.count("n") == 1
+                                and names <= {"k", "n", "TILE_K", "TILE_N"} and "n" in names and M > 128):
+                            reloads.add("rhs")
+                        if (source.value.id == "lhsT" and loops.count("n") == loops.count("m") == 1
+                                and names <= {"k", "m", "TILE_K", "TILE_M"} and "m" in names and N > 512):
+                            reloads.add("lhsT")
+        for child in ast.iter_child_nodes(node):
+            walk(child, loops, conditional)
+
+    for statement in entry.body:
+        walk(statement)
+    if "rhs" in reloads:
+        if "lhsT" not in reloads:
+            return ("The rhs slice depends on k and n, but is loaded again for every m. Preserve the "
+                    "existing lhsT reuse: block m and n and keep that block's rhs K tiles in distinct "
+                    "SBUF slots, reusing the slot indexed by k and n across m. Keep the k contraction "
+                    "loop: successive k values need different tiles.")
+        return ("The rhs slice depends on k and n, but is loaded again for every m. Make n the outer "
+                "loop and stage that n tile's K // 128 rhs tiles in distinct SBUF slots before the m "
+                "loop; reuse the slot indexed by k for each m. Keep the k contraction loop and the "
+                "lhsT loads inside m: successive k values need different tiles.")
+    if "lhsT" in reloads:
+        return ("The lhsT slice depends on k and m, but is loaded again for every n. Keep the lhsT "
+                "tiles for a block of m in distinct SBUF slots while sweeping n, and reuse the slot "
+                "indexed by k and m. Preserve any existing rhs reuse and the k contraction loop.")
+    return None
+
+
+def one_instruction(counter, args, want, flops, chip=None, *, src=None, op=None):
     """Turn the measurements into ONE change to make. Never just 'too slow'.
 
     counter, args, want, flops: the simulator's view of one dev shape (bytes are a hint, not a cost: redundant
@@ -868,14 +959,18 @@ def one_instruction(counter, args, want, flops, chip=None):
     # roofline: dev shapes are too small to clear the ridge, the timed Qwen3 shapes sit at or above it.
     on_tensor_engine = n_mm > 0 and flops > 0
     per_element = transfers > max(8, elements // 64)
+    reuse = (_outer_reuse(src, args, op) if on_tensor_engine and not unmeasured
+             and waste > 1.05 and not per_element else None)
 
     if chip is None:                                             # simulator only
         if per_element:
             return (f"One transfer per few elements ({transfers:,} transfers for {elements:,} outputs): move "
                     f"whole 128-row tiles per DMA, not elements.{note}")
+        if reuse:
+            return f"The simulator measures {waste:.2f}x the byte floor. {reuse}"
         if waste > WASTE_HINT:
-            return (f"Same tiles reloaded every pass ({waste:.2f}x the byte floor): move the operand loads out "
-                    f"of the innermost loop so each tile is loaded once and reused across it.{note}")
+            return (f"The simulator measures {waste:.2f}x the byte floor: reduce repeated transfers by "
+                    f"reusing tiles across loops whose index does not change the source slice.{note}")
         if compute_bound:
             return ("Bytes are already near the floor and this shape can be compute bound: keep the Tensor "
                     "Engine busy -- block K so one PSUM tile accumulates across the whole contraction, and "
@@ -897,6 +992,8 @@ def one_instruction(counter, args, want, flops, chip=None):
 
     if faster:
         head = f"Faster on the chip ({speedup:.2f}x{rate}). Next step: "
+        if reuse:
+            return head + f"the simulator measures {waste:.2f}x the byte floor. " + reuse
         if per_element:
             return (head + f"move whole 128-row tiles per DMA, not a few elements ({transfers:,} transfers for "
                     f"{elements:,} outputs).{note}")
@@ -922,10 +1019,11 @@ def one_instruction(counter, args, want, flops, chip=None):
     if worst and worst[1] < 1.0 / thr:
         head += f"; {worst[1]:.3f}x at {tuple(worst[0])}"
     head += ")"
+    if reuse:
+        return head + f"; the simulator measures {waste:.2f}x the byte floor. " + reuse
     if waste > WASTE_HINT:
-        return (head + f" and the simulator shows {waste:.2f}x the byte floor: the same tiles are reloaded every "
-                f"pass -- move the operand loads out of the innermost loop so each tile is loaded once and "
-                f"reused across it.{note}")
+        return (head + f" and the simulator shows {waste:.2f}x the byte floor: reduce repeated transfers by "
+                f"reusing tiles across loops whose index does not change the source slice.{note}")
     if per_element:
         return (head + f" with one transfer per few elements ({transfers:,} transfers for {elements:,} "
                 f"outputs): move whole 128-row tiles per DMA, not elements.{note}")
@@ -1234,7 +1332,7 @@ def check(path, op="matmul", baseline=None, rounds=3, verbose=False):
                              if tc > FAIL_FAST * tb)
             say(f"  fail-fast  more than {FAIL_FAST:g}x slower at {slow}")
             # one run each, so no measured spread: the threshold is the noise floor alone
-            instr = one_instruction(*diag, chip=dict(speedup=speedup, t_us=t_cand,
+            instr = one_instruction(*diag, src=src, op=op, chip=dict(speedup=speedup, t_us=t_cand,
                                                      per_shape=[(sh, tb / tc) for sh, tb, tc in probe],
                                                      threshold=1.0 + timing.NOISE_FLOOR,
                                                      flops=sum(spec["flops"](sh) for sh, _, _ in probe)))
@@ -1273,7 +1371,7 @@ def check(path, op="matmul", baseline=None, rounds=3, verbose=False):
         threshold = timing.noise_threshold(*stats)
         timed = dict(time_us_median=float(t_cand), time_us_iqr=float(iqr_cand),
                      baseline_us_same_session=float(t_base), speedup=float(speedup), source="chip")
-        instr = one_instruction(*diag, chip=dict(speedup=speedup, per_shape=per_shape, t_us=t_cand,
+        instr = one_instruction(*diag, src=src, op=op, chip=dict(speedup=speedup, per_shape=per_shape, t_us=t_cand,
                                                  threshold=threshold,
                                                  flops=sum(spec["flops"](sh) for sh, _ in per_shape)))
         regressed = [(sh, sp) for sh, sp in per_shape if sp < 1.0 / threshold]

@@ -1,5 +1,16 @@
 # P1 validation and handoff — October 10, 2026
 
+## Subsequent feedback correction
+
+The ambiguous innermost-loop load advice has been replaced by conservative outer-loop reuse diagnosis
+in `instruction_given`. Five CPU tests and four representative hardware checks passed; see
+`feedback_validation.json` and `verify_feedback.py`. The chip verified the reference, n-outer,
+lhsT-hoisted, and rhs-hoisted kernels; the feedback identified which operand still reloads while
+preserving the other operand's reuse and distinct K tiles. This changes feedback, not verdicts or timing.
+The original comparison batch remains pinned to the earlier implementation and does not evaluate this fix.
+
+## Original throughput acceptance
+
 Implementation under test: `referee-timing` at `434e5f9`; latest referee implementation `76b2227`.
 The final commit only adds worktree references. Validation runs use an isolated copy under
 `/tmp/p1-signoff-434e5f9` on seat-100, preserving the existing seat checkout and running agent loop.
