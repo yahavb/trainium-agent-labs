@@ -114,8 +114,37 @@ try:                                            # P2's shapes.py extends or over
     import shapes as _shapes
     for _k, _v in getattr(_shapes, "OPS", {}).items():
         OPS[_k] = {**OPS.get(_k, {}), **_v}
-except ImportError:
-    pass
+except Exception as _e:                         # a broken shapes.py must not take the referee down with it
+    if not (isinstance(_e, ImportError) and getattr(_e, "name", None) == "shapes"):
+        print(f"speedcheck: WARNING: shapes.py failed to load ({type(_e).__name__}: {_e}); "
+              f"using the built-in specs only", file=sys.stderr)
+    OPS = {"matmul": MATMUL}
+
+HELDOUT_FIXED_WITH_RANDOM = 2       # shapes from P2's fixed list on top of the random draw
+
+
+def _sample(r, pool, k):
+    return [pool[i] for i in sorted(int(j) for j in r.permutation(len(pool))[:k])]
+
+
+def _fixed_heldout(fixed):
+    """A fixed list: all of it if small (P2's ragged 127/129/1-row cases), else n at random; never a shape
+    the caller excludes (the timing and simulator shapes)."""
+    def draw(r, n, exclude):
+        pool = [s for s in fixed if s not in exclude]
+        return pool if len(pool) <= max(n, 5) else _sample(r, pool, n)
+    return draw
+
+
+def _heldout_union(rand, fixed):
+    """n fresh random shapes (a fixed public list was learnable: red-team 3b) plus a sample of P2's fixed
+    list, whose shapes were picked for their edge cases (1/127/129 rows, 6 K-blocks, one M-tile)."""
+    def draw(r, n, exclude):
+        out = [tuple(s) for s in rand(r, n, exclude)]
+        pool = [s for s in fixed if s not in exclude and s not in out]
+        return out + _sample(r, pool, HELDOUT_FIXED_WITH_RANDOM)
+    return draw
+
 
 def _out_from_ref(spec):
     """P2's shapes.py has no `out`: derive it from the reference, once per shape."""
@@ -147,12 +176,12 @@ for _k in list(OPS):
     _sp["sim_shapes"] = [tuple(x) for x in _sp["sim_shapes"]]
     _sp["time_shapes"] = [tuple(x) for x in _sp["time_shapes"]]
     _sp.setdefault("vary", (_sp.get("names") or list(_sp["make_inputs"](_sp["sim_shapes"][0], 0)))[0])
-    if not callable(_sp["heldout"]):                     # a fixed list: all of it if small, else a random draw
-        _fixed = [tuple(x) for x in _sp["heldout"]]
-        _sp["heldout"] = lambda r, n, ex, f=_fixed: (list(f) if len(f) <= 5 else
-                                                     [f[i] for i in r.permutation(len(f))[:n]])
-    if _k == "matmul":                                   # a fixed public list was learnable (red-team 3b)
-        _sp["heldout"] = _matmul_heldout
+    _fixed = list(dict.fromkeys(tuple(x) for k in ("heldout", "heldout_shapes")
+                                if not callable(_sp.get(k)) for x in _sp.get(k) or ()))
+    # A random draw whenever there is one -- for matmul always ours: a fixed public list was learnable
+    # (red-team 3b) -- plus a sample of the fixed list (its edge cases: 1, 127, 129 rows, 6 K-blocks).
+    _rand = _matmul_heldout if _k == "matmul" else _sp["heldout"] if callable(_sp["heldout"]) else None
+    _sp["heldout"] = (_heldout_union(_rand, _fixed) if _rand and _fixed else _rand or _fixed_heldout(_fixed))
 
 # ---------------------------------------------------------------- stage 1: rules (defence in depth only)
 
@@ -270,7 +299,13 @@ def check_source_shape(src):
 
 def simulate_count_all(kernel, args):
     """Hook every DMA entry point -- nkibench's counter saw only nisa.dma_copy, so dma_transpose,
-    dma_compute and nl.load/store moved bytes invisibly -- and flatten nested source lists."""
+    dma_compute and nl.load/store moved bytes invisibly -- and flatten nested source lists.
+
+    A DMA can convert dtypes, so each transfer is counted at its NARROW side: every source element at the
+    smaller of its own and the destination's element size, i.e. min(bytes(src), bytes(dst)) for a copy.
+    Counting the source alone read a float32 SBUF -> bf16 HBM store at twice its size (P2's nkibench fix,
+    3163951): a kernel moving exactly the floor read "1.29x the floor" and was told to stop reloading tiles.
+    nc_matmul calls are counted too (by_op), but are not transfers and move no HBM bytes."""
     import nki
     import nki.isa as nisa
     import nki.language as nl
@@ -288,27 +323,60 @@ def simulate_count_all(kernel, args):
         n = getattr(t, "nbytes", None)
         return int(n) if isinstance(n, int) and n > 0 else int(np.prod(t.shape)) * nkibench.itemsize_of(t)
 
-    def wrap(name, fn, src_pos):
+    def narrow(s, dst):
+        """Bytes of source s as moved into dst: at the narrower element size of the two."""
+        b = size(s)
+        if dst is None:
+            return b
+        try:
+            d = nkibench.itemsize_of(dst, default=0)
+            return min(b, int(np.prod(s.shape)) * d) if d > 0 else b
+        except Exception:
+            return b
+
+    def arg(a, kw, key, pos):
+        if key in kw:
+            return kw[key]
+        return a[pos] if pos is not None and len(a) > pos else None
+
+    def wrap(name, fn, src_key, src_pos, dst_key, dst_pos):
         def counted(*a, **kw):
-            src = kw.get("srcs", kw.get("src", a[src_pos] if len(a) > src_pos else None))
-            for s in flat(src):
+            src, dst = arg(a, kw, src_key, src_pos), arg(a, kw, dst_key, dst_pos)
+            out = fn(*a, **kw)
+            if dst_key is None:                      # nl.load: the destination is the tile it returns
+                dst = out
+            srcs = list(flat(src))
+            if not srcs:                             # a transfer the counter cannot see the source of
+                counter["unmeasured"] += 1
+            for s in srcs:
                 try:
-                    counter["bytes"] += size(s)
+                    counter["bytes"] += narrow(s, dst)
                     counter["dtypes"].add(str(getattr(s, "dtype", "?")))
                 except Exception:
                     counter["unmeasured"] += 1
             counter["transfers"] += 1
             counter["by_op"][name] = counter["by_op"].get(name, 0) + 1
+            return out
+        return counted
+
+    def tally(name, fn):
+        def counted(*a, **kw):
+            counter["by_op"][name] = counter["by_op"].get(name, 0) + 1
             return fn(*a, **kw)
         return counted
 
-    hooks = [(nisa, "dma_copy", 1), (nisa, "dma_transpose", 1), (nisa, "dma_compute", 1),
-             (nl, "load", 0), (nl, "store", 1)]
+    #        module, name, (source keyword, position), (destination keyword, position)
+    hooks = [(nisa, "dma_copy", "src", 1, "dst", 0), (nisa, "dma_transpose", "src", 1, "dst", 0),
+             (nisa, "dma_compute", "srcs", 1, "dst", 0), (nl, "load", "src", 0, None, None),
+             (nl, "store", "value", 1, "dst", 0)]
     originals = []
-    for mod, name, pos in hooks:
+    for mod, name, *where in hooks:
         if hasattr(mod, name):
             originals.append((mod, name, getattr(mod, name)))
-            setattr(mod, name, wrap(name, getattr(mod, name), pos))
+            setattr(mod, name, wrap(name, getattr(mod, name), *where))
+    if hasattr(nisa, "nc_matmul"):
+        originals.append((nisa, "nc_matmul", nisa.nc_matmul))
+        nisa.nc_matmul = tally("nc_matmul", nisa.nc_matmul)
     import warnings
     try:
         with warnings.catch_warnings():
@@ -688,27 +756,112 @@ def _child_failure(e, label=""):
 
 # ---------------------------------------------------------------- stage 6: one instruction
 
-def one_instruction(counter, args, want, flops):
-    """Turn the measurements into ONE change to make. Never just 'too slow'."""
-    if not counter or counter.get("unmeasured") or not counter.get("transfers"):
+WASTE_HINT = 1.15                         # simulator bytes over the floor that count as reloading
+FULL_MATMUL_FLOPS = 2 * nkibench.PMAX * nkibench.GEMM_STATIONARY_FMAX * nkibench.GEMM_MOVING_FMAX
+FULL_TILE_BYTES = nkibench.PMAX * nkibench.GEMM_MOVING_FMAX * 2  # one 128 x 512 bf16 tile, 128 KiB
+
+
+def _waste(diag):
+    """Simulator bytes over the byte floor for one diag tuple (counter, args, want, flops)."""
+    counter, args, want, _ = diag
+    floor = nkibench.minimum_hbm_bytes(list(args), want)
+    return counter.get("bytes", 0) / floor if floor else 1.0
+
+
+def one_instruction(counter, args, want, flops, chip=None):
+    """Turn the measurements into ONE change to make. Never just 'too slow'.
+
+    counter, args, want, flops: the simulator's view of one dev shape (bytes are a hint, not a cost: redundant
+    DMAs measured free on the chip, STATUS finding 1). chip: the device outcome, which decides the kind of
+    advice -- dict(speedup=total baseline/candidate, per_shape=[(shape, speedup)], t_us=candidate total,
+    flops=flops over the timed shapes, threshold=the noise threshold). Without it, simulator-only advice.
+    Every word is referee-authored; nothing the candidate wrote reaches it."""
+    if not counter or not counter.get("transfers"):
         return ("The byte counter could not see this kernel's data movement, so no traffic diagnosis is "
                 "possible: move data with nisa.dma_copy called through the nisa module.")
+    unmeasured = int(counter.get("unmeasured") or 0)
+    note = (f" ({unmeasured:,} transfer{'s' if unmeasured != 1 else ''} could not be measured, so the byte "
+            f"figures are a lower bound.)") if unmeasured else ""
     elements = int(np.prod(np.shape(want)))
     floor = nkibench.minimum_hbm_bytes(list(args), want)
     waste = counter["bytes"] / floor if floor else 1.0
-    if counter["transfers"] > max(8, elements // 64):
-        return (f"One transfer per few elements ({counter['transfers']:,} transfers for {elements:,} outputs): "
-                f"move whole 128-row tiles per DMA, not elements.")
-    if waste > 1.15:
-        return (f"Same tiles reloaded every pass ({waste:.2f}x the byte floor): move the operand loads out of "
-                f"the innermost loop so each tile is loaded once and reused across it.")
-    ceiling = flops / floor if floor else float("inf")
-    if ceiling >= nkibench.RIDGE_FLOPS_PER_BYTE["bfloat16"]:
-        return ("Bytes are already near the floor and this shape can be compute bound: keep the Tensor "
-                "Engine busy -- block K so one PSUM tile accumulates across the whole contraction, and "
-                "overlap the next tile's load with the current matmul.")
-    return ("At the byte floor on a memory-bound shape: the remaining cost is transfer efficiency -- "
-            "issue fewer, larger DMAs and overlap them with compute.")
+    transfers = counter["transfers"]
+    avg_kib = counter["bytes"] / transfers / 1024
+    n_mm = int((counter.get("by_op") or {}).get("nc_matmul", 0) or 0)
+    fill = (flops / (n_mm * FULL_MATMUL_FLOPS)) if n_mm and flops else None   # 1.0 = every matmul a full tile
+    compute_bound = floor and flops / floor >= nkibench.RIDGE_FLOPS_PER_BYTE["bfloat16"]
+    # The chip advice follows the Tensor Engine ladder when the kernel does matmuls. Not the dev shape's
+    # roofline: dev shapes are too small to clear the ridge, the timed Qwen3 shapes sit at or above it.
+    on_tensor_engine = n_mm > 0 and flops > 0
+    per_element = transfers > max(8, elements // 64)
+
+    if chip is None:                                             # simulator only
+        if per_element:
+            return (f"One transfer per few elements ({transfers:,} transfers for {elements:,} outputs): move "
+                    f"whole 128-row tiles per DMA, not elements.{note}")
+        if waste > WASTE_HINT:
+            return (f"Same tiles reloaded every pass ({waste:.2f}x the byte floor): move the operand loads out "
+                    f"of the innermost loop so each tile is loaded once and reused across it.{note}")
+        if compute_bound:
+            return ("Bytes are already near the floor and this shape can be compute bound: keep the Tensor "
+                    "Engine busy -- block K so one PSUM tile accumulates across the whole contraction, and "
+                    f"overlap the next tile's load with the current matmul.{note}")
+        return ("At the byte floor on a memory-bound shape: the remaining cost is transfer efficiency -- "
+                f"issue fewer, larger DMAs and overlap them with compute.{note}")
+
+    speedup = float(chip.get("speedup") or 0.0)
+    thr = float(chip.get("threshold") or 1.05)
+    per_shape = list(chip.get("per_shape") or [])
+    worst = min(per_shape, key=lambda x: x[1]) if per_shape else None
+    faster = speedup >= thr and not any(sp < 1.0 / thr for _, sp in per_shape)
+    t_us, tflop = float(chip.get("t_us") or 0.0), float(chip.get("flops") or 0.0)
+    rate = f", {tflop / t_us / 1e6:.1f} TFLOP/s" if on_tensor_engine and t_us > 0 and tflop > 0 else ""
+    small_mm = fill is not None and fill < 0.9
+    overhead = (f"{transfers:,} DMAs averaging {avg_kib:.0f} KiB"
+                + (f" and {n_mm:,} matmuls at {fill:.0%} of a full 128x128x512 tile" if fill is not None else "")
+                + " in the simulator")
+
+    if faster:
+        head = f"Faster on the chip ({speedup:.2f}x{rate}). Next step: "
+        if per_element:
+            return (head + f"move whole 128-row tiles per DMA, not a few elements ({transfers:,} transfers for "
+                    f"{elements:,} outputs).{note}")
+        if not on_tensor_engine:
+            return (head + "fewer, larger DMAs -- whole 128-partition tiles, several rows per partition -- with "
+                    f"each load overlapping the previous tile's compute and store.{note}")
+        if waste > 1.5:
+            return (head + f"block M and N -- keep a block of lhsT and rhs tiles resident in SBUF and reuse each "
+                    f"across the block instead of reloading it ({waste:.2f}x the byte floor in the simulator)."
+                    + note)
+        if waste > WASTE_HINT:
+            return (head + "block K as well, so one PSUM tile keeps accumulating across the whole contraction "
+                    f"and each output tile is copied out once ({waste:.2f}x the byte floor in the simulator)."
+                    + note)
+        if small_mm:
+            return (head + f"use full-size matmuls -- 128 contraction x 128 stationary x 512 moving per "
+                    f"nc_matmul ({overhead}).{note}")
+        return (head + "overlap data movement with compute -- allocate two SBUF buffers per operand and issue "
+                "the next block's loads before the current block's matmuls, so the Tensor Engine never waits "
+                f"on a DMA.{note}")
+
+    head = ("Slower on the chip" if speedup <= 1.0 / thr else "No gain on the chip") + f" ({speedup:.3f}x"
+    if worst and worst[1] < 1.0 / thr:
+        head += f"; {worst[1]:.3f}x at {tuple(worst[0])}"
+    head += ")"
+    if waste > WASTE_HINT:
+        return (head + f" and the simulator shows {waste:.2f}x the byte floor: the same tiles are reloaded every "
+                f"pass -- move the operand loads out of the innermost loop so each tile is loaded once and "
+                f"reused across it.{note}")
+    if per_element:
+        return (head + f" with one transfer per few elements ({transfers:,} transfers for {elements:,} "
+                f"outputs): move whole 128-row tiles per DMA, not elements.{note}")
+    if not on_tensor_engine:
+        return (head + f" with no wasted bytes ({waste:.2f}x the floor), so the time goes to DMA overhead "
+                f"({overhead}): issue fewer, larger DMAs -- whole 128-partition tiles, several rows per "
+                f"partition.{note}")
+    return (head + f" with no wasted bytes ({waste:.2f}x the floor), so the time goes to instruction overhead "
+            f"({overhead}): issue fewer, larger DMAs and matmuls, with tiles at the hardware maxima -- 128 "
+            f"partitions, 128 stationary columns, 512 moving columns.{note}")
 
 
 # ---------------------------------------------------------------- precision
@@ -897,7 +1050,8 @@ def check(path, op="matmul", baseline=None, rounds=3, verbose=False):
                    if x.get("untouched") else _mismatch(got, want, spec["tol"], f"sim {shape}"))
             if bad:
                 return _record(**base, verdict="wrong", referee_message=bad, instruction_given=bad.split("\n")[0])
-            diag = (_clean_counter(x.get("counter")), list(inp.values()), want.astype(spec["out"](shape)[1]), spec["flops"](shape))
+            d = (_clean_counter(x.get("counter")), list(inp.values()), want.astype(spec["out"](shape)[1]), spec["flops"](shape))
+            diag = d if diag is None or _waste(d) > _waste(diag) else diag      # the shape with the most waste
         base["sim_ok"] = True
         c = diag[0]
         say(f"  simulator  {len(sims)} shapes correct; {c.get('bytes', 0):,} bytes in {c.get('transfers', 0)} "
@@ -966,7 +1120,9 @@ def check(path, op="matmul", baseline=None, rounds=3, verbose=False):
         threshold = 1.0 + max(0.05, 2.0 * rel)
         timed = dict(time_us_median=float(t_cand), time_us_iqr=float(t_cand * rel),
                      baseline_us_same_session=float(t_base), speedup=float(speedup), source="chip")
-        instr = one_instruction(*diag)
+        instr = one_instruction(*diag, chip=dict(speedup=speedup, per_shape=per_shape, t_us=t_cand,
+                                                 threshold=threshold,
+                                                 flops=sum(spec["flops"](sh) for sh, _ in per_shape)))
         regressed = [(sh, sp) for sh, sp in per_shape if sp < 1.0 / threshold]
 
         if speedup < threshold or regressed:
