@@ -342,6 +342,40 @@ level(8, "single-head attention", "nki_attention_",
 
 FRAMEWORK_MODULES = {"np", "numpy", "torch", "jnp", "jax", "F", "nn"}
 
+# The real framework packages, independent of whatever name they are imported under. A head name
+# like `np` only means numpy by convention; `import numpy as xp` makes `xp` mean it just as much.
+FRAMEWORK_PACKAGES = {"numpy", "torch", "jax", "jax.numpy", "tensorflow", "tf",
+                      "torch.nn.functional", "torch.nn"}
+
+
+def _framework_aliases(tree):
+    """Resolve import aliases so a renamed framework cannot slip past the banned-call scan.
+
+    Two bypasses this closes, both observed to be possible against the bare-name check:
+      `import numpy as xp; xp.mean(...)`   -- the head `xp` was not in FRAMEWORK_MODULES
+      `from numpy import mean as m; m(...)` -- the bare call `m` resolved to nothing
+
+    Returns (module_aliases, imported_banned_names):
+      module_aliases          names bound to a whole framework module, e.g. {"xp", "np"}
+      imported_banned_names   bare names pulled out of a framework module, mapped to their origin,
+                              e.g. {"m": "numpy.mean", "mean": "numpy.mean"}
+    """
+    module_aliases, imported = set(), {}
+    root = lambda dotted: dotted.split(".")[0]
+    is_fw = lambda dotted: dotted in FRAMEWORK_PACKAGES or root(dotted) in {"numpy", "torch", "jax",
+                                                                            "tensorflow"}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for a in node.names:
+                if is_fw(a.name):
+                    module_aliases.add(a.asname or root(a.name))
+        elif isinstance(node, ast.ImportFrom) and node.module and is_fw(node.module):
+            for a in node.names:
+                if a.name == "*":
+                    continue
+                imported[a.asname or a.name] = f"{node.module}.{a.name}"
+    return module_aliases, imported
+
 
 def _dotted(node):
     """Full dotted name of a call target, e.g. 'np.mean' or 'nisa.nc_matmul'."""
@@ -372,6 +406,10 @@ def check_rules(src, level_n):
     except SyntaxError as e:
         return [f"the file does not parse: {e}"]
 
+    # Framework imports resolved to the module they really are, so a rename cannot hide a cheat.
+    module_aliases, imported_banned = _framework_aliases(tree)
+    framework_heads = FRAMEWORK_MODULES | module_aliases
+
     names, decorated, params = set(), set(), set()
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef):
@@ -387,7 +425,15 @@ def check_rules(src, level_n):
             dotted = _dotted(node.func)
             head = dotted.split(".")[0] if dotted else ""
             leaf = dotted.split(".")[-1] if dotted else ""
-            if leaf in spec["banned"] and (head in FRAMEWORK_MODULES or head == leaf):
+            # A banned op reached through a framework module (np.mean, xp.mean, torch.matmul).
+            flagged = leaf in spec["banned"] and head in framework_heads
+            # A banned op imported bare from a framework (`from numpy import mean [as m]`): the
+            # call name is a local alias, so resolve it to the origin leaf before judging.
+            origin = imported_banned.get(dotted)
+            if origin and origin.split(".")[-1] in spec["banned"]:
+                flagged = True
+                dotted = f"{dotted} (= {origin})"
+            if flagged:
                 bad.append(f"line {node.lineno}: calls `{dotted}`, which hands the whole "
                            f"operation to a framework. This level is about computing it in "
                            f"the kernel.")
@@ -553,7 +599,17 @@ def reuse_report(counted, args, want):
     loop. The arithmetic intensity drops, but 'memory bound' does not say why. This does.
     """
     floor = minimum_hbm_bytes(args, want)
-    if not floor or not counted.get("bytes"):
+    # FAIL CLOSED. The byte counter only sees traffic routed through nisa.dma_copy. A kernel that
+    # moved its data another way (nl.load/nl.store, a wrapper we did not patch) can produce output
+    # while this counts ZERO bytes -- and silence would read as "no redundant traffic", i.e. a
+    # perfect score for a kernel we never measured. Say that we could not measure it instead.
+    if not counted.get("bytes") or not counted.get("transfers"):
+        return ("    HBM TRAFFIC NOT MEASURED: this kernel produced output but issued no transfers "
+                "the counter could see. The byte count instruments nisa.dma_copy only, so moving "
+                "data another way (e.g. nl.load / nl.store) is invisible here. The traffic verdict "
+                "is UNKNOWN, not optimal -- route HBM<->SBUF moves through nisa.dma_copy so they can "
+                "be counted.")
+    if not floor:
         return ""
     ratio = counted["bytes"] / floor
     if ratio < 1.15:
@@ -574,8 +630,16 @@ def check_traffic_bar(level_n, counted, args, want):
     is and what buys the difference -- which is the only thing separating these levels from level 4.
     """
     bar = LEVELS[level_n].get("max_waste")
-    if not bar or not counted.get("bytes"):
+    if not bar:
         return None
+    # FAIL CLOSED on an unmeasurable kernel: a level graded on bytes must not pass when no bytes
+    # were counted. Zero measured transfers on a kernel that produced output means the traffic went
+    # somewhere the counter cannot see, so the bar is UNMET-by-default, not met.
+    if not counted.get("bytes") or not counted.get("transfers"):
+        return (f"CANNOT CONFIRM THE TRAFFIC BAR FOR LEVEL {level_n}: this kernel issued no "
+                f"transfers the counter could measure (it instruments nisa.dma_copy only). Levels "
+                f"5-7 are graded on HBM bytes, so an unmeasured kernel cannot pass. Route every "
+                f"HBM<->SBUF move through nisa.dma_copy so the traffic can be counted.")
     floor = minimum_hbm_bytes(args, want)
     if not floor:
         return None
@@ -716,11 +780,13 @@ def verify(path, level_n, tol=2e-2, seed=0):
                   f"{counted['transfers']:,} transfers for {elements:,} output elements, "
                   f"{counted['bytes'] / max(counted['transfers'], 1):.0f} bytes each. The cost here "
                   f"is the NUMBER of transfers, not the bytes. Move whole tiles, not elements.")
-        if counted.get("bytes"):
-            rep = reuse_report(counted, args, want)
-            if rep:
-                print(f"\n  case {label(case, level_n)}:")
-                print(rep)
+        # Always report traffic for a shape that passed numerics -- reuse_report fails CLOSED and
+        # says "not measured" when no transfers were counted, so skipping it on zero bytes would
+        # hide exactly the kernels that moved data where the counter cannot see it.
+        rep = reuse_report(counted, args, want)
+        if rep:
+            print(f"\n  case {label(case, level_n)}:")
+            print(rep)
         if level_n >= 3 and counted["bytes"]:
             f = matmul_flops(case["M"], case["K"], case["N"])
             intensities.append((label(case, level_n), roofline(f, counted["bytes"]),
@@ -805,6 +871,15 @@ def selftest():
         (1, "import nki\nimport numpy as np\n@nki.jit\n"
             "def tensor_avgpool_kernel(x, p):\n    return np.mean(x, axis=(1, 2))\n",
          "np.mean"),
+        (1, "import nki\nimport numpy as xp\n@nki.jit\n"
+            "def tensor_avgpool_kernel(x, p):\n    return xp.mean(x, axis=(1, 2))\n",
+         "numpy renamed to xp"),
+        (1, "import nki\nfrom numpy import mean\n@nki.jit\n"
+            "def tensor_avgpool_kernel(x, p):\n    return mean(x, axis=(1, 2))\n",
+         "a bare `from numpy import mean`"),
+        (4, "import nki\nfrom numpy import matmul as mm\n@nki.jit\n"
+            "def nki_matmul_tiled_(a, b):\n    return mm(a.T, b)\n",
+         "matmul imported under an alias"),
         (4, "import nki\nimport nki.language as nl\n@nki.jit\n"
             "def nki_matmul_tiled_(a, b):\n"
             "    t = nl.ndarray((256, 512), buffer=nl.sbuf)\n    return t\n",
