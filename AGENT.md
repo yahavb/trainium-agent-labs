@@ -2,7 +2,7 @@
 
 You do not write NKI. You write a **schedule**: a short Python function that rewrites a naive loop
 program step by step. Each call is checked; the final program is emitted as a verified NKI kernel.
-A failed call raises an error that says what rule you broke. Fix that call and nothing else.
+A failed call raises an error that says what rule you broke; fix that call (and what depends on it).
 
 ```python
 def schedule(s, hw):
@@ -79,4 +79,12 @@ buffer names from it.
 
 A `ScheduleError` names the primitive and the violated rule; the report also gives the program state
 before the failing call and the calls that succeeded. Names that were split no longer exist: use
-the returned `o, i` names. Change only the failing call (and what depends on it).
+the returned `o, i` names.
+
+## When nothing fails but the checker is not satisfied
+
+A schedule can apply cleanly and still miss the HBM-traffic ceiling. Then there is no error to fix:
+the schedule itself needs to change. Keep what is correct (tiling, staging, tensorize), take the
+reported traffic ratio and the emitted program, find which loads are repeated most, and restructure
+loop order and hoisting to cut them. Re-applying the same hoists in a different place is not a new
+idea; if a change leaves the ratio unchanged, the loads you moved were not the expensive ones.
