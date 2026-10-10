@@ -432,7 +432,16 @@ def selftest():
         caught = bool(check_rules(f"import numpy as np\ndef kernel(a,b=None):\n    return {expr}\n", n))
         print(f"  shortcut {expr:<25} -> {'caught' if caught else 'UNDETECTED'}")
         rc |= 0 if caught else 1
-    mutated = evaluate("import numpy as np\ndef kernel(x,a,b):\n    x[:] = 0\n    return x\n", 1)
+    mutated = evaluate(
+        "import numpy as np\n"
+        "def kernel(x,a,b):\n"
+        "    out = x\n"
+        "    for r0 in range(0, x.shape[0], 128):\n"
+        "        r1 = min(r0 + 128, x.shape[0])\n"
+        "        for c0 in range(0, x.shape[1], 512):\n"
+        "            c1 = min(c0 + 512, x.shape[1])\n"
+        "            x[r0:r1, c0:c1] = 0\n"
+        "    return out\n", 1)
     caught = not mutated["tests_passed"] and "MUTATION" in mutated["feedback"]
     print(f"  input mutation                 -> {'caught' if caught else 'UNDETECTED'}")
     rc |= 0 if caught else 1
