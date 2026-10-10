@@ -56,3 +56,14 @@ class PrimitiveLegalizerTests(unittest.TestCase):
  def test_unmatched_anonymous_read_untouched(self):
   source='import nki.language as nl\nimport nki.isa as ni\ndef f(a):\n ni.dma_copy(dst=a,src=nl.ndarray((1,1),a.dtype,buffer=nl.sbuf))\n return a'
   self.assertEqual(legalize(source)[0],source)
+ def test_warm_start_round_zero_uses_seed_without_model_call(self):
+  import tempfile,os
+  s=specs()[0]['source'].replace('nisa.tensor_scalar','nl.tensor_scalar')
+  with tempfile.NamedTemporaryFile('w',suffix='.py',delete=False) as f:f.write(s.replace('def ','def renamed_seed_',1) if 'def ' in s else s)
+  try:
+   opts=SimpleNamespace(rounds=1,samples=4,offline=False,terse=0,give_up_after=4,primitive_policy='legalize',warm_start=f.name)
+   log=io.StringIO()
+   with patch.object(agent,'ask') as ask,patch.object(agent,'grade',return_value=(1.0,{},'Correct on every shape.')) as grade,contextlib.redirect_stdout(io.StringIO()):agent.solve(opts,1,log)
+   self.assertEqual(ask.call_count,0);self.assertEqual(grade.call_count,1)
+   self.assertIn('def tensor_avgpool_kernel',grade.call_args[0][0]);self.assertIn('nisa.tensor_scalar',grade.call_args[0][0])
+  finally:os.unlink(f.name)

@@ -525,12 +525,34 @@ def offline_answers(level, n, rnd):
     return [f"```python\n{ref}\n```"] * n
 
 
+def load_warm_start(path, level):
+    """Read a saved candidate for --warm-start. A single top-level kernel whose name differs
+    from this level's entry (e.g. a sibling level's kernel) is renamed and the rename recorded."""
+    if not path:
+        return None
+    import ast, hashlib
+    source = open(path).read()
+    seed = dict(path=os.path.abspath(path), sha256=hashlib.sha256(source.encode()).hexdigest())
+    entry = nkibench.LEVELS[level]["entry"]
+    try:
+        functions = [n for n in ast.parse(source).body if isinstance(n, ast.FunctionDef)]
+    except SyntaxError:
+        functions = []
+    if len(functions) == 1 and functions[0].name != entry:
+        old = functions[0].name
+        source = re.sub(rf"\bdef {re.escape(old)}\b", f"def {entry}", source, count=1)
+        seed["renamed_from"] = old
+    seed["source"] = source
+    return seed
+
+
 # ---------------------------------------------------------------- the loop
 
 def solve(a, level, log):
     print(f"\n=========== level {level}: {nkibench.LEVELS[level]['op']} ===========")
     terse = a.terse
     prompt = first_prompt(level, terse)
+    warm_seed = load_warm_start(getattr(a, "warm_start", None), level)
     best = (0.0, None, "")
     tried, streak, seen = [], 0, {}
     latest = ("", "")
@@ -600,8 +622,14 @@ def solve(a, level, log):
         variants = build_variants(generation_prompt, a.samples, candidate_policy,
                                   repair=bool(latest[0]), repeated=streak, repair_scope=shape_plan["scope"] if shape_plan else None)
         request_prompts = generation_prompt if candidate_policy == "standard" else [v.prompt for v in variants]
-        replies = (offline_answers(level, a.samples, rnd) if a.offline
-                   else ask_parallel(a, request_prompts, a.samples))
+        warm = warm_seed if rnd == 0 else None
+        if warm is not None:
+            # Warm start: round 0 grades the saved candidate instead of generating;
+            # later rounds repair from it exactly like a generated candidate.
+            replies = [f"```python\n{warm['source']}\n```"]
+        else:
+            replies = (offline_answers(level, a.samples, rnd) if a.offline
+                       else ask_parallel(a, request_prompts, a.samples))
         generation_seconds = time.perf_counter() - t0 if measured else None
         graded = []
         grade_metrics = []
@@ -663,6 +691,7 @@ def solve(a, level, log):
                 if getattr(a,"planner_policy","off") != "off":record.update(planner_policy=a.planner_policy,kernel_plan=kernel_plan,semantic_gate=grade_metrics[index].get("semantic_analysis"))
                 if shape_analysis != "off":record.update(shape_analysis=shape_analysis,symbolic_analysis=symbolic_plan)
                 if getattr(a,"adapter_mode",None) is not None:record["adapter_mode"]=a.adapter_mode
+                if warm is not None:record["warm_start"]={k:v for k,v in warm.items() if k!="source"}
                 if measured:
                     evaluated = {case['case'] for case in grade_metrics[index]['shape_results']}
                     shape_results = grade_metrics[index]['shape_results'] + [
@@ -772,6 +801,8 @@ def main():
     ap.add_argument("--repair-policy", choices=("standard", "grounded", "shape-aware"), default="standard")
     ap.add_argument("--generation-policy", choices=("standard", "constrained"), default="standard")
     ap.add_argument("--primitive-policy", choices=("off","legalize"), default="off")
+    ap.add_argument("--warm-start", default=None,
+                    help="saved candidate graded as round 0 instead of generating; later rounds repair from it")
     ap.add_argument("--planner-policy", choices=("off","hardware"), default="off")
     ap.add_argument("--shape-analysis", choices=("off","sympy"), default="off")
     ap.add_argument("--feedback-policy", choices=("legacy","targeted"), default="legacy")

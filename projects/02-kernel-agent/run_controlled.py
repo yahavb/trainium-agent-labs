@@ -80,6 +80,7 @@ def build_command(options, arm, level, directory):
         command.extend(['--example-policy','synthetic'])
     if arm[0] in ('D_combined','E_combined_constrained','D_full_adaptive','S_control','S_sympy','P_control','P_planner'):command.append('--adaptive-repair')
     if getattr(options,'primitive_policy','off')=='legalize':command.extend(['--primitive-policy','legalize'])
+    if getattr(options,'warm_start',None):command.extend(['--warm-start',str(directory.parents[1]/'warm_start'/f'level{level}.py')])
     if arm[0]=='P_planner' or getattr(options,'planner_policy','off')=='hardware':command.extend(['--planner-policy','hardware'])
     if arm[0]=='S_sympy':command.extend(['--shape-analysis','sympy'])
     if arm[0]=='E_combined_constrained':command.extend(['--generation-policy','constrained'])
@@ -128,6 +129,7 @@ def main():
     parser.add_argument('--primitive-policy',choices=('off','legalize'),default='off')
     parser.add_argument('--planner-policy',choices=('off','hardware'),default='off')
     parser.add_argument('--levels',type=int,nargs='+',default=[1,3],choices=range(1,9))
+    parser.add_argument('--warm-start',type=Path,help='saved candidate copied into the run and graded as round 0 for every selected level')
     parser.add_argument('--output-root',type=Path,default=PROJECT/'runs')
     options=parser.parse_args()
     if min(options.rounds,options.samples,options.repeat)<1: parser.error('positive rounds/samples/repeat required')
@@ -150,6 +152,10 @@ def main():
         file_hashes[str(relative)]=hashlib.sha256(content).hexdigest()
         destination=source_directory/relative;destination.parent.mkdir(parents=True,exist_ok=True)
         with destination.open('xb') as output:output.write(content)
+    if options.warm_start:
+        (root/'warm_start').mkdir()
+        for level in dict.fromkeys(options.levels):
+            with (root/'warm_start'/f'level{level}.py').open('xb') as output:output.write(options.warm_start.read_bytes())
     plan=[]
     arms=(('A_full','diverse','diagnostic','grounded'),('B_shape_aware','diverse','diagnostic','shape-aware')) if options.correctness_pilot else ARMS
     if options.synthetic_pilot:
@@ -172,7 +178,7 @@ def main():
             command[3]=str(source_directory/'agent.py')
             plan.append(dict(arm=arm[0],level=level,directory=str(directory),command=command))
     import nki
-    manifest=dict(primitive_policy=options.primitive_policy,planner_policy=options.planner_policy,full_agent_only=options.full_agent_only,synthetic_pilot=options.synthetic_pilot,correctness_pilot=options.correctness_pilot,preparation_only=not options.run,baseline_processes=blocked,revision=revision,
+    manifest=dict(warm_start=str(options.warm_start.resolve()) if options.warm_start else None,warm_start_sha256=hashlib.sha256(options.warm_start.read_bytes()).hexdigest() if options.warm_start else None,primitive_policy=options.primitive_policy,planner_policy=options.planner_policy,full_agent_only=options.full_agent_only,synthetic_pilot=options.synthetic_pilot,correctness_pilot=options.correctness_pilot,preparation_only=not options.run,baseline_processes=blocked,revision=revision,
                   source_sha256=file_hashes,sdk_version=nki.__version__,target='trn2',
                   model='Qwen/Qwen3-8B',context=8192,max_tokens=2500,temperature=.6,top_p=.95,
                   thinking=False,rounds=options.rounds,samples=options.samples,repeat=options.repeat,

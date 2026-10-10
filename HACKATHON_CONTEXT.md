@@ -161,3 +161,10 @@ User instruction: drive every unsolved level toward 1.00 as fast as possible, ru
 - Planner plans for L4–L8 now prescribe structure in prose (loop order, tiles, API roles). Each structure was first simulator-checked with hand-written kernels in the session scratchpad, not in the repo or in prompts. Count these as plan-guided cold starts.
 - Superseded runs stopped by Claude Code (their own launches only), with STOPPED.md notes: controlled-20261010T203725-onnn7nmy/level4, controlled-20261010T203931-70b8sdrf/level1, controlled-20261010T204737-vleoyh30/level1, controlled-20261010T204432-zfm1onkb/level4.
 - LoRA CPU endpoint: about 11 cores busy, first batch still >15 min. Expect about 1 round per level per hour.
+
+### 21:06 UTC update (Claude Code)
+- User decision: warm start is the main Level 1 approach. Added `agent.py --warm-start FILE`: round 0 grades a saved candidate instead of generating, later rounds repair from it, a sibling-level kernel is renamed to the entry point, and seed path/sha are logged. run_controlled passes it through and freezes a copy in `warm_start/`. Test added; 189 tests + 76 subtests pass.
+- L1 warm-start full agent run controlled-20261010T210340-n8lcsja5: 1.00 in round 0 (24 s). The graded kernel is byte-identical to the locked L1 kernel.
+- **L4 cold-start solved** (round 0, raw Qwen, plan v3): controlled-20261010T205651-l9444j4q; locked verified-level4-locked-n1kmsi6q.
+- Status: 7/8 levels at 1.00 (6 cold start + L1 warm start). L8 has two parallel cold runs active. The cold L1 run l9444j4q was stopped to free the endpoint for L8.
+- Accelerator: one Trainium2 device (/dev/neuron0), fully used by the shared Qwen vLLM (TP=2). There is no GPU. Running LoRA on Trainium would need the shared server restarted with merged/LoRA-enabled weights. That is forbidden by project rules without explicit user approval, and would interrupt active runs.
