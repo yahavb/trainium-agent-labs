@@ -76,7 +76,7 @@ fams = [("optimization shapes: level-5 bar", d["opt_l5"]),
 total = sum(f[1][1] for f in fams)
 passed = sum(f[1][0] for f in fams)
 
-fig, ax = plt.subplots(figsize=(9.8, 4.8))
+fig, ax = plt.subplots(figsize=(9.6, 3.9))
 ys = list(range(len(fams)))[::-1]
 for y, (name, (p, t)) in zip(ys, fams):
     ax.barh(y, p, color="#2ca02c", height=0.55)
@@ -87,8 +87,8 @@ ax.set_yticks(ys)
 ax.set_yticklabels([f[0] for f in fams], fontsize=9)
 ax.set_xlim(0, max(f[1][1] for f in fams) + 3.6)
 ax.set_xlabel("cases passed (green) / failed (red) -- official checker internals")
-ax.set_title(f"Robust check of the level kernels -- {passed}/{total} cases; every failure "
-             f"is in the one declared ragged family")
+ax.set_title(f"Robust check -- {passed}/{total} cases passed; failures isolate to the "
+             f"ragged family", fontsize=11)
 fig.tight_layout()
 fig.savefig(os.path.join(HERE, "robust_matrix.png"), dpi=150)
 print("wrote robust_matrix.png")
