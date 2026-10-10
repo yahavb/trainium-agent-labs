@@ -28,22 +28,28 @@ Best score per run. Each number is one run of up to 8 rounds.
 | level | `enriched` (repo) | `located` | `directed3` | `directed4` | `directed5` |
 |---|---|---|---|---|---|
 | 2 transpose | 0.30 | 1.00, 0.30, 1.00, 0.30, 0.30 | 0.50 | 0.50 | not run |
-| 3 matmul, one tile | 0.30 | 0.30 ×5 | 0.30 | 0.30 | 0.30, 0.30 (third run cut off) |
-| 4 matmul, tiled | 0.62 | 0.75, 0.30, 0.62, 0.75, 0.75 | 0.62 | **1.00**, 0.75 | stopped from outside after one round |
+| 3 matmul, one tile | 0.30 | 0.30 ×5 | 0.30 | 0.30 | 0.30, 0.30, **1.00** (one more run cut off) |
+| 4 matmul, tiled | 0.62 | 0.75, 0.30, 0.62, 0.75, 0.75 | 0.62 | **1.00**, 0.75 | **1.00** (one more run cut off) |
 
 Level 1 stayed at 0.30 in seven of seven runs (`located` ×6, `directed` ×1) and was not run again.
 One further `located` run of level 2 was cut off after three rounds at 0.30. One early `directed` run,
 the first mode we wrote, scored 1.00, 0.30 and 0.75 on levels 2, 3 and 4.
 
-**Level 4 was solved once**, correct on all four shapes with K, M and N all tiled, in one of two
-complete `directed4` runs. The repo records 0.62 on five of five runs, and its checker reached 0.62 in
-our one run of it here. That is one solve in two attempts, not a rate.
+**Level 4 was solved twice**, correct on all four shapes with K, M and N all tiled: in one of two
+complete `directed4` runs, and in the one complete `directed5` run (0.62, 0.62, 0.75, 1.00). The repo
+records 0.62 on five of five runs, and its checker reached 0.62 in our one run of it here.
 
-**Level 3 is not solved.** Under `directed5` the model repaired a different fault in each of its
-first five rounds and ran out of rounds short of a complete kernel. Under the repo's checker it
-repeated its first fault. Repair steps that reached a fault not seen before in the run: 5 of 7 in
-each `directed5` run, 1 of 5 under `enriched`. The score is 0.30 either way, because a kernel scores
-nothing more until it runs to the end.
+**Level 3 was solved once**, in the last of three complete `directed5` runs (0.30 for four rounds,
+then 1.00 on round 4). Every other run of level 3 today, under any checker, ended at 0.30. In the two
+`directed5` runs that did not solve it, the model repaired a different fault in each of its first
+five rounds and ran out of rounds; under the repo's checker it repeated its first fault. Repair steps
+that reached a fault not seen before: 5 of 7 in each of those runs, 1 of 5 under `enriched`.
+
+These are two solves in three attempts and one in three. They are not rates.
+
+**The two solving `directed5` runs are the last two we made**, on a second seat, minutes before the
+deadline. Their scores above are taken from the runs' printed round-by-round output. Their attempt
+logs were still on that seat when this note was written and are not yet in `logs/`.
 
 Per-run detail: [`RESULTS.md`](RESULTS.md). Every attempt with its kernel, feedback and score:
 [`logs/`](logs/) (916 attempts).
@@ -95,11 +101,12 @@ Both `directed4` runs took the same path for four rounds: 0.62, 0.62, 0.50, 0.75
 ## What these numbers do not show
 
 - **Few runs.** `enriched` has one run per level on this hardware, `directed4` two on level 4,
-  `directed5` two on level 3. With level 4 ranging from 0.30 to 0.75 under a single checker,
+  `directed5` three on level 3 and one on level 4. With level 4 ranging from 0.30 to 0.75 under a single checker,
   nothing here is a rate.
 - **Development and evaluation are not separated.** Each message was written from a run and tried on
-  the next. The level 4 solve came on the first run after two of its messages were written, and the
-  run that followed it did not repeat it. We did not get to a set of fresh runs on a frozen checker.
+  the next. The first level 4 solve came on the first run after two of its messages were written, and the
+  run that followed it did not repeat it. The level 3 solve came on the first run after its last
+  message was written. We did not get to a set of fresh runs on a frozen checker.
 - **Some messages describe a method**, such as how to split M and N into chunks, at the level of
   detail of the repo's own message for K. None contains kernel code. The line between naming a
   fault and giving the answer is a judgement, and ours is in `agent.py` to be checked.
