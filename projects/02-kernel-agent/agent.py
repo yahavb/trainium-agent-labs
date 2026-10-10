@@ -218,6 +218,18 @@ def available_names(dotted):
         mod = importlib.import_module(mod_name)
     except Exception:
         return ""
+    # Measured: told `nki.isa` has no `multiply` plus 25 alphabetical names, the model wrote
+    # nisa.multiply four rounds running. It exists, in the other module, and that is the fix.
+    alias = {"nki.language": "nl", "nki.isa": "nisa", "nki": "nki"}
+    for other in alias:
+        if other == mod_name:
+            continue
+        try:
+            if hasattr(importlib.import_module(other), attr):
+                return (f" `{attr}` is not in `{mod_name}`, it is in `{other}`: write "
+                        f"{alias[other]}.{attr} instead of {alias.get(mod_name, mod_name)}.{attr}.")
+        except Exception:
+            continue
     names = [n for n in dir(mod) if not n.startswith("_")]
     close = difflib.get_close_matches(attr, names, n=6, cutoff=0.4)
     if close:
@@ -313,6 +325,10 @@ def enrich(error_text):
                 f"the partial products add up there, and only after the loop copy it out with "
                 f"nisa.tensor_copy. Do not allocate a new psum tile per chunk and do not write partial "
                 f"results to HBM.")
+    if re.search(r"dma_copy requires HBM or SBUF tensors, got src=MemoryRegion\.psum", error_text):
+        return (error_text + " nisa.dma_copy cannot read PSUM. First nisa.tensor_copy the PSUM "
+                "tile into an SBUF tile of the same shape, then nisa.dma_copy that SBUF tile to the "
+                "shared_hbm output.")
     m = re.search(r"(\w+) (?:dst|src)? ?must be in \['sbuf', 'psum'\], got shared_hbm", error_text)
     if m:
         return (error_text + f" `nisa.{m.group(1)}` only moves data between on-chip buffers, sbuf and "
@@ -334,9 +350,20 @@ def enrich(error_text):
                 "first, then a free dimension. A 1-D tile is not allowed, so write "
                 "nl.ndarray((rows, cols), ...) and give a length-N vector the shape (1, N) or "
                 "(N, 1) depending on which axis you are reducing over.")
-    if "cannot reshape array of size" in error_text:
-        return (error_text + " Do not reshape. Work with the shapes you were given and slice "
-                "them into tiles, e.g. src=a[0:128, 0:64].")
+    m = re.search(r"cannot reshape array of size (\d+) into shape \(([\d, ]+)\)", error_text)
+    if m:
+        # Measured on level 3: "Do not reshape" repeated four rounds. The model never called
+        # reshape; it allocated a destination too small for the result being written into it.
+        size = int(m.group(1))
+        shape = tuple(int(v) for v in m.group(2).split(",") if v.strip())
+        held = 1
+        for v in shape:
+            held *= v
+        return (error_text + f" A result of {size} elements was written into a tile of shape "
+                f"{shape}, which holds {held}. The destination is the wrong shape. nc_matmul with "
+                f"stationary of shape (K, M) and moving of shape (K, N) produces an (M, N) result, "
+                f"so the psum tile, the sbuf tile it is copied into and the returned output must all "
+                f"be (M, N): (stationary.shape[1], moving.shape[1]).")
     m = re.search(r"module '([\w.]+)' has no attribute '(\w+)'", error_text)
     if m:
         return error_text + available_names(f"{m.group(1)}.{m.group(2)}")
@@ -443,7 +470,7 @@ def ask(a, prompt):
         print(f"    (prompt is ~{est_prompt} tokens, so the answer budget is capped at {budget} "
               f"to stay inside the {a.context}-token context)")
     body = dict(model=a.model, messages=[{"role": "user", "content": prompt}],
-                max_tokens=budget, temperature=0.6, top_p=0.95,
+                max_tokens=budget, temperature=a.temperature, top_p=0.95,
                 chat_template_kwargs={"enable_thinking": a.think})
     r = httpx.post(f"{a.base.rstrip('/')}/chat/completions", json=body,
                    timeout=900, verify=False)
@@ -595,6 +622,9 @@ def main():
                     help="the server's max-model-len; prompt + answer must fit inside it")
     ap.add_argument("--think", action="store_true",
                     help="let the model reason first; costs budget, and it ran out")
+    ap.add_argument("--temperature", type=float, default=0.6,
+                    help="measured on Qwen3-8B: at 0.6 four parallel samples of a kernel prompt "
+                         "are byte-identical, so --samples buys nothing; at 1.0 they differ")
     ap.add_argument("--offline", action="store_true")
     a = ap.parse_args()
 
