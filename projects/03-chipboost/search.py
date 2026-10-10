@@ -187,15 +187,41 @@ def finish(rec, seat, run_id, attempt_no, src):
     return rec
 
 
-def call_referee(speedcheck, path, tries=3, wait=10):
-    """speedcheck.check_isolated, retried while the REFEREE fails (it returns None): a busy core or a broken
+BASELINE = os.path.join(HERE, "kernels", "matmul_start.py")
+
+
+class _Isolated:
+    """check_isolated behind RefereeWorker's interface, for a referee without the worker."""
+
+    def __init__(self, speedcheck):
+        self.speedcheck, self.last_error = speedcheck, None
+
+    def check(self, path):
+        return self.speedcheck.check_isolated(path, op="matmul", baseline=BASELINE)
+
+    def close(self):
+        pass
+
+
+def open_referee(speedcheck):
+    """P1's RefereeWorker when the referee has it: one process holds the NeuronCore (CHIPBOOST_CORE, inherited)
+    across candidates, skipping the 6-13 s runtime start check_isolated pays each time. Same contract: a
+    record, or None when the REFEREE failed."""
+    if hasattr(speedcheck, "RefereeWorker"):
+        return speedcheck.RefereeWorker(op="matmul", baseline=BASELINE), "RefereeWorker, one process for the run"
+    return _Isolated(speedcheck), "check_isolated, one fresh process per candidate"
+
+
+def call_referee(referee, path, tries=3, wait=10):
+    """referee.check(path), retried while the REFEREE fails (it returns None): a busy core or a broken
     baseline is not a verdict on the kernel. None after `tries` attempts means skip the candidate."""
     for i in range(tries):
-        rec = speedcheck.check_isolated(path, op="matmul", baseline="kernels/matmul_start.py")
+        rec = referee.check(path)
         if rec is not None:
             return rec
+        why = (getattr(referee, "last_error", None) or "no reason given").splitlines()[0][:160]
         if i < tries - 1:
-            print(f"     referee failed (not a verdict on the kernel); retrying in {wait}s", flush=True)
+            print(f"     referee failed (not a verdict on the kernel: {why}); retrying in {wait}s", flush=True)
             time.sleep(wait)
     return None
 
@@ -367,8 +393,9 @@ def main():
                               f"sweep-{shard_i}of{shard_n}.jsonl" if a.exhaustive else "attempts.jsonl")
     os.makedirs(run_dir, exist_ok=True)
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    referee = "FAKE stub" if stub else "speedcheck.check_isolated, one fresh process per candidate"
-    print(f"{mark}run {run_id}: seat {seat} ({seat_from}), referee {referee}")
+    referee, referee_name = (None, "FAKE stub") if stub else open_referee(speedcheck)
+    print(f"{mark}run {run_id}: seat {seat} ({seat_from}), core {os.environ.get('CHIPBOOST_CORE', 'auto')}, "
+          f"referee {referee_name}")
     print(f"{mark}candidates in {run_dir} (outside the referee's folder), records appended to {out}")
 
     best, best_caps = None, None          # best verified: verdict "faster", the dashboard's definition
@@ -382,7 +409,7 @@ def main():
         if stub:
             rec = stub_referee(caps, effective(caps, tiles), a.seed, tiles, M)
         else:
-            rec = call_referee(speedcheck, path)
+            rec = call_referee(referee, path)
             if rec is None:
                 skipped.append(caps)
                 print(f"{mark}#{n:<3} caps {caps_str(caps):<12} SKIPPED: the referee failed 3 times, "
@@ -402,6 +429,8 @@ def main():
         print(f"{mark}#{n:<3} caps {caps_str(caps):<12} {rec['verdict']:<12} {t_s:>9}  {s_s:>6}  best {b_s}",
               flush=True)
 
+    if referee is not None:
+        referee.close()
     if best is None:
         print(f"{mark}best verified (faster): none"
               + (f"; best timed: caps {caps_str(timed_caps)}, {timed:.2f}x" if timed is not None else ""))

@@ -63,10 +63,12 @@ def test_referee_failures_are_retried_never_logged():
     calls = []
 
     class FakeReferee:
+        last_error = "core busy"
+
         def __init__(self, answers):
             self.answers = list(answers)
 
-        def check_isolated(self, path, op, baseline):
+        def check(self, path):
             calls.append(path)
             return self.answers.pop(0)
 
