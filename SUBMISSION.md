@@ -89,8 +89,17 @@ Full account: [CHECKER.md](projects/02-kernel-agent/CHECKER.md). The decisions t
 The rule for feedback: one failure, one instruction, naming the failing line. A verdict ("line 16 calls a
 banned function") is rewritten as an instruction ("change this call; keep everything else"). Following
 liuyq's method, a tiling fix is given as code in the model's own variable names; target values are never
-given. The first prompt carries one worked example chosen by category (a channel mean or a row mean),
-which is not a ladder answer. The tutorial kernels in the NKI reference material are never put in a prompt.
+given.
+
+**What the model sees, and what it never sees.** The first prompt carries one worked example chosen by the
+operation's category: a row mean for matmul levels, a channel mean for reductions, nothing otherwise. For
+level 1 (average pooling) the channel mean is a strong hint, and we say so: it has the same pipeline (load
+to SBUF, `nl.sum` with `keepdims`, scale with `tensor_scalar`, store) but not the windowed access pattern
+that turns a mean into a pooling. It is not the answer; judge for yourself. What never reaches a prompt: the
+NKI tutorial kernels, the organizers' reference kernels for levels 1–4, and our answers for levels 9–14. A
+line-by-line scan of every request v7 sends (35 distinct prompts, first and repair rounds, levels 1–4 and
+9–14) and of 2,851 string constants in the agent found 0 lines from any of them; the same scanner finds 95
+on a positive control. ([analysis/prompt_leak_check.md](analysis/prompt_leak_check.md))
 Thinking stays off: with it on, a round took 446 s instead of about 8 s on the same model, and every
 sample was cut off before any code.
 
