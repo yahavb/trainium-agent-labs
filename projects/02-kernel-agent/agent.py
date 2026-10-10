@@ -23,6 +23,7 @@ Every attempt is appended to a JSONL file with its reward, so the log is the del
 """
 
 import argparse
+import ast
 import json
 import os
 import re
@@ -128,19 +129,7 @@ REPAIR_CARD_NAMES = {
     "generic": ["api_core"],
 }
 
-LEVEL_BASE_CARDS = {
-    1: ["api_core", "dma_copy_shape", "tile_rank", "reductions"],
-    2: ["api_core", "dma_copy_shape", "tile_limits"],
-    3: ["api_core", "dma_copy_shape", "matmul_psum", "signatures"],
-    4: ["api_core", "dma_copy_shape", "tile_limits", "matmul_psum", "matmul_tiling"],
-}
-
-LEVEL_START_CARDS = {
-    1: [],
-    2: [],
-    3: [],
-    4: [],
-}
+GENERIC_BASE_CARDS = ["api_core", "dma_copy_shape", "signatures"]
 
 GENERIC_DOCS_CARDS = [
     "api_core",
@@ -219,6 +208,67 @@ Verifier-driven repair:
 # until the kernel is right.
 
 WEIGHTS = dict(parses=0.1, rules=0.2, runs=0.2, correct=0.5)
+PHASE_ORDER = {"empty": 0, "parse": 1, "rules": 2, "load": 3, "simulate": 4,
+               "numerics": 5, "traffic": 6, "correct": 7}
+
+
+class _PreflightFixer(ast.NodeTransformer):
+    def __init__(self):
+        self.fixes = []
+
+    def visit_Call(self, node):
+        self.generic_visit(node)
+        if not (isinstance(node.func, ast.Attribute) and node.func.attr == "ndarray"):
+            return node
+        if not (isinstance(node.func.value, ast.Name) and node.func.value.id == "nl"):
+            return node
+        has_dtype = any(kw.arg == "dtype" for kw in node.keywords)
+        if has_dtype or len(node.args) >= 2 or not node.args:
+            return node
+        shape = node.args[0]
+        dtype = None
+        if isinstance(shape, ast.Attribute) and shape.attr == "shape" and isinstance(shape.value, ast.Name):
+            dtype = ast.Attribute(value=ast.Name(id=shape.value.id, ctx=ast.Load()),
+                                  attr="dtype", ctx=ast.Load())
+        elif isinstance(shape, ast.Subscript) and isinstance(shape.value, ast.Attribute) \
+                and shape.value.attr == "shape" and isinstance(shape.value.value, ast.Name):
+            dtype = ast.Attribute(value=ast.Name(id=shape.value.value.id, ctx=ast.Load()),
+                                  attr="dtype", ctx=ast.Load())
+        else:
+            dtype = ast.Attribute(value=ast.Name(id="nl", ctx=ast.Load()),
+                                  attr="float32", ctx=ast.Load())
+        node.keywords.insert(0, ast.keyword(arg="dtype", value=dtype))
+        self.fixes.append("added missing dtype to nl.ndarray")
+        return node
+
+
+def static_preflight_fix(source):
+    """Patch obvious global NKI API typos before the verifier sees the candidate."""
+    fixed = source
+    replacements = [
+        ("nl.sbuf()", "nl.sbuf"),
+        ("nl.psum()", "nl.psum"),
+        ("nl.shared_hbm()", "nl.shared_hbm"),
+        ("nisa.sum", "nl.sum"),
+        ("np.float32", "nl.float32"),
+    ]
+    fixes = []
+    for old, new in replacements:
+        if old in fixed:
+            fixed = fixed.replace(old, new)
+            fixes.append(f"{old} -> {new}")
+
+    try:
+        tree = ast.parse(fixed)
+    except SyntaxError:
+        return fixed, fixes
+    fixer = _PreflightFixer()
+    tree = fixer.visit(tree)
+    ast.fix_missing_locations(tree)
+    if fixer.fixes:
+        fixed = ast.unparse(tree)
+        fixes.extend(fixer.fixes)
+    return fixed, fixes
 
 
 def grade(source, level):
@@ -228,6 +278,7 @@ def grade(source, level):
     if not source.strip():
         return 0.0, parts, ("No code came back. Reply with one python code block containing the "
                             "kernel and nothing else.")
+    source, _ = static_preflight_fix(source)
     try:
         compile(source, "<candidate>", "exec")
         parts["parses"] = True
@@ -329,6 +380,68 @@ def grade(source, level):
     if intensity:
         note += " " + nkibench.explain_roofline(intensity)
     return reward, parts, note
+
+
+def failure_phase(parts, feedback):
+    text = compact_feedback(feedback).lower()
+    if parts.get("correct"):
+        return "correct"
+    if not any(parts.values()):
+        return "empty" if "no code came back" in text else "parse"
+    if not parts.get("rules"):
+        return "rules"
+    if "could not be loaded" in text or "there is no module named" in text:
+        return "load"
+    if not parts.get("runs") or "raised " in text or "cannot simulate" in text:
+        return "simulate"
+    if "traffic " in text or "byte floor" in text or "issue-bound" in text:
+        return "traffic"
+    return "numerics"
+
+
+def structured_failure(parts, feedback):
+    phase = failure_phase(parts, feedback)
+    key = failure_key(feedback)
+    return {
+        "phase": phase,
+        "key": key,
+        "summary": ledger_line(feedback),
+        "compact": compact_feedback(feedback),
+    }
+
+
+def phase_score(parts, feedback):
+    return PHASE_ORDER.get(failure_phase(parts, feedback), 0)
+
+
+def update_candidate_archive(archive, candidate):
+    reward, src, feedback, parts = candidate
+    if not (src or "").strip():
+        return
+    phase = failure_phase(parts, feedback)
+    old = archive.get(phase)
+    if old is None or reward > old[0]:
+        archive[phase] = candidate
+
+
+def strongest_archived_candidate(archive):
+    if not archive:
+        return None
+    return max(archive.values(), key=lambda c: (phase_score(c[3], c[2]), c[0]))
+
+
+def choose_repair_base(top, best, latest, repeats, archive=None):
+    """Choose which candidate to repair using verifier outcomes, not prompt wording."""
+    top_reward, top_src, top_feedback, top_parts = top
+    best_reward, best_src, best_feedback, best_parts = best
+    archived = strongest_archived_candidate(archive or {})
+    if archived and (archived[1] or "").strip():
+        return (archived[1], archived[2]), "candidate_archive"
+    if not (top_src or "").strip():
+        return latest, "latest_empty"
+    if (best_src or "").strip():
+        return (best_src, best_feedback), "best"
+    return (top_src, top_feedback), "latest_no_best"
 
 
 # ---------------------------------------------------------------- prompting
@@ -530,7 +643,7 @@ def select_context_cards(level, feedback="", source="", max_cards=4):
         if name in CONTEXT_CARDS and name not in chosen:
             chosen.append(name)
 
-    for name in LEVEL_BASE_CARDS.get(level, ["api_core", "dma_copy_shape"]):
+    for name in GENERIC_BASE_CARDS:
         add(name)
 
     triggers = [
@@ -787,7 +900,7 @@ def prompt_accounting(reference="", code="", feedback="", cards="", ledger="", i
 
 
 def start_card_names(level, style="minimal"):
-    names = list(LEVEL_START_CARDS.get(level, []))
+    names = []
     if style in {"docs", "full-docs"}:
         names += GENERIC_DOCS_CARDS
     deduped = []
@@ -825,18 +938,10 @@ def first_prompt(level, terse=0, style="minimal"):
                 f"{ref}\n"
                 f"{CORE_CARD}{start_text}\nReply with one python code block.")
     if terse >= 1:
-        # The matmul memory rules are the substance of levels 3 and 4, and the short prompt has to
-        # carry them: measured, the agent cycled between "dst must be in ['psum']" and "moving must
-        # be in ['sbuf']" because nothing told it where the operands live.
-        mm = ("nisa.nc_matmul(dst=, stationary=, moving=) needs dst in nl.psum and both operands "
-              "in nl.sbuf. So: dma_copy the operands HBM->sbuf, allocate a psum tile, nc_matmul "
-              "into it, tensor_copy psum->sbuf, then dma_copy sbuf->the shared_hbm output you "
-              "return. The left operand is already transposed, with K on the partition axis.\n"
-              if level >= 3 else "")
         return (f"Write an AWS Neuron NKI kernel: a function `{s['entry']}` decorated with "
                 f"@nki.jit that computes what this reference computes.\n\n"
                 f"{ref}\n"
-                f"{CORE_CARD}{start_text}\n{mm}\n"
+                f"{CORE_CARD}{start_text}\n"
                 f"Reply with one python code block.")
     return (
         f"Write an AWS Neuron NKI kernel.\n\n"
@@ -882,6 +987,98 @@ def repair_prompt(level, source, feedback, tried=None, best_reward=None, current
         f"and fixes the observed failure. Also fix known invalid NKI API patterns from earlier "
         f"attempts. Keep unrelated logic unchanged.{score_text}{invalid_text}{ledger_text}{history}\n\n"
         f"Reply with ONE python code block.")
+
+
+def patch_repair_prompt(level, source, feedback, tried=None, best_reward=None, current_reward=None):
+    compact = compact_feedback(feedback)
+    category, instruction = distill_failure(compact)
+    card_names = retrieved_card_names(level, category, feedback=compact, source=source)
+    cards = render_context_cards(card_names)
+    ledger = compact_ledger(tried or [])
+    ledger_text = f"\n\nPrevious unique failures to avoid repeating:\n{ledger}" if ledger else ""
+    invalid_text = invalid_patterns_text(tried or [])
+    invalid_text = f"\n\n{invalid_text}" if invalid_text else ""
+    score_text = ""
+    if best_reward is not None or current_reward is not None:
+        score_text = (f"\n\nScore context: best_reward={best_reward if best_reward is not None else '?'}; "
+                      f"current_reward={current_reward if current_reward is not None else '?'}.")
+    return (
+        f"This NKI kernel for {nkibench.LEVELS[level]['op']} needs one small repair.\n\n"
+        f"Current best candidate:\n"
+        f"```python\n{source}\n```\n\n"
+        f"Observed verifier result, primary evidence:\n{compact}\n\n"
+        f"Verifier hint, may be imperfect:\n{instruction}\n\n"
+        f"{cards}\n\n"
+        f"Return a minimal unified diff patch against the current best candidate. Do not rewrite the "
+        f"whole file. Keep unrelated code unchanged. Use file names a/kernel.py and b/kernel.py."
+        f"{score_text}{invalid_text}{ledger_text}\n\n"
+        f"Reply with ONE ```diff code block and no prose.")
+
+
+DIFF_BLOCK = re.compile(r"```(?:diff|patch)?\s*(.*?)```", re.S)
+
+
+def extract_patch(text):
+    text = text or ""
+    blocks = DIFF_BLOCK.findall(text)
+    for block in blocks:
+        if "@@" in block and ("--- " in block or "+++ " in block):
+            return block.strip()
+    return text.strip() if "@@" in text and ("--- " in text or "+++ " in text) else ""
+
+
+def _parse_hunk_header(line):
+    m = re.match(r"@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@", line)
+    if not m:
+        raise ValueError(f"bad hunk header: {line}")
+    return int(m.group(1))
+
+
+def apply_unified_patch(source, patch):
+    """Apply a simple unified diff to one in-memory source string."""
+    if not patch.strip():
+        raise ValueError("empty patch")
+    old = source.splitlines()
+    out, i, pos = [], 0, 0
+    lines = patch.splitlines()
+    while i < len(lines):
+        line = lines[i]
+        if line.startswith(("--- ", "+++ ", "diff ", "index ")):
+            i += 1
+            continue
+        if not line.startswith("@@"):
+            i += 1
+            continue
+        start = _parse_hunk_header(line) - 1
+        if start < pos:
+            raise ValueError("overlapping hunks")
+        out.extend(old[pos:start])
+        pos = start
+        i += 1
+        while i < len(lines) and not lines[i].startswith("@@"):
+            h = lines[i]
+            if h == r"\ No newline at end of file":
+                i += 1
+                continue
+            if not h:
+                raise ValueError("empty diff line without prefix")
+            tag, text = h[0], h[1:]
+            if tag == " ":
+                if pos >= len(old) or old[pos] != text:
+                    raise ValueError("patch context does not match source")
+                out.append(old[pos])
+                pos += 1
+            elif tag == "-":
+                if pos >= len(old) or old[pos] != text:
+                    raise ValueError("patch removal does not match source")
+                pos += 1
+            elif tag == "+":
+                out.append(text)
+            else:
+                raise ValueError(f"bad diff line: {h}")
+            i += 1
+    out.extend(old[pos:])
+    return "\n".join(out).rstrip() + "\n"
 
 
 AUDIT_FAILURES = {
@@ -999,12 +1196,18 @@ def show_attempt(path, round_n=None, index=None):
         row = rows[-1]
 
     print(f"level={row.get('level')} round={row.get('round')} reward={row.get('reward')}")
-    print(f"category={row.get('failure_category')} cards={','.join(row.get('context_cards') or [])}")
+    print(f"category={row.get('failure_category')} mode={row.get('repair_mode', 'full')} "
+          f"cards={','.join(row.get('context_cards') or [])}")
     print(f"budget={row.get('prompt_budget')}")
     print("\n========== PROMPT ==========")
     print(row.get("prompt", "<prompt was not logged; rerun with --dump-prompts>"))
     print("\n========== RAW REPLY ==========")
     print(row.get("raw_reply", "<reply was not logged; rerun with --dump-prompts>"))
+    if row.get("patch") or row.get("patch_error"):
+        print("\n========== PATCH ==========")
+        print(row.get("patch", ""))
+        if row.get("patch_error"):
+            print(f"\nPATCH ERROR: {row.get('patch_error')}")
     print("\n========== EXTRACTED CODE ==========")
     print(row.get("code", ""))
     print("\n========== CHECKER ==========")
@@ -1101,27 +1304,48 @@ def solve(a, level, log):
         reference=__import__("inspect").getsource(nkibench.LEVELS[level]["ref"]),
         core=CORE_CARD,
         cards=start_context(level, a.prompt_style))
-    best = (0.0, None, "")
+    best = (0.0, None, "", dict(parses=False, rules=False, runs=False, correct=False))
+    candidate_archive = {}
     tried, streak, seen = [], 0, {}
     latest = ("", "")
+    patch_base = None
     for rnd in range(a.rounds):
         t0 = time.perf_counter()
         replies = (offline_answers(level, a.samples, rnd) if a.offline
                    else ask_parallel(a, prompt, a.samples))
         graded = []
         for reply in replies:
-            src = extract_code(reply)
+            patch_text, patch_error = "", ""
+            if patch_base and a.repair_mode == "patch":
+                patch_text = extract_patch(reply)
+                try:
+                    src = apply_unified_patch(patch_base[0], patch_text)
+                except Exception as e:
+                    patch_error = f"{type(e).__name__}: {e}"
+                    src = extract_code(reply)
+            else:
+                src = extract_code(reply)
+            src, preflight_fixes = static_preflight_fix(src)
             reward, parts, feedback = grade(src, level)
+            if patch_error and not (src or "").strip():
+                feedback = f"Patch could not be applied: {patch_error}. Return a valid unified diff."
             failure_category, repair_instruction = distill_failure(feedback)
+            failure = structured_failure(parts, feedback)
             graded.append((reward, src, feedback, parts))
+            update_candidate_archive(candidate_archive, graded[-1])
             row = dict(level=level, round=rnd, reward=reward, parts=parts,
                        prompt_chars=len(prompt), reply_chars=len(reply),
                        context_cards=prompt_cards,
                        prompt_budget=prompt_budget,
                        failure_category=failure_category,
                        failure_key=failure_key(feedback),
+                       failure=failure,
                        repair_instruction=repair_instruction,
                        compact_feedback=compact_feedback(feedback),
+                       preflight_fixes=preflight_fixes,
+                       repair_mode=("patch" if patch_base and a.repair_mode == "patch" else "full"),
+                       patch=patch_text,
+                       patch_error=patch_error,
                        code=src, feedback=feedback)
             if a.dump_prompts:
                 row["prompt"] = prompt
@@ -1131,11 +1355,9 @@ def solve(a, level, log):
         graded.sort(key=lambda g: g[0], reverse=True)
         top = graded[0]
         if top[0] > best[0]:
-            best = (top[0], top[1], top[2])
-        # Repair the LATEST attempt, not the best one. Rebuilding from the best attempt with the
-        # best attempt's feedback is a fixed point: once a round scores worse, the prompt stops
-        # changing, and a greedy model then returns the same answer forever. Measured: level 2
-        # stuck at 0.10 for four rounds while the prompt still carried the 0.50 code.
+            best = (top[0], top[1], top[2], top[3])
+        # Default to repairing the latest attempt so the prompt keeps changing. Fall back to the
+        # best candidate only when verifier outcomes show a regression or a repeat loop.
         if (top[1] or "").strip():
             latest = (top[1], top[2])
         same = top[2] == (tried[-1] if tried else None)
@@ -1168,26 +1390,31 @@ def solve(a, level, log):
             return best[0], rnd + 1
         tried.append(top[2])
         repeats = streak
-        if repeats >= 2 and (best[1] or "").strip():
+        repair_base, repair_base_reason = choose_repair_base(top, best, latest, repeats,
+                                                             candidate_archive)
+        if repeats >= 2 and (repair_base[0] or "").strip():
             # Sampling on this endpoint is greedy, so an unchanged prompt returns an unchanged
             # answer. Measured: the same TypeError 19 rounds running. Changing the prompt is the
             # only thing that can change the answer, so say what has already been tried.
             ledger = "\n".join(f"- {t[:160]}" for t in dict.fromkeys(tried))
-            prompt = (repair_prompt(level, latest[0], latest[1], tried,
-                                    best_reward=best[0], current_reward=top[0])
+            make_prompt = patch_repair_prompt if a.repair_mode == "patch" else repair_prompt
+            prompt = (make_prompt(level, repair_base[0], repair_base[1], tried,
+                                  best_reward=best[0], current_reward=top[0])
                       + f"\n\nThese approaches have already failed, so do something different:\n"
                         f"{ledger}")
-            cat, inst = distill_failure(latest[1])
-            prompt_cards = retrieved_card_names(level, cat, feedback=latest[1], source=latest[0])
+            patch_base = repair_base if a.repair_mode == "patch" else None
+            cat, inst = distill_failure(repair_base[1])
+            prompt_cards = retrieved_card_names(level, cat, feedback=repair_base[1],
+                                                source=repair_base[0])
             prompt_budget = prompt_accounting(
-                code=latest[0], feedback=compact_feedback(latest[1]),
+                code=repair_base[0], feedback=compact_feedback(repair_base[1]),
                 cards=render_context_cards(prompt_cards),
                 ledger=(compact_ledger(tried) + "\n" + invalid_patterns_text(tried)),
                 instruction=inst)
             print(f"  same failure {repeats}x — adding a ledger of {len(set(tried))} failed "
-                  f"attempts to break the repeat")
+                  f"attempts to break the repeat; repairing {repair_base_reason}")
             continue
-        if not (latest[0] or "").strip():
+        if not (repair_base[0] or "").strip():
             # Nothing came back to repair. Asking it to "fix" an empty code block produced a
             # 202-character prompt and, under greedy sampling, the identical non-answer six
             # rounds running. Shorten and re-ask instead.
@@ -1200,15 +1427,20 @@ def solve(a, level, log):
                 cards=start_context(level, a.prompt_style))
             print(f"  no code yet, so re-asking with a shorter prompt (terseness {terse})")
         else:
-            prompt = repair_prompt(level, latest[0], latest[1], tried,
-                                   best_reward=best[0], current_reward=top[0])
-            cat, inst = distill_failure(latest[1])
-            prompt_cards = retrieved_card_names(level, cat, feedback=latest[1], source=latest[0])
+            make_prompt = patch_repair_prompt if a.repair_mode == "patch" else repair_prompt
+            prompt = make_prompt(level, repair_base[0], repair_base[1], tried,
+                                 best_reward=best[0], current_reward=top[0])
+            patch_base = repair_base if a.repair_mode == "patch" else None
+            cat, inst = distill_failure(repair_base[1])
+            prompt_cards = retrieved_card_names(level, cat, feedback=repair_base[1],
+                                                source=repair_base[0])
             prompt_budget = prompt_accounting(
-                code=latest[0], feedback=compact_feedback(latest[1]),
+                code=repair_base[0], feedback=compact_feedback(repair_base[1]),
                 cards=render_context_cards(prompt_cards),
                 ledger=(compact_ledger(tried) + "\n" + invalid_patterns_text(tried)),
                 instruction=inst)
+            if repair_base_reason != "latest":
+                print(f"  repairing {repair_base_reason}")
     print(f"  not solved in {a.rounds} rounds; best reward {best[0]:.2f}")
     return best[0], a.rounds
 
@@ -1229,6 +1461,8 @@ def main():
                          "result: measured, the same config scored 1.00, 1.00 and 0.50 on level 2 "
                          "across three runs with no code change.")
     ap.add_argument("--log", default="attempts.jsonl")
+    ap.add_argument("--repair-mode", choices=("patch", "full"), default="patch",
+                    help="repair by asking for a minimal unified diff, or for a full rewritten code block")
     ap.add_argument("--give-up-after", type=int, default=4,
                     help="stop a level after this many identical failures in a row. Measured: 15 "
                          "was pure waste, because the prompt had stopped changing.")
