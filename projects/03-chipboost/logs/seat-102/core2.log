@@ -1,0 +1,54 @@
+primary shape K=4096 M=256 N=6144 (gate_up, 256 tokens): tile counts M 2, N 12, K 32 -> 72 triples
+SBUF filter: dropped 10 of 72 (estimate over 147,456 B per partition), 62 fit
+attempt 0: kernels/matmul_expert.py as shipped, caps m16 n2 k8, which run as m2 n2 k8 here, so (2, 2, 8) is excluded from the random draws (no second timing)
+attempts 1-23: distinct random triples of the 61 left, random.Random(2)
+run matmul-random_search-s2-185117: seat 102 (CHIPBOOST_SEAT), core 2, referee RefereeWorker, one process for the run
+candidates in /tmp/chipboost_runs/matmul-random_search-s2-185117 (outside the referee's folder), records appended to /workspace/chipboost/projects/03-chipboost/logs/seat-102/attempts-s2.jsonl
+#0   caps m16 n2 k8    faster         384.7us   2.50x  best 2.50x
+#1   caps m2 n4 k2     faster         380.4us   2.52x  best 2.52x
+#2   caps m2 n1 k1     faster         657.8us   1.46x  best 2.52x
+#3   caps m2 n2 k32    faster         380.9us   2.52x  best 2.52x
+#4   caps m1 n2 k8     faster         566.8us   1.69x  best 2.52x
+#5   caps m1 n3 k8     faster         430.9us   2.23x  best 2.52x
+#6   caps m2 n12 k1    faster         664.8us   1.44x  best 2.52x
+#7   caps m1 n2 k1     faster         651.7us   1.47x  best 2.52x
+#8   caps m1 n4 k4     faster         307.8us   3.12x  best 3.12x
+#9   caps m2 n1 k32    faster         713.8us   1.35x  best 3.12x
+#10  caps m1 n12 k4    faster         280.4us   3.43x  best 3.43x
+#11  caps m2 n3 k2     faster         373.7us   2.57x  best 3.43x
+#12  caps m1 n6 k8     faster         304.1us   3.16x  best 3.43x
+#13  caps m2 n2 k4     faster         382.0us   2.51x  best 3.43x
+#14  caps m1 n12 k2    faster         356.6us   2.69x  best 3.43x
+#15  caps m1 n2 k4     faster         543.4us   1.77x  best 3.43x
+#16  caps m1 n1 k16    slower        1042.2us   0.92x  best 3.43x
+#17  caps m1 n4 k1     faster         654.8us   1.47x  best 3.43x
+#18  caps m2 n1 k16    faster         717.2us   1.34x  best 3.43x
+#19  caps m1 n4 k16    faster         333.2us   2.88x  best 3.43x
+#20  caps m1 n1 k1     faster         728.1us   1.32x  best 3.43x
+#21  caps m1 n4 k8     faster         337.4us   2.85x  best 3.43x
+#22  caps m1 n2 k2     faster         543.9us   1.77x  best 3.43x
+#23  caps m1 n6 k2     faster         353.5us   2.72x  best 3.43x
+best verified (faster): caps m1 n12 k4 (runs as m1 n12 k4), 3.43x
+evaluated 24 of 24; filtered: SBUF dropped 10 of 72, (2, 2, 8) excluded as attempt 0's twin
+primary shape K=4096 M=256 N=6144 (gate_up, 256 tokens): tile counts M 2, N 12, K 32 -> 72 triples
+SBUF filter: dropped 10 of 72 (estimate over 147,456 B per partition), 62 fit
+EXHAUSTIVE sweep, shard 2/4: 15 of the 62 candidates (the expert as shipped, caps m16 n2 k8, then every other triple that fits; the expert is in shard 0). Not an arm run: logged to sweep-*.jsonl
+run matmul-sweep-2of4-190856: seat 102 (CHIPBOOST_SEAT), core 2, referee RefereeWorker, one process for the run
+candidates in /tmp/chipboost_runs/matmul-sweep-2of4-190856 (outside the referee's folder), records appended to /workspace/chipboost/projects/03-chipboost/logs/seat-102/sweep-2of4.jsonl
+#0   caps m1 n1 k2     slower        1048.5us   0.92x  best -
+#1   caps m1 n1 k32    slower        1045.2us   0.92x  best -
+#2   caps m1 n2 k8     faster         566.5us   1.69x  best 1.69x
+#3   caps m1 n3 k2     faster         425.7us   2.26x  best 2.26x
+#4   caps m1 n3 k32    faster         423.7us   2.27x  best 2.27x
+#5   caps m1 n4 k8     faster         337.0us   2.85x  best 2.85x
+#6   caps m1 n6 k4     faster         285.1us   3.37x  best 3.37x
+#7   caps m1 n12 k2    faster         357.0us   2.69x  best 3.37x
+#8   caps m2 n1 k4     faster         717.2us   1.34x  best 3.37x
+#9   caps m2 n2 k1     faster         652.8us   1.47x  best 3.37x
+#10  caps m2 n2 k32    faster         381.1us   2.52x  best 3.37x
+#11  caps m2 n3 k8     faster         317.0us   3.03x  best 3.37x
+#12  caps m2 n4 k2     faster         380.8us   2.52x  best 3.37x
+#13  caps m2 n6 k1     faster         661.1us   1.45x  best 3.37x
+#14  caps m2 n6 k16    faster         291.9us   3.29x  best 3.37x
+best verified (faster): caps m1 n6 k4 (runs as m1 n6 k4), 3.37x
+evaluated 15 of 15; filtered: SBUF dropped 10 of 72, (2, 2, 8) excluded as attempt 0's twin
