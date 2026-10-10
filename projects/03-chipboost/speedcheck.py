@@ -920,6 +920,61 @@ def _rhs_tile_list(src):
     return False
 
 
+def _matmul_structure_failure(e, src):
+    """Map two observed errors only when source structure supports the diagnosis."""
+    if not src:
+        return None
+    try:
+        tree = ast.parse(src)
+    except (SyntaxError, ValueError, TypeError):
+        return None
+    entries = [n for n in tree.body if isinstance(n, ast.FunctionDef)
+               and n.name == "nki_matmul_tiled_"]
+    if len(entries) != 1:
+        return None
+    nodes = []
+    def visit(node):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+            return
+        nodes.append(node)
+        for child in ast.iter_child_nodes(node):
+            visit(child)
+    for statement in entries[0].body:
+        visit(statement)
+    msg = " ".join(str(e.get("msg", "")).split())
+    no_outputs = (r"neuronx-cc compilation failed with exit code 70 stderr: "
+                  r"\(NKIKernel: [A-Za-z0-9_-]{1,80}\) \[INTERNAL_ERROR\] \[NCC_INKI003\] "
+                  r"Insufficient number of outputs param, expect 0 SB buffers and 0 PSUM buffers, "
+                  r"but only got 0 outputs - Please open a support ticket at "
+                  r"https://github\.com/aws-neuron/aws-neuron-sdk/issues/n")
+    if (e.get("stage") == "compile" and e.get("type") == "NCCError"
+            and re.fullmatch(no_outputs, msg)
+            and not any(isinstance(n, ast.Return) for n in nodes)
+            and any(isinstance(n, ast.Assign) and len(n.targets) == 1
+                    and isinstance(n.targets[0], ast.Name) and n.targets[0].id == "result"
+                    and isinstance(n.value, ast.Call) and ast.unparse(n.value.func) == "nl.ndarray"
+                    and any(kw.arg == "buffer" and ast.unparse(kw.value) == "nl.shared_hbm"
+                            for kw in n.value.keywords) for n in nodes)):
+        return ("MISSING_KERNEL_RETURN: the kernel has no return statement and the compiler reports "
+                "no outputs. Add `return result` at function scope after all output-tile loops, "
+                "returning the shared-HBM tensor that receives the computed tiles. Do not return "
+                "inside a tile loop or return a temporary SBUF/PSUM tile.")
+    out_of_bounds = (r"Out-of-bound access for tensor `[A-Za-z_][A-Za-z_0-9]{0,63}` on dimension 1: "
+                     r"index range \[[0-9]{1,12}, [0-9]{1,12}\] exceed dimension size of [1-9][0-9]{0,11}\.")
+    if not (e.get("stage") == "simulate" and e.get("type") == "AssertionError"
+            and re.fullmatch(out_of_bounds, msg)):
+        return None
+    if not any(isinstance(n, ast.Assign) and ast.unparse(n) == "K, M = lhsT.shape" for n in nodes):
+        return None
+    swapped = ast.parse("lhsT[m * TILE_M:(m + 1) * TILE_M, k * TILE_K:(k + 1) * TILE_K]", mode="eval").body
+    if any(isinstance(n, ast.Subscript) and ast.dump(n) == ast.dump(swapped) for n in nodes):
+        return ("LHS_CONTRACTION_AXIS_SWAPPED: lhsT has shape [K, M], but its source slice uses m "
+                "on axis 0 and k on axis 1. Load lhsT[k*TILE_K:(k+1)*TILE_K, "
+                "m*TILE_M:(m+1)*TILE_M] into a [TILE_K, TILE_M] stationary tile. Keep K as "
+                "the first partition axis for both matmul operands and preserve all K iterations.")
+    return None
+
+
 def _child_failure(e, label="", *, src=None):
     """Referee-authored text, with the candidate's own message quoted as data (it can say anything)."""
     msg = " ".join(str(e.get("msg", "")).split()).replace("<<", "<").replace(">>", ">")
@@ -945,6 +1000,9 @@ def _child_failure(e, label="", *, src=None):
           and " ".join(str(e.get("msg", "")).split()) == _NKI_UNSUPPORTED_ERROR
           and _rhs_tile_list(src)):
         instr = _NKI_TILE_LIST_INSTR
+    structural = _matmul_structure_failure(e, src)
+    if structural:
+        instr = structural
     return text, instr
 
 
