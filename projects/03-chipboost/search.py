@@ -378,6 +378,9 @@ def main():
             order = ([tuple(caps0)] + sorted(pool))[shard_i::shard_n]
         else:
             order = plan(pool, caps0, a.budget, a.seed)
+            # The same seeded order continued: when the referee fails on a candidate, the next unused
+            # triple takes its place, so the run still spends its whole budget.
+            reserve = plan(pool, caps0, len(pool) + 1, a.seed)[a.budget:]
     except ValueError as e:
         sys.exit(str(e))
 
@@ -426,22 +429,38 @@ def main():
 
     best, best_caps = None, None          # best verified: verdict "faster", the dashboard's definition
     timed, timed_caps = None, None        # best correct and timed, any verdict
-    skipped = []
-    for n, caps in enumerate(order):
+    skipped, failing = [], 0
+    queue = list(order)
+    reserve = [] if a.exhaustive else reserve
+    n = 0   # attempts logged; a candidate the referee could not judge gets no number
+    while queue:
+        caps = queue.pop(0)
         src = rewrite_caps(template, caps)
         path = os.path.join(run_dir, f"cand_m{caps[0]}_n{caps[1]}_k{caps[2]}.py")
         with open(path, "w") as f:
             f.write(src)
-        if stub:
-            rec = stub_referee(caps, effective(caps, tiles), a.seed, tiles, M)
-        else:
-            rec = call_referee(referee, path)
-            if rec is None:
-                skipped.append(caps)
-                print(f"{mark}#{n:<3} caps {caps_str(caps):<12} SKIPPED: the referee failed 3 times, "
-                      f"not logged", flush=True)
-                continue
+        rec = (stub_referee(caps, effective(caps, tiles), a.seed, tiles, M) if stub
+               else call_referee(referee, path))
+        if rec is None:
+            skipped.append(caps)
+            failing += 1
+            if n == 0 and not a.exhaustive:
+                print(f"{mark}attempt 0 (the expert as shipped) could not be judged: the referee failed 3 "
+                      f"times. Stopping; fix the referee (a free core?) and rerun.", flush=True)
+                break
+            swap = reserve.pop(0) if reserve else None
+            if swap is not None:
+                queue.append(swap)
+            print(f"{mark}     caps {caps_str(caps):<12} SKIPPED: the referee failed 3 times, not logged"
+                  + (f"; caps {caps_str(swap)} takes its place" if swap is not None else ""), flush=True)
+            if failing >= 3:
+                print(f"{mark}the referee failed on 3 candidates in a row: stopping rather than burn the "
+                      f"rest. Check the cores (REFEREE.md section 7) and rerun.", flush=True)
+                break
+            continue
+        failing = 0
         rec = finish(rec, seat, run_id, n, src)
+        n += 1
         with open(out, "a") as f:
             f.write(json.dumps(rec) + "\n")
         s, t = rec["speedup"], rec["time_us_median"]
@@ -452,7 +471,7 @@ def main():
         t_s = f"{t:.1f}us" if t is not None else "-"
         s_s = f"{s:.2f}x" if s is not None else "-"
         b_s = f"{best:.2f}x" if best is not None else "-"
-        print(f"{mark}#{n:<3} caps {caps_str(caps):<12} {rec['verdict']:<12} {t_s:>9}  {s_s:>6}  best {b_s}",
+        print(f"{mark}#{n - 1:<3} caps {caps_str(caps):<12} {rec['verdict']:<12} {t_s:>9}  {s_s:>6}  best {b_s}",
               flush=True)
 
     if referee is not None:
@@ -463,8 +482,9 @@ def main():
     else:
         print(f"{mark}best verified (faster): caps {caps_str(best_caps)} (runs as "
               f"{caps_str(effective(best_caps, tiles))}), {best:.2f}x")
-    print(f"{mark}evaluated {len(order) - len(skipped)} of {len(order)}"
-          + (f" ({len(skipped)} skipped: the referee failed, not the kernel: {skipped})" if skipped else "")
+    print(f"{mark}evaluated {n} of {len(order)}"
+          + (f" ({len(skipped)} skipped: the referee failed, not the kernel: {skipped}; replaced from the same "
+             f"seeded order where any were left)" if skipped else "")
           + f"; filtered: SBUF dropped {len(space) - len(fit)} of {len(space)}, {repeat} excluded as "
             f"attempt 0's twin")
     if stub:

@@ -100,6 +100,14 @@ def run_grid(op, rows, rounds):
     import timing
 
     spec = shapes.OPS[op]
+    # Bind a core before the first cell. Otherwise "no free NeuronCore" (two referees or workers already
+    # hold cores 2 and 3) is caught per cell below and written into the results as a held-out FAILURE.
+    try:
+        core = timing._pick_core()
+    except RuntimeError as e:
+        sys.exit(f"cannot start: {e}\nStop a referee or worker on this seat (or set CHIPBOOST_CORE to a free "
+                 f"core) and rerun. Nothing was written.")
+    print(f"timing on NeuronCore {core}")
     cells = []
     start_loaded = {}
     for which, path, note in rows:
