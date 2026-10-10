@@ -17,6 +17,10 @@ Only numpy is required.
 """
 
 import argparse
+import contextlib
+import io
+import json
+from pathlib import Path
 import ast
 import sys
 import textwrap
@@ -234,6 +238,39 @@ def check_rules(src, n):
             # boolean-mask or integer-array indexing
             if isinstance(sl, (ast.Compare, ast.List)):
                 bad.append(f"line {node.lineno}: fancy/boolean indexing is not allowed")
+    # Close common shortcuts; this remains a conservative scan, not a proof.
+    tree_names = {node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)}
+    if "kernel" not in tree_names:
+        bad.append("Define the entry point as def kernel(...) with the reference signature")
+    aliases = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for item in node.names:
+                if item.name != "numpy":
+                    bad.append(f"line {node.lineno}: candidate imports must be numpy only")
+                aliases[item.asname or item.name] = item.name
+        if isinstance(node, ast.ImportFrom):
+            bad.append(f"line {node.lineno}: use import numpy as np, not from-imports")
+    def dotted(node):
+        if isinstance(node, ast.Name):
+            return aliases.get(node.id, node.id)
+        if isinstance(node, ast.Attribute):
+            return dotted(node.value) + "." + node.attr
+        return ""
+    for node in ast.walk(tree):
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.MatMult):
+            bad.append(f"line {node.lineno}: @ hides matrix multiplication; use explicit accumulation")
+        if isinstance(node, ast.Attribute) and node.attr in {"T", "mT"}:
+            bad.append(f"line {node.lineno}: .{node.attr} hides transpose; use explicit index mapping")
+        if isinstance(node, ast.Call):
+            name = dotted(node.func)
+            leaf = name.rsplit(".", 1)[-1]
+            if any(name == x or name.endswith("." + x) for x in banned):
+                bad.append(f"line {node.lineno}: banned operation {name}")
+            if leaf in {"eval", "exec", "compile", "open", "__import__", "getattr", "setattr", "load", "save", "loadtxt", "savetxt", "fromfile", "tofile", "ctypeslib"}:
+                bad.append(f"line {node.lineno}: unsupported dynamic/file operation {name}")
+        if isinstance(node, ast.Attribute) and node.attr.startswith("__"):
+            bad.append(f"line {node.lineno}: dynamic/private attribute access is unsupported")
     return sorted(set(bad))
 
 
@@ -296,7 +333,11 @@ def verify(kernel_fn, n, tol=1e-4, stop_early=True):
             failures.append((label, f"REFERENCE ITSELF FAILED: {e}"))
             continue
         try:
-            got = kernel_fn(*[a.copy() if isinstance(a, np.ndarray) else a for a in args])
+            supplied = [a.copy() if isinstance(a, np.ndarray) else a for a in args]
+            got = kernel_fn(*supplied)
+            if any(isinstance(a, np.ndarray) and not np.array_equal(a, b)
+                   for a, b in zip(args, supplied)):
+                raise ValueError("INPUT MUTATION: allocate a separate output; do not modify arguments")
         except Exception:
             tb = traceback.format_exc(limit=3).strip().splitlines()
             failures.append((label, "RAISED: " + " | ".join(tb[-2:])))
@@ -384,7 +425,76 @@ def selftest():
     v = check_rules("import numpy as np\ndef kernel(x):\n    return x.sum(axis=1)\n", 2)
     print(f"  level-2 .sum() cheat            -> {'caught: ' + v[0] if v else 'UNDETECTED'}")
     rc |= 0 if v else 1
+    for n, expr in [(7, "a @ b"), (6, "a.T"), (2, "np.add.reduce(a, axis=1)")]:
+        caught = bool(check_rules(f"import numpy as np\ndef kernel(a,b=None):\n    return {expr}\n", n))
+        print(f"  shortcut {expr:<25} -> {'caught' if caught else 'UNDETECTED'}")
+        rc |= 0 if caught else 1
+    mutated = evaluate("import numpy as np\ndef kernel(x,a,b):\n    x[:] = 0\n    return x\n", 1)
+    caught = not mutated["tests_passed"] and "MUTATION" in mutated["feedback"]
+    print(f"  input mutation                 -> {'caught' if caught else 'UNDETECTED'}")
+    rc |= 0 if caught else 1
+    good = evaluate(_GOOD_1, 1)
+    print(f"  supplementary level-1 cases    -> {good.get('passed', 0)}/{good.get('total', 0)}")
+    rc |= 0 if good["tests_passed"] else 1
     return rc
+
+
+def extra_cases(level, seed):
+    r = np.random.default_rng(seed)
+    if level in (1, 2, 3, 4, 5, 6, 8):
+        for shape in ((1, 1), (17, 521), (131, 13)):
+            for kind in ("negative", "constant", "large"):
+                x = -np.abs(r.normal(size=shape)).astype(np.float32)
+                if kind == "constant":
+                    x.fill(10000)
+                elif kind == "large":
+                    x = (x * 100 + 10000).astype(np.float32)
+                yield kind + str(shape), ((x, 2.5, -0.5) if level == 1 else (x,))
+    elif level == 7:
+        for m, k, n in ((3, 517, 5), (131, 7, 17), (1, 1, 1)):
+            yield str((m, k, n)), (r.normal(size=(m, k)).astype(np.float32),
+                                     r.normal(size=(k, n)).astype(np.float32))
+    elif level == 9:
+        for n, d, w, scale in ((7, 3, 0, 1), (17, 5, 100, 100), (1, 1, 1, 1)):
+            yield str((n, d, w)), tuple((r.normal(size=(n, d))*scale).astype(np.float32)
+                                       for _ in range(3)) + (w,)
+    else:
+        for ci, length, co, k, stride, dilation in ((2, 37, 3, 5, 3, 2), (1, 1, 1, 1, 1, 1)):
+            yield str((length, stride, dilation)), (
+                r.normal(size=(ci, length)).astype(np.float32),
+                r.normal(size=(co, ci, k)).astype(np.float32), stride, dilation)
+
+
+def evaluate(source, level, seed=2026):
+    try:
+        compile(source, "<candidate>", "exec")
+    except SyntaxError as e:
+        return dict(status="syntax", passed=0, feedback=str(e), tests_passed=False)
+    violations = check_rules(source, level)
+    if violations:
+        return dict(status="rules", passed=0, feedback="\n".join(violations), tests_passed=False)
+    ns = {}
+    try:
+        # Suppress ordinary candidate prints to preserve machine-readable output.
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            exec(compile(source, "<candidate>", "exec"), ns)
+            if not callable(ns.get("kernel")):
+                raise ValueError("kernel must be callable")
+            original = LEVELS[level]["build"]
+            cases = original() + list(extra_cases(level, seed))
+            LEVELS[level]["build"] = lambda: cases
+            try:
+                result = verify(ns["kernel"], level, stop_early=False)
+            finally:
+                LEVELS[level]["build"] = original
+    except Exception as e:
+        return dict(status="runtime", passed=0, feedback=f"{type(e).__name__}: {e}", tests_passed=False)
+    feedback = "All public and supplementary cases passed." if result["ok"] else str(result["failures"][0])
+    return dict(status="tests_passed" if result["ok"] else "verification",
+                tests_passed=result["ok"], passed=result["passed"], total=result["total"],
+                feedback=feedback, failures=result["failures"],
+                rule_audit="pending_manual_review", seed=seed,
+                tolerance="upstream relative error <= 1e-4; denominator floor 1e-30")
 
 
 # ---------------------------------------------------------------- cli
@@ -392,6 +502,8 @@ def selftest():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--list", action="store_true")
+    ap.add_argument("--json", action="store_true", help="shared evaluator: supplementary cases and JSON report")
+    ap.add_argument("--seed", type=int, default=2026)
     ap.add_argument("--level", type=int)
     ap.add_argument("--show", action="store_true", help="print the reference for this level")
     ap.add_argument("--check", metavar="FILE.py", help="verify a candidate kernel")
@@ -431,6 +543,11 @@ def main():
     if not a.check:
         sys.exit("give me something to check: --check my_kernel.py (or --show)")
 
+    if a.json:
+        result = evaluate(Path(a.check).read_text(), n, a.seed)
+        print(json.dumps(result))
+        sys.exit(0 if result["tests_passed"] else 1)
+
     src = open(a.check).read()
     viol = check_rules(src, n)
     if viol:
@@ -452,3 +569,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
