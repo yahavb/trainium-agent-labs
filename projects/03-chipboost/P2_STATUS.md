@@ -58,6 +58,18 @@ record; the timing shapes are now 2048 tokens, re-measure:**
   the 5 held-out shapes are 127, 129 and 1 rows, a ragged 1000x128, and 2048 rows, all with quiet, loud and
   silent rows.
 
+**Held-out grid on the chip** (`heldout_grid.py`, hostile inputs, seed 20261010, timed A/B against start at
+each shape; 18 cells in 55 s). None of these shapes was used to tune anything:
+
+| Held-out shape (MxKxN) | start | expert | aws as published |
+|---|---|---|---|
+| 256x6144x4096 (down_proj, 6 K-blocks) | 770.3 us | 272.7 us, **2.82x** | **FAIL: 4.9 bf16 ulps** |
+| 256x2048x4096 (o_proj) | 230.7 us | 110.9 us, 2.08x | 108.3 us, 2.13x |
+| 512x4096x2048 (q_proj, 512 tokens) | 522.9 us | 138.1 us, **3.79x** | 137.3 us, 3.81x |
+| 128x4096x6144 (gate_up, one M-tile) | 353.9 us | 277.2 us, 1.28x | 276.3 us, 1.28x |
+| 640x1280x2560 (odd tile counts 5/10/5) | 156.6 us | 99.9 us, 1.57x | 98.6 us, 1.59x |
+| 1024x4096x512 (kv_proj, one N-tile) | 243.7 us | 79.6 us, 3.06x | 82.6 us, 2.95x |
+
 **Why the start kernels are slow** (kept out of their docstrings so the model never reads it):
 
 - **matmul_start:** every (m, n) output tile reloads its whole row of lhsT tiles and column of rhs tiles,
@@ -69,6 +81,14 @@ record; the timing shapes are now 2048 tokens, re-measure:**
   - at q_norm's 128 columns, each row is only 256 bytes.
 
 ## Findings worth telling the room
+
+0. **The held-out grid confirmed the precision finding on the chip, at the predicted shape.**
+   - AWS's published kernel fails only at K=6144 (down_proj, 6 K-blocks), with 4.9 bf16 ulps under hostile
+     inputs. The laptop emulation predicted 4.7.
+   - Everywhere else, our fp32-accumulating expert and AWS's bf16 version are within 3% of each other in
+     time, so **the precision fix costs no measurable speed.**
+   - The expert's speedup depends on the shape: 1.28x with a single M-tile, where there is nothing to reuse
+     across M, up to 3.79x at 512 tokens. One number would hide that; the grid does not.
 
 1. **AWS's published fully optimised matmul loses precision at Qwen3's sizes.**
    - The SDK 2.32 tutorial adds each K-block's result into a tile of the *output* dtype. In bf16, every
