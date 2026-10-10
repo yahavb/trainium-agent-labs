@@ -84,15 +84,31 @@ def judge_fallback(name, layer, expected, dry):
     return row
 
 
+def stage_of(rec):
+    """Which stage stopped it, from the record alone (REFEREE.md, 'Working out which stage caught a kernel')."""
+    v = rec.get("verdict")
+    if v == "rules":
+        return "rules"
+    if v == "wrong":
+        return {False: "sim/compile", True: "chip"}.get(rec.get("sim_ok"), "timeout")
+    if v == "heldout_fail":
+        return "held-out"
+    return f"timing ({v})"
+
+
 def judge_speedcheck(sc, name, layer):
-    """With P1's referee there is no stage detail, only the verdict."""
-    fields = sc.check(path_of(name), op="matmul", shapes="dev")
-    if fields.get("verdict") not in ("rules", "wrong"):
-        dev = fields
-        fields = sc.check(path_of(name), op="matmul", shapes="heldout")
-        if fields.get("verdict") not in ("rules", "wrong", "heldout_fail"):
-            fields = dev  # the timing verdict lives in the dev result
-    v = fields.get("verdict")
+    """P1's referee: one sandboxed check_isolated per kernel; held-out runs inside it. None = the REFEREE
+    failed (not a verdict): retry, and report it as a referee error if it stays down."""
+    rec = None
+    for _ in range(3):
+        rec = sc.check_isolated(path_of(name), op="matmul")
+        if rec is not None:
+            break
+        time.sleep(20)
+    if rec is None:
+        return dict(cheat=name, should_catch=expected_text(name), where="-", caught="REFEREE ERROR",
+                    as_designed="-", message="check_isolated returned None 3 times", errors=[], source=None)
+    v = rec.get("verdict")
     rejected = v in ("rules", "wrong", "heldout_fail")
     if name.startswith("honest"):
         caught = "FALSE ALARM" if rejected else "PASS"
@@ -100,9 +116,10 @@ def judge_speedcheck(sc, name, layer):
         caught = "yes" if v in ("no_gain", "slower") else "NO"  # it must not be called faster
     else:
         caught = "yes" if rejected else "NO"
-    return dict(cheat=name, should_catch=expected_text(name), where=v or "-", caught=caught,
-                as_designed="?", message=fields.get("referee_message") or "",
-                errors=[], source=fields.get("source") or "?")
+    return dict(cheat=name, should_catch=expected_text(name), where=stage_of(rec), caught=caught,
+                as_designed=stage_of(rec), message=rec.get("referee_message") or "",
+                errors=[], source=rec.get("source") or "-", verdict=v,
+                speedup=rec.get("speedup"), sim_ok=rec.get("sim_ok"), chip_ok=rec.get("chip_ok"))
 
 
 def expected_text(name):
@@ -137,7 +154,7 @@ def main():
         rows.append(row)
 
     w = max(len(r["cheat"]) for r in rows)
-    print(f"\n{'kernel':<{w}} | {'should be caught by':<36} | {'caught':<11} | {'as designed':<22} | "
+    print(f"\n{'kernel':<{w}} | {'should be caught by':<36} | {'caught':<11} | {('caught at' if sc else 'as designed'):<22} | "
           f"first line of referee message")
     print("-" * (w + 140))
     for r in rows:
@@ -154,19 +171,27 @@ def main():
                 print(f"  {e['case']:<36} {err:>9}   tol {e['tol']:g}")
 
     honest = rows[0]
-    sim_rows = [r for r, (_, _, layer, _) in zip(rows, SUITE) if layer == "sim" and r is not honest]
+    # With speedcheck every cheat is judged, chip-timing ones included; with stage12 only the sim ones.
+    sim_rows = [r for r, (_, _, layer, _) in zip(rows, SUITE) if (sc or layer == "sim") and r is not honest]
     caught = sum(r["caught"] == "yes" for r in sim_rows)
     designed = sum(r["as_designed"] == "yes" for r in sim_rows)
     pending = sum(r["caught"] == "PENDING" for r in rows)
     print(f"\nhonest kernel: {honest['caught']}")
-    if not a.dry:
+    if sc:
+        print(f"cheats caught by speedcheck (chip): {caught}/{len(sim_rows)}; "
+              f"referee errors: {sum(r['caught'] == 'REFEREE ERROR' for r in rows)}")
+    elif not a.dry:
         print(f"simulator-stage cheats caught: {caught}/{len(sim_rows)} "
               f"({designed} at the stage they were designed for); chip-stage PENDING: {pending}")
 
-    out = os.path.join(HERE, "redteam_results.json")
-    with open(out, "w") as f:
-        json.dump(dict(referee=referee, dry=a.dry, timestamp=time.time(), rows=rows), f, indent=1)
-    print(f"wrote {out}")
+    if a.dry:
+        print("(--dry writes no results file: it must never replace a real run's)")
+    else:
+        # The speedcheck run gets its own file, so the simulator table stays alongside it.
+        out = os.path.join(HERE, "redteam_results_speedcheck.json" if sc else "redteam_results.json")
+        with open(out, "w") as f:
+            json.dump(dict(referee=referee, dry=a.dry, timestamp=time.time(), rows=rows), f, indent=1)
+        print(f"wrote {out}")
 
     bad = honest["caught"] != "PASS" or (not a.dry and caught < len(sim_rows))
     sys.exit(1 if bad else 0)
