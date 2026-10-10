@@ -46,3 +46,6 @@ run*.log
 # chipboost: kernels materialised from logs or templates (the logs keep the code)
 heldout_runs/
 search_runs/
+
+# Local agent checkouts are not source dependencies.
+/.claude/worktrees/

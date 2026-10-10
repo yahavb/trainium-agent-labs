@@ -37,6 +37,7 @@ import math
 import os
 import random
 import re
+import socket
 import sys
 import tempfile
 import time
@@ -234,7 +235,7 @@ def caps_str(t):
 
 def seat_from_hostname():
     """seat-102 -> 102, as agent.py does: the pod's hostname is its seat."""
-    h = os.uname().nodename
+    h = socket.gethostname()
     tail = h.split("-", 1)[1] if h.startswith("seat-") else ""
     return int(tail) if tail.isdigit() else None
 
