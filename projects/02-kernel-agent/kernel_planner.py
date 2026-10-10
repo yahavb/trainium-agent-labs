@@ -59,16 +59,19 @@ def instruction_signatures(text):
 
 
 def guidance_sentences(result,task_text):
+    """Derived sentences in priority order: binding constraints first, then the case summary
+    (already present in the task prompt) last, so the token budget keeps what matters most."""
     cases=result['cases']
     if not cases or any(c['status']!='DERIVED' for c in cases):return []
-    shapes='; '.join(', '.join(f"{n}{list(s)}" for n,s in zip(c['array_names'],c['input_shapes']))+f" -> output{list(c['output_shape'])}" for c in cases)
-    limits=cases[0]['tile_limits'];sentences=[f"Derived task facts for {result['entry']}: official cases {shapes}; output dtype {cases[0]['output_dtype']}, allocated in nl.shared_hbm and returned."]
-    sentences.append(f"Installed limits: on-chip tiles have partition dim <= {limits['partition']}; PSUM free dim <= {limits['psum_free']}; nc_matmul contracts over the partition dim with stationary free <= {limits['stationary_free']} and moving free <= {limits['moving_free']}.")
+    limits=cases[0]['tile_limits'];sentences=[]
     tiled=sorted({(c['array_names'][o['input']],o['extent'],o['tile_count']) for c in cases for o in c['partition_tiling']})
-    if tiled:sentences.append('Partition tiling needed before loading: '+', '.join(f"{n} first dim {e} -> {t} tiles" for n,e,t in tiled)+'.')
+    if tiled:sentences.append(f"Inputs exceed the {limits['partition']}-row partition limit, so load and process them in partition tiles: "+', '.join(f"{n} first dim {e} -> {t} tiles" for n,e,t in tiled)+'.')
     if cases[0]['max_waste']:sentences.append(f"HBM traffic is checked: stay within {cases[0]['max_waste']}x of reading each input once and writing the output once.")
+    sentences.append(f"Installed limits: partition dim <= {limits['partition']}; PSUM free dim <= {limits['psum_free']}; nc_matmul contracts over the partition dim, stationary free <= {limits['stationary_free']}, moving free <= {limits['moving_free']}.")
     signatures=instruction_signatures(task_text)
     if signatures:sentences.append('Installed signatures: '+'; '.join(s for s,_ in signatures)+('. Calls with a dst parameter write into dst; their return value is not a tensor.' if any(d for _,d in signatures) else '.'))
+    outputs=sorted({tuple(c['output_shape']) for c in cases})
+    sentences.append(f"Output of {result['entry']}: shapes {', '.join(str(list(o)) for o in outputs)}, dtype {cases[0]['output_dtype']}, allocated in nl.shared_hbm and returned.")
     return sentences
 
 
