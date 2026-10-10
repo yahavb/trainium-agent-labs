@@ -40,20 +40,41 @@ scores on L1, L3 and L4. Both logs were re-graded from scratch with the current 
 every attempt matched ([analysis/calibration_baseline_seat116.md](analysis/calibration_baseline_seat116.md),
 [analysis/calibration_replica_seat119.md](analysis/calibration_replica_seat119.md)).
 
-**Reproduce.**
+**Reproduce.** Everything except the model runs on a laptop; the agent itself runs on a seat pod.
+
+On a seat pod (`kubectl exec -it seat-<N> -- bash`; wait for the `root@seat-<N>:/workspace#` prompt). `/workspace`
+is the organizers' repository; put ours next to it:
 
 ```bash
-# On a seat pod, with the model server up (./serve.sh, about 4 minutes)
-cd /workspace/projects/02-kernel-agent
-python nkibench.py --selftest
-for l in 1 2 3 4; do python nkibench.py --level $l --eval reference_level$l.py; done   # 20/20 16/16 4/4 16/16
-# the exports in V7.md "Run it", then, for each level N:
-python3 feedback_v7.py --level N --rounds 8 --samples 4 --context 8192 --repeat 5 \
-    --log attempts_LN.jsonl --verdicts verdicts_LN.jsonl
-# On a laptop, no accelerator needed
-python scripts/summarize.py [[TBD: final file list]] -o analysis/summary_final
-python scripts/taxonomy.py  [[TBD]] -o analysis/taxonomy_final
-python scripts/token_budget.py [[TBD]] -o analysis/token_budget_final
+git config --global --add safe.directory '*'
+git clone https://github.com/liuyq123/trainium-agent-labs.git /workspace/team   # [[TBD: the URL judges will use after the PR]]
+cd /workspace && MAX_MODEL_LEN=8192 ./serve.sh      # the model server: about 4 minutes, keeps this shell
+```
+
+In a second shell on the same pod:
+
+```bash
+cd /workspace/team/projects/02-kernel-agent
+python nkibench.py --selftest                                                        # SELFTEST PASSED
+for l in 1 2 3 4; do python nkibench.py --level $l --eval reference_level$l.py | head -1; done   # 20/20 16/16 4/4 16/16
+# the exports in V7.md "Run it", with per-level file names, then for each level N:
+export NKI_VERDICTS=nki_verdicts_LN.jsonl USAGE_LOG=usage_LN.jsonl
+nohup python3 feedback_v7.py --level N --rounds 8 --samples 4 --context 8192 --repeat 5 \
+    --log attempts_LN.jsonl --verdicts verdicts_LN.jsonl > run_LN.log 2>&1 < /dev/null &
+```
+
+Without a seat, the checker and the agent's loop still run (no model: `--offline` replays the reference
+kernels). Set up NKI 0.6.0 per [SETUP_PYTHON.md](SETUP_PYTHON.md) (on a Mac, its Docker step), then, with
+`~/venvs/nki/bin` on your PATH and `export NEURON_PLATFORM_TARGET_OVERRIDE=trn2`, the same `--selftest` and
+`--eval` lines, and V7.md's exports with `python3 feedback_v7.py --offline --all`. Offline runs make no model
+calls, so they write no `USAGE_LOG`.
+
+The tables, from the logs (on a laptop; `python3` with matplotlib for the token chart):
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install matplotlib
+.venv/bin/python scripts/report.py analysis/final analysis/logs/final      # checks, summary, taxonomy, token chart
+.venv/bin/python scripts/report.py /tmp/baseline analysis/logs/baseline    # the baseline: L1 0/5, L2 3/5, L3 0/5, L4 0/5
 ```
 
 ---
