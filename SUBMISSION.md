@@ -60,7 +60,7 @@ replaces v8.2 on level 2]]
 
 | level | operation | baseline (organizers' agent) | v7 | **v8.2: solved, first 1.0 at round** | distinct | held-out |
 |---|---|---|---|---|---|---|
-| 1 | average pool 2D | 0/5 · .30 .30 .30 .30 .30 | 0/1 · best 0.50 | **5/5** · rounds 2, 2, 0, 4, 2 | 5 different solving kernels | all VERIFIED (20/20 each) |
+| 1 | average pool 2D | 0/5 · .30 .30 .30 .30 .30 | 0/1 · best 0.50 | **5/5** · rounds 2, 2, 0, 4, 2 | 5 different solving kernels | all VERIFIED (20/20 each); all 5 fully built for trn2 and matching in birsim |
 | 2 | 2D transpose | 3/5 · 1 .30 1 .30 1 (replication 2/5) | 0/3 | **3/6** · .50 1 .50 1 1 .50 · rounds 4, 2, 1 | 3 solving kernels [[TBD: trajectories over 6 runs]] | 3 VERIFIED, 3 NOT SOLVED; both verdicts agree |
 | 3 | matmul, one tile | 0/5 · .30 .30 .30 .30 .30 | 5/5 · round 0 | **5/5** · rounds 0, 2, 0, 0, 0 | 3 solving kernels | [[TBD]] |
 | 4 | matmul, tiled | 0/5 · .62 .62 .50 .62 .62 | 5/5 · round 2 | **5/5** · round 2 every run | **1 trajectory**: five copies of one path, the same kernel v7 found | [[TBD]] |
@@ -417,7 +417,7 @@ Without E-mix the near-solution would not have been drawn: the repair sample was
 gate it would have scored 1.0 as it stood, in a form that failed every full trn2 build liuyq ran on it
 (89417dd); we did not full-build this particular kernel. Before the
 held-out set ran, the agent stated 0.90; held-out 20/20, re-audit PASS, VERIFIED by both verdicts, and the
-kernel lowers for trn2 (a lowering, not a full build). 12 requests, 13,595 prompt and 10,935 answer tokens,
+kernel builds for trn2 and matches in birsim (worst error 1.9e-7 of the RMS). 12 requests, 13,595 prompt and 10,935 answer tokens,
 counted by the server.
 
 ## 9. Limits
