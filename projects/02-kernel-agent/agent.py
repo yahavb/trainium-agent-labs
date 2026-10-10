@@ -128,7 +128,13 @@ def grade(source, level):
             failures.append((nkibench.label(case, level),
                              enrich(f"raised {type(e).__name__}: {e}")))
             continue
-        parts["runs"] = True
+        # A kernel that returns an output it never wrote is not a kernel that runs. Measured on
+        # level 3: the do-nothing kernel (loop ran zero times, output all NaN) scored 0.50 while
+        # the model's real fix -- loop now runs, tile still too wide, out of bounds -- scored 0.30.
+        # The loop keeps the best-scoring attempt, so it fell back to doing nothing every round.
+        wrote = np.isfinite(np.asarray(got, np.float64)).any()
+        if wrote:
+            parts["runs"] = True
         m = (nkibench.check_inputs_untouched(before, args)
              or nkibench.describe_mismatch(got, want)
              or nkibench.check_traffic_bar(level, counted, args, want))
@@ -267,6 +273,17 @@ def enrich(error_text):
                   r"got src=(\d+), dst=(\d+)", error_text)
     if m:
         src, dst = int(m.group(1)), int(m.group(2))
+        if dst > src and dst % src == 0:
+            # Measured on level 3 (M=64): the model sliced a[.., 0:64] correctly but allocated
+            # the tile as (128, TILE_M=128). The generic "same shape" advice below never told it
+            # WHICH side was wrong, and it toggled between this and an out-of-bounds read.
+            return (error_text + f" The destination tile is {dst // src}x bigger than the slice "
+                    f"you copied into it: you allocated a FULL-SIZE tile, but this slice is a "
+                    f"partial one because the tensor is smaller than the tile limit. The slice is "
+                    f"right; the allocation is wrong. Allocate each tile with the size of the "
+                    f"piece it holds -- e.g. msz = min(TILE_M, M - m * TILE_M), then "
+                    f"nl.ndarray((K_TILE, msz), ...) -- and use the same msz in the slice, the "
+                    f"psum tile and the output slice.")
         return (error_text + f" The tile you allocated holds {dst} elements but you copied {src} "
                 f"into it. nisa.dma_copy does not slice or broadcast: allocate the destination with "
                 f"EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a "
@@ -337,6 +354,18 @@ def enrich(error_text):
     if "cannot reshape array of size" in error_text:
         return (error_text + " Do not reshape. Work with the shapes you were given and slice "
                 "them into tiles, e.g. src=a[0:128, 0:64].")
+    if re.search(r"AssertionError: .*(multiple of|must be a multiple|divisible)", error_text):
+        # Copied from the tutorial, which assumes every size is a multiple of the tile. The test
+        # shapes are not (level 3 has M=64), so the model's assert rejected a legal input.
+        return (error_text + " That assert is YOUR code, not the harness: the kernel rejected a "
+                "legal input. The test shapes include sizes that are not multiples of the tile "
+                "limit (e.g. M=64 with a 128 limit). Delete the assert and handle the smaller "
+                "size: a dimension that already fits in one tile is used whole; otherwise loop "
+                "(dim + TILE - 1) // TILE times with a last tile of min(TILE, dim - start).")
+    if "has no attribute 'div_ceil'" in error_text:
+        return (error_text + " div_ceil is not part of nki -- the guide defines it in the kernel "
+                "file. Write it yourself above the kernel: "
+                "def div_ceil(n, d): return (n + d - 1) // d")
     m = re.search(r"module '([\w.]+)' has no attribute '(\w+)'", error_text)
     if m:
         return error_text + available_names(f"{m.group(1)}.{m.group(2)}")
@@ -485,12 +514,47 @@ def offline_answers(level, n, rnd):
     return [f"```python\n{ref}\n```"] * n
 
 
+
+# ---------------------------------------------------------------- retrieval
+#
+# The model cannot read the official NKI guide -- it is ~29k tokens against an 8192 window. So each
+# prompt carries the few sections that score best against the operation and, on repair rounds,
+# against the checker's feedback. See retrieve.py. Off unless --docs is given, so the baseline is
+# untouched.
+
+DOCS = None
+SAME_OP = ("tutorials/", "simple_matmul", "avgpool", "avg_pool", "average_pool", "transpose2d",
+           "matmul_tiled", "matmul_basic", "matrix_multiplication")
+
+
+def with_docs(a, prompt, level, feedback=""):
+    """Append retrieved guide excerpts to a prompt. Returns (prompt, ids of the chunks used)."""
+    if DOCS is None:
+        return prompt, []
+    s = nkibench.LEVELS[level]
+    import inspect
+    query = f"{s['op']} {s['teaches']} {s.get('notes', '')} {inspect.getsource(s['ref'])}"
+    if feedback:
+        # The error is the most specific thing we know, so it counts three times.
+        query = f"{feedback} {feedback} {feedback} {s['op']}"
+    budget = a.doc_chars if not feedback else a.doc_chars_repair
+    # Never let the docs squeeze out the answer: leave room for MIN answer tokens.
+    room = (a.context - 64 - MIN_ANSWER_TOKENS) * 4 - len(prompt) - 200
+    budget = max(0, min(budget, room))
+    if budget < 400:
+        return prompt, []
+    text, used = DOCS.render(query, budget, max_chunk_chars=budget)
+    if not text:
+        return prompt, []
+    return prompt + "\n\n" + text, used
+
+
 # ---------------------------------------------------------------- the loop
 
 def solve(a, level, log):
     print(f"\n=========== level {level}: {nkibench.LEVELS[level]['op']} ===========")
     terse = a.terse
-    prompt = first_prompt(level, terse)
+    prompt, docs_used = with_docs(a, first_prompt(level, terse), level)
     best = (0.0, None, "")
     tried, streak, seen = [], 0, {}
     latest = ("", "")
@@ -505,7 +569,7 @@ def solve(a, level, log):
             graded.append((reward, src, feedback, parts))
             log.write(json.dumps(dict(level=level, round=rnd, reward=reward, parts=parts,
                                       prompt_chars=len(prompt), reply_chars=len(reply),
-                                      code=src, feedback=feedback)) + "\n")
+                                      code=src, feedback=feedback, docs=docs_used)) + "\n")
         log.flush()
         graded.sort(key=lambda g: g[0], reverse=True)
         top = graded[0]
@@ -552,6 +616,7 @@ def solve(a, level, log):
             prompt = (repair_prompt(level, latest[0], latest[1])
                       + f"\n\nThese approaches have already failed, so do something different:\n"
                         f"{ledger}")
+            prompt, docs_used = with_docs(a, prompt, level, latest[1])
             print(f"  same failure {repeats}x — adding a ledger of {len(set(tried))} failed "
                   f"attempts to break the repeat")
             continue
@@ -560,10 +625,11 @@ def solve(a, level, log):
             # 202-character prompt and, under greedy sampling, the identical non-answer six
             # rounds running. Shorten and re-ask instead.
             terse = min(terse + 1, 2)
-            prompt = first_prompt(level, terse)
+            prompt, docs_used = with_docs(a, first_prompt(level, terse), level)
             print(f"  no code yet, so re-asking with a shorter prompt (terseness {terse})")
         else:
-            prompt = repair_prompt(level, latest[0], latest[1])
+            prompt, docs_used = with_docs(a, repair_prompt(level, latest[0], latest[1]), level,
+                                          latest[1])
     print(f"  not solved in {a.rounds} rounds; best reward {best[0]:.2f}")
     return best[0], a.rounds
 
@@ -596,7 +662,27 @@ def main():
     ap.add_argument("--think", action="store_true",
                     help="let the model reason first; costs budget, and it ran out")
     ap.add_argument("--offline", action="store_true")
+    ap.add_argument("--docs", default="",
+                    help="folder of the official NKI guide (neuron-agentic-development/skills); "
+                         "retrieved excerpts go into every prompt")
+    ap.add_argument("--doc-chars", type=int, default=6000, help="docs budget, first prompt")
+    ap.add_argument("--doc-chars-repair", type=int, default=4000, help="docs budget, repairs")
+    ap.add_argument("--no-same-op", action="store_true",
+                    help="ablation: drop guide sections that implement the same operation "
+                         "(the tutorials and the matmul example), to test generalisation")
     a = ap.parse_args()
+
+    global DOCS
+    if a.docs:
+        import retrieve
+        DOCS = retrieve.Index(a.docs)
+        if a.no_same_op:
+            n0 = len(DOCS.chunks)
+            DOCS.chunks = [c for c in DOCS.chunks
+                           if not any(k in (c["src"] + c["text"]).lower() for k in SAME_OP)]
+            print(f"docs: dropped {n0 - len(DOCS.chunks)} same-operation chunks")
+        print(f"docs: {len(DOCS.chunks)} chunks from {a.docs}; dropped "
+              f"{len(DOCS.dropped_stale)} that call NKI names this install does not have")
 
     if not a.offline:
         # Validate before the first request. An empty or scheme-less value produces a hostname

@@ -428,6 +428,30 @@ def describe_mismatch(got, want, tol=2e-2):
     if not np.all(np.isfinite(got)):
         n_nan, n_inf = int(np.isnan(got).sum()), int(np.isinf(got).sum())
         where = np.argwhere(~np.isfinite(got))[0]
+        # The simulator leaves an output it never wrote as NaN. So "all NaN" is not a numerics
+        # problem: nothing reached the output. Measured on level 3 (M=64): the model wrote
+        # `for m in nl.affine_range(M // 128)`, which is range(0), and the old message --
+        # "uninitialised PSUM or SBUF tile" -- sent it to re-check allocations that were fine.
+        if n_nan == got.size:
+            dims = " x ".join(str(d) for d in got.shape)
+            return (f"NOTHING WAS WRITTEN: every one of the {got.size} output elements is NaN, "
+                    f"which is what an output looks like when no tile was ever copied into it. "
+                    f"The arithmetic is not the problem -- the loops that write the output ran "
+                    f"ZERO times. The output is {dims}. A tile count written as dim // TILE is "
+                    f"0 whenever dim is smaller than TILE (64 // 128 == 0). Compute counts as "
+                    f"(dim + TILE - 1) // TILE and size each tile as min(TILE, dim - start), or, "
+                    f"if a dimension already fits in one tile, use it whole without a loop.")
+        bad = ~np.isfinite(got)
+        if n_inf == 0 and bad.ndim >= 2:
+            lo, hi = np.argwhere(bad).min(axis=0), np.argwhere(bad).max(axis=0)
+            if int(bad[tuple(slice(a, b + 1) for a, b in zip(lo, hi))].all()):
+                return (f"PART OF THE OUTPUT WAS NEVER WRITTEN: the block from "
+                        f"{tuple(int(v) for v in lo)} to {tuple(int(v) for v in hi)} is NaN, "
+                        f"which is what unwritten output looks like, of an output shaped "
+                        f"{tuple(got.shape)}. The loops stop short of the end. That is usually "
+                        f"dim // TILE dropping the final partial tile: loop "
+                        f"(dim + TILE - 1) // TILE times and make the last tile "
+                        f"min(TILE, dim - start) wide.")
         return (f"NON-FINITE OUTPUT: {n_nan} NaN and {n_inf} Inf, first at "
                 f"{tuple(int(i) for i in where)}. Usually an uninitialised PSUM or SBUF "
                 f"tile being read before anything wrote to it.")
