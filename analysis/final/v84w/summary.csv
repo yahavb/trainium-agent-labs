@@ -1,2 +1,0 @@
-﻿level,runs,solved,scores,mean,min,max,solves,tokens,truncation,run_minutes,verdicts,claims,confidence,brier,confident_but_wrong,nki_claims,nki_confidence,nki_brier,nki_confident_but_wrong,baseline
-7,2,0,0.75 0.75,0.75,0.75,0.75,-,"10,326+7,466; 15,736+11,511",0; 0,5.8 9.0,2,NOT SOLVED 2,0.00,0.000,0,FAILED 2,0.00,0.000,0,-

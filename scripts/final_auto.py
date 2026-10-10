@@ -40,7 +40,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("logs")
     ap.add_argument("out")
-    ap.add_argument("--l57", default=None, help="prefix whose L5-L7 runs go into the final group")
+    ap.add_argument("--l57", default=None, help="prefix(es), comma-separated, whose L5-L7 runs go into the final group")
+    ap.add_argument("--l2", default="v83", help="prefix(es), comma-separated, whose L2 runs go into the final group")
     ap.add_argument("--exclude", nargs="*", default=[], help="file names to leave out (e.g. runs stopped early)")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
@@ -54,14 +55,14 @@ def main():
     l57 = a.l57 or ("warm" if "warm" in by_prefix else "v83")
     pick = lambda prefixes, lv: [f for p in prefixes for f in by_prefix.get(p, []) if set(levels[f]) <= set(lv)]
     groups = collections.OrderedDict()
-    groups["final"] = (pick(["v82", "v82x"], (1, 3, 4)) + pick(["v83"], (2,))
-                       + pick([l57], (5, 6, 7)))
+    groups["final"] = (pick(["v82", "v82x"], (1, 3, 4)) + pick(a.l2.split(","), (2,))
+                       + pick(l57.split(","), (5, 6, 7)))
     groups["v8.2_L2"] = pick(["v82", "v82x"], (2,))
     groups["v8.5_L2"] = pick(["v85"], (2,))
     groups["final_all"] = by_prefix.get("final_all", [])
     groups["L9-L14"] = [f for fs in by_prefix.values() for f in fs if levels[f] and set(levels[f]) <= set(range(9, 15))]
     for p, fs in by_prefix.items():
-        if p not in ("v82", "v82x", "v85", "final_all", l57) and any(set(levels[f]) & {5, 6, 7} for f in fs):
+        if p not in ("v82", "v82x", "v85", "final_all", *l57.split(",")) and any(set(levels[f]) & {5, 6, 7} for f in fs):
             groups[p] = [f for f in fs if set(levels[f]) & {5, 6, 7}]
     print(f"prefixes found: {dict((p, len(fs)) for p, fs in by_prefix.items())}; L5-L7 for final from '{l57}'")
     unused = [f for f in files["attempts"] if not any(f in g for g in groups.values())]

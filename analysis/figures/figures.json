@@ -1,5 +1,5 @@
 {
- "note": "final logs (analysis/logs/final, pushed 18:27); final version: v8.2 runs on L1/L3/L4, v8.3 on L2",
+ "note": "final logs (analysis/logs/final, 67bf16b); final version: v8.2 runs on L1/L3/L4, v8.3 + v8.5 on L2",
  "solved": {
   "baseline": {
    "1": [
@@ -61,8 +61,8 @@
     7
    ],
    "2": [
-    9,
-    11
+    13,
+    17
    ],
    "3": [
     5,
@@ -103,9 +103,13 @@
     1,
     1,
     1,
+    1,
+    2,
+    2,
     2,
     2,
     3,
+    4,
     4
    ],
    "attempts": [
@@ -114,12 +118,16 @@
     5,
     5,
     5,
+    5,
+    9,
     9,
     11,
+    11,
     15,
+    17,
     19
    ],
-   "runs": 11
+   "runs": 17
   },
   "3": {
    "rounds": [
@@ -164,8 +172,8 @@
    "partition_over_128": 110,
    "out_of_bounds": 96,
    "reshape": 98,
-   "tile_1d": 55,
    "numeric_mismatch": 14,
+   "tile_1d": 55,
    "failed attempts": 837
   },
   "v7": {
@@ -175,8 +183,8 @@
    "partition_over_128": 20,
    "out_of_bounds": 20,
    "reshape": 0,
-   "tile_1d": 0,
    "numeric_mismatch": 0,
+   "tile_1d": 0,
    "failed attempts": 167
   },
   "v8.2": {
@@ -186,20 +194,20 @@
    "partition_over_128": 5,
    "out_of_bounds": 4,
    "reshape": 1,
-   "tile_1d": 7,
    "numeric_mismatch": 35,
+   "tile_1d": 7,
    "failed attempts": 360
   },
   "final version": {
-   "copy_size_mismatch": 111,
-   "invented_name": 11,
+   "copy_size_mismatch": 178,
+   "invented_name": 13,
    "broadcast": 76,
    "partition_over_128": 5,
-   "out_of_bounds": 5,
+   "out_of_bounds": 10,
    "reshape": 1,
-   "tile_1d": 7,
-   "numeric_mismatch": 17,
-   "failed attempts": 324
+   "numeric_mismatch": 28,
+   "tile_1d": 8,
+   "failed attempts": 423
   }
  },
  "files": {
@@ -245,11 +253,19 @@
    "analysis/logs/final/seat-117/v83_L2b_s117.jsonl",
    "analysis/logs/final/seat-117/v83_L2c_s117.jsonl",
    "analysis/logs/final/seat-117/v83_L2d_s117.jsonl",
+   "analysis/logs/final/seat-117/v85_L2_s117.jsonl",
+   "analysis/logs/final/seat-117/v85_L2b_s117.jsonl",
+   "analysis/logs/final/seat-117/v85_L2c_s117.jsonl",
+   "analysis/logs/final/seat-117/v85_L2d_s117.jsonl",
    "analysis/logs/final/seat-118/v82_L1_s118.jsonl",
    "analysis/logs/final/seat-118/v82_L1b_s118.jsonl",
    "analysis/logs/final/seat-118/v82_L3_s118.jsonl",
    "analysis/logs/final/seat-118/v82x_L1_s118.jsonl",
    "analysis/logs/final/seat-118/v82x_L1b_s118.jsonl",
+   "analysis/logs/final/seat-118/v85_L2_s118.jsonl",
+   "analysis/logs/final/seat-118/v85_L2b_s118.jsonl",
+   "analysis/logs/final/seat-118/v85_L2c_s118.jsonl",
+   "analysis/logs/final/seat-118/v85_L2d_s118.jsonl",
    "analysis/logs/final/seat-119/v82_L3d_s119.jsonl",
    "analysis/logs/final/seat-119/v82_L4_s119.jsonl",
    "analysis/logs/final/seat-119/v82_L4b_s119.jsonl",
@@ -273,6 +289,8 @@
   ],
   "final version": [
    "v82x_L1_s117.jsonl run 0 L1",
+   "v85_L2d_s117.jsonl run 0 L2",
+   "v85_L2d_s118.jsonl run 0 L2",
    "v82x_L1_s119.jsonl run 0 L1",
    "v83_L2d_s119.jsonl run 0 L2"
   ]

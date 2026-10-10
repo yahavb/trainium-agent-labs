@@ -28,8 +28,8 @@ Tokens: server counts from the usage log for 88 of 88 attempts; 0 unmatched kept
 
 | role | file | md5 | last commit |
 |---|---|---|---|
-| attempts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_muekf0h7/final_all/final_seat-116__final_all.jsonl` | `f617a2711fa212e62a118cc2b56bd6a0` | untracked |
-| verdicts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_muekf0h7/final_all/final_seat-116__final_all_verdicts.jsonl` | `350f68daeae626994cbb872b275c84c4` | untracked |
+| attempts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_xujj35q9/final_all/final_seat-116__final_all.jsonl` | `f617a2711fa212e62a118cc2b56bd6a0` | untracked |
+| verdicts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_xujj35q9/final_all/final_seat-116__final_all_verdicts.jsonl` | `350f68daeae626994cbb872b275c84c4` | untracked |
 | baseline | `analysis/logs/baseline/attempts.jsonl` | `9275898538ed1a69c28a8a5fa52a3788` | a0af434 |
-| usage | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_muekf0h7/final_all/final_seat-116__final_all_usage.jsonl` | `792e0b1acb8cc12adfa80d1d26f63598` | untracked |
-| v7 verdicts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_muekf0h7/final_all/final_seat-116__final_all_nki_verdicts.jsonl` | `acec6668f44e44b177556bc9c0d430d9` | untracked |
+| usage | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_xujj35q9/final_all/final_seat-116__final_all_usage.jsonl` | `792e0b1acb8cc12adfa80d1d26f63598` | untracked |
+| v7 verdicts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_xujj35q9/final_all/final_seat-116__final_all_nki_verdicts.jsonl` | `acec6668f44e44b177556bc9c0d430d9` | untracked |

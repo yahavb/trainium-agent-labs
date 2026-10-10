@@ -9,8 +9,9 @@
   failure_modes_by_version.png  the 8 most common failure modes (taxonomy.py's names) as a share of each
                                 version's failed attempts
 and figures.json with every number drawn. A run is one (file, run, level) episode as taxonomy.py splits
-them. A run that is the last one in its file and neither solved nor reached round 7 may still have been
-running when the log was pulled: it is left out and listed (unless its version is in --complete).
+them. A run that is the last one in its file and not solved counts only if it finished: a v82_queue.log next
+to the file says `done` (only `start` = stopped, left out); without a queue log, it must have reached round 7.
+Left-out runs are listed (no run is left out for a version in --complete).
 """
 import argparse
 import collections
@@ -36,9 +37,26 @@ def episodes_of(spec, complete=False):
     kept, dropped = [], []
     for (fi, run, lv), rows in eps.items():
         solved = any(r["reward"] >= 1 - 1e-9 for r in rows)
+        status = queue_status(files[fi])
         done = complete or solved or run < last[fi] or max(r["round"] for r in rows) >= 7
+        if status is not None:
+            done = complete or solved or run < last[fi] or status
         (kept if done else dropped).append((files[fi], run, lv, rows))
     return files, kept, dropped
+
+
+def queue_status(path):
+    """From a v82_queue.log next to the file: True if it logged `done  <stem>:`, False if only `start <stem>`,
+    None if no queue log mentions it (then the round-7 rule decides)."""
+    stem = os.path.basename(path)[:-len(".jsonl")]
+    seen = None
+    for q in glob.glob(os.path.join(os.path.dirname(path), "*queue*.log")):
+        for line in open(q, errors="replace"):
+            if f"done  {stem}:" in line or f"done {stem}:" in line:
+                return True
+            if f"start {stem} " in line:
+                seen = False
+    return seen
 
 
 def first_solve(rows):

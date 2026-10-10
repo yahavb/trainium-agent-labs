@@ -22,24 +22,24 @@ Tokens: server counts from the usage log for 192 of 192 attempts; 0 unmatched ke
 
 | role | file | md5 | last commit |
 |---|---|---|---|
-| attempts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_muekf0h7/v8.2_L2/final_seat-116__v82_L2_s116.jsonl` | `46c5bf5a7132ce5766799b7d1379298f` | untracked |
-| attempts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_muekf0h7/v8.2_L2/final_seat-117__v82x_L2_s117.jsonl` | `848f50ab3a926dc32adb9cbc8a042e89` | untracked |
-| attempts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_muekf0h7/v8.2_L2/final_seat-118__v82_L2_s118.jsonl` | `78adfdffbdfb8d82e2981f09878761ee` | untracked |
-| attempts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_muekf0h7/v8.2_L2/final_seat-118__v82x_L2_s118.jsonl` | `4793ca4698decf6c1703da3a9e389969` | untracked |
-| attempts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_muekf0h7/v8.2_L2/final_seat-119__v82_L2_s119.jsonl` | `0cf0419ba67318dc5f4f4fbff6626f8a` | untracked |
-| verdicts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_muekf0h7/v8.2_L2/final_seat-116__v82_L2_s116_verdicts.jsonl` | `ae1b61d6ba0c9ed67d63b357fefb3c71` | untracked |
-| verdicts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_muekf0h7/v8.2_L2/final_seat-117__v82x_L2_s117_verdicts.jsonl` | `083126798345967eda8537edc1c46751` | untracked |
-| verdicts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_muekf0h7/v8.2_L2/final_seat-118__v82_L2_s118_verdicts.jsonl` | `71d40d1a997fa666a3ef968b5bc02ad8` | untracked |
-| verdicts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_muekf0h7/v8.2_L2/final_seat-118__v82x_L2_s118_verdicts.jsonl` | `8742eca7ec1dfc0d3c52200bc4d77657` | untracked |
-| verdicts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_muekf0h7/v8.2_L2/final_seat-119__v82_L2_s119_verdicts.jsonl` | `5ace6ec4711154d43fbfeb6578e54b99` | untracked |
+| attempts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_xujj35q9/v8.2_L2/final_seat-116__v82_L2_s116.jsonl` | `46c5bf5a7132ce5766799b7d1379298f` | untracked |
+| attempts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_xujj35q9/v8.2_L2/final_seat-117__v82x_L2_s117.jsonl` | `848f50ab3a926dc32adb9cbc8a042e89` | untracked |
+| attempts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_xujj35q9/v8.2_L2/final_seat-118__v82_L2_s118.jsonl` | `78adfdffbdfb8d82e2981f09878761ee` | untracked |
+| attempts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_xujj35q9/v8.2_L2/final_seat-118__v82x_L2_s118.jsonl` | `4793ca4698decf6c1703da3a9e389969` | untracked |
+| attempts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_xujj35q9/v8.2_L2/final_seat-119__v82_L2_s119.jsonl` | `0cf0419ba67318dc5f4f4fbff6626f8a` | untracked |
+| verdicts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_xujj35q9/v8.2_L2/final_seat-116__v82_L2_s116_verdicts.jsonl` | `ae1b61d6ba0c9ed67d63b357fefb3c71` | untracked |
+| verdicts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_xujj35q9/v8.2_L2/final_seat-117__v82x_L2_s117_verdicts.jsonl` | `083126798345967eda8537edc1c46751` | untracked |
+| verdicts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_xujj35q9/v8.2_L2/final_seat-118__v82_L2_s118_verdicts.jsonl` | `71d40d1a997fa666a3ef968b5bc02ad8` | untracked |
+| verdicts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_xujj35q9/v8.2_L2/final_seat-118__v82x_L2_s118_verdicts.jsonl` | `8742eca7ec1dfc0d3c52200bc4d77657` | untracked |
+| verdicts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_xujj35q9/v8.2_L2/final_seat-119__v82_L2_s119_verdicts.jsonl` | `5ace6ec4711154d43fbfeb6578e54b99` | untracked |
 | baseline | `analysis/logs/baseline/attempts.jsonl` | `9275898538ed1a69c28a8a5fa52a3788` | a0af434 |
-| usage | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_muekf0h7/v8.2_L2/final_seat-116__v82_L2_s116_usage.jsonl` | `892551065e9c5d741e8f0d3c1de98e2b` | untracked |
-| usage | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_muekf0h7/v8.2_L2/final_seat-117__v82x_L2_s117_usage.jsonl` | `f73402c946654fb1d25456ff509c51d5` | untracked |
-| usage | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_muekf0h7/v8.2_L2/final_seat-118__v82_L2_s118_usage.jsonl` | `cde1feed5fbff207ecdf5af2564e026e` | untracked |
-| usage | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_muekf0h7/v8.2_L2/final_seat-118__v82x_L2_s118_usage.jsonl` | `435b6e1e35f3eb44c08331d7991882f8` | untracked |
-| usage | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_muekf0h7/v8.2_L2/final_seat-119__v82_L2_s119_usage.jsonl` | `c534947b7a26d7fd8ff52d890835a51f` | untracked |
-| v7 verdicts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_muekf0h7/v8.2_L2/final_seat-116__v82_L2_s116_nki_verdicts.jsonl` | `ca22daa9bf4a3bd973fe271a3d7c704a` | untracked |
-| v7 verdicts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_muekf0h7/v8.2_L2/final_seat-117__v82x_L2_s117_nki_verdicts.jsonl` | `bfd7428125729d179671ba31c5c1513b` | untracked |
-| v7 verdicts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_muekf0h7/v8.2_L2/final_seat-118__v82_L2_s118_nki_verdicts.jsonl` | `f085cbbd519021b43d6b8b2201155338` | untracked |
-| v7 verdicts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_muekf0h7/v8.2_L2/final_seat-118__v82x_L2_s118_nki_verdicts.jsonl` | `1764d55cdf4265bdee62cb5b94a0fccc` | untracked |
-| v7 verdicts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_muekf0h7/v8.2_L2/final_seat-119__v82_L2_s119_nki_verdicts.jsonl` | `8d3ccff3e6d12a27812ff9a61a89ccbc` | untracked |
+| usage | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_xujj35q9/v8.2_L2/final_seat-116__v82_L2_s116_usage.jsonl` | `892551065e9c5d741e8f0d3c1de98e2b` | untracked |
+| usage | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_xujj35q9/v8.2_L2/final_seat-117__v82x_L2_s117_usage.jsonl` | `f73402c946654fb1d25456ff509c51d5` | untracked |
+| usage | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_xujj35q9/v8.2_L2/final_seat-118__v82_L2_s118_usage.jsonl` | `cde1feed5fbff207ecdf5af2564e026e` | untracked |
+| usage | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_xujj35q9/v8.2_L2/final_seat-118__v82x_L2_s118_usage.jsonl` | `435b6e1e35f3eb44c08331d7991882f8` | untracked |
+| usage | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_xujj35q9/v8.2_L2/final_seat-119__v82_L2_s119_usage.jsonl` | `c534947b7a26d7fd8ff52d890835a51f` | untracked |
+| v7 verdicts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_xujj35q9/v8.2_L2/final_seat-116__v82_L2_s116_nki_verdicts.jsonl` | `ca22daa9bf4a3bd973fe271a3d7c704a` | untracked |
+| v7 verdicts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_xujj35q9/v8.2_L2/final_seat-117__v82x_L2_s117_nki_verdicts.jsonl` | `bfd7428125729d179671ba31c5c1513b` | untracked |
+| v7 verdicts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_xujj35q9/v8.2_L2/final_seat-118__v82_L2_s118_nki_verdicts.jsonl` | `f085cbbd519021b43d6b8b2201155338` | untracked |
+| v7 verdicts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_xujj35q9/v8.2_L2/final_seat-118__v82x_L2_s118_nki_verdicts.jsonl` | `1764d55cdf4265bdee62cb5b94a0fccc` | untracked |
+| v7 verdicts | `/var/folders/gf/gz7tm2sj57s7m9lll10z8yb40000gn/T/final_tables_xujj35q9/v8.2_L2/final_seat-119__v82_L2_s119_nki_verdicts.jsonl` | `8d3ccff3e6d12a27812ff9a61a89ccbc` | untracked |

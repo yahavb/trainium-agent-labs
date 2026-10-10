@@ -1,0 +1,6 @@
+L9 78dc14148c (final_L9_s119.jsonl:9, round 2): reward 1.0 PASS
+    {'parses': True, 'rules': True, 'runs': True, 'correct': True} | Correct on every shape. 
+L9 e2b5e833ae (final_L9b_s119.jsonl:9, round 2): reward 1.0 PASS
+    {'parses': True, 'rules': True, 'runs': True, 'correct': True} | Correct on every shape. 
+L10 d723b0431b (final_L10_s115.jsonl:9, round 2): reward 1.0 PASS
+    {'parses': True, 'rules': True, 'runs': True, 'correct': True} | Correct on every shape. 
