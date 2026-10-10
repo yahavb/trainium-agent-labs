@@ -15,7 +15,7 @@ MENU = [
             "STATIONARY (left, lhsT) operand as stuck on its first k-chunk: the numbers equal "
             "lhsT chunk 0 multiplied against every rhs chunk. Also use this when the lhs tile "
             "is reloaded inside the k loop even though it does not depend on the inner loop. "
-            "Typical evidence: correct bytes on some shapes but wrong numbers on others."
+            "Typical evidence: correct bytes on some shapes but wrong numbers on others. Choose this FIRST when neither operand has a cache yet -- a fresh correct kernel loads both operands inside its loops."
         ),
         "exact": (
             "Replace the stationary operand load with a stacked SBUF cache that is loaded once "
@@ -68,9 +68,13 @@ MENU = [
             "The kernel is correct on every shape (no numerical failures, valid=True) but still "
             "moves more than the byte floor: the rhs tile is re-read from HBM for every m block "
             "(M // TILE_M times), while the lhs is already cached. The only failure text, if "
-            "any, is the traffic-gate message about moving too many bytes."
+            "any, is the traffic-gate message about moving too many bytes. Precondition: the stationary operand's cache must already exist; if the kernel has no cache yet, choose stack_stationary_operand first."
         ),
         "exact": (
+            "Precondition: the kernel must already cache the lhs (stationary) operand. "
+            "If it does not, add that cache first with the stack_stationary_operand "
+            "pattern (cache (TILE_K, k_tiles * M), chunks loaded once, sliced per m), then "
+            "apply this treatment to the rhs.\n"
             "Apply to the rhs (moving) operand exactly the treatment lhsT already received:\n"
             "1) Allocate: rhs_cache = nl.ndarray((TILE_K, k_tiles * N), dtype=rhs.dtype, "
             "buffer=nl.sbuf)\n"
