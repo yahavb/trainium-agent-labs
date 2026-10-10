@@ -356,6 +356,20 @@ def first_prompt(level, terse=0):
     """
     s = nkibench.LEVELS[level]
     import inspect
+    level_hint = ""
+    if level == 2:
+        level_hint = level_hint = (
+                                        "Use this exact implementation strategy for Level 2:\n"
+                                        "- Let P, F = x.shape and F1, F2 = shape2D, with F1 * F2 == F.\n"
+                                        "- Allocate out as nl.ndarray((P, F), dtype=x.dtype, buffer=nl.shared_hbm).\n"
+                                        "- Allocate sbuf as nl.ndarray((P, F1, F2), dtype=x.dtype, buffer=nl.sbuf).\n"
+                                        "- Copy the full input with nisa.dma_copy(dst=sbuf, src=x).\n"
+                                        "- Loop p over P, i over F1, and j over F2 using nl.affine_range.\n"
+                                        "- For each element, assign out[p, j * F1 + i] = sbuf[p, i, j].\n"
+                                        "- Return out directly.\n"
+                                        "- Do NOT reshape tensors. Do NOT dma_copy sbuf into out after the loop.\n"
+                                        "Follow this structure exactly rather than inventing a different transpose strategy.\n\n"
+    ) 
     if terse >= 2:
         # Last resort. Measured on this endpoint: one-sentence prompts answered in 300-700
         # tokens while every structured, rule-carrying prompt spiralled.
@@ -381,6 +395,7 @@ def first_prompt(level, terse=0):
                 f"Reply with one python code block.")
     return (
         f"Write an AWS Neuron NKI kernel.\n\n"
+        f"{level_hint}"
         f"Operation: {s['op']}\n"
         f"Entry point: a function named `{s['entry']}`, decorated with `@nki.jit`.\n"
         f"It must compute exactly what this NumPy reference computes:\n\n"
