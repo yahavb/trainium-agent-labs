@@ -1,0 +1,12 @@
+level 11: attention scores Q K^T / sqrt(d)
+  rules      clean
+
+  case seq=128 dim=64:
+    HBM traffic is 131,072 bytes against a floor of 131,072 (1.00x) -- essentially optimal. Every byte is read about once.
+
+  case seq=64 dim=128:
+    HBM traffic is 81,920 bytes against a floor of 81,920 (1.00x) -- essentially optimal. Every byte is read about once.
+
+  case seq=96 dim=32:
+    HBM traffic is 61,440 bytes against a floor of 61,440 (1.00x) -- essentially optimal. Every byte is read about once.
+  numerics   3/3 shapes passed

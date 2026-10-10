@@ -1,0 +1,155 @@
+[
+ {
+  "level": 11,
+  "case": "seq=128 dim=64",
+  "kernel": "level11_new.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 1.42564965699421e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 11,
+  "case": "seq=64 dim=128",
+  "kernel": "level11_new.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 2.097826381941559e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 11,
+  "case": "seq=96 dim=32",
+  "kernel": "level11_new.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 1.176674231828656e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 11,
+  "case": "seq=128 dim=64",
+  "kernel": "optimized/level11_attention_scores.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 1.42564965699421e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 11,
+  "case": "seq=64 dim=128",
+  "kernel": "optimized/level11_attention_scores.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 2.097826381941559e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 11,
+  "case": "seq=96 dim=32",
+  "kernel": "optimized/level11_attention_scores.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 1.176674231828656e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 2,
+  "case": "shape=(32, 12) as 3x4",
+  "kernel": "optimized/level02_transpose.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 0.0,
+  "mismatch": ""
+ },
+ {
+  "level": 2,
+  "case": "shape=(128, 64) as 8x8",
+  "kernel": "optimized/level02_transpose.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 0.0,
+  "mismatch": ""
+ },
+ {
+  "level": 2,
+  "case": "shape=(64, 128) as 4x32",
+  "kernel": "optimized/level02_transpose.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 0.0,
+  "mismatch": ""
+ },
+ {
+  "level": 2,
+  "case": "shape=(8, 35) as 5x7",
+  "kernel": "optimized/level02_transpose.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 0.0,
+  "mismatch": ""
+ },
+ {
+  "level": 6,
+  "case": "K=128 M=128 N=512",
+  "kernel": "optimized/level06_matmul_blocked.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 2.357385028517456e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 6,
+  "case": "K=256 M=256 N=1024",
+  "kernel": "optimized/level06_matmul_blocked.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 2.855309730875888e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 6,
+  "case": "K=512 M=128 N=512",
+  "kernel": "optimized/level06_matmul_blocked.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 2.5212739274138585e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 6,
+  "case": "K=256 M=512 N=1024",
+  "kernel": "optimized/level06_matmul_blocked.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 3.5658208616951015e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 10,
+  "case": "seq=128 dim=64",
+  "kernel": "optimized/level10_row_softmax.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 2.458710878272541e-05,
+  "mismatch": ""
+ },
+ {
+  "level": 10,
+  "case": "seq=64 dim=128",
+  "kernel": "optimized/level10_row_softmax.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 2.426631181151606e-05,
+  "mismatch": ""
+ },
+ {
+  "level": 10,
+  "case": "seq=96 dim=32",
+  "kernel": "optimized/level10_row_softmax.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 1.0510790161788464e-05,
+  "mismatch": ""
+ }
+]

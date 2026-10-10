@@ -1,0 +1,15 @@
+{
+ "removed_failed_level8_attempts": 1096,
+ "note": "Removed from attempts.tar.gz to keep the log small; many were byte-identical repeats across seats (sampling was deterministic). Counts by the first problem the checker reported.",
+ "by_failure": {
+  "static: contraction axis mismatch (q k^T layout)": 476,
+  "simulator: AssertionError": 358,
+  "static: matmul operand / dst in wrong memory": 119,
+  "simulator: ValueError": 61,
+  "simulator: TypeError": 50,
+  "static: copy between different shapes": 21,
+  "other": 6,
+  "simulator: NameError": 4,
+  "static: kernel never returns": 1
+ }
+}

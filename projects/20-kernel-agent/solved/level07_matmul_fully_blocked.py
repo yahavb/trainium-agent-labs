@@ -1,0 +1,56 @@
+import nki
+import nki.isa as nisa
+import nki.language as nl
+
+@nki.jit
+def nki_matmul_fully_optimized_(lhsT, rhs):
+    M = lhsT.shape[1]
+    N = rhs.shape[1]
+    K = lhsT.shape[0]
+    
+    # Allocate output buffer in shared HBM
+    out = nl.ndarray((M, N), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+    
+    # Precompute tiles for lhsT and rhs
+    lhsT_tiles = []
+    for k in range(0, K, 128):
+        tile_row = []
+        for m in range(0, M, 128):
+            tile = nl.ndarray((128, 128), dtype=lhsT.dtype, buffer=nl.sbuf)
+            nisa.dma_copy(dst=tile, src=lhsT[k:k+128, m:m+128])
+            tile_row.append(tile)
+        lhsT_tiles.append(tile_row)
+    
+    rhs_tiles = []
+    for k in range(0, K, 128):
+        tile_col = []
+        for n in range(0, N, 512):
+            tile = nl.ndarray((128, 512), dtype=rhs.dtype, buffer=nl.sbuf)
+            nisa.dma_copy(dst=tile, src=rhs[k:k+128, n:n+512])
+            tile_col.append(tile)
+        rhs_tiles.append(tile_col)
+    
+    # Loop over M in steps of 128
+    for m in range(0, M, 128):
+        # Loop over N in steps of 512
+        for n in range(0, N, 512):
+            # Allocate psum tile for current (m, n) output tile
+            psum = nl.ndarray((128, 512), dtype=nl.float32, buffer=nl.psum)
+            
+            # Loop over K in steps of 128
+            for k in range(0, K, 128):
+                # Perform NC matmul using preloaded tiles
+                nisa.nc_matmul(
+                    dst=psum,
+                    stationary=lhsT_tiles[k // 128][m // 128],
+                    moving=rhs_tiles[k // 128][n // 512]
+                )
+            
+            # Copy result from psum to sbuf
+            sbuf_out = nl.ndarray((128, 512), dtype=lhsT.dtype, buffer=nl.sbuf)
+            nisa.tensor_copy(dst=sbuf_out, src=psum)
+            
+            # Copy result from sbuf to output buffer
+            nisa.dma_copy(dst=out[m:m+128, n:n+512], src=sbuf_out)
+    
+    return out

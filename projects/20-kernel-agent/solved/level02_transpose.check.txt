@@ -1,0 +1,15 @@
+level 2: 2D transpose
+  rules      clean
+
+  case shape=(32, 12) as 3x4:
+    HBM traffic is 3,072 bytes against a floor of 3,072 (1.00x) -- essentially optimal. Every byte is read about once.
+
+  case shape=(128, 64) as 8x8:
+    HBM traffic is 65,536 bytes against a floor of 65,536 (1.00x) -- essentially optimal. Every byte is read about once.
+
+  case shape=(64, 128) as 4x32:
+    HBM traffic is 65,536 bytes against a floor of 65,536 (1.00x) -- essentially optimal. Every byte is read about once.
+
+  case shape=(8, 35) as 5x7:
+    HBM traffic is 2,240 bytes against a floor of 2,240 (1.00x) -- essentially optimal. Every byte is read about once.
+  numerics   4/4 shapes passed

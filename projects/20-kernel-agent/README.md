@@ -3,21 +3,17 @@
 **An agent writes small programs that run directly on the chip, and keeps verifying its own output
 as it goes.**
 
-> ## STATUS: RUNNABLE, NOT YET SOLVED
+> ## STATUS (team 20): ALL 11 LEVELS SOLVED BY THE AGENT
 >
-> **Works today, verified on a trn2 node:** the ladder, the checker (`nkibench.py`), four reference
-> kernels that pass it, and the agent loop (`agent.py`) writing kernels against a live model.
+> **Results, charts and limits: [RESULTS.md](RESULTS.md).** The same Qwen3-8B now solves levels 1–7, level 8
+> (attention) and our stepping-stone levels 9–11. Re-checked on 228 unseen inputs (210 pass, none with wrong
+> numbers) and on the real chip. What changed: feedback that names the fix, a static check (`lint.py`) that
+> lists every mistake at once, reuse of the agent's own verified kernels, and the model server on the whole
+> chip (7× faster rounds).
 >
-> **Not there yet:** the agent has not solved a single level. Its best score is 0.30 of 1.0 — code
-> that parses, obeys the rules and runs, but computes the wrong numbers. The transcripts below show
-> exactly where it stalls, and that is the problem you are being handed.
->
-> **Also missing:** reference kernels for levels 5 to 7, so the optimization half of the ladder is
-> unmarked; and layers 2 and 3 of the checker, so **latency cannot be measured at all yet** — every
-> number here is throughput reasoning from the simulator.
->
-> This is a genuinely open problem, not a tidied-up exercise with a hidden answer. If you get a level
-> to 1.0, you have done something nobody here has.
+> **Level 8 needed the most help:** it was solved only with `--attention-plan`, which spells out every buffer
+> and stage (team 20's seat-97 work, [results/seat97-repair/](results/seat97-repair/)). Kernel speed on the
+> device is not measured. The original README below is kept as the problem statement.
 
 ---
 
@@ -52,7 +48,7 @@ seat number — and run:
 
 ```bash
 git config --global --add safe.directory /workspace    # needed before any git command here
-cd /workspace/projects/02-kernel-agent
+cd /workspace/projects/20-kernel-agent
 
 python nkibench.py --selftest                       # prove the harness first
 python nkibench.py --level 4 --check reference_level4.py
@@ -71,7 +67,7 @@ tail -f run.log
 > ```
 >
 > Disconnected? Reconnect with `kubectl exec -it seat-42 -- bash` and pick up where you were with
-> `tail -f /workspace/projects/02-kernel-agent/run.log`. `pgrep -af agent.py` shows whether it is still running.
+> `tail -f /workspace/projects/20-kernel-agent/run.log`. `pgrep -af agent.py` shows whether it is still running.
 
 Every `python agent.py ...` run further down this page is long too — start each the same way.
 

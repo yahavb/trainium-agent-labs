@@ -1,0 +1,218 @@
+[
+  {
+    "case": "random-128x64-seed17",
+    "passed": true,
+    "error": null,
+    "normalized_max_error": 1.6899450728395313e-06,
+    "bytes": 131072,
+    "floor": 131072,
+    "warnings": []
+  },
+  {
+    "case": "random-128x64-seed97",
+    "passed": true,
+    "error": null,
+    "normalized_max_error": 2.4512241543829903e-06,
+    "bytes": 131072,
+    "floor": 131072,
+    "warnings": []
+  },
+  {
+    "case": "random-128x64-seed2026",
+    "passed": true,
+    "error": null,
+    "normalized_max_error": 1.6752145169391656e-06,
+    "bytes": 131072,
+    "floor": 131072,
+    "warnings": []
+  },
+  {
+    "case": "zero-q-128x64",
+    "passed": true,
+    "error": null,
+    "normalized_max_error": 6.898153631340649e-07,
+    "bytes": 131072,
+    "floor": 131072,
+    "warnings": []
+  },
+  {
+    "case": "constant-v-128x64",
+    "passed": true,
+    "error": null,
+    "normalized_max_error": 1.0163758117835912e-06,
+    "bytes": 131072,
+    "floor": 131072,
+    "warnings": []
+  },
+  {
+    "case": "large-logits-128x64",
+    "passed": true,
+    "error": null,
+    "normalized_max_error": 4.894461717115581e-07,
+    "bytes": 131072,
+    "floor": 131072,
+    "warnings": []
+  },
+  {
+    "case": "permuted-kv-128x64",
+    "passed": true,
+    "error": null,
+    "normalized_max_error": 2.094018146173957e-06,
+    "bytes": 131072,
+    "floor": 131072,
+    "warnings": []
+  },
+  {
+    "case": "random-64x128-seed17",
+    "passed": true,
+    "error": null,
+    "normalized_max_error": 1.7928682180933809e-06,
+    "bytes": 131072,
+    "floor": 131072,
+    "warnings": []
+  },
+  {
+    "case": "random-64x128-seed97",
+    "passed": true,
+    "error": null,
+    "normalized_max_error": 1.5376080716860785e-06,
+    "bytes": 131072,
+    "floor": 131072,
+    "warnings": []
+  },
+  {
+    "case": "random-64x128-seed2026",
+    "passed": true,
+    "error": null,
+    "normalized_max_error": 1.2547567789369529e-06,
+    "bytes": 131072,
+    "floor": 131072,
+    "warnings": []
+  },
+  {
+    "case": "zero-q-64x128",
+    "passed": true,
+    "error": null,
+    "normalized_max_error": 7.602173319592547e-07,
+    "bytes": 131072,
+    "floor": 131072,
+    "warnings": []
+  },
+  {
+    "case": "constant-v-64x128",
+    "passed": true,
+    "error": null,
+    "normalized_max_error": 6.146091032337094e-07,
+    "bytes": 131072,
+    "floor": 131072,
+    "warnings": []
+  },
+  {
+    "case": "large-logits-64x128",
+    "passed": true,
+    "error": null,
+    "normalized_max_error": 4.054656351731756e-06,
+    "bytes": 131072,
+    "floor": 131072,
+    "warnings": []
+  },
+  {
+    "case": "permuted-kv-64x128",
+    "passed": true,
+    "error": null,
+    "normalized_max_error": 1.2547567789369529e-06,
+    "bytes": 131072,
+    "floor": 131072,
+    "warnings": []
+  },
+  {
+    "case": "random-96x32-seed17",
+    "passed": true,
+    "error": null,
+    "normalized_max_error": 2.752672371837603e-06,
+    "bytes": 49152,
+    "floor": 49152,
+    "warnings": []
+  },
+  {
+    "case": "random-96x32-seed97",
+    "passed": true,
+    "error": null,
+    "normalized_max_error": 1.8447380811601473e-06,
+    "bytes": 49152,
+    "floor": 49152,
+    "warnings": []
+  },
+  {
+    "case": "random-96x32-seed2026",
+    "passed": true,
+    "error": null,
+    "normalized_max_error": 2.414847180840324e-06,
+    "bytes": 49152,
+    "floor": 49152,
+    "warnings": []
+  },
+  {
+    "case": "zero-q-96x32",
+    "passed": true,
+    "error": null,
+    "normalized_max_error": 4.2011988041476717e-07,
+    "bytes": 49152,
+    "floor": 49152,
+    "warnings": []
+  },
+  {
+    "case": "constant-v-96x32",
+    "passed": true,
+    "error": null,
+    "normalized_max_error": 7.004266264120145e-07,
+    "bytes": 49152,
+    "floor": 49152,
+    "warnings": []
+  },
+  {
+    "case": "large-logits-96x32",
+    "passed": true,
+    "error": null,
+    "normalized_max_error": 6.396885065417666e-06,
+    "bytes": 49152,
+    "floor": 49152,
+    "warnings": []
+  },
+  {
+    "case": "permuted-kv-96x32",
+    "passed": true,
+    "error": null,
+    "normalized_max_error": 1.5524017591116367e-06,
+    "bytes": 49152,
+    "floor": 49152,
+    "warnings": []
+  },
+  {
+    "case": "extra-shape-32x48",
+    "passed": true,
+    "error": null,
+    "normalized_max_error": 1.4158889227119146e-06,
+    "bytes": 24576,
+    "floor": 24576,
+    "warnings": []
+  },
+  {
+    "case": "extra-shape-16x16",
+    "passed": true,
+    "error": null,
+    "normalized_max_error": 3.1168787583556457e-07,
+    "bytes": 4096,
+    "floor": 4096,
+    "warnings": []
+  },
+  {
+    "case": "extra-shape-1x8",
+    "passed": true,
+    "error": null,
+    "normalized_max_error": 0.0,
+    "bytes": 128,
+    "floor": 128,
+    "warnings": []
+  }
+]

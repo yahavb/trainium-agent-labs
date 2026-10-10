@@ -1,0 +1,12 @@
+level 8: single-head attention
+  rules      clean
+
+  case seq=128 dim=64:
+    HBM traffic is 131,072 bytes against a floor of 131,072 (1.00x) -- essentially optimal. Every byte is read about once.
+
+  case seq=64 dim=128:
+    HBM traffic is 131,072 bytes against a floor of 131,072 (1.00x) -- essentially optimal. Every byte is read about once.
+
+  case seq=96 dim=32:
+    HBM traffic is 49,152 bytes against a floor of 49,152 (1.00x) -- essentially optimal. Every byte is read about once.
+  numerics   3/3 shapes passed

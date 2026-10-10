@@ -214,6 +214,37 @@ def _args_attention(spec, r):
     return tuple(r.standard_normal((n, d)).astype(np.float32) for _ in range(3))
 
 
+# Levels 9 and 10 are the two pieces of attention the agent kept getting wrong, as levels of
+# their own (a curriculum): measured on Qwen3-8B, level 8 rounds failed on a NEW API mistake each
+# time -- Vector-engine transposes, matmul operands left in psum, Python * on tiles -- and never
+# reached the numerics. Solving these alone gives the agent verified building blocks for level 8.
+def ref_transpose_tile(x):
+    """x is (seq, dim); return its transpose (dim, seq)."""
+    return np.ascontiguousarray(x.T)
+
+
+def ref_row_softmax(x):
+    """x is (seq, dim); numerically stable softmax along each row (the last axis)."""
+    e = np.exp(x - x.max(axis=1, keepdims=True))
+    return e / e.sum(axis=1, keepdims=True)
+
+
+def ref_attention_scores(q, k):
+    """Level 11: the first stage of attention, scores = q k^T / sqrt(d), shape (seq, seq)."""
+    # cast back: dividing a float32 array by np.sqrt(int) (a float64 scalar) gives float64 under NumPy 2,
+    # which doubled the output bytes in the traffic floor and reported a 1.5x kernel as 1.00x
+    return ((q @ k.T) / np.sqrt(q.shape[1])).astype(q.dtype)
+
+
+def _args_two_tiles(spec, r):
+    n, d = spec["seq"], spec["dim"]
+    return tuple(r.standard_normal((n, d)).astype(np.float32) for _ in range(2))
+
+
+def _args_one_tile(spec, r):
+    return (r.standard_normal((spec["seq"], spec["dim"])).astype(np.float32) * 3.0,)
+
+
 def make_inputs(spec, level_n, seed=0):
     r = np.random.default_rng(seed + level_n)
     return LEVELS[level_n]["make_args"](spec, r), {}
@@ -258,8 +289,8 @@ level(1, "average pooling 2D", "tensor_avgpool_kernel",
      label=lambda sp: f"C,H,W={sp['shape']} pool={sp['pool_size']}")
 
 level(2, "2D transpose", "tensor_transpose2D_kernel_",
-     "layout: a transpose has to cross partitions, and the partition axis is the constrained "
-     "one",
+     "layout: transpose the F1 x F2 matrix held in each partition row's FREE axis; the partition "
+     "axis is untouched (y[p, j*F1 + i] = x[p, i*F2 + j])",
      "the first real one, and it is NOT about compute. A naive transpose moves tiny pieces "
      "and pays a per-transfer issue cost, so the cost is the NUMBER of transfers rather than "
      "the number of bytes. 'It moves a lot of data' is a misdiagnosis here.",
@@ -319,9 +350,9 @@ level(7, "matmul, M, N and K blocked", "nki_matmul_fully_optimized_",
 # ---------------------------------------------------------------- extending the ladder
 #
 # Level 8 is here as a WORKED EXAMPLE of adding an operation. Everything it needed: the reference
-# above, the _args_attention builder, and this one call. No other part of the harness knows it
-# exists -- the rule checker, the simulator, the numerics, the traffic measurement and the agent all
-# pick it up automatically.
+# above, the _args_attention builder, and this one call -- the rule checker, the simulator, the
+# numerics and the traffic measurement pick it up automatically. (Our agent.py adds level-specific
+# feedback for levels 8-11 on top.)
 
 level(8, "single-head attention", "nki_attention_",
       "composition: a matmul, a numerically stable softmax, and a second matmul, with the "
@@ -335,6 +366,40 @@ level(8, "single-head attention", "nki_attention_",
       "nl.max and nl.sum over tiles are the intended route. Subtract the row maximum before exp() "
       "or large scores overflow: a kernel that skips it looks correct on small test data.",
       make_args=_args_attention,
+      label=lambda sp: f"seq={sp['seq']} dim={sp['dim']}")
+
+level(9, "transpose one tile on the Tensor engine", "nki_transpose_tile_",
+      "the transpose attention needs: nc_transpose into a psum tile, then tensor_copy to sbuf",
+      "none -- a building block for level 8",
+      ref_transpose_tile,
+      [dict(seq=128, dim=64), dict(seq=64, dim=128), dict(seq=96, dim=32)],
+      {"transpose", "swapaxes", "moveaxis"},
+      "Shapes are attention's. The Vector engine only transposes up to 32x32; nisa.nc_transpose "
+      "with a psum destination uses the Tensor engine, which does up to 128x128.",
+      make_args=_args_one_tile,
+      label=lambda sp: f"seq={sp['seq']} dim={sp['dim']}")
+
+level(10, "row softmax of one tile", "nki_row_softmax_",
+      "the softmax attention needs, entirely on-chip: row max, subtract, exp, row sum, reciprocal, "
+      "scale -- with nisa/nl calls, never Python operators on tiles",
+      "none -- a building block for level 8",
+      ref_row_softmax,
+      [dict(seq=128, dim=64), dict(seq=64, dim=128), dict(seq=96, dim=32)],
+      {"softmax", "log_softmax"},
+      "Inputs are scaled by 3 so that skipping the max subtraction is visible as a precision loss.",
+      make_args=_args_one_tile,
+      label=lambda sp: f"seq={sp['seq']} dim={sp['dim']}")
+
+level(11, "attention scores Q K^T / sqrt(d)", "nki_attention_scores_",
+      "the one attention stage levels 9 and 10 do not cover: two transposes feeding one matmul, "
+      "contracting over dim on the partition axis",
+      "none -- a building block for level 8",
+      ref_attention_scores,
+      [dict(seq=128, dim=64), dict(seq=64, dim=128), dict(seq=96, dim=32)],
+      {"matmul", "dot", "einsum", "softmax", "attention"},
+      "nc_matmul contracts over the partition axis, so both operands need dim there: Q^T and K^T.",
+      max_waste=1.1,   # added later: the first solve stored the scores twice (1.2-1.6x the floor)
+      make_args=_args_two_tiles,
       label=lambda sp: f"seq={sp['seq']} dim={sp['dim']}")
 
 
@@ -574,8 +639,15 @@ def check_traffic_bar(level_n, counted, args, want):
     is and what buys the difference -- which is the only thing separating these levels from level 4.
     """
     bar = LEVELS[level_n].get("max_waste")
-    if not bar or not counted.get("bytes"):
+    if not bar:
         return None
+    # Fail CLOSED (review finding): this used to return None -- a pass -- when no bytes were measured,
+    # so a kernel whose transfers the counter could not see met the bar for free.
+    if not counted.get("bytes") or counted.get("unmeasured"):
+        return (f"TRAFFIC NOT VERIFIABLE FOR THIS LEVEL: the byte counter measured "
+                f"{counted.get('bytes', 0):,} bytes with {counted.get('unmeasured', 0)} unsized transfers, so "
+                f"level {level_n}'s bar of {bar:.2f}x cannot be checked. Move data with nisa.dma_copy so "
+                f"every HBM transfer is counted.")
     floor = minimum_hbm_bytes(args, want)
     if not floor:
         return None
@@ -628,6 +700,23 @@ def simulate_and_count(kernel, args):
     run, api = _simulator(nki, kernel)
     counter = dict(bytes=0, transfers=0, api=api, dtypes=set())
     original = nisa.dma_copy
+    import nki.language as nl
+    original_ndarray = nl.ndarray
+
+    def checked_ndarray(shape, *a, **kw):
+        # Check the ACTUAL allocation sizes, which a static check cannot see when they come from
+        # q.shape or a loop (independent audit: a symbolic (K, 512) sbuf tile with K=256 passed lint).
+        buf = kw.get("buffer", a[1] if len(a) > 1 else None)
+        dims = tuple(int(d) for d in (shape if isinstance(shape, (tuple, list)) else (shape,)))
+        if buf is nl.sbuf or buf is nl.psum:
+            where = "sbuf" if buf is nl.sbuf else "psum"
+            if len(dims) < 2:
+                raise ValueError(f"{where} tile allocated with shape {dims}: on-chip tiles need 2 dimensions "
+                                 f"(partition, free).")
+            if dims[0] > 128:
+                raise ValueError(f"{where} tile allocated with shape {dims}: {dims[0]} rows, but an on-chip tile "
+                                 f"has at most 128 (the partition axis). Split it into 128-row tiles.")
+        return original_ndarray(shape, *a, **kw)
 
     def counting_dma_copy(dst=None, src=None, **kw):
         try:
@@ -647,6 +736,7 @@ def simulate_and_count(kernel, args):
     # which the agent should be told rather than have scrolled past.
     import warnings
     nisa.dma_copy = counting_dma_copy
+    nl.ndarray = checked_ndarray
     try:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
@@ -656,9 +746,13 @@ def simulate_and_count(kernel, args):
             msg = str(w.message).split(". ")[0]
             if msg not in seen:
                 seen.append(msg)
-        counter["warnings"] = seen[:3]
+        # every hardware hazard is kept; only the other warnings are capped (audit: a hazard listed
+        # fourth was silently dropped)
+        hazards = [w for w in seen if "incorrect results on hardware" in w]
+        counter["warnings"] = hazards + [w for w in seen if w not in hazards][:3]
     finally:
         nisa.dma_copy = original
+        nl.ndarray = original_ndarray
     return out, counter
 
 
@@ -695,6 +789,7 @@ def verify(path, level_n, tol=2e-2, seed=0):
     passed, failures, intensities = 0, [], []
     for case in spec["shapes"]:
         args, _ = make_inputs(case, level_n, seed)
+        before = [x.copy() if isinstance(x, np.ndarray) else x for x in args]
         want = spec["ref"](*args)
         try:
             got, counted = simulate_and_count(kernel, args)
@@ -705,7 +800,13 @@ def verify(path, level_n, tol=2e-2, seed=0):
             failures.append((label(case, level_n),
                              f"RAISED during simulation: {type(e).__name__}: {e}"))
             continue
-        m = describe_mismatch(got, want, tol)
+        # Same acceptance as agent.grade(): inputs untouched, numbers right, traffic bar met, and no
+        # simulator warning that the kernel would be wrong on hardware.
+        m = (check_inputs_untouched(before, args) or describe_mismatch(got, want, tol)
+             or check_traffic_bar(level_n, counted, args, want))
+        hazards = [w for w in counted.get("warnings", []) if "incorrect results on hardware" in w]
+        if hazards and not m:
+            m = "CORRECT ON CPU BUT WRONG ON HARDWARE: " + hazards[0]
         if m:
             failures.append((label(case, level_n), m))
             continue
@@ -721,7 +822,7 @@ def verify(path, level_n, tol=2e-2, seed=0):
             if rep:
                 print(f"\n  case {label(case, level_n)}:")
                 print(rep)
-        if level_n >= 3 and counted["bytes"]:
+        if level_n >= 3 and counted["bytes"] and "M" in case:   # level 8 shapes are seq/dim
             f = matmul_flops(case["M"], case["K"], case["N"])
             intensities.append((label(case, level_n), roofline(f, counted["bytes"]),
                                 counted, f, minimum_hbm_bytes(args, want)))

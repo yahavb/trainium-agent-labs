@@ -1,0 +1,73 @@
+{
+  "date_utc": "2026-10-10T20:56:12.350235+00:00",
+  "pod": "seat-97",
+  "source_hash": "d86182cbbed9",
+  "original_seat97_unchanged": {
+    "agent.py": true,
+    "nkibench.py": true
+  },
+  "experiments": {
+    "contract": {
+      "candidates": 16,
+      "correct_candidates": 0,
+      "runs": 2,
+      "solved_runs": 0,
+      "prompt_tokens": 25570,
+      "completion_tokens": 10021,
+      "finish_reasons": [
+        "stop"
+      ],
+      "max_request_tokens": 2492
+    },
+    "planned": {
+      "candidates": 4,
+      "correct_candidates": 4,
+      "runs": 2,
+      "solved_runs": 2,
+      "prompt_tokens": 5764,
+      "completion_tokens": 4167,
+      "finish_reasons": [
+        "stop"
+      ],
+      "max_request_tokens": 2492
+    }
+  },
+  "independent": {
+    "fixture": {
+      "cases": 24,
+      "passed": 24,
+      "normalized_max_error": 6.396885065417666e-06,
+      "all_traffic_at_floor": true
+    },
+    "generated_run0": {
+      "cases": 24,
+      "passed": 24,
+      "normalized_max_error": 6.396885065417666e-06,
+      "all_traffic_at_floor": true
+    },
+    "generated_run1": {
+      "cases": 24,
+      "passed": 24,
+      "normalized_max_error": 6.396885065417666e-06,
+      "all_traffic_at_floor": true
+    }
+  },
+  "files": {
+    "agent-contract.jsonl": "ea7a42f7c839fd1d21586492d0ee6f4f7018bad06f002e4596a07d046f16adff",
+    "agent-contract.log": "1fdb34f21ee85282b78e3a208ab36d09d25ea5fd397be4ab202c3a86839a38ed",
+    "endpoint-probe.log": "98fdba34aa5ffa405cefe6d425281a01ef85adf350d93dbf5b530b066cf82732",
+    "fixture-check.log": "9aa59c1c2fc1b59328c9dc2b4c0857dc4977b631f16b32874307381f15e626c4",
+    "fixture-independent.json": "4e34d7f0374908e6c8d427992150b28441ef18df447a5b3456e8c3df20fd598a",
+    "fixture-independent.log": "0de83ea3567a1a3c199c55c7bc930fa0f8f853571c0e9a1eca4cb6784c5477cd",
+    "agent-planned.jsonl": "a2b333dd24a4cce3eff912e0804a7e2c1e3648c85da6e9b851e9d3019da58275",
+    "agent-planned.log": "f8175afd3844e869a243aa158f8711735cde524cb3bb5a4ca86cceaf663180c6",
+    "regression.log": "8ce2843a2f9e9aa619bb9091238452e36c9ef2cdb01a16f4d41e94dc6394e123",
+    "fixture-agent-grade.json": "4a5fb4127ae688f503efaecc415d61108bbbd755190cf7c41e3744177ea13761",
+    "generated-run0-independent.json": "4e34d7f0374908e6c8d427992150b28441ef18df447a5b3456e8c3df20fd598a",
+    "generated-run0-independent.log": "0de83ea3567a1a3c199c55c7bc930fa0f8f853571c0e9a1eca4cb6784c5477cd",
+    "generated-run1-independent.json": "4e34d7f0374908e6c8d427992150b28441ef18df447a5b3456e8c3df20fd598a",
+    "generated-run1-independent.log": "0de83ea3567a1a3c199c55c7bc930fa0f8f853571c0e9a1eca4cb6784c5477cd",
+    "level08_attention_run0.py": "99bec6c951361e27b3c51d55b77ed9dfd06520b7d39a2a4b5555b7110e6d2ad6",
+    "level08_attention_run1.py": "50840792fec8c59fec2d34a3f29b9f92e86db7ac943f61ad4c6c859728a070e3"
+  }
+}
