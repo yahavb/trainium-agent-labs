@@ -100,19 +100,47 @@ Full account: [CHECKER.md](projects/02-kernel-agent/CHECKER.md). The decisions t
   normal draw, a ramp (every element distinct), ×1e4 (float16 overflows), and float16 inputs, plus an
   output dtype check. The reference kernels pass all of it (20/20, 16/16, 4/4, 16/16). Four deliberately
   wrong kernels that pass every loop shape are all caught. [EVAL.md](projects/02-kernel-agent/EVAL.md)
-- **Bugs we found in our own checker, and what we re-checked.** [[TBD: one line each: path cache
-  (c39c0ce, ded1ef2), audit install (183b384); all 424 baseline attempts re-graded, identical (b39989f)]]
-- **What it does not check.** [[TBD: no device timing; L3 has a single loop shape; ...]]
+- **Bugs we found in our own checker, and what we re-checked.**
+  - *Path cache.* NKI caches a kernel by its file path. Grading several candidates from one path in one
+    process graded a later candidate as the first one, numerics included, which can make both false solves
+    and false failures. Fixed by a fresh file per candidate (c39c0ce; diagnosis in ded1ef2). Every log from
+    before the fix was re-graded from scratch: baseline 424/424, replication 420/420, experiment A 160/160,
+    v3 100/100 attempts identical to what was logged.
+  - *Audit left installed.* The audit's wrappers stayed in place after a simulation and broke the trn2
+    compiler in the same process. They are now installed only while a simulation runs (183b384).
+  - *Simulation target.* Without a Neuron device, NKI 0.6.0 simulates trn3, which accepts a 1024-wide moving
+    tile that trn2 rejects. On a seat NKI picks trn2 from the hardware; the v7 runs also set it, and the
+    earlier logs give the same scores under both targets (530ab9a).
+- **What it does not check.** Speed on the device (every number is simulated; levels 5–7's traffic bars
+  are a model, not a measurement). Level 3 has a single loop shape, because the organizers' reference
+  asserts it. The static rules are a text scan. The output dtype is checked only in the held-out set. SBUF
+  is held to 192 KiB per partition, below trn2's 224 KiB.
 
 ## 3. The agent: what changed, and the rule behind every message
 
-[[TBD: condensed table of V7.md "What v7 changes relative to agent.py", plus our experiment A
-(invented API names mapped to real 0.6.0 calls) and E-F if adopted.]]
+The loop is the organizers' `agent.py`: up to 8 rounds of 4 samples, the round's best kernel is repaired
+next, the same failure twice adds a one-line-per-attempt ledger of what already failed. On top of it, the
+final agent stacks these layers (full list and sources: [V7.md](projects/02-kernel-agent/V7.md)):
+
+| layer | what it changes | the failure it answers (baseline counts) |
+|---|---|---|
+| first prompt (`PROMPT1=v2`) | states the exact `def` line and a short block of real NKI calls, each checked to lower for trn2 | invented APIs: 80 of 160 level-1 attempts |
+| worked example (`CARD=category`) | one example chosen by the operation's category: a row mean for matmuls, a channel mean for reductions | 1-D tiles, reshape instead of slicing (70 of 112 level-3 attempts) |
+| repair messages (v2–v5) | quote the failing line; for a known error class give the fix as lines to paste, in the model's own variable names; a too-large matmul operand gets the whole three-loop tiling at once | partition over 128 (55 of 84 level-4 attempts) and copy-size mismatches |
+| repair prompt (`restructure`) | "use the code given; restructure around new loops or tiles if needed" replaces "keep everything else identical" | the old line forbade the loop restructuring tiling needs |
+| invented-name map (our experiment A) | known invented calls (`nisa.multiply`, `transpose_moving`, …) mapped to the real 0.6.0 call | invented APIs |
+| grading fixes, compiler gate | a fixed `grade()` with a 120 s timeout; a full-score kernel using a form the trn2 compiler rejects is held at 0.95 and given the rewrite | compiler-only failures |
+| verdict | after each level: a confidence, then extra hostile cases and lowering for trn2 | see §5 |
+| sampling (`SAMPLING=qwen`) | Qwen3's thinking-off sampling settings | none in practice: the server decodes greedily |
+
+[[TBD: ablation table: which of these layers made levels 3 and 4 solvable]]
 
 The rule for feedback: one failure, one instruction, naming the failing line. A verdict ("line 16 calls a
-banned function") is rewritten as an instruction ("change this call; keep everything else"). Following
-liuyq's method, a tiling fix is given as code in the model's own variable names; target values are never
-given.
+banned function") is rewritten as an instruction ("change this call; keep everything else"). **For known
+error classes the instruction is code**: the lines to paste, written in the model's own variable names and
+shape expressions, never the test shapes' numbers and never taken from a reference kernel. The model
+copies them (§8 shows it doing so). We chose this deliberately and report it, because it means part of
+the solution comes from the checker, not the model.
 
 **What the model sees, and what it never sees.** The first prompt carries one worked example chosen by the
 operation's category: a row mean for matmul levels, a channel mean for reductions, nothing otherwise. For
