@@ -64,15 +64,20 @@ import schema  # noqa: E402
 #   -v3-            P3's seat running P1's failure instructions alone (agent.py --no-p3-rules --tag v3)
 # Optional groups are drawn only when they have runs.
 DISPLAY_ARMS = ("referee_continuation", "referee", "referee_v2", "referee_v2_p1fix", "referee_v2_p3", "referee_v3",
-                "model_alone", "model_alone_v2", "random_search")
+                "referee_v4", "referee_v5", "referee_later", "model_alone", "model_alone_v2", "random_search")
 ARMS_SHOWN = DISPLAY_ARMS
-OPTIONAL_ARMS = {"referee_continuation", "referee_v2", "referee_v2_p1fix", "referee_v2_p3", "referee_v3", "model_alone_v2"}
+OPTIONAL_ARMS = {"referee_continuation", "referee_v2", "referee_v2_p1fix", "referee_v2_p3", "referee_v3", "referee_v4",
+                 "referee_v5", "referee_later", "model_alone_v2"}
 ARM_LABEL = {"referee_continuation": "Qwen winner continuation", "referee": "Referee v1", "referee_v2": "Referee v2 (P1)",
-             "referee_v2_p1fix": "Qwen + P1 fixes", "referee_v2_p3": "P3 named-error rules (v2)", "referee_v3": "P1 instructions only (v3)",
-             "model_alone": "Model alone v1", "model_alone_v2": "Model alone v2", "random_search": "Random search"}
+             "referee_v2_p1fix": "Qwen + P1 fixes", "referee_v2_p3": "P3 named-error rules (v2)",
+             "referee_v3": "P1 instructions only (v3)", "referee_v4": "P3 rules A-C + P1 (v4)", "referee_v5": "Referee v5",
+             "referee_later": "Referee v6+", "model_alone": "Model alone v1", "model_alone_v2": "Model alone v2",
+             "random_search": "Random search"}
 ARM_COLOR = {"referee_continuation": "#ad4d7b", "referee": "var(--s1)", "referee_v2": "var(--s4)",
-             "referee_v2_p1fix": "#257e73", "referee_v2_p3": "#8365cc", "referee_v3": "#6b7d2a", "model_alone": "var(--s2)",
+             "referee_v2_p1fix": "#257e73", "referee_v2_p3": "#8365cc", "referee_v3": "#6b7d2a", "referee_v4": "#3d6f8f",
+             "referee_v5": "#7a5c3a", "referee_later": "#6f6e69", "model_alone": "var(--s2)",
              "model_alone_v2": "#a87519", "random_search": "var(--s3)"}
+VERSION_TAG = re.compile(r"-v(\d+)-")   # agent.py --tag vN puts "-vN-" in the run id
 
 
 def display_arm(record):
@@ -81,8 +86,10 @@ def display_arm(record):
         return "referee_continuation"
     if arm == "referee" and "-v2-p1fix-" in run_id:
         return "referee_v2_p1fix"
-    if arm == "referee" and "-v3-" in run_id:
-        return "referee_v3"
+    m = VERSION_TAG.search(run_id)
+    if arm == "referee" and m and int(m.group(1)) >= 3:
+        # Every later treatment is its own series: an untagged-for version must never fall into v1.
+        return f"referee_v{m.group(1)}" if int(m.group(1)) <= 5 else "referee_later"
     if arm == "referee" and "-v2-" in run_id and record.get("seat") == 101:
         return "referee_v2_p3"   # P3's agent-side rules: a different treatment from P1's v2 on seat 100
     return arm + "_v2" if arm in ("referee", "model_alone") and "-v2-" in run_id else arm
@@ -581,7 +588,7 @@ def step_points(xs, ys):
     return pts
 
 
-MODEL_ARMS = ("referee_continuation", "referee", "referee_v2", "referee_v2_p1fix", "referee_v2_p3", "referee_v3", "model_alone", "model_alone_v2")   # both start from the start kernel; random search starts from the expert
+MODEL_ARMS = ("referee_continuation", "referee", "referee_v2", "referee_v2_p1fix", "referee_v2_p3", "referee_v3", "referee_v4", "referee_v5", "referee_later", "model_alone", "model_alone_v2")   # both start from the start kernel; random search starts from the expert
 
 
 def panel_progress(summary, results, tune):
@@ -1208,6 +1215,22 @@ border-radius:8px;padding:7px 9px;font-size:12px;box-shadow:0 4px 16px rgba(0,0,
 .tip-row{display:flex;align-items:center;gap:8px}
 .tip-key{display:inline-block;width:12px;height:2px;border-radius:1px;flex:none}
 footer{color:var(--muted);font-size:11.5px;margin-top:4px}
+.hero{margin:0 0 18px}
+.hero-nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(230px,100%),1fr));gap:12px;margin:0 0 14px}
+.hero-num{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px}
+.hero-num .n{font-size:40px;font-weight:650;line-height:1.05;letter-spacing:-.02em}
+.hero-num .c{font-size:12.5px;color:var(--ink-2);margin-top:6px;line-height:1.35}
+.hero-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(540px,100%),1fr));gap:14px}
+.hero-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;min-width:0}
+.hero-card h3{font-size:16px;margin:0 0 2px}
+.hero-card svg text.big{font-size:15px}
+.hero-card svg text.ann{fill:var(--ink-1);font-size:11px;font-weight:600}
+.hero-card svg text.dot-ok{fill:#fff;font-size:10px;font-weight:700}
+.bar-plain{fill:var(--neutral-bar);opacity:.45}.bar-top{fill:var(--s3)}.bar-default{fill:var(--ink-1)}
+.hero-wall{gap:6px;margin-top:8px}.hero-wall .chip{width:24px;height:24px;font-size:13px}
+h2.section{font-size:15px;color:var(--ink-2);font-weight:600;margin:6px 0 10px}
+main.results-only{max-width:1180px}
+.wall-key{margin:10px 0 0}
 @media (max-width:560px){.card{padding:12px}.tile-value{font-size:26px}}
 """
 
@@ -1348,7 +1371,184 @@ def stamp(records, fake):
     return f'<div class="fake" role="alert"><strong>Fake or stub data.</strong> {what}</div>'
 
 
-def build(records, results, notes, fake, inputs, sweep=()):
+# ---------------------------------------------------------------- the results summary (screen 0, README)
+
+# What the model was told, per treatment: the one line under each row of the feedback chart.
+FEEDBACK_ROWS = (
+    ("model_alone", "told only “make it faster”"),
+    ("referee", "v1: told to fix an error it never sees"),
+    ("referee_v2_p3", "the error named, with its numbers"),
+    ("referee_v3", "P1's named fixes alone, P3's agent"),
+    ("referee_v4", "P3's rules A–C on P1's fixes"),
+    ("referee_v5", "a later P3 treatment"),
+    ("referee_later", "later treatments"),
+    ("referee_v2", "P1's multi-change treatment"),
+    ("referee_v2_p1fix", "P1's multi-change, revised"),
+)
+BASELINE_ARMS = ("model_alone", "referee")   # the original feedback the headline compares against
+FAMILY = {"referee_v2": "P1's multi-change feedback", "referee_v2_p1fix": "P1's multi-change feedback"}
+
+
+def hero_feedback(s):
+    rows = [(a, d, s["arms"].get(a) or []) for a, d in FEEDBACK_ROWS if s["arms"].get(a)]
+    if not rows:
+        return "", None
+    W, L, rh, sp, r = 560, 236, 40, 22, 8
+    H = rh * len(rows) + 6
+    g = []
+    for i, (arm, desc, runs) in enumerate(rows):
+        y = 6 + i * rh + rh / 2
+        wins = [x for x in runs if x["best_x"] > 1.0 and x["n_verified"]]
+        g.append(f'<text x="{L - 14}" y="{y - 2:.1f}" text-anchor="end" class="row-label">{esc(ARM_LABEL[arm])}</text>'
+                 f'<text x="{L - 14}" y="{y + 12:.1f}" text-anchor="end" class="tick">{esc(desc)}</text>')
+        for j, run in enumerate(runs):
+            x = L + 6 + j * sp
+            ok = run["best_x"] > 1.0 and run["n_verified"]
+            t_ = tip(f"{fmt_x(run['best_x'])}" if ok else "no faster kernel", f"{ARM_LABEL[arm]} · run {j + 1}",
+                     f"{len(run['attempts'])} attempts · seat {run['seat']}")
+            mark = (f'<circle cx="{x}" cy="{y:.1f}" r="{r}" fill="var(--good)"/>'
+                    f'<text x="{x}" y="{y + 3.5:.1f}" text-anchor="middle" class="dot-ok">✓</text>' if ok else
+                    f'<circle cx="{x}" cy="{y:.1f}" r="{r - 1}" fill="none" stroke="var(--muted)" stroke-width="2"/>')
+            g.append(f'<g class="mark" tabindex="0" data-tip="{t_}"><circle cx="{x}" cy="{y:.1f}" r="11" '
+                     f'fill="transparent"/>{mark}</g>')
+        best = max((x["best_x"] for x in wins), default=None)
+        g.append(f'<text x="{W - 4}" y="{y - 2:.1f}" text-anchor="end" class="value strong big">{len(wins)} / {len(runs)}</text>'
+                 f'<text x="{W - 4}" y="{y + 12:.1f}" text-anchor="end" class="tick">'
+                 f'{"best " + fmt_x(best) if best else "runs faster"}</text>')
+    won = lambda x: x["best_x"] > 1.0 and x["n_verified"]
+    base = [x for a in BASELINE_ARMS for x in s["arms"].get(a) or []]
+    families = {}   # P1's original and revised multi-change runs are one treatment family for the headline
+    for a, _, rs in rows:
+        if a not in BASELINE_ARMS:
+            families.setdefault(FAMILY.get(a, ARM_LABEL[a]), []).extend(rs)
+    top = max(((name, [x for x in rs if won(x)], rs) for name, rs in families.items()),
+              key=lambda t: (max((x["best_x"] for x in t[1]), default=0), len(t[1])), default=None)
+    svg = f'<svg viewBox="0 0 {W} {H}" role="img" aria-label="runs per feedback treatment">{"".join(g)}</svg>'
+    return svg, dict(base_n=len(base), base_k=sum(1 for x in base if x["best_x"] > 1.0 and x["n_verified"]),
+                     top=top)
+
+
+def hero_tuning(sweep, tune):
+    timed = sorted((x for x in sweep if x["speedup"] and x["verdict"] in ("faster", "no_gain", "slower")),
+                   key=lambda x: -x["speedup"])
+    ref = next((x["speedup"] for x in timed if caps_of(x["code"]) == SHIPPED_CAPS), None)
+    if not timed or not ref:
+        return ""
+    vals = [x["speedup"] / ref for x in timed]
+    order = [caps_of(x["code"]) for x in timed]
+    d = order.index(SHIPPED_CAPS)
+    found = {r["caps"] for r in (tune or {}).get("runs", []) if r["caps"]}   # each search run's best setting
+    W, H, L, T, B = 560, 190, 36, 26, 22
+    n = len(vals)
+    bw = (W - L - 6) / n
+    _, y1, yt = nice_domain(0, max(vals) * 1.05, 4)
+    sy = lambda v: T + (1 - v / y1) * (H - T - B)
+    g = []
+    for t in yt:
+        g.append(f'<line x1="{L}" x2="{W}" y1="{sy(t):.1f}" y2="{sy(t):.1f}" class="grid"/>'
+                 f'<text x="{L - 6}" y="{sy(t) + 4:.1f}" text-anchor="end" class="tick">{t:g}×</text>')
+    for i, v in enumerate(vals):
+        x = L + i * bw
+        cls = "bar-default" if i == d else "bar-top" if order[i] in found else "bar-plain"
+        g.append(f'<g class="mark" tabindex="0" data-tip="{tip(fmt_x(v) + " the default", f"#{i + 1} of {n}: block caps {order[i]}")}">'
+                 f'<rect x="{x + 0.5:.1f}" y="{sy(v):.1f}" width="{max(bw - 1.5, 1):.1f}" height="{H - B - sy(v):.1f}" '
+                 f'rx="1.5" class="{cls}"/></g>')
+    xd = L + d * bw + bw / 2
+    g.append(f'<line x1="{L}" x2="{W}" y1="{sy(1):.1f}" y2="{sy(1):.1f}" class="ref"/>'
+             f'<text x="{xd:.1f}" y="{sy(vals[d]) - 8:.1f}" text-anchor="middle" class="ann">AWS default · #{d + 1}</text>'
+             f'<text x="{L + bw / 2 + 4:.1f}" y="{sy(vals[0]) - 8:.1f}" class="ann">best #1 · {fmt_x(vals[0])}</text>'
+             f'<text x="{W - 2}" y="{H - 6}" text-anchor="end" class="tick">all {n} legal block settings, fastest first · '
+             f'green: the best of a random-search run</text>')
+    return f'<svg viewBox="0 0 {W} {H}" role="img" aria-label="every block setting ranked">{"".join(g)}</svg>'
+
+
+def hero_heldout(results):
+    ho = results["heldout"]
+    want = [("aws as published", "AWS as published"), ("expert", "Expert (fp32 fix)"),
+            ("best random_search", "Random search: best"), ("referee_v2", "Qwen3-8B kernel (v2)")]
+    rows = [(w, name, [h for h in ho if h.get("which") == w]) for w, name in want if any(h.get("which") == w for h in ho)]
+    if not rows:
+        return ""
+    shapes = list(dict.fromkeys(h.get("shape") for _, _, hs in rows for h in hs))
+    top = max([h["speedup"] for _, _, hs in rows for h in hs if h.get("passed") and h.get("speedup")] + [1.5])
+    W, L, T, rh = 560, 150, 58, 30
+    cw = (W - L - 40) / max(len(shapes), 1)
+    H = T + rh * len(rows) + 4
+    g = []
+    for j, sh in enumerate(shapes):
+        g.append(f'<text transform="translate({L + j * cw + cw / 2:.1f},{T - 8}) rotate(-35)" class="tick col">'
+                 f'{esc(shape_text(sh))}</text>')
+    for i, (w, name, hs) in enumerate(rows):
+        y = T + i * rh
+        g.append(f'<text x="{L - 10}" y="{y + rh / 2 + 4:.1f}" text-anchor="end" class="row-label">{esc(name)}</text>')
+        cell = {h.get("shape"): h for h in hs}
+        for j, sh in enumerate(shapes):
+            h = cell.get(sh)
+            if not h:
+                continue
+            ok, sp = bool(h.get("passed")), h.get("speedup")
+            ulps = re.search(r"([\d.]+) bf16 ulps", str(h.get("message") or ""))
+            text = (fmt_x(sp) if sp else "pass") if ok else ("✗ " + ulps.group(1) + " ulps" if ulps else "✗ wrong")
+            cls, tcls = (f"hc{heat_bucket(sp, top)}", f"ht{heat_bucket(sp, top)}") if ok else ("hfail", "htfail")
+            x = L + j * cw
+            g.append(f'<g class="mark" tabindex="0" data-tip="{tip(text, f"{name} at {shape_text(sh)}")}">'
+                     f'<rect x="{x + 1.5:.1f}" y="{y + 2}" width="{cw - 3:.1f}" height="{rh - 4}" rx="4" class="{cls}"/>'
+                     f'<text x="{x + cw / 2:.1f}" y="{y + rh / 2 + 4:.1f}" text-anchor="middle" class="cell {tcls}">'
+                     f'{esc(text)}</text></g>')
+    return f'<svg viewBox="0 0 {W} {H}" role="img" aria-label="held-out shapes">{"".join(g)}</svg>'
+
+
+def hero(summary, results, tune, sweep):
+    """The page's opening: four headline numbers and four charts, every value computed from the logs."""
+    s = summary.get("matmul")
+    fb_svg, fb = hero_feedback(s) if s else ("", None)
+    control, cheats, caught, pending = redteam_split(results["redteam"]) if results["redteam"] else ([], [], 0, 0)
+    tuned = median(r["best"] for r in tune["runs"]) if tune and tune["runs"] else None
+    ranks = sorted(r["rank"] for r in tune["runs"] if r.get("rank")) if tune else []
+    nums = []
+    if fb:
+        nums.append((f'{fb["base_k"]} / {fb["base_n"]}', "runs reached a faster kernel with the original feedback"))
+        if fb["top"] and fb["top"][1]:
+            name, wins, rs = fb["top"]
+            nums.append((fmt_x(max(x["best_x"] for x in wins)),
+                         f"best kernel Qwen3-8B wrote, verified on the chip · {len(wins)} of {len(rs)} runs with "
+                         f"{name}"))
+    if tuned:
+        nums.append((f"{(tuned - 1) * 100:+.0f}%", "block tuning over AWS's default, median of 3 runs"))
+    if cheats:
+        nums.append((f"{caught} / {len(cheats)}", f"planted cheats caught · {sum(c['state'] == 'pass' for c in control)}"
+                                                 f" / {len(control)} honest kernels accepted"))
+    strip = '<div class="hero-nums">' + "".join(
+        f'<div class="hero-num"><div class="n">{esc(v)}</div><div class="c">{esc(c)}</div></div>' for v, c in nums) + "</div>"
+    wall = ""
+    if cheats:
+        wall = ('<div class="chips hero-wall">' + "".join(
+            f'<span class="chip {CHIP.get(c["state"], ("other", "?", ""))[0]}{" round" if c["honest"] else ""}" tabindex="0" '
+            f'data-tip="{tip(c["cheat"], CHIP.get(c["state"], ("", "", c["state"]))[2], c["what"])}">'
+            f'{CHIP.get(c["state"], ("", "?", ""))[1]}</span>' for c in cheats + control) + "</div>"
+            '<p class="how wall-key">✓ caught · ✗ missed · – not caught, gained no speed · round ✓ honest kernel '
+            'accepted</p>')
+    cards = [
+        ("Feedback decides whether the loop works",
+         "One dot per run of Qwen3-8B (8 attempts each). Green: the run produced a kernel the referee verified "
+         "faster on the chip and correct on unseen shapes.", fb_svg),
+        ("Correct on shapes it never saw",
+         "Speedup over the start kernel at 6 held-out shapes with hostile inputs. Red: wrong at that shape "
+         "(bf16 ulps against a limit of 4).", hero_heldout(results)),
+        (f"Block tuning: {(tuned - 1) * 100:+.0f}% over AWS's default" if tuned else "Block tuning",
+         "Every legal block setting of AWS's optimised matmul, timed on the chip."
+         + (f" Each random-search run's best ranks #{', #'.join(str(x) for x in ranks)}." if ranks else ""),
+         hero_tuning(sweep, tune)),
+        ("A referee you can trust",
+         "Squares: planted cheats, by result; circles: honest kernels that must be accepted. Every candidate runs in "
+         "a sandboxed process; timing is interleaved A/B on the device clock.", wall),
+    ]
+    return (f'<section class="hero" aria-label="results">{strip}<div class="hero-cards">' + "".join(
+        f'<div class="hero-card"><h3>{esc(t)}</h3><p class="how">{esc(h)}</p>{body}</div>' for t, h, body in cards if body)
+        + "</div></section>")
+
+
+def build(records, results, notes, fake, inputs, sweep=(), results_only=False):
     summary = summarize(records)
     RUNS_BY_ARM.clear()
     RUNS_BY_ARM.update(a for s in summary.values() for a, rs in s["arms"].items() if rs)
@@ -1365,6 +1565,29 @@ def build(records, results, notes, fake, inputs, sweep=()):
                      f'needed attention</summary><ul>' + "".join(f"<li>{esc(n)}</li>" for n in notes[:50]) +
                      ("<li>…</li>" if len(notes) > 50 else "") + "</ul></details>")
     data = json.dumps(details, ensure_ascii=False).replace("</", "<\\/")
+    top = hero(summary, results, tune, list(sweep))
+    if results_only:   # dashboard/results.html: the results alone, sized for screenshots
+        return f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CHIPBOOST Results</title>
+<style>{CSS}</style>
+</head>
+<body>
+<main class="results-only">
+<header class="top"><div><h1>CHIPBOOST</h1><p class="lede">Qwen3-8B, served on one Trainium2 chip, tries to make the
+matmul it is built from faster on that chip. A result counts only if the referee verifies it: correct on the chip
+and on unseen shapes, and faster than the timing noise.</p></div><p class="meta">{esc(meta)}</p></header>
+{stamp(records, fake)}{top}
+</main>
+<div id="tip" role="tooltip" hidden></div>
+<script type="application/json" id="attempt-data">[]</script>
+<script>{JS}</script>
+</body>
+</html>
+"""
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -1381,7 +1604,8 @@ V1, consolidated v2, Qwen + P1 fixes and P1 instructions only (v3) are shown sep
 A speedup counts only if the referee verifies it: correct on the chip and on unseen shapes, and faster than the noise.</p></div>
 <p class="meta">{esc(meta)}</p>
 </header>
-{stamp(records, fake)}{note_html}{kpis(summary, results, records, tune)}
+{stamp(records, fake)}{note_html}{top}
+<h2 class="section">The detail</h2>
 <div class="row">{panel_speed(summary, results, tune)}{panel_progress(summary, results, tune)}</div>
 <div class="row">{panel_redteam(results)}{panel_heldout(results, summary)}</div>
 {timeline}
@@ -1461,6 +1685,9 @@ def main():
     out = Path(a.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(build(records, results, notes, fake, inputs, sweep), encoding="utf-8")
+    # The results alone, beside it: what the README's screenshots are taken from.
+    (out.parent / "results.html").write_text(build(records, results, notes, fake, inputs, sweep, results_only=True),
+                                             encoding="utf-8")
     print(f"wrote {out}: {len(records)} attempts from {', '.join(inputs)}"
           + ("  [FAKE DATA]" if fake else "") + (f"  ({len(notes)} log lines need attention)" if notes else ""))
 
