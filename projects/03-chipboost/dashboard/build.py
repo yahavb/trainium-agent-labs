@@ -1399,37 +1399,43 @@ def stamp(records, fake):
 
 # ---------------------------------------------------------------- the results summary (screen 0, README)
 
-# What the model was told, per treatment: the one line under each row of the feedback chart.
+# What the model was told, per row of the feedback chart: (arms, label, the line under it). A treatment's
+# versions share one row, dots in version order, so no failed version drops out of sight.
 FEEDBACK_ROWS = (
-    ("model_alone", "told only “make it faster”"),
-    ("referee", "v1: told to fix an error it never sees"),
-    ("referee_v2_p3", "the error named, with its numbers"),
-    ("referee_v3", "P1's named fixes alone, P3's agent"),
-    ("referee_v4", "P3's rules A–C on P1's fixes"),
-    ("referee_v5", "P3's rules A–D on P1's fixes"),
-    ("referee_later", "later treatments"),
-    ("referee_v2", "P1's multi-change treatment"),
-    ("referee_v2_p1fix", "P1's multi-change, revised"),
+    (("model_alone",), "Model alone", "told only “make it faster”"),
+    (("referee",), "Referee v1", "told to fix an error it never sees"),
+    (("referee_v2_p3",), "P3 named-error rules (v2)", "the error named, with its numbers"),
+    (("referee_v3", "referee_v4", "referee_v5", "referee_later"), "P3's agent + P1's fixes", None),
+    (("referee_v2", "referee_v2_p1fix"), "P1's multi-change feedback", "first run, then revised repeats"),
 )
 BASELINE_ARMS = ("model_alone", "referee")   # the original feedback the headline compares against
-FAMILY = {"referee_v2": "P1's multi-change feedback", "referee_v2_p1fix": "P1's multi-change feedback"}
+
+
+def version_of(arm):
+    return "v6+" if arm == "referee_later" else arm.rsplit("_", 1)[-1]
 
 
 def hero_feedback(s):
-    rows = [(a, d, s["arms"].get(a) or []) for a, d in FEEDBACK_ROWS if s["arms"].get(a)]
+    rows = []
+    for arms, label, desc in FEEDBACK_ROWS:
+        runs = [(a, r) for a in arms for r in s["arms"].get(a) or []]
+        if runs:
+            vs = list(dict.fromkeys(version_of(a) for a, _ in runs))
+            rows.append((arms, label, desc or f"{', '.join(vs)}: one rule added each time", runs))
     if not rows:
         return "", None
     W, L, rh, sp, r = 560, 236, 40, 22, 8
     H = rh * len(rows) + 6
     g = []
-    for i, (arm, desc, runs) in enumerate(rows):
+    won = lambda x: x["best_x"] > 1.0 and x["n_verified"]
+    for i, (arms, label, desc, runs) in enumerate(rows):
         y = 6 + i * rh + rh / 2
-        wins = [x for x in runs if x["best_x"] > 1.0 and x["n_verified"]]
-        g.append(f'<text x="{L - 14}" y="{y - 2:.1f}" text-anchor="end" class="row-label">{esc(ARM_LABEL[arm])}</text>'
+        wins = [x for _, x in runs if won(x)]
+        g.append(f'<text x="{L - 14}" y="{y - 2:.1f}" text-anchor="end" class="row-label">{esc(label)}</text>'
                  f'<text x="{L - 14}" y="{y + 12:.1f}" text-anchor="end" class="tick">{esc(desc)}</text>')
-        for j, run in enumerate(runs):
+        for j, (arm, run) in enumerate(runs):
             x = L + 6 + j * sp
-            ok = run["best_x"] > 1.0 and run["n_verified"]
+            ok = won(run)
             t_ = tip(f"{fmt_x(run['best_x'])}" if ok else "no faster kernel", f"{ARM_LABEL[arm]} · run {j + 1}",
                      f"{len(run['attempts'])} attempts · seat {run['seat']}")
             mark = (f'<circle cx="{x}" cy="{y:.1f}" r="{r}" fill="var(--good)"/>'
@@ -1441,13 +1447,9 @@ def hero_feedback(s):
         g.append(f'<text x="{W - 4}" y="{y - 2:.1f}" text-anchor="end" class="value strong big">{len(wins)} / {len(runs)}</text>'
                  f'<text x="{W - 4}" y="{y + 12:.1f}" text-anchor="end" class="tick">'
                  f'{"best " + fmt_x(best) if best else "runs faster"}</text>')
-    won = lambda x: x["best_x"] > 1.0 and x["n_verified"]
     base = [x for a in BASELINE_ARMS for x in s["arms"].get(a) or []]
-    families = {}   # P1's original and revised multi-change runs are one treatment family for the headline
-    for a, _, rs in rows:
-        if a not in BASELINE_ARMS:
-            families.setdefault(FAMILY.get(a, ARM_LABEL[a]), []).extend(rs)
-    top = max(((name, [x for x in rs if won(x)], rs) for name, rs in families.items()),
+    top = max(((label, [x for _, x in runs if won(x)], [x for _, x in runs])
+               for arms, label, _, runs in rows if not set(arms) & set(BASELINE_ARMS)),
               key=lambda t: (round(max((x["best_x"] for x in t[1]), default=0), 3), len(t[1])), default=None)   # 3 decimals: timing noise never outranks more successes
     svg = f'<svg viewBox="0 0 {W} {H}" role="img" aria-label="runs per feedback treatment">{"".join(g)}</svg>'
     return svg, dict(base_n=len(base), base_k=sum(1 for x in base if x["best_x"] > 1.0 and x["n_verified"]),
