@@ -24,15 +24,34 @@ def _tokens(rec):
 
 
 def load(paths):
+    """Two indexes over the same records: by (level, sha1, prompt_chars) and, as a fallback, by
+    (level, sha1). With E-div and MIX (feedback_v8) samples 2..n get other prompts than sample 1,
+    while attempts.jsonl records sample 1's prompt_chars, so only the fallback can match them."""
     queues = collections.defaultdict(collections.deque)
+    loose = collections.defaultdict(collections.deque)
     for path in paths:
         for line in open(path):
             if line.strip():
                 rec = json.loads(line)
                 if rec.get("usage"):
-                    queues[(rec.get("level"), rec.get("code_sha1"), rec.get("prompt_chars"))] \
-                        .append(rec)
+                    rec["_used"] = False
+                    queues[(rec.get("level"), rec.get("code_sha1"), rec.get("prompt_chars"))].append(rec)
+                    loose[(rec.get("level"), rec.get("code_sha1"))].append(rec)
+    queues[_LOOSE] = loose
     return queues
+
+
+_LOOSE = ("__loose__",)
+
+
+def _take(q):
+    while q and q[0]["_used"]:
+        q.popleft()
+    if not q:
+        return None
+    rec = q.popleft()
+    rec["_used"] = True
+    return rec
 
 
 def apply(attempts, queues):
@@ -41,12 +60,13 @@ def apply(attempts, queues):
     for r in attempts:
         key = (r["level"], hashlib.sha1((r.get("code") or "").encode()).hexdigest(),
                r.get("prompt_chars"))
-        q = queues.get(key)
-        if not q:
+        rec = _take(queues.get(key) or collections.deque())
+        if rec is None and _LOOSE in queues:
+            rec = _take(queues[_LOOSE].get(key[:2]) or collections.deque())
+        if rec is None:
             r["usage_matched"] = False
             unmatched += 1
             continue
-        rec = q.popleft()
         p, c = _tokens(rec)
         split = r.get("prompt_split") or {}
         est = sum(split.values())

@@ -1,0 +1,17 @@
+﻿family,mode,description,level 1,level 2,level 3,level 4,total,share of failures,stuck rate
+index arithmetic,copy_size_mismatch,copies between tiles of different sizes,1,68,0,0,69,41.1%,0%
+index arithmetic,broadcast,assigns a value of the wrong shape,3,0,2,20,25,14.9%,25%
+silent wrong numbers,numeric_mismatch,"runs, numbers wrong",4,16,0,0,20,11.9%,67%
+other,other,,8,0,0,0,8,4.8%,0%
+rules / format,truncated,the answer hit max_tokens and was cut off (finish=length); the checker then sees broken code,7,1,0,0,8,4.8%,
+index arithmetic,axis_mismatch,an operation given a tile with more axes than it takes,7,0,0,0,7,4.2%,0%
+memory model,python_op_on_tile,"Python arithmetic (+=, *) on a tile",5,0,0,0,5,3.0%,
+silent wrong numbers,non_finite,NaN or Inf in the output,0,4,0,0,4,2.4%,67%
+rules / format,rule_violation,"banned call, missing @nki.jit or wrong entry name",0,4,0,0,4,2.4%,
+API,invented_name,calls an NKI function or attribute that does not exist,1,2,0,0,3,1.8%,0%
+index arithmetic,out_of_bounds,indexes past the end of a tensor,1,2,0,0,3,1.8%,
+tiling rules,tile_1d,a 1-D tile (every SBUF/PSUM tile needs 2 dims),3,0,0,0,3,1.8%,0%
+memory model,wrong_buffer,a tile in the wrong memory (SBUF / PSUM / HBM),1,2,0,0,3,1.8%,50%
+index arithmetic,bad_access_pattern,a strided .ap() view that does not fit the tile,2,0,0,0,2,1.2%,
+tiling rules,partition_over_128,a tile or contraction larger than 128 partitions,0,0,0,2,2,1.2%,0%
+API,wrong_signature,"right function, wrong arguments",1,1,0,0,2,1.2%,
