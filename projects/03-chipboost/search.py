@@ -8,6 +8,11 @@ no AI. Same referee and same budget as the model arms, so if random search wins 
     python search.py --stub --budget 5 --out /tmp/x.jsonl         # laptop: a FAKE referee
     python search.py --dry-run --budget 24 --seed 0               # the candidate list, nothing runs
 
+    # the exhaustive sweep, the ground truth for arm c: every triple that fits, split over cores
+    CHIPBOOST_CORE=2 python search.py --exhaustive --shard 0/2      # attempt 0 + half the space
+    CHIPBOOST_CORE=3 python search.py --exhaustive --shard 1/2      # the other half
+    python search.py --summarize logs/seat-102/sweep*.jsonl logs/seat-102/attempts.jsonl
+
 The space is every (tm, tn, tk) that divides the primary shape's tile counts (shapes.cases("matmul",
 "timing")[0]), minus what will not fit in SBUF. Attempt 0 is kernels/matmul_expert.py as shipped, then
 budget - 1 distinct random triples. Each candidate is that file with its three cap lines rewritten,
@@ -202,6 +207,39 @@ def seat_from_hostname():
     return int(tail) if tail.isdigit() else None
 
 
+def summarize(paths):
+    """Rank every timed triple in sweep / attempt logs: the ground truth arm c is measured against."""
+    import glob
+    best = {}
+    files = sorted({f for p in paths for f in glob.glob(p)})
+    for path in files:
+        for line in open(path):
+            try:
+                rec = json.loads(line)
+            except ValueError:
+                continue
+            if rec.get("kernel") != "matmul" or rec.get("arm") != "random_search" or not rec.get("code"):
+                continue
+            try:
+                caps = read_caps(rec["code"])
+            except ValueError:
+                continue
+            ok = rec.get("verdict") in ("faster", "slower", "no_gain") and rec.get("speedup") is not None
+            row = dict(caps=caps, verdict=rec.get("verdict"), speedup=rec.get("speedup") if ok else None,
+                       us=rec.get("time_us_median") if ok else None, run=rec.get("run_id"))
+            key = (caps, row["run"])
+            best[key] = row
+    rows = sorted(best.values(), key=lambda r: -(r["speedup"] or 0))
+    print(f"{len(rows)} timed or rejected candidates from {len(files)} file(s)")
+    seen = {}
+    for rank, r in enumerate(rows, 1):
+        seen.setdefault(r["caps"], rank)
+        sp = f"{r['speedup']:.3f}x" if r["speedup"] is not None else "-"
+        us = f"{r['us']:.1f} us" if r["us"] is not None else "-"
+        print(f"  #{rank:<3} caps {caps_str(r['caps']):<12} {r['verdict'] or '?':<12} {us:>10} {sp:>8}  {r['run']}")
+    return rows
+
+
 def resolve_seat(seat, required):
     """--seat, else $CHIPBOOST_SEAT, else the pod's hostname. A real run must name its seat (it labels
     every record and picks the log); a stub run falls back to 100, since its records are fake anyway."""
@@ -226,7 +264,19 @@ def main():
     ap.add_argument("--run-id", help="default matmul-random_search-s<seed>-<HHMMSS>")
     ap.add_argument("--stub", action="store_true", help="FAKE referee, for testing without NKI")
     ap.add_argument("--dry-run", action="store_true", help="print the candidate list and exit")
+    ap.add_argument("--exhaustive", action="store_true",
+                    help="every triple that fits (ignores --budget); logs to sweep*.jsonl, not attempts")
+    ap.add_argument("--shard", default="0/1", metavar="I/N", help="with --exhaustive: take every N-th candidate")
+    ap.add_argument("--summarize", nargs="+", metavar="JSONL", help="rank the triples in these logs and exit")
     a = ap.parse_args()
+    if a.summarize:
+        summarize(a.summarize)
+        return 0
+    try:
+        shard_i, shard_n = (int(v) for v in a.shard.split("/"))
+        assert shard_n >= 1 and 0 <= shard_i < shard_n
+    except (ValueError, AssertionError):
+        sys.exit(f"--shard must look like I/N with 0 <= I < N, got {a.shard!r}")
     out = os.path.abspath(a.out) if a.out else None   # relative to where it was typed, before the chdir
     os.chdir(HERE)   # check_isolated's child inherits our cwd and resolves the relative paths against it
 
@@ -264,7 +314,12 @@ def main():
         caps0 = read_caps(template)
         repeat = effective(caps0, tiles)         # attempt 0 as it runs here: never draw it again
         pool = [t for t in fit if t != repeat]
-        order = plan(pool, caps0, a.budget, a.seed)
+        if a.exhaustive:
+            # Attempt 0 first, then every other triple that fits, in a fixed order; a shard takes every
+            # N-th, so the shards together cover the space exactly once.
+            order = ([tuple(caps0)] + sorted(pool))[shard_i::shard_n]
+        else:
+            order = plan(pool, caps0, a.budget, a.seed)
     except ValueError as e:
         sys.exit(str(e))
 
@@ -277,10 +332,15 @@ def main():
           f"K {tiles[2]} -> {len(space)} triples")
     print(f"{mark}SBUF filter: dropped {len(space) - len(fit)} of {len(space)} (estimate over {SBUF_LIMIT:,} "
           f"B per partition), {len(fit)} fit")
-    print(f"{mark}attempt 0: {template_name} as shipped, caps {caps_str(caps0)}, which run as "
-          f"{caps_str(repeat)} here, so {repeat} is excluded from the random draws (no second timing)")
-    print(f"{mark}attempts 1-{len(order) - 1}: distinct random triples of the {len(pool)} left, "
-          f"random.Random({a.seed})" if len(order) > 1 else f"{mark}no random attempts (--budget 1)")
+    if a.exhaustive:
+        print(f"{mark}EXHAUSTIVE sweep, shard {shard_i}/{shard_n}: {len(order)} of the {len(pool) + 1} candidates "
+              f"(the expert as shipped, caps {caps_str(caps0)}, then every other triple that fits; "
+              f"the expert is in shard 0). Not an arm run: logged to sweep-*.jsonl")
+    else:
+        print(f"{mark}attempt 0: {template_name} as shipped, caps {caps_str(caps0)}, which run as "
+              f"{caps_str(repeat)} here, so {repeat} is excluded from the random draws (no second timing)")
+        print(f"{mark}attempts 1-{len(order) - 1}: distinct random triples of the {len(pool)} left, "
+              f"random.Random({a.seed})" if len(order) > 1 else f"{mark}no random attempts (--budget 1)")
 
     if a.dry_run:
         for n, caps in enumerate(order):
@@ -293,9 +353,12 @@ def main():
         return 0
 
     seat, seat_from = resolve_seat(a.seat, required=not stub)
-    run_id = a.run_id or f"matmul-random_search-s{a.seed}-{time.strftime('%H%M%S')}"
+    run_id = a.run_id or (f"matmul-sweep-{shard_i}of{shard_n}-{time.strftime('%H%M%S')}" if a.exhaustive
+                          else f"matmul-random_search-s{a.seed}-{time.strftime('%H%M%S')}")
     run_dir = os.path.join("search_runs", run_id)
-    out = out or os.path.join(HERE, "logs", f"seat-{seat}", "attempts.jsonl")
+    # The sweep is not an equal-budget arm run, so it never goes where the dashboard reads attempts.
+    out = out or os.path.join(HERE, "logs", f"seat-{seat}",
+                              f"sweep-{shard_i}of{shard_n}.jsonl" if a.exhaustive else "attempts.jsonl")
     os.makedirs(run_dir, exist_ok=True)
     os.makedirs(os.path.dirname(out), exist_ok=True)
     referee = "FAKE stub" if stub else "speedcheck.check_isolated, one fresh process per candidate"
