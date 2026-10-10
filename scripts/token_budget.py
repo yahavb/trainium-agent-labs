@@ -109,13 +109,13 @@ def main():
     ax.set_xticklabels([f"L{rounds[i]['level']} r{rounds[i]['run'] + 1}" for i in starts],
                        fontsize=7, rotation=90)
     ax.set_ylabel("tokens")
-    ax.set_title(f"Tokens per round, by what they were spent on ({len(rounds)} rounds; "
+    ax.set_title(f"Tokens per round, by what they were spent on\n({len(rounds)} rounds; "
                  f"split counted by {', '.join(methods)})"
                  + (f"\n{unmatched} attempt(s) not in the usage log kept chars/4 estimates"
                     if a.usage is not None and unmatched else ""), fontsize=10)
     ax.legend(fontsize=7, loc="upper left", bbox_to_anchor=(1.0, 1.0))
     fig.tight_layout()
-    fig.savefig(a.out + ".png", dpi=150)
+    fig.savefig(a.out + ".png", dpi=150, bbox_inches="tight")
     print(f"{len(rounds)} rounds ({skipped} older lines without token data skipped) -> "
           f"{a.out}.png, {a.out}.csv")
     if a.usage is not None:
