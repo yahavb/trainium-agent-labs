@@ -55,6 +55,32 @@ Rules:
 
 def build_recalibration_prompt(candidate_code: str, hazard_type: str, hint: str, round_num: int) -> str:
     """Constructs surgical patch prompt focusing only on the diagnosed Block-n hazard."""
+    extra_pattern = ""
+    if "SYNC" in hazard_type or "PIPELINE" in hazard_type:
+        extra_pattern = """
+RECOMMENDED PIPELINE BUFFER SWAP:
+Ensure Block 0 is computed in prologue and remaining blocks are drained in epilogue:
+- Prologue: DMA loads Block 0 into buf_dma.
+- Loop (b = 1 to num_blocks):
+    buf_tensor, buf_vec, buf_dma = buf_vec, buf_dma, buf_tensor  # Rotate buffers
+    buf_dma[:v, :] = x[r_st:r_st+v, :]
+    buf_vec[:v_prev, :] = alpha * buf_vec[:v_prev, :] + beta
+    buf_out[:v_prev2, :] = buf_tensor[:v_prev2, :].astype(np.float64) @ weight.astype(np.float64)
+- Epilogue: Multiply remaining blocks so all rows are written to output.
+"""
+    elif "RAGGED" in hazard_type:
+        extra_pattern = """
+RECOMMENDED BOUNDARY CLAMP:
+`valid = min(128, H - r_start)`
+`buf_dma[:valid, :] = x[r_start:r_start + valid, :]`
+`out[r_start:r_start + valid, :] = buf_out[:valid, :]`
+"""
+    elif "PRECISION" in hazard_type:
+        extra_pattern = """
+RECOMMENDED ACCUMULATOR PRECISION:
+`buf_tensor[:valid, :] = (buf_vec[:valid, :].astype(np.float64) @ weight.astype(np.float64)).astype(np.float32)`
+"""
+
     prompt = f"""
 Round {round_num} Recalibration Directive:
 Your previous kernel failed verification. Do not rewrite from scratch; make only the surgical fix specified below.
@@ -62,6 +88,7 @@ Your previous kernel failed verification. Do not rewrite from scratch; make only
 DIAGNOSED HAZARD: {hazard_type}
 SURGICAL REPAIR INSTRUCTION:
 {hint}
+{extra_pattern}
 
 PREVIOUS KERNEL CODE:
 ```python
