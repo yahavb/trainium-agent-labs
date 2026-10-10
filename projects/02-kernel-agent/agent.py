@@ -74,7 +74,11 @@ LOCATED = " The failing line is line "
 #              Measured on a seat: the model wrote nisa.tensor_scalar(dst=tile, data=0.5,
 #              op0=nisa.multiply) -- a real function with the arguments in the wrong roles.
 #   directed3  directed2, with the two messages behind the level 3 wall replaced (see directed()).
-MODES = ("raw", "enriched", "located", "directed", "directed2", "directed3")
+MODES = ("raw", "enriched", "located", "directed", "directed2", "directed3", "directed4")
+
+# The model's failing line, set by explain() from directed4 on, so that a message can depend on what
+# the line IS (a copy, an assignment) and name the variable on it.
+FAILING_LINE = ""
 
 
 def at_least(mode):
@@ -125,13 +129,16 @@ def locate(exc, path, source):
 
 def explain(exc, path, source, prefix="raised ", add_fix=True):
     """Turn an exception from the candidate into feedback, at the current FEEDBACK_MODE."""
+    global FAILING_LINE
     text = f"{prefix}{type(exc).__name__}: {exc}"
     if FEEDBACK_MODE == "raw":
         return text
+    where = locate(exc, path, source) if at_least("located") else None
+    FAILING_LINE = where[1] if where and at_least("directed4") else ""
     if add_fix:
         text = enrich(text)
+    FAILING_LINE = ""
     if at_least("located"):
-        where = locate(exc, path, source)
         if where:
             # A size mismatch can be fixed at either end, so do not point at the copy alone.
             close = ("Change that line, or the line that allocates its destination, so the two "
@@ -285,7 +292,7 @@ def grade(source, level):
              or nkibench.describe_mismatch(got, want)
              or nkibench.check_traffic_bar(level, counted, args, want))
         if m and at_least("directed3"):
-            m = directed_mismatch(m, got)
+            m = directed_mismatch(m, got, want, args, spec)
         # A simulator warning about a hardware-correctness hazard counts as a failure even when the
         # numbers happen to match on CPU: the kernel would be wrong on the device.
         hazards = [w for w in counted.get("warnings", [])
@@ -420,6 +427,30 @@ def directed(error_text):
     * `module 'nki.isa' has no attribute 'multiply'`. The old message listed the first 25 names
       of nki.isa alphabetically. The name exists -- in nki.language. Say that.
     """
+    if at_least("directed4"):
+        # Seen on a seat, level 3, the first directed3 run (session 20261010-193145). directed3 got
+        # the model past both old level 3 walls in one round each, to a kernel that is correct but
+        # for one line:
+        #     nisa.tensor_copy(dst=sbuf_lhsT, src=psum, engine=nisa.engine.scalar)
+        # psum is (64, 512); sbuf_lhsT was allocated for the (128, 64) input. The simulator raises
+        # "value array of shape (32768,) could not be broadcast to indexing result of shape (8192,)"
+        # and the repo's advice for that text is about assignments in a loop: "index the
+        # destination to match, e.g. out[i*128:(i+1)*128, :] = tile". There is no assignment and
+        # no loop. Four rounds, seven different kernels, the line never changed.
+        m = re.search(r"value array of shape \((\d+),?\) could not be broadcast to "
+                      r"indexing result of shape \((\d+),?\)", error_text)
+        call = re.search(r"\b(?:nisa|nl)\.(\w+)\(", FAILING_LINE)
+        if m and call:
+            dst = re.search(r"\bdst\s*=\s*([A-Za-z_]\w*)", FAILING_LINE)
+            name = f"`{dst.group(1)}`" if dst else "the dst"
+            return (error_text + f" The failing line is a call to nisa.{call.group(1)}, not an "
+                    f"assignment. Its result has {m.group(1)} elements and its destination "
+                    f"{name} holds {m.group(2)}. The destination and what goes into it must "
+                    f"have IDENTICAL shapes. {name[0].upper() + name[1:]} was allocated for "
+                    f"something else and is being reused here: do not reuse it. Allocate a new "
+                    f"tile for this result, with exactly the shape of what is written into it, "
+                    f"and use that as dst. Then check that every later line that reads this "
+                    f"result, and the array you return, has that same shape.")
     if at_least("directed3"):
         # THE LEVEL 3 WALL. The repo records "cannot reshape array of size 32768 into shape (1,64)"
         # on every run and reads it as "it reshapes instead of slicing". Seen on a seat, in order:
@@ -530,6 +561,16 @@ def directed(error_text):
                         f"buffer=nl.sbuf). If one tile is being used for two different tensors, "
                         f"stop doing that: every tensor you load needs its own tile, allocated "
                         f"with that tensor's own shape.")
+            if at_least("directed4"):
+                # The older wording below says "allocate the destination as nl.ndarray(...,
+                # buffer=nl.sbuf)". When the destination is the array the kernel returns, that is
+                # an instruction to move the output out of HBM. Say the shape and nothing else.
+                return (error_text + f" The destination has shape {dst} but the piece copied "
+                        f"into it has shape {src}, which is larger. nisa.dma_copy needs IDENTICAL "
+                        f"shapes. If the source is the whole result, the destination was "
+                        f"allocated too small: allocate it with shape {src}, with every "
+                        f"dimension written out, and keep its buffer as it is. Only if you meant "
+                        f"to copy a part, slice the source down to {dst}.")
             return (error_text + f" The destination has shape {dst} but the piece copied into it "
                     f"has shape {src}, which is larger. nisa.dma_copy needs IDENTICAL shapes. "
                     f"Either allocate the destination as nl.ndarray({src}, dtype=..., "
@@ -609,7 +650,58 @@ def directed(error_text):
     return None
 
 
-def directed_mismatch(message, got):
+def moved_values(got, want, args, spec):
+    """For a task that only MOVES values: where each one belongs, read off this test case, or "".
+
+    Seen on a seat, level 2 (session 20261010-193145): once the kernel ran, the verdict was
+    "NUMERICAL MISMATCH ... most elements are wrong, so this is the core arithmetic or the operand
+    layout". The model sent back the identical kernel four times and the level was stopped. There
+    is no arithmetic in a transpose. The checker holds the input and the expected output, so it
+    can say which input element belongs at which output position, and which one the kernel put
+    there. Applies only when the expected output is a rearrangement of one input.
+    """
+    try:
+        want = np.asarray(want)
+        got = np.asarray(got)
+        src = next((np.asarray(a) for a in args if isinstance(a, np.ndarray)
+                    and a.size == want.size and a.ndim == 2), None)
+        if src is None or want.ndim != 2 or got.shape != want.shape:
+            return ""
+        key = lambda v: np.float32(v).tobytes()
+        index = {}
+        for pos in np.ndindex(src.shape):
+            index.setdefault(key(src[pos]), []).append(pos)
+        if any(len(v) != 1 for v in index.values()):
+            return ""                                   # repeated values: sources are ambiguous
+        origin = {pos: index.get(key(want[pos])) for pos in np.ndindex(want.shape)}
+        if any(v is None for v in origin.values()):
+            return ""                                   # not a pure rearrangement
+        import inspect
+        name = next(iter(inspect.signature(spec["ref"]).parameters))
+        moved = [pos for pos in np.ndindex(want.shape) if origin[pos][0] != pos]
+        if not moved:
+            return ""
+        show = moved[:4] + moved[len(moved) // 2:len(moved) // 2 + 2]
+        fmt = lambda p: "[" + ", ".join(str(int(i)) for i in p) + "]"
+        right = "; ".join(f"out{fmt(p)} = {name}{fmt(origin[p][0])}" for p in show)
+        yours = []
+        for p in show:
+            g = index.get(key(got[p]))
+            yours.append(f"out{fmt(p)} holds {name}{fmt(g[0])}" if g
+                         else f"out{fmt(p)} holds a value that is not in {name}")
+        same_row = all(origin[p][0][0] == p[0] for p in origin)
+        text = (f" Nothing is computed in this task: the correct output holds exactly the values "
+                f"of `{name}`, moved. On this test case ({name} has shape {tuple(src.shape)}) the "
+                f"correct positions are: {right}. Your kernel gave: {'; '.join(yours)}.")
+        if same_row:
+            text += (" In the correct output every value stays in its own row; only its position "
+                     "along the second dimension changes.")
+        return text
+    except Exception:
+        return ""
+
+
+def directed_mismatch(message, got, want=None, args=None, spec=None):
     """A wrong-answer verdict rewritten from what the output actually contains, or unchanged.
 
     Seen on a seat, level 4 (session 20261010-163428): the model deleted the copy into the output
@@ -618,6 +710,9 @@ def directed_mismatch(message, got):
     checker can see and did not say. The model looked for a way to initialise a tile, invented
     nisa.psum_init, and fell from 0.62 to 0.30 for the rest of the run.
     """
+    if (message.startswith("NUMERICAL MISMATCH") and at_least("directed4")
+            and want is not None and args is not None and spec is not None):
+        return message + moved_values(got, want, args, spec)
     if not message.startswith("NON-FINITE OUTPUT"):
         return message
     try:
