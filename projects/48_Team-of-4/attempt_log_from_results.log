@@ -1,0 +1,216 @@
+AWS NEURON DOCUMENTATION QA — ATTEMPT LOG
+====================================================
+Source: user-provided experiment_results.csv content
+
+IMPORTANT:
+- The supplied file contains final results per question/run, not per-attempt records.
+- It reports attempts_used=2 and final score=100 for each question.
+- First-attempt scores, answers, and checker feedback were not present,
+  so they are marked as unavailable rather than invented.
+- Any <think> internal reasoning text in supplied answers has been omitted.
+
+----------------------------------------------------
+Run: 1 | Question: Q1
+Question: What is AWS Neuron, and what hardware does it support?
+Attempts reported: 2
+
+Attempt 1:
+  Score: NOT AVAILABLE in supplied results file
+  Checker feedback: NOT AVAILABLE in supplied results file
+
+Final attempt (reported as attempt 2):
+  Score: 100.0
+  Passed: True
+  Missing facts: None reported
+
+  Final answer:
+    AWS Neuron is a software stack designed to run deep learning and generative AI workloads on **AWS Trainium** and **AWS Inferentia** hardware. It provides native support for PyTorch and JAX frameworks, along with tools for training, inference, and optimization. The stack enables end-to-end ML development without code modifications.
+    
+    The hardware supported by AWS Neuron includes **AWS Trainium** (for training) and **AWS Inferentia** (for inference).
+    
+    Source: [https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/what-is-neuron.html](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/what-is-neuron.html)
+
+----------------------------------------------------
+Run: 1 | Question: Q2
+Question: What are the main components of AWS Neuron, and what do they help developers do?
+Attempts reported: 2
+
+Attempt 1:
+  Score: NOT AVAILABLE in supplied results file
+  Checker feedback: NOT AVAILABLE in supplied results file
+
+Final attempt (reported as attempt 2):
+  Score: 100.0
+  Passed: True
+  Missing facts: None reported
+
+  Final answer:
+    The main components of AWS Neuron are:
+    1. **Compiler**: Optimizes deep learning and generative AI models for AWS Trainium and Inferentia hardware.
+    2. **Runtime**: Executes optimized models on AWS hardware.
+    3. **Training and Inference Libraries**: Provide tools for building and deploying models.
+    4. **Developer Tools**: Enable monitoring, profiling, and debugging of models.
+    
+    These components help developers build, deploy, and optimize deep learning and AI models using frameworks like PyTorch and JAX, as well as ML libraries such as Hugging Face, without modifying their code. They support the full ML lifecycle, from development to performance optimization and insights.
+    
+    Source: [https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/what-is-neuron.html](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/what-is-neuron.html)
+
+----------------------------------------------------
+Run: 1 | Question: Q3
+Question: Which machine learning frameworks and libraries does AWS Neuron support?
+Attempts reported: 2
+
+Attempt 1:
+  Score: NOT AVAILABLE in supplied results file
+  Checker feedback: NOT AVAILABLE in supplied results file
+
+Final attempt (reported as attempt 2):
+  Score: 100.0
+  Passed: True
+  Missing facts: None reported
+
+  Final answer:
+    AWS Neuron supports the following machine learning frameworks and libraries:
+    - **Frameworks**: PyTorch (with full Eager mode compatibility and `torch.compile` integration) and JAX (with XLA compilation targeting Inferentia and Trainium hardware).
+    - **Libraries**: Hugging Face, vLLM, PyTorch Lightning, and others.
+    
+    This information is sourced from the official AWS Neuron documentation: [https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/what-is-neuron.html](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/what-is-neuron.html).
+
+----------------------------------------------------
+Run: 2 | Question: Q1
+Question: What is AWS Neuron, and what hardware does it support?
+Attempts reported: 2
+
+Attempt 1:
+  Score: NOT AVAILABLE in supplied results file
+  Checker feedback: NOT AVAILABLE in supplied results file
+
+Final attempt (reported as attempt 2):
+  Score: 100.0
+  Passed: True
+  Missing facts: None reported
+
+  Final answer:
+    AWS Neuron is a software stack designed to run deep learning and generative AI workloads on **AWS Trainium** and **AWS Inferentia** hardware. It provides native support for PyTorch and JAX frameworks, along with tools for training, inference, and optimization. The stack enables end-to-end ML development without code modifications.
+    
+    The hardware supported by AWS Neuron includes **AWS Trainium** (for training) and **AWS Inferentia** (for inference).
+    
+    Source: [https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/what-is-neuron.html](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/what-is-neuron.html)
+
+----------------------------------------------------
+Run: 2 | Question: Q2
+Question: What are the main components of AWS Neuron, and what do they help developers do?
+Attempts reported: 2
+
+Attempt 1:
+  Score: NOT AVAILABLE in supplied results file
+  Checker feedback: NOT AVAILABLE in supplied results file
+
+Final attempt (reported as attempt 2):
+  Score: 100.0
+  Passed: True
+  Missing facts: None reported
+
+  Final answer:
+    The main components of AWS Neuron are:
+    1. **Compiler**: Optimizes deep learning and generative AI models for AWS Trainium and Inferentia hardware.
+    2. **Runtime**: Executes optimized models on AWS hardware.
+    3. **Training and Inference Libraries**: Provide tools for building and deploying models.
+    4. **Developer Tools**: Enable monitoring, profiling, and debugging of models.
+    
+    These components help developers build, deploy, and optimize deep learning and AI models using frameworks like PyTorch and JAX, as well as ML libraries such as Hugging Face, without modifying their code. They support the full ML lifecycle, from development to performance optimization and insights.
+    
+    Source: [https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/what-is-neuron.html](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/what-is-neuron.html)
+
+----------------------------------------------------
+Run: 2 | Question: Q3
+Question: Which machine learning frameworks and libraries does AWS Neuron support?
+Attempts reported: 2
+
+Attempt 1:
+  Score: NOT AVAILABLE in supplied results file
+  Checker feedback: NOT AVAILABLE in supplied results file
+
+Final attempt (reported as attempt 2):
+  Score: 100.0
+  Passed: True
+  Missing facts: None reported
+
+  Final answer:
+    AWS Neuron supports the following machine learning frameworks and libraries:
+    - **Frameworks**: PyTorch (with full Eager mode compatibility and `torch.compile` integration) and JAX (with XLA compilation targeting Inferentia and Trainium hardware).
+    - **Libraries**: Hugging Face, vLLM, PyTorch Lightning, and others.
+    
+    This information is sourced from the official AWS Neuron documentation: [https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/what-is-neuron.html](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/what-is-neuron.html).
+
+----------------------------------------------------
+Run: 3 | Question: Q1
+Question: What is AWS Neuron, and what hardware does it support?
+Attempts reported: 2
+
+Attempt 1:
+  Score: NOT AVAILABLE in supplied results file
+  Checker feedback: NOT AVAILABLE in supplied results file
+
+Final attempt (reported as attempt 2):
+  Score: 100.0
+  Passed: True
+  Missing facts: None reported
+
+  Final answer:
+    AWS Neuron is a software stack designed to run deep learning and generative AI workloads on **AWS Trainium** and **AWS Inferentia** hardware. It provides native support for PyTorch and JAX frameworks, along with tools for training, inference, and optimization. The stack enables end-to-end ML development without code modifications.
+    
+    The hardware supported by AWS Neuron includes **AWS Trainium** (for training) and **AWS Inferentia** (for inference).
+    
+    Source: [https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/what-is-neuron.html](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/what-is-neuron.html)
+
+----------------------------------------------------
+Run: 3 | Question: Q2
+Question: What are the main components of AWS Neuron, and what do they help developers do?
+Attempts reported: 2
+
+Attempt 1:
+  Score: NOT AVAILABLE in supplied results file
+  Checker feedback: NOT AVAILABLE in supplied results file
+
+Final attempt (reported as attempt 2):
+  Score: 100.0
+  Passed: True
+  Missing facts: None reported
+
+  Final answer:
+    The main components of AWS Neuron are:
+    1. **Compiler**: Optimizes deep learning and generative AI models for AWS Trainium and Inferentia hardware.
+    2. **Runtime**: Executes optimized models on AWS hardware.
+    3. **Training and Inference Libraries**: Provide tools for building and deploying models.
+    4. **Developer Tools**: Enable monitoring, profiling, and debugging of models.
+    
+    These components help developers build, deploy, and optimize deep learning and AI models using frameworks like PyTorch and JAX, as well as ML libraries such as Hugging Face, without modifying their code. They support the full ML lifecycle, from development to performance optimization and insights.
+    
+    Source: [https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/what-is-neuron.html](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/what-is-neuron.html)
+
+----------------------------------------------------
+Run: 3 | Question: Q3
+Question: Which machine learning frameworks and libraries does AWS Neuron support?
+Attempts reported: 2
+
+Attempt 1:
+  Score: NOT AVAILABLE in supplied results file
+  Checker feedback: NOT AVAILABLE in supplied results file
+
+Final attempt (reported as attempt 2):
+  Score: 100.0
+  Passed: True
+  Missing facts: None reported
+
+  Final answer:
+    AWS Neuron supports the following machine learning frameworks and libraries:
+    - **Frameworks**: PyTorch (with full Eager mode compatibility and `torch.compile` integration) and JAX (with XLA compilation targeting Inferentia and Trainium hardware).
+    - **Libraries**: Hugging Face, vLLM, PyTorch Lightning, and others.
+    
+    This information is sourced from the official AWS Neuron documentation: [https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/what-is-neuron.html](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/about-neuron/what-is-neuron.html).
+
+----------------------------------------------------
+For a genuine attempt-by-attempt log in future runs, preserve data/attempt_log.jsonl
+from the agent. It should record each attempt's answer, checker score, pass/fail,
+and feedback. The supplied results file does not contain those first-attempt details.

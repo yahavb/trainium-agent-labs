@@ -1,0 +1,92 @@
+[
+  {
+    "id": "Q1",
+    "question": "What is AWS Neuron, and what hardware does it support?",
+    "reference_answer": "AWS Neuron is a software stack for running deep learning and generative AI workloads on AWS Trainium and AWS Inferentia.",
+    "required_facts": [
+      {
+        "id": "software_stack",
+        "description": "Neuron is a software stack",
+        "match_any": ["software stack"],
+        "weight": 2
+      },
+      {
+        "id": "trainium",
+        "description": "Neuron supports Trainium",
+        "match_any": ["trainium"],
+        "weight": 1
+      },
+      {
+        "id": "inferentia",
+        "description": "Neuron supports Inferentia",
+        "match_any": ["inferentia"],
+        "weight": 1
+      }
+    ],
+    "forbidden_claims": []
+  },
+  {
+    "id": "Q2",
+    "question": "What are the main components of AWS Neuron, and what do they help developers do?",
+    "reference_answer": "Neuron includes a compiler, runtime, training and inference libraries, and developer tools for monitoring, profiling, and debugging.",
+    "required_facts": [
+      {
+        "id": "compiler",
+        "description": "Neuron includes a compiler",
+        "match_any": ["compiler"],
+        "weight": 1
+      },
+      {
+        "id": "runtime",
+        "description": "Neuron includes a runtime",
+        "match_any": ["runtime"],
+        "weight": 1
+      },
+      {
+        "id": "libraries",
+        "description": "Neuron includes training and inference libraries",
+        "match_any": ["training and inference libraries", "training libraries", "inference libraries"],
+        "weight": 2
+      },
+      {
+        "id": "developer_tools",
+        "description": "Developer tools support monitoring, profiling, or debugging",
+        "match_any": ["monitoring", "profiling", "debugging"],
+        "weight": 1
+      }
+    ],
+    "forbidden_claims": []
+  },
+  {
+    "id": "Q3",
+    "question": "Which machine learning frameworks and libraries does AWS Neuron support?",
+    "reference_answer": "Neuron supports PyTorch and JAX, as well as libraries such as Hugging Face, vLLM, and PyTorch Lightning.",
+    "required_facts": [
+      {
+        "id": "pytorch",
+        "description": "Neuron supports PyTorch",
+        "match_any": ["pytorch"],
+        "weight": 1
+      },
+      {
+        "id": "jax",
+        "description": "Neuron supports JAX",
+        "match_any": ["jax"],
+        "weight": 1
+      },
+      {
+        "id": "hugging_face",
+        "description": "Neuron supports Hugging Face",
+        "match_any": ["hugging face", "huggingface"],
+        "weight": 1
+      },
+      {
+        "id": "vllm",
+        "description": "Neuron supports vLLM",
+        "match_any": ["vllm"],
+        "weight": 1
+      }
+    ],
+    "forbidden_claims": []
+  }
+]
