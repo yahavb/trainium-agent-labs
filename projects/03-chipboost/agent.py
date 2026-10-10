@@ -5,7 +5,8 @@ agent.py -- CHIPBOOST's loop and its three arms, on one budget. Owner: P3.
     --arm referee        Qwen3 + the referee's ONE named change each round        (arm a)
     --arm model_alone    Qwen3, told only "Make it faster." (plus its time, once   (arm b)
                          P1 can time); it never sees the referee's messages
-    --arm random_search  no model: candidates from P2's search.py                 (arm c)
+    arm c (random_search) is not run from here: P2's search.py runs it and logs arm=random_search to the
+                         same seat log, e.g.  python search.py --budget 8 --seed 0
 
     controller  start kernel + budget                    this file
     generator   Qwen3-8B on this seat                    KERNEL_AGENT_BASE_URL (the pod sets it)
@@ -18,9 +19,11 @@ agent.py -- CHIPBOOST's loop and its three arms, on one budget. Owner: P3.
     python agent.py --dry --arm model_alone                                   # no model, rules only, anywhere
     python schema.py --check attempts.jsonl
 
-FAIRNESS. Every arm: same start kernel, same referee, same --budget, where one referee evaluation = one
-attempt = one unit whatever its verdict. For a comparison pass --give-up-after 0, so no arm stops early
-and every arm spends exactly its budget; the run checks that it did.
+FAIRNESS. The two model arms: same start kernel, same referee, same --budget, where one referee evaluation
+= one attempt = one unit whatever its verdict. --give-up-after defaults to 0, so no arm stops early and
+every arm spends exactly its budget; the run checks that it did. Arm c (search.py) is NOT like for like: it
+tunes the expert kernel's blocking, starts from the expert (already ~2.5x the start kernel), and counts
+that as its attempt 0. Say so wherever the three arms are compared.
 
 REFEREE. P1's speedcheck.check_isolated whenever speedcheck.py is present (REFEREE.md): sandboxed, on the
 chip, held-out shapes included; a None (referee failure) is retried and never counted. The model is sent
@@ -38,7 +41,6 @@ import hashlib
 import importlib.util
 import json
 import os
-import random
 import socket
 import sys
 import tempfile
@@ -69,7 +71,6 @@ agent02 = _load_module("agent02", os.path.join(AGENT02_DIR, "agent.py"))
 OP = "matmul"
 ENTRY = nkibench.LEVELS[stage12.LEVEL]["entry"]   # nki_matmul_tiled_
 P2_START = os.path.join(HERE, "kernels", "matmul_start.py")
-P2_SEARCH = os.path.join(HERE, "search.py")
 FALLBACK_START = os.path.join(AGENT02_DIR, "reference_level4.py")
 MAKE_FASTER = "Make it faster."
 
@@ -177,9 +178,23 @@ def ask(a, prompt):
     body = dict(model=a.model, messages=[{"role": "user", "content": prompt}],
                 max_tokens=budget, temperature=0.6, top_p=0.95,
                 chat_template_kwargs={"enable_thinking": a.think})
-    r = httpx.post(f"{a.base.rstrip('/')}/chat/completions", json=body, timeout=900, verify=False)
-    if r.status_code != 200:
-        raise SystemExit(f"the endpoint returned HTTP {r.status_code}:\n{r.text[:600]}")
+    # One vLLM hiccup must not end a run that has spent an hour of budget: retry a server error, a 429,
+    # a timeout or a dropped connection. A 4xx is the request itself (e.g. the prompt is too long), so stop.
+    for attempt, wait in enumerate((10, 30, 60, None)):
+        try:
+            r = httpx.post(f"{a.base.rstrip('/')}/chat/completions", json=body, timeout=900, verify=False)
+        except httpx.HTTPError as e:
+            err = f"{type(e).__name__}: {e}"
+        else:
+            if r.status_code == 200:
+                break
+            err = f"HTTP {r.status_code}: {r.text[:600]}"
+            if r.status_code < 500 and r.status_code != 429:
+                raise SystemExit(f"the endpoint rejected the request, {err}")
+        if wait is None:
+            raise SystemExit(f"the endpoint failed 4 times; last error {err}")
+        print(f"    (the model endpoint failed, {err[:200]}; retry {attempt + 1}/3 in {wait} s)")
+        time.sleep(wait)
     payload = r.json()
     ch = payload["choices"][0]
     if ch.get("finish_reason") == "length":
@@ -199,18 +214,6 @@ def offline_answers(start_src, n, rnd):
     the referee path and the log can be exercised. Never report these."""
     src = start_src.replace("@nki.jit", "", 1) if rnd == 0 else start_src
     return [(f"```python\n{src}\n```", None)] * n
-
-
-def load_search(path):
-    """Arm (c) is P2's. The contract asked of P2: search.sample(rng) -> kernel source (str), where rng is a
-    random.Random. Without it the arm stops rather than invent candidates."""
-    if not os.path.exists(path):
-        sys.exit(f"--arm random_search needs P2's search.py at {path}, providing sample(rng) -> source. "
-                 f"It is not there yet.")
-    mod = _load_module("chipboost_search", path)
-    if not callable(getattr(mod, "sample", None)):
-        sys.exit(f"{path} has no sample(rng) function. Arm (c) calls search.sample(rng) -> kernel source.")
-    return mod
 
 
 # ---------------------------------------------------------------- prompts
@@ -274,8 +277,7 @@ def better(rec, waste, best):
     return waste is not None and best["waste"] is not None and waste < best["waste"] - 1e-9
 
 
-def run_once(a, referee, start_path, rep, log, workdir, search):
-    model_arm = a.arm != "random_search"
+def run_once(a, referee, start_path, rep, log, workdir):
     tag = "offline-" if (a.offline or a.dry) else ""
     run_id = f"{OP}-{a.arm}-{tag}{time.strftime('%H%M%S')}-{rep}"
     start_src = open(start_path).read()
@@ -298,9 +300,8 @@ def run_once(a, referee, start_path, rep, log, workdir, search):
     # The best CORRECT kernel so far: model_alone always builds on it (it gets no other signal).
     best = dict(src=shown, time=start.get("time_us_median"), speedup=start.get("speedup"), waste=start_waste)
     prompt = (first_prompt(shown, status) if a.arm == "referee"
-              else alone_prompt(shown, best["time"], first=True) if a.arm == "model_alone" else None)
+              else alone_prompt(shown, best["time"], first=True))
     latest = (shown, status)
-    rng = random.Random(1000 + rep)
     tried, seen, streak = [], {}, 0
     rounds = a.rounds or -(-a.budget // a.samples)
     rnd = -1
@@ -310,15 +311,13 @@ def run_once(a, referee, start_path, rep, log, workdir, search):
         n = min(a.samples, a.budget - out["attempts"])
         t0 = time.perf_counter()
         # Generation finishes for the whole round BEFORE the referee runs, so vLLM is idle while timing.
-        if not model_arm:
-            replies = [(search.sample(rng), None) for _ in range(n)]
-        elif a.offline or a.dry:
+        if a.offline or a.dry:
             replies = offline_answers(start_src, n, rnd)
         else:
             replies = ask_parallel(a, prompt, n)
         graded = []
         for reply, prompt_tokens in replies:
-            src = agent02.extract_code(reply) if model_arm else reply
+            src = agent02.extract_code(reply)
             r, waste = grade(src, referee, a.dry,
                              os.path.join(workdir, f"{run_id}_{out['attempts'] + 1:04d}_{rnd}.py"))
             if r is None:
@@ -331,7 +330,7 @@ def run_once(a, referee, start_path, rep, log, workdir, search):
             rec.update({k: v for k, v in r.items() if k in schema.ATTEMPT_FIELDS})   # the referee's fields
             rec.update(kernel=OP, arm=a.arm, run_id=run_id, attempt_no=out["attempts"],
                        round=rnd, prompt_tokens=prompt_tokens, code=src,
-                       prompt=prompt, response=reply if model_arm else None, instruction_given=instruction)
+                       prompt=prompt, response=reply, instruction_given=instruction)
             rec["seat"] = a.seat if a.seat is not None else rec["seat"]
             rec["code_hash"] = rec["code_hash"] or hashlib.sha1(src.encode()).hexdigest()[:12]
             rec["timestamp"] = rec["timestamp"] or time.time()
@@ -366,8 +365,6 @@ def run_once(a, referee, start_path, rep, log, workdir, search):
         if a.arm == "model_alone":
             prompt = alone_prompt(best["src"], best["time"], first=False)
             continue
-        if a.arm == "random_search":
-            continue
 
         # Arm (a): repair the latest attempt with the referee's one instruction; 02's anti-cycling.
         if src.strip():
@@ -396,18 +393,19 @@ def seat_from_hostname():
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--arm", default="referee", choices=schema.ARMS)
+    ap.add_argument("--arm", default="referee", choices=schema.ARMS,
+                    help="referee or model_alone; random_search runs from P2's search.py")
     ap.add_argument("--budget", type=int, default=8, help="referee evaluations per run, every arm")
     # Measured on seat-101: the samples of one round came back identical every time, so a second sample
     # spent budget on a repeat. One sample per round: every evaluation is a new attempt.
     ap.add_argument("--samples", type=int, default=1)
     ap.add_argument("--rounds", type=int, default=None, help="default: enough to spend the budget")
     ap.add_argument("--repeat", type=int, default=1)
-    ap.add_argument("--give-up-after", type=int, default=4,
-                    help="arm referee only; 0 = never, which a fair three-arm comparison needs")
+    ap.add_argument("--give-up-after", type=int, default=0,
+                    help="arm referee only: stop after the same instruction this many times. 0 (default) = "
+                         "never, so every arm spends its whole budget, which a fair comparison needs")
     ap.add_argument("--start", default=None, help="start kernel; default P2's kernels/matmul_start.py "
                                                   "if it exists, else reference_level4.py")
-    ap.add_argument("--search", default=P2_SEARCH, help="arm random_search: P2's search.py")
     ap.add_argument("--seat", type=int, default=seat_from_hostname())
     ap.add_argument("--max-tokens", type=int, default=agent02.MIN_ANSWER_TOKENS)
     ap.add_argument("--context", type=int, default=8192, help="the server's max-model-len")
@@ -418,21 +416,22 @@ def main():
     ap.add_argument("--offline", action="store_true", help="no model; the simulator grades (needs nki)")
     ap.add_argument("--dry", action="store_true", help="no model, rules stage only (no nki needed)")
     a = ap.parse_args()
+    if a.arm == "random_search":
+        sys.exit("arm random_search runs from P2's search.py, which logs arm=random_search to the same seat "
+                 "log:\n    python search.py --budget <same budget> --seed <rep>\nagent.py runs the two model "
+                 "arms, referee and model_alone.")
 
     start_path = a.start or (P2_START if os.path.exists(P2_START) else FALLBACK_START)
     # --dry never touches the real referee (importing speedcheck needs the pod's ml_dtypes).
     referee = ("stage12 rules only (--dry)", None) if a.dry else pick_referee()
     # First line on purpose: the team checks `head -1 run.log` says "referee: speedcheck".
     print(f"referee: {referee[0]}")
-    search = load_search(a.search) if a.arm == "random_search" else None
     if a.seat is not None:
         os.environ["CHIPBOOST_SEAT"] = str(a.seat)   # speedcheck writes it into `seat`
     a.log = a.log or os.path.join(HERE, "logs", f"seat-{a.seat if a.seat is not None else 'unknown'}",
                                   "attempts.jsonl")
     os.makedirs(os.path.dirname(os.path.abspath(a.log)), exist_ok=True)
-    if a.arm == "random_search":
-        print(f"arm random_search: candidates from {a.search}")
-    elif a.offline or a.dry:
+    if a.offline or a.dry:
         print("*** OFFLINE: replaying the start kernel, no model. Numbers are meaningless. ***")
     else:
         if not (a.base or "").strip():
@@ -447,7 +446,7 @@ def main():
     try:
         with open(a.log, "a") as log:
             for rep in range(a.repeat):
-                results.append(run_once(a, referee, start_path, rep, log, workdir, search))
+                results.append(run_once(a, referee, start_path, rep, log, workdir))
     except nkibench.NkiMissing as e:
         sys.exit(f"{e}\nThe simulator needs the seat pod. Use --dry here.")
 
