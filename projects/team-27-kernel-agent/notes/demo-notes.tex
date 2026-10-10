@@ -11,7 +11,7 @@
 \setlength{\parindent}{0pt}\setlength{\parskip}{4pt}
 
 \title{\vspace{-1.2cm}A kernel-writing agent under an 8k-token budget\\[2pt]\large Demo notes, Team 27 (seat 130) \textbullet{} Project 02, Stage A}
-\date{2026-10-10 \textbullet{} \url{https://github.com/LiYou22/kernel-agent} \textbullet{} \href{https://github.com/yahavb/trainium-agent-labs/pull/20}{PR \#20}}
+\date{2026-10-10 \textbullet{} \href{https://github.com/yahavb/trainium-agent-labs/pull/20}{PR \#20}: \code{projects/team-27-kernel-agent/} in the fork \url{https://github.com/LiYou22/trainium-agent-labs} (branch \code{team-27-kernel-agent})}
 \author{}
 
 \begin{document}
@@ -134,8 +134,9 @@ was ever made wrong.
 \section*{8. Demo instructions (about 3 minutes, no model needed)}
 {\footnotesize
 \begin{verbatim}
-cd kernel-agent && uv sync
-export KERNELBENCH_DIR=/path/to/02-kernel-agent   # organizers' kernelbench.py (final gate)
+git clone -b team-27-kernel-agent https://github.com/LiYou22/trainium-agent-labs.git
+cd trainium-agent-labs/projects/team-27-kernel-agent && uv sync
+export KERNELBENCH_DIR=$PWD/../02-kernel-agent   # organizers' kernelbench.py, in the same repo
 
 # (a) the verifier names the cause, not just "wrong"                          -> Sec. 3, L3
 uv run python -m kagent.harness 3 kernels/broken/l3_overwrite_per_tile.py --fixes
