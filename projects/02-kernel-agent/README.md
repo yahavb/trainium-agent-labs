@@ -126,7 +126,8 @@ internals, across processes (`--jobs`), on the declared cases from
 [`evidence/GUIDANCE-CLASSIFIER.md`](evidence/GUIDANCE-CLASSIFIER.md) (the classifier experiment,
 including its failures) · [`evidence/ERROR-CATALOG.md`](evidence/ERROR-CATALOG.md) (every failure
 message that can reach the agent, with fixes) · [`evidence/progress.png`](evidence/progress.png)
-(all 96 unguided attempts on the largest shape).
+(all 96 unguided attempts on the largest shape) ·
+[`REPORT.md`](REPORT.md) (short report) · [`PAPER.pdf`](PAPER.pdf) (research-paper PDF).
 
 ---
 
