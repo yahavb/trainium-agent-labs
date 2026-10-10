@@ -9,10 +9,10 @@
 | 1 Average pooling | **1.00** (warm start) | 4/4 | runs/controlled-20261010T214022-7d05zuet |
 | 2 Transpose | **1.00** (cold, round 0) | 4/4 | runs/controlled-20261010T214002-44j993c1 |
 | 3 Single-tile matmul | **1.00** (cold, round 0) | 1/1 | runs/controlled-20261010T214002-44j993c1 |
-| 4 Tiled matmul | running | – | runs/controlled-20261010T214914-viaau8h0 |
-| 5 Matmul, hoisted loads | 0.625 (final: stopped after 4 rounds on the same partition-limit DMA error) | 1/4 | runs/controlled-20261010T214002-44j993c1 |
-| 6 Matmul, M/N blocked | 0.625 (final: stopped after 4 rounds on the same partition-limit DMA error) | 1/4 | runs/controlled-20261010T214002-44j993c1 |
-| 7 Matmul, M/N/K blocked | running | – | runs/controlled-20261010T214914-viaau8h0 |
+| 4 Tiled matmul | **1.00** — reported by the team from local runs (logs not in this repo, not verified here); on this machine: 0.30, still running | – | runs/controlled-20261010T214914-viaau8h0 |
+| 5 Matmul, hoisted loads | **1.00** — reported by the team from local runs (logs not in this repo, not verified here); on this machine: 0.625 | 1/4 | runs/controlled-20261010T214002-44j993c1 |
+| 6 Matmul, M/N blocked | **1.00** — reported by the team from local runs (logs not in this repo, not verified here); on this machine: 0.625 | 1/4 | runs/controlled-20261010T214002-44j993c1 |
+| 7 Matmul, M/N/K blocked | **1.00** — reported by the team from local runs (logs not in this repo, not verified here); on this machine: 0.50, still running | – | runs/controlled-20261010T214914-viaau8h0 |
 | 8 Single-head attention | running | – | runs/controlled-20261010T214914-viaau8h0 |
 
 Tables below: earlier runs on this branch; each run directory records the exact source revision used.
