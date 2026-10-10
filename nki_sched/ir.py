@@ -89,7 +89,7 @@ class For:
     extent: Aff
     body: tuple
     stage: str = ""  # which algorithm stage this loop belongs to ("acc", "acc.init", "C")
-    kind: str = "auto"  # auto | affine | sequential | static  (auto => inferred at emission)
+    kind: str = "auto"  # auto | affine | sequential | static | spmd  (auto => inferred at emission; spmd => bound to nl.program_id)
 
 
 @dataclass(frozen=True)

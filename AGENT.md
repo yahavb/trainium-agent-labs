@@ -38,6 +38,9 @@ for C.m: for C.n: C[m,n] = cast(matmul[m,n])     # output nest
 | `s.replace(loop, "ns.tensor.matmul")` | tensorize: the perfect 3-loop nest rooted at `loop` (k, m, n in any order) around one `+=` becomes one hardware matmul. Needs: dst in PSUM, both operands in SBUF laid out `[k,m]` and `[k,n]`, k <= `hw.pmax`, m <= `hw.stationary_fmax`, n <= `hw.moving_fmax` |
 | `s.fold_init(buf)` | drop the zero-init nest of a PSUM accumulator; the first matmul overwrites |
 | `s.hoist(buf, to=loop_or_None)` | move the fill of a `stage_in` buffer out to loop `to` (`None` = top of kernel). If loops between grow the window the buffer grows to hold it all (K tiles fold into axis 1); loops that do not index the source just reuse the data. Fewer HBM reloads |
+| `s.fold(buf)` | re-layout an on-chip temp whose axis 0 is `T*128` rows as `[128, T, ...]` (row `128*t+r` -> `[r, t]`). Needed for a block of several partition tiles, e.g. a 512-row PSUM accumulator. Every access to axis 0 must be `128*q + r`: split the loop that indexes it by `hw.pmax` first |
+| `s.set_dma(buf, dge="hwdge", engine="sync")` | how DMAs that fill/drain `buf` get descriptors. `hwdge` runs on the `sync` or `scalar` queue and keeps GpSimd free (default `swdge` burns the GpSimd engine); give different buffers different queues to run them in parallel |
+| `s.shard(loop, cores)` | SPMD over NeuronCores: `loop -> blk*cores + core`, `core = nl.program_id(0)`, kernel launched as `kernel[cores](...)` (emitted as `LNC = cores`). The loop's iterations must be independent |
 | `s.mark(loop, "affine"/"sequential"/"static")` | optional assertion about loop kind |
 | `s.loops(stage)` -> names, `s.show()` -> current program text | inspection only |
 
@@ -88,3 +91,13 @@ the schedule itself needs to change. Keep what is correct (tiling, staging, tens
 reported traffic ratio and the emitted program, find which loads are repeated most, and restructure
 loop order and hoisting to cut them. Re-applying the same hoists in a different place is not a new
 idea; if a change leaves the ratio unchanged, the loads you moved were not the expensive ones.
+
+## Fast matmul (see `examples/fast_mm.py`)
+
+For large bf16 matmuls the winning shape is a `BM x BN` output block held in PSUM (4 x 2 tiles of 128 x 512 = 8 PSUM banks) while K streams by in groups of `KT` tiles:
+split `C.m` into (block, tile, 128) and `C.n` into (block, BN), `compute_at("matmul", at=no)`, split the
+accumulator loops (init and update) down to tiles, `fold("matmul")`, then `set_memory(PSUM)`,
+`stage_in` at the k-tile loop and `hoist` to the k-group loop, `stage_out("C", at=<m tile loop>)`,
+`replace`, `fold_init`. Then `set_dma` (hardware DGE) and `shard` the outermost block loop over 2 cores.
+Measured on trn2, 4096^3 bf16: tiled l4 7.5 ms (18 TFLOP/s) -> blocked 1.84 ms (75 TFLOP/s, 95% of one
+core's peak) -> sharded over 2 cores ~0.98 ms (140 TFLOP/s).

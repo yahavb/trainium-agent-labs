@@ -33,7 +33,7 @@ def main():
     if a.ir:
         print(s.show())
     with open(a.out, "w") as f:
-        f.write(s.source())
+        f.write(s.source(itemsize=2 if a.dtype in ('bf16', 'f16') else 4))
 
 
 if __name__ == "__main__":

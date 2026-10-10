@@ -7,7 +7,7 @@ import re
 
 from . import ir
 from .expr import Aff, to_py
-from .hw import INSTRS, NC_DEFAULT, HardwareConfig
+from .hw import DTYPE_BYTES, INSTRS, NC_DEFAULT, HardwareConfig
 from .lower import check_hw, infer_kinds, select_copies
 
 
@@ -50,26 +50,33 @@ def window_src(w: ir.Window, bufs: dict) -> str:
     return f"{ident(w.buf)}[{', '.join(parts)}]"
 
 
-def sbuf_footprint(proc: ir.Proc) -> Aff:
+def sbuf_footprint(proc: ir.Proc, itemsize: int = 4) -> Aff:
     """Upper bound on SBUF bytes per partition: every SBUF allocation counted once (no liveness
-    reuse), 4 bytes per element worst case since dtypes follow the inputs."""
+    reuse). Kernels are dtype-agnostic (`like:<arg>` buffers), so `itemsize` is the caller's
+    declared element size for those; the default 4 is the f32 worst case."""
     total = Aff(0)
     for s in ir.walk(proc.body):
         if isinstance(s, ir.Alloc) and s.buf.mem == ir.SBUF:
             el = Aff(1)
             for d in s.buf.shape[1:]:
                 el = el * d
-            total = total + el * 4
+            total = total + el * (itemsize if s.buf.dtype.startswith("like:") else DTYPE_BYTES[s.buf.dtype])
     return total
 
 
-def emit_nki(proc: ir.Proc, hw: HardwareConfig = NC_DEFAULT) -> str:
+def emit_nki(proc: ir.Proc, hw: HardwareConfig = NC_DEFAULT, itemsize: int = 4) -> str:
     """Finalize (copy selection, loop-kind inference, hardware legality) and print NKI source."""
     proc = select_copies(proc)
     proc = infer_kinds(proc)
     check_hw(proc, hw)
     bufs = ir.buffers_of(proc)
-    lines = ["import nki", "import nki.isa as nisa", "import nki.language as nl", "", "", "@nki.jit"]
+    lines = ["import nki", "import nki.isa as nisa", "import nki.language as nl", ""]
+    spmd = [s for s in ir.walk(proc.body) if isinstance(s, ir.For) and s.kind == "spmd"]
+    if spmd:
+        if len(spmd) > 1 or not spmd[0].extent.is_const:
+            raise EmitError("at most one spmd loop with a constant extent is supported")
+        lines.append(f"LNC = {spmd[0].extent.const}  # launch as {ident(proc.name)}[LNC](...)")
+    lines += ["", "@nki.jit"]
     args = [b for b in proc.args if b.role == "arg"]
     outs = [b for b in proc.args if b.role == "out"]
     lines.append(f"def {ident(proc.name)}({', '.join(ident(a.name) for a in args)}):")
@@ -88,12 +95,12 @@ def emit_nki(proc: ir.Proc, hw: HardwareConfig = NC_DEFAULT) -> str:
         lines.append(f"{ind}{ident(name)} = {aff(e)}")
     for a in proc.assumptions:
         lines.append(f'{ind}assert {aff(a.expr)} % {a.mod} == 0, "expected {a.expr} to be a multiple of {a.mod}"')
-    foot = sbuf_footprint(proc)
+    foot = sbuf_footprint(proc, itemsize)
     if foot.is_const:
         if foot.const > hw.sbuf_bytes_per_partition:
             raise EmitError(f"SBUF footprint {foot.const} B/partition exceeds the {hw.sbuf_bytes_per_partition} B budget")
     else:
-        lines.append(f'{ind}assert {aff(foot)} <= {hw.sbuf_bytes_per_partition}, "SBUF footprint (bytes/partition, f32 worst case) exceeds the budget; block the loops"')
+        lines.append(f'{ind}assert {aff(foot)} <= {hw.sbuf_bytes_per_partition}, "SBUF footprint (bytes/partition, assuming {itemsize}-byte elements) exceeds the budget; block the loops"')
     for o in outs:
         lines.append(f"{ind}{ident(o.name)} = nl.ndarray({shape_src(o.shape)}, dtype={dtype_src(o.dtype)}, buffer=nl.shared_hbm)")
     lines.append("")
@@ -108,6 +115,10 @@ def emit_nki(proc: ir.Proc, hw: HardwareConfig = NC_DEFAULT) -> str:
             elif isinstance(s, ir.For):
                 if s.kind == "auto":
                     raise EmitError(f"loop {s.var} has no resolved kind")
+                if s.kind == "spmd":
+                    lines.append(f"{pad}{ident(s.var)} = nl.program_id(0)")
+                    emit(s.body, depth)
+                    continue
                 lines.append(f"{pad}for {ident(s.var)} in {_RANGE[s.kind]}({aff(s.extent)}):")
                 emit(s.body, depth + 1)
             elif isinstance(s, ir.Call):
@@ -117,8 +128,10 @@ def emit_nki(proc: ir.Proc, hw: HardwareConfig = NC_DEFAULT) -> str:
                 for k, v in s.attrs:
                     if k == "accumulate" and v is not None:
                         extra += f", accumulate={v}"
+                    elif k == "dge":
+                        extra += f", dge_mode=nisa.dge_mode.{v}"
                     elif k == "engine":
-                        extra += f", engine=nisa.{v}_engine"
+                        extra += f", engine=nisa.engine.{v}"
                 lines.append(f"{pad}nisa.{ins.nisa}({kw}{extra})")
             else:
                 raise EmitError(

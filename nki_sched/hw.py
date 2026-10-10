@@ -52,3 +52,6 @@ INSTRS = {
 
 # engines a copy-like instruction may be moved to by set_engine (NKI: tensor_copy/dma_copy take engine=)
 COPY_ENGINES = ("vector", "scalar", "gpsimd")
+
+# descriptor generation for dma_copy: dge mode -> engines that may issue it (None: no engine choice)
+DGE_MODES = {"hwdge": ("sync", "scalar"), "swdge": (None,), "none": (None,)}

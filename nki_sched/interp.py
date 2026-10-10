@@ -152,7 +152,7 @@ def _exec_alloc(st: _State, s: ir.Alloc):
 
 def _exec_for(st: _State, s: ir.For):
     n = int(s.extent.eval(st.env))
-    order = range(n - 1, -1, -1) if (st.reverse_affine and s.kind == "affine") else range(n)
+    order = range(n - 1, -1, -1) if (st.reverse_affine and s.kind in ("affine", "spmd")) else range(n)
     for i in order:
         st.env[s.var] = i
         _exec_block(st, s.body)

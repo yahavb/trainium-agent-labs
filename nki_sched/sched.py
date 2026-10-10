@@ -13,7 +13,7 @@ from . import ir
 from .analysis import AnalysisError, const_int, dim_interval, injective, loop_ranges, region
 from .emit import emit_nki
 from .expr import Aff, Var, var
-from .hw import INSTRS, NC_DEFAULT, HardwareConfig
+from .hw import DGE_MODES, INSTRS, NC_DEFAULT, HardwareConfig
 from .lower import HardwareError, check_hw, copy_nest_to_call, infer_kinds, nest_window
 
 
@@ -117,8 +117,10 @@ class Sched:
     def show(self):
         return str(self.proc)
 
-    def source(self) -> str:
-        return emit_nki(self.proc, self.hw)
+    def source(self, itemsize: int = 4) -> str:
+        """NKI source. `itemsize` is the element size of the (dtype-agnostic) kernel arguments, used
+        only for the SBUF footprint assertion; 4 assumes f32, pass 2 for a bf16 kernel."""
+        return emit_nki(self.proc, self.hw, itemsize)
 
     # ------------------------------------------------------------------ split
     def split(self, loop: str, factor: int, names=None, perfect: bool = False):
@@ -674,6 +676,52 @@ class Sched:
             new_to = replace(to_loop, body=new_body)
             p = self._rewrite_loop(to, lambda f: (new_to,))
         self._commit(f"hoist({buf}, to={to})", p)
+
+    def set_dma(self, buf: str, dge: str = "hwdge", engine: Optional[str] = "sync"):
+        """Choose how the DMAs that fill or drain `buf` get their descriptors. `hwdge` (the DGE
+        hardware block, driven by the `sync` or `scalar` queue) keeps descriptor generation off the
+        GpSimd engine, which is what `swdge` uses; `none` has the runtime prebuild them. Spreading
+        different buffers over `sync` / `scalar` runs their DMA queues in parallel."""
+        if dge not in DGE_MODES:
+            raise ScheduleError(f"set_dma: dge must be one of {sorted(DGE_MODES)}, got {dge!r}")
+        if dge != "hwdge":
+            engine = None
+        elif engine not in DGE_MODES[dge]:
+            raise ScheduleError(f"set_dma: hwdge descriptors are issued by engine 'sync' or 'scalar', got {engine!r}")
+        self._buf(buf)
+        n = []
+
+        def f(s):
+            if isinstance(s, ir.Call) and s.instr == "ns.sync.dma_copy" and any(w.buf == buf for _, w in s.args):
+                n.append(1)
+                keep = tuple((k, v) for k, v in s.attrs if k not in ("dge", "engine"))
+                new = (("dge", dge),) + ((("engine", engine),) if engine else ())
+                return replace(s, attrs=keep + new)
+            return None
+
+        body = tuple(ir.map_stmts(self.proc.body, f))
+        if not n:
+            raise ScheduleError(f"set_dma({buf}): no DMA copy reads or writes '{buf}' (stage it with stage_in / stage_out first)")
+        self._commit(f"set_dma({buf}, {dge}, {engine})", self.proc.with_(body=body))
+
+    def shard(self, loop: str, cores: int, names=("blk", "core")):
+        """SPMD-parallelise `loop` over `cores` NeuronCores: `loop -> blk*cores + core`, with `core`
+        bound to nl.program_id(0) (and moved outermost when possible). Every program runs the same
+        code on its own interleaved share of the iterations, so the iterations must be independent
+        (the loop must be affine: each one writes a disjoint part of the outputs). The kernel is
+        launched as kernel[cores](...)."""
+        if any(isinstance(x, ir.For) and x.kind == "spmd" for x in ir.walk(self.proc.body)):
+            raise ScheduleError("shard: the kernel already has an spmd loop (one launch axis is supported)")
+        self._find(loop)
+        if ir.find_loop(infer_kinds(self.proc).body, loop).kind != "affine":
+            raise ScheduleError(f"shard({loop}): iterations of '{loop}' are not independent (the loop carries a dependence)")
+        o, c = self.split(loop, cores, names=names, perfect=True)
+        self._commit(f"shard({loop}, {cores})", self._rewrite_loop(c, lambda f: (replace(f, kind="spmd"),)))
+        try:
+            self.reorder(c, o)
+        except ScheduleError:
+            pass
+        return o, c
 
     def mark(self, loop: str, kind: str):
         """Assert (or force a more conservative) loop kind: affine | sequential | static."""

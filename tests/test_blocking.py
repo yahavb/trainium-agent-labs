@@ -115,3 +115,76 @@ def test_fast_schedule_is_numerically_correct_on_the_tiny_chip(load_example, np_
     mod.fast(s, NC_TINY, mt=2, nt=2, kt=2)
     src = s.source()
     assert "nisa.nc_matmul" in src and src.count("nl.psum") == 1
+
+
+def test_shard_binds_a_loop_to_program_id_and_stays_correct(load_example, np_ref):
+    import _common as c
+    mod = load_example("fast_mm")
+    chk = verify.make_checker(np_ref, SHAPES)
+    s = Sched(c.matmul_proc(name="mm"), NC_TINY, check=chk)
+    mod.fast(s, NC_TINY, mt=2, nt=2, kt=2, cores=2)
+    src = s.source()
+    assert "LNC = 2" in src and "core = nl.program_id(0)" in src
+
+
+def test_shard_refuses_loops_that_carry_a_dependence(blocked):
+    s = blocked(check=False)
+    with pytest.raises(ScheduleError, match="not independent"):
+        s.shard("ko", 2)
+
+
+def _staged(blocked):
+    s = blocked()
+    s.fold("matmul")
+    s.set_memory("matmul", PSUM)
+    s.stage_in("lhsT", at="ko", mem=SBUF, name="lhsT_sb")
+    s.stage_in("rhs", at="ko", mem=SBUF, name="rhs_sb")
+    s.replace("ki", "ns.tensor.matmul")
+    return s
+
+
+def test_set_dma_tags_the_copies_that_touch_the_buffer_and_survives_hoist(blocked):
+    s = _staged(blocked)
+    s.set_dma("lhsT_sb", "hwdge", "scalar")
+    s.hoist("lhsT_sb", to="mo")                                  # the rewritten fill keeps its attributes
+    dmas = [c for c in ir.walk(s.proc.body) if isinstance(c, ir.Call) and c.instr == "ns.sync.dma_copy"]
+    tagged = [c for c in dmas if c.attr("dge") == "hwdge"]
+    assert len(tagged) == 1 and tagged[0].attr("engine") == "scalar"
+    assert tagged[0].arg("dst").buf == "lhsT_sb"
+
+
+@pytest.mark.parametrize("dge, engine, message", [
+    ("hwdge", "gpsimd", "'sync' or 'scalar'"),
+    ("fancy", "sync", "dge must be one of"),
+])
+def test_set_dma_rejects_unsupported_combinations(blocked, dge, engine, message):
+    with pytest.raises(ScheduleError, match=message):
+        _staged(blocked).set_dma("rhs_sb", dge, engine)
+
+
+def test_set_dma_needs_a_dma_on_the_buffer(blocked):
+    with pytest.raises(ScheduleError, match="no DMA copy"):
+        _staged(blocked).set_dma("matmul")
+
+
+def test_emitted_dma_carries_dge_mode_and_engine(load_example, np_ref):
+    import _common as c
+    mod = load_example("fast_mm")
+    s = Sched(c.matmul_proc(name="mm"), NC_TINY)
+    mod.fast(s, NC_TINY, mt=2, nt=2, kt=2, dma=mod.DMA_PLANS["hw2"])
+    src = s.source()
+    assert "dge_mode=nisa.dge_mode.hwdge, engine=nisa.engine.scalar" in src
+    assert "dge_mode=nisa.dge_mode.hwdge, engine=nisa.engine.sync" in src
+
+
+def test_footprint_assertion_uses_the_declared_element_size(load_example):
+    import _common as c
+    mod = load_example("fast_mm")
+    s = Sched(c.matmul_proc(name="mm"), NC_TINY)
+    mod.fast(s, NC_TINY, mt=2, nt=2, kt=1, order="nm", resident="rhs")      # rhs strip grows with K
+    f32, bf16 = s.source(), s.source(itemsize=2)
+    assert "assuming 4-byte elements" in f32 and "assuming 2-byte elements" in bf16
+    # the strip dominates: bf16 needs about half of the f32 bytes per partition
+    coef = lambda src: int(next(l for l in src.splitlines() if "SBUF footprint" in l).split("assert ")[1].split(" * (K")[0])
+    n32, n16 = coef(f32), coef(bf16)
+    assert n32 == 2 * n16 > 0

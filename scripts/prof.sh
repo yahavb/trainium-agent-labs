@@ -12,6 +12,6 @@ $PY $ROOT/scripts/build.py "$TARGET" $ROOT/out/$TAG.py
 $ROOT/scripts/pod.sh put $ROOT/out/$TAG.py /tmp/$TAG.py
 $ROOT/scripts/pod.sh put $ROOT/scripts/bench_run.py /tmp/bench_run.py
 $ROOT/scripts/pod.sh put $ROOT/scripts/summ.py /tmp/summ.py
-$ROOT/scripts/pod.sh "cd /tmp && rm -rf art_$TAG && export NEURON_RT_VISIBLE_CORES=$CORE && ART=/tmp/art_$TAG python bench_run.py $TAG.py mm $K $M $N 2>&1 | grep -E 'max rel|Error|error' | head; \
+$ROOT/scripts/pod.sh "cd /tmp && rm -rf art_$TAG && export NEURON_RT_VISIBLE_CORES=$CORE LNC=${LNC:-1} && ART=/tmp/art_$TAG python bench_run.py $TAG.py mm $K $M $N 2>&1 | grep -E 'max rel|Error|error' | head; \
   neuron-explorer capture -n /tmp/art_$TAG/kernel.neff -s /tmp/$TAG.ntff >/dev/null 2>&1; \
   neuron-explorer view -n /tmp/art_$TAG/kernel.neff -s /tmp/$TAG.ntff --output-format summary-text --disable-ui 2>&1 | python /tmp/summ.py $K $M $N"
