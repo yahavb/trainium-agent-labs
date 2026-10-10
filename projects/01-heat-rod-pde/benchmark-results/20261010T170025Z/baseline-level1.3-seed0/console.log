@@ -1,0 +1,35 @@
+
+=========== level1.3 ===========
+Solve the heat equation on a rod.
+
+  u_t = 2 * u_xx,   for 0 < x < 2, t > 0
+  u(0, t) = 0 and u(2, t) = 0
+  u(x, 0) = -x**2 + 2*x
+
+The starting shape is not a single sine wave, so the answer is a sum of the allowed waves, each with its own coefficient and its own decay rate. Keep enough terms that the starting shape matches to within 0.5 percent.
+Each coefficient is an integral: c_n = (2/2) * Integral(u(x, 0) * sin(n*pi*x/2), (x, 0, 2)). Work it out for n = 1, 2, 3, ... instead of guessing, and simplify each one to a number.
+
+On the last line write exactly
+  u(x, t) = <expression>
+Write every term out with its numbers filled in, in Python syntax, like this:
+  u(x, t) = 3*exp(-2*pi**2*t)*sin(pi*x) - 0.5*exp(-8*pi**2*t)*sin(2*pi*x)
+Use exp, sin, cos, pi and ** for powers. No summation sign, no unknown constants, no LaTeX.
+
+round 0: rewards [0.6, 0.6]  mean 0.60  best 0.6  10 tool call(s)  (19.3s)
+  best: (32/pi**3)*exp(-2*pi**2*t)*sin(pi*x/2) + (32/(27*pi**3))*exp(-8*pi**2*t)*sin(3*pi*x/2) + (32/(125*pi**3))*exp(-18*pi**2*t)*sin(5*pi*x/2)
+  checker: The equation u_t = 2*u_xx does not hold: at x=1.087, t=0.0270, u_t - 2*u_xx = -8.739 instead of 0. Term by term: the sin(pi*x/2) term decays too fast; the sin(3*pi*x/2) term decays too fast; the sin(5*pi*x/2) term decays too fast. Each term decays at its own rate, and that rate is k times the square of the frequency in that same term's sine. Check that the frequency in each exponent matches the frequency of the wave it multiplies.
+
+round 1: rewards [0.0, 0.0]  mean 0.00  best 0.0  1 tool call(s)  (50.4s)
+  best: \sum_{n=1}**{\infty} c_n e**{-2 \left( \frac{npi}{2} \right)**2 t} \sin\left( \frac{npi x}{2} \right)
+  checker: Could not read the expression '\\sum_{n=1}**{\\infty} c_n e**{-2 \\left( \\frac{npi}{2} \\right)**2 t} \\si': TokenError. Do not write a summation or LaTeX. Expand the sum: write each term separately with its number in front, joined by + and -, for example 3*exp(-2*pi**2*t)*sin(pi*x) - 0.5*exp(-8*pi**2*t)*sin(2*pi*x).
+
+round 2: rewards [0.6, 0.6]  mean 0.60  best 0.6  16 tool call(s)  (33.7s)
+  best: 1.03205*exp(-2*pi**2*t)*sin(pi*x/2) + 0.038224*exp(-8*pi**2*t)*sin(3*pi*x/2) + 0.00825639*exp(-18*pi**2*t)*sin(5*pi*x/2) + 0.00300889*exp(-32*pi**2*t)*sin(7*pi*x/2)
+  checker: The equation u_t = 2*u_xx does not hold: at x=1.087, t=0.0270, u_t - 2*u_xx = -8.739 instead of 0. Term by term: the sin(pi*x/2) term decays too fast; the sin(3*pi*x/2) term decays too fast; the sin(5*pi*x/2) term decays too fast; the sin(7*pi*x/2) term decays too fast. Each term decays at its own rate, and that rate is k times the square of the frequency in that same term's sine. Check that the frequency in each exponent matches the frequency of the wave it multiplies.
+not solved in 3 rounds; best reward 0.6
+
+=========== summary: level 1 ===========
+  level1.3     reward 0.6 after 3 round(s)
+  solved 0/1
+
+attempts logged to benchmark-results/20261010T170025Z/baseline-level1.3-seed0/attempts.jsonl

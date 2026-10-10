@@ -1,0 +1,34 @@
+
+=========== level1.1 ===========
+Solve the heat equation on a rod.
+
+  u_t = 1 * u_xx,   for 0 < x < 1, t > 0
+  u(0, t) = 0 and u_x(1, t) = 0
+  u(x, 0) = sin(pi*x/2)
+
+One end is insulated: its condition is on the slope, not the value.
+
+On the last line write exactly
+  u(x, t) = <expression>
+Write every term out with its numbers filled in, in Python syntax, like this:
+  u(x, t) = 3*exp(-2*pi**2*t)*sin(pi*x) - 0.5*exp(-8*pi**2*t)*sin(2*pi*x)
+Use exp, sin, cos, pi and ** for powers. No summation sign, no unknown constants, no LaTeX.
+
+round 0: rewards [0.0, 0.0]  mean 0.00  best 0.0  0 tool call(s)  (40.0s)
+  best: X(x)T(t)
+  checker: Could not read the expression 'X(x)T(t)': NameError. Do not leave named functions or coefficients unevaluated. Work out every coefficient as a number and write the result out in full.
+
+round 1: rewards [0.0, 0.0]  mean 0.00  best 0.0  0 tool call(s)  (40.0s)
+  best: X(x)T(t)
+  checker: Could not read the expression 'X(x)T(t)': NameError. Do not leave named functions or coefficients unevaluated. Work out every coefficient as a number and write the result out in full.
+
+round 2: rewards [0.0, 0.0]  mean 0.00  best 0.0  0 tool call(s)  (40.0s)
+  best: X(x)T(t)
+  checker: Could not read the expression 'X(x)T(t)': NameError. Do not leave named functions or coefficients unevaluated. Work out every coefficient as a number and write the result out in full.
+not solved in 3 rounds; best reward 0.0
+
+=========== summary: level 1 ===========
+  level1.1     reward 0.0 after 3 round(s)
+  solved 0/1
+
+attempts logged to benchmark-results/20261010T170025Z/baseline-level1.1-seed0/attempts.jsonl
