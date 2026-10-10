@@ -1,0 +1,35 @@
+{
+  "hostname": "seat-260",
+  "python": "3.13.7",
+  "cores": null,
+  "backend": "simulate",
+  "runs": 5,
+  "iters": 200,
+  "tasks": {
+    "spring": {
+      "equation": "force = -(stiffness * displacement + damping * velocity)",
+      "structure": "elementwise",
+      "technique": "sign fusion",
+      "input_names": [
+        "displacement",
+        "velocity",
+        "stiffness",
+        "damping"
+      ]
+    },
+    "net-force": {
+      "equation": "net_force[p, 0] = sum(forces[p, :])",
+      "structure": "reduction",
+      "technique": "native reduction instead of serial adds",
+      "input_names": [
+        "forces"
+      ]
+    }
+  },
+  "source_sha256": {
+    "math_harness.py": "26ea8a7cee982c9ba7f4ec1faf46cafcdd0cdb5274d7e32fd21e76fcb6571fd4",
+    "math_tasks.py": "d850d19b4c4355f3e5f4cec05cd2f64d6844db0286e4b2a18db314e7d971106b",
+    "math_program.py": "703bd73568c031405f3609329b53950eebe4381372c72ce579292f4110b25c49",
+    "benchmark_update.py": "7cb4023224021e86a4ea499d5c8e5756d079c72fa8bbff0e2604d9580ae88254"
+  }
+}

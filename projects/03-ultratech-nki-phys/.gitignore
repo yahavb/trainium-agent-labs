@@ -1,0 +1,8 @@
+!ATTEMPTS.jsonl
+!development/attempts.jsonl
+!development/**/attempts.jsonl
+!independent-repeat/**/attempts.jsonl
+__pycache__/
+*.pyc
+source/data/*
+!source/data/qwen-grip-6074b673bb6348ce932b631a7a079f4c/

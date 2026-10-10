@@ -1,0 +1,17 @@
+{
+  "hypothesis": "Replace the loop with a single sum operation to reduce overhead",
+  "expected_effect": "Reduce the number of operations and improve performance by using a single sum operation instead of a loop",
+  "program": {
+    "operations": [
+      {
+        "id": "v0",
+        "op": "sum",
+        "inputs": [
+          "forces"
+        ],
+        "engine": "auto"
+      }
+    ],
+    "result": "v0"
+  }
+}

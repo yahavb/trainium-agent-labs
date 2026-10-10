@@ -1,0 +1,100 @@
+"""CPU reference for per-world FISTA with projected-gradient restart."""
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import uuid
+
+import numpy as np
+
+
+def solve(a_transposed, bias, initial, alpha, steps, *, fixed_beta=None, restart=True):
+    capacity, worlds = bias.shape
+    if steps < 1 or (fixed_beta is not None and not 0 <= fixed_beta < 1):
+        raise ValueError("Positive steps and beta in [0,1) required")
+    output = np.empty_like(initial)
+    traces = []
+    for world in range(worlds):
+        matrix = a_transposed[:, world * capacity:(world + 1) * capacity].T
+        x = initial[:, world].copy()
+        y = x.copy()
+        t = np.float32(1)
+        resets = []
+        for step in range(steps):
+            gradient = matrix @ y + bias[:, world]
+            new = np.maximum(y - alpha[:, world] * gradient, np.float32(0))
+            delta = new - x
+            criterion = np.float32((y - new) @ delta)
+            reset = bool(restart and criterion > 0)
+            next_t = np.float32((np.float32(1) + np.sqrt(np.float32(1) + np.float32(4) * t * t)) * np.float32(.5))
+            beta = (np.float32(fixed_beta) if fixed_beta is not None
+                    else np.float32((t - np.float32(1)) * np.float32(1 / next_t)))
+            if reset:
+                beta = np.float32(0)
+                next_t = np.float32(1)
+                resets.append(step + 1)
+            y = new + beta * delta
+            x = new
+            t = next_t
+        output[:, world] = x
+        traces.append(dict(world=world, restart_count=len(resets), restart_steps=resets))
+    return output, traces
+
+
+def main():
+    from batch_reference import prepare_batch
+    from grip_physics import check_grip
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--suite", type=Path, required=True)
+    parser.add_argument("--steps", type=int, default=1024)
+    parser.add_argument("--diagnose-precision", action="store_true", help="Also solve exported FP32 inputs with FP64 working arithmetic; CPU diagnosis only")
+    parser.add_argument("--out", type=Path)
+    args = parser.parse_args()
+    manifest = json.loads((args.suite / "manifest.json").read_text())
+    for name, expected in json.loads((args.suite / "commitment.json").read_text()).items():
+        if hashlib.sha256((args.suite / name).read_bytes()).hexdigest() != expected:
+            raise ValueError("Suite commitment mismatch")
+    out = args.out or Path(__file__).parent / f"data/adaptive-reference-{uuid.uuid4().hex}"
+    out.mkdir(parents=True, exist_ok=False)
+    rows = []
+    for record in manifest["cases"]:
+        for name, expected in record["sha256"].items():
+            if hashlib.sha256((args.suite / name).read_bytes()).hexdigest() != expected:
+                raise ValueError("Fixture hash mismatch")
+        with np.load(args.suite / record["reference_file"], allow_pickle=False) as arrays:
+            fixture = dict(arrays)
+        with np.load(args.suite / record["input_file"], allow_pickle=False) as arrays:
+            public = dict(arrays)
+        inputs = prepare_batch([public])
+        methods = [("fixed-beta09", dict(fixed_beta=.9, restart=False)), ("fista-restart", dict())]
+        if args.diagnose_precision:
+            methods.append(("fista-restart-fp64-work", dict()))
+        for method, options in methods:
+            working = tuple(v.astype(np.float64) for v in inputs) if method.endswith("fp64-work") else inputs
+            value, trace = solve(*working, args.steps, **options)
+            check = check_grip(fixture, value[:8, 0], fixture["reference_forces"])
+            np.savez_compressed(out / f"{record['case_id']}-{method}.npz", forces=value)
+            row = dict(case_id=record["case_id"], method=method, steps=args.steps,
+                       check=check, trace=trace[0])
+            rows.append(row)
+            with (out / "attempts.jsonl").open("a") as stream:
+                stream.write(json.dumps(row) + "\n")
+    scores = {method: sum(r["check"]["passed"] for r in rows if r["method"] == method)
+              for method, _ in methods}
+    (out / "results.json").write_text(json.dumps(dict(scores=scores, cases=rows,
+        source_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()), indent=2) + "\n")
+    (out / "run-note.md").write_text(
+        f"# Adaptive Solver CPU Check\n\n{len(manifest['cases'])} public cases; {args.steps} updates; "
+        f"one execution per method/case. Scores: {scores}.\n"
+        "NumPy reference only, not NKI equivalence or device timing. FP64-work, if present, "
+        "uses higher precision for force/gradient arithmetic, with the existing FP32 schedule "
+        "scalars and exported FP32 inputs; it is diagnostic, not an eligible FP32 kernel. Saved outputs and "
+        "per-case metrics/restart histories accompany every attempt. No throughput or private-test claim.\n"
+        "FISTA schedule and restart were human implemented, not generated by Qwen.\n")
+    print(f"CPU reference: {scores}; artifacts: {out}")
+
+
+if __name__ == "__main__":
+    main()

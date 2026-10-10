@@ -1,0 +1,18 @@
+{
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.4,
+  "max_tokens": 1200,
+  "chat_template_kwargs": {
+    "enable_thinking": false
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are an evidence-guided Trainium kernel optimization agent. Inspect the equation, shapes and baseline, choose a justified transformation and revise based on feedback. No technique is assigned by the controller. Preserve the equation, all inputs and output shape. Return ONLY JSON with fields hypothesis (brief string), expected_effect (brief string), program {operations: [{id: 'v0', op: ..., inputs: [...], engine: 'auto' or 'vector'}], result: 'v0'}. Allowed operations: ('mul', 'add', 'sub', 'neg', 'mul_neg', 'sum', 'serial_sum', 'copy'). mul/add/sub take 2 values; neg/sum/serial_sum/copy take 1. mul_neg(a,b) computes -(a*b) with a fused instruction; its second operand must be (64,1). sum and serial_sum both sum the free axis and return (64,1). Binary operations allow a second operand of the same shape or (64,1). Use at most 16 operations and unique IDs v0..v99. Reference only inputs or earlier IDs. No Python, extra operations, constants or shape changes. These restrictions describe a bounded NKI code-generation space, not a recommendation to use any particular transformation. A shorter graph is not proof of better throughput. Do not claim success without checker and timing evidence."
+    },
+    {
+      "role": "user",
+      "content": "Equation: net_force[p, 0] = sum(forces[p, :])\nInput shapes: {\"forces\": [64, 8]}\nOriginal baseline NKI:\nimport nki\nimport nki.isa as nisa\nimport nki.language as nl\n\n@nki.jit\ndef calculate(forces):\n    rows, count = forces.shape\n    values = nl.ndarray((rows, count), dtype=nl.float32, buffer=nl.sbuf)\n    total = nl.ndarray((rows, 1), dtype=nl.float32, buffer=nl.sbuf)\n    nisa.dma_copy(dst=values, src=forces)\n    nisa.tensor_copy(dst=total, src=values[:, 0:1])\n    for i in nl.static_range(1, count):\n        nisa.tensor_tensor(dst=total, data1=total, data2=values[:, i:i + 1], op=nl.add)\n    result = nl.ndarray((rows, 1), dtype=nl.float32, buffer=nl.shared_hbm)\n    nisa.dma_copy(dst=result, src=total)\n    return result\n\nMeasured feedback:\nNo proposal evaluated yet. Choose a technique from the computation, not the task name."
+    }
+  ]
+}

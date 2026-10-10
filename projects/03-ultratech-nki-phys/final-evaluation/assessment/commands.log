@@ -1,0 +1,108 @@
+["kubectl", "exec", "seat-260", "--", "bash", "-lc", "cd /workspace/projects/03-contact-physics && timeout --kill-after=1s 898s /workspace/serve.sh --stop"]
+Defaulted container "app" out of: app, clone (init)
+Stopped.
+["kubectl", "exec", "seat-260", "--", "bash", "-lc", "cd /workspace/projects/03-contact-physics && timeout --kill-after=1s 896s python -c 'import json,subprocess,time; \nfor _ in range(30):\n devices=json.loads(subprocess.check_output(['\"'\"'neuron-ls'\"'\"','\"'\"'--json-output'\"'\"']))\n owners=[p for d in devices for p in d.get('\"'\"'neuron_processes'\"'\"',[])]\n if not owners: break\n time.sleep(1)\nelse: raise RuntimeError('\"'\"'Neuron processes still own the device; refusing concurrent timing: '\"'\"'+str(owners))\n'"]
+Defaulted container "app" out of: app, clone (init)
+["kubectl", "exec", "seat-260", "--", "mkdir", "-p", "/workspace/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1-assessment"]
+Defaulted container "app" out of: app, clone (init)
+["kubectl", "exec", "seat-260", "--", "mkdir", "-p", "/workspace/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1-assessment/bundle"]
+Defaulted container "app" out of: app, clone (init)
+["kubectl", "cp", "/Users/vedantdesai/.codex/.chatgpt-projects/g-p-6aca4cd2de2081918aafaa90a7757cb1/repo/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1/manifest.json", "seat-260:/workspace/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1-assessment/bundle/manifest.json"]
+Defaulted container "app" out of: app, clone (init)
+["kubectl", "cp", "/Users/vedantdesai/.codex/.chatgpt-projects/g-p-6aca4cd2de2081918aafaa90a7757cb1/repo/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1/manifest.sha256", "seat-260:/workspace/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1-assessment/bundle/manifest.sha256"]
+Defaulted container "app" out of: app, clone (init)
+["kubectl", "cp", "/Users/vedantdesai/.codex/.chatgpt-projects/g-p-6aca4cd2de2081918aafaa90a7757cb1/repo/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1/README.md", "seat-260:/workspace/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1-assessment/bundle/README.md"]
+Defaulted container "app" out of: app, clone (init)
+["kubectl", "cp", "/Users/vedantdesai/.codex/.chatgpt-projects/g-p-6aca4cd2de2081918aafaa90a7757cb1/repo/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1/support", "seat-260:/workspace/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1-assessment/bundle/support"]
+Defaulted container "app" out of: app, clone (init)
+["kubectl", "cp", "/Users/vedantdesai/.codex/.chatgpt-projects/g-p-6aca4cd2de2081918aafaa90a7757cb1/repo/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1/spring", "seat-260:/workspace/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1-assessment/bundle/spring"]
+Defaulted container "app" out of: app, clone (init)
+["kubectl", "cp", "/Users/vedantdesai/.codex/.chatgpt-projects/g-p-6aca4cd2de2081918aafaa90a7757cb1/repo/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1/net-force", "seat-260:/workspace/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1-assessment/bundle/net-force"]
+Defaulted container "app" out of: app, clone (init)
+["kubectl", "cp", "/Users/vedantdesai/.codex/.chatgpt-projects/g-p-6aca4cd2de2081918aafaa90a7757cb1/repo/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1/support/frozen_math_eval.py", "seat-260:/workspace/projects/03-contact-physics/frozen_math_eval.py"]
+Defaulted container "app" out of: app, clone (init)
+["kubectl", "cp", "/Users/vedantdesai/.codex/.chatgpt-projects/g-p-6aca4cd2de2081918aafaa90a7757cb1/repo/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1/support/math_tasks.py", "seat-260:/workspace/projects/03-contact-physics/math_tasks.py"]
+Defaulted container "app" out of: app, clone (init)
+["kubectl", "cp", "/Users/vedantdesai/.codex/.chatgpt-projects/g-p-6aca4cd2de2081918aafaa90a7757cb1/repo/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1/support/math_program.py", "seat-260:/workspace/projects/03-contact-physics/math_program.py"]
+Defaulted container "app" out of: app, clone (init)
+["kubectl", "exec", "seat-260", "--", "bash", "-lc", "cd /workspace/projects/03-contact-physics && timeout --kill-after=1s 855s env NEURON_RT_VISIBLE_CORES=0,1 python -u frozen_math_eval.py execute --bundle /workspace/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1-assessment/bundle --out /workspace/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1-assessment/device-outputs --manifest-sha256 2de67353ccb88bce02cd76d311ed37b56c2b7543e0145b71bd701f034509ce59"]
+Defaulted container "app" out of: app, clone (init)
+spring seed=10000: executed
+spring seed=10001: executed
+spring seed=10002: executed
+spring seed=10003: executed
+spring seed=10004: executed
+spring seed=10005: executed
+spring seed=10006: executed
+spring seed=10007: executed
+spring seed=10008: executed
+spring seed=10009: executed
+spring seed=10010: executed
+spring seed=10011: executed
+spring seed=10012: executed
+spring seed=10013: executed
+spring seed=10014: executed
+spring seed=10015: executed
+spring seed=10016: executed
+spring seed=10017: executed
+spring seed=10018: executed
+spring seed=10019: executed
+spring seed=10020: executed
+spring seed=10021: executed
+spring seed=10022: executed
+spring seed=10023: executed
+spring seed=10024: executed
+spring seed=10025: executed
+spring seed=10026: executed
+spring seed=10027: executed
+spring seed=10028: executed
+spring seed=10029: executed
+spring seed=10030: executed
+spring seed=10031: executed
+net-force seed=10001: executed
+net-force seed=10002: executed
+net-force seed=10003: executed
+net-force seed=10005: executed
+net-force seed=10006: executed
+net-force seed=10007: executed
+net-force seed=10009: executed
+net-force seed=10010: executed
+net-force seed=10011: executed
+net-force seed=10013: executed
+net-force seed=10014: executed
+net-force seed=10015: executed
+net-force seed=10017: executed
+net-force seed=10018: executed
+net-force seed=10019: executed
+net-force seed=10021: executed
+net-force seed=10022: executed
+net-force seed=10023: executed
+net-force seed=10025: executed
+net-force seed=10026: executed
+net-force seed=10027: executed
+net-force seed=10029: executed
+net-force seed=10030: executed
+net-force seed=10031: executed
+net-force seed=10033: executed
+net-force seed=10034: executed
+net-force seed=10035: executed
+net-force seed=10037: executed
+net-force seed=10038: executed
+net-force seed=10039: executed
+net-force seed=10041: executed
+net-force seed=10042: executed
+["kubectl", "cp", "seat-260:/workspace/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1-assessment/device-outputs", "/Users/vedantdesai/.codex/.chatgpt-projects/g-p-6aca4cd2de2081918aafaa90a7757cb1/repo/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1/assessment/device-outputs"]
+Defaulted container "app" out of: app, clone (init)
+tar: Removing leading `/' from member names
+warning: skipping symlink: "/Users/vedantdesai/.codex/.chatgpt-projects/g-p-6aca4cd2de2081918aafaa90a7757cb1/repo/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1/assessment/device-outputs/spring/compiled/sg00/act_info.json" -> "/opt/conda/lib/python3.13/site-packages/neuronxcc/pwp/pwp_bin_trainium/act_info.json" (consider using "kubectl exec -n "" "seat-260" -- tar cf - "/workspace/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1-assessment/device-outputs" | tar xf -")
+warning: skipping symlink: "/Users/vedantdesai/.codex/.chatgpt-projects/g-p-6aca4cd2de2081918aafaa90a7757cb1/repo/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1/assessment/device-outputs/spring/compiled/sg00/default_control_fast_table.bin" -> "/opt/conda/lib/python3.13/site-packages/neuronxcc/dve/dve_bin_gen3/default_control_fast_table.bin"
+warning: skipping symlink: "/Users/vedantdesai/.codex/.chatgpt-projects/g-p-6aca4cd2de2081918aafaa90a7757cb1/repo/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1/assessment/device-outputs/spring/compiled/sg00/default_control_slow_table.bin" -> "/opt/conda/lib/python3.13/site-packages/neuronxcc/dve/dve_bin_gen3/default_control_slow_table.bin"
+warning: skipping symlink: "/Users/vedantdesai/.codex/.chatgpt-projects/g-p-6aca4cd2de2081918aafaa90a7757cb1/repo/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1/assessment/device-outputs/spring/compiled/sg00/default_datapath_table.bin" -> "/opt/conda/lib/python3.13/site-packages/neuronxcc/dve/dve_bin_gen3/default_datapath_table.bin"
+warning: skipping symlink: "/Users/vedantdesai/.codex/.chatgpt-projects/g-p-6aca4cd2de2081918aafaa90a7757cb1/repo/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1/assessment/device-outputs/spring/compiled/sg00/default_opcode_table.bin" -> "/opt/conda/lib/python3.13/site-packages/neuronxcc/dve/dve_bin_gen3/default_opcode_table.bin"
+warning: skipping symlink: "/Users/vedantdesai/.codex/.chatgpt-projects/g-p-6aca4cd2de2081918aafaa90a7757cb1/repo/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1/assessment/device-outputs/spring/compiled/sg00/dve_info.json" -> "/opt/conda/lib/python3.13/site-packages/neuronxcc/dve/dve_bin_gen3/dve_info.json"
+warning: skipping symlink: "/Users/vedantdesai/.codex/.chatgpt-projects/g-p-6aca4cd2de2081918aafaa90a7757cb1/repo/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1/assessment/device-outputs/net-force/compiled/sg00/act_info.json" -> "/opt/conda/lib/python3.13/site-packages/neuronxcc/pwp/pwp_bin_trainium/act_info.json"
+warning: skipping symlink: "/Users/vedantdesai/.codex/.chatgpt-projects/g-p-6aca4cd2de2081918aafaa90a7757cb1/repo/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1/assessment/device-outputs/net-force/compiled/sg00/default_control_fast_table.bin" -> "/opt/conda/lib/python3.13/site-packages/neuronxcc/dve/dve_bin_gen3/default_control_fast_table.bin"
+warning: skipping symlink: "/Users/vedantdesai/.codex/.chatgpt-projects/g-p-6aca4cd2de2081918aafaa90a7757cb1/repo/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1/assessment/device-outputs/net-force/compiled/sg00/default_control_slow_table.bin" -> "/opt/conda/lib/python3.13/site-packages/neuronxcc/dve/dve_bin_gen3/default_control_slow_table.bin"
+warning: skipping symlink: "/Users/vedantdesai/.codex/.chatgpt-projects/g-p-6aca4cd2de2081918aafaa90a7757cb1/repo/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1/assessment/device-outputs/net-force/compiled/sg00/default_datapath_table.bin" -> "/opt/conda/lib/python3.13/site-packages/neuronxcc/dve/dve_bin_gen3/default_datapath_table.bin"
+warning: skipping symlink: "/Users/vedantdesai/.codex/.chatgpt-projects/g-p-6aca4cd2de2081918aafaa90a7757cb1/repo/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1/assessment/device-outputs/net-force/compiled/sg00/default_opcode_table.bin" -> "/opt/conda/lib/python3.13/site-packages/neuronxcc/dve/dve_bin_gen3/default_opcode_table.bin"
+warning: skipping symlink: "/Users/vedantdesai/.codex/.chatgpt-projects/g-p-6aca4cd2de2081918aafaa90a7757cb1/repo/projects/03-contact-physics/data/final-math-428948fb229d4c648bae14c17f9235b1/assessment/device-outputs/net-force/compiled/sg00/dve_info.json" -> "/opt/conda/lib/python3.13/site-packages/neuronxcc/dve/dve_bin_gen3/dve_info.json"

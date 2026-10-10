@@ -1,0 +1,44 @@
+{
+  "hypothesis": "Fusing the multiplication with the negative scalar to reduce operations and improve throughput.",
+  "expected_effect": "Reducing the number of operations by combining the multiplication with the negative scalar into a single fused instruction.",
+  "program": {
+    "operations": [
+      {
+        "id": "v0",
+        "op": "mul_neg",
+        "inputs": [
+          "displacement",
+          "stiffness"
+        ],
+        "engine": "vector"
+      },
+      {
+        "id": "v1",
+        "op": "mul_neg",
+        "inputs": [
+          "velocity",
+          "damping"
+        ],
+        "engine": "vector"
+      },
+      {
+        "id": "v2",
+        "op": "add",
+        "inputs": [
+          "v0",
+          "v1"
+        ],
+        "engine": "vector"
+      },
+      {
+        "id": "v3",
+        "op": "neg",
+        "inputs": [
+          "v2"
+        ],
+        "engine": "vector"
+      }
+    ],
+    "result": "v3"
+  }
+}

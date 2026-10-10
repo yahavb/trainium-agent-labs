@@ -1,0 +1,10 @@
+We have shifted to simpler frictionless contact impulse QPs because of the hackathon time limit.
+CPU baseline rechecks: plane 8/8 and pairs 8/8 pass full physics at 33 contacts, B=8, 32 updates.
+Your target is device throughput at this unchanged workload, NOT momentum tuning.
+No new candidate timing has been measured yet. Do not invent scores or speedups.
+First try a small, reviewable optimization: remove unnecessary intermediate tensor copies
+and consider supported tensor_scalar two-operation fusion for the scaled bias/gradient
+update. Keep the same projected-gradient mathematics and all accuracy checks.
+Do not replace independent worlds with copies of one world. Do not alter the batch size
+to manufacture a gain against the existing B=8 baseline. Preserve the provided entry point.
+This suggestion is human-provided optimization guidance, not a claimed Qwen discovery.

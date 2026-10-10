@@ -1,0 +1,578 @@
+[
+  {
+    "task": "spring",
+    "seed": 10000,
+    "input_sha256": "975d4d401247478c43eb77fdc9c74395e6dd048f001f38c5dda0fa0cb84c5bb9",
+    "status": "executed",
+    "output_file": "spring/output-10000.npz",
+    "output_sha256": "53653d3a6776d31f94c339a0f653e503a0f9110e195304ea5da68e377e588b85",
+    "seconds_including_jit_and_transfers": 10.9380192360004
+  },
+  {
+    "task": "spring",
+    "seed": 10001,
+    "input_sha256": "ce7d4a6ec2b9c785e75e7c346001d7c7b6560c9e7b833eb99f07fce4c7d7c3b1",
+    "status": "executed",
+    "output_file": "spring/output-10001.npz",
+    "output_sha256": "8c34f75ec81aa7ee6e9b3315c4c915ac3836a48327126981cdc5f1e59e599306",
+    "seconds_including_jit_and_transfers": 1.581376559999626
+  },
+  {
+    "task": "spring",
+    "seed": 10002,
+    "input_sha256": "a12518d3370f1e6ac7d3f2f54c4a766b8b5a8e6fef94d7db01f2becc06382e96",
+    "status": "executed",
+    "output_file": "spring/output-10002.npz",
+    "output_sha256": "a71fcd59cae24faf4f90111af0c8e91f832919ca1f28015df0a9756652030bb3",
+    "seconds_including_jit_and_transfers": 1.4491207280007075
+  },
+  {
+    "task": "spring",
+    "seed": 10003,
+    "input_sha256": "ecf4d233fa3bca06b739c013f883793a65d572aaed923e8ac939db69a1441a6b",
+    "status": "executed",
+    "output_file": "spring/output-10003.npz",
+    "output_sha256": "99446316c658ebac8853996cc60fda8a834f5d997d414fadfda2f505e9efb298",
+    "seconds_including_jit_and_transfers": 1.4975308229986695
+  },
+  {
+    "task": "spring",
+    "seed": 10004,
+    "input_sha256": "8ad161c3815242fdeeef371dd9425643f8f5541501d06b79c78ffe8b75c26d71",
+    "status": "executed",
+    "output_file": "spring/output-10004.npz",
+    "output_sha256": "14642b4b509a64807cf77cf173b8abbdf4addaebac28cbe1c7f113090a26c660",
+    "seconds_including_jit_and_transfers": 1.5116808470011165
+  },
+  {
+    "task": "spring",
+    "seed": 10005,
+    "input_sha256": "e9f9d7599a053171f5b893a38730c2093bc0bd7c0401a660438a389d3f197ae9",
+    "status": "executed",
+    "output_file": "spring/output-10005.npz",
+    "output_sha256": "b642bc2bb80427833f748ec573c922908457fa356c6e702209873b2ebad6343c",
+    "seconds_including_jit_and_transfers": 1.5968930330018338
+  },
+  {
+    "task": "spring",
+    "seed": 10006,
+    "input_sha256": "483b62cd0e47e87ad96cc8b9d985b06948666138164a2db1efd75894c06b39fa",
+    "status": "executed",
+    "output_file": "spring/output-10006.npz",
+    "output_sha256": "5fc67b95e055bfd2d0fcf9f1f11996ed5f1df8981d8a23299b1d3b78ee9c8768",
+    "seconds_including_jit_and_transfers": 1.5098899389995495
+  },
+  {
+    "task": "spring",
+    "seed": 10007,
+    "input_sha256": "a50c4b2e59ab251cdc7afa4c950255aa3de9cfc95c9ff7b4864d86077e3fef5c",
+    "status": "executed",
+    "output_file": "spring/output-10007.npz",
+    "output_sha256": "4ff5163a1b4cb35ad5e4f56851021a32148f43e565731556628969168159552c",
+    "seconds_including_jit_and_transfers": 1.4760950609997963
+  },
+  {
+    "task": "spring",
+    "seed": 10008,
+    "input_sha256": "0c2986194edd1b85775f0120cc2e2f584b81d20a756ab7fb34cdd11d4ceef071",
+    "status": "executed",
+    "output_file": "spring/output-10008.npz",
+    "output_sha256": "a8623d41454dec5efdb93484e04d19202a5a1c9c9d911ffbce802c45c5a1dd82",
+    "seconds_including_jit_and_transfers": 1.5074515679989418
+  },
+  {
+    "task": "spring",
+    "seed": 10009,
+    "input_sha256": "13504cc580dde7a91175992e38e35664181e1c9d69bc64a6a22d8af0a6c981e9",
+    "status": "executed",
+    "output_file": "spring/output-10009.npz",
+    "output_sha256": "ee4e128482aa8c1ec5c618592d61f38e8600337cdad095f748b3674976133a79",
+    "seconds_including_jit_and_transfers": 1.4906168400011666
+  },
+  {
+    "task": "spring",
+    "seed": 10010,
+    "input_sha256": "fd243315c41df1b759db1891193706874cc0e718d4c5f78eca03352d3ec331df",
+    "status": "executed",
+    "output_file": "spring/output-10010.npz",
+    "output_sha256": "896f5028868345b028e4ff1e39b8d74d91ad209a898da1dded04b9802b1f66c9",
+    "seconds_including_jit_and_transfers": 1.6307874979975168
+  },
+  {
+    "task": "spring",
+    "seed": 10011,
+    "input_sha256": "8fa446acf3e20148ccc9606efa52e94aca3211b9f9c86f7082f36d375937af02",
+    "status": "executed",
+    "output_file": "spring/output-10011.npz",
+    "output_sha256": "c5211c3a540291687f7c29aea187d5e251db2208738978720e5552f295015361",
+    "seconds_including_jit_and_transfers": 1.5732481720006035
+  },
+  {
+    "task": "spring",
+    "seed": 10012,
+    "input_sha256": "3e9a511d489e95e974d7b23fbdecaca425858dcde1ccada7cbb9d3fc6cf92474",
+    "status": "executed",
+    "output_file": "spring/output-10012.npz",
+    "output_sha256": "f250c9f848fe68cf9818a36c48d13c8db11352b81eb8abdc1fa8d0560eda12c9",
+    "seconds_including_jit_and_transfers": 1.5882837470016966
+  },
+  {
+    "task": "spring",
+    "seed": 10013,
+    "input_sha256": "09a7b5e443657d196906fbf69cf62f48dfbfa3e8137b8ed6b43aec97c63acc83",
+    "status": "executed",
+    "output_file": "spring/output-10013.npz",
+    "output_sha256": "69a12dd7ed87ad5612a40404d3c16d514206584c9c2e29a817d0a171b67938c7",
+    "seconds_including_jit_and_transfers": 1.5173584960029984
+  },
+  {
+    "task": "spring",
+    "seed": 10014,
+    "input_sha256": "ac0cae5d7745e451c28781d50879da23843d3d5c981e5165137da153403af8a0",
+    "status": "executed",
+    "output_file": "spring/output-10014.npz",
+    "output_sha256": "298b034bb6f607a43f65e1176a576b08e3a6b9c8a1dc2c92d4fb8f2b0cac32b8",
+    "seconds_including_jit_and_transfers": 1.5115815210010624
+  },
+  {
+    "task": "spring",
+    "seed": 10015,
+    "input_sha256": "46e3fc0c738f8bccca3a1ab486fec21b60fba705faf14dad1280e59bc6345b36",
+    "status": "executed",
+    "output_file": "spring/output-10015.npz",
+    "output_sha256": "4f9789007f760df383db5b13fe23d1d4dff9302147861be29b1bf996e464b576",
+    "seconds_including_jit_and_transfers": 1.616859770998417
+  },
+  {
+    "task": "spring",
+    "seed": 10016,
+    "input_sha256": "c690a5f99d1224a6e37ced675140623b74d2780f0b0a8564e7acf713a5ec41bb",
+    "status": "executed",
+    "output_file": "spring/output-10016.npz",
+    "output_sha256": "3ac58c448059c1b4070e47e06d51a0fb012efb42e9a53679381cef0434f40200",
+    "seconds_including_jit_and_transfers": 1.539318554001511
+  },
+  {
+    "task": "spring",
+    "seed": 10017,
+    "input_sha256": "e6dca67ecbb8e6b825e97fd706accc7568d42766ac4e31a0d3e328d0072e23dd",
+    "status": "executed",
+    "output_file": "spring/output-10017.npz",
+    "output_sha256": "5cfbed51daf3992fd01219e575f73010b025872f666baa9f7f0e92e5010ba398",
+    "seconds_including_jit_and_transfers": 1.5270484169996053
+  },
+  {
+    "task": "spring",
+    "seed": 10018,
+    "input_sha256": "d67e8501e4bc354d8e8a2b0d865f910d1ab43c85867221875e12ee1eec87a62d",
+    "status": "executed",
+    "output_file": "spring/output-10018.npz",
+    "output_sha256": "8ca1d7434c8a7f74b54648a864cc1687e1782a6995bb494bb696290f678a1857",
+    "seconds_including_jit_and_transfers": 1.564821193998796
+  },
+  {
+    "task": "spring",
+    "seed": 10019,
+    "input_sha256": "1b3e377cdcc793858ba0cca1e08efd8e4304842904e7b9f68ec83d1cac068217",
+    "status": "executed",
+    "output_file": "spring/output-10019.npz",
+    "output_sha256": "fd2ef19f9f99356c4054fa6e76b6c0ff2823fe1e38b5dd6e6fc238da4d27d1d4",
+    "seconds_including_jit_and_transfers": 1.5319960080014425
+  },
+  {
+    "task": "spring",
+    "seed": 10020,
+    "input_sha256": "b77e52d347cc92abc17f8f2f0599b8f37df9872f6d7800165acf3b4221d56059",
+    "status": "executed",
+    "output_file": "spring/output-10020.npz",
+    "output_sha256": "5f44c2075cb7831b374525594de4abc8c1799a817d4f0019356d9baa262cf634",
+    "seconds_including_jit_and_transfers": 1.5041491730007692
+  },
+  {
+    "task": "spring",
+    "seed": 10021,
+    "input_sha256": "35d30acd6feff9a5aba7e789e99aad91d0dba8d95a83c1b1b24865e96bbdcc81",
+    "status": "executed",
+    "output_file": "spring/output-10021.npz",
+    "output_sha256": "78a75a896392778b579f20f67e2bd2cb43c32bbb8dc430ae65d02ffff08f7314",
+    "seconds_including_jit_and_transfers": 1.50451429000168
+  },
+  {
+    "task": "spring",
+    "seed": 10022,
+    "input_sha256": "2129778cda291e1c42c78112fd98b4c14efd833d35392c40d921cffb0820583f",
+    "status": "executed",
+    "output_file": "spring/output-10022.npz",
+    "output_sha256": "bb7f4bd54fb0ad38631d69b3d04e58f0ff9765dc4522f37f01d89b1615366f34",
+    "seconds_including_jit_and_transfers": 1.5286583640008757
+  },
+  {
+    "task": "spring",
+    "seed": 10023,
+    "input_sha256": "b8d81f0838ab5fdaf4ea5af4d0bba19b4464d350664cf80221a1d261a479c694",
+    "status": "executed",
+    "output_file": "spring/output-10023.npz",
+    "output_sha256": "701ed8599fd4df65125fb6cb3ec36040103dc6a958e5fa1caaa13cc4aceb9bee",
+    "seconds_including_jit_and_transfers": 1.4531327080003393
+  },
+  {
+    "task": "spring",
+    "seed": 10024,
+    "input_sha256": "1c132a0b1c73c4e91bda40c912b8b9697424b75a91953cd8affde93c50a0857e",
+    "status": "executed",
+    "output_file": "spring/output-10024.npz",
+    "output_sha256": "a7949fca71ab01be2aac086b3c38ae009e46de60f06e2dde4e972d8329cc2470",
+    "seconds_including_jit_and_transfers": 1.6302605839991884
+  },
+  {
+    "task": "spring",
+    "seed": 10025,
+    "input_sha256": "c342e67b613bc6007bb12b271a891772aaa33b131d416c2516ae593550152f23",
+    "status": "executed",
+    "output_file": "spring/output-10025.npz",
+    "output_sha256": "9da9f3801013a38c9f1aca7399118627030ef30aa804cd21b97d3e8f8c94a287",
+    "seconds_including_jit_and_transfers": 1.601104798999586
+  },
+  {
+    "task": "spring",
+    "seed": 10026,
+    "input_sha256": "142e0c8dd73f59a85db0c2e9448c836cf396a68888a7b32396af076905096e85",
+    "status": "executed",
+    "output_file": "spring/output-10026.npz",
+    "output_sha256": "f0ce334c310c382218d2e6abb829f67ef8f1ff13d8b5b0800a9428c6ad0b7d37",
+    "seconds_including_jit_and_transfers": 1.527645420999761
+  },
+  {
+    "task": "spring",
+    "seed": 10027,
+    "input_sha256": "8111a4c09bed8a69e07c584354b5bc0a70e2a04c9aeaf2f701f93f345a809ab0",
+    "status": "executed",
+    "output_file": "spring/output-10027.npz",
+    "output_sha256": "c47b078f6d3c03165d324e769a1a2748d6638d1e9d78fa88a96f09137489b676",
+    "seconds_including_jit_and_transfers": 1.5398144709979533
+  },
+  {
+    "task": "spring",
+    "seed": 10028,
+    "input_sha256": "c405bb563a3d3044f19d6086017c0862550ddfd8e40667138c825dd1edad22da",
+    "status": "executed",
+    "output_file": "spring/output-10028.npz",
+    "output_sha256": "4580dd30dca0f43f00e0a9af32ae3e505e32177f96fc5f0bff1b2d93efd46591",
+    "seconds_including_jit_and_transfers": 1.5269333239994012
+  },
+  {
+    "task": "spring",
+    "seed": 10029,
+    "input_sha256": "a2a05ee3405b5e353c58a211ba8167c10582e49e0b16e2bffaa8c09263378701",
+    "status": "executed",
+    "output_file": "spring/output-10029.npz",
+    "output_sha256": "1858086f33e0ac39562eda2244ace7cf8d5e6b1b0a8afb4d74965d4a63d79bbe",
+    "seconds_including_jit_and_transfers": 1.4841003449982964
+  },
+  {
+    "task": "spring",
+    "seed": 10030,
+    "input_sha256": "0ee51286f39ff9b8c8a68a9ea34addc6f7d8a9dd8b465c84cfbe4acb0ac5e054",
+    "status": "executed",
+    "output_file": "spring/output-10030.npz",
+    "output_sha256": "20074d243e8379f1cc7946dfd1d4a63b000d823476690034465b95edbb8f8a66",
+    "seconds_including_jit_and_transfers": 1.5142283370005316
+  },
+  {
+    "task": "spring",
+    "seed": 10031,
+    "input_sha256": "71ad787832aab4c2a2ff9191c03d0921e65f3b97ca7560ad172980fb04828a02",
+    "status": "executed",
+    "output_file": "spring/output-10031.npz",
+    "output_sha256": "b2388f848877f780f14b6d535bc30e301e180065be36ba453ed407334362d35e",
+    "seconds_including_jit_and_transfers": 1.5185363450000295
+  },
+  {
+    "task": "net-force",
+    "seed": 10001,
+    "input_sha256": "119ed4fc32251abf74a56b4514232f9fd4e03b9e4ff030c39c118d34d0021403",
+    "status": "executed",
+    "output_file": "net-force/output-10001.npz",
+    "output_sha256": "b1f9c6ea317d608a85545bb41e27c69dad09636a1b2a911f88b1104689e82e19",
+    "seconds_including_jit_and_transfers": 1.4773972980001417
+  },
+  {
+    "task": "net-force",
+    "seed": 10002,
+    "input_sha256": "0bb81a4eb8695356369ab6379310860d42255c7abbb030384d0f917260313375",
+    "status": "executed",
+    "output_file": "net-force/output-10002.npz",
+    "output_sha256": "765a038897fb5b18fbdd5de61bc9f985400ffd490d1e299d8121c9dbf0527830",
+    "seconds_including_jit_and_transfers": 1.4945152100008272
+  },
+  {
+    "task": "net-force",
+    "seed": 10003,
+    "input_sha256": "66d27dbc5e066a60d59ebb376267ab2d74795e78e3ff210fe1733b9f9ef0041a",
+    "status": "executed",
+    "output_file": "net-force/output-10003.npz",
+    "output_sha256": "56b2d3a2c639cea4d5070d83b9678b7e94747e8a5cbcb05ae22b5efa850eef8e",
+    "seconds_including_jit_and_transfers": 1.497404246001679
+  },
+  {
+    "task": "net-force",
+    "seed": 10005,
+    "input_sha256": "570c35d5ab7fd0c5db47425367a503018107cf2c13dc24b283e403c442ad4fdc",
+    "status": "executed",
+    "output_file": "net-force/output-10005.npz",
+    "output_sha256": "cb376748332997d3accfe9b2fec0263e2e2c75e84f659040f5eb53b22a23a88e",
+    "seconds_including_jit_and_transfers": 1.491272413997649
+  },
+  {
+    "task": "net-force",
+    "seed": 10006,
+    "input_sha256": "0f81a62397b560fa9ff169fab96e357da5b0c371f2842330c6f7eaba41c64721",
+    "status": "executed",
+    "output_file": "net-force/output-10006.npz",
+    "output_sha256": "296dd8725ca7f702c904ff21639fcb955b92549075705b7e900cc6412fe85c0c",
+    "seconds_including_jit_and_transfers": 1.5070917890006967
+  },
+  {
+    "task": "net-force",
+    "seed": 10007,
+    "input_sha256": "122af65fe64ba8c56eab6e772ad468a309c9d1c95d5aaba995075ea17c7bf69b",
+    "status": "executed",
+    "output_file": "net-force/output-10007.npz",
+    "output_sha256": "bc452c4cc7ac281ccb21a87deca8e901792dec9e70b26fb5a83bb9c09157efb1",
+    "seconds_including_jit_and_transfers": 1.4938377799990121
+  },
+  {
+    "task": "net-force",
+    "seed": 10009,
+    "input_sha256": "8deac9d6d98c11b20092ca800b9be2763b09f53db8c63573fe6b34730765de6d",
+    "status": "executed",
+    "output_file": "net-force/output-10009.npz",
+    "output_sha256": "ffca378f80bd9f8bb8d0086abe6347539c1dc9e27ef5cd85466338a504cafa7f",
+    "seconds_including_jit_and_transfers": 1.484755164001399
+  },
+  {
+    "task": "net-force",
+    "seed": 10010,
+    "input_sha256": "5e23bae1885834a7f193fce0f1d478b1d04927d8cf54d5ef31ed49d504654e29",
+    "status": "executed",
+    "output_file": "net-force/output-10010.npz",
+    "output_sha256": "075e741d0f1144518ad75f27a176605379ae97e41cda3072097928985cfda8a3",
+    "seconds_including_jit_and_transfers": 1.5438004520001414
+  },
+  {
+    "task": "net-force",
+    "seed": 10011,
+    "input_sha256": "c38f8c7a5ae005ad0486c0037401f9b391c7f57f76451f18e5d2305ffe8a81d5",
+    "status": "executed",
+    "output_file": "net-force/output-10011.npz",
+    "output_sha256": "fe4a5eb831fae86d6813fe8f7eb1680262c54fa293afc7e04de009e81638d206",
+    "seconds_including_jit_and_transfers": 1.5107380609988468
+  },
+  {
+    "task": "net-force",
+    "seed": 10013,
+    "input_sha256": "84f888d85ea154c5d82604b2b2c2eb032a729407d9a0104f7155dd5705e0ee90",
+    "status": "executed",
+    "output_file": "net-force/output-10013.npz",
+    "output_sha256": "b96b245876add5eedfd690ec2a796a26aa7bdb915e988b53dcca8fd69289a9d3",
+    "seconds_including_jit_and_transfers": 1.4572250689998327
+  },
+  {
+    "task": "net-force",
+    "seed": 10014,
+    "input_sha256": "3d7a12f82aaf28846384a27cfc77f9acbdd9b932c450858723b19e9fd988bea3",
+    "status": "executed",
+    "output_file": "net-force/output-10014.npz",
+    "output_sha256": "0218b2097649393092c1f7d12cebd5f970eecb44f806e1074e339753b5ce741c",
+    "seconds_including_jit_and_transfers": 1.5003397040018172
+  },
+  {
+    "task": "net-force",
+    "seed": 10015,
+    "input_sha256": "31225237df0bdb6f8b72a206915aa57135a100c9fff3ec79ef96b78a7b15f47c",
+    "status": "executed",
+    "output_file": "net-force/output-10015.npz",
+    "output_sha256": "fe352764f9cb17e53b43a675b9c66aaadc6fab99ecb345eacbb738646ac9520c",
+    "seconds_including_jit_and_transfers": 1.493795726000826
+  },
+  {
+    "task": "net-force",
+    "seed": 10017,
+    "input_sha256": "7ff83dd50eb3012171ca2e7863302ec18e4a7a6bfa89928083816f7e84fd46ee",
+    "status": "executed",
+    "output_file": "net-force/output-10017.npz",
+    "output_sha256": "5ab2c7e2165f405e44331521f9afeeeb1037030dee15f14412191b6a5b47e63a",
+    "seconds_including_jit_and_transfers": 1.4998743789983564
+  },
+  {
+    "task": "net-force",
+    "seed": 10018,
+    "input_sha256": "d9938995ce806ca6cf9389bf0f9a23945d5c2f0a8819dc89299d99da4aa30942",
+    "status": "executed",
+    "output_file": "net-force/output-10018.npz",
+    "output_sha256": "c763f1593d2e77c93c2e208c915ef1698f8e8a5b6e6a043699de3bccf1fead1a",
+    "seconds_including_jit_and_transfers": 1.5054953209983069
+  },
+  {
+    "task": "net-force",
+    "seed": 10019,
+    "input_sha256": "c3604574f93b6494c3f8d8a6358ef70fece8a45c015f4bee8fc5e3e375fca792",
+    "status": "executed",
+    "output_file": "net-force/output-10019.npz",
+    "output_sha256": "7f578a8af22ce1bdf3152d65d9091810959b0830325cc3921c95177680d515b2",
+    "seconds_including_jit_and_transfers": 1.516316930999892
+  },
+  {
+    "task": "net-force",
+    "seed": 10021,
+    "input_sha256": "718ec6e5da47fe08fbcce6ec43613096299a5db3f1f60401961cf246ef3a8519",
+    "status": "executed",
+    "output_file": "net-force/output-10021.npz",
+    "output_sha256": "6d8b05439b16c2d654785877fedd5dd69b4cf82ae3677431f8244a062999ac31",
+    "seconds_including_jit_and_transfers": 1.4876566710008774
+  },
+  {
+    "task": "net-force",
+    "seed": 10022,
+    "input_sha256": "282659bdfc7ef6873faee4e88cc1fc07d98de8513bb655855a2eaf614029f39c",
+    "status": "executed",
+    "output_file": "net-force/output-10022.npz",
+    "output_sha256": "efc36ad36fa22b42c39d839f0ba4cd1eb1d076c0c834d27f03d2a83e30f84249",
+    "seconds_including_jit_and_transfers": 1.503407749998587
+  },
+  {
+    "task": "net-force",
+    "seed": 10023,
+    "input_sha256": "aa80b7e9060163da8632df0d53139507360ab60152bd3caaafbaa457445c929b",
+    "status": "executed",
+    "output_file": "net-force/output-10023.npz",
+    "output_sha256": "195028ed26fc542affce5df9cb16620e6ad50f210914d0e05a8786a3921115fa",
+    "seconds_including_jit_and_transfers": 1.4803988290004781
+  },
+  {
+    "task": "net-force",
+    "seed": 10025,
+    "input_sha256": "c6a94cb7c97008e9b2ea9a3e4ee6a2eaf91f91bb65005114bcf651206c310fda",
+    "status": "executed",
+    "output_file": "net-force/output-10025.npz",
+    "output_sha256": "a20400f762c305f66519de101282f3cf1dc8a862e3ed290bfdde8ac2e75344b2",
+    "seconds_including_jit_and_transfers": 1.5150074179982767
+  },
+  {
+    "task": "net-force",
+    "seed": 10026,
+    "input_sha256": "ba1b4f0aeb7714526a5ac49ff83ce2d7fc91df2e3cd7f656f247731d38fdbdad",
+    "status": "executed",
+    "output_file": "net-force/output-10026.npz",
+    "output_sha256": "796231702bdaf59d831a43c85e0fc4f0535253a1bbd42025944146188ab7fb5a",
+    "seconds_including_jit_and_transfers": 1.503720937998878
+  },
+  {
+    "task": "net-force",
+    "seed": 10027,
+    "input_sha256": "e7a2975522486adf99ec7c705416ed35685972d31c18d478538bdc9ce3caa491",
+    "status": "executed",
+    "output_file": "net-force/output-10027.npz",
+    "output_sha256": "cef80c49d7cfb5ad4dadb5aa697a830958868752e707b87e2754274bfce86964",
+    "seconds_including_jit_and_transfers": 1.5728582330011704
+  },
+  {
+    "task": "net-force",
+    "seed": 10029,
+    "input_sha256": "b80c7f999a3be7c4fa59cba437296e7abfd02032329f3e70cf34e62588dbb987",
+    "status": "executed",
+    "output_file": "net-force/output-10029.npz",
+    "output_sha256": "846a80d971f9c6f8e935ea845bd2d6843c27c998ed87dc13681a167709b64cf2",
+    "seconds_including_jit_and_transfers": 1.508157754997228
+  },
+  {
+    "task": "net-force",
+    "seed": 10030,
+    "input_sha256": "679b642828fe70e477590b6ae43525b1eba4be551007d76a2336eb70d2a83a16",
+    "status": "executed",
+    "output_file": "net-force/output-10030.npz",
+    "output_sha256": "f571f120eb72a309731e60047cce97ea5f421677e3483fedc7c11b96f7521b19",
+    "seconds_including_jit_and_transfers": 1.5058867640000244
+  },
+  {
+    "task": "net-force",
+    "seed": 10031,
+    "input_sha256": "cf40dd5d1aca470f0e2bd2213fcdb79fccf82feca26f1227ff5ad0c129914371",
+    "status": "executed",
+    "output_file": "net-force/output-10031.npz",
+    "output_sha256": "27ffea852d07cfb3a5a2d76cd1713f1a1e5f630a43e15f6a2283016f5a2caa56",
+    "seconds_including_jit_and_transfers": 1.5087017830010154
+  },
+  {
+    "task": "net-force",
+    "seed": 10033,
+    "input_sha256": "8923ca5ded69a047d1fc03638395bac2b8ee77ff1efb8aa4b34a814c2e5a771e",
+    "status": "executed",
+    "output_file": "net-force/output-10033.npz",
+    "output_sha256": "0c4a0625dc943d6e2c6334f08669789183ab5e24a451374420fc959b9c5f1bfb",
+    "seconds_including_jit_and_transfers": 1.4836113810015377
+  },
+  {
+    "task": "net-force",
+    "seed": 10034,
+    "input_sha256": "a69623ecaf762053d6f7649c1514ad5134eeeae6086d6288631e2bbdb9026a92",
+    "status": "executed",
+    "output_file": "net-force/output-10034.npz",
+    "output_sha256": "cc1230561d7080502f96d49b5d95975ffc24f4ff6fd8a8895b3b9c3d4d0827eb",
+    "seconds_including_jit_and_transfers": 1.5189649120002287
+  },
+  {
+    "task": "net-force",
+    "seed": 10035,
+    "input_sha256": "cf6255d5095f758cac6bc2e3b33075fa78d7ae599ff44564fc6153d6d9e1ea69",
+    "status": "executed",
+    "output_file": "net-force/output-10035.npz",
+    "output_sha256": "0e65d57ab7f8731763c1e5ae93e0841bda1621c290b241f7772b5bbd73941ccc",
+    "seconds_including_jit_and_transfers": 1.496796452000126
+  },
+  {
+    "task": "net-force",
+    "seed": 10037,
+    "input_sha256": "ac028d680285180cbcf85e466d888e6ff1a3af706361c6fb96235697b1068c6b",
+    "status": "executed",
+    "output_file": "net-force/output-10037.npz",
+    "output_sha256": "2d5d891f6cfdad92afbb97951cd617b7671016a9e7fbbf64e3fe327035ed1748",
+    "seconds_including_jit_and_transfers": 1.6038039800005208
+  },
+  {
+    "task": "net-force",
+    "seed": 10038,
+    "input_sha256": "0565a5e0964a0a79f656ad85251237ec66b8376324a7fcaa578e8cdf7a778670",
+    "status": "executed",
+    "output_file": "net-force/output-10038.npz",
+    "output_sha256": "1efbcfeaa9b1802dad4af183a8ddd6423fc1ab830eda428be5ecfbb854effdd2",
+    "seconds_including_jit_and_transfers": 1.5432154039990564
+  },
+  {
+    "task": "net-force",
+    "seed": 10039,
+    "input_sha256": "4a7de169fb2ca0a2e4c32feabb8ba4b11aa2c7c6799aaf7596f897c38474818e",
+    "status": "executed",
+    "output_file": "net-force/output-10039.npz",
+    "output_sha256": "32b3f185ef40e24c1653dbab91ed45f0eb53d061ef5f7bf8d5b8f90e5613faa9",
+    "seconds_including_jit_and_transfers": 1.4763802120032778
+  },
+  {
+    "task": "net-force",
+    "seed": 10041,
+    "input_sha256": "b7ca28f5b38d679ed76ae62375c3d7ab3f6b772e4a6b38598e0141f8f2895d86",
+    "status": "executed",
+    "output_file": "net-force/output-10041.npz",
+    "output_sha256": "99c32facd282701f977de575722b71d44f1e7e7b2131ac85f869deed05436f63",
+    "seconds_including_jit_and_transfers": 1.4767272690005484
+  },
+  {
+    "task": "net-force",
+    "seed": 10042,
+    "input_sha256": "9b80385557f435f83221f0902a2394bc69a838344f6d6c09c37e8685f2528a8e",
+    "status": "executed",
+    "output_file": "net-force/output-10042.npz",
+    "output_sha256": "e7df672f0941e2441e5d27401788fe0cfccf8d583a1b1169acc25fd7fbef94f6",
+    "seconds_including_jit_and_transfers": 1.498453354000958
+  }
+]
