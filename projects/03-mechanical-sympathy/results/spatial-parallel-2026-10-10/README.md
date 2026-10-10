@@ -74,11 +74,20 @@ independent forecasts.
 ![Simulated years per minute](karpathy_years_per_minute.png)
 
 The plots include the earlier FP32, BF16, folding and tiling trials, the slower
-90×180 tiling trial, the fresh one-core reference and the four-core spatial split.
+90×180 tiling trial, the fresh one-core reference, the four-core spatial split,
+and the newer input-cut-only and per-layer segmentation trials.
 They use forward-only sums for consistency with the earlier graphs: **35.22 s**
 for spatial parallelism versus **42.64 s** for the paired one-core reference
 (**1.21× faster**). The complete rollout loop still takes **35.43 s**, as reported
-above. Throughput is **13.94 simulated years per forward minute**.
+above. Spatial-split throughput is **13.94 simulated years per forward minute**.
+
+The newest one-core results are **58.69 s** with the input cut alone and
+**14.08 s** with the input cut plus cuts after all 17 UNet layers. The latter
+is the new measured speed record (about **34.88 simulated years per forward
+minute**). These runs use eight CPU threads and the same checkpoint/prepared
+case. They have not been combined with four-core spatial parallelism; no
+combined speedup is inferred. The reports were copied from the local
+`tal-easy-wins` segmented-rollout experiment. No new model execution ran.
 
 Hardware allocation and CPU-thread changes are marked on the plots. The four
 cooperating ranks represent one trajectory, so their timings are not summed.

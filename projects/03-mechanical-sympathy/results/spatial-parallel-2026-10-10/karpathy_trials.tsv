@@ -13,3 +13,7 @@ experiment	label	logical_cores	cpu_threads_per_rank	forward_seconds	running_best
 1 core, 2 CPU threads"	1	2	42.643830406000006	42.58391398	11.517971686295589	11.534177704806151	False	299	598	single-core-reference.json
 6	"6 · Spatial split
 4 cores, 2 threads/rank"	4	2	35.223663324	35.223663324	13.94433130630212	13.94433130630212	True	299	598	rollout-4-cores/rank0.json;rollout-4-cores/rank1.json;rollout-4-cores/rank2.json;rollout-4-cores/rank3.json
+7	"7 · Input cut only
+1 core, 8 CPU threads"	1	8	58.691403893	35.223663324	8.368694538419106	13.94433130630212	False	299	598	tiled30_inputcut.json
+8	"8 · Per-layer segments
+1 core, 8 CPU threads"	1	8	14.081677032000002	14.081677032000002	34.88010910173095	34.88010910173095	True	299	598	tiled30_segments.json

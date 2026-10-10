@@ -68,8 +68,8 @@ def main():
             "Simulated years per forward minute (higher is better)",
         ),
     ]:
-        fig, ax = plt.subplots(figsize=(15, 8))
-        fig.subplots_adjust(left=0.085, right=0.98, bottom=0.23, top=0.87)
+        fig, ax = plt.subplots(figsize=(18, 8))
+        fig.subplots_adjust(left=0.085, right=0.98, bottom=0.29, top=0.87)
         for kept, color, label in [
             (False, "#c9cdd0", "Slower trials"),
             (True, "#2cc978", "Record improvements"),
@@ -133,8 +133,8 @@ def main():
         )
         fig.text(
             0.085,
-            0.055,
-            "One trajectory throughout · 299 calls / 598 five-day records · 365.25 days/year\nTrials 0–4: 1 logical core, 8 CPU threads. Trials 5–6: 2 CPU threads per rank; 1 → 4 logical cores.\nFour-core trial splits two blocks; ranks cooperate on one rollout. Compilation/warmup excluded. Accuracy unverified.",
+            0.035,
+            "One trajectory throughout · 299 calls / 598 five-day records · 365.25 days/year\nTrials 0–4 and 7–8: 1 core, 8 CPU threads. Trials 5–6: 2 threads/rank; 1 → 4 cores.\nTrial 6 splits two blocks; trial 8 segments 17 UNet layers on ONE core. Combined multicore + segmentation untested.\nCompilation/warmup excluded. Accuracy unverified.",
             fontsize=10,
             color="#59606b",
             linespacing=1.5,
@@ -151,8 +151,8 @@ def main():
             {
                 "final_forward_seconds": rows[-1]["forward_seconds"],
                 "final_years_per_minute": rows[-1]["years_per_minute"],
-                "paired_single_core_forward_seconds": rows[-2]["forward_seconds"],
-                "paired_speedup": rows[-2]["forward_seconds"]
+                "previous_trial_forward_seconds": rows[-2]["forward_seconds"],
+                "speedup_over_previous_trial": rows[-2]["forward_seconds"]
                 / rows[-1]["forward_seconds"],
             }
         )
