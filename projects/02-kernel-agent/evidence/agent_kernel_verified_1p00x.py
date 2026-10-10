@@ -1,0 +1,85 @@
+import nki
+import nki.isa as nisa
+import nki.language as nl
+import numpy as np
+from nki.typing import tensor
+
+
+@nki.jit
+def nki_matmul_hoist_load_(lhsT, rhs):
+  """NKI kernel to compute a matrix multiplication operation in a tiled manner
+
+  Args:
+      lhsT: an input tensor of shape [K,M], where both K and M are multiples for
+        128.  It is the left-hand-side argument of the matrix multiplication,
+        delivered transposed for optimal performance.
+      rhs: an input tensor of shape [K,N], where K is a multiple of 128, and N
+        is a multiple of 512.  It is the right-hand-side argument of the matrix
+        multiplication.
+  Returns:
+      result: the resulting output tensor of shape [M,N]
+  """
+
+  # Verify that the lhsT and rhs have the same contraction dimension.
+  K, M = lhsT.shape
+  K_, N = rhs.shape
+  assert K == K_, "lhsT and rhs must have the same contraction dimension"
+
+  # Lookup the device matrix multiply dimensions.
+  TILE_M = nl.tile_size.gemm_stationary_fmax  # 128
+  TILE_K = nl.tile_size.pmax  # 128
+  TILE_N = nl.tile_size.gemm_moving_fmax  # 512
+
+  # Verify that the input matrices are a multiple of the tile dimensions.
+  assert M % TILE_M == 0, \
+    f"Expected M, {M}, to be a multiple of stationary free-dimension max, {TILE_M}"
+  assert N % TILE_N == 0, \
+    f"Expected N, {N}, to be a multiple of moving free-dimension max, {TILE_N}"
+  assert K % TILE_K == 0, \
+    f"Expected K, {K}, to be a multiple of the partition dimension max, {TILE_K}"
+
+  # Create a space for the result in HBM (not initialized)
+  result = nl.ndarray((M, N), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+
+  # Pre-allocate a cache for the stationary operand (lhsT)
+  k_tiles = K // TILE_K
+  lhs_cache = nl.ndarray((TILE_K, k_tiles * M), dtype=lhsT.dtype, buffer=nl.sbuf)
+
+  # Pre-load the stationary operand into the cache
+  for kk in nl.affine_range(k_tiles):
+    nisa.dma_copy(dst=lhs_cache[:, kk * M:(kk + 1) * M],
+                  src=lhsT[kk * TILE_K:(kk + 1) * TILE_K, :])
+
+  # Pre-allocate a cache for the moving operand (rhs)
+  rhs_cache = nl.ndarray((TILE_K, k_tiles * N), dtype=rhs.dtype, buffer=nl.sbuf)
+
+  # Pre-load the moving operand into the cache
+  for kk in nl.affine_range(k_tiles):
+    nisa.dma_copy(dst=rhs_cache[:, kk * N:(kk + 1) * N],
+                  src=rhs[kk * TILE_K:(kk + 1) * TILE_K, :])
+
+  # Use affine_range to loop over tiles
+  for m in nl.affine_range(M // TILE_M):
+    for n in nl.affine_range(N // TILE_N):
+      # Allocate a tensor in PSUM
+      res_psum = nl.ndarray((TILE_M, TILE_N), nl.float32, buffer=nl.psum)
+
+      # Use the cached stationary operand for all k-chunks
+      for k in nl.affine_range(k_tiles):
+        # Use the cached moving operand for this k and n
+        lhs_tile = lhs_cache[:, k * M + m * TILE_M : k * M + (m + 1) * TILE_M]
+        rhs_tile = rhs_cache[:, k * N + n * TILE_N : k * N + (n + 1) * TILE_N]
+
+        # Accumulate partial-sums into PSUM
+        nisa.nc_matmul(dst=res_psum, stationary=lhs_tile, moving=rhs_tile)
+
+      # Copy the result from PSUM back to SBUF, and cast to expected output data-type
+      res_sb = nl.ndarray(res_psum.shape, dtype=result.dtype, buffer=nl.sbuf)
+      nisa.tensor_copy(dst=res_sb, src=res_psum)
+
+      # Copy the result from SBUF to HBM.
+      nisa.dma_copy(dst=result[m * TILE_M:(m + 1) * TILE_M,
+                               n * TILE_N:(n + 1) * TILE_N],
+                    src=res_sb)
+
+  return result

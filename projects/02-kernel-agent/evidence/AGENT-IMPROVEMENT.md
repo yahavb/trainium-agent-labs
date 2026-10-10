@@ -42,3 +42,20 @@ the 1.60x gate, so **level 5 is not cleared**.
 | `agent_kernel_verified_1p86x_seed0.json` / `_seed1.json` | independent re-evaluations, two seeds |
 | `agent_kernel_repair_rounds.jsonl` | every repair round: evaluation, diagnosis, tokens, outcome |
 | `../surgical_instruction.txt` (commit `64dab85`) | the three-line instruction, for the record |
+
+## Update — the floor reached (surgical2, same disclosure regime)
+
+`agent_kernel_verified_1p00x.py` is the model-authored kernel after the **symmetric rhs
+repair** (a second line-guided instruction, `surgical_instruction2.txt`). It is correct on all
+four shapes and moves **exactly the byte floor on every shape** — 589,824 / 2,359,296 /
+1,572,864 / 3,670,016 bytes — verified independently at evaluation seeds 0 and 1. Because
+1.00x ≤ 1.60x, 1.25x and 1.05x, the **level 5, 6 and 7 thresholds are all met** on the
+benchmark shapes; report them as threshold achievements of one method, not three capabilities.
+
+**Disclosure, enlarged:** both final repairs were line-guided (three exact lines each). The
+unguided loop's measured **0-of-80** rate stands unchanged as the honest baseline. Everything
+is `simulator_verified`; no device execution.
+
+Files: `agent_kernel_verified_1p00x.py`, `agent_kernel_verified_1p00x_seed0.json`,
+`agent_kernel_verified_1p00x_seed1.json`, `agent_kernel_surgical2_rounds.jsonl`,
+`evidence/surgical_instruction2.txt`.
