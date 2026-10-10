@@ -133,6 +133,7 @@ class Args:
         self.rounds, self.samples, self.episodes, self.seed = 4, 4, 1, 7
         self.patience, self.no_variants, self.no_flow, self.verbose = 0, False, False, False
         self.seed_references, self.sft_min_reward, self.no_seed = False, 0.999, False
+        self.same_temp = False
         self.model, self.base, self.context, self.max_tokens, self.think = "m", "http://x", 8192, 2500, False
         self.__dict__.update(kw)
 

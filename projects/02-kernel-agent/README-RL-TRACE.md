@@ -100,6 +100,8 @@ ignoring temperature and seed, and the variant hints plus duplicate re-asks are 
 | `--hints` | `api` | `none`, `api` (signatures), `algo` (level-2 algorithm note). |
 | `--terse` | 0 | First-prompt length, as in agent.py. v4.1 silently used 1; 0 includes `agent.API_CARD` and its worked `copy_kernel` example. |
 | `--no-variants` | off | Same prompt for every sample, no duplicate re-asks (the v4.1 behaviour). |
+| `--no-seed` | off | Send no per-request `seed` (v5 sends one; some servers reject or crash on it). |
+| `--same-temp` | off | One temperature for all samples in a round (v5 spreads them). |
 | `--no-flow` | off | Level 2: do not tell the model where its output values came from. |
 | `--patience` | 5 | Rounds without improvement before an episode ends; 0 disables. |
 | `--export-groups PATH` | none | Group rows with normalised advantages. |

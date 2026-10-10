@@ -1093,7 +1093,7 @@ def run_episode(run, level, episode, run_id):
         was_stuck, was_low_div = stuck, low_div
 
         n = args.samples
-        temps = sample_temps(base_temp, n)
+        temps = [base_temp] * n if args.same_temp else sample_temps(base_temp, n)
         seeds = [(args.seed * 1000003 + episode * 10007 + round_i * 101 + i) % (2 ** 31)
                  for i in range(n)]
         prompts = sample_prompts(prompt, n, not args.no_variants and not plain)
@@ -1307,6 +1307,11 @@ def main():
                         help="show reference_level{n}.py of OTHER levels as API-usage examples")
     parser.add_argument("--no-variants", action="store_true",
                         help="send the identical prompt to every sample and skip duplicate re-asks")
+    parser.add_argument("--no-seed", action="store_true",
+                        help="do not send a per-request seed (use if the server rejects or crashes on it)")
+    parser.add_argument("--same-temp", action="store_true",
+                        help="one temperature for every sample in a round (use if the server cannot "
+                             "batch requests with different temperatures)")
     parser.add_argument("--no-flow", action="store_true",
                         help="level 2: do not tell the model where its output values came from")
     parser.add_argument("--patience", type=int, default=5,
@@ -1323,7 +1328,6 @@ def main():
     parser.add_argument("--exploration", type=float, default=0.5)
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
-    args.no_seed = False
 
     if not args.base:
         sys.exit("Set KERNEL_AGENT_BASE_URL (or GPTOSS_BASE_URL) or pass --base.")
