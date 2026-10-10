@@ -1,0 +1,66 @@
+run C rep 1: 20 problems (0 already done), budget 6, feedback located, model Qwen/Qwen3-8B, seats seat-93, code 3722668 -> /workspace/projects/19-verified-rtl-agent/runs/dev/C-1.jsonl
+Prob001_zero                       C  r1  seat-93   L0 0.10  'This always block has no trigger. Use `always @(*)` (or `always_comb`)'
+Prob012_xnorgate                   C  r1  seat-93   L2 1.00  PASS
+Prob001_zero                       C  r2  seat-93   L3 0.50  'Output `zero` is wrong for some inputs. Re-derive `zero` from the spec'
+Prob001_zero                       C  r3  seat-93   L3 0.50  'Output `zero` is wrong for some inputs. Re-derive `zero` from the spec'
+Prob001_zero                       C  r4  seat-93   L3 0.50  'Output `zero` is wrong for some inputs. Re-derive `zero` from the spec'
+Prob021_mux256to1v                 C  r1  seat-93   L0 0.10  "Line 12 does not compile: `A reference to a wire or reg (`index') is n"
+Prob027_fadd                       C  r1  seat-93   L2 1.00  PASS
+Prob021_mux256to1v                 C  r2  seat-93   L0 0.10  "Line 12 does not compile: `A reference to a wire or reg (`index') is n"
+Prob021_mux256to1v                 C  r3  seat-93   L0 0.10  "Line 12 does not compile: `A reference to a wire or reg (`index') is n"
+Prob035_count1to10                 C  r1  seat-93   L2 1.00  PASS
+Prob050_kmap1                      C  r1  seat-93   L3 0.82  'When a=1, b=0, c=0, your `out` is 0, which is wrong. Re-derive `out` f'
+Prob054_edgedetect                 C  r1  seat-93   L2 0.58  'Output `pedge` first goes wrong at clock cycle 4. At that cycle the in'
+Prob050_kmap1                      C  r2  seat-93   L3 0.88  'When a=0, b=0, c=1, your `out` is 0, which is wrong. Re-derive `out` f'
+Prob054_edgedetect                 C  r2  seat-93   L2 0.55  'Output `pedge` first goes wrong at clock cycle 3. At that cycle the in'
+Prob054_edgedetect                 C  r3  seat-93   L2 0.55  'Output `pedge` first goes wrong at clock cycle 3. At that cycle the in'
+Prob054_edgedetect                 C  r4  seat-93   L2 0.55  'Output `pedge` first goes wrong at clock cycle 3. At that cycle the in'
+Prob066_edgecapture                C  r1  seat-93   L2 0.57  'Output `out` first goes wrong at clock cycle 10. At that cycle the inp'
+Prob050_kmap1                      C  r3  seat-93   L3 0.88  'When a=0, b=0, c=1, your `out` is 0, which is wrong. Re-derive `out` f'
+Prob066_edgecapture                C  r2  seat-93   L2 0.74  'Output `out` first goes wrong at clock cycle 4. At that cycle the inpu'
+Prob066_edgecapture                C  r3  seat-93   L2 0.72  'Output `out` first goes wrong at clock cycle 10. At that cycle the inp'
+Prob066_edgecapture                C  r4  seat-93   L2 0.72  'Output `out` first goes wrong at clock cycle 10. At that cycle the inp'
+Prob050_kmap1                      C  r4  seat-93   L3 0.88  'When a=0, b=0, c=1, your `out` is 0, which is wrong. Re-derive `out` f'
+Prob071_always_casez               C  r1  seat-93   L0 0.10  'Icarus does not support `break`. Replace it with a flag variable or re'
+Prob066_edgecapture                C  r5  seat-93   L2 0.72  'Output `out` first goes wrong at clock cycle 10. At that cycle the inp'
+Prob071_always_casez               C  r2  seat-93   L0 0.10  'Icarus does not support `break`. Replace it with a flag variable or re'
+Prob071_always_casez               C  r3  seat-93   L0 0.10  'Icarus does not support `break`. Replace it with a flag variable or re'
+Prob073_dff16e                     C  r1  seat-93   L0 0.10  'Line 18 does not compile: `can not select part of scalar: byteena`. Fi'
+Prob086_lfsr5                      C  r1  seat-93   L2 0.50  'When `reset` is high, the outputs do not take their reset values. Test'
+Prob073_dff16e                     C  r2  seat-93   L0 0.10  'Line 18 does not compile: `can not select part of scalar: byteena`. Fi'
+Prob086_lfsr5                      C  r2  seat-93   L2 0.50  'When `reset` is high, the outputs do not take their reset values. Test'
+Prob073_dff16e                     C  r3  seat-93   L0 0.10  'Line 18 does not compile: `can not select part of scalar: byteena`. Fi'
+Prob086_lfsr5                      C  r3  seat-93   L2 0.50  'When `reset` is high, the outputs do not take their reset values. Test'
+Prob092_gatesv100                  C  r1  seat-93   L0 0.10  'Line 12 does not compile: `syntax error`. Fix only that line.'
+Prob093_ece241_2014_q3             C  r1  seat-93   L3 0.50  "When c=0, d=0, your `mux_in` is 4'b1100, which is wrong. Re-derive `mu"
+Prob092_gatesv100                  C  r2  seat-93   L0 0.10  'Line 12 does not compile: `syntax error`. Fix only that line.'
+Prob093_ece241_2014_q3             C  r2  seat-93   L3 0.50  "When c=0, d=0, your `mux_in` is 4'b1100, which is wrong. Re-derive `mu"
+Prob092_gatesv100                  C  r3  seat-93   L0 0.10  'Line 12 does not compile: `syntax error`. Fix only that line.'
+Prob093_ece241_2014_q3             C  r3  seat-93   L3 0.50  "When c=0, d=0, your `mux_in` is 4'b1100, which is wrong. Re-derive `mu"
+Prob098_circuit7                   C  r1  seat-93   L2 0.51  'Output `q` first goes wrong at clock cycle 2. At that cycle the inputs'
+Prob098_circuit7                   C  r2  seat-93   L2 0.62  'Output `q` first goes wrong at clock cycle 2. At that cycle the inputs'
+Prob098_circuit7                   C  r3  seat-93   L2 0.89  'Output `q` first goes wrong at clock cycle 6. At that cycle the inputs'
+Prob098_circuit7                   C  r4  seat-93   L2 0.62  'Output `q` first goes wrong at clock cycle 2. At that cycle the inputs'
+Prob100_fsm3comb                   C  r1  seat-93   L0 0.10  '`next_state` is assigned inside an always block, so declare it as `out'
+Prob098_circuit7                   C  r5  seat-93   L2 0.89  'Output `q` first goes wrong at clock cycle 6. At that cycle the inputs'
+Prob098_circuit7                   C  r6  seat-93   L2 0.62  'Output `q` first goes wrong at clock cycle 2. At that cycle the inputs'
+Prob100_fsm3comb                   C  r2  seat-93   L0 0.10  '`next_state` is assigned inside an always block, so declare it as `out'
+Prob109_fsm1                       C  r1  seat-93   L0 0.10  '`out` is assigned inside an always block, so declare it as `output log'
+Prob100_fsm3comb                   C  r3  seat-93   L0 0.10  '`next_state` is assigned inside an always block, so declare it as `out'
+Prob109_fsm1                       C  r2  seat-93   L0 0.10  '`out` is assigned inside an always block, so declare it as `output log'
+Prob112_always_case2               C  r1  seat-93   L2 0.68  "When in=4'b0011, your `pos` is 2'b01, which is wrong. Re-derive `pos` "
+Prob112_always_case2               C  r2  seat-93   L2 0.68  "When in=4'b0011, your `pos` is 2'b01, which is wrong. Re-derive `pos` "
+Prob109_fsm1                       C  r3  seat-93   L0 0.10  '`out` is assigned inside an always block, so declare it as `output log'
+Prob112_always_case2               C  r3  seat-93   L2 0.68  "When in=4'b0011, your `pos` is 2'b01, which is wrong. Re-derive `pos` "
+Prob128_fsm_ps2                    C  r1  seat-93   L2 0.84  'Output `done` first goes wrong at clock cycle 21. At that cycle the in'
+Prob142_lemmings2                  C  r1  seat-93   L0 0.10  '`walk_left` is assigned inside an always block, so declare it as `outp'
+Prob128_fsm_ps2                    C  r2  seat-93   L2 0.84  'Output `done` first goes wrong at clock cycle 21. At that cycle the in'
+Prob142_lemmings2                  C  r2  seat-93   L0 0.10  '`walk_left` is assigned inside an always block, so declare it as `outp'
+Prob128_fsm_ps2                    C  r3  seat-93   L2 0.84  'Output `done` first goes wrong at clock cycle 21. At that cycle the in'
+Prob142_lemmings2                  C  r3  seat-93   L0 0.10  '`walk_left` is assigned inside an always block, so declare it as `outp'
+Prob156_review2015_fancytimer      C  r1  seat-93   L2 0.50  'Output `count` first goes wrong at clock cycle 13. At that cycle the i'
+Prob156_review2015_fancytimer      C  r2  seat-93   L2 0.50  'Output `count` first goes wrong at clock cycle 13. At that cycle the i'
+Prob156_review2015_fancytimer      C  r3  seat-93   L2 0.50  'Output `count` first goes wrong at clock cycle 13. At that cycle the i'
+
+=========== run C rep 1 ===========
+  solved 3/20   unverified 0   wall 1589s   -> /workspace/projects/19-verified-rtl-agent/runs/dev/C-1.jsonl
