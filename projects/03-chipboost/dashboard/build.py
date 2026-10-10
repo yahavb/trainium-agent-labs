@@ -57,21 +57,23 @@ sys.path.insert(0, str(PROJECT))
 import schema  # noqa: E402
 
 # Presentation groups only: raw records retain schema.ARMS and their original run_id.
-DISPLAY_ARMS = ("referee_continuation", "referee", "referee_v2", "referee_v2_p1fix", "model_alone", "model_alone_v2", "random_search")
-ARM_LABEL = {"referee_continuation": "Qwen winner continuation", "referee": "Referee v1", "referee_v2": "Referee v2", "referee_v2_p1fix": "Qwen + P1 fixes",
+DISPLAY_ARMS = ("referee_redteam_recovery", "referee_continuation", "referee", "referee_v2", "referee_v2_p1fix", "model_alone", "model_alone_v2", "random_search")
+ARM_LABEL = {"referee_redteam_recovery": "Qwen P3 recovery", "referee_continuation": "Qwen winner continuation", "referee": "Referee v1", "referee_v2": "Referee v2", "referee_v2_p1fix": "Qwen + P1 fixes",
              "model_alone": "Model alone v1", "model_alone_v2": "Model alone v2",
              "random_search": "Template search"}
 
 
 def display_arm(record):
     arm = record["arm"]
+    if arm == "referee" and "-redteam-recovery-" in record["run_id"]:
+        return "referee_redteam_recovery"
     if arm == "referee" and "-continuation-" in record["run_id"]:
         return "referee_continuation"
     if arm == "referee" and "-v2-p1fix-" in record["run_id"]:
         return "referee_v2_p1fix"
     return arm + "_v2" if arm in ("referee", "model_alone") and "-v2-" in record["run_id"] else arm
 
-ARM_COLOR = {"referee_continuation": "#ad4d7b", "referee": "var(--s1)", "referee_v2": "#8365cc", "referee_v2_p1fix": "#257e73", "model_alone": "var(--s2)",
+ARM_COLOR = {"referee_redteam_recovery": "#697332", "referee_continuation": "#ad4d7b", "referee": "var(--s1)", "referee_v2": "#8365cc", "referee_v2_p1fix": "#257e73", "model_alone": "var(--s2)",
              "model_alone_v2": "#a87519", "random_search": "var(--s3)"}
 
 # In pipeline order: how far the kernel got. Status colours, each with its own shape, so a
@@ -473,6 +475,14 @@ def kernel_view(k, summary, results):
     return s, info, start, (start / expert if start and expert else None), (start / floor if start and floor else None)
 
 
+CONTINUATION_NOTE = (" Winner continuation shows new candidate results only; its retained 1.517x seed "
+                     "is not counted in attempts. A 1x result means no new verified gain, not loss of the seed.")
+
+
+def continuation_note(summary):
+    return CONTINUATION_NOTE if any(s["arms"].get("referee_continuation") for s in summary.values()) else ""
+
+
 def panel_speed(summary, results, tune):
     blocks, rows_t = [], []
     tuned = median(r["best"] for r in tune["runs"]) if tune and tune["runs"] else None
@@ -539,7 +549,7 @@ def panel_speed(summary, results, tune):
     body = "".join(blocks) or empty("No kernels yet.")
     return card("Speedup over the start kernel",
                 "Bar: median of each run's best verified speedup; whisker: fastest to slowest run. Random search "
-                "starts from the expert, so its bar includes the expert's own speedup.",
+                "starts from the expert, so its bar includes the expert's own speedup." + continuation_note(summary),
                 legend_arms() + body + table_view(table(
                     ["Kernel", "Row", "Speedup", "Fastest run", "Slowest run", "Time", "Runs"], rows_t,
                     numeric=(2, 3, 4, 5, 6))))
@@ -554,7 +564,7 @@ def step_points(xs, ys):
     return pts
 
 
-MODEL_ARMS = ("referee_continuation", "referee", "referee_v2", "referee_v2_p1fix", "model_alone", "model_alone_v2")   # both start from the start kernel; random search starts from the expert
+MODEL_ARMS = ("referee_redteam_recovery", "referee_continuation", "referee", "referee_v2", "referee_v2_p1fix", "model_alone", "model_alone_v2")   # both start from the start kernel; random search starts from the expert
 
 
 def panel_progress(summary, results, tune):
@@ -632,7 +642,7 @@ def panel_progress(summary, results, tune):
         for a in MODEL_ARMS) + "</div>")
     return card("Progress: the model improves the start kernel",
                 "Best verified speedup so far, from the start kernel (1×). Line: median over runs; band: fastest to "
-                "slowest run within each version. Same x = same budget; v1, v2, P1-fix trials and winner continuation are never pooled. Continuation starts from a verified winner, a different prior.",
+                "slowest run within each version. Same x = same budget; v1, v2, P1-fix trials, P3 recovery and winner continuation are never pooled. Continuation starts from a verified winner, a different prior." + continuation_note(summary),
                 legend + body + tuning_block(tune) + table_view(table(
                     ["Kernel", "Arm", "Runs", "Attempts", "After 25%", "After 50%", "After 75%", "At the end",
                      "Spread at the end"], rows_t, numeric=(2, 3, 4, 5, 6, 7))))
@@ -993,6 +1003,8 @@ def kpis(summary, results, records, tune):
             best = median(r["best_x"] for r in rs)
             target, tname = (expert_x, "expert") if expert_x else (limit_x, "floor limit")
             sub = f"Qwen3-8B · {len(rs)} run{'s' if len(rs) != 1 else ''} · median best verified"
+            if arm == "referee_continuation":
+                sub += " · new candidates only; retained 1.517x seed excluded"
             tiles.append((f"{k} · {ARM_LABEL[arm]}", fmt_x(best), sub,
                           meter((best - 1) / (target - 1)) if target and target > 1 else meter(0)))
     rt = results["redteam"]
@@ -1326,7 +1338,7 @@ def build(records, results, notes, fake, inputs, sweep=()):
 <main>
 <header class="top">
 <div><h1>CHIPBOOST</h1><p class="lede">Qwen3-8B kernel optimization on Trainium: model alone and referee-guided runs.
-V1, consolidated v2 and Qwen + P1 fixes are shown separately; template random search uses an expert prior. Winner continuation starts from a verified 1.517x candidate, a different prior from start-kernel trials; speedups remain relative to the original baseline.
+V1, consolidated v2, Qwen + P1 fixes and P3 recovery are shown separately; template random search uses an expert prior. Winner continuation starts from a verified 1.517x candidate, a different prior from start-kernel trials; speedups remain relative to the original baseline.
 A speedup counts only if the referee verifies it: correct on the chip and on unseen shapes, and faster than the noise.</p></div>
 <p class="meta">{esc(meta)}</p>
 </header>
