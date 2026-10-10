@@ -1,6 +1,7 @@
 # Project 2: an NKI kernel agent that knows when it failed
 
-Team submission, NYU × Annapurna Labs Trainium hackathon, 2026-10-10. Team: [[TBD: team name, members]].
+Team submission, NYU × Annapurna Labs Trainium hackathon, 2026-10-10. Team 24, "Saturday team" (seats
+115–119): yl8406, tg3077, sz3941, sm14493, yx3019.
 
 **Start here.** Section 1 is the one-page note: what we ran, on what, what came out, how many runs, the
 spread, and how to reproduce it. The sections after it are the evidence. Unless a line says *on chip*,
@@ -49,7 +50,7 @@ is the organizers' repository; put ours next to it:
 
 ```bash
 git config --global --add safe.directory '*'
-git clone https://github.com/liuyq123/trainium-agent-labs.git /workspace/team   # [[TBD: the URL judges will use after the PR]]
+git clone https://github.com/liuyq123/trainium-agent-labs.git /workspace/team
 cd /workspace && MAX_MODEL_LEN=8192 ./serve.sh      # the model server: about 4 minutes, keeps this shell
 ```
 

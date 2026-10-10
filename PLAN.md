@@ -82,7 +82,7 @@ baseline 回溯校准（b39989f）：3 次解出置信度 0.90，保留集 16/16
 | 17:50–18:00 | 最终版失败分类、token 图、校准表 | 执行 2 | analysis/*_final.* |
 | 17:50–18:10 | 数字填进 SUBMISSION.md，每个数字都要能指到文件 | 总规划 | |
 | 18:05–18:10 | 提交前检查：全仓库扫凭证（AKIA、aws_secret、SESSION_TOKEN 等）；文档里的 [[TBD]] 全部填完；README 顶部加一行链接到 SUBMISSION.md；**在全新 clone 里确认 analysis/logs/final/ 的日志都在**（.gitignore 会悄悄吞掉 attempts.jsonl 和 *.log，只有 analysis/logs/ 下面例外，见 a0af434） | 总规划 | 扫描结果为空，全新 clone 里文件齐 |
-| 18:10–18:15 | commit、push team/master、提 PR | teoguo | |
+| 18:10–18:15 | commit、push team/master；PR 提到 github.com/liuyq123/trainium-agent-labs，由 liuyq 提 | liuyq（teoguo 对接） | |
 | 18:15–18:30 | 缓冲 | | |
 
 ## 4. 实验
@@ -184,7 +184,7 @@ baseline 回溯校准（b39989f）：3 次解出置信度 0.90，保留集 16/16
 | v7 首轮 prompt 里的例子 | 已核对（14:05）：CARD_REDUCE3D（channel mean）和 v4 的 row mean 都不是教程 kernel。和教程 avgpool 的共同部分只是 dma_copy → nl.sum → tensor_scalar 的骨架，L1 的关键写法 `.ap()` 窗口视图不在里面。文档里写明 prompt 里有这个例子 |
 | 117 的 (b) | 停掉（teoguo 问过组员，14:00） |
 | SBUF 上限 | 保留 192 KiB（NeuronCore-v2 的值；trn2 是 224 KiB）。比硬件严只会误拒，不会放过违规；CHECKER.md 写明。日志里出现落在 192–224 KiB 的拒绝时再改 |
-| Q4 | teoguo 提 PR |
+| Q4 | PR 提到 github.com/liuyq123/trainium-agent-labs，由 liuyq 提（teoguo 14:52 更新） |
 | Q5 | 仓库根目录放 SUBMISSION.md，README 顶部加一行链接 |
 | Q6 | v7 取代 v3 |
 | 最终跑座位 | 115 不能用，只用 116–119（teoguo 14:12） |
