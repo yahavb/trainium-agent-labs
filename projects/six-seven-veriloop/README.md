@@ -32,6 +32,7 @@ demo script: [`DEMO.md`](DEMO.md)
 | [`veriloop/levels/`](veriloop/levels/) | the six hardware levels: spec, Python reference, a correct design, 3–5 broken designs each |
 | [`results/`](results/) | every run and every attempt; what is counted and what is excluded is in `results/README.md` |
 | [`DEMO.md`](DEMO.md) | the 2-minute demo |
+| [`TASKS.md`](TASKS.md) | the task board we used: every task, its files, and who did it |
 | [`SETUP.md`](SETUP.md) | get on a seat, start the model, install Icarus Verilog, run long jobs |
 
 ## Reproduce
