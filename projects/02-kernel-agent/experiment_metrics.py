@@ -19,6 +19,8 @@ def enabled(options):
             or getattr(options, 'generation_policy', 'standard') != 'standard'
             or getattr(options, 'feedback_policy', 'legacy') != 'legacy'
             or getattr(options, 'example_policy', 'off') != 'off'
+            or getattr(options, 'planner_policy', 'off') != 'off'
+            or getattr(options, 'shape_analysis', 'off') != 'off'
             or getattr(options, 'adaptive_repair', False))
 
 

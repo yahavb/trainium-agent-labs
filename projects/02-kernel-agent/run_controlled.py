@@ -74,11 +74,13 @@ def build_command(options, arm, level, directory):
             '--selection-policy',selection,'--repair-policy',repair,'--instrument',
             '--grade-dir',str(directory/'grade'),'--log',str(directory/'attempts.jsonl')]
     if arm[0]=='B_shape_aware':command.extend(['--generation-policy','constrained'])
-    if arm[0] in ('B_targeted','D_combined','E_combined_constrained','B_targeted_standard','C_targeted_synthetic','D_full_adaptive'):
+    if arm[0] in ('B_targeted','D_combined','E_combined_constrained','B_targeted_standard','C_targeted_synthetic','D_full_adaptive','S_control','S_sympy','P_control','P_planner'):
         command.extend(['--feedback-policy','targeted'])
-    if arm[0] in ('C_synthetic','D_combined','E_combined_constrained','C_targeted_synthetic','D_full_adaptive'):
+    if arm[0] in ('C_synthetic','D_combined','E_combined_constrained','C_targeted_synthetic','D_full_adaptive','S_control','S_sympy','P_control','P_planner'):
         command.extend(['--example-policy','synthetic'])
-    if arm[0] in ('D_combined','E_combined_constrained','D_full_adaptive'):command.append('--adaptive-repair')
+    if arm[0] in ('D_combined','E_combined_constrained','D_full_adaptive','S_control','S_sympy','P_control','P_planner'):command.append('--adaptive-repair')
+    if arm[0]=='P_planner':command.extend(['--planner-policy','hardware'])
+    if arm[0]=='S_sympy':command.extend(['--shape-analysis','sympy'])
     if arm[0]=='E_combined_constrained':command.extend(['--generation-policy','constrained'])
     return command
 
@@ -116,7 +118,7 @@ def summarize(rows):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--run',action='store_true')
-    parser.add_argument('--synthetic-pilot',choices=('smoke','ablation','iteration','diagnosis-smoke','diagnosis-ablation'))
+    parser.add_argument('--synthetic-pilot',choices=('smoke','ablation','iteration','diagnosis-smoke','diagnosis-ablation','sympy-smoke','sympy-evaluation','planner-smoke'))
     parser.add_argument('--correctness-pilot',action='store_true',help='existing full versus constrained generation/shape-aware repair')
     parser.add_argument('--rounds',type=int,default=2)
     parser.add_argument('--samples',type=int,default=4)
@@ -150,9 +152,13 @@ def main():
         arms=(('A_current','diverse','diagnostic','grounded'),('B_targeted','diverse','diagnostic','grounded'))
         if options.synthetic_pilot=='ablation':arms+=(('C_synthetic','diverse','diagnostic','grounded'),('D_combined','diverse','diagnostic','grounded'))
         if options.synthetic_pilot=='iteration':arms=(('D_combined','diverse','diagnostic','grounded'),('E_combined_constrained','diverse','diagnostic','grounded'))
-    if options.synthetic_pilot in ('diagnosis-smoke','diagnosis-ablation'):
+    if options.synthetic_pilot in ('diagnosis-smoke','diagnosis-ablation','sympy-smoke','sympy-evaluation','planner-smoke'):
         arms=(('A_legacy_standard','standard','diagnostic','standard'),('B_targeted_standard','standard','diagnostic','standard'))
         if options.synthetic_pilot=='diagnosis-ablation':arms+=(('C_targeted_synthetic','standard','diagnostic','standard'),('D_full_adaptive','diverse','diagnostic','grounded'))
+    if options.synthetic_pilot in ('sympy-smoke','sympy-evaluation','planner-smoke'):
+        arms=(('S_control','diverse','diagnostic','grounded'),('S_sympy','diverse','diagnostic','grounded'))
+    if options.synthetic_pilot=='planner-smoke':
+        arms=(('P_control','diverse','diagnostic','grounded'),('P_planner','diverse','diagnostic','grounded'))
     for level in dict.fromkeys(options.levels):
         for arm in arms:
             directory=root/f'level{level}'/arm[0]

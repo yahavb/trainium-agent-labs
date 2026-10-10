@@ -33,7 +33,7 @@ class SyntheticTests(unittest.TestCase):
    self.assertEqual(summary['verified_repair_pairs'],0);self.assertEqual(len(summary['rejected']),12)
  def test_dataset_serialization_and_heldout_isolation(self):
   train=load_train();held=[json.loads(line) for line in DATA.with_name('heldout.jsonl').read_text().splitlines()]
-  self.assertEqual(len(train),22);self.assertEqual(len(held),2)
+  self.assertEqual(len(train),26);self.assertEqual(len(held),2)
   self.assertFalse(set(r['operation_family'] for r in train)&set(r['operation_family'] for r in held))
   self.assertFalse(load_train(DATA.with_name('heldout.jsonl')))
   self.assertFalse(set(r['structural_hash'] for r in train)&set(r['structural_hash'] for r in held))

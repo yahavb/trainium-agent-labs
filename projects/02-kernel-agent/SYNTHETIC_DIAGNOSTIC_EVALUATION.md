@@ -18,3 +18,5 @@ Total: legacy 18/24 (75.0%); targeted 22/24 (91.7%). Invalid API variants accoun
 SDK inspection confirms nl.load(src, dtype=None) and nl.store(dst, value) exist. No absence rule was added. DMA mismatches receive actual transfer/allocation evidence before later matmul hypotheses; unresolved cases stay unresolved. Invalid keyword advice names the actual call, keyword and installed signature.
 
 Artifacts: synthetic_nki/data_v2/diagnostic_evaluation_final.json; manual_review.json; train.jsonl; heldout.jsonl; summary.json. Original data/ corpus and earlier diagnostic assessments remain intact.
+
+Excluding the twelve additional missing-DMA-API variants: legacy 6/12 versus targeted 10/12 on the primary independent-task bugs. Unweighted category mean: legacy 70.0%, targeted 83.3%. These remain designed-corpus checks, not unbiased estimates.

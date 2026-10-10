@@ -1,0 +1,353 @@
+{
+  "total": 28,
+  "legacy_correct": 20,
+  "targeted_correct": 25,
+  "categories": {
+    "DMA_SHAPE_MISMATCH": {
+      "total": 1,
+      "legacy_correct": 1,
+      "targeted_correct": 1
+    },
+    "INVALID_API_ARGUMENT": {
+      "total": 1,
+      "legacy_correct": 1,
+      "targeted_correct": 1
+    },
+    "INVALID_API_FUNCTION": {
+      "total": 14,
+      "legacy_correct": 14,
+      "targeted_correct": 14
+    },
+    "INVALID_BUFFER_PLACEMENT": {
+      "total": 2,
+      "legacy_correct": 2,
+      "targeted_correct": 2
+    },
+    "INVALID_TENSOR_DIMENSIONS": {
+      "total": 6,
+      "legacy_correct": 1,
+      "targeted_correct": 6
+    },
+    "NUMERICAL_MISMATCH": {
+      "total": 3,
+      "legacy_correct": 0,
+      "targeted_correct": 0
+    },
+    "OUT_OF_BOUNDS": {
+      "total": 1,
+      "legacy_correct": 1,
+      "targeted_correct": 1
+    }
+  },
+  "records": [
+    {
+      "example_id": "pair-06ed46bd72ba01a1",
+      "split": "train",
+      "category": "DMA_SHAPE_MISMATCH",
+      "injected_cause": "matching_dma_extents",
+      "actual_error": "AssertionError: dma_copy requires src and dst to have the same number of elements, got src=6, dst=8",
+      "legacy_guidance": " The tile you allocated holds 8 elements but you copied 6 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a bigger tensor, write t = nl.ndarray((128, 512), dtype=a.dtype, buffer=nl.sbuf) and then nisa.dma_copy(dst=t, src=a[0:128, 0:512]) -- the slice on the right must have the same shape as the tile on the left.",
+      "targeted_guidance": "Repair scope: coordinated_dataflow_repair. line 8: dma_copy src a shape [2, 3] (6 elements) and dst tile shape (2, 4) (8 elements) disagree. Coordinate source slice, allocation and downstream consumers; do not just resize dst. Resolve this actual transfer before reasoning about later matmul operations.\nline 8: DMA src shape [2, 3] has 6 elements; dst shape (2, 4) has 8. Reconcile allocation, slice, and consumers together.\nline 7: tile allocation (2, 4) -> (2, 4); nl.sbuf\nline 9: out allocation (2, 3) -> (2, 3); nl.shared_hbm\nline 8: nisa.dma_copy dst=tile; src=a\nline 10: nisa.dma_copy dst=out; src=tile",
+      "legacy_identifies_cause": true,
+      "targeted_identifies_cause": true
+    },
+    {
+      "example_id": "pair-9b8fcab47988a2db",
+      "split": "train",
+      "category": "INVALID_API_FUNCTION",
+      "injected_cause": "unsupported_dma_api",
+      "actual_error": "AttributeError: module 'nki.isa' has no attribute 'nonexistent_dma'",
+      "legacy_guidance": " `nki.isa` has no `nonexistent_dma`. The closest real names are: register_move, register_load, nonzero_with_count, register_alloc, exponential, register_store. Pick one of those or use a different approach.",
+      "targeted_guidance": "Repair scope: localized_api_correction. line 8: unsupported API nisa.nonexistent_dma is the reported failure. Verify a replacement against the installed signature; preserve operand shapes and buffers. nl.load/nl.store exist in this SDK and must not be rejected merely by name.\nline 7: tile allocation (2, 3) -> (2, 3); nl.sbuf\nline 9: out allocation (2, 3) -> (2, 3); nl.shared_hbm\nline 10: nisa.dma_copy dst=out; src=tile",
+      "legacy_identifies_cause": true,
+      "targeted_identifies_cause": true
+    },
+    {
+      "example_id": "pair-b239be23766653e0",
+      "split": "train",
+      "category": "INVALID_TENSOR_DIMENSIONS",
+      "injected_cause": "explicit_onchip_rank",
+      "actual_error": "AssertionError: SBUF and PSUM tensors must have at least 2 dimensions (partition-dim and free-dim)",
+      "legacy_guidance": " Every SBUF and PSUM tile needs two dimensions: a partition dimension first, then a free dimension. A 1-D tile is not allowed, so write nl.ndarray((rows, cols), ...) and give a length-N vector the shape (1, N) or (N, 1) depending on which axis you are reducing over.",
+      "targeted_guidance": "Repair scope: coordinated_dataflow_repair. line 7: tile has rank 1 in nl.sbuf; on-chip tensors require at least 2 dimensions. Correct this explicit allocation before blaming later reductions or matmul; keep its transfer and consumers consistent.\nline 7: tile has rank 1 in nl.sbuf; on-chip tensors require at least 2 dimensions.\nline 7: tile allocation (6,) -> (6,); nl.sbuf\nline 9: out allocation (2, 3) -> (2, 3); nl.shared_hbm\nline 8: nisa.dma_copy dst=tile; src=a[1:3, 1:4]\nline 10: nisa.dma_copy dst=out; src=tile",
+      "legacy_identifies_cause": false,
+      "targeted_identifies_cause": true
+    },
+    {
+      "example_id": "pair-ba79a33c15f883f6",
+      "split": "train",
+      "category": "INVALID_API_FUNCTION",
+      "injected_cause": "unsupported_dma_api",
+      "actual_error": "AttributeError: module 'nki.isa' has no attribute 'nonexistent_dma'",
+      "legacy_guidance": " `nki.isa` has no `nonexistent_dma`. The closest real names are: register_move, register_load, nonzero_with_count, register_alloc, exponential, register_store. Pick one of those or use a different approach.",
+      "targeted_guidance": "Repair scope: localized_api_correction. line 8: unsupported API nisa.nonexistent_dma is the reported failure. Verify a replacement against the installed signature; preserve operand shapes and buffers. nl.load/nl.store exist in this SDK and must not be rejected merely by name.\nline 7: tile allocation (2, 3) -> (2, 3); nl.sbuf\nline 9: out allocation (2, 3) -> (2, 3); nl.shared_hbm\nline 10: nisa.dma_copy dst=out; src=tile",
+      "legacy_identifies_cause": true,
+      "targeted_identifies_cause": true
+    },
+    {
+      "example_id": "pair-3faf944f5fd6d0f3",
+      "split": "train",
+      "category": "INVALID_API_FUNCTION",
+      "injected_cause": "supported_scalar_api",
+      "actual_error": "AttributeError: module 'nki.isa' has no attribute 'scalar_mul'",
+      "legacy_guidance": " `nki.isa` has no `scalar_mul`. The closest real names are: scalar_engine, tensor_scalar_cumulative, tensor_scalar_reduce, nc_matmul, tensor_scalar, scalar_tensor_tensor. Pick one of those or use a different approach.",
+      "targeted_guidance": "Repair scope: localized_api_correction. line 9: unsupported API nisa.scalar_mul is the reported failure. Verify a replacement against the installed signature; preserve operand shapes and buffers. nl.load/nl.store exist in this SDK and must not be rejected merely by name.\nline 7: tile allocation (2, 3) -> (2, 3); nl.sbuf\nline 10: out allocation (2, 3) -> (2, 3); nl.shared_hbm\nline 8: nisa.dma_copy dst=tile; src=a\nline 11: nisa.dma_copy dst=out; src=tile",
+      "legacy_identifies_cause": true,
+      "targeted_identifies_cause": true
+    },
+    {
+      "example_id": "pair-3c723407df089ac7",
+      "split": "train",
+      "category": "INVALID_API_FUNCTION",
+      "injected_cause": "unsupported_dma_api",
+      "actual_error": "AttributeError: module 'nki.isa' has no attribute 'nonexistent_dma'",
+      "legacy_guidance": " `nki.isa` has no `nonexistent_dma`. The closest real names are: register_move, register_load, nonzero_with_count, register_alloc, exponential, register_store. Pick one of those or use a different approach.",
+      "targeted_guidance": "Repair scope: localized_api_correction. line 8: unsupported API nisa.nonexistent_dma is the reported failure. Verify a replacement against the installed signature; preserve operand shapes and buffers. nl.load/nl.store exist in this SDK and must not be rejected merely by name.\nline 7: tile allocation (2, 3) -> (2, 3); nl.sbuf\nline 10: out allocation (2, 3) -> (2, 3); nl.shared_hbm\nline 11: nisa.dma_copy dst=out; src=tile",
+      "legacy_identifies_cause": true,
+      "targeted_identifies_cause": true
+    },
+    {
+      "example_id": "pair-451664251d46e3a3",
+      "split": "train",
+      "category": "INVALID_API_ARGUMENT",
+      "injected_cause": "valid_scalar_keyword",
+      "actual_error": "TypeError: tensor_scalar() got an unexpected keyword argument 'operand'. Did you mean 'operand0'?",
+      "legacy_guidance": " Remove the `operand=` argument. The real signature is isa.tensor_scalar(dst: 'NkiTensor', data: 'NkiTensor', op0, operand0: 'float | NkiTensor', reverse0=False, op1=None, operand1: 'float | NkiTensor | None' = None, reverse1=False, engine=<engine.unknown: 0>, name=None).",
+      "targeted_guidance": "Repair scope: localized_api_correction. line 9: tensor_scalar rejects keyword operand. Remove this unsupported keyword and bind arguments using the installed signature (dst: 'NkiTensor', data: 'NkiTensor', op0, operand0: 'float | NkiTensor', reverse0=False, op1=None, operand1: 'float | NkiTensor | None' = None, reverse1=False, engine=<engine.unknown: 0>, name=None). Preserve operand semantics, shapes and buffer placement.\nline 7: tile allocation (2, 3) -> (2, 3); nl.sbuf\nline 10: out allocation (2, 3) -> (2, 3); nl.shared_hbm\nline 8: nisa.dma_copy dst=tile; src=a\nline 11: nisa.dma_copy dst=out; src=tile",
+      "legacy_identifies_cause": true,
+      "targeted_identifies_cause": true
+    },
+    {
+      "example_id": "pair-cd8d1734a94a84b6",
+      "split": "train",
+      "category": "INVALID_API_FUNCTION",
+      "injected_cause": "unsupported_dma_api",
+      "actual_error": "AttributeError: module 'nki.isa' has no attribute 'nonexistent_dma'",
+      "legacy_guidance": " `nki.isa` has no `nonexistent_dma`. The closest real names are: register_move, register_load, nonzero_with_count, register_alloc, exponential, register_store. Pick one of those or use a different approach.",
+      "targeted_guidance": "Repair scope: localized_api_correction. line 8: unsupported API nisa.nonexistent_dma is the reported failure. Verify a replacement against the installed signature; preserve operand shapes and buffers. nl.load/nl.store exist in this SDK and must not be rejected merely by name.\nline 7: tile allocation (2, 3) -> (2, 3); nl.sbuf\nline 10: out allocation (2, 3) -> (2, 3); nl.shared_hbm\nline 11: nisa.dma_copy dst=out; src=tile",
+      "legacy_identifies_cause": true,
+      "targeted_identifies_cause": true
+    },
+    {
+      "example_id": "pair-b4a9d52f2960e9d8",
+      "split": "train",
+      "category": "INVALID_TENSOR_DIMENSIONS",
+      "injected_cause": "reduction_rank",
+      "actual_error": "AssertionError: SBUF and PSUM tensors must have at least 2 dimensions (partition-dim and free-dim)",
+      "legacy_guidance": " Every SBUF and PSUM tile needs two dimensions: a partition dimension first, then a free dimension. A 1-D tile is not allowed, so write nl.ndarray((rows, cols), ...) and give a length-N vector the shape (1, N) or (N, 1) depending on which axis you are reducing over.",
+      "targeted_guidance": "Repair scope: coordinated_dataflow_repair. line 9: nki.language.sum may create the reported 1D on-chip result when every free axis is reduced. Inspect reduction axes and consumer shape; preserve a size-one free axis with keepdims=True only if that layout matches the consumer, or use a valid 2D reduction destination. Explicit allocations are not the only cause.\nline 7: tile allocation (2, 3) -> (2, 3); nl.sbuf\nline 10: out allocation (2, 1) -> (2, 1); nl.shared_hbm\nline 8: nisa.dma_copy dst=tile; src=a\nline 11: nisa.dma_copy dst=out; src=result",
+      "legacy_identifies_cause": false,
+      "targeted_identifies_cause": true
+    },
+    {
+      "example_id": "pair-010fb4a2ded71c23",
+      "split": "train",
+      "category": "INVALID_API_FUNCTION",
+      "injected_cause": "unsupported_dma_api",
+      "actual_error": "AttributeError: module 'nki.isa' has no attribute 'nonexistent_dma'",
+      "legacy_guidance": " `nki.isa` has no `nonexistent_dma`. The closest real names are: register_move, register_load, nonzero_with_count, register_alloc, exponential, register_store. Pick one of those or use a different approach.",
+      "targeted_guidance": "Repair scope: localized_api_correction. line 8: unsupported API nisa.nonexistent_dma is the reported failure. Verify a replacement against the installed signature; preserve operand shapes and buffers. nl.load/nl.store exist in this SDK and must not be rejected merely by name.\nline 7: tile allocation (2, 3) -> (2, 3); nl.sbuf\nline 10: out allocation (2, 1) -> (2, 1); nl.shared_hbm\nline 11: nisa.dma_copy dst=out; src=result",
+      "legacy_identifies_cause": true,
+      "targeted_identifies_cause": true
+    },
+    {
+      "example_id": "pair-eaedddb1e0a80859",
+      "split": "train",
+      "category": "INVALID_TENSOR_DIMENSIONS",
+      "injected_cause": "reduction_rank",
+      "actual_error": "AssertionError: SBUF and PSUM tensors must have at least 2 dimensions (partition-dim and free-dim)",
+      "legacy_guidance": " Every SBUF and PSUM tile needs two dimensions: a partition dimension first, then a free dimension. A 1-D tile is not allowed, so write nl.ndarray((rows, cols), ...) and give a length-N vector the shape (1, N) or (N, 1) depending on which axis you are reducing over.",
+      "targeted_guidance": "Repair scope: coordinated_dataflow_repair. line 9: nki.language.max may create the reported 1D on-chip result when every free axis is reduced. Inspect reduction axes and consumer shape; preserve a size-one free axis with keepdims=True only if that layout matches the consumer, or use a valid 2D reduction destination. Explicit allocations are not the only cause.\nline 7: tile allocation (2, 3) -> (2, 3); nl.sbuf\nline 10: out allocation (2, 1) -> (2, 1); nl.shared_hbm\nline 8: nisa.dma_copy dst=tile; src=a\nline 11: nisa.dma_copy dst=out; src=result",
+      "legacy_identifies_cause": false,
+      "targeted_identifies_cause": true
+    },
+    {
+      "example_id": "pair-ec4d69d60f69f28e",
+      "split": "train",
+      "category": "INVALID_API_FUNCTION",
+      "injected_cause": "unsupported_dma_api",
+      "actual_error": "AttributeError: module 'nki.isa' has no attribute 'nonexistent_dma'",
+      "legacy_guidance": " `nki.isa` has no `nonexistent_dma`. The closest real names are: register_move, register_load, nonzero_with_count, register_alloc, exponential, register_store. Pick one of those or use a different approach.",
+      "targeted_guidance": "Repair scope: localized_api_correction. line 8: unsupported API nisa.nonexistent_dma is the reported failure. Verify a replacement against the installed signature; preserve operand shapes and buffers. nl.load/nl.store exist in this SDK and must not be rejected merely by name.\nline 7: tile allocation (2, 3) -> (2, 3); nl.sbuf\nline 10: out allocation (2, 1) -> (2, 1); nl.shared_hbm\nline 11: nisa.dma_copy dst=out; src=result",
+      "legacy_identifies_cause": true,
+      "targeted_identifies_cause": true
+    },
+    {
+      "example_id": "pair-b4924302e0e91319",
+      "split": "train",
+      "category": "INVALID_TENSOR_DIMENSIONS",
+      "injected_cause": "matmul_destination",
+      "actual_error": "ValueError: cannot reshape array of size 6 into shape (1,2)",
+      "legacy_guidance": " Do not reshape. Work with the shapes you were given and slice them into tiles, e.g. src=a[0:128, 0:64].",
+      "targeted_guidance": "Repair scope: coordinated_dataflow_repair. line 12: nc_matmul stationary (4, 2) and moving (4, 3) produce (2,3), but dst psum is (1, 2). no explicit reshape call exists; the simulator reshapes its matmul result to dst internally. Fix PSUM destination and result-copy/store consumers, not an imaginary user reshape.\nline 7: left allocation (4, 2) -> (4, 2); nl.sbuf\nline 8: right allocation (4, 3) -> (4, 3); nl.sbuf\nline 9: psum allocation (1, 2) -> (1, 2); nl.psum\nline 13: tile allocation (2, 3) -> (2, 3); nl.sbuf",
+      "legacy_identifies_cause": false,
+      "targeted_identifies_cause": true
+    },
+    {
+      "example_id": "pair-56e9625e86368114",
+      "split": "train",
+      "category": "INVALID_API_FUNCTION",
+      "injected_cause": "unsupported_dma_api",
+      "actual_error": "AttributeError: module 'nki.isa' has no attribute 'nonexistent_dma'",
+      "legacy_guidance": " `nki.isa` has no `nonexistent_dma`. The closest real names are: register_move, register_load, nonzero_with_count, register_alloc, exponential, register_store. Pick one of those or use a different approach.",
+      "targeted_guidance": "Repair scope: localized_api_correction. line 10: unsupported API nisa.nonexistent_dma is the reported failure. Verify a replacement against the installed signature; preserve operand shapes and buffers. nl.load/nl.store exist in this SDK and must not be rejected merely by name.\nline 7: left allocation (4, 2) -> (4, 2); nl.sbuf\nline 8: right allocation (4, 3) -> (4, 3); nl.sbuf\nline 9: psum allocation (2, 3) -> (2, 3); nl.psum\nline 13: tile allocation (2, 3) -> (2, 3); nl.sbuf",
+      "legacy_identifies_cause": true,
+      "targeted_identifies_cause": true
+    },
+    {
+      "example_id": "pair-c5bcbc185a85f5dc",
+      "split": "train",
+      "category": "NUMERICAL_MISMATCH",
+      "injected_cause": "contraction_accumulation",
+      "actual_error": "AssertionError: NUMERICAL MISMATCH: \nNot equal to tolerance rtol=2e-05, atol=2e-05\n\nMismatched elements: 6 / 6 (100%)\nFirst 5 mismatches are at indices:\n [0, 0]: -2.6034069061279297 (ACTUAL), -7.132931709289551 (DESIRED)\n [0, 1]: -0.7427857518196106 (ACTUAL), -4.323195934295654 (DESIRED)\n [0, 2]: 0.17114466428756714 (ACTUAL), -2.0713212490081787 (DESIRED)\n [1, 0]: 5.060682773590088 (ACTUAL), 5.309969902038574 (DESIRED)\n [1, 1]: 0.6750051975250244 (ACTUAL), 2.480832815170288 (DESIRED)\nMax absolute difference among violations: 4.529525\nMax relative difference among violations: 1.7117612\n ACTUAL: array([[-2.603407, -0.742786,  0.171145],\n       [ 5.060683,  0.675005, -0.894416]], dtype=float32)\n DESIRED: array([[-7.132932, -4.323196, -2.071321],\n       [ 5.30997 ,  2.480833,  1.256624]], dtype=float32)",
+      "legacy_guidance": "",
+      "targeted_guidance": "Repair scope: coordinated_dataflow_repair. Check mathematical operation, contraction coverage and accumulator lifetime; avoid overlapping contraction windows, overwrites of completed output, or missing output tiles. First matmul overwrites each PSUM tile; subsequent contraction tiles accumulate. Redesign only the failing dataflow if repeated repairs have not converged.\nline 7: left allocation (4, 2) -> (4, 2); nl.sbuf\nline 8: right allocation (4, 3) -> (4, 3); nl.sbuf\nline 9: psum allocation (2, 3) -> (2, 3); nl.psum\nline 14: tile allocation (2, 3) -> (2, 3); nl.sbuf",
+      "legacy_identifies_cause": false,
+      "targeted_identifies_cause": false
+    },
+    {
+      "example_id": "pair-bc6e24da9f5983cd",
+      "split": "train",
+      "category": "INVALID_API_FUNCTION",
+      "injected_cause": "unsupported_dma_api",
+      "actual_error": "AttributeError: module 'nki.isa' has no attribute 'nonexistent_dma'",
+      "legacy_guidance": " `nki.isa` has no `nonexistent_dma`. The closest real names are: register_move, register_load, nonzero_with_count, register_alloc, exponential, register_store. Pick one of those or use a different approach.",
+      "targeted_guidance": "Repair scope: localized_api_correction. line 11: unsupported API nisa.nonexistent_dma is the reported failure. Verify a replacement against the installed signature; preserve operand shapes and buffers. nl.load/nl.store exist in this SDK and must not be rejected merely by name.\nline 7: left allocation (4, 2) -> (4, 2); nl.sbuf\nline 8: right allocation (4, 3) -> (4, 3); nl.sbuf\nline 9: psum allocation (2, 3) -> (2, 3); nl.psum\nline 14: tile allocation (2, 3) -> (2, 3); nl.sbuf",
+      "legacy_identifies_cause": true,
+      "targeted_identifies_cause": true
+    },
+    {
+      "example_id": "pair-3ebb8b8e4a8a85c4",
+      "split": "train",
+      "category": "INVALID_TENSOR_DIMENSIONS",
+      "injected_cause": "partition_limit",
+      "actual_error": "AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128",
+      "legacy_guidance": " A tile may have at most 128 rows, and you asked for 256. Do not allocate one tile for the whole tensor: loop over the partition dimension in chunks of at most 128 with nl.affine_range, allocate the tile inside the loop with the chunk's own size, and copy one chunk at a time, e.g. src=a[i*128:(i+1)*128, :]. If a dimension is already 128 or smaller, use it whole -- do NOT pad it up to 128, that reads past the end of the tensor. The same applies to where you write the result back.",
+      "targeted_guidance": "Repair scope: coordinated_dataflow_repair. Trace the offending allocation, source slice, transfer, compute consumers and output store together. Match transferred element counts and legal partition/free extents; adjust dependent lines as a unit. Hardware limits are maxima, not required sizes. Tile oversized dimensions before loading them, not after a whole-tensor DMA. Preserve the full returned output shape and cover every element.\nline 7: out allocation a.shape -> unresolved statically; nl.shared_hbm\nline 9: tile allocation (256, 3) -> (256, 3); nl.sbuf\nline 10: nisa.dma_copy dst=tile; src=a[i * 128:(i + 1) * 128, :]\nline 11: nisa.dma_copy dst=out[i * 128:(i + 1) * 128, :]; src=tile",
+      "legacy_identifies_cause": true,
+      "targeted_identifies_cause": true
+    },
+    {
+      "example_id": "pair-2c826e6cd1a3e1bb",
+      "split": "train",
+      "category": "INVALID_API_FUNCTION",
+      "injected_cause": "unsupported_dma_api",
+      "actual_error": "AttributeError: module 'nki.isa' has no attribute 'nonexistent_dma'",
+      "legacy_guidance": " `nki.isa` has no `nonexistent_dma`. The closest real names are: register_move, register_load, nonzero_with_count, register_alloc, exponential, register_store. Pick one of those or use a different approach.",
+      "targeted_guidance": "Repair scope: localized_api_correction. line 10: unsupported API nisa.nonexistent_dma is the reported failure. Verify a replacement against the installed signature; preserve operand shapes and buffers. nl.load/nl.store exist in this SDK and must not be rejected merely by name.\nline 7: out allocation a.shape -> unresolved statically; nl.shared_hbm\nline 9: tile allocation (128, 3) -> (128, 3); nl.sbuf\nline 11: nisa.dma_copy dst=out[i * 128:(i + 1) * 128, :]; src=tile",
+      "legacy_identifies_cause": true,
+      "targeted_identifies_cause": true
+    },
+    {
+      "example_id": "pair-ca8ea6879462abfb",
+      "split": "train",
+      "category": "NUMERICAL_MISMATCH",
+      "injected_cause": "output_coverage",
+      "actual_error": "AssertionError: NUMERICAL MISMATCH: \nNot equal to tolerance rtol=2e-05, atol=2e-05\n\nMismatched elements: 6 / 12 (50%)\nFirst 5 mismatches are at indices:\n [0, 3]: nan (ACTUAL), -0.5307722687721252 (DESIRED)\n [0, 4]: nan (ACTUAL), -0.8685506582260132 (DESIRED)\n [0, 5]: nan (ACTUAL), -0.617362916469574 (DESIRED)\n [1, 3]: nan (ACTUAL), 2.0952372550964355 (DESIRED)\n [1, 4]: nan (ACTUAL), 2.9678194522857666 (DESIRED)\nMax absolute difference among violations: nan\nMax relative difference among violations: nan\n ACTUAL: array([[-0.073197,  1.178888, -0.487553,       nan,       nan,       nan],\n       [ 3.087157, -0.119065,  0.690917,       nan,       nan,       nan]],\n      dtype=float32)\n DESIRED: array([[-0.073197,  1.178888, -0.487553, -0.530772, -0.868551, -0.617363],\n       [ 3.087157, -0.119065,  0.690917,  2.095237,  2.967819, -0.114163]],\n      dtype=float32)",
+      "legacy_guidance": "",
+      "targeted_guidance": "Repair scope: coordinated_dataflow_repair. Check mathematical operation, contraction coverage and accumulator lifetime; avoid overlapping contraction windows, overwrites of completed output, or missing output tiles. First matmul overwrites each PSUM tile; subsequent contraction tiles accumulate. Redesign only the failing dataflow if repeated repairs have not converged.\nline 7: out allocation (2, 6) -> (2, 6); nl.shared_hbm\nline 9: left allocation (4, 2) -> (4, 2); nl.sbuf\nline 10: right allocation (4, 3) -> (4, 3); nl.sbuf\nline 11: psum allocation (2, 3) -> (2, 3); nl.psum",
+      "legacy_identifies_cause": false,
+      "targeted_identifies_cause": false
+    },
+    {
+      "example_id": "pair-501d2eaf75106097",
+      "split": "train",
+      "category": "INVALID_API_FUNCTION",
+      "injected_cause": "unsupported_dma_api",
+      "actual_error": "AttributeError: module 'nki.isa' has no attribute 'nonexistent_dma'",
+      "legacy_guidance": " `nki.isa` has no `nonexistent_dma`. The closest real names are: register_move, register_load, nonzero_with_count, register_alloc, exponential, register_store. Pick one of those or use a different approach.",
+      "targeted_guidance": "Repair scope: localized_api_correction. line 12: unsupported API nisa.nonexistent_dma is the reported failure. Verify a replacement against the installed signature; preserve operand shapes and buffers. nl.load/nl.store exist in this SDK and must not be rejected merely by name.\nline 7: out allocation (2, 6) -> (2, 6); nl.shared_hbm\nline 9: left allocation (4, 2) -> (4, 2); nl.sbuf\nline 10: right allocation (4, 3) -> (4, 3); nl.sbuf\nline 11: psum allocation (2, 3) -> (2, 3); nl.psum",
+      "legacy_identifies_cause": true,
+      "targeted_identifies_cause": true
+    },
+    {
+      "example_id": "pair-b34632108b7da537",
+      "split": "train",
+      "category": "INVALID_BUFFER_PLACEMENT",
+      "injected_cause": "onchip_copy_regions",
+      "actual_error": "AssertionError: tensor_copy dst must be in ['sbuf', 'psum'], got shared_hbm",
+      "legacy_guidance": " `nisa.tensor_copy` only moves data between on-chip buffers, sbuf and psum. To reach HBM -- the tensor you allocated with buffer=nl.shared_hbm and will return -- use nisa.dma_copy instead. The usual sequence is nc_matmul into psum, tensor_copy psum to sbuf, then dma_copy sbuf to the shared_hbm output.",
+      "targeted_guidance": "Repair scope: buffer_placement_correction. Check each operation's required input/output region. Correct allocation plus dependent transfers; PSUM results need a separate result-shaped SBUF tile before DMA. Do not reuse an input tile with a different result shape.\nline 7: tile allocation (2, 3) -> (2, 3); nl.sbuf\nline 9: acc allocation (2, 3) -> (2, 3); nl.shared_hbm\nline 12: out allocation (2, 3) -> (2, 3); nl.shared_hbm\nline 8: nisa.dma_copy dst=tile; src=a",
+      "legacy_identifies_cause": true,
+      "targeted_identifies_cause": true
+    },
+    {
+      "example_id": "pair-097820936e32f781",
+      "split": "train",
+      "category": "INVALID_API_FUNCTION",
+      "injected_cause": "unsupported_dma_api",
+      "actual_error": "AttributeError: module 'nki.isa' has no attribute 'nonexistent_dma'",
+      "legacy_guidance": " `nki.isa` has no `nonexistent_dma`. The closest real names are: register_move, register_load, nonzero_with_count, register_alloc, exponential, register_store. Pick one of those or use a different approach.",
+      "targeted_guidance": "Repair scope: localized_api_correction. line 8: unsupported API nisa.nonexistent_dma is the reported failure. Verify a replacement against the installed signature; preserve operand shapes and buffers. nl.load/nl.store exist in this SDK and must not be rejected merely by name.\nline 7: tile allocation (2, 3) -> (2, 3); nl.sbuf\nline 9: acc allocation (2, 3) -> (2, 3); nl.psum\nline 12: out allocation (2, 3) -> (2, 3); nl.shared_hbm\nline 10: nisa.tensor_copy dst=acc; src=tile",
+      "legacy_identifies_cause": true,
+      "targeted_identifies_cause": true
+    },
+    {
+      "example_id": "curr-e1775fb0ffca84f9",
+      "split": "train",
+      "category": "INVALID_BUFFER_PLACEMENT",
+      "injected_cause": "transpose_regions",
+      "actual_error": "AssertionError: nc_transpose dst must be in ['sbuf', 'psum'], got shared_hbm",
+      "legacy_guidance": " `nisa.nc_transpose` only moves data between on-chip buffers, sbuf and psum. To reach HBM -- the tensor you allocated with buffer=nl.shared_hbm and will return -- use nisa.dma_copy instead. The usual sequence is nc_matmul into psum, tensor_copy psum to sbuf, then dma_copy sbuf to the shared_hbm output.",
+      "targeted_guidance": "Repair scope: buffer_placement_correction. line 9: nc_transpose destination y must be on-chip. Vector engine reads/writes SBUF or PSUM with input tile <=32x32; tensor engine reads SBUF and writes PSUM with input tile <=128x128. This primitive swaps partition/free axes, not two free axes within each partition. Use matching on-chip shapes and legal final HBM transfers.\nline 6: t allocation (2, 3) -> (2, 3); nl.sbuf\nline 8: y allocation (3, 2) -> (3, 2); nl.shared_hbm\nline 11: out allocation (3, 2) -> (3, 2); nl.shared_hbm\nline 7: nisa.dma_copy dst=t; src=a",
+      "legacy_identifies_cause": true,
+      "targeted_identifies_cause": true
+    },
+    {
+      "example_id": "curr-f588ea88fae67fbd",
+      "split": "train",
+      "category": "INVALID_TENSOR_DIMENSIONS",
+      "injected_cause": "reduction_rank",
+      "actual_error": "AssertionError: SBUF and PSUM tensors must have at least 2 dimensions (partition-dim and free-dim)",
+      "legacy_guidance": " Every SBUF and PSUM tile needs two dimensions: a partition dimension first, then a free dimension. A 1-D tile is not allowed, so write nl.ndarray((rows, cols), ...) and give a length-N vector the shape (1, N) or (N, 1) depending on which axis you are reducing over.",
+      "targeted_guidance": "Repair scope: coordinated_dataflow_repair. line 8: nki.language.sum may create the reported 1D on-chip result when every free axis is reduced. Inspect reduction axes and consumer shape; preserve a size-one free axis with keepdims=True only if that layout matches the consumer, or use a valid 2D reduction destination. Explicit allocations are not the only cause.\nline 6: t allocation (2, 2, 3) -> (2, 2, 3); nl.sbuf\nline 10: out allocation (2, 2) -> (2, 2); nl.shared_hbm\nline 7: nisa.dma_copy dst=t; src=a\nline 11: nisa.dma_copy dst=out; src=y",
+      "legacy_identifies_cause": false,
+      "targeted_identifies_cause": true
+    },
+    {
+      "example_id": "curr-54a411f033c7642f",
+      "split": "train",
+      "category": "NUMERICAL_MISMATCH",
+      "injected_cause": "output_coverage",
+      "actual_error": "AssertionError: NUMERICAL MISMATCH: \nNot equal to tolerance rtol=2e-05, atol=2e-05\n\nMismatched elements: 6 / 12 (50%)\nFirst 5 mismatches are at indices:\n [2, 0]: nan (ACTUAL), -2.894073009490967 (DESIRED)\n [2, 1]: nan (ACTUAL), 0.5823351740837097 (DESIRED)\n [2, 2]: nan (ACTUAL), -0.4283195734024048 (DESIRED)\n [3, 0]: nan (ACTUAL), -1.3625954389572144 (DESIRED)\n [3, 1]: nan (ACTUAL), 0.1570427268743515 (DESIRED)\nMax absolute difference among violations: nan\nMax relative difference among violations: nan\n ACTUAL: array([[-3.420854,  0.052196,  0.33175 ],\n       [ 0.258987,  2.089101,  0.908454],\n       [      nan,       nan,       nan],\n       [      nan,       nan,       nan]], dtype=float32)\n DESIRED: array([[-3.420854,  0.052196,  0.33175 ],\n       [ 0.258987,  2.089101,  0.908454],\n       [-2.894073,  0.582335, -0.42832 ],\n       [-1.362595,  0.157043,  1.838975]], dtype=float32)",
+      "legacy_guidance": "",
+      "targeted_guidance": "Repair scope: coordinated_dataflow_repair. Check mathematical operation, contraction coverage and accumulator lifetime; avoid overlapping contraction windows, overwrites of completed output, or missing output tiles. First matmul overwrites each PSUM tile; subsequent contraction tiles accumulate. Redesign only the failing dataflow if repeated repairs have not converged.\nline 6: out allocation (4, 3) -> (4, 3); nl.shared_hbm\nline 8: left allocation (4, 2) -> (4, 2); nl.sbuf\nline 9: right allocation (4, 3) -> (4, 3); nl.sbuf\nline 12: p allocation (2, 3) -> (2, 3); nl.psum",
+      "legacy_identifies_cause": false,
+      "targeted_identifies_cause": false
+    },
+    {
+      "example_id": "curr-f018cbf7bfff5140",
+      "split": "train",
+      "category": "OUT_OF_BOUNDS",
+      "injected_cause": "boundary_slice_tail",
+      "actual_error": "AssertionError: Out-of-bound access for tensor `unnamed` on dimension 0: index range [6, 8] exceed dimension size of 7.",
+      "legacy_guidance": " You indexed up to 8 on dimension 0, which is only 7 long. Tile limits are a MAXIMUM, not a target. Derive every bound from the tensor's own shape -- use min(limit, size) and let the final chunk be partial -- rather than writing a fixed number. Note the two limits differ: the partition dimension (first) allows at most 128, the free dimension allows more.",
+      "targeted_guidance": "Repair scope: coordinated_dataflow_repair. Runtime dimension 0 has size 7, but the reported slice reaches indices 6 through 8. DMA call sites: 20, 13, 14. Clip the final tile boundary to the actual dimension, derive its allocation extent from the clipped end minus start, and update both source/destination slices and consumers. Preserve accumulation and complete output coverage; do not pad the final partial tile past input bounds.\nline 6: p allocation (2, 3) -> (2, 3); nl.psum\nline 11: left allocation (length, 2) -> unresolved statically; nl.sbuf\nline 12: right allocation (length, 3) -> unresolved statically; nl.sbuf\nline 16: y allocation (2, 3) -> (2, 3); nl.sbuf",
+      "legacy_identifies_cause": true,
+      "targeted_identifies_cause": true
+    },
+    {
+      "example_id": "pair-38cc5aaa24a47217",
+      "split": "heldout",
+      "category": "INVALID_API_FUNCTION",
+      "injected_cause": "supported_binary_api",
+      "actual_error": "AttributeError: module 'nki.isa' has no attribute 'magic_multiply'",
+      "legacy_guidance": " `nki.isa` has no `magic_multiply`. The closest real names are: dma_copy, nc_matmul, matmul_perf_mode, dma_compute. Pick one of those or use a different approach.",
+      "targeted_guidance": "Repair scope: localized_api_correction. line 11: unsupported API nisa.magic_multiply is the reported failure. Verify a replacement against the installed signature; preserve operand shapes and buffers. nl.load/nl.store exist in this SDK and must not be rejected merely by name.\nline 7: tile allocation (2, 3) -> (2, 3); nl.sbuf\nline 9: other allocation (2, 3) -> (2, 3); nl.sbuf\nline 12: out allocation (2, 3) -> (2, 3); nl.shared_hbm\nline 8: nisa.dma_copy dst=tile; src=a",
+      "legacy_identifies_cause": true,
+      "targeted_identifies_cause": true
+    },
+    {
+      "example_id": "pair-c7f1edd8594cbf88",
+      "split": "heldout",
+      "category": "INVALID_API_FUNCTION",
+      "injected_cause": "unsupported_dma_api",
+      "actual_error": "AttributeError: module 'nki.isa' has no attribute 'nonexistent_dma'",
+      "legacy_guidance": " `nki.isa` has no `nonexistent_dma`. The closest real names are: register_move, register_load, nonzero_with_count, register_alloc, exponential, register_store. Pick one of those or use a different approach.",
+      "targeted_guidance": "Repair scope: localized_api_correction. line 8: unsupported API nisa.nonexistent_dma is the reported failure. Verify a replacement against the installed signature; preserve operand shapes and buffers. nl.load/nl.store exist in this SDK and must not be rejected merely by name.\nline 7: tile allocation (2, 3) -> (2, 3); nl.sbuf\nline 9: other allocation (2, 3) -> (2, 3); nl.sbuf\nline 12: out allocation (2, 3) -> (2, 3); nl.shared_hbm\nline 10: nisa.dma_copy dst=other; src=b",
+      "legacy_identifies_cause": true,
+      "targeted_identifies_cause": true
+    }
+  ],
+  "limitations": "Deterministic bug-specific semantic checks, manually reviewed sample; not general diagnostic accuracy or proof of model repair. Raw error excluded from scoring; input shapes independently specified."
+}

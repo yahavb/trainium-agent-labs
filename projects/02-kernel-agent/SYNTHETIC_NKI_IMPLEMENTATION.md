@@ -6,19 +6,19 @@ Development only: `/tmp/trainium-kernel-dev`, branch `feat/nki-diagnostic-select
 
 `shape_repair.py` reuses conservative AST inspection, checker-case argument binding and installed SDK constraints. `--feedback-policy targeted` adds one precise explanation and permits dependent lines to change together. `--feedback-policy legacy` is the default. Original code and checker error remain in the prompt. If targeted feedback is selected, its evidence replaces additional generic grounded cards rather than appending several unrelated cards. Existing `standard`, `grounded` and `shape-aware` repair flags remain supported.
 
-`synthetic_nki/generate.py` constructs 12 independent tiny tasks; `mutations.py` introduces one error per task; `verify.py` checks syntax, imports/decorator, actual CPU execution, untouched inputs, independent NumPy numerics and simulator hardware warnings. `retrieval.py` indexes only compatible, verified, structurally unique training records and inserts up to two short before/after statements. It never inserts a complete kernel. `--example-policy synthetic` enables this; `off` is the default.
+`synthetic_nki/generate.py` constructs 12 independent tiny tasks; `mutations.py` introduces the primary error per task; `generate_pairs.py` adds one single-call invalid-DMA-API variant per task; `verify.py` checks syntax, imports/decorator, actual CPU execution, untouched inputs, independent NumPy numerics and simulator hardware warnings. `retrieval.py` indexes only compatible, verified, structurally unique training records and inserts up to two short before/after statements. It never inserts a complete kernel. `--example-policy synthetic` enables this; `off` is the default.
 
 `repair_history.py` stores six signatures/source hashes and a separate best verified candidate. Optional `--adaptive-repair` escalates repeated corrections to dependent dataflow changes, preserves the best verified source when a new selection regresses, and caps added history to available context. A changed first failure is explicitly a hypothesis, not proof that its hidden constraint is repaired.
 
-`run_controlled.py --synthetic-pilot smoke|ablation|iteration` uses process/endpoint guards, sequential configurations, exclusive directories, private grading and frozen Python/dataset snapshots with SHA-256 manifests. Generation still uses exactly four calls per round with samples=4. No retrieval/controller model calls are added. `analyze_experiments.py` reads every attempt and reports per-shape verification, repair transitions, actual endpoint usage and wall/checker/available simulation timing.
+`run_controlled.py --synthetic-pilot diagnosis-smoke|diagnosis-ablation|iteration` uses process/endpoint guards, sequential configurations, exclusive directories, private grading and frozen Python/dataset snapshots with SHA-256 manifests. Generation still uses exactly four calls per round with samples=4. No retrieval/controller model calls are added. `analyze_experiments.py` reads every attempt and reports per-shape verification, repair transitions, actual endpoint usage and wall/checker/available simulation timing.
 
 ## Corpus and verification
 
-12 AST-distinct clean kernels, 12 independently observed repair pairs, 11 train and 1 held-out record. The entire elementwise arithmetic family is held out, and held-out files are never indexed. Families cover bounded DMA, scalar/binary arithmetic, sum/max reductions, on-chip regions, small matrix products with an offset, disjoint K accumulation, partition copies and column output coverage. They are not official benchmark entry points or reference solutions. Matrix-product tasks include a separate offset and tiny constrained layouts; retrieval exposes only the changed invariant.
+12 AST-distinct clean kernels, 24 independently observed repair pairs over those 12 kernels, 22 train and 2 held-out records. The entire elementwise arithmetic family is held out, and held-out files are never indexed. Families cover bounded DMA, scalar/binary arithmetic, sum/max reductions, on-chip regions, small matrix products with an offset, disjoint K accumulation, partition copies and column output coverage. They are not official benchmark entry points or reference solutions. Matrix-product tasks include a separate offset and tiny constrained layouts; retrieval exposes only the changed invariant.
 
-Each clean and restored task passed three seed-varied float32 input cases against independent NumPy operations at rtol=atol=2e-5. All mutations failed with the intended observed category. Current corpus: 1 DMA mismatch, 5 tensor-dimension failures, 2 invalid API functions, 1 invalid API argument, 2 numerical failures and 1 buffer-placement failure. No mutations were rejected in the initial build. Unit tests also inject a non-failing mutation and confirm rejection. The 1/1 held-out restored-kernel verification is a data-quality check, not held-out LLM accuracy. Device-verified examples: zero.
+Each clean and restored task passed three seed-varied float32 input cases against independent NumPy operations at rtol=atol=2e-5. All mutations failed with the intended observed category. Current corpus: 1 DMA mismatch, 5 tensor-dimension failures, 14 invalid API functions, 1 invalid API argument, 2 numerical failures and 1 buffer-placement failure. No mutations were rejected in the initial build. Unit tests also inject a non-failing mutation and confirm rejection. The 2/2 held-out restored-pair verification is a data-quality check, not held-out LLM accuracy. Device-verified examples: zero.
 
-Limitations: only float32 so far; tiny fixed layouts; one held-out family/example; finite input tests are not formal proof. Uninitialized missing-output behavior is caught by numerical comparison, not attributed to a new official checker category. Static checks are deliberately limited and simulator execution supplies the hardware-layout gate. Generated-code licensing is unspecified by this repository; no external implementation was copied. Source, broken result, actual error, repaired result, seed/SDK/target and provenance are retained in JSONL.
+Limitations: only float32 so far; tiny fixed layouts; one held-out family/kernel with two injected bugs; finite input tests are not formal proof. Uninitialized missing-output behavior is caught by numerical comparison, not attributed to a new official checker category. Static checks are deliberately limited and simulator execution supplies the hardware-layout gate. Generated-code licensing is unspecified by this repository; no external implementation was copied. Source, broken result, actual error, repaired result, seed/SDK/target and provenance are retained in JSONL.
 
 ## Compatibility and source attribution
 
@@ -44,8 +44,25 @@ python -B kernelbench.py --selftest
 # Fresh corpus directory; generator refuses to overwrite existing data.
 artifact_dir=$(mktemp -d "$PWD/runs/synthetic-rebuild.XXXXXX")
 python -B -m synthetic_nki.generate --output "$artifact_dir/data" --seed 2026
-python -B run_controlled.py --run --synthetic-pilot smoke --rounds 2 --samples 4 --repeat 1 --levels 3
-python -B run_controlled.py --run --synthetic-pilot ablation --rounds 4 --samples 4 --repeat 1 --levels 3
+python -B run_controlled.py --run --synthetic-pilot diagnosis-smoke --rounds 2 --samples 4 --repeat 1 --levels 3
+python -B run_controlled.py --run --synthetic-pilot diagnosis-ablation --rounds 4 --samples 4 --repeat 1 --levels 3
 ```
 
 All original default-behavior and equal-reward selection regressions remain in the test suite. Live results and final validation count are recorded separately in `SYNTHETIC_NKI_EXPERIMENTS.md`.
+
+## Diagnostic assessment and updated isolation
+
+The preserved initial corpus is `synthetic_nki/data/`; default retrieval now uses `data_v2/`. Pair deduplication keys correct structure plus cause so two distinct actual bugs in the same clean kernel remain useful, while duplicate cause variants are removed. All held-out-family variants are excluded. `diagnostics.py` applies predeclared bug-specific semantic checks to added legacy/targeted guidance, excluding raw errors. Conservative score is 18/24 legacy versus 22/24 targeted; generic numerical guidance does not count as a confirmed cause. The coding agent inspected seven source/error/diagnosis pairs; no independent human annotation was obtained. Full per-category evidence is in SYNTHETIC_DIAGNOSTIC_EVALUATION.md. This evaluates diagnosis coverage, not Qwen correctness or population accuracy.
+
+Updated A–C live arms hold standard generation, diagnostic selection and standard repair constant. A uses legacy feedback; B uses targeted feedback; C adds synthetic cards. D adds diverse generation and adaptive history to targeted/cards. D is a bundle, so its effects cannot be attributed to one intervention. The earlier smoke used grounded repair and is labeled separately. SDK verification confirmed nl.load and nl.store exist. 95 tests and both unmodified checker self-tests passed before the ablation.
+
+Rebuild 24 pairs after creating a fresh base corpus:
+```bash
+python -B -m synthetic_nki.generate_pairs --base "$artifact_dir/data" --output "$artifact_dir/data_v2"
+```
+
+## Verified curriculum extension
+
+Original datasets remain intact. Default retrieval now uses data_v4: 16 distinct clean kernels, 28 verified repair pairs, 26 train and 2 held-out pairs. Added independent offset transpose, grouped sum, row-output tiling and ragged K accumulation. The initial extension rejected one boundary mutation with a wrongly anticipated DMA category; actual OUT_OF_BOUNDS feedback was retained in data_v3/summary.json and the expectation was corrected/reverified. No additional model calls and no device validation.
+
+Final 28-pair guidance check: legacy 20/28, targeted 25/28, targeted plus symbolic 25/28. Symbolic constraints detect nine injected shape/layout causes, with zero false-positive violations on sixteen verified clean kernels. The three numerical bugs remain unconfirmed specifically. All emitted source locations refer to actual AST calls/allocations; this is not independent runtime localization proof. Current concrete corpus has no unresolved supported-shape analyses after bounded loop reasoning; API and numerical legality remain outside this status. Exact timings and records: synthetic_nki/data_v4/symbolic_evaluation_final.json and diagnostic_evaluation.json.

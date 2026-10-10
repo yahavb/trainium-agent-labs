@@ -10,6 +10,8 @@ def identifies(cause,text):
     """Predeclared semantic checks independent of the classifier's category."""
     t=text.lower()
     rules={
+        'boundary_slice_tail': lambda: ('partial' in t or 'final tile' in t) and ('clip' in t or 'min(' in t),
+        'transpose_regions': lambda: 'nc_transpose' in t and ('sbuf' in t or 'on-chip' in t),
         'matching_dma_extents': lambda: 'dma' in t and ('slice' in t or 'source' in t) and ('allocation' in t or 'allocated' in t or 'destination' in t),
         'explicit_onchip_rank': lambda: ('rank 1' in t or '1d' in t or 'one-dimensional' in t) and ('2 dimensions' in t or '2d' in t or 'two-dimensional' in t),
         'reduction_rank': lambda: ('reduc' in t and ('keepdims' in t or 'free axis' in t)),

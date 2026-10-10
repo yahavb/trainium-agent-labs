@@ -127,6 +127,38 @@ def failure_input_shapes(source, feedback, level):
     except (KeyError,SyntaxError,StopIteration):return {}
 
 
+def input_lifetime_evidence(source,evidence):
+    """Straight-line, whole-region DMA overwrite evidence; no alias speculation."""
+    try:tree=ast.parse(source)
+    except SyntaxError:return []
+    if any(isinstance(n,(ast.For,ast.While,ast.If,ast.Try)) for n in ast.walk(tree)):return []
+    def base(expression):
+        try:node=ast.parse(expression,mode='eval').body
+        except SyntaxError:return None
+        while isinstance(node,ast.Subscript):node=node.value
+        return node.id if isinstance(node,ast.Name) else None
+    findings=[]
+    transfers=evidence.get('transfers',[])
+    for compute in transfers:
+        if not compute['operation'].endswith('nc_matmul'):continue
+        operands=compute['operands']
+        stationary=operands.get('stationary',{}).get('expression','')
+        moving=operands.get('moving',{}).get('expression','')
+        shared=base(stationary)
+        if not shared or shared!=base(moving):continue
+        loads=[t for t in transfers if t['line']<compute['line'] and t['operation'].endswith('dma_copy') and base(t['operands'].get('dst',{}).get('expression',''))==shared]
+        loads.sort(key=lambda t:t['line'])
+        if len(loads)<2:continue
+        first,last=loads[-2:]
+        a,b=(t['operands'].get('src',{}).get('expression','') for t in (first,last))
+        # A whole-region load followed by another nonempty load proves reuse;
+        # whether both original values are required is a mathematical question.
+        first_dst=first['operands']['dst']['expression'];last_shape=last['operands']['dst'].get('derived_shape')
+        if first_dst!=shared or not last_shape or math.prod(last_shape)==0 or base(a)==base(b):continue
+        findings.append(f"DMA lines {first['line']} and {last['line']} load {a} then {b} into shared allocation {shared}; nc_matmul line {compute['line']} uses that allocation for both stationary and moving. Once both loads are legal, the later load would overwrite the earlier input region. If the computation requires both original inputs, keep them in distinct live SBUF regions; reconcile each input's own load shape and the result-shaped PSUM/SBUF/output consumers together. Do not alternate resizing this single input buffer to satisfy one load at a time.")
+    return findings
+
+
 def root_cause(source,feedback,evidence):
     """Specific evidence first; no inferred runtime values beyond checker case inputs."""
     result=[];category=classify_failure(feedback).failure_category
@@ -134,6 +166,8 @@ def root_cause(source,feedback,evidence):
     verified={card.id for card in CATALOG if compatible(card,compatibility)}
     try:tree=ast.parse(source)
     except SyntaxError:return result
+    lifetime=input_lifetime_evidence(source,evidence)
+    lifetime_note=(' '+lifetime[0]) if lifetime else ''
     # Diagnose the reported transfer before later matmul consumers.
     if category=='DMA_SHAPE_MISMATCH':
         import re
@@ -144,9 +178,16 @@ def root_cause(source,feedback,evidence):
             a,b=src.get('derived_shape'),dst.get('derived_shape')
             if a is not None and b is not None and math.prod(a)!=math.prod(b):
                 if match and (math.prod(a),math.prod(b))!=tuple(map(int,match.groups())):continue
-                return [f"line {transfer['line']}: dma_copy src {src['expression']} shape {a} ({math.prod(a)} elements) and dst {dst['expression']} shape {b} ({math.prod(b)} elements) disagree. Coordinate source slice, allocation and downstream consumers; do not just resize dst. Resolve this actual transfer before reasoning about later matmul operations."]
+                return [f"line {transfer['line']}: dma_copy src {src['expression']} shape {a} ({math.prod(a)} elements) and dst {dst['expression']} shape {b} ({math.prod(b)} elements) disagree. Coordinate source slice, allocation and downstream consumers; do not just resize dst. Resolve this actual transfer before reasoning about later matmul operations."+lifetime_note]
         if transfers:
-            return ['The checker reports a DMA element-count mismatch. Transfer call lines '+', '.join(str(t['line']) for t in transfers)+': operand shapes are unresolved or cannot be uniquely matched to this runtime error. Trace the failing source slice and destination allocation together, then check consumers and cover every element; do not infer a later matmul failure from this DMA error.']
+            return ['The checker reports a DMA element-count mismatch. Transfer call lines '+', '.join(str(t['line']) for t in transfers)+': operand shapes are unresolved or cannot be uniquely matched to this runtime error. Trace the failing source slice and destination allocation together, then check consumers and cover every element; do not infer a later matmul failure from this DMA error.'+lifetime_note]
+    if category=='OUT_OF_BOUNDS':
+        import re
+        bounds=re.search(r'dimension (\d+): index range \[(\d+), (\d+)\] exceed dimension size of (\d+)',feedback)
+        if bounds:
+            dim,lo,hi,size=bounds.groups()
+            lines=[str(t['line']) for t in evidence.get('transfers',[]) if t['operation'].endswith('dma_copy')]
+            return [f'Runtime dimension {dim} has size {size}, but the reported slice reaches indices {lo} through {hi}. DMA call sites: '+(', '.join(lines) or 'unresolved')+'. Clip the final tile boundary to the actual dimension, derive its allocation extent from the clipped end minus start, and update both source/destination slices and consumers. Preserve accumulation and complete output coverage; do not pad the final partial tile past input bounds.']
     if category=='INVALID_API_ARGUMENT':
         import re
         import inspect
@@ -169,6 +210,13 @@ def root_cause(source,feedback,evidence):
     if category=='INVALID_TENSOR_DIMENSIONS' and 'at least 2 dimensions' in feedback:
         explicit=[issue for issue in evidence['issues'] if 'rank 1' in issue]
         if explicit:return [explicit[0]+' Correct this explicit allocation before blaming later reductions or matmul; keep its transfer and consumers consistent.']
+    if category=='INVALID_BUFFER_PLACEMENT' and 'nc_transpose' in feedback:
+        for node in ast.walk(tree):
+            if not isinstance(node,ast.Call) or not ast.unparse(node.func).endswith('nc_transpose'):continue
+            values={k.arg:k.value for k in node.keywords}
+            dst=values.get('dst',node.args[0] if node.args else None)
+            if dst is None:continue
+            return [f'line {node.lineno}: nc_transpose destination {ast.unparse(dst)} must be on-chip. Vector engine reads/writes SBUF or PSUM with input tile <=32x32; tensor engine reads SBUF and writes PSUM with input tile <=128x128. This primitive swaps partition/free axes, not two free axes within each partition. Use matching on-chip shapes and legal final HBM transfers.']
     if category=='INVALID_BUFFER_PLACEMENT' and ('private_hbm' in feedback or 'shared_hbm' in feedback) and 'copy' in verified:
         parameters={argument.arg for function in tree.body if isinstance(function,ast.FunctionDef) for argument in function.args.args}
         for node in ast.walk(tree):
@@ -200,7 +248,7 @@ def root_cause(source,feedback,evidence):
                 # Tensor methods are not NKI module calls; inspect actual AST separately.
                 explicit=[n.lineno for n in ast.walk(tree) if isinstance(n,ast.Call) and ast.unparse(n.func).endswith('.reshape')]
                 origin='explicit reshape calls also exist; inspect them separately' if explicit else 'no explicit reshape call exists; the simulator reshapes its matmul result to dst internally'
-                result.append(f"line {transfer['line']}: nc_matmul stationary {left} and moving {right} produce ({M},{N}), but dst {op['dst']['expression']} is {dst}. {origin}. Fix PSUM destination and result-copy/store consumers, not an imaginary user reshape.")
+                result.append(f"line {transfer['line']}: nc_matmul stationary {left} and moving {right} produce ({M},{N}), but dst {op['dst']['expression']} is {dst}. {origin}. Fix PSUM destination and result-copy/store consumers, not an imaginary user reshape."+lifetime_note)
             excessive=[f'{name}={size} exceeds {limit}' for name,size,limit in [('K',K,128),('M',M,128),('N',N,512)] if size>limit]
             if excessive:
                 result.append(f"line {transfer['line']}: normal FP32 Trainium2 matmul limits: "+'; '.join(excessive)+'. Tile all oversized M/N output dimensions and K contraction before DMA. Allocate one result-shaped FP32 PSUM tile per output region, overwrite on its first K tile, accumulate subsequent disjoint K tiles, then copy to a matching SBUF result tile and the matching HBM output slice. Cover every output region.')

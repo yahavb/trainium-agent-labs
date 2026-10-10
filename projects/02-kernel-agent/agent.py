@@ -535,6 +535,7 @@ def solve(a, level, log):
     candidate_policy = getattr(a, "candidate_policy", "standard")
     repair_policy = getattr(a, "repair_policy", "standard")
     generation_policy = getattr(a, "generation_policy", "standard")
+    shape_analysis = getattr(a, "shape_analysis", "off")
     feedback_policy = getattr(a, "feedback_policy", "legacy")
     example_policy = getattr(a, "example_policy", "off")
     adaptive = getattr(a, "adaptive_repair", False)
@@ -547,9 +548,15 @@ def solve(a, level, log):
         generation_prompt = prompt
         grounding = None
         shape_plan = None
+        symbolic_plan = None
         generation_constraints = None
+        kernel_plan = None
         synthetic_context = None
         history_context = None
+        if getattr(a,"planner_policy","off") == "hardware" and not latest[0]:
+            from kernel_planner import generation_prompt as planned_prompt
+            generation_prompt,kernel_plan=planned_prompt(generation_prompt,level,
+                context=getattr(a,"context",8192),answer_budget=getattr(a,"max_tokens",2500),model=getattr(a,"model",MODEL))
         if generation_policy == "constrained" and not latest[0]:
             generation_prompt, generation_constraints = constrained_prompt(
                 generation_prompt, nkibench.LEVELS[level]["op"], model=getattr(a,"model",MODEL),
@@ -563,6 +570,13 @@ def solve(a, level, log):
                 prompt, classify_failure(latest[1]), latest[0],
                 model=getattr(a, 'model', MODEL), context=getattr(a, 'context', 8192),
                 answer_budget=getattr(a, 'max_tokens', MIN_ANSWER_TOKENS))
+        if shape_analysis == "sympy" and latest[0]:
+            from symbolic_shapes import repair_prompt as symbolic_prompt
+            generation_prompt, symbolic_plan = symbolic_prompt(
+                generation_prompt, latest[0], latest[1],
+                input_shapes=failure_input_shapes(latest[0],latest[1],level),
+                model=getattr(a,"model",MODEL),context=getattr(a,"context",8192),
+                answer_budget=getattr(a,"max_tokens",2500))
         if example_policy == "synthetic" and latest[0]:
             generation_prompt, synthetic_context = example_prompt(
                 generation_prompt, classify_failure(latest[1]), latest[0],
@@ -629,6 +643,8 @@ def solve(a, level, log):
                     record.update(feedback_policy=feedback_policy,example_policy=example_policy,
                                   adaptive_repair=adaptive,shape_plan=shape_plan,
                                   synthetic_context=synthetic_context,repair_history_context=history_context)
+                if getattr(a,"planner_policy","off") != "off":record.update(planner_policy=a.planner_policy,kernel_plan=kernel_plan)
+                if shape_analysis != "off":record.update(shape_analysis=shape_analysis,symbolic_analysis=symbolic_plan)
                 if measured:
                     evaluated = {case['case'] for case in grade_metrics[index]['shape_results']}
                     shape_results = grade_metrics[index]['shape_results'] + [
@@ -737,6 +753,8 @@ def main():
     ap.add_argument("--candidate-policy", choices=("standard", "diverse"), default="standard")
     ap.add_argument("--repair-policy", choices=("standard", "grounded", "shape-aware"), default="standard")
     ap.add_argument("--generation-policy", choices=("standard", "constrained"), default="standard")
+    ap.add_argument("--planner-policy", choices=("off","hardware"), default="off")
+    ap.add_argument("--shape-analysis", choices=("off","sympy"), default="off")
     ap.add_argument("--feedback-policy", choices=("legacy","targeted"), default="legacy")
     ap.add_argument("--example-policy", choices=("off","synthetic"), default="off")
     ap.add_argument("--adaptive-repair", action="store_true")

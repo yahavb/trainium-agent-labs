@@ -5,7 +5,7 @@ from pathlib import Path
 from failure_selection import code_fingerprint
 from nki_knowledge import installed_compatibility, local_token_counter, referenced_operations
 
-DATA=Path(__file__).parent/'data_v2'/'train.jsonl'
+DATA=Path(__file__).parent/'data_v4'/'train.jsonl'
 
 def load_train(path=DATA):
     if Path(path).name!='train.jsonl':return []
@@ -29,7 +29,8 @@ def load_train(path=DATA):
 def desired_cause(category,feedback,source):
     apis,_=referenced_operations(source)
     if category=='DMA_SHAPE_MISMATCH':return 'matching_dma_extents'
-    if category=='INVALID_BUFFER_PLACEMENT':return 'onchip_copy_regions'
+    if category=='OUT_OF_BOUNDS':return 'boundary_slice_tail'
+    if category=='INVALID_BUFFER_PLACEMENT':return 'transpose_regions' if any(a.endswith('nc_transpose') for a in apis) else 'onchip_copy_regions'
     if category=='INVALID_API_ARGUMENT':return 'valid_scalar_keyword' if any(a.endswith('tensor_scalar') for a in apis) else None
     if category=='INVALID_API_FUNCTION':return 'supported_scalar_api' if 'scalar' in feedback or 'multiply' in feedback else 'supported_binary_api'
     if category=='INVALID_TENSOR_DIMENSIONS':

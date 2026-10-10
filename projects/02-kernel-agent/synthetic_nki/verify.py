@@ -7,6 +7,8 @@ from failure_selection import classify_failure
 
 def reference(spec,args):
     a=args[0];kind=spec['kind']
+    if kind=='transpose_offset':return a.T+.25
+    if kind=='grouped_sum_offset':return a.reshape(2,2,3).sum(axis=2)-.25
     if kind=='slice':return a[1:3,1:4].copy()
     if kind in ('copy','partition','psum'):return a.copy()
     if kind=='multiply':return a*1.5

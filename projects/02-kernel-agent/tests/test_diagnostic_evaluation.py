@@ -32,15 +32,15 @@ class DiagnosticTests(unittest.TestCase):
   self.assertIn('operand0',plan['guidance']);self.assertIn('line 3',plan['guidance'])
  def test_evaluation_uses_added_guidance_and_actual_failures(self):
   with tempfile.TemporaryDirectory() as temp:
-   result=evaluate(DATA.parent,Path(temp)/'report.json')
+   result=evaluate(Path('synthetic_nki/data_v2'),Path(temp)/'report.json')
   self.assertEqual(result['total'],24)
   self.assertTrue(all(r['actual_error'] for r in result['records']))
   self.assertFalse(identifies('reduction_rank','Every SBUF needs two dimensions'))
  def test_pair_dedup_and_family_holdout(self):
   rows=[json.loads(line) for split in ('train','heldout') for line in (DATA.parent/(split+'.jsonl')).read_text().splitlines()]
-  self.assertEqual(len({r['broken_kernel'] for r in rows}),24)
-  self.assertEqual(len({r['correct_kernel'] for r in rows}),12)
-  self.assertEqual(len(load_train()),22)
+  self.assertEqual(len({r['broken_kernel'] for r in rows}),28)
+  self.assertEqual(len({r['correct_kernel'] for r in rows}),16)
+  self.assertEqual(len(load_train()),26)
  def test_all_alternate_mutations_observed_and_repairs_verified(self):
   specs={s['source']:s for s in templates()}
   rows=[json.loads(line) for split in ('train','heldout') for line in (DATA.parent/(split+'.jsonl')).read_text().splitlines()]
@@ -56,3 +56,18 @@ class DiagnosticTests(unittest.TestCase):
    self.assertEqual('--feedback-policy' in command,name!='A_legacy_standard')
    self.assertEqual('--example-policy' in command,name=='C_targeted_synthetic')
 if __name__=='__main__':unittest.main()
+
+class LifetimeTests(unittest.TestCase):
+ def test_shared_load_buffer_dependency_in_dma_guidance(self):
+  source='import nki.language as nl\nimport nki.isa as ni\ndef f(a,b):\n t=nl.ndarray((2,4),nl.float32,buffer=nl.sbuf)\n d=nl.ndarray((3,4),nl.float32,buffer=nl.psum)\n ni.dma_copy(dst=t,src=a)\n ni.dma_copy(dst=t[:,0:4],src=b)\n ni.nc_matmul(dst=d,stationary=t,moving=t)\n return d'
+  plan=plan_repair(source,'dma_copy requires src and dst to have the same number of elements, got src=6, dst=8',input_shapes={'a':(2,3),'b':(2,4)})
+  self.assertIn('DMA lines 6 and 7',plan['guidance']);self.assertIn('distinct live SBUF',plan['guidance'])
+  self.assertIn('If the computation requires',plan['guidance'])
+ def test_separate_inputs_no_shared_buffer_claim(self):
+  from shape_repair import input_lifetime_evidence,inspect_shapes
+  source='import nki.isa as ni\ndef f(a,b):\n ni.dma_copy(dst=x,src=a)\n ni.dma_copy(dst=y,src=b)\n ni.nc_matmul(dst=z,stationary=x,moving=y)'
+  self.assertFalse(input_lifetime_evidence(source,inspect_shapes(source)))
+ def test_loop_lifetimes_left_unresolved(self):
+  from shape_repair import input_lifetime_evidence,inspect_shapes
+  source='import nki.isa as ni\ndef f(a,b):\n for i in range(2):\n  ni.dma_copy(dst=x,src=a)\n  ni.dma_copy(dst=x,src=b)\n  ni.nc_matmul(dst=z,stationary=x,moving=x)'
+  self.assertFalse(input_lifetime_evidence(source,inspect_shapes(source)))
