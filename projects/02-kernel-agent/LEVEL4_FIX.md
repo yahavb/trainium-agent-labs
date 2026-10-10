@@ -11,48 +11,33 @@ output, leaving the actual PSUM-to-SBUF copy unchanged.
 The level-4 feedback now identifies the separate, matching result SBUF tile
 needed for that copy. The initial and repair prompts explain the different
 input/result tile shapes, tiling across M, N and K, and the accumulator's
-lifetime across K tiles. Larger inputs cannot be loaded wholesale or handled
-by only looping over K. Scoring and numeric tolerances are unchanged.
+lifetime across K tiles. Later feedback also diagnoses the M=128 zero-loop
+case: using M//512 for tile count skips every output write. Scoring and
+numeric tolerances are unchanged.
 
-Validation performed: Python compilation and the checker self-test passed.
-The pod's simulator reproduced the reported failure from the saved baseline
-candidate. Giving that candidate a separate result SBUF fixed the first shape;
-the remaining three shapes exposed its missing input tiling. The shipped
-fully tiled reference passed 4/4. Non-target prompts, representative feedback
-and scoring weights were compared against `master` and remained unchanged.
-These are diagnostic checks, not successful model-generated runs.
+A further escalation now adds a clearly labeled three-axis loop scaffold
+after a level-4 failure recurs. It asks the model to complete the input loads,
+matmul, and output copies. The candidate still passes through the ordinary
+rules, simulator, and numerical checks; there is no reference-kernel fallback.
+Each attempt record includes a `scaffolded` field so scaffolded results can be
+reported separately from unscaffolded runs.
 
-After other model experiments have stopped, evaluate this branch separately:
+Validation performed locally: Python compilation, checker self-test, and a
+prompt-structure check passed. The self-test reports that its NKI simulation
+portion needs verification on the pod. This does not establish that the model
+will solve the level. No successful model-generated runs have been measured yet.
+
+On the pod, evaluate five independent runs, each with at most five rounds:
 
 ```bash
 python nkibench.py --selftest
 python nkibench.py --level 4 --check reference_level4.py
-nohup python -u agent.py --level 4 --rounds 8 --samples 4 --context 8192 --repeat 5 \
-  --log attempts-level4-fix.jsonl > run-level4-fix.log 2>&1 < /dev/null &
-tail -f run-level4-fix.log
+nohup python -u agent.py --level 4 --rounds 5 --samples 4 --context 8192 --repeat 5 \
+  --log attempts-level4-scaffold.jsonl > run-level4-scaffold.log 2>&1 < /dev/null &
+tail -f run-level4-scaffold.log
 ```
 
-The live solve-rate improvement is **not yet measured**. Compare five-run
-solve rates against the unchanged baseline. Run agents sequentially within
-the pod: the harness shares `/tmp/_agent_level4.py` even across checkouts.
-
-## Baseline runs 2 and 3
-
-Run 2 loads a whole input whose partition dimension is 256. The existing
-three-axis tiling guidance covers this. Run 3 sets tile_size_M=512 and loops
-over M//512: on M=128 the loop executes zero times and returns unwritten HBM.
-Adding fill cannot fix a skipped computation. Later repairs invent nisa.fill
-and nl.temporary or copy from an uninitialized allocation.
-
-The level-4 prompt now specifies ceiling tile counts, bounded edge tiles and
-(K, M) left-input indexing. Numerical failure feedback (previously not enriched)
-now routes through level-4 guidance, identifying skipped writes and the complete
-PSUM-to-SBUF-to-HBM path. Scoring and other levels remain unchanged.
-Live model comparison remains pending.
-
-Validation of this update: replayed the saved run-3 candidate in an isolated
-temporary harness path and reproduced the numerical failure; asserted that
-the returned grade feedback includes the zero-iteration diagnosis. The shipped
-reference still passes all four shapes with reward 1.0. Other levels' initial
-prompts at all three terseness settings, repair prompts and representative
-error feedback match master. These checks made no model requests.
+The target is reward 1.00 in all five runs (summary: `solved 5/5`). The live
+solve rate remains unmeasured until that pod run completes. Run agents
+sequentially within the pod: the harness shares `/tmp/_agent_level4.py` even
+across checkouts.
