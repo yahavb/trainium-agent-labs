@@ -11,11 +11,16 @@ For each feedback mode and level it reports the score, and -- because the score 
 what happens -- how the model RESPONDED to the feedback:
 
     repair steps   rounds after the first, each one an answer to a checker message
-    moved          repair steps where the named mistake was gone in the next attempt
-    stuck          repair steps that hit the same mistake again
+    moved          repair steps that raised the score or reached a mistake not seen before in the run
+    went back      repair steps that returned to a mistake made earlier in the same run
+    stuck          repair steps that hit the same mistake as the round before
 
 A run that sits at 0.30 while fixing a different mistake every round and a run that sits at 0.30
 repeating one mistake look identical by score. This table tells them apart.
+
+"Went back" exists because of a run seen on a seat: seven rounds alternating between two mistakes,
+each message sending the model to the other. Counting only "same as the round before" scored that
+run as moving on six steps out of six.
 
 Standard library only.
 """
@@ -65,21 +70,26 @@ def describe(seq, cut=None):
         seq = seq[:cut]
     best = max(r["reward"] for r in seq)
     solved = next((i for i, r in enumerate(seq) if r["reward"] >= 1 - 1e-9), None)
-    steps = moved = 0
+    steps = moved = back = 0
+    seen = {failure(seq[0])}
     for prev, nxt in zip(seq, seq[1:]):
         steps += 1
-        if nxt["reward"] > prev["reward"] + 1e-9 or failure(nxt) != failure(prev):
+        f = failure(nxt)
+        if nxt["reward"] > prev["reward"] + 1e-9 or f not in seen:
             moved += 1
+        elif f != failure(prev):
+            back += 1
+        seen.add(f)
     kinds = len({failure(r) for r in seq if r["reward"] < 1 - 1e-9})
-    return dict(best=best, solved=solved, rounds=len(seq), steps=steps, moved=moved,
-                stuck=steps - moved, kinds=kinds)
+    return dict(best=best, solved=solved, rounds=len(seq), steps=steps, moved=moved, back=back,
+                stuck=steps - moved - back, kinds=kinds)
 
 
 def table(runs, cut=None):
     keys = sorted(runs, key=lambda k: (ORDER.index(k[0]) if k[0] in ORDER else 99, k[1], k[2], k[3]))
     levels = sorted({lv for v in runs.values() for lv in v})
-    out = ["| level | feedback | best score | solved | rounds | repair steps | moved | stuck | "
-           "different mistakes |", "|---|---|---|---|---|---|---|---|---|"]
+    out = ["| level | feedback | best score | solved | rounds | repair steps | moved | went back | "
+           "stuck | different mistakes |", "|---|---|---|---|---|---|---|---|---|---|"]
     for lv in levels:
         for k in keys:
             if lv not in runs[k]:
@@ -88,20 +98,22 @@ def table(runs, cut=None):
             name = k[0] + (" + varied prompts" if k[1] else "")
             out.append(f"| {lv} | {name} | {d['best']:.2f} | "
                        f"{'round ' + str(d['solved']) if d['solved'] is not None else 'no'} | "
-                       f"{d['rounds']} | {d['steps']} | {d['moved']} | {d['stuck']} | {d['kinds']} |")
+                       f"{d['rounds']} | {d['steps']} | {d['moved']} | {d['back']} | {d['stuck']} | "
+                       f"{d['kinds']} |")
     return "\n".join(out)
 
 
 def totals(runs, cut=None):
     keys = sorted(runs, key=lambda k: (ORDER.index(k[0]) if k[0] in ORDER else 99, k[1], k[2], k[3]))
-    out = ["| feedback | session | levels run | levels solved | repair steps | moved | stuck | "
-           "moved share |", "|---|---|---|---|---|---|---|---|"]
+    out = ["| feedback | session | levels run | levels solved | repair steps | moved | went back | "
+           "stuck | moved share |", "|---|---|---|---|---|---|---|---|---|"]
     for k in keys:
         ds = [describe(seq, cut) for seq in runs[k].values()]
         steps, moved = sum(d["steps"] for d in ds), sum(d["moved"] for d in ds)
+        back = sum(d["back"] for d in ds)
         name = k[0] + (" + varied prompts" if k[1] else "")
         out.append(f"| {name} | {k[2]} | {len(ds)} | {sum(d['solved'] is not None for d in ds)} | "
-                   f"{steps} | {moved} | {steps - moved} | "
+                   f"{steps} | {moved} | {back} | {steps - moved - back} | "
                    f"{f'{100 * moved / steps:.0f}%' if steps else 'n/a'} |")
     return "\n".join(out)
 
@@ -122,8 +134,9 @@ def main():
     print("# Feedback modes compared\n")
     print(f"From {len(paths)} log file(s): {', '.join(paths)}\n")
     print("Each row is one run of one level. A repair step is a round that answers a checker "
-          "message. It *moved* if the score rose or the checker named a different mistake next "
-          "time, and was *stuck* if the same mistake came back. Two messages count as the same "
+          "message. It *moved* if the score rose or the checker named a mistake not seen before "
+          "in that run, *went back* if it returned to a mistake made earlier in the run, and was "
+          "*stuck* if it repeated the mistake of the round before. Two messages count as the same "
           "mistake when they match after removing the quoted line and all numbers.\n")
     print("## Per level\n\n" + table(runs))
     print("\n## Per run\n\n" + totals(runs))

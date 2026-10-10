@@ -1,14 +1,14 @@
 # Kernel agent: what the checker's feedback is worth
 
-Seat 17 · project 2 · **interim note, 10 Oct 13:05 EDT.** More runs are in progress; the tables
-here cover the runs that have finished and will be regenerated when the rest do.
+Seat 17 · project 2 · **interim note, 10 Oct 15:05 EDT.** Ten more runs are queued on the seat; the
+tables here cover the runs that have finished and will be regenerated when the rest do.
 
 ## What we ran
 
 The repo's kernel agent, unchanged except for the checker's feedback. Model: Qwen3-8B on the seat's
-Trainium chip, started with `./serve.sh`, thinking off, context 8192, 4 samples per round. The model,
-its settings and the task prompt were not changed. Checker: `nkibench.py` layer 1, which simulates the
-kernel on the CPU. Nothing here was timed on the device.
+Trainium chip, started with `./serve.sh`, thinking off, context 8192, 4 samples per round, 8 rounds.
+The model, its settings and the task prompt were not changed. Checker: `nkibench.py` layer 1, which
+simulates the kernel on the CPU. Nothing here was timed on the device.
 
 One variable changes between runs: what the checker says when a kernel fails.
 
@@ -17,64 +17,91 @@ One variable changes between runs: what the checker says when a kernel fails.
 | `enriched` | the repo's original: the exception plus a fix instruction |
 | `located` | the same, plus the model's own failing line quoted back |
 | `directed` | plus the two real shapes in a failed copy, and where a misplaced name really lives |
-| `directed2` | plus the real argument list of the function it misused, messages for four errors that had no usable advice, and one corrected message |
+| `directed3` | plus a message for each specific wall found in the logs below |
 
-Every `directed` and `directed2` message was written after seeing the model make that exact mistake
-on this seat. The log line that prompted each one is in the commit history.
+Every `directed` and `directed3` message was written after seeing the model hit that exact wall on
+this seat. The kernel line and error that prompted each one are quoted in a comment beside it in
+`agent.py`.
 
-## Results so far (one run per row)
+## Results so far
 
-| level | feedback | best score | rounds | repair steps that fixed the named mistake |
-|---|---|---|---|---|
-| 1 average pooling | located | 0.30 | 8 | 5 of 7 |
-| 1 average pooling | directed | 0.30 | 8 | 6 of 7 |
-| 2 transpose | directed | 1.00 (round 0) | 1 | n/a |
-| 3 matmul, one tile | directed | 0.30 | 6 | 2 of 5 |
-| 4 matmul, tiled | directed | **0.75** | 6 | 2 of 5 |
+| level | `located`, 4 runs | `directed`, 1 run |
+|---|---|---|
+| 1 average pooling | 0.30, 0.30, 0.30, 0.30 | 0.30 |
+| 2 transpose | 1.00, 0.30, 1.00, 0.30 | 1.00 |
+| 3 matmul, one tile | 0.30, 0.30, 0.30, 0.30 | 0.30 |
+| 4 matmul, tiled | 0.75, 0.30, 0.62 (fourth still running) | 0.75 |
 
-Full table: [`RESULTS.md`](RESULTS.md). Mistakes grouped and counted:
-[`TAXONOMY-directed.md`](TAXONOMY-directed.md), [`TAXONOMY-located.md`](TAXONOMY-located.md).
-Every attempt with its score: [`logs/`](logs/).
+`enriched` and `directed3` have no finished run on this seat yet. Per-run detail:
+[`RESULTS.md`](RESULTS.md). Mistakes grouped and counted:
+[`TAXONOMY-located-5runs.md`](TAXONOMY-located-5runs.md), [`TAXONOMY-directed.md`](TAXONOMY-directed.md).
+Every attempt with its kernel, feedback and score: [`logs/`](logs/).
 
 ## What the logs show
 
-1. **A named fix is taken; a list of names is not.** The model wrote `nisa.multiply`. Under `located`
-   the checker listed the first 25 names in `nki.isa`: the model repeated the mistake for three rounds
-   and then invented `nisa.scalar_mul`. Under `directed` the checker said "write `nl.multiply`": fixed
-   in the next round.
-2. **Level 4 reached 0.75, 2 of 4 shapes.** The repo records 0.62 on five of five runs. The model
-   chunked the K dimension correctly, then hit `stationary free dimension 256 exceeds 128`, for which
-   the checker had no advice, and repeated it four rounds. `directed2` adds that advice.
-3. **One of our own messages caused a cycle.** On level 3 the model used one tile for two inputs of
-   different sizes. Our message offered two fixes, one of them impossible in that case, and the model
-   alternated between them for six rounds. `directed2` replaces it.
-4. **Extra samples only help in the first round.** The four samples were identical in 28 of 31 repair
-   rounds. In first rounds they differed on levels 2 to 4 (3 or 4 distinct answers) and were identical
-   on level 1 in four of four runs. Level 2 was solved at round 0 in one run and not in another, with
-   the same prompt.
-5. **Two runs on one seat cost four times the wall-clock.** Alone, a round takes 52 to 94 s (5.4
-   tokens/s per sequence). With a second agent on the same model, most rounds took 190 to 265 s.
+1. **One run is not a result.** The same checker gave level 4 a best score of 0.75, 0.30 and 0.62 in
+   three runs, and solved level 2 in two runs out of four. Our earlier draft of this note credited
+   0.75 on level 4 to `directed`; `located` reached the same score in one run of three, so that
+   claim is withdrawn. The repo's own figure for level 4 is 0.62 on five of five runs.
+2. **Level 2 is decided in the first round.** When the first answer was right it scored 1.00 at
+   round 0; when it was wrong, neither run recovered, in four and six repair rounds. The first prompt is
+   identical in every feedback mode, so level 2 measures feedback only in the runs that start wrong.
+3. **Two true messages can form a loop.** On level 2 the model allocated a tile of 16384 elements for
+   an input of 384. "The tile holds 16384 elements, you copied 384" made it copy a 128-wide slice;
+   "you indexed up to 127 on a dimension of 12" sent it back. The same loop appeared on level 3.
+   Three runs alternated between the two messages for six or seven rounds. This is the largest
+   single pattern in the log: 19 of 74 repair steps.
+4. **A wrong diagnosis cost a level.** On level 4 at 0.62 the model deleted the copy into its output
+   and returned an array of NaN. The checker said "usually an uninitialised tile". The model
+   invented `nisa.psum_init`, was offered `gpsimd_engine` as the closest real name, called it, and
+   finished the run at 0.30. Every output element was NaN, which the checker could see and did not
+   say.
+5. **Three errors had no advice at all** beyond the quoted line, and each was repeated for two to four
+   rounds: an index past the end, `tuple index out of range`, and a contraction dimension mismatch.
+6. **A named fix is taken; a list of names is not.** The model wrote `nisa.multiply`. Told the first
+   25 names in `nki.isa`, it repeated the mistake for three rounds and then invented
+   `nisa.scalar_mul`. Told "write `nl.multiply`" in the `directed` run, it fixed it in the next round.
+   This is one observation in one run.
+7. **Three of four samples are wasted after the first round.** In 71 of 74 repair rounds all four
+   samples were the same kernel. In first rounds they differed on levels 2 to 4 (2 to 4 distinct
+   answers). Level 1 produced the identical kernel in every sample of every run for the first six
+   rounds, so repeating level 1 adds no information.
+8. **Our own metric was wrong once.** `report.py` counted a repair step as "moved" if the mistake
+   differed from the round before. That scored the loop in point 3 as six steps out of six moving.
+   It now counts a return to an earlier mistake separately ("went back").
 
-## Where the prompt goes (`directed` run, mean per prompt)
+`directed3` replaces the messages behind points 3, 4 and 5 and the two behind the level 3 wall
+(a "give it the shape (1, N)" instruction that led to a "cannot reshape" error in a kernel that never
+calls reshape). Whether those changes raise scores is what the queued runs measure.
+
+## Where the prompt goes (`located`, 356 attempts, mean per prompt)
 
 | prompt | prompt tokens | answer tokens | made of (characters) |
 |---|---|---|---|
-| first | 716 | 300 | API card 1581, task wording 506, reference 399 |
-| repair | 538 | 341 | previous kernel 995, checker feedback 518, wording 201 |
-| repair with ledger | 823 | 455 | previous kernel 1351, ledger 473, feedback 432, wording 266 |
+| first | 717 | 333 | API card 1581, task wording 506, reference 400 |
+| repair | 577 | 352 | previous kernel 1052, checker feedback 587, wording 200 |
+| repair with ledger | 716 | 324 | previous kernel 998, checker feedback 528, ledger 485, wording 267 |
 
-No answer was cut off: all 84 attempts in that run ended with `finish_reason=stop`.
+No answer was cut off: all 356 attempts ended with `finish_reason=stop`. A round took a median of
+76 s; while a second agent shared the model, most rounds took 190 to 265 s.
 
 ## What these numbers do not show
 
-- **One run per row.** First-round answers vary between runs on levels 2 to 4, so a single score can
-  move. Three runs each of `enriched` and `directed2` on levels 3 and 4 are queued.
-- **No baseline on this seat yet.** The `enriched` run is queued; the 0.62 above is the repo's figure
-  from different hardware.
+- **No baseline on this seat yet.** No `enriched` run has finished here; the 0.62 quoted for level 4
+  is the repo's figure from different hardware. Five alternating pairs of `enriched` and `directed3`
+  on levels 2 to 4 are queued.
+- **`directed3` is untested.** Its messages were written from failures seen in these logs and have
+  unit tests on their wording, but no run has used them.
+- **Three or four runs is still few.** With level 4 ranging from 0.30 to 0.75 inside one mode, a
+  difference between modes needs to be larger than that range to mean anything.
 - **Level 1 is not close.** The model computes a matrix product of each window with itself where a sum
   is needed. Fixing one error per round does not change that approach.
-- **The level 4 message in `directed2` describes the tiling method** in words, at the same level of
-  detail as the repo's own message for the K dimension. It contains no code.
+- **Some `directed3` messages describe a method**, for example how to split M and N into chunks, at
+  the same level of detail as the repo's own message for the K dimension. None contains code for a
+  kernel.
+- **The `located` log was recovered, and its last few rounds may be missing.** The log file was
+  deleted from the seat while the run was writing to it; we read it back through the process's open
+  handle once a minute.
 - **Simulator only.** Scores come from `nki.simulate` on the CPU.
 
 ## Reproduce
@@ -82,9 +109,9 @@ No answer was cut off: all 84 attempts in that run ended with `finish_reason=sto
 ```bash
 cd /workspace/projects/02-kernel-agent
 python nkibench.py --selftest
-python agent.py --all --rounds 8 --samples 4 --context 8192 --feedback directed --log directed.jsonl
-python report.py directed.jsonl          # the table above
-python taxonomy.py --log directed.jsonl  # mistakes grouped and counted
+python agent.py --all --rounds 8 --samples 4 --context 8192 --feedback located --repeat 5 --log located.jsonl
+python report.py located.jsonl             # one row per run and level
+python taxonomy.py --log located.jsonl     # mistakes grouped and counted
 ```
 
 Run one agent at a time on a seat.
