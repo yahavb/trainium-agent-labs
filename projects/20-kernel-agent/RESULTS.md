@@ -58,8 +58,9 @@ level 3, 4, 7, 9 and 10 programs gave **15 of 15 correct**.
 
 ![Where effort was wasted](assets/chart_3_waste.png)
 
-* **70%** of rounds had 4 identical tries. The server's sampling is deterministic, so even separate seats ran
-  identical traces; each server now gets its own seed.
+* **70%** of rounds had 4 identical tries, and sampling is deterministic across servers: four seats ran
+  **byte-identical** level-8 traces. Per-request seeds crash this vLLM-Neuron build and per-server `--seed`
+  did not change the samples, so parallel seats did not add independent tries. **Open problem.**
 * **39%** of retries returned the code unchanged — the loop now says "you changed nothing".
 * A cut-off reply that looped on one comment line "ran", returned nothing and **outscored honest attempts**.
   Fixed: returning nothing is not running, and cut-off replies rank last.
