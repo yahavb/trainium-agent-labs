@@ -1,5 +1,11 @@
 # Project 1 — The heat-rod agent
 
+**Submission status: NOT READY; engineering review also required.**
+The [fixed project baseline](PROJECT_BASELINE.md) governs future changes.
+See the [current readiness assessment](submission/READINESS.md), including the
+[checker rationale](submission/CHECKER.md) and [one-page note](submission/ONE_PAGE_NOTE.md).
+Historical solved examples below are not the current submission gate.
+
 The integrated team agent is `improved_agent.py`. Optional `--decay-repair` derives
 exponential rates from the model's submitted spatial waves, preserving its coefficients
 and initial expression; it accepts a proposal only when the original `pdecheck.check`
