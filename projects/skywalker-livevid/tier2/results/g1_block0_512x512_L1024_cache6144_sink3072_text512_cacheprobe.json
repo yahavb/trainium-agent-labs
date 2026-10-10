@@ -1,0 +1,8 @@
+{
+  "cfg": "512x512_L1024_cache6144_sink3072_text512",
+  "cache_effect_cos": 0.9997412493619999,
+  "cache_effect_max_abs_err": 0.22454833984375,
+  "cache_effect_ref_abs_max": 3.255072593688965,
+  "cache_effect_ref_rms": 0.10868114978075027,
+  "cache_effect_err_rms": 0.0024748158175498247
+}

@@ -1,0 +1,29 @@
+{
+  "cfg": "512x512_L1024_cache6144_sink3072_text512",
+  "visible_cores": "0",
+  "latency_ms": {
+    "mean": 11.405,
+    "p50": 11.392,
+    "p99": 11.665,
+    "min": 11.362,
+    "max": 11.665,
+    "iters": 50
+  },
+  "latency_ms_cache_feedback": {
+    "mean": 12.868,
+    "p50": 12.685,
+    "p99": 17.649,
+    "min": 11.391,
+    "max": 17.649,
+    "iters": 50
+  },
+  "estimate": {
+    "formula": "block_latency * layers * denoising_steps_per_chunk / frames_per_chunk",
+    "layers": 30,
+    "denoising_steps_per_chunk": 2,
+    "frames_per_chunk": 4,
+    "sec_per_chunk": 0.6843,
+    "sec_per_output_frame": 0.1711,
+    "fps_one_core": 5.845
+  }
+}

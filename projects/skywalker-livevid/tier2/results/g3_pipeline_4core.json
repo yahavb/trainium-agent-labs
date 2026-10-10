@@ -1,0 +1,91 @@
+{
+  "name": "4core",
+  "cores": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "inflight": 6,
+  "chunks": 120,
+  "skipped_for_steady_state": 5,
+  "steady_state_fps": 44.54,
+  "steady_state_s_per_chunk": 0.0898,
+  "total_s": 10.991,
+  "chunk_latency_ms": {
+    "mean": 540.6,
+    "p50": 540.0,
+    "max": 688.8
+  },
+  "stage_call_ms_mean": [
+    44.1,
+    35.83,
+    31.34,
+    31.32
+  ],
+  "stage_layers": [
+    [
+      0,
+      8
+    ],
+    [
+      8,
+      16
+    ],
+    [
+      16,
+      23
+    ],
+    [
+      23,
+      30
+    ]
+  ],
+  "parity": [
+    {
+      "chunk": 0,
+      "frame": 3,
+      "row0_cos": 0.9999729484575999,
+      "final_cos": 0.9999770331109099,
+      "final_max_abs": 0.3292062282562256
+    },
+    {
+      "chunk": 1,
+      "frame": 4,
+      "row0_cos": 0.9999748005634279,
+      "final_cos": 0.9999715909478952,
+      "final_max_abs": 0.4146421551704407
+    },
+    {
+      "chunk": 2,
+      "frame": 5,
+      "row0_cos": 0.9999701096178681,
+      "final_cos": 0.9999630549645075,
+      "final_max_abs": 0.46592921018600464
+    },
+    {
+      "chunk": 3,
+      "frame": 6,
+      "row0_cos": 0.9999739803855658,
+      "final_cos": 0.9999599192754838,
+      "final_max_abs": 0.7971268445253372
+    },
+    {
+      "chunk": 4,
+      "frame": 7,
+      "row0_cos": 0.9999747011207542
+    }
+  ],
+  "frame2_final_cos_warm": 0.9999811162416941,
+  "min_final_cos": 0.9999599192754838,
+  "monitor": {
+    "num_samples": 12,
+    "mean_utilization_by_monitor_index": {
+      "0": 58.4,
+      "1": 58.5,
+      "2": 67.5,
+      "3": 67.6
+    }
+  },
+  "pass": true
+}

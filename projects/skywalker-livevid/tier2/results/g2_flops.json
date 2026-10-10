@@ -1,0 +1,8 @@
+{
+  "cfg": "512x512_L1024_cache6144_sink3072_text512",
+  "flops_per_block_call": 132070244352,
+  "by_op": {
+    "aten.addmm": 90194313216,
+    "aten.bmm": 41875931136
+  }
+}

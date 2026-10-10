@@ -1,0 +1,133 @@
+{
+  "cfg": "512x512_L1024_cache6144_sink3072_text512",
+  "gate": 0.999,
+  "cold_start": false,
+  "chunks": [
+    {
+      "chunk": 0,
+      "frame": 6,
+      "masked_slots": 0,
+      "y": {
+        "cos": 0.9999940567252625,
+        "max_abs": 0.19478988647460938,
+        "ref_abs_max": 23.238006591796875,
+        "finite": true
+      },
+      "k_cache": {
+        "cos": 0.9999977047569915,
+        "max_abs": 0.06885385513305664,
+        "ref_abs_max": 8.981021881103516,
+        "finite": true
+      },
+      "v_cache": {
+        "cos": 0.9999981026290288,
+        "max_abs": 0.054595947265625,
+        "ref_abs_max": 14.68178939819336,
+        "finite": true
+      },
+      "k_new": {
+        "cos": 0.999992838262965,
+        "max_abs": 0.06885385513305664,
+        "ref_abs_max": 8.397275924682617,
+        "finite": true
+      },
+      "v_new": {
+        "cos": 0.9999955041193589,
+        "max_abs": 0.054595947265625,
+        "ref_abs_max": 13.578383445739746,
+        "finite": true
+      },
+      "y_minus_x": {
+        "cos": 0.9999928331893446,
+        "max_abs": 0.19478988647460938,
+        "ref_abs_max": 22.67417335510254,
+        "finite": true
+      }
+    },
+    {
+      "chunk": 1,
+      "frame": 7,
+      "masked_slots": 0,
+      "y": {
+        "cos": 0.9999938593223332,
+        "max_abs": 0.18236541748046875,
+        "ref_abs_max": 23.00066375732422,
+        "finite": true
+      },
+      "k_cache": {
+        "cos": 0.9999966756102537,
+        "max_abs": 0.07157611846923828,
+        "ref_abs_max": 8.981021881103516,
+        "finite": true
+      },
+      "v_cache": {
+        "cos": 0.9999975964466394,
+        "max_abs": 0.054595947265625,
+        "ref_abs_max": 14.68178939819336,
+        "finite": true
+      },
+      "k_new": {
+        "cos": 0.9999926176628844,
+        "max_abs": 0.07157611846923828,
+        "ref_abs_max": 8.201943397521973,
+        "finite": true
+      },
+      "v_new": {
+        "cos": 0.9999954951045193,
+        "max_abs": 0.05260181427001953,
+        "ref_abs_max": 13.101592063903809,
+        "finite": true
+      },
+      "y_minus_x": {
+        "cos": 0.9999924492859313,
+        "max_abs": 0.18236541748046875,
+        "ref_abs_max": 22.94341468811035,
+        "finite": true
+      }
+    },
+    {
+      "chunk": 2,
+      "frame": 8,
+      "masked_slots": 0,
+      "y": {
+        "cos": 0.9999933610258265,
+        "max_abs": 0.21018218994140625,
+        "ref_abs_max": 23.275001525878906,
+        "finite": true
+      },
+      "k_cache": {
+        "cos": 0.999995645904151,
+        "max_abs": 0.07184219360351562,
+        "ref_abs_max": 8.981021881103516,
+        "finite": true
+      },
+      "v_cache": {
+        "cos": 0.9999970687028341,
+        "max_abs": 0.05660057067871094,
+        "ref_abs_max": 14.751529693603516,
+        "finite": true
+      },
+      "k_new": {
+        "cos": 0.999992499943864,
+        "max_abs": 0.07184219360351562,
+        "ref_abs_max": 8.215253829956055,
+        "finite": true
+      },
+      "v_new": {
+        "cos": 0.9999954647473808,
+        "max_abs": 0.05660057067871094,
+        "ref_abs_max": 14.751529693603516,
+        "finite": true
+      },
+      "y_minus_x": {
+        "cos": 0.9999919920307945,
+        "max_abs": 0.21018218994140625,
+        "ref_abs_max": 22.677284240722656,
+        "finite": true
+      }
+    }
+  ],
+  "min_cosine": 0.9999933610258265,
+  "pass": true,
+  "note": "Neuron feeds its own bf16 caches forward; CPU feeds its own fp32 caches. Both start from the same cache (CPU-warmed and full, or empty with --cold). k_new/v_new = the slice written by this chunk only. y_minus_x = what the block adds to the residual stream (stricter than y; not gated). k_cache/v_cache are the graph outputs before the host sink copy."
+}

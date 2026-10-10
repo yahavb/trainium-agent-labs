@@ -1,0 +1,35 @@
+{
+  "name": "e2e_4core_inflight3",
+  "chunks": 120,
+  "chunks_in_flight": 3,
+  "skipped_for_steady_state": 5,
+  "steady_state_fps": 26.32,
+  "steady_state_s_per_chunk": 0.152,
+  "chunk_latency_ms": {
+    "mean": 458.3,
+    "p50": 455.7,
+    "p99": 504.6,
+    "max": 505.3
+  },
+  "call_ms_mean": {
+    "stage0_dit": 43.48,
+    "stage1_dit": 35.41,
+    "stage2_dit": 30.89,
+    "stage2_enc": 18.75,
+    "stage3_dec": 38.58,
+    "stage3_dit": 30.96
+  },
+  "vae_placement": {
+    "enc": "stage 2 / core 2",
+    "dec": "stage 3 / core 3"
+  },
+  "monitor": {
+    "num_samples": 20,
+    "mean_utilization_by_monitor_index": {
+      "0": 45.4,
+      "1": 39.4,
+      "2": 40.8,
+      "3": 40.8
+    }
+  }
+}

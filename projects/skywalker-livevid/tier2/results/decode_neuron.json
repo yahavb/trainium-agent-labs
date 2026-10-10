@@ -1,0 +1,78 @@
+{
+  "backend": "neuron",
+  "frames": 25,
+  "chunks": [
+    {
+      "chunk": 0,
+      "frames": [
+        0,
+        5
+      ],
+      "psnr_wan_neuron_vs_ref": 87.65247021633131,
+      "psnr_taehv_neuron_vs_ref": 86.82617020793785,
+      "latent_cos": 0.9999999999957321
+    },
+    {
+      "chunk": 1,
+      "frames": [
+        5,
+        9
+      ],
+      "psnr_wan_neuron_vs_ref": 50.7986544913052,
+      "psnr_taehv_neuron_vs_ref": 50.67549115704029,
+      "latent_cos": 0.9999811162416941
+    },
+    {
+      "chunk": 2,
+      "frames": [
+        9,
+        13
+      ],
+      "psnr_wan_neuron_vs_ref": 50.40692189661432,
+      "psnr_taehv_neuron_vs_ref": 50.227645824908905,
+      "latent_cos": 0.9999770331109099
+    },
+    {
+      "chunk": 3,
+      "frames": [
+        13,
+        17
+      ],
+      "psnr_wan_neuron_vs_ref": 49.944289654639896,
+      "psnr_taehv_neuron_vs_ref": 49.66090038348969,
+      "latent_cos": 0.9999715909478952
+    },
+    {
+      "chunk": 4,
+      "frames": [
+        17,
+        21
+      ],
+      "psnr_wan_neuron_vs_ref": 47.92859259725519,
+      "psnr_taehv_neuron_vs_ref": 47.58191587548829,
+      "latent_cos": 0.9999630549645075
+    },
+    {
+      "chunk": 5,
+      "frames": [
+        21,
+        25
+      ],
+      "psnr_wan_neuron_vs_ref": 47.106113947764996,
+      "psnr_taehv_neuron_vs_ref": 46.57714882219349,
+      "latent_cos": 0.9999599192754838
+    }
+  ],
+  "psnr_wan_all": 49.95577215809641,
+  "psnr_taehv_all": 49.61414017376086,
+  "psnr_ref_taehv_vs_ref_wan": 34.92001462117758,
+  "psnr_ref_wan_vs_input": 17.509911858218455,
+  "vae_cpu_seconds": {
+    "wan_decode_first_call_2_latents": 19.21977015498851,
+    "wan_decode_per_chunk_mean": 15.807059930404648,
+    "taehv_decode_all_latents": 4.648260278001544,
+    "taehv_decode_per_chunk": 0.6640371825716491,
+    "wan_encode_start_5_frames": 24.8532817363739,
+    "wan_encode_per_chunk_mean": 12.124286572138468
+  }
+}

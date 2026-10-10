@@ -1,0 +1,69 @@
+{
+  "layers": 8,
+  "cfg": "512x512_L1024_cache6144_sink3072_text512",
+  "compile_s": 183.2,
+  "chunks": [
+    {
+      "chunk": 0,
+      "y_cos": 0.9999731672786203,
+      "y_max_abs": 0.20338821411132812,
+      "ref_abs_max": 29.89041519165039,
+      "outputs": 17,
+      "aliased_output_device": "privateuseone:0",
+      "aliased_output_shape": [
+        1,
+        6144,
+        12,
+        128
+      ],
+      "state_effect_cos": null,
+      "state_effect_ref_rms": 0.0,
+      "k_cache_read_error": "RuntimeError('Expected self.dtype() == dst.dtype() to be true, but got false.  (Could this error message be improved?  If so, please report an enhancement request to PyTorch.)')"
+    },
+    {
+      "chunk": 1,
+      "y_cos": 0.9999664429933494,
+      "y_max_abs": 0.2564544677734375,
+      "ref_abs_max": 24.40355682373047,
+      "outputs": 17,
+      "aliased_output_device": "privateuseone:0",
+      "aliased_output_shape": [
+        1,
+        6144,
+        12,
+        128
+      ],
+      "state_effect_cos": 0.9977686932622762,
+      "state_effect_ref_rms": 0.08048417419195175,
+      "k_cache_read_error": "RuntimeError('Expected self.dtype() == dst.dtype() to be true, but got false.  (Could this error message be improved?  If so, please report an enhancement request to PyTorch.)')"
+    },
+    {
+      "chunk": 2,
+      "y_cos": 0.9999731175283821,
+      "y_max_abs": 0.2091827392578125,
+      "ref_abs_max": 28.870622634887695,
+      "outputs": 17,
+      "aliased_output_device": "privateuseone:0",
+      "aliased_output_shape": [
+        1,
+        6144,
+        12,
+        128
+      ],
+      "state_effect_cos": 0.9995133796722179,
+      "state_effect_ref_rms": 0.15576758980751038,
+      "k_cache_read_error": "RuntimeError('Expected self.dtype() == dst.dtype() to be true, but got false.  (Could this error message be improved?  If so, please report an enhancement request to PyTorch.)')"
+    }
+  ],
+  "latency_ms_call": {
+    "mean": 34.942,
+    "p50": 34.94,
+    "p99": 35.006
+  },
+  "latency_ms_call_plus_y_to_host": {
+    "mean": 34.958,
+    "p50": 34.946,
+    "p99": 35.183
+  },
+  "latency_ms_per_layer": 4.37
+}

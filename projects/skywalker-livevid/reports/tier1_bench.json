@@ -1,0 +1,315 @@
+{
+  "frames": 200,
+  "frame_source": "/workspace/livevid/tier1/test_clip.mp4",
+  "style": "anime",
+  "env": {
+    "hostname": "seat-233",
+    "instance_type": "\"instance_type\": \"trn2.48xlarge\",",
+    "logical_nc_config": "2",
+    "torch": "2.9.1",
+    "torch_neuronx": "2.9.0.2.15.32035+de43f57c",
+    "neuronx_cc": "2.27.5334.0+f702b353",
+    "diffusers": "0.41.0"
+  },
+  "compile": {
+    "taesd_enc": {
+      "component": "taesd_enc",
+      "artifact": "/workspace/livevid/artifacts/tier1/taesd_enc_1x3x512x512_bf16.pt",
+      "artifact_bytes": 3968175,
+      "compiler_args": [
+        "--auto-cast=none"
+      ],
+      "compile_s": 256.1,
+      "input_shapes": [
+        [
+          1,
+          3,
+          512,
+          512
+        ]
+      ],
+      "output_shape": [
+        1,
+        4,
+        64,
+        64
+      ],
+      "output_dtype": "torch.float32",
+      "random_input_cosine_vs_cpu_fp32": 0.999941,
+      "random_input_max_abs_err": 0.07168,
+      "latency_ms_p50": 14.36,
+      "cpu_fp32_ms": 71400.0,
+      "torch": "2.9.1+cu128",
+      "torch_neuronx": "2.9.0.2.15.32035+de43f57c"
+    },
+    "unet": {
+      "component": "unet",
+      "artifact": "/workspace/livevid/artifacts/tier1/sdturbo_unet_1x4x64x64_t1_ehs1x77x1024_bf16.pt",
+      "artifact_bytes": 2816670564,
+      "compiler_args": [
+        "--auto-cast=none",
+        "--model-type=unet-inference"
+      ],
+      "compile_s": 466.2,
+      "input_shapes": [
+        [
+          1,
+          4,
+          64,
+          64
+        ],
+        [
+          1
+        ],
+        [
+          1,
+          77,
+          1024
+        ]
+      ],
+      "output_shape": [
+        1,
+        4,
+        64,
+        64
+      ],
+      "output_dtype": "torch.float32",
+      "random_input_cosine_vs_cpu_fp32": 0.999953,
+      "random_input_max_abs_err": 0.08311,
+      "latency_ms_p50": 56.046,
+      "cpu_fp32_ms": 2036.6,
+      "torch": "2.9.1+cu128",
+      "torch_neuronx": "2.9.0.2.15.32035+de43f57c"
+    },
+    "taesd_dec": {
+      "component": "taesd_dec",
+      "compiler_args": [
+        "--auto-cast=none"
+      ],
+      "compile_s": 271.1,
+      "artifact": "/workspace/livevid/artifacts/tier1/taesd_dec_1x4x64x64_bf16.pt",
+      "artifact_bytes": 4154965,
+      "input_shapes": [
+        [
+          1,
+          4,
+          64,
+          64
+        ]
+      ],
+      "output_shape": [
+        1,
+        3,
+        512,
+        512
+      ],
+      "output_dtype": "torch.float32",
+      "random_input_cosine_vs_cpu_fp32": 0.999858,
+      "random_input_max_abs_err": 0.17376,
+      "latency_ms_p50": 17.122,
+      "cpu_fp32_ms": 966.9,
+      "torch": "2.9.1+cu128",
+      "torch_neuronx": "2.9.0.2.15.32035+de43f57c"
+    }
+  },
+  "single_core": {
+    "core": 0,
+    "frames": 200,
+    "load_and_warmup_s": 45.05,
+    "wall_s": 17.8913,
+    "fps": 11.18,
+    "stage_ms": {
+      "pre": {
+        "mean": 0.395,
+        "p50": 0.388,
+        "p99": 0.455
+      },
+      "encode": {
+        "mean": 14.703,
+        "p50": 14.7,
+        "p99": 14.74
+      },
+      "unet": {
+        "mean": 56.238,
+        "p50": 56.238,
+        "p99": 56.34
+      },
+      "decode": {
+        "mean": 17.182,
+        "p50": 17.179,
+        "p99": 17.211
+      },
+      "post": {
+        "mean": 0.913,
+        "p50": 0.904,
+        "p99": 1.011
+      },
+      "total": {
+        "mean": 89.431,
+        "p50": 89.422,
+        "p99": 89.66
+      }
+    }
+  },
+  "pool": [
+    {
+      "frames": 200,
+      "processed": 200,
+      "skipped": 0,
+      "skip_rate": 0.0,
+      "depth_per_worker": 1,
+      "wall_s": 18.2734,
+      "fps_delivered": 10.94,
+      "fps_processed": 10.94,
+      "latency_ms": {
+        "mean": 91.355,
+        "p50": 91.353,
+        "p99": 91.737
+      },
+      "worker_service_ms": {
+        "mean": 89.387,
+        "p50": 89.386,
+        "p99": 89.585
+      },
+      "frames_per_worker": [
+        200
+      ],
+      "max_reorder_buffer": 0,
+      "cores": 1
+    },
+    {
+      "frames": 200,
+      "processed": 200,
+      "skipped": 0,
+      "skip_rate": 0.0,
+      "depth_per_worker": 2,
+      "wall_s": 18.0554,
+      "fps_delivered": 11.08,
+      "fps_processed": 11.08,
+      "latency_ms": {
+        "mean": 180.087,
+        "p50": 180.572,
+        "p99": 181.899
+      },
+      "worker_service_ms": {
+        "mean": 89.448,
+        "p50": 89.418,
+        "p99": 89.939
+      },
+      "frames_per_worker": [
+        200
+      ],
+      "max_reorder_buffer": 0,
+      "cores": 1
+    },
+    {
+      "frames": 200,
+      "processed": 200,
+      "skipped": 0,
+      "skip_rate": 0.0,
+      "depth_per_worker": 1,
+      "wall_s": 4.6255,
+      "fps_delivered": 43.24,
+      "fps_processed": 43.24,
+      "latency_ms": {
+        "mean": 92.265,
+        "p50": 92.218,
+        "p99": 94.113
+      },
+      "worker_service_ms": {
+        "mean": 90.239,
+        "p50": 90.269,
+        "p99": 90.908
+      },
+      "frames_per_worker": [
+        50,
+        50,
+        50,
+        50
+      ],
+      "max_reorder_buffer": 1,
+      "cores": 4
+    },
+    {
+      "frames": 200,
+      "processed": 200,
+      "skipped": 0,
+      "skip_rate": 0.0,
+      "depth_per_worker": 2,
+      "wall_s": 4.5683,
+      "fps_delivered": 43.78,
+      "fps_processed": 43.78,
+      "latency_ms": {
+        "mean": 180.528,
+        "p50": 182.405,
+        "p99": 184.789
+      },
+      "worker_service_ms": {
+        "mean": 90.446,
+        "p50": 90.449,
+        "p99": 90.856
+      },
+      "frames_per_worker": [
+        50,
+        50,
+        50,
+        50
+      ],
+      "max_reorder_buffer": 2,
+      "cores": 4
+    }
+  ],
+  "similarity_filter": {
+    "clip": "/workspace/livevid/tier1/test_clip.mp4",
+    "clip_frames": 300,
+    "threshold": 3.0,
+    "pixel_stride": 4,
+    "consecutive_frame_diff": {
+      "min": 0.229,
+      "p50": 6.215,
+      "max": 9.406
+    },
+    "sweep": {
+      "1.0": 0.2,
+      "2.0": 0.2,
+      "3.0": 0.2067,
+      "4.0": 0.23,
+      "6.0": 0.3433,
+      "8.0": 0.5667,
+      "12.0": 0.7367
+    },
+    "four_core_run": {
+      "frames": 300,
+      "processed": 238,
+      "skipped": 62,
+      "skip_rate": 0.2067,
+      "depth_per_worker": 2,
+      "wall_s": 5.4785,
+      "fps_delivered": 54.76,
+      "fps_processed": 43.44,
+      "latency_ms": {
+        "mean": 180.585,
+        "p50": 182.193,
+        "p99": 183.918
+      },
+      "worker_service_ms": {
+        "mean": 90.484,
+        "p50": 90.463,
+        "p99": 91.121
+      },
+      "frames_per_worker": [
+        60,
+        60,
+        59,
+        59
+      ],
+      "max_reorder_buffer": 1
+    }
+  },
+  "summary": {
+    "fps_1core_inprocess": 11.18,
+    "fps_1core_pool": 11.08,
+    "fps_4core_pool": 43.78,
+    "scaling_4_vs_1_pool": 3.95
+  }
+}
