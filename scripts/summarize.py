@@ -112,7 +112,20 @@ def run_stats(atts):
     tokens = ((sum(r["prompt_tokens"] or 0 for r in atts),
                sum(r["completion_tokens"] or 0 for r in atts)) if has_tokens else None)
     unmatched = sum(1 for r in atts if r.get("usage_matched") is False)
-    return dict(best=best, solve=solve, tokens=tokens, unmatched=unmatched)
+    # with --usage: requests cut off by max_tokens, the wall time of the rounds they were in (the
+    # samples of a round run in parallel, so a round costs its slowest request), and the run's span
+    # from its first request to its last answer
+    timed = [r for r in atts if r.get("request_t") is not None]
+    by_round = collections.defaultdict(list)
+    for r in timed:
+        by_round[r["round"]].append(r)
+    trunc_rounds = [rs for rs in by_round.values() if any(r.get("finish") == "length" for r in rs)]
+    return dict(best=best, solve=solve, tokens=tokens, unmatched=unmatched,
+                truncated=sum(1 for r in atts if r.get("finish") == "length"),
+                trunc_rounds=len(trunc_rounds),
+                trunc_seconds=sum(max(r["request_seconds"] or 0 for r in rs) for rs in trunc_rounds),
+                span=(max(r["request_t"] + (r["request_seconds"] or 0) for r in timed)
+                      - min(r["request_t"] for r in timed)) if timed else None)
 
 
 def claim_of(v):
@@ -194,6 +207,13 @@ def main():
                        confidence=fmt(vs["confidence"]),
                        brier="-" if vs["brier"] is None else fmt(vs["brier"], 3),
                        confident_but_wrong=vs["over"])
+        if a.usage is not None:
+            row.update(
+                truncation="; ".join(f"{s['truncated']} in {s['trunc_rounds']} round(s), "
+                                     f"{s['trunc_seconds'] / 60:.1f} min" if s["truncated"] else "0"
+                                     for s in st),
+                run_minutes=" ".join(f"{s['span'] / 60:.1f}" if s["span"] is not None else "n/a"
+                                     for s in st))
         if a.nki_verdicts is not None:
             nv = nki.get(lv, [])
             st2 = scored_stats(pairs.get(lv, []), "v7")
@@ -211,6 +231,7 @@ def main():
         rows.append(row)
 
     cols = ["level", "runs", "solved", "scores", "mean", "min", "max", "solves", "tokens",
+            "truncation", "run_minutes",
             "verdicts", "claims", "confidence", "brier", "confident_but_wrong", "nki_claims",
             "nki_confidence", "nki_brier", "nki_confident_but_wrong", "baseline"]
     cols = [c for c in cols if any(c in r for r in rows)]
@@ -223,7 +244,9 @@ def main():
 
     head = {"level": "level", "runs": "runs", "solved": "solved", "scores": "best score per run",
             "mean": "mean", "min": "min", "max": "max", "solves": "solve: attempts / round",
-            "tokens": "tokens per run (prompt+answer)", "verdicts": "verdicts",
+            "tokens": "tokens per run (prompt+answer)",
+            "truncation": "cut off by max_tokens, per run (attempts, rounds, those rounds' wall time)",
+            "run_minutes": "minutes per run (first request to last answer)", "verdicts": "verdicts",
             "claims": "held-out claims", "confidence": "mean confidence", "brier": "Brier",
             "confident_but_wrong": "confident (>=0.5) but wrong", "nki_claims": "v7 verdicts",
             "nki_confidence": "v7 mean confidence", "nki_brier": "v7 Brier (vs our held-out)",

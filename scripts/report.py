@@ -211,6 +211,8 @@ def main():
                "-o", os.path.join(a.out, "taxonomy")]
         if files["verdicts"]:
             cmd += ["--verdicts", *files["verdicts"]]
+        if files["usage"]:
+            cmd += ["--usage", *files["usage"]]
         run(cmd, notes)
         cmd = [py, os.path.join(HERE, "token_budget.py"), *files["attempts"],
                "-o", os.path.join(a.out, "token_budget")]

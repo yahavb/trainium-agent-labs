@@ -1,9 +1,9 @@
 # Results by level
 
-| level | runs | solved | best score per run | mean | min | max | solve: attempts / round | tokens per run (prompt+answer) | verdicts | held-out claims | mean confidence | Brier | confident (>=0.5) but wrong | v7 verdicts | v7 mean confidence | v7 Brier (vs our held-out) | v7 confident but failed our held-out | baseline |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 3 | 5 | 5/5 | 1.00 1.00 1.00 1.00 1.00 | 1.00 | 1.00 | 1.00 | run 1: attempt 1, round 0; run 2: attempt 1, round 0; run 3: attempt 1, round 0; run 4: attempt 1, round 0; run 5: attempt 2, round 0 | 4,588+1,209; 4,588+1,322; 4,588+1,209; 4,588+1,264; 4,588+1,209 | 5 | VERIFIED 5 | 0.63 | 0.137 | 0 | VERIFIED 5 | 0.74 | 0.067 | 0 | 0/5, mean 0.30 |
-| 4 | 5 | 5/5 | 1.00 1.00 1.00 1.00 1.00 | 1.00 | 1.00 | 1.00 | run 1: attempt 9, round 2; run 2: attempt 9, round 2; run 3: attempt 9, round 2; run 4: attempt 9, round 2; run 5: attempt 9, round 2 | 10,548+4,292; 10,548+4,292; 10,548+4,292; 10,548+4,292; 10,548+4,292 | 5 | VERIFIED 5 | 0.90 | 0.010 | 0 | VERIFIED 5 | 0.88 | 0.014 | 0 | 0/5, mean 0.60 |
+| level | runs | solved | best score per run | mean | min | max | solve: attempts / round | tokens per run (prompt+answer) | cut off by max_tokens, per run (attempts, rounds, those rounds' wall time) | minutes per run (first request to last answer) | verdicts | held-out claims | mean confidence | Brier | confident (>=0.5) but wrong | v7 verdicts | v7 mean confidence | v7 Brier (vs our held-out) | v7 confident but failed our held-out | baseline |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 3 | 5 | 5/5 | 1.00 1.00 1.00 1.00 1.00 | 1.00 | 1.00 | 1.00 | run 1: attempt 1, round 0; run 2: attempt 1, round 0; run 3: attempt 1, round 0; run 4: attempt 1, round 0; run 5: attempt 2, round 0 | 4,588+1,209; 4,588+1,322; 4,588+1,209; 4,588+1,264; 4,588+1,209 | 0; 0; 0; 0; 0 | 0.9 1.0 0.9 1.0 0.9 | 5 | VERIFIED 5 | 0.63 | 0.137 | 0 | VERIFIED 5 | 0.74 | 0.067 | 0 | 0/5, mean 0.30 |
+| 4 | 5 | 5/5 | 1.00 1.00 1.00 1.00 1.00 | 1.00 | 1.00 | 1.00 | run 1: attempt 9, round 2; run 2: attempt 9, round 2; run 3: attempt 9, round 2; run 4: attempt 9, round 2; run 5: attempt 9, round 2 | 10,548+4,292; 10,548+4,292; 10,548+4,292; 10,548+4,292; 10,548+4,292 | 0; 0; 0; 0; 0 | 3.4 3.3 3.3 3.3 3.3 | 5 | VERIFIED 5 | 0.90 | 0.010 | 0 | VERIFIED 5 | 0.88 | 0.014 | 0 | 0/5, mean 0.60 |
 
 *solve: attempts* counts every attempt in that run up to and including the first 1.0 (all samples of every earlier round). Scores are the best loop reward per run. Held-out claims, confidence and Brier are counted per level over every verdict in the --verdicts files, so pass the verdict files that belong to these runs.
 

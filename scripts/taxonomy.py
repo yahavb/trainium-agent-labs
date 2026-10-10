@@ -54,6 +54,8 @@ MODES = [
     ("broadcast", "index arithmetic", "assigns a value of the wrong shape",
      r"could not be broadcast|shape mismatch|operands could not"),
     ("wrong_output_shape", "index arithmetic", "returns the wrong output shape", r"WRONG SHAPE"),
+    ("axis_mismatch", "index arithmetic", "an operation given a tile with more axes than it takes",
+     r"more dimensions than allowed by the axis remapping|axis \d+ is out of bounds for array"),
     ("bad_access_pattern", "index arithmetic", "a strided .ap() view that does not fit the tile",
      r"ap\(\) pattern|invalid partition stride"),
     # it runs, and the numbers are wrong
@@ -69,6 +71,9 @@ MODES = [
     ("too_much_traffic", "silent wrong numbers", "correct but over the level's HBM byte bar",
      r"TOO MUCH HBM TRAFFIC"),
     # the answer never became a kernel
+    ("truncated", "rules / format",
+     "the answer hit max_tokens and was cut off (finish=length); the checker then sees broken code",
+     r"(?!)"),
     ("rule_violation", "rules / format", "banned call, missing @nki.jit or wrong entry name",
      r"Rule violations|RULE VIOLATIONS|rule violation"),
     ("no_code", "rules / format", "no code in the reply", r"No code came back"),
@@ -85,6 +90,14 @@ def classify(text):
         if re.search(pat, text or ""):
             return mode
     return "other"
+
+
+def mode_of(r):
+    """An attempt's mode. A reply cut off by the token budget is `truncated` whatever the checker
+    said about the broken code (finish comes from the log, or from USAGE_LOG via usage.apply)."""
+    if r.get("finish") == "length":
+        return "truncated"
+    return classify(r.get("feedback", ""))
 
 
 def error_line(feedback):
@@ -164,9 +177,16 @@ def main():
     ap.add_argument("attempts", nargs="+", help="attempts.jsonl files")
     ap.add_argument("--verdicts", nargs="*", default=[], help="verdicts.jsonl files")
     ap.add_argument("-o", "--out", default="analysis/taxonomy")
+    ap.add_argument("--usage", nargs="*", default=None,
+                    help="USAGE_LOG files (feedback_v5+): marks the attempts cut off by max_tokens")
     a = ap.parse_args()
 
     episodes = load_attempts(a.attempts)
+    if a.usage is not None:
+        import usage
+        q = usage.load(a.usage)
+        for atts in episodes.values():
+            usage.apply(atts, q)
     levels = sorted({lv for _, _, lv in episodes})
     counts = collections.Counter()            # (mode, level) -> attempts
     hit = collections.Counter()               # (mode, level) -> episodes that hit it
@@ -179,14 +199,14 @@ def main():
     for (fi, run, lv), atts in episodes.items():
         modes_here = set()
         for r in atts:
-            m = classify(r.get("feedback", ""))
+            m = mode_of(r)
             counts[(m, lv)] += 1
             modes_here.add(m)
             example.setdefault(m, error_line(r.get("feedback", "")))
             truncated += r.get("finish") == "length"
         for m in modes_here:
             hit[(m, lv)] += 1
-        tops = [classify(r.get("feedback", "")) for r in top_per_round(atts)]
+        tops = [mode_of(r) for r in top_per_round(atts)]
         for x, y in zip(tops, tops[1:]):
             seen_next[x] += 1
             if x == y:
@@ -201,8 +221,9 @@ def main():
     total = sum(counts.values())
     failures = total - sum(counts[("solved", lv)] for lv in levels)
 
+    # ties broken by name: a set's order changes with every process (string hashing is salted)
     modes = sorted({m for m, _ in counts if m != "solved"},
-                   key=lambda m: -sum(counts[(m, lv)] for lv in levels))
+                   key=lambda m: (-sum(counts[(m, lv)] for lv in levels), m))
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
     with open(a.out + ".csv", "w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f)

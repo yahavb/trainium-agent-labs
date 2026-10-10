@@ -15,11 +15,11 @@
 
 | family | mode | what it means | L3 | L4 | total | % of failures | runs | stuck | example |
 |---|---|---|---|---|---|---|---|---|---|
-| tiling rules | `partition_over_128` | a tile or contraction larger than 128 partitions |  | 20 | 20 | 43% | 5 | 0% | AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 `lhs_tile` and `rhs_tile` are bigger  |
 | index arithmetic | `broadcast` | assigns a value of the wrong shape |  | 20 | 20 | 43% | 5 | 0% | ValueError: shape mismatch: value array of shape (65536,) could not be broadcast to indexing result of shape ( |
+| tiling rules | `partition_over_128` | a tile or contraction larger than 128 partitions |  | 20 | 20 | 43% | 5 | 0% | AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 `lhs_tile` and `rhs_tile` are bigger  |
 | memory model | `wrong_buffer` | a tile in the wrong memory (SBUF / PSUM / HBM) | 7 |  | 7 | 15% | 4 | - | AssertionError: tensor_copy dst must be in ['sbuf', 'psum'], got shared_hbm `nisa.tensor_copy` only moves data |
 
-By family: **tiling rules** 20 (43%), **index arithmetic** 20 (43%), **memory model** 7 (15%)
+By family: **index arithmetic** 20 (43%), **tiling rules** 20 (43%), **memory model** 7 (15%)
 
 ## Fixed one thing, broke another
 

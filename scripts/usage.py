@@ -46,7 +46,8 @@ def apply(attempts, queues):
             r["usage_matched"] = False
             unmatched += 1
             continue
-        p, c = _tokens(q.popleft())
+        rec = q.popleft()
+        p, c = _tokens(rec)
         split = r.get("prompt_split") or {}
         est = sum(split.values())
         if est:
@@ -54,5 +55,8 @@ def apply(attempts, queues):
         r["prompt_tokens"], r["completion_tokens"] = p, c
         r["count_method"] = f"usage_log (split scaled from {r.get('count_method', '?')})"
         r["usage_matched"] = True
+        # ask5 returns a plain string, so the attempt itself never learns it was cut off
+        r["finish"] = rec.get("answer_finish") or rec.get("finish") or rec.get("think_finish")
+        r["request_t"], r["request_seconds"] = rec.get("t"), rec.get("seconds")
         matched += 1
     return matched, unmatched
