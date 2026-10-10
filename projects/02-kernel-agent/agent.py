@@ -1777,7 +1777,16 @@ def solve(a, level, log):
         graded = []
         for reply in replies:
             patch_text, patch_error = "", ""
-            if patch_base and a.repair_mode == "patch":
+            reply_patch = extract_patch(reply)
+            if reply_patch and repair_base and (repair_base[0] or "").strip():
+                patch_text = reply_patch
+                try:
+                    src = apply_unified_patch(repair_base[0], patch_text)
+                except Exception as e:
+                    patch_error = f"{type(e).__name__}: {e}"
+                    fallback_src = extract_code(reply)
+                    src = fallback_src if fallback_src.strip() else repair_base[0]
+            elif patch_base and a.repair_mode == "patch":
                 patch_text = extract_patch(reply)
                 try:
                     src = apply_unified_patch(patch_base[0], patch_text)
