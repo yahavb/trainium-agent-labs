@@ -231,8 +231,11 @@ written down before the results came in ([PLAN.md](PLAN.md) §4).
 | **v8.2** (final candidate, 96a9fc9) | v8.1 plus **E-mix**: in every repair round, sample 1 repairs the best kernel as before and samples 2–4 start over from the first prompt, each tagged differently. Level 2 had only ever been solved in round 0, so its repair rounds now also buy fresh first attempts | L1–L4 | [[TBD]] | [[TBD]] |
 
 **The skeleton gamble, and why it lost.** v8 hollowed out the code in the repair messages (`t[<…>]`) so that the
-model would have to work out slices and shapes itself. On level 4 it could not: it filled the holes with
-out-of-range slices twice and stalled at 0.62 both times, where v7, given the lines, solved every run. So the
+model would have to work out slices and shapes itself. On level 4 it could not. With and without the
+skeleton, rounds 0 and 1 are identical (0.30 broadcast error, then 0.62 partition over 128). They part at
+the message sent after round 1, v5's "Tile all three dimensions at once": given the code, every run solved
+in round 2; given `for m in nl.affine_range(<…>):` and `nl.ndarray(<…>, …)`, the model filled the holes with
+out-of-range slices and stayed at 0.30, out of bounds, for six rounds running (best 0.62, both runs). So the
 code in v7's messages is not decoration; on level 4 it is the part of the solution the model does not find
 on its own. We report that rather than claim the model wrote it.
 
