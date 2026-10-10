@@ -197,6 +197,7 @@ def merge_results(named_docs):
         if rows:
             merged["suites"].append(dict(name=name, rows=rows, dry=doc.get("dry"),
                                          referee=doc.get("referee") or doc.get("referee_version")))
+    merged["suites"] = current_suites(merged["suites"])
     merged["redteam"] = [r for s in merged["suites"] for r in s["rows"]]
     return merged
 
@@ -750,8 +751,17 @@ def stage_of(c):
 
 
 def suite_name(s):
-    return {"results_p1.json": "P1 red team", "redteam_results.json": "P3 red team"}.get(
-        Path(s["name"]).name, s["name"])
+    return {"results_p1.json": "P1 red team", "redteam_results.json": "P3 red team (fallback referee)",
+            "redteam_results_speedcheck.json": "P3 red team"}.get(Path(s["name"]).name, s["name"])
+
+
+def current_suites(suites):
+    """P3's run against the real referee (redteam_results_speedcheck.json) supersedes its earlier run against
+    the temporary fallback (redteam_results.json): show the fallback only while it is all there is."""
+    names = {Path(s["name"]).name for s in suites}
+    if "redteam_results_speedcheck.json" in names:
+        return [s for s in suites if Path(s["name"]).name != "redteam_results.json"]
+    return suites
 
 
 def panel_redteam(results):
