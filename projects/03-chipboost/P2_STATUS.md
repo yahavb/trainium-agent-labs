@@ -106,11 +106,26 @@ there is little M to reuse.
 - That leaves 3.68x of room.
 - At q_norm's 256-byte rows the packed copy is **6.7x** faster than one tile per DMA.
 
-**Held-out grid** (`results_heldout_matmul.json`: 6 shapes never used for tuning, hostile inputs, timed
-against start at each shape):
-- the expert (expert-derived) passes 6/6, at 1.28x to 3.79x;
-- AWS as published fails only at K=6144 (4.9 bf16 ulps), where the laptop emulation predicted 4.7;
-- each arm's best, the search discoveries included, is still to run (section 6, item 2).
+**Held-out grid** (16:40, seat-102 core 2; `results_heldout_matmul.json`). 24 cells: 6 shapes never used for
+tuning, hostile inputs, each kernel timed A/B against start at that shape. Speedup vs start:
+
+| Kernel | down_proj@256<br>256x6144x4096 | o_proj@256<br>256x2048x4096 | q_proj@512<br>512x4096x2048 | gate_up@128<br>128x4096x6144 | 640x1280x2560 | kv_proj@1024<br>1024x4096x512 |
+|---|---|---|---|---|---|---|
+| expert (AWS's default caps) | 2.823x | 2.077x | 3.786x | 1.276x | 1.569x | 3.050x |
+| AWS as published | **FAIL**, 4.9 ulps | 2.122x | 3.795x | 1.281x | 1.587x | 2.956x |
+| **best random search** (`m1 n12 k4`, seed 2) | **3.987x** | **2.837x** | 3.800x | **2.342x** | 1.456x | 1.200x |
+
+- **The search's best is correct on all 6 unseen shapes.**
+- **Speed is mixed:**
+  - it beats AWS's default on the three other 256- and 128-token shapes: +41%, +37% and +84%;
+  - it ties at q_proj with 512 tokens;
+  - it loses at 640x1280x2560 (-7%), and badly at kv_proj with 1024 tokens (1.20x against 3.05x).
+- **Block sizes tuned at 256 tokens do not transfer to every shape.** One set of caps for all shapes is the
+  wrong design; the caps should be chosen per shape, or at least per token count.
+- **Over the six shapes:** a geometric mean of 2.37x against the expert's 2.27x, and a total time of 874 us
+  against 980 us.
+- **AWS as published** fails only at K=6144 (4.9 bf16 ulps), as in the earlier grid.
+- **P1's v2 kernel (1.517x)** gets a row once P4 sends its source: `heldout_grid.py --op matmul --kernel v2=<file>`.
 
 ## 3. Findings worth telling the room
 
@@ -120,11 +135,16 @@ against start at each shape):
    - Its own test (K=1024, one block) never takes that path.
    - The referee measured 5.3 ulps at K=2048, and 4.9 at K=6144 under hostile inputs.
    - fp32 accumulation fixes it at no measurable speed cost (within 3%).
+   - **Confirmed on AWS's own kernel in the CPU simulator** (`tools/aws_matmul_bf16_repro.py --sim`, 16:40,
+     the file unmodified). At K=8192, the K of AWS's own benchmark, it reaches 19.4 bf16 ulps on normal
+     inputs, and it **fails AWS's own correctness check** even on AWS's uniform inputs. With the one-line
+     fp32 fix it is 0.5 ulps everywhere.
    - Its fixed block sizes assert M % 2048 == 0, so no Qwen3 shape at 256 tokens runs at all. The expert takes
      them as caps, fitted to each shape.
 2. **AWS's default blocking is mid-pack: #29 of 62 at Qwen3's 256-token shapes** (search discovery). 24 random
    tries reliably land within 4% of the best, 1.325x-1.372x over AWS's default, and one repeat found the best
-   outright.
+   outright. **But the winner is shape-specific:** on held-out kv_proj with 1024 tokens it runs at 1.20x,
+   against the default's 3.05x. Tune per shape.
 3. **Half of every NeuronCore sits idle under a plain launch** (P2 engineering). `kernel[2]` gives 1.50x more on
    the same kernel: 5.0x the start kernel, cross-checked on two clocks.
 4. **Hostile inputs hide precision loss.**
@@ -199,8 +219,9 @@ Never `git pull` into this folder while a check is running; use a separate clone
 
 1. ~~Copy seat-102's logs out of the pod and commit them.~~ **Done** (commit 234d059): 134 schema-valid records,
    and `--summarize` on them reproduces the pod's numbers exactly.
-2. **About 17:30:** run `heldout_grid.py --op matmul` on each arm's best, once P3's arm logs are in. It reads every
-   `attempts*.jsonl`.
+2. ~~Run `heldout_grid.py --op matmul` on each arm's best.~~ **Done** at 16:40 for every arm with a verified
+   kernel (24 cells; section 2). The model arms in git have none. Still to do: P1's v2 kernel row, once P4
+   sends its source.
 3. **For P1, their call:** a referee option to launch `kernel[2]`, so LNC=2 kernels get full verdicts and held-out
    checks.
 4. **If time:** a random search at LNC=2. The caps apply per program; `m1 n12 k4` was best at LNC=1.
