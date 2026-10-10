@@ -36,7 +36,9 @@ into one repair instruction, and tries again: at most 8 rounds of 4 samples per 
 **How many runs, and the spread.** Every cell is 5 independent runs of one configuration. We report the
 rate, never the best run. [[TBD: one sentence on the spread of the final run.]] The baseline was run twice,
 on two seats with the organizers' agent: L1 0/5, L2 3/5 and 2/5, L3 0/5, L4 0/5 both times, with identical
-scores on L1, L3 and L4. [[TBD: replication re-graded, analysis/calibration_replica_seat119.md]]
+scores on L1, L3 and L4. Both logs were re-graded from scratch with the current checker under trn2, and
+every attempt matched ([analysis/calibration_baseline_seat116.md](analysis/calibration_baseline_seat116.md),
+[analysis/calibration_replica_seat119.md](analysis/calibration_replica_seat119.md)).
 
 **Reproduce.**
 
@@ -114,7 +116,8 @@ but wrong" claims, for the final run; agent.py's confidence and v7's verdict sid
 
 Baseline, scored after the fact with the same confidence function: the 3 solved runs said 0.90 and all
 passed the held-out set; the 17 unsolved said 0. Brier 0.001, or 0.010 over the 3 real predictions; no
-confident-but-wrong claim. Three predictions say little, which is why the final run matters.
+confident-but-wrong claim. The replication adds 2 more solves, both 0.90 and both passing the held-out set.
+Five predictions say little, which is why the final run matters.
 ([analysis/calibration_baseline_seat116.md](analysis/calibration_baseline_seat116.md))
 
 ## 6. Where the tokens went
