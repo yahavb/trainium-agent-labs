@@ -97,6 +97,11 @@ def main():
         print(f"  repeated identical code: {sum(bool(r.get('repeated')) for r in v4)}/{len(v4)}")
         print(f"  token-limit cut-offs:    {sum(bool(r.get('truncated')) for r in v4)}/{len(v4)}")
         print(f"  module-level code stripped: {sum(bool(r.get('sanitizer_dropped')) for r in v4)}/{len(v4)}")
+        print(f"  rounds that restarted after identical output: {sum(bool(r.get('stuck')) for r in v4 if r.get('sample') == 0)}")
+        print(f"  rounds guided by a model-written diagnosis: "
+              f"{sum(bool(r.get('diagnosis')) for r in v4 if r.get('sample') == 0)}")
+        modes = Counter(r.get("mode", "bandit") for r in v4)
+        print("  modes: " + ", ".join(f"{m}={n}" for m, n in modes.items()))
         adv = [float(r["advantage"]) for r in v4 if "advantage" in r]
         if adv and any(abs(a) > 1e-9 for a in adv):
             print(f"  mean |advantage| within sample groups: {mean([abs(a) for a in adv]):.3f}")

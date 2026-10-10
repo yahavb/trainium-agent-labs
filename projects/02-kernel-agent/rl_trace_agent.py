@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Verifier-grounded online RL controller for projects/02-kernel-agent  (v4).
+Verifier-grounded online RL controller for projects/02-kernel-agent  (v4.1).
 
 Reuses agent.py (prompts, grader) and nkibench.py (verifier) UNCHANGED. Everything new lives here.
 
@@ -26,15 +26,16 @@ import random
 import re
 import sys
 import time
+import traceback
 from collections import defaultdict
 
 import agent as base_agent
 import nkibench
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 MODEL = os.environ.get("KERNEL_AGENT_MODEL", getattr(base_agent, "MODEL", "Qwen/Qwen3-8B"))
 
-STRATEGIES = ("direct", "contract_trace", "counterexample", "repair_diagnosis", "exemplar")
+STRATEGIES = ("direct", "contract_trace", "counterexample", "repair_diagnosis", "exemplar", "reflect")
 TEMPERATURES = ("t=0.3", "t=0.6", "t=0.9")
 
 TRACE_FIELDS = (
@@ -84,6 +85,24 @@ to scatter each element from source index `f1*F2+f2` to destination index `f2*F1
 then DMA-copy the result to the shared-HBM output. Handle all shapes supplied by the checker.
 This is implementation guidance; still produce the complete kernel code.
 """
+
+REFLECT_PROMPT = """REFLECTION TASK. You are reviewing a FAILED attempt at an AWS Neuron NKI kernel
+for: {op}. Do NOT write the kernel.
+
+```python
+{code}
+```
+
+Checker report:
+{feedback}
+
+{lessons}Answer in exactly this plain-text format, under 90 words in total:
+CAUSE: <the specific line or construct that makes it fail>
+CHANGE: <the exact edit that fixes it>
+RULE: <one general rule for writing NKI kernels, starting with a verb>
+"""
+REFLECT_RE = {k: re.compile(rf"{k}:\s*(.+?)(?=\n\s*(?:CAUSE|CHANGE|RULE):|\Z)", re.S)
+              for k in ("CAUSE", "CHANGE", "RULE")}
 
 # Appended to every failure the verifier reports, keyed by category. The repo's own lesson is that
 # an error message that names the fix beats a better model, so each of these says what to DO.
@@ -162,26 +181,34 @@ def _is_static_expr(node):
 
 
 def sanitize_module(source):
-    """Drop module-level statements that execute at import time.
+    """Make the file safe to import.
 
-    The simulator is only active while the checker runs the kernel, so a top-level call such as
-    `out = my_kernel(x)` or `nisa.dma_copy(...)` raises "No backend set" during import and the
-    kernel never gets graded. Keeping only imports, definitions, docstrings and static constants
-    makes the model's real work reachable by the checker. Returns (source, dropped_descriptions);
-    the source is returned byte-for-byte unchanged when nothing had to go.
+    1. Drop module-level statements that execute at import time. The simulator is only active while
+       the checker runs the kernel, so a top-level call such as `out = my_kernel(x)` raises
+       "No backend set" during import and the kernel never gets graded. Only imports, definitions,
+       docstrings and static constants survive.
+    2. Remove type annotations. They are evaluated at import time, so `x: nl.ndarray[P, F]` raises
+       NameError before the kernel exists, and NKI does not need them.
+
+    Returns (source, dropped_descriptions). Annotation removal is benign and is not reported as
+    dropped. The source comes back byte-for-byte unchanged when nothing needed changing.
     """
     try:
         tree = ast.parse(source)
     except SyntaxError:
         return source, []
-    keep, dropped = [], []
+    keep, dropped, changed = [], [], False
     for node in tree.body:
         is_docstring = (isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant)
                         and isinstance(node.value.value, str))
-        if isinstance(node, (ast.Import, ast.ImportFrom, ast.FunctionDef, ast.AsyncFunctionDef,
-                             ast.ClassDef)) or is_docstring:
+        if isinstance(node, ast.AnnAssign) and node.value is not None and _is_static_expr(node.value):
+            node = ast.copy_location(ast.Assign(targets=[node.target], value=node.value), node)
+            changed = True
             keep.append(node)
-        elif isinstance(node, (ast.Assign, ast.AnnAssign)) and _is_static_expr(node.value):
+        elif isinstance(node, (ast.Import, ast.ImportFrom, ast.FunctionDef, ast.AsyncFunctionDef,
+                               ast.ClassDef)) or is_docstring:
+            keep.append(node)
+        elif isinstance(node, ast.Assign) and _is_static_expr(node.value):
             keep.append(node)
         else:
             try:
@@ -189,9 +216,17 @@ def sanitize_module(source):
             except Exception:
                 shown = type(node).__name__
             dropped.append(f"line {node.lineno}: `{shown}`")
-    if not dropped:
-        return source, []
     module = ast.Module(body=keep, type_ignores=[])
+    for fn in ast.walk(module):
+        if isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            a = fn.args
+            for arg in a.posonlyargs + a.args + a.kwonlyargs + [a.vararg, a.kwarg]:
+                if arg is not None and arg.annotation is not None:
+                    arg.annotation, changed = None, True
+            if fn.returns is not None:
+                fn.returns, changed = None, True
+    if not dropped and not changed:
+        return source, []
     return ast.unparse(ast.fix_missing_locations(module)) + "\n", dropped
 
 
@@ -261,6 +296,8 @@ def classify_feedback(feedback, passed, truncated=False):
                                "same number of elements", "could not be broadcast",
                                "out-of-bound", "exceeds pmax")):
         return "tile_limits"
+    if "could not be loaded" in text:
+        return "load_error"
     if any(t in text for t in ("mismatch", "wrong shape", "shapes passed", "raised ",
                                "correct on cpu but wrong", "non-finite output")):
         return "correctness"
@@ -269,8 +306,46 @@ def classify_feedback(feedback, passed, truncated=False):
     return "other"
 
 
-def enrich_feedback(feedback, category, dropped):
+def locate_load_error(code):
+    """Import the file the way the checker does and report WHERE it fails.
+
+    The checker says `NameError: name 'P' is not defined` and nothing else. In the v4 run that
+    message came back 24 times and the model returned the same code 24 times, because it names
+    the mistake and never the line. Returns (exc_type, message, lineno, source_line) or None.
+    """
+    try:
+        compiled = compile(code, "<candidate>", "exec")
+    except SyntaxError:
+        return None
+    try:
+        exec(compiled, {"__name__": "candidate_probe"})
+    except Exception as e:
+        frames = [f for f in traceback.extract_tb(e.__traceback__) if f.filename == "<candidate>"]
+        if not frames:
+            return type(e).__name__, str(e), None, ""
+        n = frames[-1].lineno
+        lines = code.splitlines()
+        return type(e).__name__, str(e), n, lines[n - 1].strip() if 0 < n <= len(lines) else ""
+    return None
+
+
+def enrich_feedback(feedback, category, dropped, code=""):
     parts = [feedback or ""]
+    if category in ("load_error", "no_backend") and code.strip():
+        found = locate_load_error(code)
+        if found:
+            etype, msg, lineno, src = found
+            where = f"line {lineno}: `{src}`" if lineno else "a statement run at import"
+            parts.append(f"LOCATION: the error is raised at {where}.")
+            name = re.search(r"name '(\w+)' is not defined", msg)
+            if etype == "NameError" and name:
+                n = name.group(1)
+                parts.append(
+                    f"`{n}` is used while the file is being imported (a default argument, "
+                    f"decorator argument, or top-level statement) but is never defined there. "
+                    f"Define `{n}` INSIDE the function body, for example "
+                    f"`{n}, F = in_tensor.shape` as its first line, and remove it from the "
+                    f"signature, defaults and decorator.")
     if category in FEEDBACK_NOTES:
         parts.append(FEEDBACK_NOTES[category])
     if dropped:
@@ -313,13 +388,24 @@ def strategy_instructions(action, history):
     if action == "exemplar":
         return ("Follow the import style, buffer allocation, and nisa call conventions of the "
                 "verified example below. Copy its conventions, not its algorithm.")
+    if action == "reflect":
+        return ("Apply the reviewer's change above exactly. Keep everything else that already "
+                "works.")
     return ""
 
 
+def lessons_block(lessons):
+    if not lessons:
+        return ""
+    return ("LESSONS from earlier attempts (each one raised the checker score when applied):\n" +
+            "\n".join(f"- {r}" for r in lessons) + "\n")
+
+
 def build_prompt(level, action, use_trace, anchor_code="", anchor_feedback="",
-                 last_feedback="", last_regressed=False, history=(), exemplar=None, repeated=False):
+                 last_feedback="", last_regressed=False, history=(), exemplar=None,
+                 stuck=False, diagnosis="", lessons=()):
     spec = nkibench.LEVELS[level]
-    if anchor_code:
+    if anchor_code and not stuck:
         core = base_agent.repair_prompt(level, anchor_code, anchor_feedback)
         if last_regressed and last_feedback:
             core += ("\n\nA LATER attempt made things worse and was discarded; do not do this: "
@@ -327,24 +413,45 @@ def build_prompt(level, action, use_trace, anchor_code="", anchor_feedback="",
     else:
         core = base_agent.first_prompt(level, 1)
         if last_feedback:
-            core += "\n\nYour previous reply failed: " + compact(last_feedback, 400)
-    if repeated:
-        core += ("\n\nYou already submitted this exact code once. Change the approach, not the "
-                 "formatting.")
+            core += "\n\nYour previous reply failed: " + compact(last_feedback, 500)
+    if stuck:
+        core += ("\n\nSeveral replies in a row were IDENTICAL and failed the same way. Do not "
+                 "resubmit that code. Write the kernel again with a different structure.")
 
     exemplar_block = ""
-    if action == "exemplar" and exemplar:
+    if exemplar:
         ex_level, ex_code = exemplar
         exemplar_block = (f"\nVERIFIED WORKING EXAMPLE (a different operation: "
                           f"{nkibench.LEVELS[ex_level]['op']}):\n```python\n{ex_code.strip()}\n```\n")
+    diagnosis_block = ""
+    if diagnosis:
+        diagnosis_block = ("\nA REVIEWER diagnosed the failure. Apply this change:\n" + diagnosis + "\n")
 
     level_specific = LEVEL2_GUIDANCE if level == 2 else ""
     return (
-        core + "\n\n" + NKI_API_CARD + "\n" + level_specific + "\n" + exemplar_block + "\n" +
-        strategy_instructions(action, history) + "\n" + trace_instructions(use_trace) +
+        core + "\n\n" + NKI_API_CARD + "\n" + level_specific + "\n" + lessons_block(lessons) +
+        exemplar_block + diagnosis_block + "\n" + strategy_instructions(action, history) + "\n" +
+        trace_instructions(use_trace) +
         f"\nRequired entry point: {spec['entry']}. Reply with ONE ```python code block containing "
         f"only the imports and the function."
     )
+
+
+def reflect(args, level, code, feedback, lessons):
+    """Ask the SAME model to diagnose the failure, in a separate short call.
+
+    Returns (diagnosis_text, rule) or ("", ""). The rule is what gets scored and remembered.
+    """
+    known = ("Lessons already known (do not repeat them):\n" + "\n".join(f"- {r}" for r in lessons)
+             + "\n\n") if lessons else ""
+    prompt = REFLECT_PROMPT.format(op=nkibench.LEVELS[level]["op"], code=code.strip()[:6000],
+                                   feedback=compact(feedback, 900), lessons=known)
+    reply, _, _, _ = ask_model(args, prompt, 0.3, max_tokens=260)
+    found = {k: (m.group(1).strip() if (m := rx.search(reply)) else "") for k, rx in REFLECT_RE.items()}
+    if not (found["CAUSE"] and found["CHANGE"]):
+        return "", ""
+    text = f"CAUSE: {compact(found['CAUSE'], 250)}\nCHANGE: {compact(found['CHANGE'], 250)}"
+    return text, compact(found["RULE"], 200)
 
 
 # ------------------------------------------------------------------ reward
@@ -370,16 +477,15 @@ def trace_score(trace, level, valid_format):
                    "checks_quality": check_quality, "honesty": honesty}
 
 
-def shaped_reward(kernel, trace, hygiene, improved, repeated, use_trace):
-    """Verifier reward dominates. Small terms: hygiene (clean file, nothing stripped, not cut off),
-    improved (beat this episode's best), and a penalty for resubmitting identical code. The v3
-    'evidence' term is gone: it paid partial credit for failing in familiar ways."""
+def shaped_reward(kernel, trace, hygiene, improved, use_trace):
+    """Verifier reward dominates. Small terms: hygiene (clean file, nothing stripped, not cut off)
+    and improved (beat this episode's best). Repetition is NOT penalised here: in v4 the penalty
+    made round-0 arms look best simply because round 0 cannot repeat. Repetition is handled by
+    behaviour instead (see `stuck` in run_episode)."""
     if use_trace:
         r = 0.80 * kernel + 0.10 * trace + 0.05 * hygiene + 0.05 * improved
     else:
         r = 0.90 * kernel + 0.05 * hygiene + 0.05 * improved
-    if repeated:
-        r -= 0.10
     return min(1.0, max(0.0, r))
 
 
@@ -448,12 +554,13 @@ class ShrunkUCB:
 
 
 class State:
-    """Policy counts plus verified kernels, persisted as one JSON file across runs."""
+    """Policy counts, verified kernels and the lesson bank, persisted as one JSON file."""
     def __init__(self, path):
         self.path = path
         self.strategy = None
         self.temperature = None
         self.verified = {}                                   # str(level) -> source
+        self.lessons = {}                                    # rule -> {"uses": n, "gain": float}
 
     def load(self, strategy, temperature):
         self.strategy, self.temperature = strategy, temperature
@@ -464,17 +571,34 @@ class State:
                 strategy.load_json(blob.get("strategy"))
                 temperature.load_json(blob.get("temperature"))
                 self.verified = dict(blob.get("verified", {}))
+                self.lessons = dict(blob.get("lessons", {}))
                 pulls = sum(v[0] for k, v in strategy.stats.items() if k.startswith("*||"))
-                print(f"loaded policy state from {self.path} ({pulls} prior strategy pulls, "
+                print(f"loaded state from {self.path} ({pulls} prior strategy pulls, "
+                      f"{len(self.lessons)} lessons, "
                       f"verified kernels for levels {sorted(self.verified) or 'none'})")
             except (OSError, ValueError, KeyError, IndexError, TypeError) as e:
                 print(f"warning: could not read {self.path} ({e}); starting fresh")
+
+    def credit_lesson(self, rule, gain):
+        """The verifier scores the lesson: gain = best kernel reward after minus before."""
+        if not rule:
+            return
+        cell = self.lessons.setdefault(rule, {"uses": 0, "gain": 0.0})
+        cell["uses"] += 1
+        cell["gain"] += float(gain)
+
+    def proven_lessons(self, k=3):
+        """Only rules that have raised the score, best average gain first."""
+        good = [(c["gain"] / c["uses"], r) for r, c in self.lessons.items()
+                if c["uses"] and c["gain"] > 0]
+        return [r for _, r in sorted(good, reverse=True)[:k]]
 
     def save(self):
         if not self.path:
             return
         blob = {"version": SCHEMA_VERSION, "strategy": self.strategy.to_json(),
-                "temperature": self.temperature.to_json(), "verified": self.verified}
+                "temperature": self.temperature.to_json(), "verified": self.verified,
+                "lessons": self.lessons}
         tmp = self.path + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(blob, f, ensure_ascii=False)
@@ -503,12 +627,13 @@ def pick_exemplar(pool, level):
 
 # ------------------------------------------------------------------ the model
 
-def ask_model(args, prompt, temperature):
+def ask_model(args, prompt, temperature, max_tokens=None):
     """Same request as agent.ask, but with the temperature as a policy decision and the finish
     reason returned, so a token-budget cut-off is not mistaken for a model failure."""
     import httpx
     est_prompt = len(prompt) // 4
-    budget = min(args.max_tokens, max(256, args.context - est_prompt - 64))
+    cap = max_tokens or args.max_tokens
+    budget = min(cap, max(128, args.context - est_prompt - 64))
     body = dict(model=args.model, messages=[{"role": "user", "content": prompt}],
                 max_tokens=budget, temperature=temperature, top_p=0.95,
                 chat_template_kwargs={"enable_thinking": args.think})
@@ -537,25 +662,46 @@ def generate(args, prompt, temperature, n):
 
 def run_episode(args, level, episode, run_id, strategy, temperature, state, log, sft, rng, here):
     spec = nkibench.LEVELS[level]
-    print(f"\n========== RL trace agent v4: level {level} ({spec['op']}) "
+    print(f"\n========== RL trace agent v4.1 [{args.mode}]: level {level} ({spec['op']}) "
           f"episode {episode + 1}/{args.episodes} ==========")
     pool = load_exemplar_pool(state, level, args.seed_references, here)
     best = {"kernel": 0.0, "code": "", "feedback": ""}       # the repair anchor: best parsed attempt
-    last_feedback, last_category, last_regressed = "", "initial", False
-    history, seen, verified = [], set(), False
-    repeated_last = False
+    last = {"code": "", "feedback": "", "category": "initial", "regressed": False}
+    history, seen = [], set()
+    stuck, verified = False, False
 
     for round_i in range(args.rounds):
-        context = f"level={level}|failure={last_category}"
-        legal = [a for a in STRATEGIES
-                 if not (a == "repair_diagnosis" and not history)
-                 and not (a == "exemplar" and not pool)]
-        action = strategy.select(context, rng, legal)
+        context = f"level={level}|failure={last['category']}"
+        if args.mode == "reflect":
+            action = "reflect" if history else "direct"
+        else:
+            legal = [a for a in STRATEGIES if a != "reflect"
+                     and not (a == "repair_diagnosis" and not history)
+                     and not (a == "exemplar" and not pool)]
+            action = strategy.select(context, rng, legal)
         temp_name = temperature.select(context, rng)
+        if stuck:
+            temp_name = "t=0.9"                              # identical outputs: widen the sampling
         temp = float(temp_name.split("=")[1])
-        exemplar = pick_exemplar(pool, level) if action == "exemplar" else None
-        prompt = build_prompt(level, action, args.trace, best["code"], best["feedback"],
-                              last_feedback, last_regressed, history, exemplar, repeated_last)
+        use_exemplar = action == "exemplar" or (args.mode == "reflect" and args.seed_references)
+        exemplar = pick_exemplar(pool, level) if use_exemplar else None
+        lessons = state.proven_lessons() if args.mode == "reflect" else []
+
+        diagnosis, rule, reflect_s = "", "", 0.0
+        if action == "reflect":
+            tgt_code, tgt_fb = ((best["code"], best["feedback"]) if best["code"] and not stuck
+                                else (last["code"], last["feedback"]))
+            if tgt_code.strip():
+                t0 = time.perf_counter()
+                diagnosis, rule = reflect(args, level, tgt_code, tgt_fb, lessons)
+                reflect_s = time.perf_counter() - t0
+                print(f"  reflection ({reflect_s:.0f}s): " +
+                      (compact(diagnosis, 300) if diagnosis else "none usable; falling back"))
+        prompt_action = action if (action != "reflect" or diagnosis) else "repair_diagnosis"
+        prompt = build_prompt(level, prompt_action, args.trace, best["code"], best["feedback"],
+                              last["feedback"], last["regressed"], history, exemplar,
+                              stuck, diagnosis, lessons)
+        was_stuck = stuck
 
         replies, wall = generate(args, prompt, temp, args.samples)
         results = []
@@ -567,13 +713,13 @@ def run_episode(args, level, episode, run_id, strategy, temperature, state, log,
             kernel, parts, feedback = base_agent.grade(code, level)
             passed = bool(parts.get("correct"))
             category = classify_feedback(feedback, passed, truncated)
-            feedback = enrich_feedback(feedback, category, dropped) if not passed else feedback
+            feedback = enrich_feedback(feedback, category, dropped, code) if not passed else feedback
             fp = code_fingerprint(code) if code.strip() else ""
             repeated = bool(fp) and fp in seen
             hygiene = 1.0 if (parts.get("parses") and not dropped and not truncated) else 0.0
             improved = 1.0 if kernel > best["kernel"] + 1e-9 else 0.0
             trace_reward, trace_parts = trace_score(trace, level, trace_valid)
-            rl_reward = shaped_reward(kernel, trace_reward, hygiene, improved, repeated, args.trace)
+            rl_reward = shaped_reward(kernel, trace_reward, hygiene, improved, args.trace)
             results.append(dict(
                 reply=reply, finish=finish, truncated=truncated, trace=trace,
                 trace_valid=trace_valid, trace_reward=trace_reward, trace_parts=trace_parts,
@@ -587,8 +733,9 @@ def run_episode(args, level, episode, run_id, strategy, temperature, state, log,
             temperature.update(context, temp_name, r["rl"])
             row = {
                 "schema_version": SCHEMA_VERSION, "run_id": run_id, "episode": episode,
-                "level": level, "round": round_i, "sample": sample_i,
-                "action": action, "temperature": temp, "context": context,
+                "mode": args.mode, "level": level, "round": round_i, "sample": sample_i,
+                "action": action, "temperature": temp, "context": context, "stuck": was_stuck,
+                "diagnosis": diagnosis, "lesson": rule,
                 "kernel_reward": r["kernel"], "trace_reward": r["trace_reward"],
                 "rl_reward": r["rl"], "advantage": r["rl"] - group_mean,
                 "hygiene": r["hygiene"], "improved": r["improved"], "repeated": r["repeated"],
@@ -599,7 +746,7 @@ def run_episode(args, level, episode, run_id, strategy, temperature, state, log,
                 "raw_code_differs": r["raw_code"] != r["code"], "sanitizer_dropped": r["dropped"],
                 "truncated": r["truncated"], "finish_reason": r["finish"],
                 "prompt": prompt, "reply": r["reply"][:12000],
-                "elapsed_s": round(wall, 3),
+                "elapsed_s": round(wall, 3), "reflect_s": round(reflect_s, 3),
             }
             log.write(json.dumps(row, ensure_ascii=False) + "\n")
             log.flush()
@@ -609,23 +756,30 @@ def run_episode(args, level, episode, run_id, strategy, temperature, state, log,
                                       "reward": r["kernel"], "level": level}) + "\n")
                 sft.flush()
             flags = "".join([" REPEAT" if r["repeated"] else "", " CUT" if r["truncated"] else "",
+                             " STUCK-RESTART" if was_stuck else "",
                              f" stripped={len(r['dropped'])}" if r["dropped"] else ""])
             print(f"  r{round_i}.{sample_i} {action:16s} {temp_name} kernel={r['kernel']:.2f} "
                   f"RL={r['rl']:.3f} adv={r['rl'] - group_mean:+.3f} {wall:.0f}s "
                   f"failure={r['category']}{flags}")
-            print("    verifier:", compact(r["feedback"], 320))
+            print("    verifier:", compact(r["feedback"], 420))
             if args.verbose and (r["category"] in ("parse", "truncated") or not r["code"].strip()):
                 print("    reply head:", compact(r["reply"], 240))
 
         top = max(results, key=lambda r: (r["kernel"], r["rl"]))
+        gain = top["kernel"] - best["kernel"]
+        if rule:
+            state.credit_lesson(rule, gain)                  # the verifier scores the lesson
         regressed = bool(best["code"]) and top["kernel"] < best["kernel"] - 1e-9
         if top["kernel"] > 0 and top["kernel"] >= best["kernel"] - 1e-9 and top["code"].strip():
             best = {"kernel": top["kernel"], "code": top["code"], "feedback": top["feedback"]}
+        distinct = len({r["fingerprint"] for r in results})
+        stuck = all(r["repeated"] for r in results) or (
+            len(results) > 1 and distinct == 1 and not top["passed"])
         for r in results:
             if r["fingerprint"]:
                 seen.add(r["fingerprint"])
-        last_feedback, last_category, last_regressed = top["feedback"], top["category"], regressed
-        repeated_last = top["repeated"]
+        last = {"code": top["code"], "feedback": top["feedback"],
+                "category": top["category"], "regressed": regressed}
         history.append(top["feedback"])
         state.save()
 
@@ -660,6 +814,9 @@ def main():
     parser.add_argument("--max-tokens", type=int, default=2500)
     parser.add_argument("--think", action="store_true",
                         help="not recommended; may consume output budget")
+    parser.add_argument("--mode", choices=("reflect", "bandit"), default="reflect",
+                        help="reflect: the same LLM diagnoses each failure and writes lessons that the "
+                             "verifier scores (default). bandit: UCB over fixed prompt strategies.")
     parser.add_argument("--trace", action="store_true",
                         help="ask for the structured TRACE note and include it in the reward "
                              "(off by default: it scored 1.00 every time, so it carried no signal)")
@@ -702,17 +859,22 @@ def main():
                 for episode in range(args.episodes):
                     run_episode(args, level, episode, run_id, strategy, temperature, state,
                                 log, sft, rng, here)
-            print("\nLearned strategy values (shrunk estimate, pulls) per level:")
+            print("\nLearned values (shrunk estimate, pulls):")
             for level in levels:
                 ctx = f"level={level}"
-                print(f"  level {level}: " + "  ".join(
-                    f"{a}={v:.2f}({n})" for a, v, n in strategy.table(ctx)))
-                print(f"           " + "  ".join(
+                if args.mode == "bandit":
+                    print(f"  level {level}: " + "  ".join(
+                        f"{a}={v:.2f}({n})" for a, v, n in strategy.table(ctx)))
+                print(f"  level {level} temperature: " + "  ".join(
                     f"{a}={v:.2f}({n})" for a, v, n in temperature.table(ctx)))
     finally:
         if sft:
             sft.close()
 
+    if state.lessons:
+        print("\nLessons the model wrote (uses, total verifier gain):")
+        for rule, c in sorted(state.lessons.items(), key=lambda kv: -kv[1]["gain"])[:8]:
+            print(f"  [{c['uses']}, {c['gain']:+.2f}] {rule}")
     print(f"\nAttempt log: {args.log}")
     if args.state:
         print(f"Policy state: {args.state}  (delete it for a from-scratch comparison)")
