@@ -55,6 +55,13 @@ class CompileFeedbackTests(unittest.TestCase):
                 self.assertEqual(sc._child_failure(self.error, src=src)[1],
                                  sc._STAGE_INSTR["compile"])
 
+    def test_deep_expression_stays_generic_instead_of_crashing(self):
+        deep = "TILE_K = nl.tile_size.pmax" + " + 0" * 3000
+        source = self.src.replace("TILE_K = nl.tile_size.pmax", deep, 1)
+        self.assertIn(deep, source)
+        self.assertFalse(sc._rhs_tile_list(source))
+        self.assertTrue(sc._child_failure(self.error, src=source)[1].startswith(sc._STAGE_INSTR["compile"]))
+
     def test_source_is_parsed_without_execution(self):
         src = "raise RuntimeError('must never execute')\n" + self.src
         self.assertEqual(sc._child_failure(self.error, src=src)[1], sc._NKI_TILE_LIST_INSTR)

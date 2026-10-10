@@ -56,11 +56,21 @@ AGENT02_DIR = os.path.join(os.path.dirname(HERE), "02-kernel-agent")
 sys.path.insert(0, AGENT02_DIR)
 sys.path.insert(0, os.path.join(HERE, "redteam"))
 sys.path.insert(0, HERE)
+# diagnose.py and redteam/stage12.py are P3's and live only on redteam-agent. CHIPBOOST_P3 names P3's
+# projects/03-chipboost; appended last, so this tree's referee, schema and nkibench still win.
+P3_DIR = os.environ.get("CHIPBOOST_P3")
+if P3_DIR:
+    sys.path += [P3_DIR, os.path.join(P3_DIR, "redteam")]
 
-import diagnose  # noqa: E402
 import nkibench  # noqa: E402
 import schema    # noqa: E402
-import stage12   # noqa: E402
+try:
+    import diagnose  # noqa: E402
+    import stage12   # noqa: E402
+except ModuleNotFoundError as exc:
+    raise ModuleNotFoundError(
+        f"{exc.name} is P3's (redteam-agent), not on this branch: set CHIPBOOST_P3 to P3's "
+        f"projects/03-chipboost (now {P3_DIR!r}), or run from a tree merged with redteam-agent") from exc
 
 
 def _load_module(name, path):

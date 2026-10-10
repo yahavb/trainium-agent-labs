@@ -73,6 +73,12 @@ class FailureContractTests(unittest.TestCase):
         self.assertEqual(sc._wrong_output_instruction(BAD, "rmsnorm", "fallback"), "fallback")
         self.assertNotIn("PSUM", sc._child_failure(dict(stage="compile", type="RuntimeError", msg="bad"), src=BAD)[1])
 
+    def test_deep_expression_gives_fallback_instead_of_crashing(self):
+        deep = "    z = " + " + ".join(["0"] * 3000) + "\n"
+        source = BAD.replace("    acc = nl.ndarray", deep + "    acc = nl.ndarray", 1)
+        self.assertIn(deep, source)
+        self.assertEqual(sc._wrong_output_instruction(source, "matmul", "fallback"), "fallback")
+
     def test_actual_exception_record_wiring_only_diagnoses_mismatch(self):
         handler = next(n for n in ast.walk(TREE) if isinstance(n, ast.ExceptHandler)
                        and isinstance(n.type, ast.Name) and n.type.id == "Wrong"

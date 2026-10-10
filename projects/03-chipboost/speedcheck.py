@@ -880,44 +880,49 @@ _NKI_TILE_LIST_INSTR = (
 
 def _rhs_tile_list(src):
     """Recognize the observed canonical allocation without executing candidate code."""
-    if not src:
-        return False
+    # Legal but deeply nested source exhausts the recursive AST helpers (walk, dump, unparse):
+    # unfamiliar code, so no diagnosis rather than an exception after the whole check.
     try:
-        tree = ast.parse(src)
-    except (SyntaxError, ValueError, TypeError):
-        return False
-    entries = [n for n in tree.body if isinstance(n, ast.FunctionDef)
-               and n.name == "nki_matmul_tiled_"]
-    if len(entries) != 1:
-        return False
-    entry = entries[0]
-    expected = {"TILE_K": "nl.tile_size.pmax", "TILE_N": "nl.tile_size.gemm_moving_fmax"}
-    for name, value in expected.items():
-        writes = [n for n in ast.walk(entry) if isinstance(n, ast.Name)
-                  and isinstance(n.ctx, ast.Store) and n.id == name]
-        assigns = [n for n in ast.walk(entry) if isinstance(n, ast.Assign)
-                   and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name)
-                   and n.targets[0].id == name and ast.unparse(n.value) == value]
-        if len(writes) != 1 or len(assigns) != 1:
+        if not src:
             return False
-    for node in ast.walk(entry):
-        if not (isinstance(node, ast.Assign) and len(node.targets) == 1
-                and isinstance(node.targets[0], ast.Name) and node.targets[0].id == "rhs_tiles"
-                and isinstance(node.value, ast.ListComp)):
-            continue
-        comp = node.value
-        if len(comp.generators) != 1:
-            continue
-        gen = comp.generators[0]
-        call = comp.elt
-        if (gen.is_async or gen.ifs or ast.unparse(gen.iter) != "range(K // TILE_K)"
-                or not isinstance(call, ast.Call) or ast.unparse(call.func) != "nl.ndarray"
-                or len(call.args) != 1 or ast.unparse(call.args[0]) != "(TILE_K, TILE_N)"):
-            continue
-        kws = {kw.arg: ast.unparse(kw.value) for kw in call.keywords}
-        if kws == {"dtype": "rhs.dtype", "buffer": "nl.sbuf"}:
-            return True
-    return False
+        try:
+            tree = ast.parse(src)
+        except (SyntaxError, ValueError, TypeError):
+            return False
+        entries = [n for n in tree.body if isinstance(n, ast.FunctionDef)
+                   and n.name == "nki_matmul_tiled_"]
+        if len(entries) != 1:
+            return False
+        entry = entries[0]
+        expected = {"TILE_K": "nl.tile_size.pmax", "TILE_N": "nl.tile_size.gemm_moving_fmax"}
+        for name, value in expected.items():
+            writes = [n for n in ast.walk(entry) if isinstance(n, ast.Name)
+                      and isinstance(n.ctx, ast.Store) and n.id == name]
+            assigns = [n for n in ast.walk(entry) if isinstance(n, ast.Assign)
+                       and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name)
+                       and n.targets[0].id == name and ast.unparse(n.value) == value]
+            if len(writes) != 1 or len(assigns) != 1:
+                return False
+        for node in ast.walk(entry):
+            if not (isinstance(node, ast.Assign) and len(node.targets) == 1
+                    and isinstance(node.targets[0], ast.Name) and node.targets[0].id == "rhs_tiles"
+                    and isinstance(node.value, ast.ListComp)):
+                continue
+            comp = node.value
+            if len(comp.generators) != 1:
+                continue
+            gen = comp.generators[0]
+            call = comp.elt
+            if (gen.is_async or gen.ifs or ast.unparse(gen.iter) != "range(K // TILE_K)"
+                    or not isinstance(call, ast.Call) or ast.unparse(call.func) != "nl.ndarray"
+                    or len(call.args) != 1 or ast.unparse(call.args[0]) != "(TILE_K, TILE_N)"):
+                continue
+            kws = {kw.arg: ast.unparse(kw.value) for kw in call.keywords}
+            if kws == {"dtype": "rhs.dtype", "buffer": "nl.sbuf"}:
+                return True
+        return False
+    except RecursionError:
+        return False
 
 
 def _child_failure(e, label="", *, src=None):
@@ -952,66 +957,71 @@ def _child_failure(e, label="", *, src=None):
 
 def _wrong_output_instruction(src, op, fallback):
     """Diagnose accumulator lifetime only after an observed wrong output, using AST evidence."""
-    if op != "matmul" or not src:
-        return fallback
+    # Legal but deeply nested source exhausts the recursive AST helpers (walk, dump, unparse):
+    # unfamiliar code, so no diagnosis rather than an exception after the whole check.
     try:
-        tree = ast.parse(src)
-    except (SyntaxError, ValueError, TypeError):
-        return fallback
-    entries = [n for n in tree.body if isinstance(n, ast.FunctionDef)
-               and n.name == "nki_matmul_tiled_"]
-    if len(entries) != 1:
-        return fallback
-    allocations, uses, other_writes, stores = {}, {}, set(), {}
+        if op != "matmul" or not src:
+            return fallback
+        try:
+            tree = ast.parse(src)
+        except (SyntaxError, ValueError, TypeError):
+            return fallback
+        entries = [n for n in tree.body if isinstance(n, ast.FunctionDef)
+                   and n.name == "nki_matmul_tiled_"]
+        if len(entries) != 1:
+            return fallback
+        allocations, uses, other_writes, stores = {}, {}, set(), {}
 
-    def walk(node, loops=(), uncertain=False):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)):
-            return
-        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
-            stores[node.id] = stores.get(node.id, 0) + 1
-        if isinstance(node, ast.For):
-            name = node.target.id if isinstance(node.target, ast.Name) else "?"
-            expected = {"m": "nl.affine_range(M // TILE_M)",
-                        "n": "nl.affine_range(N // TILE_N)",
-                        "k": "nl.affine_range(K // TILE_K)"}
-            uncertain = uncertain or name not in expected or ast.unparse(node.iter) != expected.get(name)
-            loops += (name,)
-        uncertain = uncertain or isinstance(node, (ast.If, ast.IfExp, ast.While, ast.Try))
-        if not uncertain and isinstance(node, ast.Assign) and len(node.targets) == 1:
-            name = node.targets[0].id if isinstance(node.targets[0], ast.Name) else ""
-            call = node.value
-            if (re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]{0,63}", name)
-                    and isinstance(call, ast.Call) and ast.unparse(call.func) == "nl.ndarray"
-                    and any(kw.arg == "buffer" and ast.unparse(kw.value) == "nl.psum"
-                            for kw in call.keywords)):
-                allocations[name] = (loops, node.lineno)
-        if isinstance(node, ast.Call):
-            dst = next((kw.value for kw in node.keywords if kw.arg == "dst"), None)
-            if isinstance(dst, ast.Name):
-                if (not uncertain and ast.unparse(node.func) == "nisa.nc_matmul"
-                        and all(loops.count(x) == 1 for x in ("m", "n", "k"))
-                        and loops[-1] == "k"):
-                    uses.setdefault(dst.id, []).append((loops, node.lineno))
-                else:
-                    other_writes.add(dst.id)
-        for child in ast.iter_child_nodes(node):
-            walk(child, loops, uncertain)
+        def walk(node, loops=(), uncertain=False):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)):
+                return
+            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+                stores[node.id] = stores.get(node.id, 0) + 1
+            if isinstance(node, ast.For):
+                name = node.target.id if isinstance(node.target, ast.Name) else "?"
+                expected = {"m": "nl.affine_range(M // TILE_M)",
+                            "n": "nl.affine_range(N // TILE_N)",
+                            "k": "nl.affine_range(K // TILE_K)"}
+                uncertain = uncertain or name not in expected or ast.unparse(node.iter) != expected.get(name)
+                loops += (name,)
+            uncertain = uncertain or isinstance(node, (ast.If, ast.IfExp, ast.While, ast.Try))
+            if not uncertain and isinstance(node, ast.Assign) and len(node.targets) == 1:
+                name = node.targets[0].id if isinstance(node.targets[0], ast.Name) else ""
+                call = node.value
+                if (re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]{0,63}", name)
+                        and isinstance(call, ast.Call) and ast.unparse(call.func) == "nl.ndarray"
+                        and any(kw.arg == "buffer" and ast.unparse(kw.value) == "nl.psum"
+                                for kw in call.keywords)):
+                    allocations[name] = (loops, node.lineno)
+            if isinstance(node, ast.Call):
+                dst = next((kw.value for kw in node.keywords if kw.arg == "dst"), None)
+                if isinstance(dst, ast.Name):
+                    if (not uncertain and ast.unparse(node.func) == "nisa.nc_matmul"
+                            and all(loops.count(x) == 1 for x in ("m", "n", "k"))
+                            and loops[-1] == "k"):
+                        uses.setdefault(dst.id, []).append((loops, node.lineno))
+                    else:
+                        other_writes.add(dst.id)
+            for child in ast.iter_child_nodes(node):
+                walk(child, loops, uncertain)
 
-    for statement in entries[0].body:
-        walk(statement)
-    for name, (allocated_loops, line) in allocations.items():
-        if stores.get(name) != 1 or name in other_writes or "k" in allocated_loops:
-            continue
-        for used_loops, used_line in uses.get(name, []):
-            output_loops = used_loops[:-1]
-            if (line < used_line and len(allocated_loops) < len(output_loops)
-                    and output_loops[:len(allocated_loops)] == allocated_loops):
-                return ("PSUM_OUTPUT_TILE_LIFETIME: the PSUM accumulator is allocated outside an output-tile "
-                        "loop but accumulated into inside its K loop, so different output tiles can share "
-                        "partial sums. Move the accumulator allocation inside the innermost m/n output-tile "
-                        "loop, immediately before its k contraction loop. Keep one fresh fp32 PSUM tile per "
-                        "output tile, accumulate all K pieces into it, then store that tile once.")
-    return fallback
+        for statement in entries[0].body:
+            walk(statement)
+        for name, (allocated_loops, line) in allocations.items():
+            if stores.get(name) != 1 or name in other_writes or "k" in allocated_loops:
+                continue
+            for used_loops, used_line in uses.get(name, []):
+                output_loops = used_loops[:-1]
+                if (line < used_line and len(allocated_loops) < len(output_loops)
+                        and output_loops[:len(allocated_loops)] == allocated_loops):
+                    return ("PSUM_OUTPUT_TILE_LIFETIME: the PSUM accumulator is allocated outside an output-tile "
+                            "loop but accumulated into inside its K loop, so different output tiles can share "
+                            "partial sums. Move the accumulator allocation inside the innermost m/n output-tile "
+                            "loop, immediately before its k contraction loop. Keep one fresh fp32 PSUM tile per "
+                            "output tile, accumulate all K pieces into it, then store that tile once.")
+        return fallback
+    except RecursionError:
+        return fallback
 
 WASTE_HINT = 1.15                         # simulator bytes over the floor that count as reloading
 FULL_MATMUL_FLOPS = 2 * nkibench.PMAX * nkibench.GEMM_STATIONARY_FMAX * nkibench.GEMM_MOVING_FMAX
@@ -1031,95 +1041,100 @@ def _outer_reuse(src, args, op):
     Aggregate DMA bytes cannot identify an operand. Require a source slice independent of
     the surrounding reuse loop, and leave unfamiliar/conditional indexing undiagnosed.
     """
-    if op != "matmul" or not src or len(args) != 2:
-        return None
+    # Legal but deeply nested source exhausts the recursive AST helpers (walk, dump, unparse):
+    # unfamiliar code, so no diagnosis rather than an exception after the whole check.
     try:
-        tree = ast.parse(src)
-        K, M = args[0].shape
-        K2, N = args[1].shape
-    except (SyntaxError, ValueError, AttributeError):
-        return None
-    if K != K2:
-        return None
-    entries = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "nki_matmul_tiled_"]
-    if len(entries) != 1:
-        return None
-    entry = entries[0]
-    # The shape bounds below assume the hardware's canonical 128-row/512-column tiles.
-    # Do not infer independence if the kernel assigns to loop indices or changes those tiles.
-    tile_values = {"TILE_M": "nl.tile_size.gemm_stationary_fmax",
-                   "TILE_K": "nl.tile_size.pmax", "TILE_N": "nl.tile_size.gemm_moving_fmax"}
-    tile_assignments = {name: 0 for name in tile_values}
-    for node in ast.walk(entry):
-        if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign, ast.NamedExpr)):
-            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-            names = {x.id for target in targets for x in ast.walk(target) if isinstance(x, ast.Name)}
-            if names & {"m", "n", "k"}:
-                return None
-            for name in names & tile_values.keys():
-                if (not isinstance(node, ast.Assign) or len(node.targets) != 1
-                        or not isinstance(node.targets[0], ast.Name)
-                        or ast.dump(node.value) != ast.dump(ast.parse(tile_values[name], mode="eval").body)):
+        if op != "matmul" or not src or len(args) != 2:
+            return None
+        try:
+            tree = ast.parse(src)
+            K, M = args[0].shape
+            K2, N = args[1].shape
+        except (SyntaxError, ValueError, AttributeError):
+            return None
+        if K != K2:
+            return None
+        entries = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "nki_matmul_tiled_"]
+        if len(entries) != 1:
+            return None
+        entry = entries[0]
+        # The shape bounds below assume the hardware's canonical 128-row/512-column tiles.
+        # Do not infer independence if the kernel assigns to loop indices or changes those tiles.
+        tile_values = {"TILE_M": "nl.tile_size.gemm_stationary_fmax",
+                       "TILE_K": "nl.tile_size.pmax", "TILE_N": "nl.tile_size.gemm_moving_fmax"}
+        tile_assignments = {name: 0 for name in tile_values}
+        for node in ast.walk(entry):
+            if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign, ast.NamedExpr)):
+                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                names = {x.id for target in targets for x in ast.walk(target) if isinstance(x, ast.Name)}
+                if names & {"m", "n", "k"}:
                     return None
-                tile_assignments[name] += 1
-    if any(count != 1 for count in tile_assignments.values()):
+                for name in names & tile_values.keys():
+                    if (not isinstance(node, ast.Assign) or len(node.targets) != 1
+                            or not isinstance(node.targets[0], ast.Name)
+                            or ast.dump(node.value) != ast.dump(ast.parse(tile_values[name], mode="eval").body)):
+                        return None
+                    tile_assignments[name] += 1
+        if any(count != 1 for count in tile_assignments.values()):
+            return None
+        reloads = set()
+        hoisted = set()
+
+        def walk(node, loops=(), conditional=False):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+                return  # An uncalled nested helper is not evidence of a transfer.
+            if isinstance(node, ast.For) and isinstance(node.target, ast.Name):
+                if node.target.id in ("m", "n"):
+                    bound = "M // TILE_M" if node.target.id == "m" else "N // TILE_N"
+                    expected = ast.parse(f"nl.affine_range({bound})", mode="eval").body
+                    if ast.dump(node.iter) != ast.dump(expected):
+                        return
+                loops = loops + (node.target.id,)
+            conditional = conditional or isinstance(node, (ast.If, ast.IfExp, ast.While))
+            if isinstance(node, ast.Call) and not conditional:
+                fn = node.func
+                direct = isinstance(fn, ast.Attribute) and isinstance(fn.value, ast.Name)
+                if direct and (fn.value.id, fn.attr) in (("nisa", "dma_copy"), ("nl", "load")):
+                    pos = 1 if fn.attr == "dma_copy" else 0
+                    source = next((kw.value for kw in node.keywords if kw.arg == "src"),
+                                  node.args[pos] if len(node.args) > pos else None)
+                    if isinstance(source, ast.Subscript) and isinstance(source.value, ast.Name):
+                        names = {x.id for x in ast.walk(source.slice) if isinstance(x, ast.Name)}
+                        # k changes the contraction tile: it must remain a loop, never be hoisted away.
+                        if loops.count("k") == 1 and "k" in names:
+                            if (source.value.id == "rhs" and loops.count("m") == loops.count("n") == 1
+                                    and names <= {"k", "n", "TILE_K", "TILE_N"} and "n" in names):
+                                reloads.add("rhs")
+                            if (source.value.id == "lhsT" and loops.count("n") == loops.count("m") == 1
+                                    and names <= {"k", "m", "TILE_K", "TILE_M"} and "m" in names):
+                                reloads.add("lhsT")
+                            if (source.value.id == "lhsT" and loops.count("m") == 1 and "n" not in loops
+                                    and names <= {"k", "m", "TILE_K", "TILE_M"} and "m" in names):
+                                hoisted.add("lhsT")
+            for child in ast.iter_child_nodes(node):
+                walk(child, loops, conditional)
+
+        for statement in entry.body:
+            walk(statement)
+        # Separate structural placement from the current shape's repeat count. N=512
+        # executes n once; that is not evidence that an inside-n lhsT load was hoisted.
+        if "rhs" in reloads and M > 128:
+            if "lhsT" in hoisted and "lhsT" not in reloads:
+                return ("The rhs slice depends on k and n, but is loaded again for every m. Preserve the "
+                        "existing lhsT reuse: block m and n and keep that block's rhs K tiles in distinct "
+                        "SBUF slots, reusing the slot indexed by k and n across m. Keep the k contraction "
+                        "loop: successive k values need different tiles.")
+            return ("The rhs slice depends on k and n, but is loaded again for every m. Make n the outer "
+                    "loop and stage that n tile's K // 128 rhs tiles in distinct SBUF slots before the m "
+                    "loop; reuse the slot indexed by k for each m. Keep the k contraction loop and the "
+                    "lhsT loads inside m: successive k values need different tiles.")
+        if "lhsT" in reloads and N > 512:
+            return ("The lhsT slice depends on k and m, but is loaded again for every n. Keep the lhsT "
+                    "tiles for a block of m in distinct SBUF slots while sweeping n, and reuse the slot "
+                    "indexed by k and m. Preserve any existing rhs reuse and the k contraction loop.")
         return None
-    reloads = set()
-    hoisted = set()
-
-    def walk(node, loops=(), conditional=False):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
-            return  # An uncalled nested helper is not evidence of a transfer.
-        if isinstance(node, ast.For) and isinstance(node.target, ast.Name):
-            if node.target.id in ("m", "n"):
-                bound = "M // TILE_M" if node.target.id == "m" else "N // TILE_N"
-                expected = ast.parse(f"nl.affine_range({bound})", mode="eval").body
-                if ast.dump(node.iter) != ast.dump(expected):
-                    return
-            loops = loops + (node.target.id,)
-        conditional = conditional or isinstance(node, (ast.If, ast.IfExp, ast.While))
-        if isinstance(node, ast.Call) and not conditional:
-            fn = node.func
-            direct = isinstance(fn, ast.Attribute) and isinstance(fn.value, ast.Name)
-            if direct and (fn.value.id, fn.attr) in (("nisa", "dma_copy"), ("nl", "load")):
-                pos = 1 if fn.attr == "dma_copy" else 0
-                source = next((kw.value for kw in node.keywords if kw.arg == "src"),
-                              node.args[pos] if len(node.args) > pos else None)
-                if isinstance(source, ast.Subscript) and isinstance(source.value, ast.Name):
-                    names = {x.id for x in ast.walk(source.slice) if isinstance(x, ast.Name)}
-                    # k changes the contraction tile: it must remain a loop, never be hoisted away.
-                    if loops.count("k") == 1 and "k" in names:
-                        if (source.value.id == "rhs" and loops.count("m") == loops.count("n") == 1
-                                and names <= {"k", "n", "TILE_K", "TILE_N"} and "n" in names):
-                            reloads.add("rhs")
-                        if (source.value.id == "lhsT" and loops.count("n") == loops.count("m") == 1
-                                and names <= {"k", "m", "TILE_K", "TILE_M"} and "m" in names):
-                            reloads.add("lhsT")
-                        if (source.value.id == "lhsT" and loops.count("m") == 1 and "n" not in loops
-                                and names <= {"k", "m", "TILE_K", "TILE_M"} and "m" in names):
-                            hoisted.add("lhsT")
-        for child in ast.iter_child_nodes(node):
-            walk(child, loops, conditional)
-
-    for statement in entry.body:
-        walk(statement)
-    # Separate structural placement from the current shape's repeat count. N=512
-    # executes n once; that is not evidence that an inside-n lhsT load was hoisted.
-    if "rhs" in reloads and M > 128:
-        if "lhsT" in hoisted and "lhsT" not in reloads:
-            return ("The rhs slice depends on k and n, but is loaded again for every m. Preserve the "
-                    "existing lhsT reuse: block m and n and keep that block's rhs K tiles in distinct "
-                    "SBUF slots, reusing the slot indexed by k and n across m. Keep the k contraction "
-                    "loop: successive k values need different tiles.")
-        return ("The rhs slice depends on k and n, but is loaded again for every m. Make n the outer "
-                "loop and stage that n tile's K // 128 rhs tiles in distinct SBUF slots before the m "
-                "loop; reuse the slot indexed by k for each m. Keep the k contraction loop and the "
-                "lhsT loads inside m: successive k values need different tiles.")
-    if "lhsT" in reloads and N > 512:
-        return ("The lhsT slice depends on k and m, but is loaded again for every n. Keep the lhsT "
-                "tiles for a block of m in distinct SBUF slots while sweeping n, and reuse the slot "
-                "indexed by k and m. Preserve any existing rhs reuse and the k contraction loop.")
-    return None
+    except RecursionError:
+        return None
 
 
 def one_instruction(counter, args, want, flops, chip=None, *, src=None, op=None):

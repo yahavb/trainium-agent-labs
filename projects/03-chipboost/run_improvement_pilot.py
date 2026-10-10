@@ -12,6 +12,8 @@ import time
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', required=True)
+    parser.add_argument('--p3', default=None,
+                        help="P3 repo root for diagnose.py and redteam/stage12.py; default: --root, if it has them")
     parser.add_argument('--out', required=True)
     parser.add_argument('--core', type=int, required=True)
     parser.add_argument('--think', action='store_true')
@@ -23,7 +25,6 @@ def main():
     a = parser.parse_args()
     root = Path(a.root).resolve() / 'projects/03-chipboost'
     out = Path(a.out).resolve()
-    out.mkdir(exist_ok=False)
     import fcntl
     lock = open(f'/tmp/p1-comparison-core{a.core}.lock', 'w')
     fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -33,7 +34,9 @@ def main():
     import schema
     spec = importlib.util.spec_from_file_location('pilot_agent', root/a.agent_file)
     agent = importlib.util.module_from_spec(spec)
+    os.environ['CHIPBOOST_P3'] = str(Path(a.p3).resolve() / 'projects/03-chipboost') if a.p3 else str(root)
     spec.loader.exec_module(agent)
+    out.mkdir(exist_ok=False)   # only once the agent imports, so a failed import leaves --out reusable
     baseline = root.parent/'02-kernel-agent/reference_level4.py'
     state = dict(phase='acceptance', pid=os.getpid(), core=a.core, budget=a.budget, samples=a.samples,
                  treatment=a.label, think=a.think, max_tokens=a.max_tokens,

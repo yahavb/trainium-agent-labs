@@ -29,3 +29,7 @@ including recovery after repeated failures and charging duplicate candidates to
 the evaluation budget. Existing final integrated P1 regression passed all 33 cases
 before this pilot was launched. Full-K staging can exhaust SBUF at sufficiently
 large K; a generated optimization must still pass correctness and held-out checks.
+
+To launch from a referee-timing checkout, which lacks P3's `diagnose.py` and `redteam/stage12.py`,
+pass P3's repo root: `python run_improvement_pilot.py --root <p1> --p3 <p3> --out <fresh> --core <n>`
+(or set `CHIPBOOST_P3` to P3's `projects/03-chipboost` when importing `experimental_agent.py` directly).
