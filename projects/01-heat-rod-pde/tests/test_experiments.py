@@ -24,9 +24,23 @@ class ExperimentTests(unittest.TestCase):
         changed = {k for k in baseline if baseline[k] != structured[k]}
         self.assertEqual(changed, {"feedback_style"})
 
+    def test_concise_tools_changes_only_the_tool_prompt(self):
+        baseline = experiments.load_config(PROJECT / "configs/baseline.json")
+        concise = experiments.load_config(PROJECT / "configs/concise_tools.json")
+        self.assertEqual({k for k in baseline if baseline[k] != concise[k]}, {"tool_prompt_style"})
+        args = SimpleNamespace(offline=False, no_tools=False, tool_steps=1,
+                               tool_prompt_style="concise")
+        with patch.object(agent, "ask_once", return_value=("COMPUTE: 2 + 3", {})) as ask:
+            _, used, trace = agent.one_attempt(args, None, "question", 0)
+        self.assertEqual(used, 1)
+        self.assertIn("only COMPUTE:", trace[0]["prompt"])
+        self.assertIn("= 5", trace[0]["tool_results"])
+        self.assertEqual(ask.call_count, 2)
+
     def test_bad_config_fails_before_starting_a_run(self):
         cases = ({"samples": 0}, {"rounds": True}, {"no_tools": "false"},
-                 {"tool_steps": -1}, {"feedback_style": "unknown"}, {"sample": 4})
+                 {"tool_steps": -1}, {"feedback_style": "unknown"},
+                 {"tool_prompt_style": "unknown"}, {"sample": 4})
         with tempfile.TemporaryDirectory() as folder:
             config = Path(folder) / "config.json"
             for case in cases:
@@ -44,6 +58,7 @@ class ExperimentTests(unittest.TestCase):
         ]
         responses = [SimpleNamespace(status_code=200, json=lambda r=r: r) for r in replies]
         args = SimpleNamespace(offline=False, no_tools=False, tool_steps=1,
+                               tool_prompt_style="baseline",
                                model="test-model", base="http://model.invalid/v1",
                                max_tokens=1200, think=False)
         with patch("httpx.post", side_effect=responses) as post:
@@ -72,7 +87,8 @@ class ExperimentTests(unittest.TestCase):
 
     def test_solve_logs_checker_feedback_and_round_timing(self):
         problem = level1_heatrod.make(3)
-        args = SimpleNamespace(rounds=2, samples=1, feedback_style="structured", offline=False)
+        args = SimpleNamespace(rounds=2, samples=1, feedback_style="structured", offline=False,
+                               tool_prompt_style="baseline")
         answer = "u(x, t) = " + str(level1_heatrod.series_answer(problem, 3))
         log = io.StringIO()
         with patch.object(agent, "ask_round", return_value=[(answer, 0, [])]), redirect_stdout(io.StringIO()):
@@ -89,6 +105,22 @@ class ExperimentTests(unittest.TestCase):
         self.assertIsNone(experiments.summary_of([result], 5, False)["solve_rate"])
         self.assertIsNone(experiments.summary_of([result], 1, True)["solve_rate"])
         self.assertEqual(experiments.summary_of([result], 1, False)["solve_rate"], 1.0)
+
+    def test_profile_counts_parallel_requests_but_round_time_only_once(self):
+        records = []
+        for sample in range(4):
+            records.append(dict(round=0, sample=sample, parts={}, reward=0.6,
+                                tool_calls=1, generation_and_tools_seconds=100,
+                                checker_seconds=0.2, trace=[dict(
+                                    usage=dict(completion_tokens=200), finish_reason="stop")]))
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "attempts.jsonl"
+            path.write_text("\n".join(json.dumps(r) for r in records))
+            result = experiments.inspect_attempts(path)
+            self.assertEqual(result["model_requests"], 4)
+            self.assertEqual(result["completion_tokens"], 800)
+            self.assertEqual(result["generation_and_tools_seconds"], 100)
+            self.assertEqual(result["checker_seconds"], 0.2)
 
     def test_interrupt_stops_child_and_marks_batch_incomplete(self):
         process = MagicMock()
@@ -108,7 +140,7 @@ class ExperimentTests(unittest.TestCase):
 
     def test_offline_runner_snapshots_source_and_keeps_scores_out_of_real_metrics(self):
         with tempfile.TemporaryDirectory() as folder:
-            for style in ("baseline", "structured"):
+            for style in ("baseline", "structured", "concise_tools"):
                 process = subprocess.run([
                     sys.executable, str(PROJECT / "run_experiments.py"), "--offline",
                     "--config", str(PROJECT / f"configs/{style}.json"),
@@ -116,7 +148,7 @@ class ExperimentTests(unittest.TestCase):
                 ], capture_output=True, text=True, timeout=90)
                 self.assertEqual(process.returncode, 0, process.stdout + process.stderr)
             batches = list(Path(folder).iterdir())
-            self.assertEqual(len(batches), 2)
+            self.assertEqual(len(batches), 3)
             for batch in batches:
                 summary = json.loads((batch / "summary.json").read_text())
                 self.assertEqual(summary["kind"], "offline_preview")

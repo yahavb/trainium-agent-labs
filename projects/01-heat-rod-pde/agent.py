@@ -65,7 +65,9 @@ def one_attempt(a, problem, prompt, rnd):
     """
     if a.offline:
         return fake_model(problem, 1, rnd)[0], 0, []
-    convo = prompt if a.no_tools else f"{prompt}\n\n{tool_calc.INSTRUCTIONS}"
+    instructions = (tool_calc.CONCISE_INSTRUCTIONS if a.tool_prompt_style == "concise"
+                    else tool_calc.INSTRUCTIONS)
+    convo = prompt if a.no_tools else f"{prompt}\n\n{instructions}"
     used, trace = 0, []
     for step in range(a.tool_steps + 1):
         reply, metrics = ask_once(a, convo)
@@ -151,6 +153,7 @@ def solve(problem, a, log):
                                       parts=g["parts"],
                                       start_error=g["start_error"], feedback=g["feedback"],
                                       feedback_style=a.feedback_style, offline=a.offline,
+                                      tool_prompt_style=a.tool_prompt_style,
                                       trace=trace,
                                       generation_and_tools_seconds=generation_seconds,
                                       checker_seconds=checker_seconds)) + "\n")
@@ -194,6 +197,8 @@ def main():
                     help="withhold the calculator, to measure what it buys")
     ap.add_argument("--feedback-style", choices=("baseline", "structured"), default="baseline",
                     help="baseline preserves the original prompt; structured is experimental")
+    ap.add_argument("--tool-prompt-style", choices=("baseline", "concise"), default="baseline",
+                    help="experimental concise calculator-request protocol; token budget unchanged")
     ap.add_argument("--model", default=os.environ.get("HEATROD_MODEL", "Qwen/Qwen3-8B"))
     ap.add_argument("--base", default=os.environ.get("HEATROD_BASE_URL"))
     ap.add_argument("--log", default="attempts.jsonl")

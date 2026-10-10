@@ -19,7 +19,7 @@ from urllib.parse import urlparse
 PROJECT = Path(__file__).resolve().parent
 DEFAULTS = dict(level=1, sub=3, seed=0, samples=4, rounds=4, max_tokens=1200,
                 tool_steps=1, no_tools=False, think=False,
-                feedback_style="baseline", repeats=5)
+                feedback_style="baseline", tool_prompt_style="baseline", repeats=5)
 
 
 def load_config(path):
@@ -42,6 +42,8 @@ def load_config(path):
         raise ValueError("level must be 0 or 1, and sub must be 1, 2, or 3")
     if config["feedback_style"] not in ("baseline", "structured"):
         raise ValueError("feedback_style must be baseline or structured")
+    if config["tool_prompt_style"] not in ("baseline", "concise"):
+        raise ValueError("tool_prompt_style must be baseline or concise")
     return config
 
 
@@ -65,11 +67,22 @@ def inspect_attempts(path):
         raise ValueError("agent produced no attempt records")
     failures = Counter(key for record in records for key, passed in record["parts"].items()
                        if not passed)
+    turns = [turn for record in records for turn in record.get("trace", [])]
+    token_counts = [turn.get("usage", {}).get("completion_tokens") for turn in turns]
+    rounds = list({record["round"]: record for record in records}.values())
     return dict(solved=any(r["reward"] == 1.0 for r in records),
                 best_reward=max(r["reward"] for r in records),
                 rounds=len({r["round"] for r in records}),
                 candidates=len(records),
                 tool_calls=sum(r["tool_calls"] for r in records),
+                model_requests=len(turns),
+                completion_tokens=sum(token_counts) if token_counts
+                and all(type(n) is int for n in token_counts) else None,
+                truncated_replies=sum(t.get("finish_reason") == "length" for t in turns),
+                generation_and_tools_seconds=sum(r["generation_and_tools_seconds"] for r in rounds)
+                if all("generation_and_tools_seconds" in r for r in rounds) else None,
+                checker_seconds=sum(r["checker_seconds"] for r in rounds)
+                if all("checker_seconds" in r for r in rounds) else None,
                 failed_checks_by_candidate=dict(failures))
 
 
@@ -118,6 +131,8 @@ def main(argv=None):
     root.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     label = ("offline-" if args.offline else "live-") + config["feedback_style"]
+    if config["tool_prompt_style"] != "baseline":
+        label += "-tools-" + config["tool_prompt_style"]
     batch = Path(tempfile.mkdtemp(prefix=f"{label}-{stamp}-", dir=root))
     source = batch / "source"
     source.mkdir()
@@ -184,6 +199,10 @@ def main(argv=None):
                           wall_seconds=round(time.perf_counter() - started, 3))
         results.append(result)
         write_json(batch / "summary.json", summary_of(results, config["repeats"], args.offline))
+        if result["status"] == "complete" and not args.offline:
+            print(f"Profile: model requests={result['model_requests']}; "
+                  f"output tokens={result['completion_tokens']}; "
+                  f"truncated replies={result['truncated_replies']}", flush=True)
         if result["status"] != "complete":
             print(f"Stopped: {result['error']}. Partial results: {batch}", file=sys.stderr)
             return 130 if result["status"] == "interrupted" else 1

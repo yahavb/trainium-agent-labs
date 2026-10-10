@@ -9,6 +9,6 @@
   "no_tools": false,
   "think": false,
   "feedback_style": "baseline",
-  "tool_prompt_style": "baseline",
+  "tool_prompt_style": "concise",
   "repeats": 5
 }

@@ -49,9 +49,14 @@ python level1_heatrod.py --selftest
 | `no_tools: false` | 允许模型使用计算器；改成 true 可做消融实验 |
 | `think: false` | 沿用不启用额外思考的设置 |
 | `feedback_style` | baseline 原版修复提示；structured 分项修复提示 |
+| `tool_prompt_style` | baseline 原版工具说明；concise 请求只输出计算表达式和最终答案 |
 | `repeats: 5` | 完整实验重复 5 次 |
 
-同一个对照实验只改一个因素。提供的两个配置只有 `feedback_style` 不同；它们沿用相同题目、采样数、轮数、工具设置和评分标准。
+同一个对照实验只改一个因素。baseline 与 structured 只有 `feedback_style` 不同；它们沿用相同题目、采样数、轮数、工具设置和评分标准。
+
+`configs/concise_tools.json` 是另外一个独立实验，与 baseline 只差 `tool_prompt_style`。
+它测试能否减少工具请求阶段的输出，保留相同 1200 token 上限、采样数、修复反馈和计算器。
+输出更短可能影响正确率，所以不能只比较速度。不要在同一次比较里同时启用 structured 和 concise。
 
 ## 先做短实验，再做正式比较
 
@@ -81,6 +86,22 @@ tail -f /tmp/heatrod-structured.log
 
 每次启动都会建立独立结果目录，开头打印 `Results directory`。不会覆盖前一次结果。先用 5 次做探索，样本很少，不要把小幅变化说成确定提升。如果原版总在首轮成功，修复提示根本没有使用，两种方案不能据此比较；应另外选取双方相同、确实需要重试的题目设置，并单独报告。
 
+### 优先排查生成耗时的短实验
+
+已观察的一次新版本基线中，生成和工具耗时 105.5 秒，checker 仅 0.2 秒；
+正确候选首次请求输出 959 tokens，用时 97.8 秒。所有回复正常 stop，没有截断。
+这是用户提供的单次日志，不是稳定性能结论，完整记录见 [观察记录](OBSERVATIONS.zh-CN.md)。
+
+当前先测试工具请求是否能更简洁：
+
+```bash
+python -u run_experiments.py --config configs/concise_tools.json --repeats 1
+```
+
+如果流程正常，再分别串行运行 baseline 与 concise_tools，各重复 5 次。
+检查成功率、总耗时、总输出 tokens 和截断次数，保留失败运行。输出长可能包含有效推导，
+不能预先认定全部是冗余内容。
+
 ## 结果保存在哪里？
 
 ```text
@@ -101,6 +122,10 @@ runs/live-baseline-时间-随机后缀/
 `attempts.jsonl` 记录答案、得分、各检查项、反馈、每次 API 请求的实际提示和回答、计算器表达式与结果、API token 用量（服务若返回）及截断状态。每轮还拆分 `generation_and_tools_seconds` 与 `checker_seconds`。这两个是**整轮时间**，在本轮候选记录里重复保存，分析时按 round 去重；多个候选的 API 时间并行发生，不能求和当作整轮延迟。
 
 `summary.json` 只对完成的真实批次给出 solve_rate；进程失败或批次未完成时为 null，不能把失败运行丢掉再计算好看的成功率。`failed_checks_by_candidate` 统计失败候选的检查项，适合定位问题，不是独立实验样本数。
+
+每次运行还汇总 `model_requests`、`completion_tokens`（API 未提供用量时为 null）、
+`truncated_replies` 以及按 round 去重后的生成/工具与 checker 时间。
+输出 tokens 是所有候选、所有模型请求的总和；并发请求耗时不能相加当作用户等待时间。
 
 下载结果，在 **Mac 终端**执行：
 
