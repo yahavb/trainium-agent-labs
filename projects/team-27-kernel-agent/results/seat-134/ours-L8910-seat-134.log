@@ -1,0 +1,199 @@
+
+=== run 1/5  level 8: layernorm  [ours, ve22ccab872] ===
+L8 #1 in=178 [task=166] out=206 14.9s cached  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L8 #2 in=484 [task=139 code=205 feed=127] out=342 24.6s cached  FAIL rule:broadcast
+      -> Elementwise operands must have identical shapes; scalars are fine (np.subtract on operands of shapes (1,) and (1, 1))
+L8 #3 in=618 [task=139 code=341 feed=125] out=616 44.1s cached  FAIL rule:layout
+      -> Remove `np.newaxis`
+L8 #4 in=631 [task=139 code=376 feed=103] out=452 32.4s cached  FAIL rule:broadcast
+      -> Elementwise operands must have identical shapes; scalars are fine (np.subtract on operands of shapes (1,) and (1, 1))
+L8 #5 in=749 [task=139 code=451 feed=97 ledg=49] out=759 54.3s cached  FAIL rule:layout
+      -> Remove `.reshape()`
+L8 #6 in=788 [task=139 code=474 feed=96 ledg=66] out=585 41.9s cached  FAIL rule:broadcast
+      -> Elementwise operands must have identical shapes; scalars are fine (np.subtract on operands of shapes (1,) and (1, 1))
+L8 #7 in=764 [task=139 code=460 feed=97 ledg=55] out=715 51.2s cached  FAIL crash:ValueError
+      -> The kernel raises ValueError: setting an array element with a sequence
+L8 #8 in=750 [task=139 code=488 feed=110] out=755 54.1s cached  FAIL crash:ValueError (repeat code)
+      -> The kernel raises ValueError: setting an array element with a sequence
+   => failed (confidence 0.00) after 8 attempt(s), 4962 in / 4430 out tokens
+
+=== run 1/5  level 9: band_attention  [ours, ve22ccab872] ===
+L9 #1 in=181 [task=169] out=418 30.0s cached  FAIL crash:ValueError
+      -> The kernel raises ValueError: shapes (1,) and (8,1) not aligned: 1 (dim 0) != 8 (dim 0) at line 40 `out[start_row + row, start_col:end_col] = np.dot(scores, ...
+L9 #2 in=709 [task=142 code=417 feed=137] out=603 43.2s cached  FAIL crash:ValueError
+      -> The kernel raises ValueError: shapes (1,1) and (8,1) not aligned: 1 (dim 1) != 8 (dim 0) at line 41 `out[start_row + row, start_col:end_col] = np.dot(scores....
+L9 #3 in=805 [task=142 code=445 feed=145 ledg=60] out=717 51.4s cached  FAIL crash:ValueError
+      -> The kernel raises ValueError: shapes (1,1) and (8,1) not aligned: 1 (dim 1) != 8 (dim 0) at line 41 `out[start_row + row, start_col:end_col] = np.dot(scores....
+   STUCK: 'crash:ValueError' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 3 attempt(s), 1695 in / 1738 out tokens
+
+=== run 1/5  level 10: conv1d  [ours, ve22ccab872] ===
+L10 #1 in=189 [task=177] out=368 26.5s cached  PASS dev; holdout 8/8
+   => verified (confidence 0.95) after 1 attempt(s), 189 in / 368 out tokens
+
+=== run 2/5  level 8: layernorm  [ours, ve22ccab872] ===
+L8 #1 in=170 [task=158] out=393 28.2s cached  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L8 #2 in=679 [task=139 code=392 feed=135] out=533 38.2s cached  FAIL rule:layout
+      -> Remove `.reshape()`
+L8 #3 in=826 [task=139 code=532 feed=142] out=508 36.4s cached  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (7,)  at line 50 `tile_normalized = (tile_x - mean) / std`
+L8 #4 in=788 [task=139 code=507 feed=129] out=731 52.4s cached  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (1,7)  at line 53 `tile_normalized = (tile_x - mean) / std`
+L8 #5 in=870 [task=139 code=535 feed=131 ledg=52] out=875 62.6s cached  FAIL rule:layout
+      -> Remove `.reshape()`
+L8 #6 in=963 [task=139 code=568 feed=168 ledg=75] out=755 54.1s cached  FAIL numeric:other
+      -> The results are wrong
+L8 #7 in=923 [task=139 code=634 feed=137] out=917 65.6s cached  FAIL numeric:other
+      -> The results are wrong
+L8 #8 in=951 [task=139 code=634 feed=137 ledg=28] out=1427 102.0s  FAIL numeric:tag:multi-col-tile
+      -> Results are wrong exactly when there is more than one column tile
+   => failed (confidence 0.00) after 8 attempt(s), 6170 in / 6139 out tokens
+
+=== run 2/5  level 9: band_attention  [ours, ve22ccab872] ===
+L9 #1 in=173 [task=161] out=270 19.4s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (257, 8), larger than one 128x512 tile)
+L9 #2 in=564 [task=142 code=269 feed=140] out=270 19.4s  FAIL rule:whole-array (repeat code)
+      -> Do not touch more than one tile at a time (an operation produced shape (257, 8), larger than one 128x512 tile)
+L9 #3 in=633 [task=158 code=269 feed=140 ledg=53] out=270 19.4s  FAIL rule:whole-array (repeat code)
+      -> Do not touch more than one tile at a time (an operation produced shape (257, 8), larger than one 128x512 tile)
+   STUCK: 'rule:whole-array' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 3 attempt(s), 1370 in / 810 out tokens
+
+=== run 2/5  level 10: conv1d  [ours, ve22ccab872] ===
+L10 #1 in=181 [task=169] out=307 22.1s  FAIL crash:ValueError
+      -> The kernel raises ValueError: shapes (5,) and (9,) not aligned: 5 (dim 0) != 9 (dim 0) at line 38 `out[o, t] += np.dot(weights, x[c, start:end])`
+L10 #2 in=632 [task=150 code=306 feed=163] out=411 29.5s  FAIL crash:ValueError
+      -> The kernel raises ValueError: shapes (5,) and (9,) not aligned: 5 (dim 0) != 9 (dim 0) at line 45 `out[o, t] += np.dot(weights, x_slice)`
+L10 #3 in=792 [task=150 code=410 feed=160 ledg=59] out=708 50.7s  FAIL rule:linalg
+      -> Replace `np.dot` with explicit python loops: accumulate products one index at a time, e.g
+L10 #4 in=597 [task=150 code=362 feed=72] out=384 27.6s  FAIL numeric:dilation
+      -> The dilation is ignored
+L10 #5 in=764 [task=150 code=383 feed=218] out=623 44.6s  PASS dev; holdout 8/8
+   => verified (confidence 0.95) after 5 attempt(s), 2966 in / 2433 out tokens
+
+=== run 3/5  level 8: layernorm  [ours, ve22ccab872] ===
+L8 #1 in=168 [task=156] out=269 19.4s  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L8 #2 in=555 [task=139 code=268 feed=135] out=411 29.5s  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (1,7)  at line 36 `norm = (tile_x - mean[np.newaxis, :]) / np.sqrt(...
+L8 #3 in=705 [task=139 code=410 feed=143] out=750 53.7s  FAIL rule:layout
+      -> Remove `.reshape()`
+L8 #4 in=733 [task=139 code=443 feed=138] out=395 28.4s  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (7,)  at line 36 `norm = (tile_x - mean) / np.sqrt(var + eps)`
+L8 #5 in=728 [task=139 code=394 feed=133 ledg=49] out=812 58.1s  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (7,)  at line 37 `norm = (tile_x - mean) / std`
+L8 #6 in=776 [task=139 code=417 feed=128 ledg=79] out=676 48.4s  FAIL crash:ValueError (repeat code)
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (7,)  at line 37 `norm = (tile_x - mean) / std`
+   STUCK: 'crash:ValueError' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 6 attempt(s), 3665 in / 3313 out tokens
+
+=== run 3/5  level 9: band_attention  [ours, ve22ccab872] ===
+L9 #1 in=171 [task=159] out=342 24.6s  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (2,) (2,4)  at line 37 `out[row] = np.sum(p * v_window, axis=0)`
+L9 #2 in=621 [task=142 code=341 feed=125] out=616 44.1s  FAIL crash:ValueError (repeat code)
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (2,) (2,4)  at line 37 `out[row] = np.sum(p * v_window, axis=0)`
+L9 #3 in=683 [task=158 code=341 feed=125 ledg=46] out=346 24.9s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (257, 8), larger than one 128x512 tile)
+L9 #4 in=649 [task=142 code=345 feed=149] out=346 24.9s  FAIL rule:whole-array (repeat code)
+      -> Do not touch more than one tile at a time (an operation produced shape (257, 8), larger than one 128x512 tile)
+L9 #5 in=748 [task=158 code=345 feed=149 ledg=83] out=378 27.1s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (130, 16), larger than one 128x512 tile)
+   STUCK: 'rule:whole-array' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 5 attempt(s), 2872 in / 2028 out tokens
+
+=== run 3/5  level 10: conv1d  [ours, ve22ccab872] ===
+L10 #1 in=179 [task=167] out=168 12.2s  PASS dev; holdout 8/8
+   => verified (confidence 0.95) after 1 attempt(s), 179 in / 168 out tokens
+
+=== run 4/5  level 8: layernorm  [ours, ve22ccab872] ===
+L8 #1 in=169 [task=157] out=259 18.7s  FAIL crash:ValueError
+      -> The kernel raises ValueError: could not broadcast input array from shape (512,512) into shape (1,512) at line 28 `y[i:end_i, j:end_j] = x_norm * g[j:end_j, n...
+L8 #2 in=563 [task=139 code=258 feed=153] out=609 43.7s  FAIL crash:ValueError
+      -> The kernel raises ValueError: could not broadcast input array from shape (512,512) into shape (1,512) at line 31 `y[i:end_i, j:end_j] = x_norm * g_tile[:, np...
+L8 #3 in=641 [task=139 code=290 feed=149 ledg=50] out=627 44.9s  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L8 #4 in=611 [task=139 code=322 feed=137] out=401 28.8s  FAIL crash:IndexError
+      -> The kernel raises IndexError: index 512 is out of bounds for axis 1 with size 188 at line 23 `acc += x_tile[:, col]`
+L8 #5 in=676 [task=139 code=400 feed=124] out=566 40.6s  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (7,)  at line 35 `x_norm = (x_tile - mean_tile) / np.sqrt(var_tile ...
+L8 #6 in=771 [task=139 code=397 feed=136 ledg=86] out=719 51.5s  FAIL rule:layout
+      -> Remove `.reshape()`
+L8 #7 in=771 [task=139 code=466 feed=153] out=431 30.9s  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (7,)  at line 35 `x_norm = (x_tile - mean_tile) / np.sqrt(var_tile ...
+L8 #8 in=766 [task=139 code=386 feed=136 ledg=92] out=608 43.6s  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+   => failed (confidence 0.00) after 8 attempt(s), 4968 in / 4220 out tokens
+
+=== run 4/5  level 9: band_attention  [ours, ve22ccab872] ===
+L9 #1 in=172 [task=160] out=219 15.8s  FAIL crash:ValueError
+      -> The kernel raises ValueError: matmul: Input operand 1 has a mismatch in its core dimension 0, with gufunc signature (n?,k),(k,m?)->(n?,m?) (size 1 is differe...
+L9 #2 in=521 [task=142 code=218 feed=148] out=425 30.5s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (257, 8), larger than one 128x512 tile)
+L9 #3 in=535 [task=142 code=219 feed=161] out=368 26.4s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (257, 8), larger than one 128x512 tile)
+L9 #4 in=773 [task=142 code=367 feed=170 ledg=81] out=732 52.4s  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (2,) (2,4)  at line 34 `out[i, j0:j1] = np.sum(p * v_window, axis=0)`
+L9 #5 in=716 [task=142 code=378 feed=130 ledg=53] out=672 48.1s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (257, 8), larger than one 128x512 tile)
+L9 #6 in=858 [task=142 code=418 feed=174 ledg=111] out=818 58.6s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (257, 8), larger than one 128x512 tile)
+L9 #7 in=915 [task=142 code=438 feed=174 ledg=148] out=439 31.5s  FAIL rule:whole-array (repeat code)
+      -> Do not touch more than one tile at a time (an operation produced shape (257, 8), larger than one 128x512 tile)
+   STUCK: 'rule:whole-array' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 7 attempt(s), 4490 in / 3673 out tokens
+
+=== run 4/5  level 10: conv1d  [ours, ve22ccab872] ===
+L10 #1 in=180 [task=168] out=318 22.9s  FAIL numeric:tag:partial-col-tile
+      -> The kernel is right except when N is not a multiple of 512, so the last column tile is partial
+L10 #2 in=672 [task=150 code=317 feed=192] out=432 31.0s  FAIL numeric:tag:stride-gt1
+      -> Results are wrong exactly when stride > 1
+L10 #3 in=536 [task=150 code=221 feed=152] out=1092 78.1s  FAIL numeric:tag:stride-gt1
+      -> Results are wrong exactly when stride > 1
+L10 #4 in=584 [task=150 code=216 feed=152 ledg=53] out=3000 214.3s  NO CODE (truncated)
+L10 #5 in=594 [task=160 code=216 feed=152 ledg=53] out=208 15.0s  FAIL numeric:tag:stride-gt1
+      -> Results are wrong exactly when stride > 1
+L10 #6 in=586 [task=150 code=207 feed=152 ledg=64] out=343 24.7s  FAIL numeric:tag:partial-col-tile
+      -> The kernel is right except when N is not a multiple of 512, so the last column tile is partial
+L10 #7 in=582 [task=150 code=213 feed=179 ledg=27] out=626 44.9s  PASS dev; holdout 8/8
+   => verified (confidence 0.95) after 7 attempt(s), 3734 in / 6019 out tokens
+
+=== run 5/5  level 8: layernorm  [ours, ve22ccab872] ===
+L8 #1 in=169 [task=157] out=274 19.7s  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L8 #2 in=560 [task=139 code=273 feed=135] out=416 29.9s  FAIL crash:IndexError
+      -> The kernel raises IndexError: index 512 is out of bounds for axis 1 with size 188 at line 26 `row_sum += tile_x[row, col]`
+L8 #3 in=693 [task=139 code=415 feed=126] out=560 40.1s  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (1,7)  at line 40 `normalized = (tile_x - mean[np.newaxis, :]) / st...
+L8 #4 in=715 [task=139 code=425 feed=138] out=729 52.2s  FAIL rule:layout
+      -> Remove `.reshape()`
+L8 #5 in=747 [task=139 code=457 feed=138] out=460 33.0s  FAIL numeric:other
+      -> The results are wrong
+L8 #6 in=748 [task=139 code=459 feed=137] out=1116 79.8s  FAIL numeric:other
+      -> The results are wrong
+L8 #7 in=791 [task=139 code=474 feed=137 ledg=28] out=882 63.1s  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L8 #8 in=582 [task=139 code=273 feed=135 ledg=22] out=459 32.9s  FAIL crash:IndexError
+      -> The kernel raises IndexError: index 512 is out of bounds for axis 1 with size 188 at line 26 `row_sum += tile_x[row, col]`
+   => failed (confidence 0.00) after 8 attempt(s), 5005 in / 4896 out tokens
+
+=== run 5/5  level 9: band_attention  [ours, ve22ccab872] ===
+L9 #1 in=172 [task=160] out=228 16.4s  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (2,2) (2,4)  at line 26 `out[i] = np.sum(p * v[start:end], axis=0)`
+L9 #2 in=510 [task=142 code=227 feed=128] out=501 36.0s  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (4,1) (2,4)  at line 29 `out[i] = np.sum(p * v[start:end], axis=0)`
+L9 #3 in=591 [task=142 code=261 feed=128 ledg=47] out=856 61.3s  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (4,1) (2,4)  at line 33 `out[i] = np.sum(p * v_window, axis=0)`
+   STUCK: 'crash:ValueError' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 3 attempt(s), 1273 in / 1585 out tokens
+
+=== run 5/5  level 10: conv1d  [ours, ve22ccab872] ===
+L10 #1 in=180 [task=168] out=160 11.6s  PASS dev; holdout 8/8
+   => verified (confidence 0.95) after 1 attempt(s), 180 in / 160 out tokens
+
+=== summary over 5 run(s) ===
+  L8 layernorm    verified 0/5  mean attempts when verified nan  statuses ['failed', 'failed', 'stuck', 'failed', 'failed']
+  L9 band_attention verified 0/5  mean attempts when verified nan  statuses ['stuck', 'stuck', 'stuck', 'stuck', 'stuck']
+  L10 conv1d       verified 5/5  mean attempts when verified 3.0  statuses ['verified', 'verified', 'verified', 'verified', 'verified']
+log: runs/ours-L8910-seat-134.jsonl  (code version e22ccab872)

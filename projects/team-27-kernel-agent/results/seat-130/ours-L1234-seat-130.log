@@ -1,0 +1,232 @@
+
+=== run 1/5  level 1: relu_affine  [ours, ve22ccab872] ===
+L1 #1 in=107 [task=95] out=180 65.9s cached  FAIL rule:escape
+      -> Remove `np.asarray`; work directly on slices of the input arrays.
+L1 #2 in=294 [task=68 code=179 feed=34] out=167 42.5s cached  PASS dev; holdout 30/30
+   => verified (confidence 0.95) after 2 attempt(s), 401 in / 347 out tokens
+
+=== run 1/5  level 2: row_sum  [ours, ve22ccab872] ===
+L2 #1 in=108 [task=96] out=134 84.1s cached  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L2 #2 in=314 [task=69 code=133 feed=99] out=161 54.5s cached  FAIL crash:IndexError
+      -> The kernel raises IndexError: index 512 is out of bounds for axis 1 with size 188 at line 16 `acc += tile[:, col]`
+L2 #3 in=351 [task=69 code=160 feed=109] out=266 100.7s cached  PASS dev; holdout 21/21
+   => verified (confidence 0.95) after 3 attempt(s), 773 in / 561 out tokens
+
+=== run 1/5  level 3: row_max  [ours, ve22ccab872] ===
+L3 #1 in=108 [task=96] out=143 30.2s cached  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L3 #2 in=309 [task=69 code=142 feed=85] out=178 23.6s cached  FAIL crash:ValueError
+      -> The kernel raises ValueError: setting an array element with a sequence
+L3 #3 in=348 [task=69 code=177 feed=89] out=244 80.8s cached  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L3 #4 in=371 [task=69 code=179 feed=80 ledg=30] out=337 75.8s cached  FAIL numeric:tile-overwrite
+      -> Each wrong row's result is the result over a single column tile only: the per-row result is overwritten for every column tile instead of combined across tiles
+L3 #5 in=450 [task=69 code=158 feed=210] out=344 24.7s  FAIL numeric:tile-overwrite
+      -> Each wrong row's result is the result over a single column tile only: the per-row result is overwritten for every column tile instead of combined across tiles
+L3 #6 in=571 [task=69 code=210 feed=210 ledg=69] out=460 33.0s  FAIL numeric:identity
+      -> Outputs whose true value is negative come out as exactly 0: the running result starts from 0
+L3 #7 in=527 [task=69 code=229 feed=216] out=328 23.6s  PASS dev; holdout 18/18
+   => verified (confidence 0.95) after 7 attempt(s), 2684 in / 2034 out tokens
+
+=== run 1/5  level 4: rmsnorm  [ours, ve22ccab872] ===
+L4 #1 in=155 [task=143] out=198 83.9s cached  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L4 #2 in=447 [task=116 code=197 feed=121] out=248 17.9s cached  FAIL crash:IndexError
+      -> The kernel raises IndexError: index 512 is out of bounds for axis 1 with size 188 at line 22 `acc[r] += x_tile[r, c]`
+L4 #3 in=503 [task=116 code=247 feed=127] out=423 30.4s cached  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (7,)  at line 28 `y[i:end_i, j:end_j] = x_tile / rms * g[j:end_j]`
+L4 #4 in=524 [task=116 code=257 feed=138] out=640 45.9s cached  FAIL rule:layout
+      -> Remove `.reshape()`
+L4 #5 in=544 [task=116 code=311 feed=104] out=278 20.0s cached  FAIL numeric:per-tile-stat
+      -> Each column tile is normalised with a statistic (max, sum or mean of squares) of that tile alone
+L4 #6 in=605 [task=116 code=277 feed=199] out=538 38.6s  FAIL numeric:tag:huge-magnitude
+      -> Values around 1e18 overflow float32 when squared (float32 max is 3.4e38)
+L4 #7 in=677 [task=116 code=327 feed=221] out=568 40.7s  FAIL numeric:tag:huge-magnitude
+      -> Values around 1e18 overflow float32 when squared (float32 max is 3.4e38)
+L4 #8 in=779 [task=116 code=361 feed=221 ledg=68] out=683 48.9s  FAIL rule:max-like
+      -> Replace `.max()` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+   => failed (confidence 0.00) after 8 attempt(s), 4234 in / 3576 out tokens
+
+=== run 2/5  level 1: relu_affine  [ours, ve22ccab872] ===
+L1 #1 in=99 [task=87] out=222 16.0s cached  FAIL rule:escape
+      -> Remove `np.asarray`; work directly on slices of the input arrays.
+L1 #2 in=336 [task=68 code=221 feed=34] out=209 15.1s cached  PASS dev; holdout 30/30
+   => verified (confidence 0.95) after 2 attempt(s), 435 in / 431 out tokens
+
+=== run 2/5  level 2: row_sum  [ours, ve22ccab872] ===
+L2 #1 in=100 [task=88] out=134 9.8s cached  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L2 #2 in=314 [task=69 code=133 feed=99] out=161 69.5s cached  FAIL crash:IndexError
+      -> The kernel raises IndexError: index 512 is out of bounds for axis 1 with size 188 at line 16 `acc += tile[:, col]`
+L2 #3 in=351 [task=69 code=160 feed=109] out=269 65.5s cached  FAIL rule:sum-like
+      -> Replace `.sum()` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L2 #4 in=368 [task=69 code=140 feed=94 ledg=52] out=341 67.2s cached  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L2 #5 in=430 [task=69 code=171 feed=98 ledg=79] out=329 58.5s cached  PASS dev; holdout 21/21
+   => verified (confidence 0.95) after 5 attempt(s), 1563 in / 1234 out tokens
+
+=== run 2/5  level 3: row_max  [ours, ve22ccab872] ===
+L3 #1 in=100 [task=88] out=181 13.1s cached  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L3 #2 in=347 [task=69 code=180 feed=85] out=226 16.3s cached  FAIL rule:max-like
+      -> Replace `.max()` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L3 #3 in=431 [task=69 code=225 feed=79 ledg=45] out=321 23.1s cached  FAIL numeric:tile-overwrite
+      -> Each wrong row's result is the result over a single column tile only: the per-row result is overwritten for every column tile instead of combined across tiles
+L3 #4 in=554 [task=69 code=262 feed=210] out=417 29.9s  FAIL numeric:nonfinite
+      -> Some outputs are nan or inf although the true answer is finite
+L3 #5 in=559 [task=69 code=258 feed=219] out=621 44.5s  FAIL numeric:tag:partial-col-tile
+      -> The kernel is right except when N is not a multiple of 512, so the last column tile is partial
+L3 #6 in=509 [task=69 code=272 feed=155] out=1096 78.4s  PASS dev; holdout 18/18
+   => verified (confidence 0.95) after 6 attempt(s), 2500 in / 2862 out tokens
+
+=== run 2/5  level 4: rmsnorm  [ours, ve22ccab872] ===
+L4 #1 in=147 [task=135] out=222 16.0s cached  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L4 #2 in=471 [task=116 code=221 feed=121] out=271 19.5s cached  FAIL crash:IndexError
+      -> The kernel raises IndexError: index 512 is out of bounds for axis 1 with size 188 at line 23 `acc[r] += tile_x[r, c]`
+L4 #3 in=526 [task=116 code=270 feed=127] out=420 30.2s cached  FAIL crash:IndexError
+      -> The kernel raises IndexError: index 512 is out of bounds for axis 1 with size 188 at line 23 `acc[r] += tile_x[r, c] ** 2  # Use squared value for RMS`
+L4 #4 in=627 [task=116 code=281 feed=137 ledg=80] out=472 33.9s cached  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L4 #5 in=549 [task=116 code=245 feed=122 ledg=53] out=278 20.0s cached  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (7,)  at line 28 `tile_y = tile_x / rms * g[j:end_col]`
+L4 #6 in=537 [task=116 code=277 feed=131] out=529 37.9s cached  FAIL rule:layout
+      -> Remove `.reshape()`
+L4 #7 in=514 [task=116 code=302 feed=83] out=278 20.0s  FAIL crash:ValueError (repeat code)
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (7,)  at line 28 `tile_y = tile_x / rms * g[j:end_col]`
+L4 #8 in=602 [task=132 code=277 feed=131 ledg=49] out=338 24.3s  FAIL rule:layout
+      -> Remove `.reshape()`
+   => failed (confidence 0.00) after 8 attempt(s), 3973 in / 2808 out tokens
+
+=== run 3/5  level 1: relu_affine  [ours, ve22ccab872] ===
+L1 #1 in=97 [task=85] out=211 15.2s  PASS dev; holdout 30/30
+   => verified (confidence 0.95) after 1 attempt(s), 97 in / 211 out tokens
+
+=== run 3/5  level 2: row_sum  [ours, ve22ccab872] ===
+L2 #1 in=98 [task=86] out=164 11.9s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L2 #2 in=345 [task=69 code=163 feed=100] out=195 14.1s  PASS dev; holdout 21/21
+   => verified (confidence 0.95) after 2 attempt(s), 443 in / 359 out tokens
+
+=== run 3/5  level 3: row_max  [ours, ve22ccab872] ===
+L3 #1 in=98 [task=86] out=208 15.0s  FAIL numeric:tile-overwrite
+      -> Each wrong row's result is the result over a single column tile only: the per-row result is overwritten for every column tile instead of combined across tiles
+L3 #2 in=499 [task=69 code=207 feed=210] out=420 30.2s  FAIL numeric:nonfinite
+      -> Some outputs are nan or inf although the true answer is finite
+L3 #3 in=545 [task=69 code=246 feed=217] out=652 46.7s  PASS dev; holdout 18/18
+   => verified (confidence 0.95) after 3 attempt(s), 1142 in / 1280 out tokens
+
+=== run 3/5  level 4: rmsnorm  [ours, ve22ccab872] ===
+L4 #1 in=145 [task=133] out=239 17.2s  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L4 #2 in=485 [task=116 code=238 feed=118] out=296 22.9s  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (7,)  at line 29 `y[i:i_end, j:j_end] = (x_tile / norm) * g[j:j_end]`
+L4 #3 in=564 [task=116 code=295 feed=140] out=591 46.2s  FAIL crash:ValueError
+      -> The kernel raises ValueError: could not broadcast input array from shape (512,512) into shape (1,512) at line 31 `y[i:i_end, j:j_end] = (x_tile / norm) * g_t...
+L4 #4 in=674 [task=116 code=330 feed=142 ledg=73] out=685 53.7s  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (7,)  at line 31 `y[i:i_end, j:j_end] = (x_tile / norm) * g_tile`
+   STUCK: 'crash:ValueError' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 4 attempt(s), 1868 in / 1811 out tokens
+
+=== run 4/5  level 1: relu_affine  [ours, ve22ccab872] ===
+L1 #1 in=98 [task=86] out=217 16.9s  PASS dev; holdout 30/30
+   => verified (confidence 0.95) after 1 attempt(s), 98 in / 217 out tokens
+
+=== run 4/5  level 2: row_sum  [ours, ve22ccab872] ===
+L2 #1 in=99 [task=87] out=135 10.7s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L2 #2 in=315 [task=69 code=134 feed=99] out=161 13.0s  FAIL crash:IndexError
+      -> The kernel raises IndexError: index 512 is out of bounds for axis 1 with size 188 at line 16 `acc += tile[:, col]`
+L2 #3 in=351 [task=69 code=160 feed=109] out=335 26.0s  FAIL rule:sum-like
+      -> Replace `.sum()` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L2 #4 in=368 [task=69 code=140 feed=94 ledg=52] out=258 20.5s  FAIL numeric:tile-overwrite
+      -> Each wrong row's result is the result over a single column tile only: the per-row result is overwritten for every column tile instead of combined across tiles
+L2 #5 in=478 [task=69 code=159 feed=237] out=411 32.2s  FAIL numeric:tile-overwrite
+      -> Each wrong row's result is the result over a single column tile only: the per-row result is overwritten for every column tile instead of combined across tiles
+L2 #6 in=599 [task=69 code=213 feed=237 ledg=67] out=442 34.6s  FAIL numeric:tile-overwrite
+      -> Each wrong row's result is the result over a single column tile only: the per-row result is overwritten for every column tile instead of combined across tiles
+   STUCK: 'numeric:tile-overwrite' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 6 attempt(s), 2210 in / 1742 out tokens
+
+=== run 4/5  level 3: row_max  [ours, ve22ccab872] ===
+L3 #1 in=99 [task=87] out=168 13.3s  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L3 #2 in=335 [task=69 code=167 feed=86] out=219 17.2s  FAIL numeric:tile-overwrite
+      -> Each wrong row's result is the result over a single column tile only: the per-row result is overwritten for every column tile instead of combined across tiles
+L3 #3 in=510 [task=69 code=218 feed=210] out=387 30.4s  FAIL rule:max-like
+      -> Replace `.max()` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L3 #4 in=452 [task=69 code=240 feed=90 ledg=40] out=476 37.3s  FAIL rule:max-like
+      -> Replace `.max()` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L3 #5 in=516 [task=69 code=287 feed=79 ledg=68] out=452 35.0s  FAIL numeric:tile-overwrite
+      -> Each wrong row's result is the result over a single column tile only: the per-row result is overwritten for every column tile instead of combined across tiles
+L3 #6 in=691 [task=69 code=326 feed=210 ledg=73] out=517 39.4s  PASS dev; holdout 18/18
+   => verified (confidence 0.95) after 6 attempt(s), 2603 in / 2219 out tokens
+
+=== run 4/5  level 4: rmsnorm  [ours, ve22ccab872] ===
+L4 #1 in=146 [task=134] out=253 19.4s  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L4 #2 in=499 [task=116 code=252 feed=118] out=310 24.3s  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (7,)  at line 32 `norm_tile = tile_x / rms`
+L4 #3 in=563 [task=116 code=309 feed=125] out=586 44.3s  FAIL rule:layout
+      -> Remove `.reshape()`
+L4 #4 in=551 [task=116 code=338 feed=84] out=307 24.0s  FAIL numeric:per-tile-stat
+      -> Each column tile is normalised with a statistic (max, sum or mean of squares) of that tile alone
+L4 #5 in=634 [task=116 code=306 feed=199] out=568 44.3s  FAIL numeric:tag:huge-magnitude
+      -> Values around 1e18 overflow float32 when squared (float32 max is 3.4e38)
+L4 #6 in=706 [task=116 code=356 feed=221] out=636 48.9s  PASS dev; holdout 18/18
+   => verified (confidence 0.95) after 6 attempt(s), 3099 in / 2660 out tokens
+
+=== run 5/5  level 1: relu_affine  [ours, ve22ccab872] ===
+L1 #1 in=98 [task=86] out=230 18.1s  FAIL rule:escape
+      -> Remove `np.asarray`; work directly on slices of the input arrays.
+L1 #2 in=344 [task=68 code=229 feed=34] out=204 15.3s  PASS dev; holdout 30/30
+   => verified (confidence 0.95) after 2 attempt(s), 442 in / 434 out tokens
+
+=== run 5/5  level 2: row_sum  [ours, ve22ccab872] ===
+L2 #1 in=99 [task=87] out=175 12.7s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L2 #2 in=354 [task=69 code=174 feed=98] out=204 14.7s  FAIL crash:IndexError
+      -> The kernel raises IndexError: index 512 is out of bounds for axis 1 with size 188 at line 22 `acc += tile[k - i, col]`
+L2 #3 in=397 [task=69 code=203 feed=112] out=396 28.4s  FAIL crash:IndexError
+      -> The kernel raises IndexError: index 512 is out of bounds for axis 1 with size 188 at line 22 `acc += tile[k - i, col]`
+L2 #4 in=468 [task=69 code=194 feed=112 ledg=80] out=343 24.6s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L2 #5 in=376 [task=69 code=144 feed=98 ledg=52] out=211 15.3s  PASS dev; holdout 21/21
+   => verified (confidence 0.95) after 5 attempt(s), 1694 in / 1329 out tokens
+
+=== run 5/5  level 3: row_max  [ours, ve22ccab872] ===
+L3 #1 in=99 [task=87] out=181 13.1s  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L3 #2 in=347 [task=69 code=180 feed=85] out=226 16.3s  FAIL rule:max-like
+      -> Replace `.max()` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L3 #3 in=431 [task=69 code=225 feed=79 ledg=45] out=336 24.2s  FAIL numeric:tile-overwrite
+      -> Each wrong row's result is the result over a single column tile only: the per-row result is overwritten for every column tile instead of combined across tiles
+L3 #4 in=554 [task=69 code=262 feed=210] out=448 32.1s  PASS dev; holdout 18/18
+   => verified (confidence 0.95) after 4 attempt(s), 1431 in / 1191 out tokens
+
+=== run 5/5  level 4: rmsnorm  [ours, ve22ccab872] ===
+L4 #1 in=146 [task=134] out=222 16.0s  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L4 #2 in=471 [task=116 code=221 feed=121] out=275 19.8s  FAIL crash:IndexError
+      -> The kernel raises IndexError: index 512 is out of bounds for axis 1 with size 188 at line 23 `acc[row] += tile_x[row, col]`
+L4 #3 in=530 [task=116 code=274 feed=127] out=446 32.0s  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (7,)  at line 28 `tile_y = tile_x / rms * g[j:end_j]`
+L4 #4 in=544 [task=116 code=284 feed=131] out=679 48.6s  FAIL rule:layout
+      -> Remove `np.newaxis`
+L4 #5 in=580 [task=116 code=350 feed=101] out=294 21.2s  FAIL numeric:nonfinite
+      -> Some outputs are nan or inf although the true answer is finite
+L4 #6 in=628 [task=116 code=293 feed=206] out=628 45.0s  FAIL numeric:per-tile-stat
+      -> Each column tile is normalised with a statistic (max, sum or mean of squares) of that tile alone
+L4 #7 in=633 [task=116 code=305 feed=199] out=504 36.1s  FAIL numeric:tag:huge-magnitude
+      -> Values around 1e18 overflow float32 when squared (float32 max is 3.4e38)
+L4 #8 in=650 [task=116 code=300 feed=221] out=514 36.9s  FAIL numeric:tag:huge-magnitude
+      -> Values around 1e18 overflow float32 when squared (float32 max is 3.4e38)
+   => failed (confidence 0.00) after 8 attempt(s), 4182 in / 3562 out tokens
+
+=== summary over 5 run(s) ===
+  L1 relu_affine  verified 5/5  mean attempts when verified 1.6  statuses ['verified', 'verified', 'verified', 'verified', 'verified']
+  L2 row_sum      verified 4/5  mean attempts when verified 3.8  statuses ['verified', 'verified', 'verified', 'stuck', 'verified']
+  L3 row_max      verified 5/5  mean attempts when verified 5.2  statuses ['verified', 'verified', 'verified', 'verified', 'verified']
+  L4 rmsnorm      verified 1/5  mean attempts when verified 6.0  statuses ['failed', 'failed', 'stuck', 'verified', 'failed']
+log: runs/ours-L1234-seat-130.jsonl  (code version e22ccab872)

@@ -1,0 +1,59 @@
+
+=== run 1/3  level 8: layernorm  [ours, vf0c39f1e0f] ===
+L8 #1 in=173 [task=161] out=187 13.5s  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (6 violations: broadcast, keepdims, sum-like), so patching it one line at a time ...
+L8 #2 in=578 [task=143 code=186 feed=236] out=508 36.4s  FAIL numeric:tag:multi-col-tile
+      -> Results are wrong exactly when there is more than one column tile
+L8 #3 in=676 [task=143 code=338 feed=182] out=824 59.0s  FAIL numeric:tag:multi-col-tile
+      -> Results are wrong exactly when there is more than one column tile
+L8 #4 in=728 [task=143 code=338 feed=182 ledg=52] out=726 52.0s  FAIL numeric:tag:multi-col-tile
+      -> Results are wrong exactly when there is more than one column tile
+   STUCK: 'numeric:tag:multi-col-tile' 3 attempts in a row without progress; more of the same won't help
+   => stuck (confidence 0.00) after 4 attempt(s), 2155 in / 2245 out tokens
+
+=== run 2/3  level 8: layernorm  [ours, vf0c39f1e0f] ===
+L8 #1 in=165 [task=153] out=223 16.1s  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (6 violations: broadcast, keepdims, sum-like), so patching it one line at a time ...
+L8 #2 in=614 [task=143 code=222 feed=236] out=509 36.5s  FAIL crash:IndexError
+      -> The kernel raises IndexError: too many indices for array: array is 2-dimensional, but 3 were indexed at line 33 `result[i:i+tile_rows, j:j+tile_cols, col] = ...
+L8 #3 in=577 [task=143 code=302 feed=119] out=573 41.1s  FAIL rule:layout
+      -> Do not reshape, add axes or broadcast: a (rows, cols) tile cannot be combined with a per-row vector
+L8 #4 in=669 [task=143 code=355 feed=158] out=485 34.8s  FAIL numeric:tag:multi-col-tile
+      -> Results are wrong exactly when there is more than one column tile
+L8 #5 in=673 [task=143 code=335 feed=182] out=729 52.2s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (1, 700), larger than one 128x512 tile)
+L8 #6 in=760 [task=143 code=458 feed=146] out=481 34.5s  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L8 #7 in=591 [task=143 code=296 feed=139] out=542 38.9s  FAIL numeric:tag:partial-col-tile
+      -> The kernel is right except when N is not a multiple of 512, so the last column tile is partial
+L8 #8 in=727 [task=143 code=387 feed=184] out=890 63.7s  FAIL numeric:other
+      -> The results are wrong
+L8 #9 in=675 [task=143 code=390 feed=129] out=654 46.9s  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (9 violations: broadcast, keepdims, sum-like, whole-array), so patching it one li...
+L8 #10 in=528 [task=143 code=111 feed=239 ledg=22] out=431 30.9s  FAIL judge:precision
+      -> Correct logic, but the final check needs every output within 1e-4 relative error, including outputs close to zero
+L8 #11 in=466 [task=143 code=194 feed=116] out=388 27.9s  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (7 violations: broadcast, sum-like, whole-array), so patching it one line at a ti...
+L8 #12 in=608 [task=143 code=169 feed=236 ledg=47] out=652 46.7s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (1, 700), larger than one 128x512 tile)
+   => failed (confidence 0.00) after 12 attempt(s), 7053 in / 6557 out tokens
+
+=== run 3/3  level 8: layernorm  [ours, vf0c39f1e0f] ===
+L8 #1 in=163 [task=151] out=232 16.7s  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (6 violations: broadcast, keepdims, sum-like), so patching it one line at a time ...
+L8 #2 in=623 [task=143 code=231 feed=236] out=510 36.6s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L8 #3 in=582 [task=143 code=306 feed=120] out=544 39.0s  FAIL numeric:tag:multi-col-tile
+      -> Results are wrong exactly when there is more than one column tile
+L8 #4 in=722 [task=143 code=384 feed=182] out=556 39.9s  FAIL numeric:tag:multi-col-tile
+      -> Results are wrong exactly when there is more than one column tile
+L8 #5 in=721 [task=143 code=325 feed=182 ledg=58] out=608 43.6s  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (5 violations: broadcast, layout, newaxis, sum-like), so patching it one line at ...
+L8 #6 in=668 [task=143 code=244 feed=238 ledg=30] out=646 46.3s  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (6 violations: layout, newaxis, sum-like), so patching it one line at a time will...
+L8 #7 in=854 [task=143 code=410 feed=236 ledg=52] out=790 56.5s  PASS dev; holdout 18/18
+   => verified (confidence 0.95) after 7 attempt(s), 4333 in / 3886 out tokens
+
+=== summary over 3 run(s) ===
+  L8 layernorm    verified 1/3  mean attempts when verified 7.0  statuses ['stuck', 'failed', 'verified']
+log: runs/ours-L8-seat-130.jsonl  (code version f0c39f1e0f)

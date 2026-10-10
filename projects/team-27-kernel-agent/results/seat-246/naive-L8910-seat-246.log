@@ -1,0 +1,125 @@
+
+=== run 1/5  level 8: layernorm  [naive, ve22ccab872] ===
+L8 #1 in=178 [task=166] out=206 14.9s  FAIL rule:sum-like
+L8 #2 in=812 [task=134 code=205 feed=460] out=539 38.6s  FAIL rule:sum-like
+L8 #3 in=907 [task=134 code=240 feed=520] out=522 37.4s  FAIL rule:whole-array
+L8 #4 in=533 [task=134 code=104 feed=282] out=404 29.0s  FAIL rule:whole-array
+L8 #5 in=898 [task=134 code=138 feed=613] out=468 33.6s  FAIL rule:whole-array
+   STUCK: 'rule:whole-array' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 5 attempt(s), 3328 in / 2139 out tokens
+
+=== run 1/5  level 9: band_attention  [naive, ve22ccab872] ===
+L9 #1 in=181 [task=169] out=423 30.4s  FAIL crash:ValueError
+L9 #2 in=894 [task=137 code=422 feed=322] out=674 48.3s  FAIL crash:ValueError
+L9 #3 in=899 [task=137 code=370 feed=379] out=528 37.9s  FAIL rule:whole-array
+L9 #4 in=782 [task=137 code=243 feed=389] out=482 34.6s  FAIL rule:linalg
+L9 #5 in=687 [task=137 code=271 feed=266] out=475 34.1s  FAIL rule:linalg
+L9 #6 in=776 [task=137 code=287 feed=339] out=451 32.4s  FAIL rule:linalg
+   STUCK: 'rule:linalg' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 6 attempt(s), 4219 in / 3033 out tokens
+
+=== run 1/5  level 10: conv1d  [naive, ve22ccab872] ===
+L10 #1 in=189 [task=177] out=359 25.8s  PASS dev; holdout 8/8
+   => verified (confidence 0.95) after 1 attempt(s), 189 in / 359 out tokens
+
+=== run 2/5  level 8: layernorm  [naive, ve22ccab872] ===
+L8 #1 in=170 [task=158] out=301 21.6s  FAIL rule:escape
+L8 #2 in=827 [task=134 code=300 feed=380] out=556 39.8s  FAIL crash:ValueError
+L8 #3 in=919 [task=134 code=145 feed=627] out=760 54.4s  FAIL rule:whole-array
+L8 #4 in=695 [task=134 code=183 feed=365] out=504 36.1s  FAIL rule:whole-array
+L8 #5 in=1363 [task=134 code=270 feed=946] out=571 40.9s  FAIL rule:whole-array
+   STUCK: 'rule:whole-array' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 5 attempt(s), 3974 in / 2692 out tokens
+
+=== run 2/5  level 9: band_attention  [naive, ve22ccab872] ===
+L9 #1 in=173 [task=161] out=3000 214.2s  NO CODE (truncated)
+L9 #2 in=173 [task=161] out=474 34.0s  FAIL crash:ValueError
+L9 #3 in=1125 [task=137 code=473 feed=502] out=763 54.6s  FAIL rule:whole-array
+L9 #4 in=947 [task=137 code=468 feed=329] out=790 56.5s  FAIL crash:ValueError
+L9 #5 in=993 [task=137 code=488 feed=354] out=737 52.8s  FAIL crash:ValueError
+L9 #6 in=951 [task=137 code=470 feed=330] out=757 54.2s  FAIL crash:ValueError
+   STUCK: 'crash:ValueError' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 6 attempt(s), 4362 in / 6521 out tokens
+
+=== run 2/5  level 10: conv1d  [naive, ve22ccab872] ===
+L10 #1 in=181 [task=169] out=250 18.0s  FAIL crash:ValueError
+L10 #2 in=707 [task=145 code=249 feed=300] out=490 35.2s  FAIL crash:ValueError
+L10 #3 in=698 [task=145 code=246 feed=293] out=623 44.7s  FAIL crash:ValueError
+   STUCK: 'crash:ValueError' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 3 attempt(s), 1586 in / 1363 out tokens
+
+=== run 3/5  level 8: layernorm  [naive, ve22ccab872] ===
+L8 #1 in=168 [task=156] out=271 19.6s  FAIL rule:sum-like
+L8 #2 in=995 [task=134 code=270 feed=578] out=623 44.6s  FAIL rule:sum-like
+L8 #3 in=952 [task=134 code=258 feed=547] out=400 28.7s  FAIL crash:ValueError
+L8 #4 in=1092 [task=134 code=244 feed=701] out=501 35.9s  FAIL rule:sum-like
+L8 #5 in=915 [task=134 code=238 feed=530] out=419 30.1s  FAIL rule:sum-like
+L8 #6 in=897 [task=134 code=248 feed=502] out=524 37.5s  FAIL crash:ValueError
+L8 #7 in=1160 [task=134 code=338 feed=674] out=583 41.8s  FAIL rule:sum-like
+L8 #8 in=1314 [task=134 code=389 feed=778] out=664 47.5s  FAIL rule:sum-like
+   => failed (confidence 0.00) after 8 attempt(s), 7493 in / 3985 out tokens
+
+=== run 3/5  level 9: band_attention  [naive, ve22ccab872] ===
+L9 #1 in=171 [task=159] out=351 25.2s  FAIL rule:whole-array
+L9 #2 in=1082 [task=137 code=350 feed=582] out=727 52.0s  FAIL rule:whole-array
+L9 #3 in=1193 [task=137 code=366 feed=677] out=1036 74.1s  FAIL crash:IndexError
+L9 #4 in=1675 [task=137 code=806 feed=719] out=901 64.5s  FAIL rule:whole-array
+L9 #5 in=1462 [task=137 code=688 feed=624] out=922 66.0s  FAIL rule:whole-array (repeat code)
+L9 #6 in=1462 [task=137 code=688 feed=624] out=936 66.9s  FAIL rule:whole-array (repeat code)
+   STUCK: 'rule:whole-array' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 6 attempt(s), 7045 in / 4873 out tokens
+
+=== run 3/5  level 10: conv1d  [naive, ve22ccab872] ===
+L10 #1 in=179 [task=167] out=168 12.2s  PASS dev; holdout 8/8
+   => verified (confidence 0.95) after 1 attempt(s), 179 in / 168 out tokens
+
+=== run 4/5  level 8: layernorm  [naive, ve22ccab872] ===
+L8 #1 in=169 [task=157] out=260 18.7s  FAIL rule:sum-like
+L8 #2 in=881 [task=134 code=259 feed=475] out=562 40.3s  FAIL rule:sum-like
+L8 #3 in=1111 [task=134 code=327 feed=637] out=571 40.9s  FAIL rule:sum-like
+   STUCK: 'rule:sum-like' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 3 attempt(s), 2161 in / 1393 out tokens
+
+=== run 4/5  level 9: band_attention  [naive, ve22ccab872] ===
+L9 #1 in=172 [task=160] out=203 14.7s  FAIL crash:ValueError
+L9 #2 in=629 [task=137 code=202 feed=276] out=452 32.5s  FAIL crash:ValueError
+L9 #3 in=707 [task=137 code=225 feed=331] out=485 34.8s  FAIL rule:whole-array
+L9 #4 in=725 [task=137 code=243 feed=332] out=640 45.8s  FAIL rule:whole-array
+L9 #5 in=722 [task=137 code=234 feed=338] out=536 38.4s  FAIL rule:whole-array
+   STUCK: 'rule:whole-array' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 5 attempt(s), 2955 in / 2316 out tokens
+
+=== run 4/5  level 10: conv1d  [naive, ve22ccab872] ===
+L10 #1 in=180 [task=168] out=319 22.9s  FAIL numeric:tag:partial-col-tile
+L10 #2 in=788 [task=145 code=318 feed=312] out=446 32.0s  FAIL numeric:tag:partial-col-tile
+L10 #3 in=684 [task=145 code=247 feed=279] out=579 41.5s  PASS dev; holdout 8/8
+   => verified (confidence 0.95) after 3 attempt(s), 1652 in / 1344 out tokens
+
+=== run 5/5  level 8: layernorm  [naive, ve22ccab872] ===
+L8 #1 in=169 [task=157] out=274 19.7s  FAIL rule:sum-like
+L8 #2 in=960 [task=134 code=273 feed=540] out=533 38.2s  FAIL rule:sum-like
+L8 #3 in=945 [task=134 code=300 feed=498] out=648 46.4s  FAIL crash:ValueError
+L8 #4 in=1074 [task=134 code=339 feed=588] out=453 32.5s  FAIL rule:sum-like
+L8 #5 in=923 [task=134 code=278 feed=498] out=548 39.3s  FAIL rule:sum-like
+L8 #6 in=986 [task=134 code=310 feed=529] out=493 35.4s  FAIL rule:sum-like
+   STUCK: 'rule:sum-like' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 6 attempt(s), 5057 in / 2949 out tokens
+
+=== run 5/5  level 9: band_attention  [naive, ve22ccab872] ===
+L9 #1 in=172 [task=160] out=212 15.3s  FAIL crash:ValueError
+L9 #2 in=627 [task=137 code=211 feed=265] out=534 38.3s  FAIL rule:whole-array
+L9 #3 in=728 [task=137 code=270 feed=308] out=657 47.0s  FAIL rule:linalg
+L9 #4 in=785 [task=137 code=334 feed=301] out=540 38.7s  FAIL rule:linalg
+L9 #5 in=736 [task=137 code=286 feed=300] out=458 32.9s  FAIL rule:linalg
+   STUCK: 'rule:linalg' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 5 attempt(s), 3048 in / 2401 out tokens
+
+=== run 5/5  level 10: conv1d  [naive, ve22ccab872] ===
+L10 #1 in=180 [task=168] out=160 11.6s  PASS dev; holdout 8/8
+   => verified (confidence 0.95) after 1 attempt(s), 180 in / 160 out tokens
+
+=== summary over 5 run(s) ===
+  L8 layernorm    verified 0/5  mean attempts when verified nan  statuses ['stuck', 'stuck', 'failed', 'stuck', 'stuck']
+  L9 band_attention verified 0/5  mean attempts when verified nan  statuses ['stuck', 'stuck', 'stuck', 'stuck', 'stuck']
+  L10 conv1d       verified 4/5  mean attempts when verified 1.5  statuses ['verified', 'stuck', 'verified', 'verified', 'verified']
+log: runs/naive-L8910-seat-246.jsonl  (code version e22ccab872)

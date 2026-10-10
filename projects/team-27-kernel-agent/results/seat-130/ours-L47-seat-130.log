@@ -1,0 +1,114 @@
+
+=== run 1/3  level 4: rmsnorm  [ours, v174153fd32] ===
+L4 #1 in=157 [task=145] out=179 13.0s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L4 #2 in=438 [task=127 code=178 feed=120] out=214 15.4s  FAIL crash:IndexError
+      -> Index 512 on axis 1 is past the end of an array of size 188
+L4 #3 in=527 [task=127 code=213 feed=174] out=429 30.8s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L4 #4 in=497 [task=127 code=203 feed=114 ledg=40] out=392 28.2s  FAIL rule:layout
+      -> Do not reshape, add axes or broadcast: a (rows, cols) tile cannot be combined with a per-row vector
+L4 #5 in=516 [task=127 code=230 feed=146] out=257 18.5s  FAIL crash:IndexError
+      -> Index 512 on axis 1 is past the end of an array of size 188
+L4 #6 in=651 [task=127 code=256 feed=185 ledg=70] out=523 37.5s  FAIL numeric:per-tile-stat
+      -> Each column tile is normalised with a statistic (max, sum or mean of squares) of that tile alone
+L4 #7 in=592 [task=127 code=265 feed=187] out=513 36.8s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (700,), larger than one 128x512 tile)
+L4 #8 in=521 [task=127 code=225 feed=156] out=232 16.7s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (700,), larger than one 128x512 tile)
+L4 #9 in=601 [task=127 code=231 feed=156 ledg=74] out=422 30.3s  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L4 #10 in=518 [task=127 code=200 feed=104 ledg=74] out=472 33.9s  FAIL crash:IndexError
+      -> Index 512 on axis 1 is past the end of an array of size 188
+L4 #11 in=650 [task=127 code=236 feed=177 ledg=97] out=460 33.0s  FAIL numeric:other
+      -> The results are wrong
+L4 #12 in=467 [task=127 code=210 feed=117] out=951 68.0s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+   => failed (confidence 0.00) after 12 attempt(s), 6135 in / 5044 out tokens
+
+=== run 1/3  level 7: matmul  [ours, v174153fd32] ===
+L7 #1 in=126 [task=114] out=259 20.6s cached  FAIL judge:precision
+      -> Correct logic, but the final check needs every output within 1e-4 relative error, including outputs close to zero
+L7 #2 in=495 [task=96 code=258 feed=128] out=531 38.1s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (521,), larger than one 128x512 tile)
+L7 #3 in=581 [task=96 code=309 feed=163] out=519 37.2s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (521,), larger than one 128x512 tile)
+L7 #4 in=656 [task=96 code=307 feed=165 ledg=75] out=507 36.4s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (37, 521), larger than one 128x512 tile)
+   STUCK: 'rule:whole-array' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 4 attempt(s), 1858 in / 1816 out tokens
+
+=== run 2/3  level 4: rmsnorm  [ours, v174153fd32] ===
+L4 #1 in=149 [task=137] out=182 13.2s  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L4 #2 in=437 [task=127 code=181 feed=116] out=272 19.6s  FAIL crash:ValueError
+      -> Do not reshape, add axes or broadcast: a (rows, cols) tile cannot be combined with a per-row vector
+L4 #3 in=608 [task=127 code=271 feed=197] out=461 33.1s  FAIL crash:NameError
+      -> The kernel raises NameError: name 'j_col' is not defined at line 33 `y[i:i+tile_rows, j+j_col] = tile[:, col] / norm[col]`
+L4 #4 in=538 [task=127 code=293 feed=105] out=495 35.5s  FAIL crash:IndexError
+      -> Index 1 on axis 0 is past the end of an array of size 1
+L4 #5 in=608 [task=127 code=293 feed=175] out=524 37.6s  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L4 #6 in=488 [task=127 code=214 feed=98 ledg=36] out=454 32.6s  FAIL numeric:other
+      -> The results are wrong
+L4 #7 in=536 [task=127 code=270 feed=126] out=688 49.3s  FAIL numeric:per-tile-stat
+      -> Each column tile is normalised with a statistic (max, sum or mean of squares) of that tile alone
+L4 #8 in=592 [task=127 code=265 feed=187] out=608 43.6s  FAIL numeric:tag:huge-magnitude
+      -> Values around 1e18 overflow float32 when squared (float32 max is 3.4e38)
+L4 #9 in=733 [task=127 code=409 feed=184] out=691 49.5s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (1, 700), larger than one 128x512 tile)
+L4 #10 in=716 [task=127 code=449 feed=127] out=718 51.4s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (1, 700), larger than one 128x512 tile)
+L4 #11 in=845 [task=127 code=497 feed=127 ledg=81] out=735 52.6s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (1, 700), larger than one 128x512 tile)
+   STUCK: 'rule:whole-array' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 11 attempt(s), 6250 in / 5828 out tokens
+
+=== run 2/3  level 7: matmul  [ours, v174153fd32] ===
+L7 #1 in=118 [task=106] out=266 20.9s cached  FAIL crash:ValueError
+      -> The kernel raises ValueError: shapes (7,) and (13,) not aligned: 7 (dim 0) != 13 (dim 0) at line 30 `c[i:end_i, j:end_j] += np.dot(a[i:end_i, k], b[k, j:end_...
+L7 #2 in=533 [task=96 code=265 feed=159] out=652 46.7s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (37, 521), larger than one 128x512 tile)
+L7 #3 in=600 [task=96 code=313 feed=178] out=587 42.1s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (37, 521), larger than one 128x512 tile)
+L7 #4 in=710 [task=96 code=331 feed=171 ledg=99] out=673 48.3s  FAIL rule:whole-array (repeat code)
+      -> Do not touch more than one tile at a time (an operation produced shape (37, 521), larger than one 128x512 tile)
+   STUCK: 'rule:whole-array' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 4 attempt(s), 1961 in / 2178 out tokens
+
+=== run 3/3  level 4: rmsnorm  [ours, v174153fd32] ===
+L4 #1 in=147 [task=135] out=208 15.1s  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L4 #2 in=463 [task=127 code=207 feed=116] out=269 19.4s  FAIL crash:ValueError
+      -> Do not reshape, add axes or broadcast: a (rows, cols) tile cannot be combined with a per-row vector
+L4 #3 in=601 [task=127 code=268 feed=193] out=452 32.4s  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L4 #4 in=528 [task=127 code=224 feed=122 ledg=42] out=462 33.2s  FAIL numeric:per-tile-stat
+      -> Each column tile is normalised with a statistic (max, sum or mean of squares) of that tile alone
+L4 #5 in=591 [task=127 code=264 feed=187] out=540 38.7s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L4 #6 in=608 [task=127 code=304 feed=98 ledg=66] out=484 34.7s  FAIL numeric:tag:multi-col-tile
+      -> Results are wrong exactly when there is more than one column tile
+L4 #7 in=648 [task=127 code=323 feed=185] out=688 49.3s  FAIL numeric:tag:multi-col-tile (repeat code)
+      -> Results are wrong exactly when there is more than one column tile
+L4 #8 in=721 [task=142 code=323 feed=185 ledg=58] out=445 31.9s  FAIL numeric:tag:multi-col-tile
+      -> Results are wrong exactly when there is more than one column tile
+   STUCK: 'numeric:tag:multi-col-tile' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 8 attempt(s), 4307 in / 3548 out tokens
+
+=== run 3/3  level 7: matmul  [ours, v174153fd32] ===
+L7 #1 in=116 [task=104] out=186 14.7s cached  FAIL judge:precision
+      -> Correct logic, but the final check needs every output within 1e-4 relative error, including outputs close to zero
+L7 #2 in=422 [task=96 code=185 feed=128] out=467 33.5s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (37, 521), larger than one 128x512 tile)
+L7 #3 in=529 [task=96 code=255 feed=165] out=268 19.3s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (37, 521), larger than one 128x512 tile)
+L7 #4 in=610 [task=96 code=267 feed=155 ledg=79] out=574 41.1s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (37, 521), larger than one 128x512 tile)
+   STUCK: 'rule:whole-array' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 4 attempt(s), 1677 in / 1495 out tokens
+
+=== summary over 3 run(s) ===
+  L4 rmsnorm      verified 0/3  mean attempts when verified nan  statuses ['failed', 'stuck', 'stuck']
+  L7 matmul       verified 0/3  mean attempts when verified nan  statuses ['stuck', 'stuck', 'stuck']
+log: runs/ours-L47-seat-130.jsonl  (code version 174153fd32)
