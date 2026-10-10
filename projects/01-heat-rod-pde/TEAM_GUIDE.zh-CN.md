@@ -1,6 +1,6 @@
 # 小组 Project 1：从运行示例到可复现实验
 
-我们的起点是活动方的 heat-rod agent。研究问题是：**把修复反馈按检查项组织，能否让小模型更稳定、用更少轮数解出 level 1.3？** `structured` 是待验证的方案，不是已经证明有效的优化。
+我们的起点是活动方的 heat-rod agent。研究问题是：**怎样让小模型更可靠地使用计算器、根据反馈修复答案，并减少完整求解耗时？** 先用 level 1.3 定位问题，再覆盖其他题型与 seed。`structured` 是待验证的方案，简洁工具提示词也尚未证明有效。
 
 ## 代码在哪里，在哪里运行？
 
@@ -21,6 +21,22 @@
 
 当前优化的是提示和反馈，不更新模型权重。Agent 和 checker 在 CPU 上运行，模型服务使用 Trainium；不需要为了运行本项目而手动启动剩余芯片核。
 
+## 当前在服务器里，怎样看日志？
+
+提示符为 `root@seat-87` 时已经进入服务器，直接执行：
+
+```bash
+cd /workspace/trainium-team87/projects/01-heat-rod-pde
+tail -n 60 -F current-experiment.log
+```
+
+这是助手在当前 seat 设置的日志快捷方式。助手启动下一批实验时会切换它，
+大写 `-F` 会跟踪文件名变化；它不是 `run_experiments.py` 自动创建的功能。
+Ctrl+C 退出日志查看，后台实验继续运行。
+
+`kubectl` 是 Mac 上连接服务器的工具，不需要在 `root@seat-87` 中再次执行。
+日志里的 `run 2/3` 表示第二次独立测试，`round 2` 表示这次测试的第三轮（编号从 0 开始）。
+
 ## 第一次在服务器准备小组版本
 
 在 **seat-87 终端**执行（第一次 clone 即可；已有同名目录时先检查内容）：
@@ -40,7 +56,7 @@ python level1_heatrod.py --selftest
 
 | 配置项 | 意思 |
 |---|---|
-| `level: 1, sub: 3` | 固定研究 level 1.3 |
+| `level: 1, sub: 3` | 默认定位 level 1.3；sub 改为 1 或 2 可测其他题型 |
 | `seed: 0` | 固定题目生成和 checker 采样，不固定模型生成 |
 | `samples: 4` | 每轮并发生成 4 个候选，与芯片核数无关 |
 | `rounds: 4` | 最多尝试 4 轮，成功会提前结束 |
@@ -90,14 +106,16 @@ tail -f /tmp/heatrod-structured.log
 
 已观察的一次新版本基线中，生成和工具耗时 105.5 秒，checker 仅 0.2 秒；
 正确候选首次请求输出 959 tokens，用时 97.8 秒。所有回复正常 stop，没有截断。
-这是用户提供的单次日志，不是稳定性能结论，完整记录见 [观察记录](OBSERVATIONS.zh-CN.md)。
+这次单次日志现已下载核验，但不是稳定性能结论，完整记录见 [观察记录](OBSERVATIONS.zh-CN.md)。
 
 简洁工具请求的第一轮实验已完成：每轮约 43 秒，但四轮都未解出，完整运行 173.7 秒、
 总输出 3632 tokens。原版单次为 106.3 秒、2313 tokens，首轮成功。
 这不足以证明总体差异，但不支持采用简洁方案作为默认优化。
 两个方案的单次结果和局限见 [英文实验记录](EXPERIMENT_RESULTS.md)。
 
-下一步先保留原版工具说明，单独测试 structured 修复反馈：
+补充的原版 baseline 三次运行中成功 2 次、失败 1 次，耗时分别为 205.325、777.336、
+257.795 秒；失败运行还暴露了 Markdown 计算请求未被识别、回复截断等问题。
+因此先建立重复测量和不同题型的覆盖，再隔离一个改动测试。若测试 structured，命令为：
 
 ```bash
 python -u run_experiments.py --config configs/structured.json --repeats 1
@@ -106,6 +124,10 @@ python -u run_experiments.py --config configs/structured.json --repeats 1
 若首轮失败，检查 structured 是否在后续轮修正了指数；若首轮成功，说明这次没有用到修复反馈。
 随后对可比较方案串行重复实验。检查成功率、总耗时、总输出 tokens 和截断次数，保留失败运行。
 输出长可能包含有效推导，不能预先认定全部是冗余内容。
+
+之后已补测 seed 0 的 1.1、1.2，各一次：分别用 2 轮、1 轮成功，完整耗时 430.303、218.206 秒。
+两题也有截断或答案无法解析的候选。当前已覆盖整个 level 1 的三个题型，尚需更换 seed，
+也不能用每题一次的通过声称稳定成功。完整结果见中英文实验记录。
 
 ## 结果保存在哪里？
 
@@ -126,7 +148,7 @@ runs/live-baseline-时间-随机后缀/
 
 `attempts.jsonl` 记录答案、得分、各检查项、反馈、每次 API 请求的实际提示和回答、计算器表达式与结果、API token 用量（服务若返回）及截断状态。每轮还拆分 `generation_and_tools_seconds` 与 `checker_seconds`。这两个是**整轮时间**，在本轮候选记录里重复保存，分析时按 round 去重；多个候选的 API 时间并行发生，不能求和当作整轮延迟。
 
-`summary.json` 只对完成的真实批次给出 solve_rate；进程失败或批次未完成时为 null，不能把失败运行丢掉再计算好看的成功率。`failed_checks_by_candidate` 统计失败候选的检查项，适合定位问题，不是独立实验样本数。
+`summary.json` 只对完成的真实批次给出 solve_rate；进程失败或批次未完成时为 null，不能把失败运行丢掉再计算好看的成功率。`failed_checks_by_candidate` 统计能完成解析的候选的失败检查项；`parts` 为空的答案还需单独检查，不能用这个计数代替全部失败数。候选数也不是独立实验样本数。
 
 每次运行还汇总 `model_requests`、`completion_tokens`（API 未提供用量时为 null）、
 `truncated_replies` 以及按 round 去重后的生成/工具与 checker 时间。
@@ -168,7 +190,7 @@ python3 -m venv .venv
 
 1. 跑一轮真实基线，找出一次失败和下一轮修复。
 2. 对照源码理解：错误来自系数、衰减速度、边界，还是答案格式？
-3. 串行运行 baseline 与 structured，各重复 5 次。
+3. 覆盖 level 1.1、1.2、1.3，再更换 seed；选择一个改动，与 baseline 串行重复比较。
 4. 分析成功率、轮数、生成与检查耗时，并阅读失败案例。提升不了也要如实报告。
 5. 用 `EXPERIMENT_NOTE.zh-CN.md` 整理一页说明，连同 checker 和完整尝试日志提交。
 
