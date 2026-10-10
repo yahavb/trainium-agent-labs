@@ -152,9 +152,11 @@ def instruction_from_failure(failure, case_label=""):
             "Wrap the work in explicit `for` loops that step across the array in tiles of "
             "at most 128 rows x 512 columns, and compute each tile's piece inside.",
         "wrong-shape":
-            "Recompute the output size from the INPUT shape with the formula named above "
-            "and allocate the output from that. The arithmetic lines are right; the size "
-            "is not.",
+            "Your output shape is wrong. The usual cause (measured): you built the "
+            "output by CONCATENATING per-tile pieces, so a 129-row input yields "
+            "258 -- preallocate `out = np.zeros((R, C), ...)` before the loops and write "
+            "each tile into its own slice instead. For conv, check the output-size "
+            "formula.",
         "non-finite":
             "Apply the fix named above (usually: subtract the row max before exp, or "
             "initialise every output tile before reading it). Nothing else is wrong.",

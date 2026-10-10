@@ -250,9 +250,10 @@ def _stat_scope(got, want, err, tol):
             "missing epsilon, a scale factor, a sqrt). Check the formula's constants.")
 
 
-def describe_mismatch(got, want, rtol):
+def describe_mismatch(got, want, rtol, input_shape=None):
     """The message the agent learns from. Localises: element, direction, which tile.
-    Returns (verdict, taxonomy) or (None, None)."""
+    Returns (verdict, taxonomy) or (None, None). input_shape (when given) enables the
+    reduction-overwrite diagnosis for 1-D outputs of multi-tile-wide inputs."""
     got = np.asarray(got, np.float64)
     want = np.asarray(want, np.float64)
 
@@ -314,6 +315,22 @@ def describe_mismatch(got, want, rtol):
     # its normalising statistic per TILE where the reference used the whole row. This is
     # invisible to the ragged-edge location hint, which sends the model clamping slices
     # it does not need to clamp. A UNIFORM factor instead means a plain wrong constant.
+    if got.ndim == 1 and input_shape and len(input_shape) == 2 \
+            and input_shape[-1] > ladder.TILE_COLS and float((err > tol).mean()) > 0.9:
+        # A per-row result where the row spans several column tiles, almost-all wrong:
+        # the measured cause (level 2, baseline 2, eight identical rounds) is ASSIGNING
+        # each tile's partial sum inside the column-tile loop, so the last tile wins.
+        return ("\n".join(msg + [
+                "  EVERY element is wrong and the row spans more than one column tile. "
+                "If your column-tile loop does `result[r0:r0+128] = tile_stat`, each tile "
+                "OVERWRITES the last one -- the output holds only the final tile's "
+                "partial result. Combine each tile's partial result with the previous "
+                "ones using the operation itself: sums accumulate "
+                "(`result[...] += tile_sum` from a zeros init), max combines with "
+                "`result[...] = np.maximum(result[...], tile_max)`, min with minimum. "
+                "(before answering, run: DOCS: row statistics that span column tiles)"]),
+                "stat-scope")
+    scope = _stat_scope(got, want, err, tol)
     scope = _stat_scope(got, want, err, tol)
     if scope is not None:
         kind, hint = scope
@@ -437,7 +454,8 @@ def check(src, level_n, with_nondeterminism=NONDETERMINISM_CHECK, max_failures=3
         if mut:
             fail("modified-input", label, mut)
             continue
-        verdict, tax = describe_mismatch(got, want, spec["rtol"])
+        in_shape = next((a.shape for a in args if isinstance(a, np.ndarray)), None)
+        verdict, tax = describe_mismatch(got, want, spec["rtol"], input_shape=in_shape)
         if verdict:
             fail(tax, label, verdict)
             continue

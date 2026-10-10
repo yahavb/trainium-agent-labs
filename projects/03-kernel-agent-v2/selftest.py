@@ -157,6 +157,29 @@ def kernel(x):
           "two passes" in r["failures"][0]["instruction"],
           r["failures"][0]["instruction"][:90])
 
+    # --- planted bug: per-tile ASSIGN overwriting a per-row reduction (L2, live run 2) --
+    # each column tile's partial sum overwrites the last: the output holds only the
+    # final tile's contribution.
+    overwrite = """
+import numpy as np
+def kernel(x):
+    n_rows, n_cols = x.shape
+    result = np.empty((n_rows,), dtype=x.dtype)
+    for start_row in range(0, n_rows, 128):
+        end_row = min(start_row + 128, n_rows)
+        for start_col in range(0, n_cols, 512):
+            end_col = min(start_col + 512, n_cols)
+            tile = x[start_row:end_row, start_col:end_col]
+            result[start_row:end_row] = tile.sum(axis=1)
+    return result
+"""
+    r = verifier.check(overwrite, 2)
+    check("per-tile assign overwrite caught", r["taxonomy"] == "stat-scope",
+          str(r["taxonomy"]))
+    check("  overwrite instruction says accumulate",
+          "combine" in r["failures"][0]["instruction"],
+          r["failures"][0]["instruction"][:90])
+
     # --- planted bug: one-pass variance cancellation (the level-8/12 trap) ----
     onepass = """
 import numpy as np
