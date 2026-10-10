@@ -1,0 +1,54 @@
+{
+  "project": "Trainium FastLoop",
+  "benchmark": "Full Benchmark (Seat 225)",
+  "run_id": "full_benchmark_20261010_214407",
+  "results_directory": "test_results/full_benchmark_20261010_214407",
+  "levels": [
+    {
+      "level": 1,
+      "solved": 3,
+      "runs": 3,
+      "success_rate_percent": 100.0,
+      "average_reward": 1.0,
+      "best_reward": 1.0,
+      "attempts": 8
+    },
+    {
+      "level": 2,
+      "solved": 2,
+      "runs": 3,
+      "success_rate_percent": 66.7,
+      "average_reward": 0.833,
+      "best_reward": 1.0,
+      "attempts": 14
+    },
+    {
+      "level": 3,
+      "solved": 1,
+      "runs": 3,
+      "success_rate_percent": 33.3,
+      "average_reward": 0.533,
+      "best_reward": 1.0,
+      "attempts": 22
+    },
+    {
+      "level": 4,
+      "solved": 3,
+      "runs": 3,
+      "success_rate_percent": 100.0,
+      "average_reward": 1.0,
+      "best_reward": 1.0,
+      "attempts": 12
+    }
+  ],
+  "overall": {
+    "solved": 9,
+    "runs": 12,
+    "success_rate_percent": 75.0,
+    "attempts": 56
+  },
+  "notes": [
+    "Rewards are the rounded values displayed in the terminal summary.",
+    "The source summary reports outcomes from this benchmark run; it does not itself establish physical Trainium performance."
+  ]
+}
