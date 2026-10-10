@@ -38,6 +38,11 @@ async def dashboard() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html")
 
 
+@app.get("/how", include_in_schema=False)
+async def how_it_works() -> FileResponse:
+    return FileResponse(STATIC_DIR / "how.html")
+
+
 @app.get("/api/health")
 async def health() -> dict[str, str]:
     return {"status": "ok", "service": "acceltwin"}

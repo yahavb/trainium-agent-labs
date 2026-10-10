@@ -346,3 +346,6 @@ h1, h2, h3, h4, p { margin: 0; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
 }
+
+.how-link { font-size: 13px; color: var(--fg-2); text-decoration: none; white-space: nowrap; }
+.how-link:hover { color: var(--fg); }

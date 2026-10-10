@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="description" content="How Chip Builder closes the loop: live Trainium metrics calibrate a checker, the checker grades gpt-oss-20b's chip designs, and the grade plus the reason drive the next design.">
+<title>How Chip Builder works</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #fff; --subtle: #fafafa; --muted-bg: #f4f4f5; --border: #e4e4e7; --border-strong: #d4d4d8;
+  --fg: #09090b; --fg-2: #3f3f46; --muted: #71717a; --faint: #a1a1aa;
+  --accent: #2563eb; --accent-soft: #eff6ff; --good: #16a34a; --good-soft: #f0fdf4; --bad: #dc2626; --bad-soft: #fef2f2;
+  --metric: #0891b2; --trace: #7c3aed; --brief: #ea580c; --reason: #db2777;
+  --compute-fill: #eef2ff; --compute-stroke: #6366f1; --hbm-fill: #ecfdf5; --hbm-stroke: #10b981;
+  --sbuf-fill: #fffbeb; --sbuf-stroke: #f59e0b; --dma-fill: #faf5ff; --dma-stroke: #a855f7;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --font: "Geist", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 var(--font); -webkit-font-smoothing: antialiased; }
+h1, h2, h3, p { margin: 0; }
+a { color: inherit; }
+.page { max-width: 1240px; margin: 0 auto; padding: 48px 24px 120px; }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 36px; font-size: 13px; color: var(--muted); }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; color: var(--fg); text-decoration: none; }
+.brand i { width: 18px; height: 18px; border-radius: 5px; background: conic-gradient(from 180deg, var(--compute-stroke), var(--hbm-stroke), var(--sbuf-stroke), var(--dma-stroke), var(--compute-stroke)); }
+.eyebrow { font: 500 12px var(--mono); color: var(--accent); }
+h1 { font-size: clamp(28px, 4vw, 42px); line-height: 1.1; letter-spacing: -.04em; font-weight: 600; margin-top: 8px; max-width: 900px; }
+.lede { margin-top: 14px; font-size: 16px; color: var(--muted); max-width: 760px; }
+section { margin-top: 64px; }
+section h2 { font-size: 24px; letter-spacing: -.03em; font-weight: 600; margin-top: 6px; }
+section > p.sub { color: var(--muted); margin-top: 6px; max-width: 760px; }
+
+/* ---------- the loop stage ---------- */
+.stage-wrap { margin-top: 24px; border: 1px solid var(--border); border-radius: 16px; background:
+  radial-gradient(circle at 1px 1px, #e4e4e7 1px, transparent 0) 0 0 / 22px 22px, var(--subtle); padding: 14px; }
+.stage { position: relative; width: 100%; aspect-ratio: 1200 / 720; container-type: inline-size; }
+.stage > svg.wires { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.node { position: absolute; background: var(--bg); border: 1px solid var(--border); border-radius: 1cqw; padding: 1cqw 1.2cqw;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04); font-size: 1.05cqw; transition: box-shadow .4s, border-color .4s, transform .4s var(--ease); overflow: hidden; }
+.node.on { border-color: var(--accent); box-shadow: 0 0 0 .25cqw rgba(37,99,235,.12), 0 1cqw 2.4cqw -1cqw rgba(37,99,235,.35); }
+.node h3 { font-size: 1.15cqw; font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: .6cqw; margin-bottom: .6cqw; }
+.tag { font: 500 .78cqw/1 var(--mono); text-transform: uppercase; letter-spacing: .04em; border-radius: .35cqw; padding: .35cqw .45cqw; white-space: nowrap; }
+.tag.in { color: var(--metric); background: #ecfeff; } .tag.tr { color: var(--trace); background: #f5f3ff; }
+.tag.nl { color: var(--brief); background: #fff7ed; } .tag.ck { color: var(--accent); background: var(--accent-soft); }
+.tag.ai { color: var(--fg); background: var(--muted-bg); } .tag.out { color: var(--good); background: var(--good-soft); }
+.rows { display: grid; grid-template-columns: 1fr auto; gap: .25cqw 1cqw; font-size: .98cqw; }
+.rows span:nth-child(odd) { color: var(--muted); }
+.rows span:nth-child(even) { font-family: var(--mono); text-align: right; transition: color .3s, background .3s; border-radius: .3cqw; padding: 0 .3cqw; }
+.rows span.hot { color: var(--fg); background: #fef9c3; }
+.brief-text { font-size: 1.15cqw; line-height: 1.45; min-height: 5cqw; }
+.caret::after { content: "▍"; color: var(--brief); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+.stage-row { display: flex; align-items: center; gap: .6cqw; padding: .45cqw .6cqw; border-radius: .6cqw; font: 500 .98cqw var(--mono); color: var(--faint); transition: all .3s; }
+.stage-row i { width: .6cqw; height: .6cqw; border-radius: 50%; background: var(--border-strong); flex: none; }
+.stage-row.run { color: var(--fg); background: var(--accent-soft); } .stage-row.run i { background: var(--accent); animation: ping 1.1s infinite; }
+.stage-row.ok { color: var(--fg-2); } .stage-row.ok i { background: var(--good); }
+.stage-row b { margin-left: auto; font-weight: 500; color: var(--muted); }
+@keyframes ping { 0% { box-shadow: 0 0 0 0 rgba(37,99,235,.45); } 100% { box-shadow: 0 0 0 .7cqw rgba(37,99,235,0); } }
+.json { margin-top: .6cqw; font: .92cqw/1.5 var(--mono); color: var(--fg-2); background: var(--subtle); border: 1px solid var(--border); border-radius: .6cqw; padding: .6cqw .7cqw; min-height: 6.2cqw; white-space: pre-wrap; }
+.json .k { color: var(--accent); } .json .s { color: var(--good); }
+
+.gates { display: flex; flex-direction: column; gap: .2cqw; }
+.gate { display: grid; grid-template-columns: 1.3cqw 1fr auto; gap: .5cqw; align-items: center; font-size: .85cqw; padding: .15cqw .4cqw; border-radius: .45cqw; border: 1px solid var(--border); background: var(--subtle); transition: all .3s; }
+.gate .ic { width: 1.2cqw; height: 1.2cqw; border-radius: 50%; display: grid; place-items: center; font-size: .75cqw; color: #fff; background: var(--border-strong); transition: background .3s; }
+.gate .v { font-family: var(--mono); color: var(--muted); }
+.gate.pass .ic { background: var(--good); } .gate.fail { background: var(--bad-soft); border-color: #fecaca; } .gate.fail .ic { background: var(--bad); }
+.verdict { margin-top: .35cqw; font: 600 .95cqw var(--mono); text-align: center; padding: .25cqw; border-radius: .5cqw; background: var(--muted-bg); color: var(--muted); transition: all .3s; }
+.verdict.best { background: var(--accent); color: #fff; } .verdict.rej { background: var(--bad); color: #fff; } .verdict.win { background: var(--good); color: #fff; }
+
+.sim-out { display: flex; gap: 1.2cqw; margin-top: .3cqw; }
+.sim-out div { display: flex; flex-direction: column; } .sim-out small { color: var(--muted); font-size: .85cqw; }
+.sim-out b { font: 600 1.25cqw var(--mono); letter-spacing: -.03em; white-space: nowrap; }
+
+.feedback { font: .95cqw/1.5 var(--mono); color: var(--fg-2); min-height: 9cqw; }
+.feedback .who { display: block; font-family: var(--font); color: var(--reason); font-weight: 600; font-size: .9cqw; margin-bottom: .3cqw; }
+.iter-label { font: 500 .9cqw var(--mono); color: var(--muted); }
+.iter-name { font-weight: 600; font-size: 1.1cqw; margin: .2cqw 0 .4cqw; min-height: 1.5cqw; }
+
+.chip svg, .chart svg { display: block; width: 100%; height: auto; }
+.chip rect.blk { transition: x .7s var(--ease), y .7s var(--ease), width .7s var(--ease), height .7s var(--ease), opacity .5s, stroke .3s; }
+.chip line { transition: opacity .5s; }
+.chip .changed { stroke: #f97316 !important; stroke-width: 2.4 !important; }
+
+.wire { fill: none; stroke: var(--border-strong); stroke-width: 1.4; stroke-dasharray: 4 5; animation: flow 1.4s linear infinite; }
+.wire.metric { stroke: #a5f3fc; } .wire.trace { stroke: #ddd6fe; } .wire.brief { stroke: #fed7aa; } .wire.reason { stroke: #fbcfe8; stroke-width: 2; }
+.wire.main { stroke: #bfdbfe; }
+@keyframes flow { to { stroke-dashoffset: -18; } }
+.wire-label { font: 500 10px var(--mono); fill: var(--muted); }
+.dot { filter: drop-shadow(0 0 4px currentColor); }
+
+.controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.controls button { font: 500 13px var(--font); border: 1px solid var(--border); background: var(--bg); border-radius: 8px; padding: 6px 12px; cursor: pointer; color: var(--fg); }
+.controls button:hover { border-color: var(--border-strong); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; }
+.legend span::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: var(--c); box-shadow: 0 0 6px var(--c); }
+
+/* ---------- sentence to chip ---------- */
+.pipeline { margin-top: 24px; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; position: relative; }
+.rep { border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--bg); display: flex; flex-direction: column; gap: 8px; min-height: 210px; transition: all .4s var(--ease); position: relative; }
+.rep.on { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.1), 0 12px 28px -14px rgba(37,99,235,.4); transform: translateY(-3px); }
+.rep .n { font: 500 11px var(--mono); color: var(--muted); }
+.rep h3 { font-size: 14px; font-weight: 600; }
+.rep .who { font-size: 11px; font-weight: 500; }
+.rep .who.model { color: var(--fg); } .rep .who.code { color: var(--accent); } .rep .who.chip { color: var(--metric); }
+.rep pre { margin: 0; font: 11px/1.45 var(--mono); color: var(--fg-2); background: var(--subtle); border-radius: 8px; padding: 8px; white-space: pre-wrap; word-break: break-word; flex: 1; }
+.rep:not(:last-child)::after { content: "→"; position: absolute; right: -10px; top: 50%; transform: translate(50%, -50%); color: var(--faint); z-index: 1; background: var(--bg); }
+.rep svg { width: 100%; height: auto; }
+
+/* ---------- not an if-else ---------- */
+.versus { margin-top: 24px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.panel { border: 1px solid var(--border); border-radius: 14px; padding: 18px; background: var(--bg); display: flex; flex-direction: column; gap: 14px; }
+.panel h3 { font-size: 16px; font-weight: 600; }
+.panel code, .panel pre { font: 12.5px/1.6 var(--mono); }
+.panel pre { margin: 0; background: #0b0b0d; color: #e4e4e7; border-radius: 10px; padding: 12px 14px; }
+.panel pre .c { color: #71717a; } .panel pre .k { color: #93c5fd; }
+.bars { display: flex; flex-direction: column; gap: 10px; }
+.bar { display: grid; grid-template-columns: 150px 1fr 90px; gap: 10px; align-items: center; font-size: 13px; }
+.bar .track { height: 12px; border-radius: 6px; background: var(--muted-bg); position: relative; overflow: hidden; }
+.bar .fill { position: absolute; inset: 0 auto 0 0; border-radius: 6px; width: 0; transition: width 1.6s var(--ease); }
+.bar .val { font: 600 13px var(--mono); text-align: right; }
+.bar .base { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--fg); }
+.note { font-size: 12.5px; color: var(--muted); }
+.graph svg { width: 100%; height: auto; display: block; }
+.graph .gn rect { fill: #fff; stroke: var(--border-strong); transition: all .35s; }
+.graph .gn text { font: 500 11px var(--font); fill: var(--fg-2); }
+.graph .gn.lit rect { stroke: var(--accent); fill: var(--accent-soft); }
+.graph .gn.src rect { stroke: #f97316; fill: #fff7ed; }
+.graph .gn.warn rect { stroke: var(--bad); fill: var(--bad-soft); }
+.graph .ge { stroke: var(--border); stroke-width: 1.3; transition: stroke .35s, stroke-width .35s; }
+.graph .ge.lit { stroke: var(--accent); stroke-width: 2.2; }
+.caption { font-size: 13px; color: var(--fg-2); min-height: 40px; }
+.facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+.fact { border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+.fact b { display: block; font: 600 22px var(--mono); letter-spacing: -.03em; }
+.fact span { font-size: 12.5px; color: var(--muted); }
+.honest { margin-top: 18px; font-size: 13px; color: var(--muted); border-left: 3px solid var(--border-strong); padding-left: 12px; max-width: 900px; }
+
+@media (max-width: 900px) {
+  .pipeline { grid-template-columns: 1fr 1fr; } .rep::after { display: none; }
+  .versus, .facts { grid-template-columns: 1fr; }
+  .stage-wrap { overflow-x: auto; } .stage { min-width: 900px; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="top"><a class="brand" href="/"><i></i>Chip Builder</a><span>NYU × Annapurna Labs · Hack the Chip</span></div>
+
+  <span class="eyebrow">How it works</span>
+  <h1>A sentence in, a checked chip design out, with live Trainium metrics closing the loop.</h1>
+  <p class="lede">gpt-oss-20b, served on one Trainium2 seat, designs an accelerator for the workload it is serving. A checker built from that chip's own vLLM and Neuron trace measurements grades every attempt, and the grade plus the reason become the next prompt.</p>
+
+  <!-- ===================== 1. control loop ===================== -->
+  <section>
+    <span class="eyebrow">01 · The control loop</span>
+    <h2>Measurements → checker → agent → design → checker → …</h2>
+    <p class="sub">Replay of a real <b>Cost-down</b> run on seat-32 (shrink the die without hurting latency or throughput). Areas, rejections and final numbers are from the run; prompts and feedback are abridged.</p>
+
+    <div class="stage-wrap">
+      <div class="stage" id="stage">
+        <svg class="wires" viewBox="0 0 1200 720" aria-hidden="true">
+          <path id="p-brief" class="wire brief" d="M300 90 C 470 90, 500 70, 660 70"/>
+          <path id="p-vllm" class="wire metric" d="M300 270 C 335 270, 335 245, 370 245"/>
+          <path id="p-trace" class="wire trace" d="M300 500 C 340 500, 330 290, 370 290"/>
+          <path id="p-signals" class="wire metric" d="M590 225 C 625 225, 620 160, 660 160"/>
+          <path id="p-cal-sim" class="wire main" d="M480 330 L 480 370"/>
+          <path id="p-agent-chip" class="wire main" d="M785 345 L 785 385"/>
+          <path id="p-chip-sim" class="wire main" d="M660 520 C 620 520, 640 420, 590 420"/>
+          <path id="p-sim-gates" class="wire main" d="M480 475 L 480 500"/>
+          <path id="p-gates-log" class="wire main" d="M590 545 C 760 545, 830 140, 960 140"/>
+          <path id="p-gates-fb" class="wire reason" d="M590 610 C 800 620, 850 360, 960 360"/>
+          <path id="p-fb-agent" class="wire reason" d="M960 330 C 930 330, 940 240, 910 240"/>
+          <text class="wire-label" x="440" y="62">natural-language brief</text>
+          <text class="wire-label" x="600" y="150">signals</text>
+          <text class="wire-label" x="860" y="636">verdict + reason → next prompt</text>
+          <g id="dots"></g>
+        </svg>
+
+        <!-- inputs -->
+        <div class="node" id="n-brief" style="left:1.67%;top:2.78%;width:23.3%;height:18%">
+          <h3>Design brief <span class="tag nl">natural language</span></h3>
+          <p class="brief-text" id="brief"></p>
+        </div>
+        <div class="node" id="n-vllm" style="left:1.67%;top:24.5%;width:23.3%;height:27%">
+          <h3>vLLM · Prometheus <span class="tag in">measured</span></h3>
+          <div class="rows" id="vllm-rows">
+            <span>TTFT p50 / p99</span><span>688 ms / 7.40 s</span>
+            <span>Prefill (end to end)</span><span>348 ms</span>
+            <span>Per output token</span><span>33 ms</span>
+            <span>Tokens in / out</span><span>317 / 160</span>
+            <span>Model weights</span><span>47.4 GB</span>
+            <span>Replay</span><span>8 streamed requests</span>
+          </div>
+        </div>
+        <div class="node" id="n-trace" style="left:1.67%;top:55%;width:23.3%;height:30%">
+          <h3>Neuron system trace <span class="tag tr">measured</span></h3>
+          <div class="rows" id="trace-rows">
+            <span>NeuronCores busy</span><span>99.7%</span>
+            <span>Prefill on device</span><span>244 ms</span>
+            <span>Decode step on device</span><span>35.6 ms</span>
+            <span>Collectives</span><span>1.3% of exec</span>
+            <span>HBM in use</span><span>49.7 GB</span>
+            <span>neuron-monitor</span><span>25% avg util</span>
+          </div>
+        </div>
+
+        <!-- checker -->
+        <div class="node" id="n-cal" style="left:30.8%;top:24%;width:18.3%;height:22.4%">
+          <h3>Calibrate <span class="tag ck">host + device</span></h3>
+          <div class="rows" id="cal-rows">
+            <span>Prefill</span><span>—</span>
+            <span>Decode</span><span>—</span>
+            <span>Memory</span><span>—</span>
+            <span>Matches vLLM</span><span>—</span>
+          </div>
+        </div>
+        <div class="node" id="n-sim" style="left:30.8%;top:51.4%;width:18.3%;height:14.6%">
+          <h3>Simulator <span class="tag ck">checker</span></h3>
+          <div class="sim-out"><div><small>die area</small><b id="sim-area">457</b></div><div><small>p99 TTFT</small><b id="sim-p99">17.4 s</b></div><div><small>tok/s</small><b id="sim-tps">68.5</b></div></div>
+        </div>
+        <div class="node" id="n-gates" style="left:30.8%;top:68.6%;width:18.3%;height:30.4%">
+          <h3>Gates <span class="tag ck">checker</span></h3>
+          <div class="gates" id="gates"></div>
+          <div class="verdict" id="verdict">waiting</div>
+        </div>
+
+        <!-- agent -->
+        <div class="node" id="n-agent" style="left:55%;top:2.78%;width:20.8%;height:45%">
+          <h3>gpt-oss-20b on the seat <span class="tag ai">agent</span></h3>
+          <div class="iter-label" id="iter-label">Round —</div>
+          <div class="iter-name" id="iter-name"></div>
+          <div class="stage-row" data-s="plan"><i></i>plan<b></b></div>
+          <div class="stage-row" data-s="floorplan"><i></i>floorplan<b></b></div>
+          <div class="stage-row" data-s="wiring"><i></i>wiring<b></b></div>
+          <div class="json" id="json"></div>
+        </div>
+        <div class="node chip" id="n-chip" style="left:55%;top:53.5%;width:20.8%;height:44.5%">
+          <h3>Proposed chip <span class="tag out">design</span></h3>
+          <svg id="chip" viewBox="0 0 320 250"></svg>
+        </div>
+
+        <!-- outputs -->
+        <div class="node chart" id="n-log" style="left:80%;top:2.78%;width:18.3%;height:36%">
+          <h3>Attempt log <span class="tag out">output</span></h3>
+          <svg id="chart" viewBox="0 0 220 170"></svg>
+        </div>
+        <div class="node" id="n-fb" style="left:80%;top:42%;width:18.3%;height:27%">
+          <h3>Checker → model <span class="tag ck">reason</span></h3>
+          <p class="feedback" id="feedback"></p>
+        </div>
+        <div class="node" id="n-result" style="left:80%;top:72.5%;width:18.3%;height:25.5%">
+          <h3>Result <span class="tag out">output</span></h3>
+          <div class="rows" id="result-rows">
+            <span>Die area</span><span>457 mm²</span>
+            <span>p99 TTFT</span><span>17.4 s</span>
+            <span>Throughput</span><span>68.5 tok/s</span>
+            <span>Power</span><span>387 W</span>
+          </div>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="legend">
+          <span style="--c:var(--brief)">natural language</span><span style="--c:var(--metric)">vLLM metrics</span>
+          <span style="--c:var(--trace)">system trace</span><span style="--c:var(--accent)">design / simulation</span><span style="--c:var(--reason)">checker reason</span>
+        </div>
+        <div><span id="phase">starting…</span> &nbsp; <button id="replay" type="button">Replay</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 2. sentence to chip ===================== -->
+  <section>
+    <span class="eyebrow">02 · From a sentence to a chip</span>
+    <h2>Seven representations, each checked before the next</h2>
+    <p class="sub">The model only ever does the parts that need judgement (what to change, where blocks go, how to wire them). Code turns each answer into exact geometry and numbers, and the checker turns numbers back into language the model can act on.</p>
+    <div class="pipeline" id="pipeline">
+      <div class="rep"><span class="n">1 · text</span><h3>Brief</h3><span class="who">you</span><pre>"Minimize die area while keeping p99 TTFT and throughput at least as good as today."</pre></div>
+      <div class="rep"><span class="n">2 · JSON</span><h3>Plan</h3><span class="who model">model</span><pre>{"name": "Trim compute, memory, DMA",
+ "targets": {
+  "compute_cores": 2,
+  "peak_compute_tflops": 1000,
+  "sbuf_gb": 8,
+  "hbm_gb": 56}}</pre></div>
+      <div class="rep"><span class="n">3 · JSON</span><h3>Regions</h3><span class="who model">model</span><pre>{"regions": {
+  "hbm-0": "left",
+  "hbm-1": "right",
+  "hbm-2": "top",
+  "compute-0": "center",
+  "sbuf-0": "top",
+  "dma-0": "bottom"}}</pre></div>
+      <div class="rep"><span class="n">4 · graph</span><h3>Wiring</h3><span class="who model">model</span><pre>{"links": [
+ ["hbm-0","noc-0",1.33],
+ ["hbm-1","noc-0",1.33],
+ ["hbm-2","noc-0",1.33],
+ ["noc-0","compute-0",4.0]]}
+max-flow ≥ 90% of HBM ✓</pre></div>
+      <div class="rep"><span class="n">5 · geometry</span><h3>Chip graph</h3><span class="who code">code</span><svg viewBox="0 0 120 120" id="mini-chip"></svg></div>
+      <div class="rep"><span class="n">6 · numbers</span><h3>Simulation</h3><span class="who chip">calibrated checker</span><pre>area      294 mm²
+p99 TTFT  15.2 s
+tok/s     69.7
+power     186 W
+decode    memory-bound
+6/6 gates pass</pre></div>
+      <div class="rep"><span class="n">7 · text</span><h3>Reason</h3><span class="who chip">checker</span><pre>"All gates pass; die area
+improves. Decode is memory-
+bound: compute cores are
+slack and can be cut.
+HBM must hold weights + KV:
+hbm_gb ≥ 56."</pre></div>
+    </div>
+  </section>
+
+  <!-- ===================== 3. not an if-else ===================== -->
+  <section>
+    <span class="eyebrow">03 · Why not an if-else?</span>
+    <h2>A rule knows the direction. The loop finds the trade.</h2>
+    <p class="sub">The obvious rule is already inside the checker, as its diagnosis. On its own it optimizes the wrong thing as soon as the objective or the budget changes.</p>
+    <div class="versus">
+      <div class="panel">
+        <h3>The rule</h3>
+<pre><span class="c"># "decode is memory-bound, so add bandwidth"</span>
+<span class="k">if</span> decode_bound == <span class="k">"memory"</span>:
+    hbm_bandwidth *= 1.2
+<span class="k">elif</span> prefill_bound == <span class="k">"compute"</span>:
+    tflops *= 1.2</pre>
+        <div class="bars" id="bars">
+          <div class="bar"><span>Latency advice on Cost-down</span><span class="track"><span class="fill" style="background:var(--bad)" data-w="98"></span><span class="base" style="left:70%"></span></span><span class="val bad" style="color:var(--bad)">640 mm²</span></div>
+          <div class="bar"><span>Checker-led loop</span><span class="track"><span class="fill" style="background:var(--good)" data-w="45"></span><span class="base" style="left:70%"></span></span><span class="val" style="color:var(--good)">294 mm²</span></div>
+          <div class="bar"><span>Fixed-rule proposer (chat)</span><span class="track"><span class="fill" style="background:var(--faint)" data-w="33"></span></span><span class="val">1 of 3 edits helped</span></div>
+        </div>
+        <p class="note">Black tick = today's 457 mm² die. Real runs on seat-32: following latency advice on a cost objective grew the die to 640 mm², while objective-aware checker feedback shrank it to 294 mm² with p99 TTFT and throughput no worse. The repo's deterministic rule-based proposer (<code>ACCELTWIN_MOCK_LLM=true</code>) applies fixed edits, ignores the checker's reason, and stalled after one useful edit.</p>
+      </div>
+      <div class="panel graph">
+        <h3>Every knob moves several limits at once</h3>
+        <svg id="graph" viewBox="0 0 560 330"></svg>
+        <p class="caption" id="graph-caption"></p>
+      </div>
+    </div>
+    <div class="facts">
+      <div class="fact"><b>11</b><span>architecture knobs per design (cores, clusters, TFLOPS, HBM GB / TB/s / stacks, SRAM, DMA, utilization, power, cooling)</span></div>
+      <div class="fact"><b>5<sup style="font-size:12px">blocks</sup></b><span>region choices per block, plus a wiring graph whose max-flow decides usable bandwidth</span></div>
+      <div class="fact"><b>6</b><span>hard gates that interact (throughput, memory fit, power, temperature, area, layout) under 5 different objectives</span></div>
+      <div class="fact"><b>1 sentence</b><span>is all the user gives: the model turns it into a plan, the checker turns results back into the next instruction</span></div>
+    </div>
+    <p class="honest">Honest scope: this is architecture exploration in a simulator calibrated to the live chip, not a measurement of new silicon. One run per scenario so far, so no spread is reported yet. Rankings between designs are more trustworthy than absolute milliseconds.</p>
+  </section>
+</main>
+
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const SVGNS = 'http://www.w3.org/2000/svg';
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const sleep = (ms) => new Promise((r) => setTimeout(r, reduced ? 0 : ms));
+let token = 0;   // bumps on replay so stale timelines stop
+const alive = (t) => t === token;
+function svgEl(tag, attrs = {}, text) {
+  const n = document.createElementNS(SVGNS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  if (text !== undefined) n.textContent = text;
+  return n;
+}
+
+// ---------- moving dots along wires ----------
+function dot(pathId, color, ms = 1100, label) {
+  if (reduced) return Promise.resolve();
+  const path = $(pathId);
+  const len = path.getTotalLength();
+  const g = svgEl('g', { class: 'dot', style: `color:${color}` });
+  const c = svgEl('circle', { r: 5.5, fill: color });
+  g.append(c);
+  let text;
+  if (label) { text = svgEl('text', { 'font-size': 10, 'font-family': 'Geist Mono, monospace', fill: color, dx: 9, dy: -7 }, label); g.append(text); }
+  $('dots').append(g);
+  const start = performance.now();
+  return new Promise((resolve) => {
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / ms);
+      const e = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      const p = path.getPointAtLength(e * len);
+      g.setAttribute('transform', `translate(${p.x} ${p.y})`);
+      if (t < 1) requestAnimationFrame(step); else { g.remove(); resolve(); }
+    };
+    requestAnimationFrame(step);
+  });
+}
+const burst = (pathId, color, n = 3, gap = 180, ms = 1100, labels = []) =>
+  Promise.all(Array.from({ length: n }, (_, i) => sleep(i * gap).then(() => dot(pathId, color, ms, labels[i]))));
+
+function on(id, value = true) { $(id).classList.toggle('on', value); }
+async function type(el, text, speed = 16, t) {
+  el.classList.add('caret');
+  el.textContent = '';
+  for (const ch of text) { if (t !== undefined && !alive(t)) return; el.textContent += ch; if (!reduced) await sleep(speed); }
+  el.classList.remove('caret');
+}
+function flash(rowsId, index) {
+  const cells = $(rowsId).querySelectorAll('span:nth-child(even)');
+  cells.forEach((c, i) => c.classList.toggle('hot', i === index));
+}
+function setRows(rowsId, values) {
+  const cells = $(rowsId).querySelectorAll('span:nth-child(even)');
+  values.forEach((v, i) => { if (v !== undefined) cells[i].textContent = v; });
+}
+
+// ---------- the chip diagram, packed from region counts ----------
+function packChip(d) {
+  // d: {clusters, hbm: [regions], sram, dma}
+  const W = 320, H = 250, m = 8, side = 46, edge = 34, gap = 6;
+  const used = new Set(d.hbm);
+  const x0 = m + (used.has('left') ? side + gap : 0), x1 = W - m - (used.has('right') ? side + gap : 0);
+  const y0 = m + edge + gap, y1 = H - m - edge - gap;
+  const boxes = {};
+  for (const reg of ['left', 'right']) {
+    const ids = d.hbm.map((r, i) => (r === reg ? `hbm-${i}` : null)).filter(Boolean);
+    const h = (y1 - y0 - gap * (ids.length - 1)) / Math.max(ids.length, 1);
+    ids.forEach((id, i) => { boxes[id] = [reg === 'left' ? m : W - m - side, y0 + i * (h + gap), side, h]; });
+  }
+  const top = [...d.hbm.map((r, i) => (r === 'top' ? `hbm-${i}` : null)).filter(Boolean), 'sbuf-0'];
+  const tw = (x1 - x0 - gap * (top.length - 1)) / top.length;
+  top.forEach((id, i) => { boxes[id] = [x0 + i * (tw + gap), m, tw, edge]; });
+  const dw = (x1 - x0 - gap * (d.dma - 1)) / d.dma;
+  for (let i = 0; i < d.dma; i++) boxes[`dma-${i}`] = [x0 + i * (dw + gap), H - m - edge, dw, edge];
+  const cols = Math.ceil(Math.sqrt(d.clusters)), rows = Math.ceil(d.clusters / cols);
+  const cw = (x1 - x0 - gap * (cols - 1)) / cols, ch = (y1 - y0 - gap * (rows - 1)) / rows;
+  for (let i = 0; i < d.clusters; i++) boxes[`compute-${i}`] = [x0 + (i % cols) * (cw + gap), y0 + Math.floor(i / cols) * (ch + gap), cw, ch];
+  return boxes;
+}
+const STYLE = { compute: ['var(--compute-fill)', 'var(--compute-stroke)', 'Compute'], hbm: ['var(--hbm-fill)', 'var(--hbm-stroke)', 'HBM'],
+  sbuf: ['var(--sbuf-fill)', 'var(--sbuf-stroke)', 'SRAM'], dma: ['var(--dma-fill)', 'var(--dma-stroke)', 'DMA'] };
+function drawChip(svg, d, changed = [], faded = false) {
+  const boxes = packChip(d);
+  const existing = Object.fromEntries([...svg.querySelectorAll('g[data-id]')].map((g) => [g.dataset.id, g]));
+  if (!svg.querySelector('.die')) svg.append(svgEl('rect', { class: 'die', x: 1, y: 1, width: 318, height: 248, rx: 12, fill: '#fff', stroke: '#e4e4e7' }));
+  svg.querySelectorAll('line').forEach((l) => l.remove());
+  const center = [160, 125];
+  for (const [id, [x, y, w, h]] of Object.entries(boxes)) {
+    const kind = id.split('-')[0];
+    const [fill, stroke, name] = STYLE[kind];
+    let g = existing[id];
+    if (!g) {
+      g = svgEl('g', { 'data-id': id });
+      g.append(svgEl('rect', { class: 'blk', x: x + w / 2, y: y + h / 2, width: 0, height: 0, rx: 5, fill, stroke, 'stroke-width': 1.2 }));
+      g.append(svgEl('text', { 'text-anchor': 'middle', 'font-family': 'Geist, sans-serif', 'font-weight': 600, fill: '#18181b' }));
+      svg.append(g);
+    }
+    delete existing[id];
+    const r = g.querySelector('rect');
+    requestAnimationFrame(() => { r.setAttribute('x', x); r.setAttribute('y', y); r.setAttribute('width', w); r.setAttribute('height', h); });
+    r.classList.toggle('changed', changed.includes(kind));
+    r.style.opacity = faded ? .45 : 1;
+    const t = g.querySelector('text');
+    const label = kind === 'sbuf' ? `SRAM ${d.sram} GB` : kind === 'compute' ? `${name} ${Number(id.split('-')[1]) + 1}` : kind === 'hbm' ? 'HBM' : 'DMA';
+    t.textContent = label;
+    t.setAttribute('x', x + w / 2); t.setAttribute('y', y + h / 2 + 4); t.setAttribute('font-size', Math.max(7, Math.min(12, w / 6, h / 2.5)));
+    t.style.opacity = faded ? .45 : 1;
+    if (kind !== 'compute') svg.insertBefore(svgEl('line', { x1: x + w / 2, y1: y + h / 2, x2: center[0], y2: center[1], stroke: '#a1a1aa', 'stroke-width': kind === 'hbm' ? 2 : 1, opacity: .45 }), svg.children[1]);
+  }
+  for (const g of Object.values(existing)) g.remove();
+}
+
+// ---------- attempt log chart ----------
+const CHART = { x0: 30, x1: 210, y0: 14, y1: 150, lo: 260, hi: 480 };
+const cx = (i) => CHART.x0 + (i / 5) * (CHART.x1 - CHART.x0);
+const cy = (v) => CHART.y0 + (1 - (v - CHART.lo) / (CHART.hi - CHART.lo)) * (CHART.y1 - CHART.y0);
+function resetChart() {
+  const s = $('chart');
+  s.replaceChildren();
+  for (const v of [300, 400]) {
+    s.append(svgEl('line', { x1: CHART.x0, x2: CHART.x1, y1: cy(v), y2: cy(v), stroke: '#f4f4f5' }));
+    s.append(svgEl('text', { x: CHART.x0 - 4, y: cy(v) + 3, 'text-anchor': 'end', 'font-size': 8, fill: '#a1a1aa', 'font-family': 'Geist Mono' }, v));
+  }
+  for (let i = 0; i <= 5; i++) s.append(svgEl('text', { x: cx(i), y: 166, 'text-anchor': 'middle', 'font-size': 8, fill: '#a1a1aa', 'font-family': 'Geist Mono' }, i ? `#${i}` : 'today'));
+  s.append(svgEl('text', { x: CHART.x1, y: 9, 'text-anchor': 'end', 'font-size': 8, fill: '#71717a', 'font-family': 'Geist' }, 'die area, mm² (lower is better)'));
+  s.append(svgEl('line', { x1: CHART.x0, x2: CHART.x1, y1: cy(457), y2: cy(457), stroke: '#d4d4d8', 'stroke-dasharray': '3 3' }));
+  s.append(svgEl('circle', { cx: cx(0), cy: cy(457), r: 3.5, fill: '#71717a' }));
+  s.append(svgEl('path', { id: 'best-line', d: `M${cx(0)} ${cy(457)}`, fill: 'none', stroke: 'var(--accent)', 'stroke-width': 2 }));
+}
+let bestArea = 457;
+function plot(i, area, kind) {
+  const s = $('chart');
+  if (kind === 'rej') {
+    s.append(svgEl('text', { x: cx(i), y: cy(bestArea) + 4, 'text-anchor': 'middle', 'font-size': 12, fill: 'var(--bad)', 'font-weight': 700 }, '✕'));
+  } else if (kind === 'dup') {
+    s.append(svgEl('text', { x: cx(i), y: cy(bestArea) + 3, 'text-anchor': 'middle', 'font-size': 8, fill: '#a1a1aa', 'font-family': 'Geist Mono' }, 'dup'));
+  } else {
+    const line = $('best-line');
+    line.setAttribute('d', `${line.getAttribute('d')} H${cx(i)} V${cy(area)}`);
+    bestArea = area;
+    s.append(svgEl('circle', { cx: cx(i), cy: cy(area), r: kind === 'win' ? 5.5 : 3.5, fill: kind === 'win' ? 'var(--good)' : 'var(--accent)' }));
+    s.append(svgEl('text', { x: cx(i), y: cy(area) - 8, 'text-anchor': 'middle', 'font-size': 8, fill: 'var(--fg-2)', 'font-family': 'Geist Mono' }, area));
+  }
+}
+
+// ---------- gates ----------
+const GATES = [['Throughput ≥ 68.5 tok/s', 'tput'], ['p99 TTFT ≤ 17.4 s', 'p99'], ['Memory fits HBM', 'mem'], ['Power ≤ 600 W', 'pow'], ['Temperature ≤ 85 °C', 'temp'], ['Area ≤ 650 mm²', 'area']];
+function resetGates() {
+  $('gates').replaceChildren(...GATES.map(([label, key]) => {
+    const row = document.createElement('div');
+    row.className = 'gate'; row.dataset.k = key;
+    row.innerHTML = `<span class="ic"></span><span>${label}</span><span class="v"></span>`;
+    return row;
+  }));
+  $('verdict').className = 'verdict'; $('verdict').textContent = 'waiting';
+}
+async function runGates(values, fail, t) {
+  for (const row of $('gates').children) {
+    if (!alive(t)) return;
+    const k = row.dataset.k;
+    const bad = fail === k;
+    row.className = `gate ${bad ? 'fail' : 'pass'}`;
+    row.querySelector('.ic').textContent = bad ? '✕' : '✓';
+    row.querySelector('.v').textContent = values[k] || '';
+    await sleep(220);
+  }
+}
+
+// ---------- the real cost-down run (seat-32) ----------
+const BASE = { clusters: 4, hbm: ['left', 'right'], sram: 24, dma: 4 };
+const ROUNDS = [
+  { name: 'Reduce compute cores', design: { clusters: 2, hbm: ['left', 'right'], sram: 24, dma: 4 }, changed: ['compute'],
+    plan: '{"compute_cores": 2,\n "compute_clusters": 2}', area: 373, kind: 'best',
+    sim: { area: '373', p99: '≤ 17.4 s', tps: '≥ 68.5' },
+    gates: { tput: 'pass', p99: 'pass', mem: '55.7 GB', pow: 'pass', temp: 'pass', area: '373' },
+    reason: 'All gates pass; die area improves (−18.4%). Decode is memory-bound: compute cores and TFLOPS are slack and can be cut to save area.' },
+  { name: 'Shrink memory and DMA', design: { clusters: 2, hbm: ['left', 'right'], sram: 8, dma: 1 }, changed: ['sbuf', 'dma'],
+    plan: '{"sbuf_gb": 8,\n "dma_engines": 1}', area: null, kind: 'rej', fail: 'tput',
+    sim: { area: '—', p99: '—', tps: '67.8' },
+    gates: { tput: '67.8', p99: '', mem: '', pow: '', temp: '', area: '' },
+    reason: 'Hard gate failure: throughput 67.8 < 68.5 tok/s. Next round: increase the active compute or memory-bandwidth path; decode is memory-bound.' },
+  { name: 'Increase HBM bandwidth and DMA', design: { clusters: 2, hbm: ['left', 'right', 'top'], sram: 24, dma: 2 }, changed: ['hbm', 'dma'],
+    plan: '{"hbm_stacks": 3,\n "hbm_bandwidth_tb_s": 4.0,\n "dma_engines": 2}', area: 366, kind: 'best',
+    sim: { area: '366', p99: '≤ 17.4 s', tps: '≥ 68.5' },
+    gates: { tput: 'pass', p99: 'pass', mem: 'fits', pow: 'pass', temp: 'pass', area: '366' },
+    reason: 'All gates pass; die area improves (−19.9%). HBM must still hold weights + KV cache: hbm_gb >= 56. Compute is still slack.' },
+  { name: 'Trim compute, memory, DMA', design: { clusters: 1, hbm: ['left', 'right', 'top'], sram: 8, dma: 1 }, changed: ['compute', 'sbuf', 'dma'],
+    plan: '{"compute_clusters": 1,\n "peak_compute_tflops": 1000,\n "sbuf_gb": 8, "hbm_gb": 56}', area: 294, kind: 'win',
+    sim: { area: '294', p99: '15.2 s', tps: '69.7' },
+    gates: { tput: '69.7', p99: '15.2 s', mem: '55.7 GB', pow: '186 W', temp: '38.9 °C', area: '294' },
+    reason: 'All gates pass: die 294 mm² (−35.7%), p99 15.2 s ≤ 17.4 s, 69.7 ≥ 68.5 tok/s. Round 5 repeated an earlier design, so the run stops.' },
+];
+
+function setStage(name, state, note = '') {
+  const row = document.querySelector(`.stage-row[data-s="${name}"]`);
+  row.className = `stage-row ${state}`;
+  row.querySelector('b').textContent = note;
+}
+function resetStages() { for (const s of ['plan', 'floorplan', 'wiring']) setStage(s, ''); }
+
+async function play() {
+  const t = ++token;
+  $('dots').replaceChildren();
+  bestArea = 457;
+  resetChart(); resetGates(); resetStages();
+  document.querySelectorAll('.node').forEach((n) => n.classList.remove('on'));
+  setRows('cal-rows', ['—', '—', '—', '—']);
+  setRows('result-rows', ['457 mm²', '17.4 s', '68.5 tok/s', '387 W']);
+  $('sim-area').textContent = '457'; $('sim-p99').textContent = '17.4 s'; $('sim-tps').textContent = '68.5';
+  $('feedback').textContent = ''; $('json').textContent = ''; $('iter-label').textContent = 'Round —'; $('iter-name').textContent = '';
+  drawChip($('chip'), BASE);
+  const phase = (s) => { $('phase').textContent = s; };
+
+  // 1. the brief, in plain language
+  phase('1 · the brief arrives as plain language');
+  on('n-brief');
+  await type($('brief'), 'Minimize die area while keeping p99 time-to-first-token and throughput at least as good as today.', 14, t);
+  if (!alive(t)) return;
+
+  // 2. measure the live chip
+  phase('2 · replaying requests on the live chip: vLLM and the Neuron trace report');
+  on('n-brief', false); on('n-vllm'); on('n-trace');
+  for (let i = 0; i < 6; i++) { flash('vllm-rows', i); flash('trace-rows', i); await sleep(260); if (!alive(t)) return; }
+  flash('vllm-rows', -1); flash('trace-rows', -1);
+
+  // 3. calibrate the checker from both sources
+  phase('3 · metrics flow into the checker and calibrate it');
+  on('n-cal');
+  await Promise.all([
+    burst('p-vllm', 'var(--metric)', 3, 220, 1000, ['348 ms', '33 ms/tok', '47.4 GB']),
+    burst('p-trace', 'var(--trace)', 3, 220, 1300, ['244 ms device', '99.7% busy', '49.7 GB']),
+  ]);
+  if (!alive(t)) return;
+  setRows('cal-rows', ['104 ms + ×14.3']); await sleep(250);
+  setRows('cal-rows', [undefined, '0 ms + ×1.9']); await sleep(250);
+  setRows('cal-rows', [undefined, undefined, '49.7 GB']); await sleep(250);
+  setRows('cal-rows', [undefined, undefined, undefined, '348 ms ✓']);
+  on('n-vllm', false); on('n-trace', false);
+  await dot('p-cal-sim', 'var(--accent)', 600);
+  on('n-sim'); await sleep(300);
+  on('n-cal', false); on('n-sim', false);
+
+  // 4. the loop
+  for (let r = 0; r < ROUNDS.length; r++) {
+    if (!alive(t)) return;
+    const R = ROUNDS[r];
+    phase(`4 · round ${r + 1}: the model designs, the checker grades`);
+    $('iter-label').textContent = `Round ${r + 1} of 5`;
+    $('iter-name').textContent = '';
+    resetStages(); resetGates();
+    on('n-agent');
+    await Promise.all([
+      dot('p-brief', 'var(--brief)', 1100, r === 0 ? 'brief' : undefined),
+      dot('p-signals', 'var(--metric)', 900, 'memory-bound'),
+      r > 0 ? dot('p-fb-agent', 'var(--reason)', 900, 'reason') : sleep(0),
+    ]);
+    if (!alive(t)) return;
+    setStage('plan', 'run', 'streaming…');
+    await type($('json'), R.plan, 12, t);
+    $('iter-name').textContent = R.name;
+    setStage('plan', 'ok', '✓');
+    setStage('floorplan', 'run', 'regions…'); await sleep(450);
+    setStage('floorplan', 'ok', '✓'); setStage('wiring', 'run', 'max-flow…'); await sleep(450);
+    setStage('wiring', 'ok', '✓');
+    on('n-agent', false); on('n-chip');
+    await dot('p-agent-chip', 'var(--accent)', 500);
+    drawChip($('chip'), R.design, R.changed, R.kind === 'rej');
+    await sleep(800);
+    if (!alive(t)) return;
+    on('n-chip', false); on('n-sim');
+    await dot('p-chip-sim', 'var(--accent)', 800, 'chip graph');
+    $('sim-area').textContent = R.sim.area; $('sim-p99').textContent = R.sim.p99; $('sim-tps').textContent = R.sim.tps;
+    await sleep(350);
+    on('n-sim', false); on('n-gates');
+    await dot('p-sim-gates', 'var(--accent)', 400);
+    await runGates(R.gates, R.fail, t);
+    if (!alive(t)) return;
+    $('verdict').className = `verdict ${R.kind === 'rej' ? 'rej' : R.kind === 'win' ? 'win' : 'best'}`;
+    $('verdict').textContent = R.kind === 'rej' ? 'rejected' : R.kind === 'win' ? 'new best · winner' : 'new best';
+    on('n-log'); on('n-fb');
+    await Promise.all([dot('p-gates-log', 'var(--accent)', 1000, R.area ? `${R.area} mm²` : '✕'), dot('p-gates-fb', 'var(--reason)', 1100, 'why')]);
+    plot(r + 1, R.area, R.kind);
+    await type($('feedback'), R.reason, 9, t);
+    if (!alive(t)) return;
+    $('feedback').insertAdjacentHTML('afterbegin', '<span class="who">sent to the model as the next prompt</span>');
+    await sleep(900);
+    on('n-gates', false); on('n-log', false); on('n-fb', false);
+  }
+  if (!alive(t)) return;
+  plot(5, null, 'dup');
+  phase('5 · winner: today 457 mm² → 294 mm², latency and throughput no worse');
+  on('n-result');
+  setRows('result-rows', ['294 mm² (−36%)', '15.2 s (−13%)', '69.7 tok/s (+2%)', '186 W (−52%)']);
+  await sleep(6500);
+  if (alive(t)) play();
+}
+
+// ---------- section 2: sweep through the representations ----------
+async function sweepPipeline() {
+  const reps = [...$('pipeline').children];
+  drawChip($('mini-chip'), ROUNDS[3].design, []);
+  $('mini-chip').setAttribute('viewBox', '0 0 320 250');
+  for (;;) {
+    for (const rep of reps) {
+      reps.forEach((x) => x.classList.toggle('on', x === rep));
+      await sleep(1400);
+    }
+    if (reduced) return;
+  }
+}
+
+// ---------- section 3: knob coupling graph ----------
+const NODES = {
+  hbmbw: [20, 30, 'HBM bandwidth'], tflops: [20, 120, 'TFLOPS × util'], hbmgb: [20, 210, 'HBM capacity'], cores: [20, 290, 'Cores · SRAM · DMA'],
+  links: [215, 10, 'Link max-flow'], decode: [215, 80, 'Decode time'], prefill: [215, 150, 'Prefill time'], power: [215, 220, 'Power → throttle'], memfit: [215, 290, 'Memory fit'],
+  p99: [410, 60, 'p99 TTFT'], tps: [410, 140, 'Throughput'], area: [410, 220, 'Die area'], temp: [410, 290, 'Temperature'],
+};
+const EDGES = [['hbmbw', 'links'], ['links', 'decode'], ['hbmbw', 'decode'], ['hbmbw', 'area'], ['decode', 'p99'], ['decode', 'tps'],
+  ['tflops', 'prefill'], ['tflops', 'power'], ['power', 'decode'], ['power', 'prefill'], ['power', 'temp'], ['prefill', 'p99'],
+  ['hbmgb', 'memfit'], ['hbmgb', 'area'], ['cores', 'area'], ['cores', 'tflops'], ['cores', 'temp'], ['prefill', 'tps']];
+const STORIES = [
+  { src: 'hbmbw', path: ['links', 'decode', 'p99', 'tps', 'area'], warn: ['area'],
+    text: '+HBM bandwidth speeds decode only if the links can carry it (max-flow), and every stack costs die area: good for chat, wrong for cost-down.' },
+  { src: 'tflops', path: ['prefill', 'power', 'temp', 'decode'], warn: ['power'],
+    text: '+TFLOPS helps a compute-bound prefill, but raises power. Above the cap the chip throttles, which slows decode too.' },
+  { src: 'hbmgb', path: ['area', 'memfit'], warn: ['memfit'],
+    text: '−HBM capacity saves area until weights + KV no longer fit (47.4 GB of weights here), so the checker gives a floor: hbm_gb ≥ 56.' },
+  { src: 'cores', path: ['area', 'tflops', 'prefill', 'temp'], warn: [],
+    text: '−Cores saves the most area and is safe while decode is memory-bound. The checker says so; a fixed rule cannot know the objective.' },
+];
+function drawGraph() {
+  const s = $('graph');
+  for (const [a, b] of EDGES) {
+    const [ax, ay] = NODES[a], [bx, by] = NODES[b];
+    s.append(svgEl('line', { class: 'ge', 'data-a': a, 'data-b': b, x1: ax + 130, y1: ay + 15, x2: bx, y2: by + 15 }));
+  }
+  for (const [id, [x, y, label]] of Object.entries(NODES)) {
+    const g = svgEl('g', { class: 'gn', 'data-id': id });
+    g.append(svgEl('rect', { x, y, width: 130, height: 30, rx: 8 }));
+    g.append(svgEl('text', { x: x + 65, y: y + 19, 'text-anchor': 'middle' }, label));
+    s.append(g);
+  }
+}
+async function graphStories() {
+  const s = $('graph');
+  for (;;) {
+    for (const story of STORIES) {
+      s.querySelectorAll('.gn').forEach((g) => g.setAttribute('class', 'gn'));
+      s.querySelectorAll('.ge').forEach((e) => e.classList.remove('lit'));
+      s.querySelector(`.gn[data-id="${story.src}"]`).setAttribute('class', 'gn src');
+      $('graph-caption').textContent = story.text;
+      let frontier = [story.src];
+      for (const id of story.path) {
+        await sleep(450);
+        s.querySelectorAll('.ge').forEach((e) => { if (frontier.includes(e.dataset.a) && e.dataset.b === id) e.classList.add('lit'); });
+        s.querySelector(`.gn[data-id="${id}"]`).setAttribute('class', `gn ${story.warn.includes(id) ? 'warn' : 'lit'}`);
+        frontier.push(id);
+      }
+      await sleep(2600);
+      if (reduced) return;
+    }
+  }
+}
+
+// bars animate when scrolled into view
+new IntersectionObserver((entries, obs) => {
+  for (const e of entries) if (e.isIntersecting) { e.target.querySelectorAll('.fill').forEach((f) => { f.style.width = `${f.dataset.w}%`; }); obs.disconnect(); }
+}, { threshold: .4 }).observe($('bars'));
+
+$('replay').addEventListener('click', () => play());
+drawGraph();
+play();
+sweepPipeline();
+graphStories();
+</script>
+</body>
+</html>
