@@ -20,6 +20,8 @@ Every change is behind a flag, so each one can be switched on or off as a single
 | **Task as words.** The model first describes the NumPy reference in its own words. The prompt then gets that description instead of the code. No hand-written text. | `--spec words` (code) | Tests whether the reference code helps or anchors the model. |
 | **History.** Earlier failed attempts (code + error only, no model-written diagnosis, deduplicated, capped at 6000 characters) go into the repair prompt. | `--history N` (0) | Stops the model returning to code that already failed. Diagnoses were left out because a wrong diagnosis would mislead it. |
 | **Readable transcript.** Every run writes `<log>.txt` with the prompt, thinking, summary, each distinct reply and its feedback, for every round. | automatic | To see what the model actually saw and did. |
+| **Persona** (added after the first submission). One role sentence goes in front of every request: "You are a senior AWS Neuron kernel engineer with years of experience writing correct NKI kernels for Trainium." It adds no NKI facts, so any difference comes from the role framing alone. | `--persona` (off) | A common prompting trick; we test it as one variable. |
+| **Decompose** (added after the first submission). The model writes NumPy steps `stage_1..stage_n`. The harness runs them on CPU on every test shape and accepts the plan only if the last stage equals the reference; a rejection shows each stage's output shape. The kernel is then built one step at a time: step *k* is graded against `stage_k`, and a passing step's kernel is the starting point of the next. | `--decompose` (off), `--plan-think` (1), `--plan-tries` (3), `--stage-rounds` | Targets regressions: fixing one thing kept breaking another. See §5 for the design. |
 
 ## 2. The static checker
 
@@ -54,6 +56,39 @@ What it checks, and why:
 | `merge_tmix` | static check, 0.6–1.0 (replicates `merge_static`) | 0.30 after 4 of 6 rounds | `.ap` partition stride in rounds 1–3, bouncing between `[[1,32],[2,16],[2,16]]` and `[[2,16],[2,16],[1,32]]`. *(running at deadline)* |
 
 Time per round with `--plan-merge` and 4 thoughts was about 430–455 s. With 2 thoughts it was about 155 s. The seat is saturated: running 4 at once costs about as much as running them one after another.
+
+### After the first submission
+
+**Persona, level 1** (`persona`: `--plan-merge --persona`, static check on; compare with `merge_static`, `merge_tmix`, `merge_t10`). Best **0.50**, in rounds 2–3. Round by round:
+
+| Round | Best | What the code did |
+|---|---|---|
+| 0 | 0.30 | `reshape((C, H/p, p, W/p, p))`, then `nl.sum(..., axis=[2, 4], dst=...)`. The static check flagged `dst=`. |
+| 1 | 0.30 | The reduce-axis wall: "for a 5D tensor, expected axis=(3, 4)". |
+| 2 | **0.50** | Changed the reshape to `(C, H/p, W/p, p, p)` and summed `(3, 4)`. It runs, but a reshape only relabels the data, so it summed the wrong elements (98.7% wrong). **This is the same bug as `merge_multi`'s 0.50.** |
+| 3 | 0.50 | The feedback said only "most elements are wrong". The model changed the scale to `op0=nl.divide, operand0=1/(p*p)`, which multiplies by p², and the error grew from 5.6× to 64× the RMS. |
+| 4–5 | 0.30 | Diagnosed the layout correctly and switched to `.ap` to reorder the data (the reference's approach), but wrote the strides as `[[1,C],[1,H],[1,W],[p,H/p],[p,W/p]]`: the `.ap` stride-unit wall again. |
+
+Two lessons beyond persona itself:
+
+- **Both 0.50s came from the same wrong reshape.** It removes the error message but not the bug.
+- **"Most elements are wrong" is a verdict, not an instruction**, and the model guessed at the wrong line. An expected-vs-actual comparison on a small block would show that it averages the wrong elements.
+
+With one run, we do not credit the 0.50 to the persona: `merge_multi` reached 0.50 once without it, and that did not replicate.
+
+**Matmul levels 5–7** (`l5_merge`, `l6_merge`, `l7_merge`: `--plan-merge`, static check on, one run each). Same reference as level 4; the levels add stricter limits on HBM traffic.
+
+| Level | Best | Path |
+|---|---|---|
+| 5 (loads hoisted) | 0.62 in round 0 | Round 0 was a correct single-tile matmul: it passed K=M=128 and failed at 256 rows (no tiling). From round 1 on, every attempt to tile also broke the shape that had passed: 0.30 for 5 rounds. Off-by-one errors: `stationary[0]=127 != moving[0]=128`. |
+| 6 (M, N blocked) | 0.62 in round 0 | Same round 0, then 0.30. Stuck 3 rounds on `'module' object is not callable`, an error with no enrichment rule that names neither the line nor the module. |
+| 7 (M, N, K blocked) | 0.30 | Never passed the smallest shape. Element-count mismatches that flipped between rounds (`src=16384, dst=65536`, then `src=65536, dst=16384`), plus off-by-one bounds. |
+
+- **The matmul walls are index arithmetic, not API knowledge.** The errors are bounds, element counts and off-by-one, not invented names or misunderstood API semantics as on level 1.
+- **The best kernel came first and was never improved.** This is the regression pattern again and the strongest case for `--decompose`: on these levels "a single tile" is a step that already passes, and tiling is the next step.
+- None of these runs can pass level 7. Passing needs every shape correct *and* HBM traffic within 1.05× the floor, so "passing the static checker" there means only that the API was used correctly.
+
+**Still running when this was written:** `persona_l2` and `base_l2` (level 2, with and without `--persona`), and `dec_fast2` (`--decompose`, kernel rounds without thinking). The first `--decompose` run never produced a plan: three tries, the same `AxisError` each time. That led to the two changes in the table above: rejection feedback with every stage's output shape, and thinking on for the plan.
 
 ## 4. What we learned
 
@@ -106,7 +141,9 @@ A repair prompt is roughly 40% API card, 40% the current kernel and 20% feedback
 - **A value-kind check in the static checker** (tile vs number).
 - **Keep diversity through the merge:** one summary per thought, or break ties toward the sample whose error is *new*.
 - **More replications per configuration** before comparing scores.
-- **Decompose, then build in checked stages.** This targets the regressions we saw (fixing one thing broke another, as in `merge_multi` rounds 4–5 and `merge_history` round 3):
+- **Tile methods in the name checker.** `nl.reshape` gets "nothing similar exists" because only the `nl`, `nisa` and `nki` modules are searched; `reshape` and `ap` are methods of a tile and should be suggested as `tile.reshape(...)`.
+- **An enrichment rule for `'module' object is not callable`** that names the call and what it should be (level 6 stalled 3 rounds on it).
+- **Decompose, then build in checked stages** (now implemented as `--decompose`; first results in §3). This targets the regressions we saw (fixing one thing broke another, as in `merge_multi` rounds 4–5 and `merge_history` round 3):
   1. The model writes its plan as a short sequence of NumPy steps (e.g. load `x` → window sums `(C, H/p, W/p)` → divide by p²).
   2. The harness runs the steps on CPU and checks that together they equal the reference, so a wrong plan is rejected in milliseconds. No hand-written answers are needed.
   3. The kernel is built in stages. Stage *k* must reproduce the output of the model's own NumPy step *k* before stage *k+1* may extend it. A stage that passes is frozen, so later fixes cannot break it, and the feedback always names the one stage that fails.
