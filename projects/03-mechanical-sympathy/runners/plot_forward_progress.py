@@ -198,7 +198,7 @@ def main():
             va="bottom",
             color="#367550" if row["speed_record"] else "#666666",
         )
-    ax.set_xlim(-0.1, max(len(experiments) - 1, x[-1]) + 1.3)
+    ax.set_xlim(-0.1, max(len(experiments) - 1, x[-1]) + 1.6)
     spread = max(max(y) - min(y), max(y) * 0.12)
     observed = [r[metric_key] for r in rows]
     if cpu_value is not None:
