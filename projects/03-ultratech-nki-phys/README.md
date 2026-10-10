@@ -30,6 +30,58 @@ For a quick review, read this table, `CHECKER.md` and `RUN_NOTE.md`. The nested 
 - **Spring-damper force:** `F = -(k*x + c*v)`. Saved example: `x=2.0409190655`, `v=0.2716225684`, `k=84.6561889648`, `c=8.9611492157`; reference force `-175.2104804343`. Input shapes: x/v 64x8, k/c 64x1; output 64x8.
 - **Net force:** `F_net[p,0] = sum(forces[p,:])`. Eight signed contributions per row, 64 rows; output 64x1. Saved row-0 example sums to `-3.5845816880`.
 
+### Original Baselines Supplied To Qwen And Optimized Samples
+
+Qwen receives the **full handwritten baseline NKI source**, the equation, input shapes, allowed graph operations, and measured feedback/previous proposal on revision. The exact prompt construction is in [source/qwen_math.py](source/qwen_math.py); saved requests are in [spring attempt 2](development/attempt-002/generation/request.json) and [net-force attempt 1](development/attempt-001/generation/request.json). It is not asked to optimize a SciPy implementation. The independent FP64 reference computes expected answers; the NKI baseline is the code being optimized and the performance comparator.
+
+| Task | Before: original NKI given to Qwen | After: selected, measured NKI |
+| --- | --- | --- |
+| Spring-damper | [spring-baseline.py](kernel-samples/spring-baseline.py) | [spring-optimized.py](kernel-samples/spring-optimized.py) |
+| Net-force | [net-force-baseline.py](kernel-samples/net-force-baseline.py) | [net-force-optimized.py](kernel-samples/net-force-optimized.py) |
+
+These files are byte-for-byte copies of the benchmarked kernels, not reconstructed examples. Baseline copies match `sources(task)["baseline"]`, which the generator inserts into Qwen's prompt. The selected candidates are model-proposed graphs lowered by trusted code.
+
+**Net-force, before:** copy the first contribution, then add the remaining seven in a static loop.
+
+```python
+nisa.tensor_copy(dst=total, src=values[:, 0:1])
+for i in nl.static_range(1, count):
+    nisa.tensor_tensor(dst=total, data1=total, data2=values[:, i:i + 1], op=nl.add)
+```
+
+**Net-force, after:** one native reduction over the contributions.
+
+```python
+nisa.tensor_reduce(dst=v0, data=input_forces, op=nl.add, axis=(1,), keepdims=True)
+```
+
+**Spring, before:** separate stiffness multiplication, damping multiplication, addition and final negation, with automatic engine selection.
+
+```python
+nisa.tensor_scalar(dst=spring, data=x, op0=nl.multiply, operand0=k)
+nisa.tensor_scalar(dst=damped, data=v, op0=nl.multiply, operand0=c)
+nisa.tensor_tensor(dst=summed, data1=spring, data2=damped, op=nl.add)
+nisa.tensor_scalar(dst=force, data=summed, op0=nl.multiply, operand0=-1.0)
+```
+
+**Spring, after:** the same four arithmetic steps with explicit Vector Engine placement. The first multiplication, for example, becomes:
+
+```python
+nisa.tensor_scalar(dst=v0, data=input_displacement, op0=nl.multiply,
+                   operand0=input_stiffness, engine=nisa.engine.vector)
+```
+
+All four arithmetic instructions in the selected spring kernel specify that engine. This is not a reduced-operation spring algorithm; a separate ablation would be needed to attribute the entire observed gain to engine placement alone.
+
+**Saved numerical sample before/after (public seed 3, row 0, column 0):**
+
+| Task | FP64 expected answer | Baseline NKI output | Selected NKI output |
+| --- | ---: | ---: | ---: |
+| Spring | -175.2104804343 | -175.2104797363 | -175.2104797363 |
+| Net-force | -3.5845816880 | -3.5845816135 | -3.5845816135 |
+
+The output stays correct while measured execution changes. Equal outputs in these two examples do not replace the full public and frozen-case checks. The independent throughput ratios are reported below; they compare NKI against NKI on the same Trainium device.
+
 | Task | Initial throughput ratio | Independent repeat | Frozen unseen checks |
 | --- | ---: | ---: | ---: |
 | Spring-damper | 1.039810x | 1.038735x | 32/32 |
