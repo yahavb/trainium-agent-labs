@@ -597,7 +597,22 @@ def check_traffic_bar(level_n, counted, args, want):
                "nothing partial is written out."}.get(level_n, "")
     return (f"CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving {waste:.2f}x the byte floor, "
             f"and level {level_n} requires {bar:.2f}x or better. Correctness alone is level 4; this "
-            f"level is about the bytes. {hint}")
+            f"level is about the bytes. {read_breakdown(level_n, counted, args)}{hint}")
+
+
+def read_breakdown(level_n, counted, args):
+    """'lhsT (256, 512) was read 1.0 times and rhs (256, 1024) 4.0 times.' -- the total says bytes are
+    wasted; this says which loads to move. Inputs that share a shape cannot be told apart, so they
+    are left out rather than guessed."""
+    names = list(inspect.signature(LEVELS[level_n]["ref"]).parameters)
+    shapes = [tuple(a.shape) for a in args if isinstance(a, np.ndarray)]
+    reads = []
+    for name, a in zip(names, args):
+        if not isinstance(a, np.ndarray) or shapes.count(tuple(a.shape)) > 1:
+            continue
+        got = sum(b for b, shape in counted.get("hbm_reads", {}).values() if shape == tuple(a.shape))
+        reads.append(f"{name} {tuple(a.shape)} {got / a.nbytes:.1f} times")
+    return f"Each input should be read once; {' and '.join(reads)}. " if reads else ""
 
 
 def issue_bound(transfers, elements):
@@ -656,7 +671,7 @@ def simulate_and_count(kernel, args):
 
     run, api = _simulator(nki, kernel)
     counter = dict(bytes=0, transfers=0, api=api, dtypes=set(), psum_matmuls={}, psum_handles=[],
-                   sbuf_sites={})
+                   sbuf_sites={}, hbm_reads={}, hbm_handles=[])
     original = nisa.dma_copy
     original_matmul = nisa.nc_matmul
 
@@ -683,16 +698,18 @@ def simulate_and_count(kernel, args):
                 f"nc_matmul dst has shape {shapes[0]}, but stationary {shapes[1]} = [K, M] and "
                 f"moving {shapes[2]} = [K, N] produce [M, N] = {want}")
         out = func(*args, **kwargs)
-        # How many matmuls landed in each PSUM allocation (slices share their tile's storage). A
-        # tiled matmul needs exactly K/128 per output block: more means one PSUM tile is shared
-        # between output blocks and they add into each other; one means it was allocated inside the
-        # K loop and the partial products never accumulate. Both run cleanly and return wrong
-        # numbers, so the count is what names them. The handles are kept so ids are never reused.
+        # How many matmuls landed in each PSUM output tile: one allocation, or one region of a bigger
+        # one (a block of output tiles kept in a single (128, tiles, 512) PSUM tensor), told apart by
+        # the view's offset. A tiled matmul needs exactly K/128 per output tile: more means output
+        # tiles are adding into each other; one means the tile was allocated inside the K loop and
+        # the partial products never accumulate. Both run cleanly and return wrong numbers, so the
+        # count is what names them. The handles are kept so ids are never reused.
         storage = getattr(dst, "_storage", None)
         if storage is not None:
-            if id(storage) not in counter["psum_matmuls"]:
+            key = (id(storage), getattr(dst, "offset", 0))
+            if key not in counter["psum_matmuls"]:
                 counter["psum_handles"].append(storage)
-            counter["psum_matmuls"][id(storage)] = counter["psum_matmuls"].get(id(storage), 0) + 1
+            counter["psum_matmuls"][key] = counter["psum_matmuls"].get(key, 0) + 1
         return out
 
     # SBUF capacity. The simulator keeps every buffer alive and never checks the total, so a kernel
@@ -729,6 +746,14 @@ def simulate_and_count(kernel, args):
                 nbytes = int(np.prod(src.shape)) * itemsize_of(src)
             counter["bytes"] += int(nbytes)
             counter["dtypes"].add(str(getattr(src, "dtype", "?")))
+            # Which HBM tensor each read came from (slices share their tensor's storage), so a
+            # traffic verdict can say WHICH operand is re-read, not only that bytes are wasted.
+            storage = getattr(src, "_storage", None)
+            if storage is not None and "hbm" in str(getattr(src, "buffer", "")):
+                if id(storage) not in counter["hbm_reads"]:
+                    counter["hbm_handles"].append(storage)
+                    counter["hbm_reads"][id(storage)] = [0, tuple(storage.data.shape)]
+                counter["hbm_reads"][id(storage)][0] += int(nbytes)
         except Exception:
             counter["unmeasured"] = counter.get("unmeasured", 0) + 1
         counter["transfers"] += 1
@@ -815,7 +840,7 @@ def verify(path, level_n, tol=2e-2, seed=0):
             failures.append((label(case, level_n),
                              f"RAISED during simulation: {type(e).__name__}: {e}"))
             continue
-        m = describe_mismatch(got, want, tol)
+        m = describe_mismatch(got, want, tol) or check_traffic_bar(level_n, counted, args, want)
         if m:
             failures.append((label(case, level_n), m))
             continue

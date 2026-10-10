@@ -418,6 +418,123 @@ lhsT has shape (K, M), so unpack it as `K, M = lhsT.shape`; rhs is (K, N). The o
 (M, N) = (lhsT.shape[1], rhs.shape[1]), allocated in shared_hbm."""
 
 
+# Levels 5 to 7 are level 4 graded on bytes too: at most 1.6x, 1.25x and 1.05x the HBM traffic of
+# reading each input once. The tiled card above produces the level-4 loop, which moves 2.00x on the
+# largest shape -- measured: level 5 scored 0.88, passing the three shapes small enough to be one
+# tile and failing the one that is not. Each card below is that level's technique, as written in
+# reference_level5/6/7.py, which pass their own bars (1.14x, 1.00x, 1.00x on the largest shape).
+#
+# They are skeletons, not prose. Measured with prose cards, 0 of 18 samples passed: the model
+# un-nested the loops ("inside it, loop m" became a second loop after the first, so the hoisted
+# rhs tiles held only the last column), and allocated the result tile inline in two different
+# calls, storing one nothing had written -- all-NaN output. Nesting and allocation are exactly what
+# code fixes and prose does not; the kernel-feedback branch measured the same on level 4 (prose
+# 1 of 3 runs, skeleton 3 of 3). So the structure and every allocation are code, and only the
+# copies and matmuls are holes, each described in words -- except level 6's matmul, written out:
+# as a hole, 8 fresh samples of 8 folded its K loop into the slice (lhsT_block[:, :, ...]), which
+# only passes when K is one tile. Levels 5 and 7 filled the same hole correctly every time.
+OPTIMIZED_MATMUL_PREAMBLE = """nc_matmul(dst=, stationary=, moving=) adds stationary.T @ moving into dst: stationary is a (128, 128)
+sbuf tile of lhsT, moving a (128, 512) sbuf tile of rhs, dst a (128, 512) float32 psum tile, and
+repeated calls into one psum tile add up. It takes ONE K tile per call, so keep every `for k` loop
+and index the K-tile axis of a block with k. lhsT is (K, M) and rhs is (K, N); every test shape is a
+whole number of tiles. This level is graded on HBM bytes as well as correctness: at most {bar}x the
+bytes of reading each input once and writing the output once. {technique}
+Write the kernel with exactly this structure, replacing every `...` line marked FILL IN:
+"""
+
+OPTIMIZATION_STEPS = {
+    5: ("Hoist the loads: a plain tiled loop reloads the rhs tiles for every m, so make n the outer "
+        "loop and load each column of rhs tiles once.", """
+@nki.jit
+def nki_matmul_hoist_load_(lhsT, rhs):
+    K, M = lhsT.shape
+    _, N = rhs.shape
+    out = nl.ndarray((M, N), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+    for n in nl.affine_range(N // 512):
+        rhs_tiles = nl.ndarray((128, K // 128, 512), dtype=rhs.dtype, buffer=nl.sbuf)
+        for k in nl.affine_range(K // 128):
+            ...  # FILL IN: dma_copy rhs[k*128:(k+1)*128, n*512:(n+1)*512] into rhs_tiles[:, k, :]
+        for m in nl.affine_range(M // 128):
+            lhsT_tiles = nl.ndarray((128, K // 128, 128), dtype=lhsT.dtype, buffer=nl.sbuf)
+            for k in nl.affine_range(K // 128):
+                ...  # FILL IN: dma_copy lhsT[k*128:(k+1)*128, m*128:(m+1)*128] into lhsT_tiles[:, k, :]
+            res_psum = nl.ndarray((128, 512), dtype=nl.float32, buffer=nl.psum)
+            for k in nl.affine_range(K // 128):
+                ...  # FILL IN: nc_matmul into res_psum, stationary lhsT_tiles[:, k, :], moving rhs_tiles[:, k, :]
+            res_sb = nl.ndarray((128, 512), dtype=lhsT.dtype, buffer=nl.sbuf)
+            ...  # FILL IN: tensor_copy res_psum into res_sb
+            ...  # FILL IN: dma_copy res_sb into out[m*128:(m+1)*128, n*512:(n+1)*512]
+    return out
+"""),
+    6: ("Block M and N: keep a whole block of operands on chip -- up to 4 tiles of M by 2 of N -- "
+        "and compute every output tile of the block from it. Edge blocks can be smaller, so the "
+        "block loops are plain Python ranges sized with min().", """
+@nki.jit
+def nki_matmul_block_free_dimension_(lhsT, rhs):
+    K, M = lhsT.shape
+    _, N = rhs.shape
+    out = nl.ndarray((M, N), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+    for m0 in range(0, M, 512):
+        bm = min(512, M - m0) // 128
+        lhsT_block = nl.ndarray((128, K // 128, bm * 128), dtype=lhsT.dtype, buffer=nl.sbuf)
+        for k in nl.affine_range(K // 128):
+            ...  # FILL IN: dma_copy lhsT[k*128:(k+1)*128, m0:m0 + bm*128] into lhsT_block[:, k, :]
+        for n0 in range(0, N, 1024):
+            bn = min(1024, N - n0) // 512
+            rhs_block = nl.ndarray((128, K // 128, bn * 512), dtype=rhs.dtype, buffer=nl.sbuf)
+            for k in nl.affine_range(K // 128):
+                ...  # FILL IN: dma_copy rhs[k*128:(k+1)*128, n0:n0 + bn*512] into rhs_block[:, k, :]
+            for mi in nl.affine_range(bm):
+                for ni in nl.affine_range(bn):
+                    res_psum = nl.ndarray((128, 512), dtype=nl.float32, buffer=nl.psum)
+                    for k in nl.affine_range(K // 128):
+                        nisa.nc_matmul(dst=res_psum, stationary=lhsT_block[:, k, mi*128:(mi+1)*128],
+                                       moving=rhs_block[:, k, ni*512:(ni+1)*512])
+                    res_sb = nl.ndarray((128, 512), dtype=lhsT.dtype, buffer=nl.sbuf)
+                    ...  # FILL IN: tensor_copy res_psum into res_sb
+                    ...  # FILL IN: dma_copy res_sb into out[m0 + mi*128:m0 + (mi+1)*128, n0 + ni*512:n0 + (ni+1)*512]
+    return out
+"""),
+    7: ("Block M, N and K: blocks of up to 4 tiles of M, 2 of N and 8 of K, so a block's SBUF stays the "
+        "same whatever K is, while its output tiles stay in PSUM across every K block. Edge blocks "
+        "can be smaller, so the block loops are plain Python ranges sized with min().", """
+@nki.jit
+def nki_matmul_fully_optimized_(lhsT, rhs):
+    K, M = lhsT.shape
+    _, N = rhs.shape
+    out = nl.ndarray((M, N), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+    for m0 in range(0, M, 512):
+        bm = min(512, M - m0) // 128
+        for n0 in range(0, N, 1024):
+            bn = min(1024, N - n0) // 512
+            res_psum = nl.ndarray((128, bm * bn, 512), dtype=nl.float32, buffer=nl.psum)
+            for k0 in range(0, K, 1024):
+                bk = min(1024, K - k0) // 128
+                lhsT_block = nl.ndarray((128, bk, bm * 128), dtype=lhsT.dtype, buffer=nl.sbuf)
+                rhs_block = nl.ndarray((128, bk, bn * 512), dtype=rhs.dtype, buffer=nl.sbuf)
+                for k in nl.affine_range(bk):
+                    ...  # FILL IN: dma_copy lhsT[k0 + k*128:k0 + (k+1)*128, m0:m0 + bm*128] into lhsT_block[:, k, :]
+                    ...  # FILL IN: dma_copy rhs[k0 + k*128:k0 + (k+1)*128, n0:n0 + bn*512] into rhs_block[:, k, :]
+                for mi in nl.affine_range(bm):
+                    for ni in nl.affine_range(bn):
+                        for k in nl.affine_range(bk):
+                            ...  # FILL IN: nc_matmul into res_psum[:, mi*bn + ni, :], stationary lhsT_block[:, k, mi*128:(mi+1)*128], moving rhs_block[:, k, ni*512:(ni+1)*512]
+            for mi in nl.affine_range(bm):
+                for ni in nl.affine_range(bn):
+                    res_sb = nl.ndarray((128, 512), dtype=lhsT.dtype, buffer=nl.sbuf)
+                    ...  # FILL IN: tensor_copy res_psum[:, mi*bn + ni, :] into res_sb
+                    ...  # FILL IN: dma_copy res_sb into out[m0 + mi*128:m0 + (mi+1)*128, n0 + ni*512:n0 + (ni+1)*512]
+    return out
+"""),
+}
+
+
+def optimized_matmul_card(level):
+    technique, skeleton = OPTIMIZATION_STEPS[level]
+    bar = nkibench.LEVELS[level]["max_waste"]
+    return OPTIMIZED_MATMUL_PREAMBLE.format(bar=f"{bar:g}", technique=technique) + skeleton
+
+
 def is_matmul(level):
     return nkibench.LEVELS[level]["ref"] is nkibench.ref_matmul
 
@@ -440,6 +557,8 @@ def needs_tiling(level):
 def card_for(level):
     """This level's strategy card, or "" for a level that has none yet."""
     if is_matmul(level):
+        if level in OPTIMIZATION_STEPS:
+            return optimized_matmul_card(level)
         return TILED_MATMUL_CARD if needs_tiling(level) else MATMUL_CARD
     if is_transpose(level):
         return TRANSPOSE_CARD
@@ -751,6 +870,15 @@ def shape_advice(loc, want_shape, level):
 
     if op == "nc_matmul" and {"dst", "stationary", "moving"} <= set(T):
         d, s, m = (_shape_of(T[k]) for k in ("dst", "stationary", "moving"))
+        if level in OPTIMIZATION_STEPS and s and m and 3 in (len(s), len(m)):
+            # Measured on level 6, 4 fresh samples of 4: the K loop was folded into the slice --
+            # lhsT_block[:, :, ...] -- which passes when K is one tile and dies as "cannot reshape"
+            # (answered "do not reshape") on every other shape.
+            return (f"stationary {nm('stationary')} is {s} and moving {nm('moving')} is {m}. The "
+                    f"middle axis is the K tile, and nc_matmul takes ONE K tile per call: keep the "
+                    f"`for k in nl.affine_range(...)` loop around this call and index that axis with "
+                    f"k -- stationary=...[:, k, ...], moving=...[:, k, ...] -- so the K tiles add up "
+                    f"in the same psum tile.")
         if not (d and s and m and len(s) == 2 and len(m) == 2):
             return None
         if s[0] != m[0]:
