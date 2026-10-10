@@ -7,7 +7,7 @@
 
 ---
 
-## 0. 当前状态（2026-10-10 16:40，随时更新）
+## 0. 当前状态（2026-10-10 17:22，随时更新）
 
 **人员**：teoguo（seat-116）+ liuyq（有经验）两人主力；另外三位新手做辅助，不计入关键路径。
 **题目**：做项目 2（`projects/02-kernel-agent`，NKI kernel agent，在芯片上跑）。CHALLENGE（Stage A，`kernelbench.py`）有时间再做，同一套 agent 搬过去。评分按 30/25/25/20 那一套（CHALLENGE 第 239 行写着 "Same rubric as every problem"）。
@@ -56,6 +56,14 @@ level 4   0/5      [0.62, 0.62, 0.50, 0.62, 0.62]   0/5，全部 0.62
 | **v8.2** | 96a9fc9 | **L2** | 116 ×3，119 ×2 | **3/5** | [.5, 1, .5, 1, 1]，解出轮次 4、2、1 | 3 个 kernel | PASS | 采用（≥ baseline，v7 是 0/3） |
 | **v8.2** | 96a9fc9 | **L3** | 118 ×3，119，116 | **5/5** | 解出轮次 0、2、0、0、0 | 3 个 kernel | PASS | 采用 |
 | **v8.2** | 96a9fc9 | **L4** | 119 ×5 | **5/5** | 都在第 2 轮 | 1 个 kernel（和 v7 相同） | PASS | 采用 |
+| **v8.3** | **5c3aba2**，md5 87ddb0；v8.2 那组开关 + L2CAT=1 | **L2** | 117 ×5，119 ×4 | **7/9** | 117: 1,1,1,1,.5；119: 1,1,.5,1 | — | trn2 完整编译 + birsim 全部 match | L1/L3/L4 的请求体和 96a9fc9 逐字节相同（假端点 --all，48 个请求），沿用 v8.2 的结果 |
+| v8.2 加跑 | 96a9fc9 | L1 / L2 | 118，117 | L1 +2/2，L2 +2/3 | — | — | — | v8.2 合计：L1 7/7，L2 5/9 |
+| final_all | 96a9fc9，`--all --repeat 1` | L1–L4 | 116 | L1 1.0，L2 1.0，**L3 0.30**，L4 1.0 | 第 6、7 轮解出，—，第 2 轮 | — | — | 一条命令跑完 4 级；这一次 L3 没解出（4 轮后同一失败重复，提前停止） |
+
+**芯片层面的验证（17:20）**
+- **trn2 完整编译 + birsim**（`check/compile_solves7.py`，只用 CPU）：v8.2 的 L1（5 个 kernel）、L2（3 个）、L3（3 个）、L4（1 个），以及 v8.3 的 L2 解，**全部能编译，birsim 全部 MATCHES**（L1 最大误差约为 RMS 的 1.9e-07，L2 为 0，L3 1.2e-06，L4 2.9e-06）。没有一个被编译器拒绝。
+- **NeuronCore 实测**（`check/device_check.py`，seat-116，先停 vLLM，测完再起回来）：L1 kernel 53900f4b **4/4 个 shape 在芯片上和参考一致**，device 误差 2.4e-07–4.8e-07。每次调用 1.5–2.0 秒，包含主机开销，不是 kernel 延迟。
+- 结果文件：`runs/seat-117/l1_compile/compile.txt`、各座位的 `/tmp/cmp/compile_s*.txt`、`/tmp/device_l1.json`（seat-116），都会拷进 `analysis/logs/final/`。
 
 日志：`runs/seat-<N>/<实验>/`（不进 git）。1.0 一律用 `scripts/reaudit.py` 复审。
 
