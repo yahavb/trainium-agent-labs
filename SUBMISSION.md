@@ -230,6 +230,11 @@ NKI tutorial kernels, the organizers' reference kernels for levels 1–4, and ou
 line-by-line scan of every request v7 sends (35 distinct prompts, first and repair rounds, levels 1–4 and
 9–14) and of 2,851 string constants in the agent found 0 lines from any of them; the same scanner finds 95
 on a positive control. ([analysis/prompt_leak_check.md](analysis/prompt_leak_check.md))
+For levels 5–7, v8.4's first prompt (WARM) carries one more thing: the agent's own level-4 solve,
+unchanged but for the entry name, with the checker's traffic verdict on it. The same scan finds no line from
+any forbidden source in those prompts, except, on level 6, the entry signature the level itself prescribes
+(`def nki_matmul_block_free_dimension_(lhsT, rhs):`, a name the organizers took from the tutorial).
+([analysis/v83_l134_identity.md](analysis/v83_l134_identity.md))
 Thinking stays off. The organizers measured it on this model: with thinking on, a round took 446 s and every
 sample was cut off before any code ([projects/02-kernel-agent/README.md](projects/02-kernel-agent/README.md)).
 
@@ -249,6 +254,7 @@ written down before the results came in ([PLAN.md](PLAN.md) §4).
 | L2 sampling | v8 with the first prompt and the sampling settings back to the organizers' | L2, round 0, 20 samples | 2/20, the same as the organizers' agent re-run today (2/20); with v7's sampling settings 0/20 | the level-2 regression was v7's sampling settings |
 | v8.1 | v8 without the skeleton, plus samples 1 and 3 on the original sampling and 2 and 4 on v7's, plus one sentence restating the level-2 task when the model transposes the whole input | L2 | the first level-2 solve in a repair round today (round 2), through the existing numeric-mismatch message; stopped after one run for v8.2 | folded into v8.2 |
 | v8.3 (5c3aba2) | v8.2 plus **error distillation on level 2**: when a level-2 kernel runs but its numbers are wrong, the checker runs it once more on `arange` input, reads off where each output element came from, and says what the kernel actually did ("your output at row position i*B+j holds x[i]: the source index uses only i") and what the task needs, without code. Only level 2's mismatch path changes: on levels 1, 3 and 4, v8.3 sends byte-identical requests to v8.2 (27 requests, 18 of them repair rounds, compared by two of us separately: [analysis/v83_l134_identity.md](analysis/v83_l134_identity.md)), so v8.2's runs on those levels are v8.3's runs | L2 | **7/9** so far, against v8.2's 5/9 on the same seats. In 3 of the 5 solves the best kernel's feedback carried the distilled explanation in the round before (e.g. 0.50 → 1.00); the one miss stalled on `WRONG SHAPE: returned ()`, which is not a numeric error, so the distillation never spoke | final if it holds at 17:45 [[TBD]] |
+| v8.4 (15fb0d5) | v8.3 plus **WARM** on levels 5–7 only: round 0 starts from the agent's own verified level-4 kernel and the checker's traffic verdict on it ("CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 2.00x the byte floor, and level 5 requires 1.60x or better"), and the agent repairs from there. On levels 1–4 v8.4 sends byte-identical requests to v8.3 (63 requests, 51 of them repair rounds) | L5–L7 | [[TBD]] | [[TBD]] |
 | **v8.2** (final candidate, 96a9fc9) | v8.1 plus **E-mix**: in every repair round, sample 1 repairs the best kernel as before and samples 2–4 start over from the first prompt, each tagged differently. Level 2 had only ever been solved in round 0, so its repair rounds now also buy fresh first attempts | L1–L4 | **L1 5/5** (rounds 2, 2, 0, 4, 2; five different kernels, all built in full for trn2 and matching in birsim), **L2 5/9**, **L3 5/5**, **L4 5/5** (one trajectory); every solve re-audited, VERIFIED on the held-out set. Two level-1 solves are told in §8 | final candidate |
 
 **The skeleton gamble, and why it lost.** v8 hollowed out the code in the repair messages (`t[<…>]`) so that the
