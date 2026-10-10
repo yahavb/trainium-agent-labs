@@ -6,6 +6,34 @@ Team: 13
 
 Submitted by: Gyanasri Konda
 
+## Major Improvements Over Baseline
+
+The baseline agent was mainly a simple generate-check-retry loop. Our main improvement was turning it
+into a verifier-driven system that can explain failures, preserve context, measure token use, and
+report results honestly.
+
+First, we improved the verifier. Instead of returning only broad failures, the harness now produces
+agent-usable diagnostics: source/destination element-count mismatches, out-of-bounds dimensions,
+missing output writes, nonfinite outputs, scale errors, ragged-edge hints, and rule violations. This
+matters because the model can only repair what the checker can clearly describe. The verifier also has
+a `--selftest` path that proves it catches planted bugs before we trust it inside the agent loop.
+
+Second, we added context management. The agent now carries compact API cards, full generic docs,
+failure-specific repair context, a previous-failure ledger, and token accounting. This directly targets
+the challenge's context-window requirement: every attempt logs how many tokens were spent on docs,
+evidence, code/reference context, and the total prompt.
+
+Third, we added a failure taxonomy and honest reporting. Every failed attempt is bucketed into named
+failure modes such as `dma_shape`, `signature`, `rule`, `reduction_axis`, or `generic`. The agent only
+reports a level as solved when the verifier returns full reward. This avoids the worst case in the
+rubric: confidently reporting an unverified or wrong kernel as correct.
+
+Finally, we restored an optional `--prompt-style reference` mode for the final submission run. This
+uses the supplied per-level reference kernel patterns as API/style examples. That is the mode that
+enabled Level 3 and Level 4 to solve on the first attempt. We report this honestly because it is less
+generic than `--prompt-style full-docs`, but it demonstrates the agent can use structured context to
+produce verified kernels.
+
 ## Final Results
 
 Final command used:
@@ -23,15 +51,52 @@ Result summary:
 - Level 3 single-tile matmul: reward `1.00`, solved on round 0.
 - Level 4 tiled matmul: reward `1.00`, solved on round 0.
 
+| Level | Operation | Final Reward | Attempts Used | Status |
+|---:|---|---:|---:|---|
+| 1 | average pooling 2D | 0.30 | 4 | not solved |
+| 2 | 2D transpose | 0.30 | 4 | not solved |
+| 3 | single-tile matmul | 1.00 | 1 | solved |
+| 4 | tiled matmul | 1.00 | 1 | solved |
+
+Simple result graph:
+
+```text
+Level 1  0.30  ###-------
+Level 2  0.30  ###-------
+Level 3  1.00  ##########
+Level 4  1.00  ##########
+```
+
 Observed solved kernels:
 
 - Level 3: correct on every shape; reported memory-bound at `19.7 Flops/Byte`, `11.3x` more reuse needed.
 - Level 4: correct on every shape; reported memory-bound at `36.6 Flops/Byte`, `6.1x` more reuse needed.
 
+Example success output:
+
+```text
+=========== level 3: matmul, single tile ===========
+round 0: this round 1.00  best so far 1.00
+checker: Correct on every shape. MEMORY BOUND: 19.7 Flops/Byte ...
+SOLVED on round 0.
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 1.00  best so far 1.00
+checker: Correct on every shape. MEMORY BOUND: 36.6 Flops/Byte ...
+SOLVED on round 0.
+```
+
 Failure taxonomy from `submission-reference.jsonl`:
 
 - `generic`: 7 attempts
 - `dma_shape`: 3 attempts
+
+Failure taxonomy graph:
+
+```text
+generic    7  #######
+dma_shape  3  ###
+```
 
 Failure keys:
 
@@ -48,6 +113,35 @@ Token/context examples from the final run:
 - Level 2 round 0: `prompt~5880`, `limit=8192`, `docs~5071`, `code~693`
 - Level 3 round 0: prompt was about `5890` tokens and solved.
 - Level 4 round 0: prompt was about `6023` tokens and solved.
+
+Token budget table:
+
+| Attempt | Prompt Tokens | Limit | Notes |
+|---|---:|---:|---|
+| Level 1 round 0 | ~5775 | 8192 | reference docs + Level 1 pattern |
+| Level 2 round 0 | ~5880 | 8192 | reference docs + Level 2 pattern |
+| Level 3 round 0 | ~5890 | 8192 | solved |
+| Level 4 round 0 | ~6023 | 8192 | solved |
+
+Token usage graph:
+
+```text
+L1 R0  5775 / 8192  #######---
+L2 R0  5880 / 8192  #######---
+L3 R0  5890 / 8192  #######---
+L4 R0  6023 / 8192  #######---
+```
+
+Example failure output retained for honesty/demo:
+
+```text
+=========== level 2: 2D transpose ===========
+round 0: this round 0.30  best so far 0.30
+failure: dma_shape
+checker: 0 of 4 shapes passed. On shape=(32, 12) as 3x4:
+raised AssertionError: dma_copy requires src and dst to have the same number of elements,
+got src=384, dst=32.
+```
 
 ## What To Hand In
 

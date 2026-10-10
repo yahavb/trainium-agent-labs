@@ -637,6 +637,18 @@ verifier, not in your generation prompt.** Project 1 hit the same wall three mor
 
 Team 13, submitted by Gyanasri Konda.
 
-For the final hackathon results, run commands, artifacts to hand in, verifier tolerance notes,
-eval-set notes, failure taxonomy, and token instrumentation checklist, see
+Final result snapshot:
+
+- Verifier self-test: `SELFTEST PASSED`
+- Final reference-mode run solved `2/4` levels.
+- Level 3 single-tile matmul solved on round 0.
+- Level 4 tiled matmul solved on round 0.
+- Level 1 and Level 2 did not solve; their remaining failures are reported honestly in the taxonomy.
+
+The main improvements over the baseline are stronger verifier diagnostics, failure taxonomy, token
+instrumentation, context selection/ledger, prompt/reply inspection, diff handling, and optional
+reference-pattern prompting.
+
+For the full final hackathon results, example outputs, run commands, artifacts to hand in, verifier
+tolerance notes, eval-set notes, failure taxonomy, and token instrumentation checklist, see
 [`SUBMISSION.md`](SUBMISSION.md).
