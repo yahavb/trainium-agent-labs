@@ -306,7 +306,7 @@ def tip(*lines):
 # ---------------------------------------------------------------- shared marks
 
 def bar_path(x0, x1, y, h, r=4):
-    """Square at the baseline, 4px rounded at the data end."""
+    """Square at the baseline, rounded at the data end."""
     w = x1 - x0
     if w <= r:
         return f'<rect x="{x0:.1f}" y="{y:.1f}" width="{max(w, 1):.1f}" height="{h:.1f}"'
@@ -355,15 +355,36 @@ def table(head, rows, numeric=()):
     return f'<div class="scroll"><table><thead><tr>{th}</tr></thead><tbody>{body}</tbody></table></div>'
 
 
-def table_view(inner):
-    return f'<details class="tv"><summary>Table view</summary>{inner}</details>'
+def table_view(inner, label="Table view"):
+    return f'<details class="tv"><summary>{esc(label)}</summary>{inner}</details>' if inner else ""
 
 
 def empty(msg):
     return f'<p class="empty">{msg}</p>'
 
 
-# ---------------------------------------------------------------- panel 1: speed bars
+def badge(kind, icon, text):
+    return f'<span class="status {kind}"><span class="icon" aria-hidden="true">{icon}</span>{esc(text)}</span>'
+
+
+def status(ok, yes, no):
+    return badge("good", "✓", yes) if ok else badge("critical", "✗", no)
+
+
+def warn(html_text):
+    return f'<p class="warn"><span class="icon" aria-hidden="true">!</span>{html_text}</p>'
+
+
+def card(title, how, body, cls=""):
+    return (f'<section class="card {cls}"><h2>{esc(title)}</h2>'
+            + (f'<p class="how">{esc(how)}</p>' if how else "") + body + "</section>")
+
+
+def shape_text(shape):
+    return str(shape).replace("x", "×")
+
+
+# ---------------------------------------------------------------- screen 1: speed
 
 def start_mismatch(k, s, info):
     """results_*.json's start_us against the start kernel the logs timed. Expert and floor times are only
@@ -373,93 +394,86 @@ def start_mismatch(k, s, info):
     if not logged or not written or 0.8 <= logged / written <= 1.25:
         return ""
     return warn(f"<strong>Different shapes?</strong> The logs timed the start kernel at {fmt_us(logged)}, "
-                f"the results file says {fmt_us(written)}. Its expert and floor numbers are probably from other "
-                f"shapes: re-measure them before comparing.")
+                f"the results file says {fmt_us(written)}: re-measure the expert and floor before comparing.")
+
+
+def kernel_view(k, summary, results):
+    """One kernel's numbers from wherever they exist: the logs first, the results files otherwise."""
+    info = results["kernels"].get(k, {})
+    s = summary.get(k) or dict(start_us=None, arms={a: [] for a in schema.ARMS},
+                               sources={info["source"]} if info.get("source") else set())
+    start = s["start_us"] or info.get("start_us")
+    expert, floor = info.get("expert_us"), info.get("floor_us")
+    return s, info, start, (start / expert if start and expert else None), (start / floor if start and floor else None)
 
 
 def panel_speed(summary, results):
     blocks, rows_t = [], []
     for k in kernels_of(summary, results):
-        info = results["kernels"].get(k, {})
-        s = summary.get(k) or dict(start_us=None, arms={a: [] for a in schema.ARMS},
-                                   sources={info["source"]} if info.get("source") else set())
-        mismatch = start_mismatch(k, summary.get(k), info)
-        start = s["start_us"] or info.get("start_us")   # the logs' own, else the results file's
-        expert, floor = info.get("expert_us"), info.get("floor_us")
-        rows = [("Start kernel", "var(--neutral-bar)", start, None, None, None, None, "the baseline every speedup is against")]
+        s, info, start, expert_x, limit_x = kernel_view(k, summary, results)
+        rows = []
         for arm in schema.ARMS:
             rs = [r for r in s["arms"][arm] if r["best_us"] is not None]
-            if not rs:
-                rows.append((ARM_LABEL[arm], ARM_COLOR[arm], None, None, None, None, 0, "no runs yet"))
-                rows_t.append([esc(k), ARM_LABEL[arm], "", "", "", "", "0", "no runs yet"])
-                continue
-            ts = [r["best_us"] for r in rs]
-            rows.append((ARM_LABEL[arm], ARM_COLOR[arm], median(ts), min(ts), max(ts),
-                         median(r["best_x"] for r in rs), len(rs), None))
-        if expert:
-            rows.append(("Expert kernel", "var(--neutral-bar)", expert, None, None,
-                         start / expert if start else None, None, "hand-optimised ceiling"))
-        vals = [v for row in rows for v in (row[2], row[4]) if v] + ([floor] if floor else [])
-        if not vals:
-            blocks.append(f"<h3>{esc(k)}</h3>" + empty("No timings yet."))
-            continue
-        _, hi, ticks = nice_domain(0, max(vals))
-        W, L, R, T, rh, bh = 960, 150, 230, 30, 40, 20
-        H = T + rh * len(rows) + 28
+            if rs:
+                xs = [r["best_x"] for r in rs]
+                rows.append((ARM_LABEL[arm], ARM_COLOR[arm], median(xs), min(xs), max(xs), len(rs),
+                             median(r["best_us"] for r in rs)))
+            else:
+                rows.append((ARM_LABEL[arm], ARM_COLOR[arm], None, None, None, 0, None))
+        if expert_x:
+            rows.append(("Expert kernel", "var(--neutral-bar)", expert_x, None, None, None, info["expert_us"]))
+        top = max([v for row in rows for v in (row[2], row[4]) if v] + [1.0] + ([limit_x] if limit_x else []))
+        _, hi, ticks = nice_domain(0, top * 1.04, 5)
+        W, L, R, T, rh, bh = 540, 112, 70, 20, 26, 12
+        H = T + rh * len(rows) + 20
         sx = lambda v: L + v / hi * (W - L - R)
         g = []
         for t in ticks:
-            g.append(f'<line x1="{sx(t):.1f}" x2="{sx(t):.1f}" y1="{T - 6}" y2="{H - 26}" class="grid"/>'
-                     f'<text x="{sx(t):.1f}" y="{H - 8}" text-anchor="middle" class="tick">{t:,.0f}</text>')
-        g.append(f'<text x="{L - 12}" y="{H - 8}" text-anchor="end" class="tick">µs, lower is faster</text>')
-        for i, (name, color, v, lo, hi_, x, n, note) in enumerate(rows):
+            g.append(f'<line x1="{sx(t):.1f}" x2="{sx(t):.1f}" y1="{T - 2}" y2="{H - 18}" class="grid"/>'
+                     f'<text x="{sx(t):.1f}" y="{H - 5}" text-anchor="middle" class="tick">{t:g}×</text>')
+        g.append(f'<line x1="{sx(1):.1f}" x2="{sx(1):.1f}" y1="{T - 6}" y2="{H - 18}" class="ref"/>'
+                 f'<text x="{sx(1) - 4:.1f}" y="{T - 9}" text-anchor="end" class="ref-label">start 1×</text>')
+        if limit_x:
+            right = sx(limit_x) + 112 <= W   # the label goes right of the line unless it would run off
+            g.append(f'<line x1="{sx(limit_x):.1f}" x2="{sx(limit_x):.1f}" y1="{T - 6}" y2="{H - 18}" class="ref"/>'
+                     f'<text x="{sx(limit_x) + (4 if right else -4):.1f}" y="{T - 9}" '
+                     f'text-anchor="{"start" if right else "end"}" class="ref-label">floor: {fmt_x(limit_x)} at most</text>')
+        for i, (name, color, x, lo, hi_, n, us) in enumerate(rows):
             y = T + i * rh + (rh - bh) / 2
-            g.append(f'<text x="{L - 12}" y="{y + bh / 2 + 4:.1f}" text-anchor="end" class="row-label">{esc(name)}</text>')
-            if v is None:
-                g.append(f'<text x="{L + 4}" y="{y + bh / 2 + 4:.1f}" class="note">{esc(note or "–")}</text>')
+            g.append(f'<text x="{L - 10}" y="{y + bh / 2 + 4:.1f}" text-anchor="end" class="row-label">{esc(name)}</text>')
+            if x is None:
+                g.append(f'<text x="{L + 4}" y="{y + bh / 2 + 4:.1f}" class="note">no runs yet</text>')
+                rows_t.append([esc(k), esc(name), "", "", "", "", "0"])
                 continue
-            spread = f"best of each run: {fmt_us(lo)} to {fmt_us(hi_)} over {n} runs" if n and n > 1 else (
-                "1 run" if n == 1 else note)
-            t_ = tip(fmt_us(v) + (f" · {fmt_x(x)}" if x else ""), name, spread)
-            g.append(f'<g class="mark" tabindex="0" data-tip="{t_}">'
-                     f'<rect x="{L}" y="{y - 4:.1f}" width="{W - L - R:.1f}" height="{bh + 8}" fill="transparent"/>'
-                     f'{bar_path(L, sx(v), y, bh)} fill="{color}"/></g>')
-            end = sx(v)
+            spread = (f"runs ranged {fmt_x(lo)} to {fmt_x(hi_)}, n={n}" if n and n > 1 else
+                      "1 run" if n == 1 else "hand-optimised ceiling")
+            g.append(f'<g class="mark" tabindex="0" data-tip="{tip(fmt_x(x), name, fmt_us(us), spread)}">'
+                     f'<rect x="{L}" y="{y - 6:.1f}" width="{W - L - R:.1f}" height="{bh + 12}" fill="transparent"/>'
+                     f'{bar_path(L, sx(x), y, bh)} fill="{color}"/></g>')
+            end = sx(x)
             if lo is not None and hi_ is not None and hi_ > lo:
                 yc = y + bh / 2
-                g.append(f'<path d="M{sx(lo):.1f},{yc:.1f} H{sx(hi_):.1f} M{sx(lo):.1f},{yc - 5:.1f} V{yc + 5:.1f} '
-                         f'M{sx(hi_):.1f},{yc - 5:.1f} V{yc + 5:.1f}" class="whisker"/>')
+                g.append(f'<path d="M{sx(lo):.1f},{yc:.1f} H{sx(hi_):.1f} M{sx(lo):.1f},{yc - 4:.1f} V{yc + 4:.1f} '
+                         f'M{sx(hi_):.1f},{yc - 4:.1f} V{yc + 4:.1f}" class="whisker"/>')
                 end = max(end, sx(hi_))
-            label = fmt_us(v) + (f" · {fmt_x(x)}" if x and name != "Start kernel" else "")
-            label += f" · {n} runs" if n and n > 1 else ""
-            g.append(f'<text x="{end + 8:.1f}" y="{y + bh / 2 + 4:.1f}" class="value">{esc(label)}</text>')
-            rows_t.append([esc(k), esc(name), fmt_us(v), fmt_us(lo) if lo else "", fmt_us(hi_) if hi_ else "",
-                           fmt_x(x) if x else "", str(n or ""), esc(note or "")])
-        if floor:
-            g.append(f'<line x1="{sx(floor):.1f}" x2="{sx(floor):.1f}" y1="{T - 6}" y2="{H - 26}" class="ref"/>'
-                     f'<text x="{sx(floor):.1f}" y="{T - 12}" text-anchor="middle" class="ref-label">'
-                     f'physics floor {esc(fmt_us(floor))}</text>')
-            rows_t.append([esc(k), "Physics floor", fmt_us(floor), "", "", "", "", "no kernel can beat it"])
-        below = [r for rs in s["arms"].values() for r in rs if floor and r["n_verified"] and r["best_us"] < floor]
-        below_floor = warn(
-            f'<strong>Below the floor:</strong> {len(below)} run{"s" if len(below) != 1 else ""} reported a verified '
-            f'time under the floor ({fmt_us(min(r["best_us"] for r in below))} &lt; {fmt_us(floor)}). Either the timer '
-            f'is wrong, or the floor kernel is not the fastest copy of these bytes: re-measure it before reporting.'
-        ) if below else ""
-        blocks.append(f'<h3>{esc(k)} <span class="src">{esc(source_label(s["sources"]))}</span></h3>'
-                      f'<div class="scroll"><svg class="wide" viewBox="0 0 {W} {H}" role="img" '
-                      f'aria-label="{esc(k)}: start, best per arm, expert and floor times">{"".join(g)}</svg></div>'
-                      f'{below_floor}{mismatch}')
-    body = "".join(blocks) or empty("No attempts logged yet.")
-    return card("1", "Speed per kernel",
-                "Bar = median over runs of each run's best verified time; whisker = the spread across runs. "
-                "A run that never beat the start kernel counts as the start kernel.",
+            g.append(f'<text x="{end + 6:.1f}" y="{y + bh / 2 + 4:.1f}" class="value strong">{fmt_x(x)}</text>')
+            rows_t.append([esc(k), esc(name), fmt_x(x), fmt_x(lo) if lo else "", fmt_x(hi_) if hi_ else "",
+                           fmt_us(us), str(n or "")])
+        below = [r for rs in s["arms"].values() for r in rs
+                 if info.get("floor_us") and r["n_verified"] and r["best_us"] < info["floor_us"]]
+        warns = (warn(f"<strong>Below the floor:</strong> {len(below)} run(s) beat the copy floor "
+                      f"({fmt_us(info['floor_us'])}). Either the timer is wrong, or the floor kernel is not the "
+                      f"fastest copy: re-measure before reporting.") if below else "") + start_mismatch(k, summary.get(k), info)
+        blocks.append(f'<div class="kblock"><h3>{esc(k)} <span class="src">start {esc(fmt_us(start))} · '
+                      f'{esc(source_label(s["sources"]))}</span></h3><svg viewBox="0 0 {W} {H}" role="img" '
+                      f'aria-label="{esc(k)}: speedup per arm, expert and floor">{"".join(g)}</svg>{warns}</div>')
+    body = "".join(blocks) or empty("No kernels yet.")
+    return card("Speedup over the start kernel",
+                "Bar: median of each run's best verified speedup; whisker: fastest to slowest run.",
                 legend_arms() + body + table_view(table(
-                    ["Kernel", "Row", "Median", "Fastest run", "Slowest run", "Speedup", "Runs", "Note"],
-                    rows_t, numeric=(2, 3, 4, 5, 6))))
+                    ["Kernel", "Row", "Speedup", "Fastest run", "Slowest run", "Time", "Runs"], rows_t,
+                    numeric=(2, 3, 4, 5, 6))))
 
-
-# ---------------------------------------------------------------- panel 2: progress curve
 
 def step_points(xs, ys):
     pts = []
@@ -489,31 +503,30 @@ def panel_progress(summary, results):
                 lo.append(min(vals) if vals else None)
                 hi.append(max(vals) if vals else None)
                 n.append(len(vals))
-            series.append(dict(arm=arm, label=ARM_LABEL[arm], color=ARM_COLOR[arm], med=med, lo=lo, hi=hi, n=n))
+            series.append(dict(label=ARM_LABEL[arm], color=ARM_COLOR[arm], med=med, lo=lo, hi=hi, n=n))
             last = max(i for i, v in enumerate(med) if v is not None)
             at = [med[max(0, math.ceil((last + 1) * f) - 1)] for f in (0.25, 0.5, 0.75, 1.0)]
             rows_t.append([esc(k), ARM_LABEL[arm], str(len(rs)), str(last + 1)] + [fmt_x(v) for v in at] +
                           [f"{fmt_x(lo[last])} to {fmt_x(hi[last])}"])
-        info = results["kernels"].get(k, {})
-        expert_x = s["start_us"] / info["expert_us"] if s["start_us"] and info.get("expert_us") else None
+        _, _, _, expert_x, _ = kernel_view(k, summary, results)
         top = max([v for sr in series for v in sr["hi"] if v] + ([expert_x] if expert_x else []) + [1.1])
-        y0, y1, yt = nice_domain(1.0, top)
-        W, H, Lm, Rm, T, B = 480, 300, 52, 118, 14, 40
+        y0, y1, yt = nice_domain(1.0, top, 4)
+        W, H, Lm, Rm, T, B = 540, 168, 44, 104, 10, 30
         dx0, dx1 = 1, max(L_max, 2)
         sx = lambda v: Lm + (v - dx0) / (dx1 - dx0) * (W - Lm - Rm)
         sy = lambda v: T + (1 - (v - y0) / (y1 - y0)) * (H - T - B)
         g = []
         for t in yt:
             g.append(f'<line x1="{Lm}" x2="{W - Rm}" y1="{sy(t):.1f}" y2="{sy(t):.1f}" class="{"axis" if t == y0 else "grid"}"/>'
-                     f'<text x="{Lm - 8}" y="{sy(t) + 4:.1f}" text-anchor="end" class="tick">{t:.2f}×</text>')
+                     f'<text x="{Lm - 6}" y="{sy(t) + 4:.1f}" text-anchor="end" class="tick">{t:g}×</text>')
         _, _, xt = nice_domain(dx0, dx1, 6)
         for t in xt:
             if dx0 <= t <= dx1:
-                g.append(f'<text x="{sx(t):.1f}" y="{H - B + 18}" text-anchor="middle" class="tick">{t:.0f}</text>')
-        g.append(f'<text x="{(Lm + W - Rm) / 2:.1f}" y="{H - 6}" text-anchor="middle" class="tick">attempts</text>')
+                g.append(f'<text x="{sx(t):.1f}" y="{H - B + 15}" text-anchor="middle" class="tick">{t:.0f}</text>')
+        g.append(f'<text x="{W - Rm}" y="{H - 2}" text-anchor="end" class="tick">attempts →</text>')
         if expert_x:
             g.append(f'<line x1="{Lm}" x2="{W - Rm}" y1="{sy(expert_x):.1f}" y2="{sy(expert_x):.1f}" class="ref"/>'
-                     f'<text x="{W - Rm + 8}" y="{sy(expert_x) + 4:.1f}" class="ref-label">expert {fmt_x(expert_x)}</text>')
+                     f'<text x="{W - Rm + 6}" y="{sy(expert_x) + 4:.1f}" class="ref-label">expert {fmt_x(expert_x)}</text>')
         for sr in series:
             idx = [i for i, v in enumerate(sr["med"]) if v is not None]
             px = [xs[i] for i in idx]
@@ -522,44 +535,33 @@ def panel_progress(summary, results):
                 dn = step_points(px, [sr["lo"][i] for i in idx])[::-1]
                 g.append('<polygon points="' + " ".join(f"{sx(a):.1f},{sy(b):.1f}" for a, b in up + dn) +
                          f'" fill="{sr["color"]}" class="band"/>')
-            pts = step_points(px, [sr["med"][i] for i in idx])
-            g.append('<polyline points="' + " ".join(f"{sx(a):.1f},{sy(b):.1f}" for a, b in pts) +
+            g.append('<polyline points="' + " ".join(f"{sx(a):.1f},{sy(b):.1f}" for a, b in
+                                                     step_points(px, [sr["med"][i] for i in idx])) +
                      f'" stroke="{sr["color"]}" class="line"/>')
-        ends = sorted(((sy(sr["med"][max(i for i, v in enumerate(sr["med"]) if v is not None)]), sr)
-                       for sr in series), key=lambda e: e[0])
+        ends = sorted(((sy(sr["med"][max(i for i, v in enumerate(sr["med"]) if v is not None)]), sr) for sr in series),
+                      key=lambda e: e[0])
         for y, sr in ends:
             last = max(i for i, v in enumerate(sr["med"]) if v is not None)
             g.append(f'<circle cx="{sx(xs[last]):.1f}" cy="{y:.1f}" r="4" fill="{sr["color"]}" class="end-dot"/>')
-        if all(b[0] - a[0] >= 14 for a, b in zip(ends, ends[1:])):
+        if all(b[0] - a[0] >= 13 for a, b in zip(ends, ends[1:])):
             for y, sr in ends:
                 last = max(i for i, v in enumerate(sr["med"]) if v is not None)
-                g.append(f'<text x="{W - Rm + 8}" y="{y + 4:.1f}" class="value">'
-                         f'{esc(sr["label"])} {fmt_x(sr["med"][last])}</text>')
+                g.append(f'<text x="{sx(xs[last]) + 8:.1f}" y="{y + 4:.1f}" class="value strong">{fmt_x(sr["med"][last])}</text>')
         g.append(f'<line class="hair" x1="0" x2="0" y1="{T}" y2="{H - B}"/>'
                  f'<rect class="overlay" x="{Lm}" y="{T}" width="{W - Lm - Rm}" height="{H - T - B}" fill="transparent"/>')
-        curves = dict(xs=xs, dx0=dx0, dx1=dx1, px0=Lm, px1=W - Rm,
-                      series=[{k_: sr[k_] for k_ in ("label", "color", "med", "lo", "hi", "n")} for sr in series])
-        blocks.append(f'<figure class="small"><figcaption>{esc(k)} <span class="src">{esc(source_label(s["sources"]))}'
-                      f'</span></figcaption><svg viewBox="0 0 {W} {H}" role="img" data-curves="{esc(json.dumps(curves))}" '
-                      f'aria-label="{esc(k)}: best verified speedup against attempts, per arm">{"".join(g)}</svg></figure>')
-    body = f'<div class="multiples">{"".join(blocks)}</div>' if blocks else empty("No attempts logged yet.")
-    return card("2", "Progress: best verified speedup so far",
-                "Line = median over runs, band = fastest to slowest run, 1.00× = the start kernel. "
-                "Equal budget means comparing the arms at the same number of attempts.",
+        curves = dict(xs=xs, dx0=dx0, dx1=dx1, px0=Lm, px1=W - Rm, series=series)
+        blocks.append(f'<div class="kblock"><h3>{esc(k)} <span class="src">{esc(source_label(s["sources"]))}</span></h3>'
+                      f'<svg viewBox="0 0 {W} {H}" role="img" data-curves="{esc(json.dumps(curves))}" '
+                      f'aria-label="{esc(k)}: best verified speedup against attempts, per arm">{"".join(g)}</svg></div>')
+    body = "".join(blocks) or empty("No attempts logged yet: this fills in as the loops run.")
+    return card("Progress: best verified speedup so far",
+                "Line: median over runs; band: fastest to slowest run. Same x = same budget.",
                 legend_arms() + body + table_view(table(
                     ["Kernel", "Arm", "Runs", "Attempts", "After 25%", "After 50%", "After 75%", "At the end",
-                     "Spread at the end"], rows_t, numeric=(2, 3, 4, 5, 6, 7, 8))))
+                     "Spread at the end"], rows_t, numeric=(2, 3, 4, 5, 6, 7))))
 
 
-# ---------------------------------------------------------------- panel 3: red team
-
-def badge(kind, icon, text):
-    return f'<span class="status {kind}"><span class="icon" aria-hidden="true">{icon}</span>{esc(text)}</span>'
-
-
-def status(ok, yes, no):
-    return badge("good", "✓", yes) if ok else badge("critical", "✗", no)
-
+# ---------------------------------------------------------------- screen 2: trust
 
 def redteam_split(rt):
     """The honest control kernels, which must pass, and the cheats, which must not."""
@@ -576,56 +578,170 @@ def redteam_tail(cheats, pending):
                                                     (missed, "missed"), (pending, "pending")) if n)
 
 
-def warn(html_text):
-    return f'<p class="warn"><span class="icon" aria-hidden="true">!</span>{html_text}</p>'
+STAGES = ("Rules scan", "Inputs untouched", "Simulator", "Byte count", "Chip", "Held-out shapes", "Timing",
+          "Timing (pending)", "Not stopped", "Other", "Honest kernels")
+CHIP = {"caught": ("caught", "✓", "Caught"), "missed": ("missed", "✗", "Missed"),
+        "no gain": ("nogain", "–", "Not caught, gained nothing"), "pending": ("pending", "…", "Pending"),
+        "pass": ("pass", "✓", "Honest, accepted"), "false alarm": ("alarm", "✗", "Honest, rejected: false alarm")}
+
+
+def stage_of(c):
+    if c["honest"]:
+        return "Honest kernels"
+    if c["state"] == "pending":
+        return "Timing (pending)"
+    if c["state"] in ("missed", "no gain"):
+        return "Not stopped"
+    w = c["where"].lower()
+    for key, name in (("rules", "Rules scan"), ("input", "Inputs untouched"), ("byte", "Byte count"),
+                      ("heldout", "Held-out shapes"), ("held-out", "Held-out shapes"), ("timing", "Timing"),
+                      ("chip", "Chip"), ("simulat", "Simulator"), ("numerics", "Simulator"), ("crash", "Simulator")):
+        if key in w:
+            return name
+    return "Other"
+
+
+def suite_name(s):
+    return {"results_p1.json": "P1 red team", "redteam_results.json": "P3 red team"}.get(
+        Path(s["name"]).name, s["name"])
 
 
 def panel_redteam(results):
     suites = results["suites"]
     if not suites:
-        return card("3", "Red team: planted cheats", "Each row is a cheating kernel the referee must reject.",
+        return card("Red team: can the referee be fooled?", "",
                     empty("Not in yet: <code>results_p1.json</code> (P1) and <code>redteam/redteam_results.json</code> "
                           "(P3) hold the red-team rows."))
-    blocks = []
+    legend = '<div class="legend">' + "".join(
+        f'<span class="key"><span class="chip {cls}{" round" if st in ("pass", "false alarm") else ""}" '
+        f'aria-hidden="true">{icon}</span>{esc(label)}</span>' for st, (cls, icon, label) in CHIP.items()) + "</div>"
+    blocks, rows_t = [], []
     for s in suites:
         control, cheats, caught, pending = redteam_split(s["rows"])
+        honest_ok = sum(c["state"] == "pass" for c in control)
+        groups = defaultdict(list)
+        for c in s["rows"]:
+            groups[stage_of(c)].append(c)
+            where = c["where"] if c["where"] not in ("", "-") else ""
+            rows_t.append([esc(suite_name(s)), esc(c["cheat"]), esc(CHIP.get(c["state"], ("", "", c["state"]))[2]),
+                           esc(c["what"]), esc(where), esc(str(c["message"])[:TEXT_CHARS])])
+        lines = []
+        for stage in STAGES:
+            cs = groups.get(stage)
+            if not cs:
+                continue
+            chips = "".join(
+                f'<span class="chip {CHIP.get(c["state"], ("other", "?", ""))[0]}'
+                f'{" round" if c["honest"] else ""}" tabindex="0" data-tip="'
+                f'{tip(c["cheat"], CHIP.get(c["state"], ("", "", c["state"]))[2], c["what"], c["where"], str(c["message"]).strip().splitlines()[0][:200] if str(c["message"]).strip() else "")}">'
+                f'{CHIP.get(c["state"], ("", "?", ""))[1]}</span>' for c in cs)
+            lines.append(f'<div class="wall-row"><span class="wall-label">{esc(stage)}</span>'
+                         f'<span class="chips">{chips}</span><span class="wall-n">{len(cs)}</span></div>')
         warns = []
         if any(c["state"] != "pass" for c in control):
-            warns.append("<strong>An honest kernel was rejected.</strong> This referee raises false alarms, so no "
-                         "\"caught\" in this table means anything until that is fixed.")
+            warns.append("<strong>An honest kernel was rejected:</strong> no \"caught\" in this suite counts until "
+                         "that false alarm is fixed.")
         if s["dry"]:
-            warns.append("<strong>Dry run:</strong> rules stage only. It proves the table prints, nothing about the "
-                         "cheats.")
+            warns.append("<strong>Dry run:</strong> rules stage only; says nothing about the cheats.")
         if "fallback" in str(s["referee"] or "").lower():
-            warns.append("<strong>Fallback referee:</strong> cheats that need chip timing stay pending.")
-        rows = []
-        for c in control + cheats:
-            if c["honest"]:
-                cell = (badge("good", "✓", "Accepted (honest)") if c["state"] == "pass"
-                        else badge("critical", "✗", "False alarm"))
-            else:
-                cell = {"caught": badge("good", "✓", "Caught"), "missed": badge("critical", "✗", "Missed"),
-                        "no gain": badge("neutral", "–", "Not caught, gained nothing"),
-                        "pending": badge("neutral", "…", "Pending")}.get(c["state"], badge("neutral", "?", c["state"]))
-            where = c["where"] if c["where"] not in ("", "-") else ""
-            if where and c["as_designed"] in ("yes", "no"):
-                where += " · as designed" if c["as_designed"] == "yes" else " · not where designed"
-            rows.append([esc(c["cheat"]), cell, esc(c["what"]), esc(where), esc(str(c["message"])[:TEXT_CHARS])])
-        head = (f"{esc(s['name'])} <span class=\"src\">caught {caught} of {len(cheats)}"
-                + redteam_tail(cheats, pending)
-                + (f" · {len(control)} honest kernel{'s' if len(control) != 1 else ''}" if control else "")
-                + (f" · referee: {esc(s['referee'])}" if s["referee"] else "") + "</span>")
-        blocks.append(f"<h3>{head}</h3>" + "".join(warn(w) for w in warns) +
-                      table(["Kernel", "Result", "What it does", "Stopped at", "Referee's message"], rows))
+            warns.append("<strong>Run against the temporary fallback referee</strong> (rules + simulator), not the "
+                         "hardened one.")
+        head = (f'{esc(suite_name(s))} <span class="src">caught {caught} of {len(cheats)}'
+                f'{redteam_tail(cheats, pending)}'
+                + (f' · {honest_ok}/{len(control)} honest accepted' if control else "") + "</span>")
+        blocks.append(f'<div class="suite"><h3>{head}</h3>{"".join(warn(w) for w in warns)}{"".join(lines)}</div>')
     _, cheats, caught, pending = redteam_split(results["redteam"])
-    title = f"Red team: caught {caught} of {len(cheats)} planted cheats" + redteam_tail(cheats, pending)
-    return card("3", title,
-                "Each row is a kernel written to fool the referee, plus honest kernels that must be accepted. "
-                "A miss is reported, not hidden. One table per suite: each ran against its own referee version.",
-                "".join(blocks))
+    tail = redteam_tail(cheats, pending).lstrip(", ")
+    return card(f"Red team: {caught} of {len(cheats)} cheats caught",
+                (f"Also {tail}. " if tail else "") + "One square per cheating kernel, by the stage that stopped it; "
+                "circles are honest kernels that must be accepted. Hover for the referee's message.",
+                legend + "".join(blocks) + table_view(table(
+                    ["Suite", "Kernel", "Result", "What it does", "Stopped at", "Referee's message"], rows_t)))
 
 
-# ---------------------------------------------------------------- panel 4: attempt timeline
+HEAT = 7    # buckets of the blue ramp; CSS .hc0-.hc6 hold the light and dark steps
+
+
+def heat_bucket(s, top):
+    if s is None or s <= 1.0:
+        return 0
+    return max(0, min(HEAT - 1, int(round(math.log(s) / math.log(max(top, 1.5)) * (HEAT - 1)))))
+
+
+def heldout_from_logs(summary):
+    """Per arm, from the attempt logs alone: how many would-be-faster kernels the referee tested on
+    held-out shapes, and how many those shapes rejected."""
+    items = []
+    for k, s in summary.items():
+        for arm in schema.ARMS:
+            atts = [a for r in s["arms"][arm] for a in r["attempts"]]
+            if not atts:
+                continue
+            fails = sum(a["verdict"] == "heldout_fail" for a in atts)
+            checked = sum(a["verdict"] in ("heldout_fail", "faster") for a in atts)
+            items.append(f'<li><span class="line-key" style="background:{ARM_COLOR[arm]}"></span>{esc(k)} · '
+                         f'{esc(ARM_LABEL[arm])}: <strong>{fails}</strong> of {checked} would-be-faster kernels '
+                         f'rejected at held-out shapes</li>')
+    return f'<ul class="mini">{"".join(items)}</ul>' if items else ""
+
+
+def panel_heldout(results, summary):
+    ho = results["heldout"]
+    from_logs = heldout_from_logs(summary)
+    how = ("Each kernel re-checked on shapes the search never saw, with hostile inputs. Colour = speedup over "
+           "the start kernel at that shape; red = wrong there, so its speedup does not count.")
+    if not ho:
+        return card("Held-out shapes: does the speedup survive?", how,
+                    empty("End-of-run grid not in yet: P2's <code>heldout_grid.py</code> writes it.") + from_logs)
+    by_kernel = defaultdict(list)
+    for h in ho:
+        by_kernel[h.get("kernel", "?")].append(h)
+    blocks, rows_t = [], []
+    for k, hs in by_kernel.items():
+        shapes = list(dict.fromkeys(h.get("shape", "?") for h in hs))
+        whiches = list(dict.fromkeys(h.get("which", "?") for h in hs))
+        cell = {(h.get("which"), h.get("shape")): h for h in hs}
+        top = max([h["speedup"] for h in hs if h.get("passed") and h.get("speedup")] + [1.5])
+        W, L, T, rh = 540, 132, 64, 26
+        cw = (W - L - 40) / max(len(shapes), 1)   # room on the right for the last slanted label
+        H = T + rh * len(whiches) + 4
+        g = []
+        for j, sh in enumerate(shapes):
+            x = L + j * cw + cw / 2
+            g.append(f'<text transform="translate({x:.1f},{T - 8}) rotate(-35)" class="tick col">{esc(shape_text(sh))}</text>')
+        for i, w in enumerate(whiches):
+            name = {"start": "Start kernel", "expert": "Expert kernel", "aws as published": "AWS as published"}.get(w) or (
+                f"{ARM_LABEL[w]}: best" if w in ARM_LABEL else str(w)[:1].upper() + str(w)[1:])
+            y = T + i * rh
+            g.append(f'<text x="{L - 8}" y="{y + rh / 2 + 4:.1f}" text-anchor="end" class="row-label">{esc(name)}</text>')
+            for j, sh in enumerate(shapes):
+                h = cell.get((w, sh))
+                x = L + j * cw
+                if h is None:
+                    continue
+                ok, sp = bool(h.get("passed")), h.get("speedup")
+                text = (fmt_x(sp) if sp else "pass") if ok else "✗ wrong"
+                extra = [fmt_us(h["time_us"]) if h.get("time_us") else "", str(h.get("message") or "")[:240]]
+                cls = f"hc{heat_bucket(sp, top)}" if ok else "hfail"
+                tcls = f"ht{heat_bucket(sp, top)}" if ok else "htfail"
+                g.append(f'<g class="mark" tabindex="0" data-tip="{tip(text, f"{name} at {shape_text(sh)}", *extra)}">'
+                         f'<rect x="{x + 1:.1f}" y="{y + 1:.1f}" width="{cw - 2:.1f}" height="{rh - 2}" rx="3" class="{cls}"/>'
+                         f'<text x="{x + cw / 2:.1f}" y="{y + rh / 2 + 4:.1f}" text-anchor="middle" class="cell {tcls}">'
+                         f'{esc(text)}</text></g>')
+                rows_t.append([esc(k), esc(name), esc(shape_text(sh)), "pass" if ok else "WRONG", fmt_x(sp) if sp else "",
+                               fmt_us(h.get("time_us")) if h.get("time_us") else "", esc(str(h.get("message") or "")[:300])])
+        fails = sum(1 for h in hs if not h.get("passed"))
+        blocks.append(f'<div class="kblock"><h3>{esc(k)} <span class="src">{len(hs) - fails} of {len(hs)} cells correct'
+                      f'</span></h3><svg viewBox="0 0 {W} {H}" role="img" aria-label="{esc(k)}: held-out grid">'
+                      f'{"".join(g)}</svg></div>')
+    scale = ('<div class="legend"><span class="key"><span class="ramp" aria-hidden="true">'
+             + "".join(f'<span class="swatch hc{i}"></span>' for i in range(HEAT))
+             + '</span>1× → faster</span><span class="key"><span class="swatch hfail" aria-hidden="true">'
+             '</span>wrong at that shape</span></div>')
+    return card("Held-out shapes: does the speedup survive?", how,
+                scale + "".join(blocks) + from_logs + table_view(table(
+                    ["Kernel", "Row", "Shape", "Correct", "Speedup", "Time", "Message"], rows_t, numeric=(4, 5))))
+
 
 def diff_for(rec, run, i, start_code):
     """Against the kernel this attempt was improving: the run's latest verified kernel before it,
@@ -641,8 +757,7 @@ def diff_for(rec, run, i, start_code):
     if not code:
         return "no code in the log for this attempt", ""
     if base is None:
-        lines = code.splitlines()
-        return "full source (no earlier verified kernel, no start kernel file)", "\n".join(lines[:DIFF_LINES])
+        return "full source (no earlier verified kernel, no start kernel file)", "\n".join(code.splitlines()[:DIFF_LINES])
     lines = list(difflib.unified_diff(base.splitlines(), code.splitlines(), base_name, f"attempt {rec['attempt_no']}",
                                       n=2, lineterm=""))
     if not lines:
@@ -660,22 +775,21 @@ def panel_timeline(summary):
         if not lanes:
             continue
         n_max = max(len(r["attempts"]) for _, _, r in lanes)
-        W, Lm, Rm, T, rh = 960, 220, 24, 8, 24
-        H = T + rh * len(lanes) + 34
+        W, Lm, Rm, T, rh = 540, 150, 10, 4, 17
+        H = T + rh * len(lanes) + 22
         step = (W - Lm - Rm) / max(n_max - 1, 1)
-        size = max(3.0, min(5.0, step * 0.35))
+        size = max(2.5, min(4.5, step * 0.35))
         sx = lambda i: Lm + i * step
         g = []
-        _, _, xt = nice_domain(0, max(n_max - 1, 1), 8)
+        _, _, xt = nice_domain(0, max(n_max - 1, 1), 6)
         for t in xt:
             if t <= n_max - 1:
-                g.append(f'<line x1="{sx(t):.1f}" x2="{sx(t):.1f}" y1="{T}" y2="{H - 30}" class="grid"/>'
-                         f'<text x="{sx(t):.1f}" y="{H - 14}" text-anchor="middle" class="tick">{t:.0f}</text>')
-        g.append(f'<text x="{Lm - 14}" y="{H - 14}" text-anchor="end" class="tick">attempt number</text>')
+                g.append(f'<line x1="{sx(t):.1f}" x2="{sx(t):.1f}" y1="{T}" y2="{H - 18}" class="grid"/>'
+                         f'<text x="{sx(t):.1f}" y="{H - 5}" text-anchor="middle" class="tick">{t:.0f}</text>')
         for li, (arm, j, run) in enumerate(lanes):
             y = T + li * rh + rh / 2
-            g.append(f'<text x="{Lm - 14}" y="{y + 4:.1f}" text-anchor="end" class="row-label">'
-                     f'{esc(ARM_LABEL[arm])} · run {j + 1} · seat {esc(run["seat"])}</text>')
+            g.append(f'<text x="{Lm - 10}" y="{y + 4:.1f}" text-anchor="end" class="row-label small">'
+                     f'{esc(ARM_LABEL[arm])} · {j + 1} · seat {esc(run["seat"])}</text>')
             counts = defaultdict(int)
             for i, rec in enumerate(run["attempts"]):
                 counts[rec["verdict"]] += 1
@@ -703,240 +817,207 @@ def panel_timeline(summary):
                          f"attempt {an} · {ARM_LABEL[arm]} run {j + 1}", "click for the code diff")
                 g.append(f'<g class="dot" data-id="{did}" tabindex="0" role="button" data-tip="{t_}" '
                          f'aria-label="attempt {an}: {esc(label)}">'
-                         f'<circle cx="{x:.1f}" cy="{y:.1f}" r="12" fill="transparent"/>'
-                         f'<circle class="sel" cx="{x:.1f}" cy="{y:.1f}" r="{size + 4:.1f}"/>'
+                         f'<circle cx="{x:.1f}" cy="{y:.1f}" r="10" fill="transparent"/>'
+                         f'<circle class="sel" cx="{x:.1f}" cy="{y:.1f}" r="{size + 3.5:.1f}"/>'
                          f'{glyph(kind, x, y, size, color)}</g>')
             rows_t.append([esc(k), f"{ARM_LABEL[arm]} · run {j + 1}", esc(run["seat"])] +
                           [str(counts.get(v, 0)) for v in schema.VERDICTS] + [str(len(run["attempts"]))])
-        svgs.append(f'<h3>{esc(k)}</h3><div class="scroll"><svg class="wide" viewBox="0 0 {W} {H}" role="img" '
+        svgs.append(f'<div class="kblock"><h3>{esc(k)}</h3><svg viewBox="0 0 {W} {H}" role="img" '
                     f'aria-label="{esc(k)}: every attempt, by verdict">{"".join(g)}</svg></div>')
-    body = "".join(svgs) or empty("No attempts logged yet.")
     head = ["Kernel", "Run", "Seat"] + [VERDICT[v][0] if v in VERDICT else v for v in schema.VERDICTS] + ["Total"]
-    detail = ('<div id="detail" class="detail" aria-live="polite"><p class="empty">Click any mark, or focus it and '
-              'press Enter, to see the referee\'s message, the one instruction it sent back, and the code change.</p></div>')
-    return card("4", "Every attempt",
-                "One mark per attempt, in order, coloured and shaped by how far it got through the referee.",
-                legend_verdicts() + body + detail + table_view(table(head, rows_t, numeric=tuple(range(3, len(head)))))), details
-
-
-# ---------------------------------------------------------------- panel 5: held-out map
-
-def heldout_from_logs(summary):
-    """What the attempt logs alone say about held-out shapes: per arm, how many kernels were correct on the
-    dev shapes and how many of those the held-out shapes then rejected. Used whether or not an
-    end-of-run check exists, since it costs nothing."""
-    rows = []
-    for k, s in summary.items():
-        for arm in schema.ARMS:
-            atts = [a for r in s["arms"][arm] for a in r["attempts"]]
-            if not atts:
-                continue
-            fails = [a for a in atts if a["verdict"] == "heldout_fail"]
-            correct = [a for a in atts if a["verdict"] in ("heldout_fail", "slower", "no_gain", "faster")]
-            checked = [a for a in atts if a["verdict"] in ("heldout_fail", "faster")]
-            last = max(fails, key=lambda a: a["timestamp"] or 0) if fails else None
-            msg = (last["referee_message"] or "").strip().splitlines()[0][:160] if last and last["referee_message"] else ""
-            rows.append([esc(k), ARM_LABEL[arm], str(len(atts)), str(len(correct)), str(len(checked)),
-                         status(not fails, "0", str(len(fails))), esc(msg)])
-    if not rows:
-        return ""
-    return ('<h3>During the runs <span class="src">from attempts.jsonl</span></h3>' +
-            table(["Kernel", "Arm", "Attempts", "Correct on dev shapes", "Checked on held-out", "Rejected there",
-                   "Latest rejection"], rows, numeric=(2, 3, 4)) +
-            '<p class="how">The referee draws 3 random held-out shapes only for a kernel that would otherwise be '
-            'faster, so "checked" = faster + rejected. A kernel that was not faster was never tested there; the '
-            'end-of-run check on each arm\'s best kernel covers every held-out shape.</p>')
-
-
-def panel_heldout(results, summary):
-    ho = results["heldout"]
-    how = ("Shapes the agent never saw while it searched, including tile edges. A speedup that breaks here "
-           "does not count.")
-    from_logs = heldout_from_logs(summary)
-    if not ho:
-        end = empty("End-of-run check on each arm's best kernel: not in yet. It goes in the <code>heldout</code> "
-                    "section of a <code>results_&lt;owner&gt;.json</code> (format at the top of "
-                    "<code>dashboard/build.py</code>).")
-        return card("5", "Held-out shapes", how, end + from_logs)
-    by_kernel = defaultdict(list)
-    for h in ho:
-        by_kernel[h.get("kernel", "?")].append(h)
-    blocks = []
-    for k, hs in by_kernel.items():
-        shapes = list(dict.fromkeys(h.get("shape", "?") for h in hs))
-        whiches = list(dict.fromkeys(h.get("which", "?") for h in hs))
-        cell = {(h.get("which"), h.get("shape")): h for h in hs}
-        rows = []
-        for w in whiches:
-            name = {"start": "Start kernel", "expert": "Expert kernel"}.get(w) or (
-                f"{ARM_LABEL[w]}: best" if w in ARM_LABEL else f"{w} kernel")
-            row = [f'<strong>{esc(name)}</strong>']
-            for sh in shapes:
-                h = cell.get((w, sh))
-                if h is None:
-                    row.append('<span class="note">–</span>')
-                    continue
-                text = (f"pass · {fmt_x(h.get('speedup'))}" if h.get("speedup") else "pass") if h.get("passed") else "fail"
-                c = status(bool(h.get("passed")), text, text)
-                extra = [fmt_us(h["time_us"]) if h.get("time_us") else "", str(h.get("message") or "")[:300]]
-                row.append(f'<span tabindex="0" data-tip="{tip(text, f"{name} at {sh}", *extra)}">{c}</span>'
-                           if any(extra) else c)
-            rows.append(row)
-        fails = sum(1 for h in hs if not h.get("passed"))
-        blocks.append(f'<h3>{esc(k)}: end-of-run check <span class="src">{fails} failing cell'
-                      f'{"s" if fails != 1 else ""}</span></h3>' + table(["Kernel"] + [esc(s) for s in shapes], rows))
-    return card("5", "Held-out shapes", how, "".join(blocks) + from_logs)
+    if not svgs:
+        return card("Every attempt", "", empty("No attempts logged yet: one mark per attempt appears here as the "
+                                               "loops run; click one for the referee's message and the code diff.")), []
+    body = (legend_verdicts() + f'<div class="pair">{"".join(svgs)}</div>' +
+            '<div id="detail" class="detail" aria-live="polite" hidden></div>' +
+            table_view(table(head, rows_t, numeric=tuple(range(3, len(head))))))
+    return card("Every attempt", "One mark per attempt, by how far it got through the referee. Click one for the "
+                                 "message, the instruction sent back and the code change.", body, "wide"), details
 
 
 # ---------------------------------------------------------------- page
 
-def card(n, title, how, body):
-    return (f'<section class="card" aria-labelledby="p{n}"><h2 id="p{n}"><span class="pn">{n}</span>{esc(title)}</h2>'
-            f'<p class="how">{esc(how)}</p>{body}</section>')
+def meter(frac):
+    return f'<div class="meter" aria-hidden="true"><span style="width:{max(0.0, min(1.0, frac)) * 100:.0f}%"></span></div>'
 
 
 def kpis(summary, results, records):
     tiles = []
     for k in kernels_of(summary, results):
-        s, info = summary.get(k), results["kernels"].get(k, {})
-        rs = s["arms"]["referee"] if s else []
-        v = fmt_x(median(r["best_x"] for r in rs)) if rs else "–"
-        sub = (f"model + referee · median of {len(rs)} run{'s' if len(rs) != 1 else ''} · {source_label(s['sources'])}"
-               if rs else "no model + referee runs yet")
-        start = (s and s["start_us"]) or info.get("start_us")
-        if start and info.get("expert_us"):
-            sub += f" · expert reaches {fmt_x(start / info['expert_us'])}"
-        tiles.append((f"{k}: best verified speedup", v, sub))
+        s, info, start, expert_x, limit_x = kernel_view(k, summary, results)
+        rs = s["arms"]["referee"]
+        best = median(r["best_x"] for r in rs) if rs else None
+        target, tname = (expert_x, "expert") if expert_x else (limit_x, "floor limit")
+        if best:
+            sub = f"model + referee · {len(rs)} run{'s' if len(rs) != 1 else ''}"
+            sub += f" · {best / target:.0%} of the {tname}'s {fmt_x(target)}" if target else ""
+        else:
+            sub = "no runs yet" + (f" · target: {tname} {fmt_x(target)}" if target else "")
+        tiles.append((f"{k} speedup", fmt_x(best) if best else "–", sub,
+                      meter((best - 1) / (target - 1)) if best and target and target > 1 else meter(0)))
     rt = results["redteam"]
     if rt:
         control, cheats, caught, pending = redteam_split(rt)
-        sub = "planted cheats caught" + redteam_tail(cheats, pending).replace(", ", " · ")
-        sub += f" · {len(results['suites'])} suite{'s' if len(results['suites']) != 1 else ''}"
-        if any(c["state"] != "pass" for c in control):
-            sub += " · an honest kernel was rejected"
-        if any(s["dry"] for s in results["suites"]):
-            sub += " · includes a dry run"
-        tiles.append(("Red team", f"{caught} of {len(cheats)}", sub))
+        honest_ok = sum(c["state"] == "pass" for c in control)
+        sub = f"cheats caught · {honest_ok}/{len(control)} honest accepted" + redteam_tail(cheats, pending).replace(", ", " · ")
+        tiles.append(("Red team", f"{caught}/{len(cheats)}", sub, meter(caught / len(cheats) if cheats else 0)))
     else:
-        tiles.append(("Red team", "–", "not in yet"))
+        tiles.append(("Red team", "–", "not in yet", meter(0)))
+    ho = results["heldout"]
+    if ho:
+        ok = sum(1 for h in ho if h.get("passed"))
+        bad = [h for h in ho if not h.get("passed")]
+        sub = "held-out cells correct" + (f" · wrong: {bad[0].get('which')} at {shape_text(bad[0].get('shape'))}"
+                                          + (f" +{len(bad) - 1}" if len(bad) > 1 else "") if bad else "")
+        tiles.append(("Held-out", f"{ok}/{len(ho)}", sub, meter(ok / len(ho))))
+    else:
+        tiles.append(("Held-out", "–", "end-of-run grid not in yet", meter(0)))
     runs = {(r["kernel"], r["arm"], r["seat"], r["run_id"]) for r in records}
     seats = {r["seat"] for r in records}
-    tiles.append(("Attempts through the referee", f"{len(records):,}",
-                  f"{len(runs)} runs · {len(seats)} seat{'s' if len(seats) != 1 else ''}"))
+    tiles.append(("Attempts", f"{len(records):,}", f"{len(runs)} runs · {len(seats)} seat{'s' if len(seats) != 1 else ''}", ""))
     return '<div class="kpis">' + "".join(
         f'<div class="tile"><div class="tile-label">{esc(a)}</div><div class="tile-value">{esc(b)}</div>'
-        f'<div class="tile-sub">{esc(c)}</div></div>' for a, b, c in tiles) + "</div>"
+        f'{m}<div class="tile-sub">{esc(c)}</div></div>' for a, b, c, m in tiles) + "</div>"
 
 
 CSS = """
 :root{color-scheme:light;--page:#f9f9f7;--surface:#fcfcfb;--ink-1:#0b0b0b;--ink-2:#52514e;--muted:#898781;
---grid:#e1e0d9;--axis:#c3c2b7;--border:rgba(11,11,11,.10);--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;
+--grid:#e1e0d9;--axis:#c3c2b7;--border:rgba(11,11,11,.10);--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--track:#cde2fb;
 --neutral-bar:#898781;--v-rules:#52514e;--good:#0ca30c;--warning:#fab219;--serious:#ec835a;--critical:#d03b3b;
---good-text:#006300;--critical-text:#b02a2a;--add:rgba(12,163,12,.13);--del:rgba(208,59,59,.13);--wash:rgba(11,11,11,.04)}
+--good-text:#006300;--critical-text:#b02a2a;--add:rgba(12,163,12,.13);--del:rgba(208,59,59,.13);--wash:rgba(11,11,11,.04);
+--h0:#cde2fb;--h1:#9ec5f4;--h2:#6da7ec;--h3:#3987e5;--h4:#256abf;--h5:#184f95;--h6:#0d366b;
+--t0:#0b0b0b;--t1:#0b0b0b;--t2:#0b0b0b;--t3:#0b0b0b;--t4:#fff;--t5:#fff;--t6:#fff}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--page:#0d0d0d;--surface:#1a1a19;
 --ink-1:#fff;--ink-2:#c3c2b7;--grid:#2c2c2a;--axis:#383835;--border:rgba(255,255,255,.10);--s1:#3987e5;--s2:#d95926;
---s3:#199e70;--v-rules:#c3c2b7;--good-text:#0ca30c;--critical-text:#e66767;--add:rgba(12,163,12,.22);
---del:rgba(208,59,59,.25);--wash:rgba(255,255,255,.05)}}
+--s3:#199e70;--track:#184f95;--v-rules:#c3c2b7;--good-text:#0ca30c;--critical-text:#e66767;--add:rgba(12,163,12,.22);
+--del:rgba(208,59,59,.25);--wash:rgba(255,255,255,.05);
+--h0:#104281;--h1:#184f95;--h2:#1c5cab;--h3:#2a78d6;--h4:#3987e5;--h5:#6da7ec;--h6:#9ec5f4;
+--t0:#fff;--t1:#fff;--t2:#fff;--t3:#0b0b0b;--t4:#0b0b0b;--t5:#0b0b0b;--t6:#0b0b0b}}
 :root[data-theme="dark"]{color-scheme:dark;--page:#0d0d0d;--surface:#1a1a19;--ink-1:#fff;--ink-2:#c3c2b7;--grid:#2c2c2a;
---axis:#383835;--border:rgba(255,255,255,.10);--s1:#3987e5;--s2:#d95926;--s3:#199e70;--v-rules:#c3c2b7;
---good-text:#0ca30c;--critical-text:#e66767;--add:rgba(12,163,12,.22);--del:rgba(208,59,59,.25);--wash:rgba(255,255,255,.05)}
+--axis:#383835;--border:rgba(255,255,255,.10);--s1:#3987e5;--s2:#d95926;--s3:#199e70;--track:#184f95;--v-rules:#c3c2b7;
+--good-text:#0ca30c;--critical-text:#e66767;--add:rgba(12,163,12,.22);--del:rgba(208,59,59,.25);--wash:rgba(255,255,255,.05);
+--h0:#104281;--h1:#184f95;--h2:#1c5cab;--h3:#2a78d6;--h4:#3987e5;--h5:#6da7ec;--h6:#9ec5f4;
+--t0:#fff;--t1:#fff;--t2:#fff;--t3:#0b0b0b;--t4:#0b0b0b;--t5:#0b0b0b;--t6:#0b0b0b}
 *{box-sizing:border-box}
-body{margin:0;background:var(--page);color:var(--ink-1);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
-main{max-width:1080px;margin:0 auto;padding:28px 16px 48px}
-h1{font-size:28px;margin:0 0 4px;letter-spacing:-.01em}
-.lede{color:var(--ink-2);margin:0 0 16px;max-width:760px}
-.meta{color:var(--muted);font-size:13px;margin:0 0 20px}
+body{margin:0;background:var(--page);color:var(--ink-1);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1240px;margin:0 auto;padding:18px 16px 32px}
+.top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 24px;margin:0 0 12px}
+h1{font-size:24px;margin:0;letter-spacing:-.01em}
+.lede{color:var(--ink-2);margin:2px 0 0;font-size:13px;max-width:720px}
+.meta{color:var(--muted);font-size:12px;margin:0}
 .fake{border:1px solid var(--border);border-left:4px solid var(--critical);background:var(--surface);border-radius:8px;
-padding:12px 16px;margin:0 0 20px}
+padding:8px 12px;margin:0 0 12px;font-size:13px}
 .fake strong{color:var(--critical-text)}
-.notes{font-size:13px;color:var(--ink-2);margin:0 0 20px}
+.notes{font-size:12px;color:var(--ink-2);margin:0 0 12px}
 .notes summary{cursor:pointer}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),1fr));gap:12px;margin:0 0 20px}
-.tile{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
-.tile-label{font-size:13px;color:var(--ink-2)}
-.tile-value{font-size:30px;font-weight:600;margin:2px 0}
-.tile-sub{font-size:12px;color:var(--muted)}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin:0 0 20px;
-min-width:0}
-@media (max-width:560px){.card{padding:16px 12px}}
-.card h2{font-size:18px;margin:0 0 4px;display:flex;align-items:center;gap:10px}
-.pn{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:6px;background:var(--wash);
-font-size:13px;color:var(--ink-2)}
-.how{color:var(--ink-2);font-size:13px;margin:0 0 12px;max-width:780px}
-h3{font-size:15px;margin:18px 0 6px}
-.src{font-weight:400;font-size:12px;color:var(--muted);margin-left:6px}
-.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--ink-2);margin:0 0 6px}
-.key{display:inline-flex;align-items:center;gap:6px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(190px,100%),1fr));gap:12px;margin:0 0 14px}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+.tile-label{font-size:12px;color:var(--ink-2)}
+.tile-value{font-size:30px;font-weight:600;line-height:1.15;margin:2px 0 0}
+.tile-sub{font-size:11.5px;color:var(--muted);margin-top:6px}
+.meter{height:6px;border-radius:3px;background:var(--track);overflow:hidden;margin-top:8px}
+.meter span{display:block;height:100%;background:var(--s1);border-radius:3px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(520px,100%),1fr));gap:14px;margin:0 0 14px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;min-width:0}
+.card.wide{margin:0 0 14px}
+.card h2{font-size:16px;margin:0 0 2px}
+.how{color:var(--ink-2);font-size:12px;margin:0 0 8px}
+h3{font-size:13px;margin:8px 0 2px}
+.src{font-weight:400;font-size:11.5px;color:var(--muted);margin-left:4px}
+.kblock+.kblock{margin-top:4px}
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(480px,100%),1fr));gap:4px 20px}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--ink-2);margin:0 0 4px}
+.key{display:inline-flex;align-items:center;gap:5px}
 .key svg{width:14px;height:14px;flex:none}
-.warn{font-size:13px;color:var(--ink-1);margin:4px 0 0}
-.warn .icon{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--critical);
-color:#fff;font-size:12px;font-weight:700;margin-right:6px}
-.line-key{display:inline-block;width:16px;height:2px;border-radius:1px}
+.line-key{display:inline-block;width:14px;height:2px;border-radius:1px;vertical-align:middle;margin-right:2px}
 .scroll{overflow-x:auto}
 svg{display:block;width:100%;height:auto;overflow:visible}
-svg.wide{min-width:680px}
-svg text{fill:var(--ink-2);font-size:12px;font-family:inherit}
-svg .tick{fill:var(--muted);font-variant-numeric:tabular-nums}
-svg .row-label{fill:var(--ink-1);font-size:13px}
-svg .value{fill:var(--ink-1);font-size:12px}
+svg text{fill:var(--ink-2);font-size:11px;font-family:inherit}
+svg .tick{fill:var(--muted);font-variant-numeric:tabular-nums;font-size:10.5px}
+svg .col{text-anchor:start}
+svg .row-label{fill:var(--ink-1);font-size:12px}
+svg .row-label.small{font-size:11px}
+svg .value{fill:var(--ink-1);font-size:11.5px}
+svg .strong{font-weight:600}
 svg .note{fill:var(--muted);font-style:italic}
-svg .ref-label{fill:var(--ink-2);font-size:11px}
+svg .ref-label{fill:var(--ink-2);font-size:10.5px}
+svg .cell{font-size:11px;font-weight:600;font-variant-numeric:tabular-nums}
 .grid{stroke:var(--grid);stroke-width:1}
 .axis{stroke:var(--axis);stroke-width:1}
 .ref{stroke:var(--ink-2);stroke-width:1}
-.whisker{stroke:var(--ink-1);stroke-width:1.5;fill:none}
+.whisker{stroke:var(--ink-1);stroke-width:1.3;fill:none}
 .line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
 .band{opacity:.10}
 .end-dot{stroke:var(--surface);stroke-width:2}
 .hair{stroke:var(--ink-2);stroke-width:1;visibility:hidden;pointer-events:none}
 .mark{outline:none;cursor:default}
-.mark:hover path,.mark:hover rect:not([fill=transparent]),.mark:focus-visible path{filter:brightness(1.12)}
-.mark:focus-visible rect[fill=transparent]{stroke:var(--ink-1);stroke-width:1}
+.mark:hover path,.mark:hover rect:not([fill=transparent]),.mark:focus-visible path,.mark:focus-visible rect{filter:brightness(1.12)}
 .dot{cursor:pointer;outline:none}
 .dot .sel{fill:none;stroke:var(--ink-1);stroke-width:1.5;visibility:hidden}
 .dot:hover .sel{visibility:visible;opacity:.45}
 .dot:focus-visible .sel,.dot.selected .sel{visibility:visible;opacity:1}
-.multiples{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(380px,100%),1fr));gap:8px 24px}
-figure.small{margin:8px 0 0}
-figcaption{font-weight:600;font-size:15px;margin:0 0 4px}
-table{border-collapse:collapse;width:100%;font-size:13px}
-th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--grid);vertical-align:top}
+.hc0{fill:var(--h0)}.hc1{fill:var(--h1)}.hc2{fill:var(--h2)}.hc3{fill:var(--h3)}.hc4{fill:var(--h4)}.hc5{fill:var(--h5)}.hc6{fill:var(--h6)}
+.ht0{fill:var(--t0)}.ht1{fill:var(--t1)}.ht2{fill:var(--t2)}.ht3{fill:var(--t3)}.ht4{fill:var(--t4)}.ht5{fill:var(--t5)}.ht6{fill:var(--t6)}
+.hfail{fill:var(--critical)}.htfail{fill:#fff}
+.ramp{display:inline-flex;border-radius:2px;overflow:hidden}
+.swatch{display:inline-block;width:12px;height:10px}
+.swatch.hfail{border-radius:2px}
+.swatch.hc0{background:var(--h0)}.swatch.hc1{background:var(--h1)}.swatch.hc2{background:var(--h2)}
+.swatch.hc3{background:var(--h3)}.swatch.hc4{background:var(--h4)}.swatch.hc5{background:var(--h5)}
+.swatch.hc6{background:var(--h6)}.swatch.hfail{background:var(--critical)}
+.suite+.suite{margin-top:6px}
+.wall-row{display:grid;grid-template-columns:118px 1fr 24px;gap:8px;align-items:center;padding:3px 0;
+border-top:1px solid var(--grid)}
+.wall-label{font-size:12px;color:var(--ink-2)}
+.wall-n{font-size:11.5px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:4px;font-size:11px;font-weight:700;
+color:#fff;line-height:1;cursor:default;outline:none;flex:none}
+.chip.round{border-radius:50%}
+.chip.caught,.chip.pass{background:var(--good)}
+.chip.missed,.chip.alarm{background:var(--critical)}
+.chip.nogain{background:var(--muted)}
+.chip.pending,.chip.other{background:transparent;box-shadow:inset 0 0 0 2px var(--muted);color:var(--muted)}
+.chip:hover,.chip:focus-visible{filter:brightness(1.15);box-shadow:0 0 0 2px var(--ink-1)}
+.legend .chip{width:14px;height:14px;font-size:9px}
+ul.mini{list-style:none;padding:0;margin:8px 0 0;font-size:12px;color:var(--ink-2)}
+ul.mini li{margin:2px 0}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--grid);vertical-align:top}
 th{color:var(--ink-2);font-weight:600}
 td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 .status{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
-.status .icon{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;color:#fff;
-font-size:12px;font-weight:700}
-.status.good .icon{background:var(--good)}
+.status .icon{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;color:#fff;font-size:11px;font-weight:700}
+.status.good .icon{background:var(--good)}.status.critical .icon{background:var(--critical)}
 .status.neutral .icon{background:var(--muted)}
-.status.neutral{color:var(--ink-2)}
-.status.critical .icon{background:var(--critical)}
-.status.good{color:var(--good-text)}
-.status.critical{color:var(--critical-text)}
-.note{color:var(--muted)}
-details.tv{margin-top:12px;font-size:13px}
+.status.good{color:var(--good-text)}.status.critical{color:var(--critical-text)}.status.neutral{color:var(--ink-2)}
+details.tv{margin-top:8px;font-size:12px}
 details.tv summary{cursor:pointer;color:var(--ink-2)}
-.empty{color:var(--muted);font-size:14px;margin:8px 0}
-.detail{margin-top:14px;border-top:1px solid var(--grid);padding-top:12px}
-.detail h3{margin:0 0 8px}
-.detail dl{display:grid;grid-template-columns:max-content 1fr;gap:2px 16px;font-size:13px;margin:0 0 10px}
+.empty{color:var(--muted);font-size:13px;margin:6px 0}
+.warn{font-size:12px;color:var(--ink-1);margin:4px 0}
+.warn .icon{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;background:var(--critical);
+color:#fff;font-size:11px;font-weight:700;margin-right:6px}
+.detail{margin-top:10px;border-top:1px solid var(--grid);padding-top:10px}
+.detail h3{margin:0 0 6px}
+.detail dl{display:grid;grid-template-columns:max-content 1fr;gap:1px 14px;font-size:12px;margin:0 0 8px}
 .detail dt{color:var(--ink-2)}
 .detail dd{margin:0;font-variant-numeric:tabular-nums}
-.detail .label{font-size:12px;color:var(--ink-2);margin:10px 0 2px;font-weight:600}
-.detail .text{white-space:pre-wrap;margin:0;font-size:13px}
-pre.diff{font:12px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;background:var(--wash);border-radius:8px;
-padding:10px 12px;overflow-x:auto;max-height:420px;margin:4px 0 0}
+.detail .label{font-size:11.5px;color:var(--ink-2);margin:8px 0 2px;font-weight:600}
+.detail .text{white-space:pre-wrap;margin:0;font-size:12px}
+pre.diff{font:11.5px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;background:var(--wash);border-radius:8px;
+padding:8px 10px;overflow-x:auto;max-height:360px;margin:4px 0 0}
 pre.diff .add{background:var(--add);display:block}
 pre.diff .del{background:var(--del);display:block}
 pre.diff .hunk{color:var(--muted);display:block}
 code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em}
-#tip{position:fixed;z-index:10;pointer-events:none;background:var(--surface);color:var(--ink-1);
-border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;box-shadow:0 4px 16px rgba(0,0,0,.12);
-max-width:320px}
+#tip{position:fixed;z-index:10;pointer-events:none;background:var(--surface);color:var(--ink-1);border:1px solid var(--border);
+border-radius:8px;padding:7px 9px;font-size:12px;box-shadow:0 4px 16px rgba(0,0,0,.14);max-width:340px}
 .tip-value{font-weight:600;font-size:13px}
 .tip-label{color:var(--ink-2)}
 .tip-row{display:flex;align-items:center;gap:8px}
 .tip-key{display:inline-block;width:12px;height:2px;border-radius:1px;flex:none}
-footer{color:var(--muted);font-size:12px}
+footer{color:var(--muted);font-size:11.5px;margin-top:4px}
+@media (max-width:560px){.card{padding:12px}.tile-value{font-size:26px}}
 """
 
 JS = r"""
@@ -975,7 +1056,7 @@ JS = r"""
     if (t && !t.contains(e.relatedTarget)) hide();
   });
   document.addEventListener('focusin', e => {
-    const t = e.target.closest('[data-tip]');
+    const t = e.target.closest && e.target.closest('[data-tip]');
     if (t) { const r = t.getBoundingClientRect(); showLines(t.dataset.tip.split('\n'), r.right, r.top); }
   });
   document.addEventListener('focusout', hide);
@@ -1025,6 +1106,7 @@ JS = r"""
   function open(id) {
     const a = data[id];
     if (!a || !detail) return;
+    detail.hidden = false;
     detail.replaceChildren();
     add(detail, 'h3', '', a.title);
     const dl = add(detail, 'dl');
@@ -1078,12 +1160,11 @@ def stamp(records, fake):
 def build(records, results, notes, fake, inputs):
     summary = summarize(records)
     timeline, details = panel_timeline(summary)
-    banner = stamp(records, fake)
     sources = set().union(*(s["sources"] for s in summary.values())) if summary else set()
     sources |= {v["source"] for v in results["kernels"].values() if v.get("source")}
     built = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-    meta = (f"Built {built} from {len(inputs)} file{'s' if len(inputs) != 1 else ''} · "
-            f"{len(records):,} attempts · times: {source_label(sources)}")
+    meta = (f"Built {built} · {len(inputs)} file{'s' if len(inputs) != 1 else ''} · "
+            f"{len(records):,} attempts · {source_label(sources)}")
     note_html = ""
     if notes:
         note_html = (f'<details class="notes"><summary>{len(notes)} log line{"s" if len(notes) != 1 else ""} '
@@ -1100,19 +1181,17 @@ def build(records, results, notes, fake, inputs):
 </head>
 <body>
 <main>
-<h1>CHIPBOOST</h1>
-<p class="lede">Qwen3-8B speeds up the kernels it is built from, on the Trainium chip it runs on. Only speedups
-that pass the referee count: correct on the chip, correct on shapes the agent never saw, and faster by more
-than the timing noise.</p>
+<header class="top">
+<div><h1>CHIPBOOST</h1><p class="lede">Qwen3-8B speeds up the kernels it is built from, on the Trainium chip it runs on.
+A speedup counts only if the referee verifies it: correct on the chip and on unseen shapes, and faster than the noise.</p></div>
 <p class="meta">{esc(meta)}</p>
-{banner}{note_html}{kpis(summary, results, records)}
-{panel_speed(summary, results)}
-{panel_progress(summary, results)}
-{panel_redteam(results)}
+</header>
+{stamp(records, fake)}{note_html}{kpis(summary, results, records)}
+<div class="row">{panel_speed(summary, results)}{panel_progress(summary, results)}</div>
+<div class="row">{panel_redteam(results)}{panel_heldout(results, summary)}</div>
 {timeline}
-{panel_heldout(results, summary)}
-<footer>Inputs: {esc(", ".join(inputs)) or "none"}. Speedups are against the start kernel timed in the same session.
-Projections, if any, are labelled as such; everything else here was logged by the referee.</footer>
+<footer>Inputs: {esc(", ".join(inputs)) or "none"}. Speedups are against the start kernel timed in the same session;
+projections, if any, are labelled as such.</footer>
 </main>
 <div id="tip" role="tooltip" hidden></div>
 <script type="application/json" id="attempt-data">{data}</script>
