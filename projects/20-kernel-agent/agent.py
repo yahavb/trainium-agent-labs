@@ -309,9 +309,21 @@ ATTN_API_CARD = """More NKI calls, exactly as they are spelled (x_sb is an sbuf 
   nisa.activation(dst=y, data=y, op=nl.exp)         elementwise exp
   nisa.reciprocal(dst=r, data=s)                    r and s are (n, 1) sbuf tiles
 
+nisa.nc_matmul(dst=, stationary=A, moving=B) computes A^T @ B: it sums over the FIRST axis of both. So
+q @ k^T needs stationary=q^T (d, n) and moving=k^T (d, n); P @ v needs stationary=P^T (n, n) and moving=v.
+
 Operators live in nl (nl.subtract, nl.multiply, nl.exp), never in nisa. Allocate every tile with
 nl.ndarray(shape, dtype=..., buffer=...); never index a tile with a tuple of Python ranges.
 """
+
+
+def api_card(level):
+    """The base card's last matmul line ("the left operand arrives already transposed") is true only for
+    the matmul levels. On attention it told the model q arrives transposed -- the exact wrong operand
+    layout level 8 kept producing -- so it is dropped outside levels 3-7."""
+    if 3 <= level <= 7:
+        return API_CARD
+    return API_CARD.replace("\nThe left operand arrives already transposed, with K on the partition axis.", "")
 
 
 def api_extra(level):
@@ -834,7 +846,7 @@ def first_prompt(level, terse=0):
         f"Hardware limits: a tile's partition dimension is at most {nkibench.PMAX}. For matmul, "
         f"the stationary free dimension is at most {nkibench.GEMM_STATIONARY_FMAX} and the "
         f"moving free dimension at most {nkibench.GEMM_MOVING_FMAX}.\n\n"
-        f"Import nki, nki.language as nl, and nki.isa as nisa.\n\n{API_CARD}\n\n"
+        f"Import nki, nki.language as nl, and nki.isa as nisa.\n\n{api_card(level)}\n\n"
         f"Reply with ONE python code block containing the imports and the function. No prose."
         + api_extra(level) + blocks_text())
 
