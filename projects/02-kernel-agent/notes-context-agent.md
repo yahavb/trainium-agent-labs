@@ -155,3 +155,20 @@ Tolerance justification:
 Remaining gap:
 
 - Need failure taxonomy counts from actual agent attempts after verifier improvements.
+
+## Agent improvement: reduction API routing
+
+The Level 1 run moved from a missing `dtype` failure to an NKI tensor `.mean()` failure. That is
+progress, but the old router treated `.mean()` as a generic scale error.
+
+Updated `agent.py` so:
+
+- `.mean()` / `has no attribute 'mean'` is categorized as `reduction_api`;
+- Level 1 reduction failures receive a compact `avgpool_reduction` card;
+- prompt accounting and logs now report the more precise category.
+
+Local validation:
+
+- `python3 -m py_compile projects/02-kernel-agent/agent.py projects/02-kernel-agent/nkibench.py`
+- Direct `distill_failure(...)` check returns `reduction_api` and cards
+  `['avgpool_reduction', 'reductions', 'signatures']`.

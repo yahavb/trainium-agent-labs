@@ -76,6 +76,12 @@ CONTEXT_CARDS = {
         "dst argument. To divide by a constant, write the sum into another tile with "
         "nisa.tensor_scalar(dst=..., data=sum_tile, op0=nl.multiply, operand0=scale)."
     ),
+    "avgpool_reduction": (
+        "Avgpool reduction pattern: copy the input block into SBUF, make an access-pattern view "
+        "whose axes separate output rows, output columns, and the pool rows/columns, reduce only "
+        "the pool axes with nl.sum(..., axis=[...]), then multiply by "
+        "1.0 / (pool_size * pool_size). Do not call .mean() on an NKI tensor."
+    ),
     "access_patterns": (
         "Access-pattern views use strides and counts over an existing SBUF tile. The first stride "
         "for the partition axis must match the size of the free dimensions behind one partition "
@@ -99,6 +105,7 @@ CONTEXT_CARDS = {
 
 REPAIR_CARD_NAMES = {
     "scale": ["reductions", "signatures"],
+    "reduction_api": ["reductions", "signatures"],
     "nonfinite": ["dma_copy_shape", "matmul_psum"],
     "rule": ["api_core", "signatures"],
     "dma_shape": ["dma_copy_shape", "tile_limits"],
@@ -478,6 +485,17 @@ def render_context_cards(names):
     return "\n".join(lines)
 
 
+def repair_card_names(level, category):
+    names = list(REPAIR_CARD_NAMES.get(category, ["api_core"]))
+    if level == 1 and category in {"scale", "reduction_api"}:
+        names.insert(0, "avgpool_reduction")
+    deduped = []
+    for name in names:
+        if name not in deduped:
+            deduped.append(name)
+    return deduped
+
+
 def compact_ledger(failures, limit=4):
     seen = []
     for failure in failures:
@@ -508,7 +526,7 @@ def distill_failure(feedback):
                 "Fix only the rule violation. Replace framework/host operations with explicit NKI "
                 "tile operations; keep the entry point and operation unchanged.")
     if "has no `mean`" in low or "object has no attribute 'mean'" in low:
-        return ("scale",
+        return ("reduction_api",
                 "Fix only the reduction. NKI tensors do not have .mean(); use nl.sum over the "
                 "reduction axes, then nisa.tensor_scalar to divide by the full reduction area.")
     if "same number of elements" in low or "dma_copy requires" in low:
@@ -606,7 +624,7 @@ def repair_prompt(level, source, feedback, tried=None):
     """
     compact = compact_feedback(feedback)
     category, instruction = distill_failure(compact)
-    card_names = REPAIR_CARD_NAMES.get(category, ["api_core"])
+    card_names = repair_card_names(level, category)
     cards = render_context_cards(card_names)
     ledger = compact_ledger(tried or [])
     ledger_text = f"\n\nAlready tried; avoid repeating these failures:\n{ledger}" if ledger else ""
@@ -781,7 +799,7 @@ def solve(a, level, log):
                       + f"\n\nThese approaches have already failed, so do something different:\n"
                         f"{ledger}")
             cat, inst = distill_failure(latest[1])
-            prompt_cards = REPAIR_CARD_NAMES.get(cat, ["api_core"])
+            prompt_cards = repair_card_names(level, cat)
             prompt_budget = prompt_accounting(
                 code=latest[0], feedback=compact_feedback(latest[1]),
                 cards=render_context_cards(prompt_cards), ledger=compact_ledger(tried),
@@ -803,7 +821,7 @@ def solve(a, level, log):
         else:
             prompt = repair_prompt(level, latest[0], latest[1], tried)
             cat, inst = distill_failure(latest[1])
-            prompt_cards = REPAIR_CARD_NAMES.get(cat, ["api_core"])
+            prompt_cards = repair_card_names(level, cat)
             prompt_budget = prompt_accounting(
                 code=latest[0], feedback=compact_feedback(latest[1]),
                 cards=render_context_cards(prompt_cards), ledger=compact_ledger(tried),
