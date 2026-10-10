@@ -30,15 +30,19 @@ two not caught, one gained no speedup and one (lower-precision accumulation) pas
 gain. Earlier rounds found and closed real escapes: a forged result record, a candidate patching the
 referee, a shell from inside the kernel.
 
-**2. AWS's published "fully optimised" NKI matmul is wrong at Qwen3's sizes** [chip]. It rounds each
-K-block's partial sum to bf16: 5.3 bf16 ulps at K=2048 (limit 4), and wrong on the held-out down_proj
-shape. Accumulating in fp32 fixes it (0.50 ulps) at the same speed. Repro: `kernels-search` f450d12.
+**2. AWS's published "fully optimised" NKI matmul loses precision at Qwen3's sizes.** It rounds each
+K-block's partial sum to bf16; its own test (K=1024, one block) never takes that path. [chip] 5.3 bf16
+ulps at K=2048 (limit 4), and wrong on the held-out down_proj shape. [sim] At K=8192, the K of its own
+benchmark, 19.4 ulps: it fails its own correctness check (`tools/aws_matmul_bf16_repro.py --sim`, the
+file unmodified). A one-line fp32 accumulator fixes it (0.5 ulps) at no measurable speed cost. Its fixed
+blocking also asserts M % 2048 == 0, so it refuses Qwen3's 256-token shapes outright.
 
-**3. Tuning the expert's block sizes gains +35%** [chip]. The fixed expert is 2.49× the start kernel and
-stays correct on 6 of 6 held-out shapes (1.28–3.79×). Random search starts from it (so it is a
-different claim from finding 4): 3 runs × 24 tries reach 1.32×, 1.35×, 1.37× the expert; their bests
-rank #4, #3, #1 of the 62 legal settings in an exhaustive sweep (best: 1.375×). With 8 tries:
-1.25×, 1.33×, 1.01×.
+**3. Tuning the expert's block sizes gains +35%, but only at the shape it was tuned on** [chip]. The
+fixed expert is 2.49× the start kernel: AWS's design, not a discovery. Random search over its three
+block sizes starts from it (a different claim from finding 4): 3 runs × 24 tries reach 1.325×, 1.352×,
+1.372× the expert. An exhaustive sweep of all 62 legal settings ranks AWS's default #29, caps the gain at
+1.375×, and ranks the runs' bests #4, #3, #1. The winner stays correct on 6 of 6 held-out shapes, but its
+speed does not transfer: +84% at 128 tokens, −61% at kv_proj with 1024 tokens. Tune per shape.
 
 **4. The model needs feedback that names the change.**
 - *v1, 0 faster in 96 attempts.* Model alone: 46 of 48 "no gain"; it rewrites the kernel without
@@ -49,12 +53,18 @@ rank #4, #3, #1 of the 62 legal settings in an exhaustive sweep (best: 1.375×).
   (TILE_K, K // TILE_K, TILE_N) instead of a Python list of tiles; one fresh accumulator per output tile).
   First run: **a correct kernel 1.517× faster on the third attempt** (633.0 vs 960.4 µs), correct on 5
   held-out shapes; re-timed twice at 1.517×. The code is verbatim from the model's reply
-  (`kernels/qwen_v2_best.py`, sha1 57044ec26245); no prompt contained a solution. Replication runs:
-  **(pending)**.
+  (`kernels/qwen_v2_best.py`, sha1 57044ec26245); no prompt contained a solution. Held-out grid for
+  this kernel: **(pending)**. Later runs used a revised treatment ("Qwen + P1 fixes") and are reported
+  separately: **(pending)**.
 - *v2, P3, agent-side:* instructions that name the *error* ("your dma_copy moves 65536 elements into
   16384") and offer two generic fixes: 0 faster in 18 attempts, the same crash 15 times.
 
 So far one success in 28 v2 attempts: a first result, not yet a rate.
+
+## Also measured, not a referee verdict
+Half of every NeuronCore sits idle under a plain launch: running the expert across both physical cores of
+an LNC=2 core (`kernel[2]`) gives 1.50× more, 5.0× the start kernel, on two clocks. The referee launches
+at LNC=1 and did not check held-out shapes for it, so it is not in any comparison above.
 
 ## Not claimed
 No end-to-end Qwen3 speedup: no kernel was plugged into the served model. No share-of-runtime (Amdahl)
