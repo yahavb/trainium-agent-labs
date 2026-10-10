@@ -1,7 +1,7 @@
 # Attempt log
 
-`attempts.tar.gz` holds **every attempt** the agent made on our seats (95, 96, 98, 99): 2,106 attempts in
-81 files, one folder per seat, one JSON object per line.
+`attempts.tar.gz` holds **every attempt** the agent made on our seats (95, 96, 98, 99): 2,514 attempts in
+83 files, one folder per seat, one JSON object per line.
 
 ```bash
 mkdir -p /tmp/attempts && tar xzf logs/attempts.tar.gz -C /tmp/attempts
