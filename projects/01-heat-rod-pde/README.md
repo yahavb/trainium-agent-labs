@@ -1,5 +1,11 @@
 # Project 1 — The heat-rod agent
 
+**小组实验入口：** [中文上手指南](TEAM_GUIDE.zh-CN.md) ·
+[原版配置](configs/baseline.json) · [实验反馈配置](configs/structured.json) ·
+[一页说明模板](EXPERIMENT_NOTE.zh-CN.md)。
+`run_experiments.py` repeats a fixed problem, snapshots the executed code, and saves per-run logs
+and a summary. `structured` feedback is an unmeasured experiment; the original checker is unchanged.
+
 **A small model on your chip solves heat-equation problems it cannot solve in one shot. The checker
 does the work.**
 
