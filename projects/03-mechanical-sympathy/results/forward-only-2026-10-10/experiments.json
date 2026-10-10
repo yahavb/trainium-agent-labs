@@ -1,0 +1,14 @@
+[
+  {
+    "label": "FP32 baseline",
+    "report": "neuron.json"
+  },
+  {
+    "label": "BF16 matmult autocast",
+    "report": "neuron_bf16.json"
+  },
+  {
+    "label": "BF16 + BatchNorm folding",
+    "report": "neuron_bf16_folded.json"
+  }
+]

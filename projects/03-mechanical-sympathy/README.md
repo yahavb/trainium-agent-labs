@@ -174,3 +174,10 @@ Do not report CPU speed as the Trainium baseline.
 - Neuron compiler caches
 - Environment files and credentials
 - `pod-remote/`
+
+## Forward-only speed experiment report
+
+See the [three-trial report and hill-climb graph](results/forward-only-2026-10-10/README.md)
+for the CPU timing reference, Trainium FP32, BF16 autocast, and BatchNorm-folding
+measurements. These speed-only results have not passed the project’s forecast
+correctness acceptance workflow.
