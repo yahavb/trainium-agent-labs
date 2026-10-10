@@ -245,6 +245,7 @@ def grade(source, level):
             continue
         parts["runs"] = True
         m = (nkibench.check_inputs_untouched(before, args)
+             or nkibench.describe_illegal(counted)
              or nkibench.describe_mismatch(got, want)
              or nkibench.check_traffic_bar(level, counted, args, want))
         hazards = [w for w in counted.get("warnings", [])

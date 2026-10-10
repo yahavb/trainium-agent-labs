@@ -29,6 +29,7 @@ marked NEEDS DEVICE VERIFICATION in the selftest output. Run --selftest on the i
 import argparse
 import ast
 import importlib.util
+import os
 import sys
 import textwrap
 
@@ -42,6 +43,11 @@ import numpy as np
 PMAX = 128                    # nl.tile_size.pmax -- partition axis maximum
 GEMM_STATIONARY_FMAX = 128    # nl.tile_size.gemm_stationary_fmax
 GEMM_MOVING_FMAX = 512        # nl.tile_size.gemm_moving_fmax
+# On-chip capacity per partition. PSUM is 8 banks of 2 KiB; SBUF is 24 MiB over 128 partitions
+# (trn2). A tile spanning several PSUM banks is legal -- the NKI docs allocate all eight at
+# once -- so the PSUM limit is the whole of PSUM, not one bank.
+PSUM_PARTITION_BYTES = 16 * 1024
+SBUF_PARTITION_BYTES = 192 * 1024
 
 # The roofline ridge point: the arithmetic intensity at which the memory ceiling and the
 # compute ceiling meet. Below it a kernel is memory bound, above it compute bound. The
@@ -608,6 +614,102 @@ def check_inputs_untouched(before, args):
     return None
 
 
+# ---------------------------------------------------------------- layer 1d: allocation audit
+#
+# The simulator enforces the 128-partition limit on dma_copy and tensor_copy, not on allocation.
+# Observed on another seat (Yahtze/trainium-agent-labs, branch kernel-feedback): a kernel
+# allocated a (256, 256) sbuf tile and a (512, 1024) psum tile, sliced them for nc_matmul, and
+# ran -- a kernel the chip cannot execute, which would have scored 1.0 had it been numerically
+# right. So every on-chip allocation is recorded during simulation and judged against the limits.
+#
+# The hook goes in BEFORE the kernel file is imported (load_kernel does it): nki.jit may bind the
+# API when it decorates, so a patch applied afterwards would never be seen. It stays installed;
+# outside a simulation nothing here calls nl.ndarray. NKIBENCH_NO_ALLOC_AUDIT=1 turns it off.
+
+_ALLOC_LOG = []
+_AUDIT = {"installed": False}
+# where dtype and buffer sit positionally: ndarray/zeros/ones(shape, dtype, buffer),
+# full(shape, fill_value, dtype, buffer). All default to sbuf. *_like is not audited: its buffer
+# defaults to its argument's, which the wrapper cannot see reliably.
+_ALLOCATORS = {"ndarray": (1, 2), "zeros": (1, 2), "ones": (1, 2), "full": (2, 3)}
+
+
+def _buffer_name(buf, nl):
+    for name in ("sbuf", "psum", "shared_hbm", "private_hbm", "hbm"):
+        if buf is getattr(nl, name, object()):
+            return "hbm" if "hbm" in name else name
+    s = str(getattr(buf, "name", buf)).lower()
+    return next((n for n in ("sbuf", "psum", "hbm") if n in s), "")
+
+
+def _install_alloc_audit():
+    if _AUDIT["installed"] or os.environ.get("NKIBENCH_NO_ALLOC_AUDIT"):
+        return
+    try:
+        import nki.language as nl
+    except ImportError:
+        return
+
+    def wrap(fn_name, original, dtype_at, buffer_at):
+        def auditing(*args, **kw):
+            try:
+                shape = kw.get("shape", args[0] if args else None)
+                dtype = kw.get("dtype", args[dtype_at] if len(args) > dtype_at else None)
+                buf = kw.get("buffer", args[buffer_at] if len(args) > buffer_at else nl.sbuf)
+                _ALLOC_LOG.append(dict(fn=fn_name, shape=tuple(int(s) for s in shape),
+                                       itemsize=itemsize_of(type("_D", (), {"dtype": dtype})()),
+                                       buffer=_buffer_name(buf, nl)))
+            except Exception:
+                _ALLOC_LOG.append(dict(fn=fn_name, shape=None, itemsize=0, buffer="?"))
+            return original(*args, **kw)
+        auditing.__wrapped__ = original
+        return auditing
+
+    for fn_name, (dtype_at, buffer_at) in _ALLOCATORS.items():
+        original = getattr(nl, fn_name, None)
+        if original is None:
+            continue
+        audited = wrap(fn_name, original, dtype_at, buffer_at)
+        setattr(nl, fn_name, audited)
+        # also where it is defined, in case the decorator resolves names there
+        home = sys.modules.get(getattr(original, "__module__", "") or "")
+        if home is not None and getattr(home, fn_name, None) is original:
+            setattr(home, fn_name, audited)
+    _AUDIT["installed"] = True
+
+
+def illegal_allocations(log):
+    """Distinct allocations the chip would refuse, as sentences. A tile allocated inside a loop is
+    logged once per iteration, so each distinct one is reported once."""
+    bad = []
+    for a in log:
+        shape, buf = a.get("shape"), a.get("buffer")
+        if not shape or buf not in ("sbuf", "psum"):
+            continue
+        if shape[0] > PMAX:
+            bad.append(f"a {buf} tile of shape {shape}, whose partition dimension (the first) is "
+                       f"{shape[0]} where the maximum is {PMAX}")
+            continue
+        per_partition = int(np.prod(shape[1:], dtype=np.int64)) * (a.get("itemsize") or 4)
+        cap = PSUM_PARTITION_BYTES if buf == "psum" else SBUF_PARTITION_BYTES
+        if per_partition > cap:
+            bad.append(f"a {buf} tile of shape {shape}, which needs {per_partition:,} bytes per "
+                       f"partition where {buf} holds {cap:,}")
+    return list(dict.fromkeys(bad))
+
+
+def describe_illegal(counted):
+    """The simulator ran it and the chip would refuse it. None when every allocation fits."""
+    bad = counted.get("illegal") or []
+    if not bad:
+        return None
+    return ("ILLEGAL ON HARDWARE: the CPU simulator ran this kernel, but it does not check tile "
+            "limits when a tile is allocated and the chip does. The kernel allocated "
+            + "; and ".join(bad[:3]) + ". Do not allocate one on-chip tile for a whole operand or "
+            "the whole result: loop over the rows in chunks of at most 128 and allocate each tile "
+            "inside the loop with the chunk's own shape.")
+
+
 def simulate_and_count(kernel, args):
     """Run the kernel on the CPU and count the HBM traffic it asked for.
 
@@ -626,8 +728,10 @@ def simulate_and_count(kernel, args):
         ) from e
 
     run, api = _simulator(nki, kernel)
-    counter = dict(bytes=0, transfers=0, api=api, dtypes=set())
+    counter = dict(bytes=0, transfers=0, api=api, dtypes=set(), illegal=[], allocations=0)
     original = nisa.dma_copy
+    _install_alloc_audit()
+    del _ALLOC_LOG[:]
 
     def counting_dma_copy(dst=None, src=None, **kw):
         try:
@@ -659,10 +763,13 @@ def simulate_and_count(kernel, args):
         counter["warnings"] = seen[:3]
     finally:
         nisa.dma_copy = original
+        counter["allocations"] = len(_ALLOC_LOG)
+        counter["illegal"] = illegal_allocations(_ALLOC_LOG)
     return out, counter
 
 
 def load_kernel(path, entry):
+    _install_alloc_audit()        # must precede the import; see layer 1d
     spec = importlib.util.spec_from_file_location("candidate", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -692,7 +799,7 @@ def verify(path, level_n, tol=2e-2, seed=0):
         print(f"  FAILED to import: {type(e).__name__}: {e}")
         return 2
 
-    passed, failures, intensities = 0, [], []
+    passed, failures, intensities, audited = 0, [], [], []
     for case in spec["shapes"]:
         args, _ = make_inputs(case, level_n, seed)
         want = spec["ref"](*args)
@@ -705,7 +812,8 @@ def verify(path, level_n, tol=2e-2, seed=0):
             failures.append((label(case, level_n),
                              f"RAISED during simulation: {type(e).__name__}: {e}"))
             continue
-        m = describe_mismatch(got, want, tol)
+        audited.append(counted.get("allocations", 0))
+        m = describe_illegal(counted) or describe_mismatch(got, want, tol)
         if m:
             failures.append((label(case, level_n), m))
             continue
@@ -727,6 +835,14 @@ def verify(path, level_n, tol=2e-2, seed=0):
                                 counted, f, minimum_hbm_bytes(args, want)))
 
     print(f"  numerics   {passed}/{len(spec['shapes'])} shapes passed")
+    if not _AUDIT["installed"]:
+        print("  allocation audit OFF (NKIBENCH_NO_ALLOC_AUDIT set, or nki missing)")
+    elif audited and not any(audited):
+        # every kernel allocates at least its result, so silence means the hook saw nothing
+        print("  allocation audit saw NO allocations -- the hook is not seeing nl.ndarray, so tile "
+              "limits are UNCHECKED here")
+    elif audited:
+        print(f"  allocation audit {sum(audited):,} allocations across {len(audited)} shapes")
     for lbl, m in failures[:3]:
         print(f"\n  case {lbl}:")
         print(textwrap.indent(m, "    "))
@@ -832,6 +948,32 @@ def selftest():
     print(f"  accepts a plausible kernel         -> {'ok' if not v else 'FAIL: ' + str(v)}")
     rc |= 0 if not v else 1
 
+    # The allocation audit: the judgement is pure, so it is proven here; the hook that feeds it
+    # needs nki (see the end of this selftest).
+    print()
+    def alloc(shape, buffer, itemsize=4):
+        return dict(fn="ndarray", shape=shape, buffer=buffer, itemsize=itemsize)
+    reference_l4 = [alloc((256, 1024), "hbm"), alloc((128, 512), "psum"),
+                    alloc((128, 128), "sbuf"), alloc((128, 512), "sbuf")]
+    audit_cases = [
+        ("the level-4 reference's tiles", reference_l4, 0),
+        ("a (256, 256) sbuf tile", [alloc((256, 256), "sbuf")], 1),
+        ("a (512, 1024) psum tile", [alloc((512, 1024), "psum")], 1),
+        ("all 8 psum banks, (128, 4096) f32", [alloc((128, 4096), "psum")], 0),
+        ("more than all of psum", [alloc((128, 8192), "psum")], 1),
+        ("a huge hbm tensor", [alloc((4096, 4096), "hbm")], 0),
+        ("one bad tile in a loop, 4 times", [alloc((256, 256), "sbuf")] * 4, 1),
+    ]
+    for what, log, want_n in audit_cases:
+        got_n = len(illegal_allocations(log))
+        ok = got_n == want_n
+        rc |= 0 if ok else 1
+        print(f"  audit: {what:<34} -> {got_n} illegal {'ok' if ok else 'FAIL want ' + str(want_n)}")
+    m = describe_illegal(dict(illegal=illegal_allocations([alloc((256, 256), "sbuf")])))
+    ok = bool(m) and m.startswith("ILLEGAL ON HARDWARE") and "(256, 256)" in m
+    print(f"  audit message names the tile       -> {'ok' if ok else 'FAIL'}")
+    rc |= 0 if ok else 1
+
     # Byte sizing. A 2x error here silently doubles every arithmetic intensity and can turn a
     # memory-bound kernel into a plausible-looking compute-bound one -- which is exactly what
     # the first cluster run did before itemsize_of existed.
@@ -887,6 +1029,14 @@ def selftest():
         print(f"  nki {getattr(nki, '__version__', '?')} is importable; simulation API: "
               f"{api or 'NEITHER — see _simulator()'}")
         rc |= 0 if api else 1
+        _install_alloc_audit()
+        import nki.language as nl
+        hooked = [n for n in _ALLOCATORS if hasattr(getattr(nl, n, None), "__wrapped__")]
+        print(f"  allocation audit hooked onto       -> nl.{', nl.'.join(hooked) or 'NOTHING'}"
+              f"{'' if hooked else ' FAIL'}")
+        print("    whether nki.jit kernels go through that hook is proven only by --check on a "
+              "reference kernel: look for 'allocation audit N allocations'.")
+        rc |= 0 if hooked or os.environ.get("NKIBENCH_NO_ALLOC_AUDIT") else 1
     except ImportError:
         print("  NEEDS DEVICE VERIFICATION: simulate_and_count() imports nki and cannot run")
         print("    here. Its byte counting wraps nisa.dma_copy, which is unverified until")
