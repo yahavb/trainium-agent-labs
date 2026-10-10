@@ -40,7 +40,7 @@ For whichever project you pick (README, Part 4), three things:
 | 2 | **Your attempt log** | Every attempt with its score, so someone else can watch the loop working. |
 | 3 | **A one-page note** | What you ran, on what, what came out, **how many runs, and the spread**. |
 
-If you take the kernel-writing challenge, the long version (`projects/02-kernel-agent/CHALLENGE-kernel-agent.md`)
+If you take the kernel-writing challenge, the long version (`projects/20-kernel-agent/CHALLENGE-kernel-agent.md`)
 asks for six things: the agent, the verification harness (with its tolerance justified), your eval set
 (including hostile cases), a **failure taxonomy**, **token instrumentation**, and a one-page
 reproduction note.
@@ -164,7 +164,7 @@ Both live in `projects/` and both are the same loop with a different checker.
 - **Headline result:** level 1.3 solves in two rounds with the calculator and stalls at 0.8 without it
   (`--no-tools`).
 
-### Project 2 — kernel agent (`projects/02-kernel-agent/`) — **runs, unsolved**
+### Project 2 — kernel agent (`projects/20-kernel-agent/`) — **runs, unsolved**
 
 - **Problem:** have the agent write a **kernel** (a small program that runs directly on the
   accelerator, moving tiles of data into on-chip memory and doing the maths there). In the language
@@ -260,7 +260,7 @@ understanding.md           This file
 serve.sh                   Starts Qwen3-8B inside your pod
 projects/
   01-heat-rod-pde/         Solved. agent.py = the loop, pdecheck.py = the checker, tool_calc.py = calculator
-  02-kernel-agent/         Unsolved. agent.py = the loop, nkibench.py = NKI checker (CPU simulator),
+  20-kernel-agent/         Unsolved. agent.py = the loop, nkibench.py = NKI checker (CPU simulator),
                            kernelbench.py = NumPy "laptop" checker, reference_level*.py = known-good kernels,
                            CHALLENGE-kernel-agent.md = the full brief, grading and expectations
 gptoss/                    Client, probe and load-test tools for the shared gpt-oss-20b endpoint
@@ -286,7 +286,7 @@ re-learn what they already measured).
 - **Solve rates differ between docs** (level 2 appears as ~2/3, 2/5 and 4/5). `STATE.md` explains the
   gap isn't attributable. Treat **4/5** as the latest baseline and don't claim an improvement from it.
 - **Which model project 2 talks to:** the README says the local Qwen3-8B; the docstring at the top of
-  `projects/02-kernel-agent/agent.py` still describes the shared gpt-oss endpoint. Both work; the
+  `projects/20-kernel-agent/agent.py` still describes the shared gpt-oss endpoint. Both work; the
   README is the current plan.
 - **Still open per `STATE.md`:** on-device timing (layers 2–3), reference kernels for levels 5–7, and
   which levels are held back for judging. The held-back answers live in a gitignored `RUN-OF-DAY.md`,

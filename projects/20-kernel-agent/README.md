@@ -52,7 +52,7 @@ seat number — and run:
 
 ```bash
 git config --global --add safe.directory /workspace    # needed before any git command here
-cd /workspace/projects/02-kernel-agent
+cd /workspace/projects/20-kernel-agent
 
 python nkibench.py --selftest                       # prove the harness first
 python nkibench.py --level 4 --check reference_level4.py
@@ -71,7 +71,7 @@ tail -f run.log
 > ```
 >
 > Disconnected? Reconnect with `kubectl exec -it seat-42 -- bash` and pick up where you were with
-> `tail -f /workspace/projects/02-kernel-agent/run.log`. `pgrep -af agent.py` shows whether it is still running.
+> `tail -f /workspace/projects/20-kernel-agent/run.log`. `pgrep -af agent.py` shows whether it is still running.
 
 Every `python agent.py ...` run further down this page is long too — start each the same way.
 

@@ -34,7 +34,7 @@ The root README gives three universal deliverables:
 
 The kernel challenge additionally requests the agent, evaluation cases, failure taxonomy, and token instrumentation. Prepare that superset if choosing kernels.
 
-Sources: [root README](README.md), [kernel challenge](projects/02-kernel-agent/CHALLENGE-kernel-agent.md).
+Sources: [root README](README.md), [kernel challenge](projects/20-kernel-agent/CHALLENGE-kernel-agent.md).
 
 ## 2. My recommended project and scope
 
@@ -91,13 +91,13 @@ The README says teams are typically 3–5 and asks custom-project proposals to b
 | [tool_calc.py](projects/01-heat-rod-pde/tool_calc.py) | SymPy calculator using `COMPUTE:` lines | Tools/no-tools experiments |
 | [level0_heatrod.py](projects/01-heat-rod-pde/level0_heatrod.py) | Three easy generated physics problems | Warm-up and checker tests |
 | [level1_heatrod.py](projects/01-heat-rod-pde/level1_heatrod.py) | Insulated boundaries and parabola initial conditions | Harder physics cases |
-| [Project 2 README](projects/02-kernel-agent/README.md) | NKI project history, references, optimization discussion | Read with the caveats below |
-| [CHALLENGE-kernel-agent.md](projects/02-kernel-agent/CHALLENGE-kernel-agent.md) | NumPy challenge, rubric, context-budget problem | Submission design and laptop track |
-| [Project 2 agent.py](projects/02-kernel-agent/agent.py) | Automated **NKI** agent | Main modification point for recommended project |
-| [nkibench.py](projects/02-kernel-agent/nkibench.py) | **NKI** references, simulator, static checks, traffic counting | NKI verification |
-| [kernelbench.py](projects/02-kernel-agent/kernelbench.py) | **NumPy** references, hostile cases, static checks | Laptop verification |
-| [try_level.py](projects/02-kernel-agent/try_level.py) | Manual NumPy generation/repair through gpt-oss | Prototype repair prompts |
-| `projects/02-kernel-agent/reference_level{1,2,3,4}.py` | Shipped correct NKI tutorial kernels | Validate harness; understand legal API patterns |
+| [Project 2 README](projects/20-kernel-agent/README.md) | NKI project history, references, optimization discussion | Read with the caveats below |
+| [CHALLENGE-kernel-agent.md](projects/20-kernel-agent/CHALLENGE-kernel-agent.md) | NumPy challenge, rubric, context-budget problem | Submission design and laptop track |
+| [Project 2 agent.py](projects/20-kernel-agent/agent.py) | Automated **NKI** agent | Main modification point for recommended project |
+| [nkibench.py](projects/20-kernel-agent/nkibench.py) | **NKI** references, simulator, static checks, traffic counting | NKI verification |
+| [kernelbench.py](projects/20-kernel-agent/kernelbench.py) | **NumPy** references, hostile cases, static checks | Laptop verification |
+| [try_level.py](projects/20-kernel-agent/try_level.py) | Manual NumPy generation/repair through gpt-oss | Prototype repair prompts |
+| `projects/20-kernel-agent/reference_level{1,2,3,4}.py` | Shipped correct NKI tutorial kernels | Validate harness; understand legal API patterns |
 | [gptoss/README.md](gptoss/README.md) | Shared endpoint behavior and measurements | Before using the shared model |
 | [gptoss/chat.py](gptoss/chat.py), [web.py](gptoss/web.py) | Terminal/browser chat clients | Endpoint smoke test or optional presentation |
 | [gptoss/probe.py](gptoss/probe.py), [loadtest.py](gptoss/loadtest.py) | API and performance experiments | Only if endpoint measurement is your project |
@@ -219,7 +219,7 @@ Historical recurring failures:
 
 ## 7. How the existing NKI agent works
 
-Relevant functions in [agent.py](projects/02-kernel-agent/agent.py):
+Relevant functions in [agent.py](projects/20-kernel-agent/agent.py):
 
 1. `first_prompt()` includes the reference, entry point, hardware limits, and an API card. `--terse` selects shorter forms.
 2. `ask_parallel()` generates multiple candidates concurrently.
@@ -422,7 +422,7 @@ Once inside:
 ```bash
 cd /workspace
 git config --global --add safe.directory /workspace
-cd projects/02-kernel-agent
+cd projects/20-kernel-agent
 python nkibench.py --selftest
 python nkibench.py --list
 python nkibench.py --level 4 --check reference_level4.py
@@ -461,7 +461,7 @@ From the repo root, install dependencies in an existing or new virtual environme
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
-cd projects/02-kernel-agent
+cd projects/20-kernel-agent
 python kernelbench.py --selftest
 python kernelbench.py --list
 python kernelbench.py --level 5 --show

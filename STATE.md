@@ -35,7 +35,7 @@ docker exec -it vllm bash                               # WAIT for the prompt be
 git config --global --add safe.directory /workspace
 export KERNEL_AGENT_BASE_URL=http://localhost:8000/v1
 export KERNEL_AGENT_MODEL=Qwen/Qwen3-8B
-cd /workspace/projects/02-kernel-agent
+cd /workspace/projects/20-kernel-agent
 python agent.py --all --rounds 8 --samples 4 --context 8192
 ```
 
@@ -84,7 +84,7 @@ gets better.
 
 ## Project 2 — the kernel agent. **RUNS, NOT SOLVED.** Best 0.62 of 1.0.
 
-`projects/02-kernel-agent/`. An agent writes NKI kernels; the harness checks them. Three levels of
+`projects/20-kernel-agent/`. An agent writes NKI kernels; the harness checks them. Three levels of
 checker, by cost: **static rules** (milliseconds), **`nki.simulate` on the CPU** (seconds), and
 **on-device timing + profile** — the last **not built**.
 
