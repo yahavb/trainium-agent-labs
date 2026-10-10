@@ -22,7 +22,7 @@ TILES_IN_BLOCK_K = 8
 
 
 @nki.jit
-def qwen3_matmul(lhsT, rhs):
+def nki_matmul_tiled_(lhsT, rhs):
   """result[M, N] = lhsT[K, M].T @ rhs[K, N]. K and M multiples of 128, N a multiple of 512."""
   K, M = lhsT.shape
   K_, N = rhs.shape

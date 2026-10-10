@@ -1,30 +1,31 @@
 #!/usr/bin/env python3
 """
-shapes.py -- which shapes each CHIPBOOST op is checked and timed at. Owner: P2.
+shapes.py -- which shapes each CHIPBOOST op is checked and timed at, and how its inputs are built.
+Owner: P2. The referee (speedcheck.py, P1) reads OPS directly; the tools (probe, check_kernels,
+search) use the helpers at the bottom.
 
-Qwen3-8B, served on one chip at tensor parallelism 2, so every matmul here is a PER-CORE shape.
-Values from the model's config.json (verify in the pod with --verify-config):
-hidden 4096, intermediate 12288, 32 query heads, 8 KV heads, head_dim 128, rms_norm_eps 1e-6.
+Qwen3-8B, served on one chip at tensor parallelism 2, so every matmul is a PER-CORE shape. Values from
+the model's config.json, verified in the pod with --verify-config: hidden 4096, intermediate 12288,
+32 query heads, 8 KV heads, head_dim 128, rms_norm_eps 1e-6. Timing is at 256 prompt tokens, where P1
+measured the timer's noise at 0.0-0.2%; other token counts are held out.
 
-Three lists per op, and they mean different things:
+Per op, three shape lists, and they mean different things:
 
-  dev      what the loop sees. Small enough for nki.simulate on the CPU in seconds, but multi-tile in
-           every dimension so tiling bugs show. Single source of truth: nkibench.LEVELS[level]["shapes"].
-  timing   real Qwen3-8B per-core sizes. Where speed is measured on the chip, and correctness re-checked
-           on the chip. Too big to simulate on every attempt. The FIRST one is the primary shape: the
-           one the progress curve and search.py optimise for.
-  heldout  never shown to the agent and never used by search. Final evaluation only. They are where a
-           speedup that only works at friendly shapes falls over.
+  sim_shapes      what the loop sees. CPU simulator, seconds each, multi-tile in every dimension so
+                  tiling bugs show. Single source of truth: nkibench.LEVELS[level]["shapes"].
+  time_shapes     real Qwen3-8B per-core sizes. Correctness is re-checked and speed measured ON THE
+                  CHIP here. The first one is the primary shape, the one search.py optimises for.
+  heldout_shapes  never shown to the agent and never used by search: final evaluation only, always
+                  with hostile values. Where a speedup that only works at friendly shapes falls over.
 
-Out of scope today: decode-time matmuls, where M is the batch (4 here) rather than a multiple of 128.
+The spec keys are the referee's contract; do not rename them: level, entry, names,
+make_inputs(shape, seed, hostile=False) -> {argument name: array}, ref(inputs) -> float32 reference,
+flops(shape), sim_shapes, time_shapes, heldout_shapes, tol.
+
+Out of scope today: decode-time matmuls, where M is the batch (4 here), not a multiple of 128.
 
     python shapes.py                     # the table
     python shapes.py --verify-config     # in the pod: check the numbers above against config.json
-
-    import shapes
-    case = shapes.OPS["matmul"]["timing"][0]
-    args = shapes.make_inputs("matmul", case)       # bf16 NumPy arrays, deterministic
-    want = shapes.reference("matmul", args)
 """
 
 import argparse
@@ -33,13 +34,17 @@ import json
 import os
 import sys
 
+import numpy as np
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "02-kernel-agent"))
-import nkibench  # noqa: E402  references, input builders and dev shapes live there
+import nkibench  # noqa: E402  dev shapes and the --check levels live there
 
 QWEN3_8B = dict(hidden_size=4096, intermediate_size=12288, num_attention_heads=32,
                 num_key_value_heads=8, head_dim=128, rms_norm_eps=1e-6, torch_dtype="bfloat16")
-TP = 2   # serve.sh: --tensor-parallel-size 2
+TP = 2          # serve.sh: --tensor-parallel-size 2
+TOKENS = 256    # prompt tokens at the timing shapes
+EPS = QWEN3_8B["rms_norm_eps"]
 
 # Per-core projection shapes under TP=2, as (K, N) of y[M, N] = x[M, K] @ W[K, N].
 # Column-parallel layers split N, row-parallel layers split K.
@@ -54,62 +59,190 @@ PROJ = {
 
 def _mm(proj, M):
     K, N = PROJ[proj]
-    return dict(K=K, M=M, N=N, name=f"{proj}, {M} tokens")
+    return (K, M, N)
+
+
+def _bf16():
+    import ml_dtypes   # ships with the Neuron SDK; pip install ml_dtypes on a laptop
+    return ml_dtypes.bfloat16
+
+
+def _randn(r, shape):
+    return r.standard_normal(shape).astype(np.float32)
+
+
+def _pattern(rows):
+    """Row classes for hostile inputs: every third row quiet, every third loud, the rest ordinary."""
+    i = np.arange(rows)
+    return i % 3 == 0, i % 3 == 1
+
+
+# ---------------------------------------------------------------- matmul
+
+def _matmul_inputs(shape, seed, hostile=False):
+    K, M, N = shape
+    r = np.random.default_rng(seed)
+    a, b = _randn(r, (K, M)), _randn(r, (K, N))
+    if hostile:                       # large magnitudes, exact zeros, a sign-flipped block (P1's)
+        a[: K // 8] *= 64.0
+        b[:, : N // 16] = 0.0
+        a[:, M // 2:] *= -1.0
+    return {"lhsT": a.astype(_bf16()), "rhs": b.astype(_bf16())}
+
+
+def _matmul_ref(inp):
+    return inp["lhsT"].astype(np.float32).T @ inp["rhs"].astype(np.float32)
+
+
+# ---------------------------------------------------------------- RMSNorm
+
+def _rmsnorm_inputs(shape, seed, hostile=False):
+    rows, dim = shape
+    r = np.random.default_rng(seed)
+    x = _randn(r, (rows, dim))
+    w = np.float32(1.0) + np.float32(0.1) * _randn(r, (1, dim))
+    if hostile:
+        quiet, loud = _pattern(rows)
+        x[quiet] *= np.float32(1e-4)  # mean(x^2) ~ 1e-8, far below eps: a kernel without eps is 10x off
+        x[loud] *= np.float32(1e3)
+        if rows >= 4:
+            x[-1] = 0.0               # a silent row: 0 * rsqrt(eps) must come out 0, not NaN
+    return {"x": x.astype(_bf16()), "w": w.astype(_bf16())}
+
+
+def _rmsnorm_ref(inp):
+    x = inp["x"].astype(np.float32)
+    var = (x * x).mean(axis=-1, keepdims=True)
+    return x / np.sqrt(var + np.float32(EPS)) * inp["w"].astype(np.float32)
+
+
+# ---------------------------------------------------------------- copy (the bandwidth floor)
+
+def _copy_inputs(shape, seed, hostile=False):
+    x = _randn(np.random.default_rng(seed), shape)
+    if hostile:
+        quiet, loud = _pattern(shape[0])
+        x[quiet] *= np.float32(1e-4)
+        x[loud] *= np.float32(1e4)
+    return {"x": x.astype(_bf16())}
+
+
+def _copy_ref(inp):
+    return inp["x"].astype(np.float32)
+
+
+# ---------------------------------------------------------------- SwiGLU (stretch)
+
+def _swiglu_inputs(shape, seed, hostile=False):
+    r = np.random.default_rng(seed)
+    gate, up = _randn(r, shape), _randn(r, shape)
+    if hostile:                       # g * exp(g) / (1 + exp(g)) is inf/inf = NaN at a gate of 100
+        big, small = _pattern(shape[0])
+        gate[big] *= np.float32(100.0)
+        gate[small] *= np.float32(-100.0)
+    return {"gate": gate.astype(_bf16()), "up": up.astype(_bf16())}
+
+
+def _swiglu_ref(inp):
+    g = inp["gate"].astype(np.float32)
+    with np.errstate(over="ignore"):
+        return g / (np.float32(1.0) + np.exp(-g)) * inp["up"].astype(np.float32)
+
+
+# ---------------------------------------------------------------- the registry
+
+def _dev(level):
+    """Dev shapes as tuples, from nkibench so `nkibench --check` and the referee agree."""
+    return [((c["K"], c["M"], c["N"]) if "K" in c else (c["rows"], c["dim"]))
+            for c in nkibench.LEVELS[level]["shapes"]]
 
 
 OPS = {
     "matmul": dict(
-        level=9, entry="qwen3_matmul",
-        timing=[_mm("gate_up", 512), _mm("q_proj", 512), _mm("down_proj", 512),
-                _mm("gate_up", 2048)],
-        # Other tile multiples, chosen to break assumptions: 10/5/5 tiles (odd, not powers of two),
-        # a single moving tile, three stationary tiles.
-        heldout=[dict(K=1280, M=640, N=2560, name="odd tile counts 10/5/5"),
-                 _mm("kv_proj", 1024),
-                 _mm("o_proj", 384),
-                 dict(K=384, M=128, N=1536, name="small, 3/1/3 tiles")],
+        level=9, entry="nki_matmul_tiled_", names=("lhsT", "rhs"),
+        make_inputs=_matmul_inputs, ref=_matmul_ref,
+        flops=lambda s: 2 * s[0] * s[1] * s[2],
+        sim_shapes=_dev(9),
+        time_shapes=[_mm("gate_up", TOKENS), _mm("q_proj", TOKENS)],
+        heldout_shapes=[_mm("down_proj", TOKENS), _mm("o_proj", TOKENS), _mm("q_proj", 512),
+                        _mm("gate_up", 128), (1280, 640, 2560), _mm("kv_proj", 1024)],
+        tol=nkibench.LEVELS[9]["tol"],
+        labels={_mm("gate_up", TOKENS): "gate_up, 256 tokens",
+                _mm("q_proj", TOKENS): "q_proj, 256 tokens",
+                _mm("down_proj", TOKENS): "down_proj, 256 tokens: 6 K-blocks",
+                _mm("o_proj", TOKENS): "o_proj, 256 tokens",
+                _mm("q_proj", 512): "q_proj, 512 tokens",
+                _mm("gate_up", 128): "gate_up, 128 tokens: one M-tile",
+                (1280, 640, 2560): "odd tile counts 10/5/5",
+                _mm("kv_proj", 1024): "kv_proj, 1024 tokens: one N-tile"},
     ),
     "rmsnorm": dict(
-        level=10, entry="qwen3_rmsnorm",
-        timing=[dict(rows=512, dim=4096, name="input_layernorm, 512 tokens"),
-                dict(rows=2048, dim=4096, name="input_layernorm, 2048 tokens"),
-                dict(rows=512 * 32 // TP, dim=128, name="q_norm per head, 512 tokens")],
-        heldout=[dict(rows=127, dim=4096, name="one row short of a tile"),
-                 dict(rows=129, dim=4096, name="one row past a tile"),
-                 dict(rows=1, dim=4096, name="decode: a single token"),
-                 dict(rows=200, dim=4096, scale=1e-4, name="quiet rows: needs eps"),
-                 dict(rows=128, dim=4096, scale=1e3, name="loud rows"),
-                 dict(rows=1000, dim=128, name="k_norm-like, ragged")],
+        level=10, entry="qwen3_rmsnorm", names=("x", "w"),
+        make_inputs=_rmsnorm_inputs, ref=_rmsnorm_ref,
+        flops=lambda s: 4 * s[0] * s[1],
+        sim_shapes=_dev(10),
+        time_shapes=[(TOKENS, 4096), (TOKENS * 32 // TP, 128)],
+        heldout_shapes=[(127, 4096), (129, 4096), (1, 4096), (1000, 128), (2048, 4096)],
+        tol=nkibench.LEVELS[10]["tol"],
+        labels={(TOKENS, 4096): "input_layernorm, 256 tokens",
+                (TOKENS * 32 // TP, 128): "q_norm per head, 256 tokens",
+                (127, 4096): "one row short of a tile", (129, 4096): "one row past a tile",
+                (1, 4096): "decode: a single token", (1000, 128): "k_norm-like, ragged",
+                (2048, 4096): "long prompt"},
     ),
     "copy": dict(
-        level=11, entry="copy_floor",
-        # Same bytes as rmsnorm's timing shapes: this is RMSNorm's floor.
-        timing=[dict(rows=512, dim=4096, name="= rmsnorm 512 tokens"),
-                dict(rows=2048, dim=4096, name="= rmsnorm 2048 tokens"),
-                dict(rows=512 * 32 // TP, dim=128, name="= q_norm 512 tokens")],
-        heldout=[dict(rows=129, dim=4096, name="one row past a tile"),
-                 dict(rows=1, dim=4096, name="a single row")],
+        level=11, entry="copy_floor", names=("x",),
+        make_inputs=_copy_inputs, ref=_copy_ref,
+        flops=lambda s: 0,
+        sim_shapes=_dev(11),
+        time_shapes=[(TOKENS, 4096), (TOKENS * 32 // TP, 128)],   # = RMSNorm's: its floor
+        heldout_shapes=[(129, 4096), (1, 4096)],
+        tol=nkibench.LEVELS[11]["tol"],
+        labels={(TOKENS, 4096): "= rmsnorm, 256 tokens", (TOKENS * 32 // TP, 128): "= q_norm",
+                (129, 4096): "one row past a tile", (1, 4096): "a single row"},
     ),
     "swiglu": dict(
-        level=12, entry="qwen3_swiglu",
-        timing=[dict(rows=512, dim=12288 // TP, name="MLP, 512 tokens"),
-                dict(rows=2048, dim=12288 // TP, name="MLP, 2048 tokens")],
-        heldout=[dict(rows=129, dim=12288 // TP, name="one row past a tile"),
-                 dict(rows=128, dim=12288 // TP, scale=100.0, name="large gates: NaN trap"),
-                 dict(rows=1, dim=12288 // TP, name="decode: a single token")],
+        level=12, entry="qwen3_swiglu", names=("gate", "up"),
+        make_inputs=_swiglu_inputs, ref=_swiglu_ref,
+        flops=lambda s: 5 * s[0] * s[1],
+        sim_shapes=_dev(12),
+        time_shapes=[(TOKENS, 12288 // TP)],
+        heldout_shapes=[(129, 12288 // TP), (1, 12288 // TP), (512, 12288 // TP)],
+        tol=nkibench.LEVELS[12]["tol"],
+        labels={(TOKENS, 12288 // TP): "MLP, 256 tokens", (129, 12288 // TP): "one row past a tile",
+                (1, 12288 // TP): "decode: a single token", (512, 12288 // TP): "MLP, 512 tokens"},
     ),
 }
-for _op, _s in OPS.items():
-    _s["dev"] = nkibench.LEVELS[_s["level"]]["shapes"]
+
+
+# ---------------------------------------------------------------- helpers for the tools
+#
+# Cases are dicts so a tool can print and log them: matmul {K, M, N}, the rest {rows, dim}, plus `name`
+# and `hostile` (True for every held-out case, as the referee builds them).
 
 WHICH = ("dev", "timing", "heldout")
+_LIST = {"dev": "sim_shapes", "timing": "time_shapes", "heldout": "heldout_shapes"}
+
+
+def _case(op, shape, hostile):
+    keys = ("K", "M", "N") if op == "matmul" else ("rows", "dim")
+    c = dict(zip(keys, shape))
+    c.update(hostile=hostile)
+    name = OPS[op]["labels"].get(tuple(shape))
+    if name:
+        c["name"] = name
+    return c
+
+
+def shape_of(op, case):
+    return (case["K"], case["M"], case["N"]) if op == "matmul" else (case["rows"], case["dim"])
 
 
 def cases(op, which):
-    """The shape dicts for one op: which is 'dev', 'timing' or 'heldout'."""
+    """The cases for one op: which is 'dev', 'timing' or 'heldout'. Held-out cases are hostile."""
     if which not in WHICH:
         raise ValueError(f"which must be one of {WHICH}, got {which!r}")
-    return OPS[op][which]
+    return [_case(op, s, which == "heldout") for s in OPS[op][_LIST[which]]]
 
 
 def entry(op):
@@ -118,39 +251,42 @@ def entry(op):
 
 
 def make_inputs(op, case, seed=0):
-    """Deterministic bf16 NumPy inputs, the same ones nkibench --check builds for this seed."""
-    args, _ = nkibench.make_inputs(case, OPS[op]["level"], seed)
-    return args
+    """Deterministic bf16 NumPy inputs, as a tuple in the kernel's argument order."""
+    inp = OPS[op]["make_inputs"](shape_of(op, case), seed, hostile=case.get("hostile", False))
+    return tuple(inp[n] for n in OPS[op]["names"])
 
 
 def reference(op, args):
-    return nkibench.LEVELS[OPS[op]["level"]]["ref"](*args)
+    """The float32 reference (unrounded, as the referee compares against)."""
+    return OPS[op]["ref"](dict(zip(OPS[op]["names"], args)))
 
 
 def tolerance(op):
-    """nkibench's per-level gate for --check (relative to the output RMS). The referee may be stricter."""
-    return nkibench.LEVELS[OPS[op]["level"]]["tol"]
+    """nkibench's per-level gate, relative to the output RMS. The referee also checks bf16 ulps."""
+    return OPS[op]["tol"]
 
 
 def label(op, case):
-    base = nkibench.label(case, OPS[op]["level"])
-    return f"{base} ({case['name']})" if case.get("name") else base
+    base = " ".join(f"{k}={case[k]}" for k in (("K", "M", "N") if op == "matmul" else ("rows", "dim")))
+    extra = [case["name"]] if case.get("name") else []
+    if case.get("hostile"):
+        extra.append("hostile")
+    return f"{base} ({', '.join(extra)})" if extra else base
 
 
 def work(op, case):
     """(flops, minimum HBM bytes) for one case in bf16: the numbers a roofline or a floor needs."""
+    s = shape_of(op, case)
     if op == "matmul":
-        M, K, N = case["M"], case["K"], case["N"]
+        K, M, N = s
         return 2 * M * K * N, 2 * (K * M + K * N + M * N)
-    rows, dim = case["rows"], case["dim"]
-    if op == "rmsnorm":
-        return 4 * rows * dim, 2 * (2 * rows * dim + dim)       # read x and w, write y
-    if op == "copy":
-        return 0, 2 * (2 * rows * dim)
-    if op == "swiglu":
-        return 5 * rows * dim, 2 * (3 * rows * dim)
-    raise KeyError(op)
+    rows, dim = s
+    nbytes = {"rmsnorm": 2 * (2 * rows * dim + dim), "copy": 2 * 2 * rows * dim,
+              "swiglu": 2 * 3 * rows * dim}[op]
+    return OPS[op]["flops"](s), nbytes
 
+
+# ---------------------------------------------------------------- config check
 
 def find_config():
     roots = [os.environ.get("HF_HOME", ""), os.path.expanduser("~/.cache/huggingface"),
@@ -190,13 +326,14 @@ def main():
     if a.verify_config is not None:
         sys.exit(verify_config(a.verify_config or None))
     for op, s in OPS.items():
-        print(f"{op}: level {s['level']}, entry {s['entry']}(...), --check tolerance {tolerance(op)}")
+        print(f"{op}: level {s['level']}, entry {s['entry']}({', '.join(s['names'])}), "
+              f"--check tolerance {s['tol']}")
         for which in WHICH:
-            for i, c in enumerate(s[which]):
+            for i, c in enumerate(cases(op, which)):
                 flops, nbytes = work(op, c)
                 star = " *primary*" if which == "timing" and i == 0 else ""
-                print(f"  {which:<8} {label(op, c):<58} {flops / 1e9:7.2f} GFlop "
-                      f"{nbytes / 2 ** 20:8.2f} MiB{star}")
+                print(f"  {which:<8} {label(op, c):<62} {flops / 1e9:7.2f} GFlop "
+                      f"{nbytes / 2 ** 20:7.2f} MiB{star}")
         print()
 
 

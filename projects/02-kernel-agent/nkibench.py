@@ -442,7 +442,7 @@ def _label_rows(sp):
 
 _MATMUL_BANNED = {"matmul", "dot", "einsum", "tensordot", "inner", "vdot"}
 
-level(9, "Qwen3-8B matmul, bf16", "qwen3_matmul",
+level(9, "Qwen3-8B matmul, bf16", "nki_matmul_tiled_",
       "the projections Qwen3-8B spends most of its time in, as the per-core shapes of tensor "
       "parallelism 2, in bfloat16",
       "the whole matmul ladder at real sizes: hoisting, blocking M and N, blocking K. The start "
@@ -453,7 +453,9 @@ level(9, "Qwen3-8B matmul, bf16", "qwen3_matmul",
       [dict(K=512, M=256, N=1024), dict(K=1024, M=128, N=2048), dict(K=256, M=512, N=512),
        dict(K=2048, M=128, N=512)],
       _MATMUL_BANNED,
-      "lhsT arrives transposed [K, M], like level 4. K and M are multiples of 128 and N of 512.",
+      "lhsT arrives transposed [K, M], like level 4, and the entry point has level 4's name, so "
+      "every matmul kernel and cheat in the team works at either level. K and M are multiples of 128 "
+      "and N of 512.",
       make_args=_args_matmul_bf16, tol=BF16_MATMUL_TOL)
 
 level(10, "Qwen3-8B RMSNorm, bf16", "qwen3_rmsnorm",

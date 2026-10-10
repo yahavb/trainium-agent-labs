@@ -1,5 +1,21 @@
 # P2 (`kernels-search`): tasks for the second coding agent
 
+> **CHANGED 13:15. If you started earlier, run `git fetch origin && git rebase origin/kernels-search`,
+> then apply these.** (They come from reading P1's referee on branch `referee-timing`.)
+> 1. The matmul entry point is **`nki_matmul_tiled_`**: P1's referee and P3's 11 cheat kernels already
+>    use it. RMSNorm: `qwen3_rmsnorm`, copy: `copy_floor`, SwiGLU: `qwen3_swiglu`. Use `shapes.entry(op)`.
+> 2. Timing is at **256 tokens** (P1 measured the timer there). Primary shape: **K=4096, M=256, N=6144**,
+>    so tile counts are M 2, N 12, K 32: **72 triples**, and the default caps (16, 2, 8) act as (2, 2, 8).
+> 3. The referee's real API is `speedcheck.check_isolated(path, op="matmul", baseline=None,
+>    heldout=True)`: one fresh process per candidate, and it returns a **complete** schema record. There
+>    is no `shapes=` argument; `--no-heldout` maps to `heldout=False`. The record's `seat` comes from the
+>    `CHIPBOOST_SEAT` env var (default 100), so overwrite it with `--seat`.
+> 4. `shapes.reference` now returns the **float32** truth (the referee compares against that). Use
+>    `shapes.work(op, case)[1]` as the byte floor, not `nkibench.minimum_hbm_bytes(args, want)`, which
+>    would count the float32 reference as the output size. Held-out cases carry `hostile=True`.
+> 5. `check_kernels.py`: also check `kernels/matmul_expert_aws.py` (op `matmul`).
+> 6. vLLM holds NeuronCores **0-1** on the seat pods (P1 measured), not 2-3: anything on the device uses 2.
+
 You are helping P2 of the CHIPBOOST hackathon team. Read `README.md`, `TEAM.md` and `schema.py` in
 this folder first, 5 minutes, then build the three files below. **Nobody else edits these files, and
 you edit nothing else.**
@@ -35,10 +51,11 @@ python3 -m venv ../../.venv && ../../.venv/bin/pip install numpy ml_dtypes   # .
 ## Contracts you code against (they exist on the branch now, except where marked)
 
 **`shapes.py`** (P2): `OPS[op]` for op in `matmul`, `rmsnorm`, `copy`, `swiglu`, each with `level`,
-`entry`, `dev`, `timing`, `heldout`. Helpers: `cases(op, which)`, `entry(op)`,
-`make_inputs(op, case, seed=0)` (bf16 NumPy arrays), `reference(op, args)`, `tolerance(op)`,
-`label(op, case)`, `work(op, case)` (flops, minimum HBM bytes). `cases("matmul", "timing")[0]` is the
-**primary shape**: K=4096, M=512, N=6144.
+`entry`, `names`, plus the referee's keys (`make_inputs`, `ref`, `flops`, `sim_shapes`, `time_shapes`,
+`heldout_shapes`, `tol`). Helpers for tools: `cases(op, which)` (dicts; `which` is `dev`, `timing` or
+`heldout`), `entry(op)`, `make_inputs(op, case, seed=0)` (tuple of bf16 NumPy arrays in argument
+order), `reference(op, args)` (float32), `tolerance(op)`, `label(op, case)`, `work(op, case)` (flops,
+minimum bf16 HBM bytes). `cases("matmul", "timing")[0]` is the **primary shape**: K=4096, M=256, N=6144.
 
 **`../02-kernel-agent/nkibench.py`** (import after `sys.path.insert` of that folder, as `shapes.py` does):
 `load_kernel(path, entry)`, `simulate_and_count(kernel, args)` -> `(out, counted)` with `counted["bytes"]`,
@@ -49,12 +66,13 @@ python3 -m venv ../../.venv && ../../.venv/bin/pip install numpy ml_dtypes   # .
 **`schema.py`** (shared): `ATTEMPT_FIELDS`, `validate(rec)` -> list of problems. Every log line you
 write must have every field (use `None` where not applicable) and pass `validate`.
 
-**`speedcheck.py`** (P1, NOT on this branch yet):
-`speedcheck.check(path, op="matmul", shapes="dev"|"heldout", baseline="kernels/matmul_start.py")`
-returns a dict with the referee-owned schema fields: `verdict`, `referee_message`, `instruction_given`,
-`sim_ok`, `chip_ok`, `time_us_median`, `time_us_iqr`, `baseline_us_same_session`, `speedup`, `source`.
+**`speedcheck.py`** (P1, on branch `referee-timing`, not merged into this branch yet):
+`speedcheck.check_isolated(path, op="matmul", baseline=None, heldout=True)` runs the referee in a fresh
+process and returns a complete schema record (`verdict`, `referee_message`, `instruction_given`,
+`sim_ok`, `chip_ok`, `time_us_median`, `time_us_iqr`, `baseline_us_same_session`, `speedup`, `source`,
+and the rest). Its `seat` comes from `CHIPBOOST_SEAT`; overwrite it.
 
-**`kernels/matmul_expert.py`** (P2, arriving within the hour): defines `qwen3_matmul(lhsT, rhs)` and has
+**`kernels/matmul_expert.py`** (P2, on the branch): defines `nki_matmul_tiled_(lhsT, rhs)` and has
 exactly these three module-level lines, which `search.py` rewrites:
 
 ```python
@@ -69,14 +87,15 @@ They are **caps**: at each shape the kernel uses the largest divisor of the tile
 ## Task 1: `search.py`, arm (c): random search, no AI
 
 ```
-python search.py --budget 24 --seed 0 --seat 102 --out attempts.jsonl [--shapes dev] [--stub] [--dry-run]
+python search.py --budget 24 --seed 0 --seat 102 --out attempts.jsonl [--no-heldout] [--stub] [--dry-run]
 ```
 
-1. **Space.** At the primary shape, tile counts are M 4, N 12, K 32. A candidate is a triple
-   `(tm, tn, tk)` with `tm | 4`, `tn | 12`, `tk | 32`; that is 108 triples.
-2. **SBUF filter.** Drop triples that will not fit on chip. Put the estimate in ONE function, because P2
-   will confirm the formula against the tutorial source and may change it. Provisional formula, bytes
-   per partition, bf16 operands, fp32 accumulator across the whole of M:
+1. **Space.** At the primary shape, tile counts are M 2, N 12, K 32. A candidate is a triple
+   `(tm, tn, tk)` with `tm | 2`, `tn | 12`, `tk | 32`; that is 72 triples. Compute it from
+   `shapes.cases("matmul", "timing")[0]`, don't hard-code it.
+2. **SBUF filter.** Drop triples that will not fit on chip. Put the estimate in ONE function. The formula
+   below is confirmed against the tutorial source for our fp32-accumulating expert kernel: bytes per
+   partition, bf16 operands, fp32 accumulators for the whole of M:
 
    ```python
    def sbuf_bytes_per_partition(tm, tn, tk, M, itemsize=2, acc_bytes=4):
@@ -93,8 +112,9 @@ python search.py --budget 24 --seed 0 --seat 102 --out attempts.jsonl [--shapes 
 4. **Each attempt.** Write the candidate to `search_runs/<run_id>/cand_m{tm}_n{tn}_k{tk}.py` by
    regex-replacing the three cap lines in `kernels/matmul_expert.py` (fail loudly if the three lines are
    not found exactly once each). Call the referee:
-   `speedcheck.check(path, op="matmul", shapes=args.shapes, baseline="kernels/matmul_start.py")`.
-5. **Log.** One JSON line per attempt to `--out`, built from the referee's dict plus
+   `speedcheck.check_isolated(path, op="matmul", baseline="kernels/matmul_start.py",
+   heldout=not args.no_heldout)`.
+5. **Log.** One JSON line per attempt to `--out`: the referee's record, with these overwritten:
    `seat`, `kernel="matmul"`, `arm="random_search"`, `run_id` (`--run-id`, default
    `matmul-random-<seed>-<unix time>`), `attempt_no`, `round=attempt_no`, `prompt_tokens=None`,
    `prompt=None`, `response=None`, `code` (the candidate source), `code_hash` (sha1 of the source),
@@ -109,7 +129,7 @@ python search.py --budget 24 --seed 0 --seat 102 --out attempts.jsonl [--shapes 
 8. **`--dry-run`.** Print the candidate list with SBUF estimates and exit. No referee calls.
 
 **Test (`tests/test_search.py`, plain `assert`s, run with `python tests/test_search.py`):** the space
-has 108 triples before filtering; the default triple maps to (4, 2, 8) at the primary shape; the
+has 72 triples before filtering; the default caps map to (2, 2, 8) at the primary shape; the
 same seed gives the same order; `--stub` with budget 5 writes 5 lines that pass `schema.validate`;
 the cap-line rewrite fails loudly on a template missing a line.
 
@@ -120,7 +140,7 @@ python check_kernels.py [--which dev,heldout] [--only matmul_start,rmsnorm_start
 ```
 
 - Kernels, skipping files that do not exist yet with `not written yet`:
-  `matmul`: `kernels/matmul_start.py`, `kernels/matmul_expert.py`;
+  `matmul`: `kernels/matmul_start.py`, `kernels/matmul_expert.py`, `kernels/matmul_expert_aws.py`;
   `rmsnorm`: `kernels/rmsnorm_start.py`; `copy`: `kernels/copy_floor.py`;
   `swiglu`: `kernels/swiglu_start.py`.
 - For each kernel x each case of each requested list: `shapes.make_inputs`, snapshot the inputs,
@@ -128,7 +148,7 @@ python check_kernels.py [--which dev,heldout] [--only matmul_start,rmsnorm_start
   then `nkibench.check_inputs_untouched(...) or nkibench.describe_mismatch(got, want, shapes.tolerance(op))`.
   A simulator warning containing `incorrect results on hardware` is also a FAIL.
 - Print a table: kernel, list, shape label, PASS/FAIL, sim seconds, bytes moved / floor
-  (`counted["bytes"] / nkibench.minimum_hbm_bytes(args, want)`), transfers, then the first line of any
+  (`counted["bytes"] / shapes.work(op, case)[1]`), transfers, then the first line of any
   failure message. End with `N passed, M failed` and exit non-zero if anything failed.
 - `--timing` adds the timing shapes, which are big (print a warning that they take minutes).
   `--json` writes one object per row; the dashboard owner (P4) can use it for the held-out map.

@@ -14,8 +14,8 @@ our kernels need, which activation functions exist, and then runs every kernel i
 simulator in bf16, printing PASS/FAIL, the worst error (even on a pass, so two correct kernels can be
 compared for precision), bytes moved against the floor, and transfers.
 
-Nothing touches the chip unless you pass --device, which runs each kernel ONCE on NeuronCore 0
-(NEURON_RT_VISIBLE_CORES=0), next to vLLM on cores 2-3. That only checks the kernel compiles for and
+Nothing touches the chip unless you pass --device, which runs each kernel ONCE on NeuronCore 2
+(NEURON_RT_VISIBLE_CORES=2), next to vLLM, which P1 measured holding cores 0-1 on the seat pods. That only checks the kernel compiles for and
 computes right on the hardware; timing it properly is P1's referee's job.
 """
 
@@ -105,7 +105,7 @@ def run_kernels(a):
                 dt = time.time() - t0
                 m = (nkibench.check_inputs_untouched(before, args)
                      or nkibench.describe_mismatch(got, want, shapes.tolerance(op)))
-                floor = nkibench.minimum_hbm_bytes(args, want)
+                floor = shapes.work(op, case)[1]   # bf16 bytes; the float32 reference would inflate it
                 print(f"  {stem:<18} {shapes.label(op, case):<52} {'PASS' if not m else 'FAIL'}  "
                       f"err {worst_error(got, want):.4f}  {dt:5.1f}s  "
                       f"{counted['bytes'] / max(floor, 1):.2f}x floor bytes, "
@@ -197,10 +197,10 @@ def main():
     ap.add_argument("--which", default="dev", help="dev, timing, heldout, or a comma list")
     ap.add_argument("--only", default="", help="kernel file stems, e.g. matmul_expert,copy_floor")
     ap.add_argument("--device", action="store_true",
-                    help="also run each kernel once on the chip, NeuronCore 0")
+                    help="also run each kernel once on the chip, NeuronCore 2")
     a = ap.parse_args()
     if a.device:
-        os.environ.setdefault("NEURON_RT_VISIBLE_CORES", "0")   # before nki starts a runtime
+        os.environ.setdefault("NEURON_RT_VISIBLE_CORES", "2")   # vLLM holds 0-1; before nki starts a runtime
     try:
         import nki  # noqa: F401
     except ImportError as e:
