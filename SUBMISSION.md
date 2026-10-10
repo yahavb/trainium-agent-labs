@@ -7,6 +7,22 @@ Team submission, NYU × Annapurna Labs Trainium hackathon, 2026-10-10. Team 24, 
 spread, and how to reproduce it. The sections after it are the evidence. Unless a line says *on chip*,
 every number comes from the NKI 0.6.0 CPU simulator (`nki.simulate`), graded by our checker.
 
+**Where each required item is.**
+
+| asked for | where |
+|---|---|
+| the checker, and why it accepts and rejects what it does (README Part 4) | §2, [CHECKER.md](projects/02-kernel-agent/CHECKER.md) |
+| the attempt log, every attempt with its score (Part 4) | [analysis/logs/](analysis/logs/README.md) |
+| a one-page note: what ran, on what, how many runs, the spread (Part 4) | §1 |
+| the agent (kernel-agent challenge) | §3, [V7.md](projects/02-kernel-agent/V7.md) |
+| the verification harness, with its tolerance and the reasoning | §2, [EVAL.md](projects/02-kernel-agent/EVAL.md) |
+| the eval set, hostile values included | [EVAL.md](projects/02-kernel-agent/EVAL.md) |
+| the failure taxonomy | §7 |
+| token instrumentation | §6 |
+| a one-page reproduction note | §1, "Reproduce" |
+| does the agent know when it failed | §5 |
+| a failure and the recovery | §8 |
+
 ---
 
 ## 1. One-page note
