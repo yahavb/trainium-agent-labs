@@ -24,6 +24,7 @@ def main():
     parser.add_argument('--out', required=True)
     parser.add_argument('--start', default=None, help='Frozen candidate to continue; timing baseline stays reference_level4.py')
     parser.add_argument('--core', type=int, required=True)
+    parser.add_argument('--seat', type=int, default=100)
     parser.add_argument('--think', action='store_true')
     parser.add_argument('--max-tokens', type=int, default=2500)
     parser.add_argument('--label', default='full_feedback_and_repair_controller_pilot')
@@ -37,7 +38,7 @@ def main():
     import fcntl
     lock = open(f'/tmp/p1-comparison-core{a.core}.lock', 'w')
     fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    os.environ.update(CHIPBOOST_CORE=str(a.core), CHIPBOOST_SEAT='100')
+    os.environ.update(CHIPBOOST_CORE=str(a.core), CHIPBOOST_SEAT=str(a.seat))
     sys.path.insert(0, str(root))
     import speedcheck as sc
     import schema
@@ -50,7 +51,7 @@ def main():
     start_bytes, start_source = start.read_bytes(), start.read_text()
     baseline_source = baseline.read_text()
     out.mkdir(exist_ok=False)   # import and start validation must succeed before reserving --out
-    state = dict(phase='acceptance', pid=os.getpid(), core=a.core, budget=a.budget, samples=a.samples,
+    state = dict(phase='acceptance', pid=os.getpid(), core=a.core, seat=a.seat, budget=a.budget, samples=a.samples,
                  treatment=a.label, tag=a.tag, think=a.think, max_tokens=a.max_tokens,
                  start_path=str(start), start_sha256=hashlib.sha256(start_bytes).hexdigest(),
                  start_text_sha256=hashlib.sha256(start_source.encode()).hexdigest(),
@@ -99,7 +100,7 @@ def main():
             sys.argv = [a.agent_file, '--arm', 'referee', '--budget', str(a.budget), '--repeat', '1',
                         '--samples', str(a.samples), '--give-up-after', '0', '--start', str(start),
                         '--base', 'http://localhost:8000/v1', '--model', state['model'],
-                        '--max-tokens', str(a.max_tokens), '--context', '8192', '--seat', '100',
+                        '--max-tokens', str(a.max_tokens), '--context', '8192', '--seat', str(a.seat),
                         '--log', str(out/'pilot.jsonl')]
             if a.think:
                 sys.argv.append('--think')
