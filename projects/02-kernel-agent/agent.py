@@ -136,6 +136,8 @@ def grade(source, level):
         # numbers happen to match on CPU: the kernel would be wrong on the device.
         hazards = [w for w in counted.get("warnings", [])
                    if "incorrect results on hardware" in w]
+        if m and level == 2:
+            m = transpose_result_hint(m)
         if hazards and not m:
             m = ("CORRECT ON CPU BUT WRONG ON HARDWARE: " + hazards[0]
                  + ". Fix that before anything else -- the simulator agrees with the reference here "
@@ -202,6 +204,57 @@ def copy_kernel(a):
     return out
 
 """
+
+
+TRANSPOSE_METHOD = """Transpose the two free axes WITHIN each partition row. The input and output
+both have shape [P, F1*F2]; shape2D contains the Python integers (F1, F2).
+Keep partition rows in place. A row-major position (i, j) becomes position (j, i)
+in a flattened F2-by-F1 output row. Derive each flat offset using that row's width.
+"""
+
+TRANSPOSE_API_CARD = """NKI transpose primitives:
+  Work tiles live in SBUF: nl.ndarray((rows, F), dtype=x.dtype, buffer=nl.sbuf). Only the
+    returned `out` uses shared_hbm. Never write to x, and end with `return out`.
+  Move ALL rows at once with full-partition column views tile[:, nl.ds(c, 1)]; a view that
+    covers only partition 0 leaves the other rows unwritten (NaN).
+  Allocate input and output SBUF tiles with shape (rows, F), where F=x.shape[1].
+  Use the actual partition count: rows=min(128, P-start), using Python min.
+  nisa.dma_copy(dst=input_tile, src=x[start:start+rows, :]) loads a matching tile.
+  For SBUF-to-SBUF element movement, use nisa.tensor_copy(dst=, src=).
+  tile[:, nl.ds(offset, 1)] selects one free-axis column and preserves a 2-D tile.
+  Iterate the F1 and F2 positions with nl.affine_range and derive source and
+    destination offsets separately. Write into a separate output SBUF tile.
+  nisa.dma_copy(dst=out[start:start+rows, :], src=output_tile) stores the tile.
+  out is nl.ndarray(x.shape, dtype=x.dtype, buffer=nl.shared_hbm).
+Shape sizes and offsets are Python integers; nl.min/nl.max reduce tensors.
+"""
+
+
+def transpose_result_hint(msg):
+    """Level 2 only: say WHY the checker's generic verdict happened for a transpose kernel.
+
+    Measured on seat 21: kernels wrote the result back into x with dma_copy(dst=x[...]) and
+    returned x or nothing ("MODIFIED ITS INPUT"), and kernels that copied only partition 0 with
+    tile[nl.ds(0, 1), c] left every other row uninitialised ("NON-FINITE", first NaN at row 1).
+    The generic messages blame PSUM or give no cause, so the model repeated both.
+    """
+    if "THE KERNEL MODIFIED ITS INPUT" in msg:
+        return (msg + " For this level: do not use x as a destination anywhere (no "
+                "dma_copy(dst=x[...]), no x[...] = ...). Load x into an SBUF tile, build the "
+                "transposed row layout in a SECOND SBUF tile, then "
+                "out = nl.ndarray(x.shape, dtype=x.dtype, buffer=nl.shared_hbm); "
+                "nisa.dma_copy(dst=out, src=output_tile); return out.")
+    if "NON-FINITE OUTPUT" in msg:
+        return (msg + " For this level the cause is output memory that was never written, not "
+                "PSUM. Two common ways: (1) a view like tile[nl.ds(0, 1), c] or "
+                "output_tile[i, c] touches one partition only; (2) the copies write into the "
+                "INPUT tile (e.g. input_tile[...] = input_tile[...]) so the output tile that is "
+                "stored stays empty. Every copy must read from the input tile and write the "
+                "output tile, on whole-partition column views: "
+                "nisa.tensor_copy(dst=output_tile[:, nl.ds(j*F1+i, 1)], "
+                "src=input_tile[:, nl.ds(i*F2+j, 1)]) for each (i, j). Then "
+                "nisa.dma_copy(dst=out, src=output_tile) with the full (rows, F) tile.")
+    return msg
 
 
 MATMUL_SHAPES = """This is a single-tile matmul. Read K, M = lhsT.shape and K_rhs, N = rhs.shape.
@@ -292,6 +345,14 @@ def enrich(error_text, level=None):
                   r"got src=(\d+), dst=(\d+)", error_text)
     if m:
         src, dst = int(m.group(1)), int(m.group(2))
+        if level == 2:
+            return (error_text + " Input x has shape (P, F1*F2), not (F1, F2). "
+                    "Load x[start:start+rows, :] into a (rows, F1*F2) SBUF tile, "
+                    "where rows=min(128, P-start). A single row slice must retain "
+                    "shape (1, F1*F2). Do not shrink the destination to (F1, F2) "
+                    "while copying all P rows, or crop x to x[:F1, :F2]: that loses "
+                    "partitions and free-axis values. Transpose within each row "
+                    "into a separate same-shaped SBUF, then DMA matching rows out.")
         if level == 3:
             return (error_text + f" The source has {src} elements but the destination has {dst}. "
                     "For this single-tile matmul, load lhsT into a (K, M) SBUF tile and rhs "
@@ -321,12 +382,34 @@ def enrich(error_text, level=None):
                   r"indexing result of shape \((\d+),?\)", error_text)
     if m:
         val, dst = int(m.group(1)), int(m.group(2))
+        if level == 2:
+            return (error_text + " A partition row holds F1*F2 elements; copying it into "
+                    "a 128-row tile does not broadcast it. Keep both transpose SBUF "
+                    "tiles shaped (rows, F1*F2), with rows=min(128, P-start). "
+                    "Copy input_tile[:, nl.ds(i*F2+j, 1)] to "
+                    "output_tile[:, nl.ds(j*F1+i, 1)] using nisa.tensor_copy. "
+                    "Both views have shape (rows, 1). Then DMA the output tile "
+                    "to out[start:start+rows, :]. PSUM is unnecessary here.")
         return (error_text + f" You assigned {val} elements into a slice that holds {dst}. Assignment "
                 f"does not reshape or broadcast either: the slice on the left and the value on the "
                 f"right must have the SAME shape. If the value is bigger, you are writing a whole tile "
                 f"where a slice belongs -- index the destination to match, e.g. "
                 f"out[i*128:(i+1)*128, :] = tile. If it is smaller, you are looping over the wrong "
                 f"dimension.")
+    if level == 2:
+        scalar_bound = re.search(
+            r"Out-of-bound access for tensor .*? on dimension (\d+): "
+            r"index (\d+) exceed dimension size of (\d+)", error_text)
+        if scalar_bound:
+            dim, index, size = scalar_bound.groups()
+            return (error_text + f" Index {index} is outside dimension {dim}, whose "
+                    f"valid indices are 0 through {int(size)-1}. Swapping indices "
+                    "in tile[i,j] = tile[j,i] does not transpose a rectangular "
+                    "tile safely and also overwrites source values. Keep P as "
+                    "the partition axis and use separate (rows, F1*F2) input "
+                    "and output SBUF tiles. For i in range F1 and j in range F2, "
+                    "tensor_copy input[:, nl.ds(i*F2+j, 1)] into "
+                    "output[:, nl.ds(j*F1+i, 1)]. Store every output row via DMA.")
     m = re.search(r"Out-of-bound access for tensor .*? on dimension (\d+): "
                   r"index range \[(\d+), (\d+)\] exceed dimension size of (\d+)",
                   error_text)
@@ -347,6 +430,12 @@ def enrich(error_text, level=None):
                 f"nisa.tensor_copy. Do not allocate a new psum tile per chunk and do not write partial "
                 f"results to HBM.")
     m = re.search(r"(\w+) (?:dst|src)? ?must be in \['sbuf', 'psum'\], got shared_hbm", error_text)
+    if m and level == 2:
+        return (error_text + f" `nisa.{m.group(1)}` needs on-chip tiles, but the tile you passed "
+                f"was allocated with buffer=nl.shared_hbm. Change the INPUT and OUTPUT WORK tiles "
+                f"to buffer=nl.sbuf: nl.ndarray((rows, F), dtype=x.dtype, buffer=nl.sbuf). Keep "
+                f"shared_hbm only for the single `out` tensor you return. Do not replace "
+                f"tensor_copy with dma_copy for the element moves.")
     if m:
         return (error_text + f" `nisa.{m.group(1)}` only moves data between on-chip buffers, sbuf and "
                 f"psum. To reach HBM -- the tensor you allocated with buffer=nl.shared_hbm and will "
@@ -390,6 +479,12 @@ def enrich(error_text, level=None):
         return error_text + available_names(f"{m.group(1)}.{m.group(2)}")
     m = re.search(r"'(\w+)' object has no attribute '(\w+)'", error_text)
     if m:
+        if level == 2 and m.groups() == ("int", "dtype"):
+            return (error_text + " Shape dimensions and offsets are Python integers. "
+                    "For a shape bound use Python min(128, P-start), not nl.min: "
+                    "nl.min reduces a tensor and tries to read its dtype. Allocate "
+                    "both SBUF tiles as (rows, F), load x[start:start+rows, :], and "
+                    "take the element dtype from x.dtype, not from a shape integer.")
         return (error_text + f" A {m.group(1)} is not a numpy array, so it has no "
                 f"`{m.group(2)}`. Use the nl/nisa functions instead.")
     return error_text
@@ -404,6 +499,17 @@ def first_prompt(level, terse=0):
     """
     s = nkibench.LEVELS[level]
     import inspect
+    if level == 2:
+        card = TRANSPOSE_API_CARD if terse == 0 else (
+            "Use shape-derived (rows, F) SBUF tiles and matching dma_copy slices. "
+            "Use nisa.tensor_copy with tile[:, nl.ds(offset, 1)] for column moves. "
+            "Use Python min for integer bounds; nl.min is a tensor reduction.\n")
+        if terse >= 2:
+            card = "Copy columns with nisa.tensor_copy and nl.ds(offset, 1); keep tile sizes equal to their slices.\n"
+        return (
+            f"Write an NKI kernel `{s['entry']}` decorated with @nki.jit.\n"
+            f"Match this NumPy reference:\n\n{inspect.getsource(s['ref'])}\n"
+            f"{TRANSPOSE_METHOD}\n{card}\n"
     if level == 3:
         card = MATMUL_API_CARD if terse == 0 else (
             "Use separate input SBUF tiles, a float32 (M, N) PSUM tile, and separate "
@@ -460,6 +566,13 @@ def repair_prompt(level, source, feedback):
     The lesson this whole repo keeps re-learning: feeding a verifier's report back verbatim
     reproduces the same mistake, because a report says what is wrong and never what to do.
     """
+    if level == 2:
+        return (
+            f"Repair this NKI per-partition transpose:\n\n```python\n{source}\n```\n\n"
+            f"A checker reports:\n{feedback}\n\n"
+            f"{TRANSPOSE_METHOD}\n{TRANSPOSE_API_CARD}\n"
+            f"Fix the error and the index mapping while keeping the entry point, arguments, "
+            f"output shape and input dtype. You may replace incorrect allocations or loops. "
     if level == 3:
         return (
             f"Repair this single-tile NKI matmul:\n\n```python\n{source}\n```\n\n"
