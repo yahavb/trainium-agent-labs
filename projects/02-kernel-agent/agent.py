@@ -23,6 +23,7 @@ Every attempt is appended to a JSONL file with its reward, so the log is the del
 """
 
 import argparse
+import ast
 import json
 import os
 import re
@@ -42,6 +43,469 @@ MIN_ANSWER_TOKENS = 2500
 
 REASONING_KEYS = ("reasoning", "reasoning_content")
 
+CORE_CARD = (
+    "NKI base card: import nki, nki.language as nl, nki.isa as nisa. Decorate the entry point "
+    "with @nki.jit. Allocate with nl.ndarray(shape, dtype=..., buffer=nl.sbuf/nl.psum/"
+    "nl.shared_hbm). Use nisa.dma_copy(dst=, src=) for HBM<->SBUF and return the shared_hbm "
+    "output. NKI tensors are not NumPy arrays: do not use .reshape(), .mean(), .copy_from(), "
+    "Python arithmetic like tile / scalar, or .shape on instruction results. Use explicit tiles, "
+    "nl.sum(..., axis=[...]), nisa.tensor_scalar, and nisa.dma_copy."
+)
+
+CONTEXT_CARDS = {
+    "api_core": (
+        "Core NKI API: decorate the entry point with @nki.jit. Allocate tiles with "
+        "nl.ndarray(shape, dtype=..., buffer=nl.sbuf/nl.psum/nl.shared_hbm). Loop with "
+        "nl.affine_range(n). Move HBM<->SBUF with nisa.dma_copy. Copy PSUM<->SBUF with "
+        "nisa.tensor_copy. Scale tensors with nisa.tensor_scalar."
+    ),
+    "dma_copy_shape": (
+        "DMA shape rule: nisa.dma_copy does not reshape, slice, pad, or broadcast. The dst tile "
+        "and src slice must have exactly the same number of elements and compatible shape. Allocate "
+        "tiles to match the slice being moved, not the full operation unless the full tensor is the "
+        "slice."
+    ),
+    "tile_limits": (
+        "Tile limits are maximums, not target sizes. The partition axis is at most 128 rows. If a "
+        "dimension is larger, loop over chunks. If the final chunk is smaller, allocate/copy the "
+        "smaller final slice rather than padding or reading past the tensor."
+    ),
+    "tile_rank": (
+        "SBUF and PSUM tiles must be at least 2D: partition dimension first, free dimension second. "
+        "Do not allocate a 1D on-chip tile. Represent vectors as (1, N) or (N, 1), whichever matches "
+        "the operation and copy slice."
+    ),
+    "reductions": (
+        "Reduction pattern: nl.sum returns a tile; it is called as nl.sum(view, axis=[...]) with no "
+        "dst argument. To divide by a constant, write the sum into another tile with "
+        "nisa.tensor_scalar(dst=..., data=sum_tile, op0=nl.multiply, operand0=scale)."
+    ),
+    "reduction_patterns": (
+        "Reduction pattern: copy or construct a tile in SBUF, form any needed strided view, reduce "
+        "with nl.sum(..., axis=[...]), then write scaled results into a separate SBUF/output tile "
+        "with nisa.tensor_scalar. Do not call .mean() on an NKI tensor, and do not use direct "
+        "Python arithmetic on tile values."
+    ),
+    "reduction_axis": (
+        "NKI reduction axis rule: nl.sum can reduce only the last contiguous dimensions of a tile. "
+        "When a reduction spans non-adjacent logical axes, build or reorder the SBUF/access-pattern "
+        "view so the reduced dimensions are trailing and contiguous, then reduce those trailing axes."
+    ),
+    "access_patterns": (
+        "Access-pattern views use strides and counts over an existing SBUF tile. The first stride "
+        "for the partition axis must match the size of the free dimensions behind one partition "
+        "row. Do not invent zero strides; derive strides from the tensor layout."
+    ),
+    "matmul_psum": (
+        "Matmul buffer rule: nisa.nc_matmul(dst=..., stationary=..., moving=...) writes into a "
+        "PSUM dst tile. Both operands must be SBUF tiles. After matmul, tensor_copy PSUM to SBUF, "
+        "then dma_copy SBUF to the returned shared_hbm output."
+    ),
+    "matmul_tiling": (
+        "Tiled matmul: produce output blocks by looping over M and N chunks, and loop over K chunks "
+        "for the contraction. Allocate one PSUM tile for an output block outside the K loop and "
+        "accumulate all K chunks into it before copying the final block out."
+    ),
+    "signatures": (
+        "Use real signatures only. nl.sum(x, axis, dtype=None, keepdims=False). "
+        "nisa.nc_matmul(dst=, stationary=, moving=, ...). Do not add guessed keyword arguments. "
+        "Memory regions are values, not functions: write buffer=nl.sbuf, buffer=nl.psum, or "
+        "buffer=nl.shared_hbm, never nl.sbuf() or nl.shared_hbm(). Use NKI dtypes such as "
+        "nl.float32/nl.bfloat16 or an input tensor's dtype; do not pass np.float32."
+    ),
+}
+
+REPAIR_CARD_NAMES = {
+    "scale": ["reductions", "signatures"],
+    "reduction_api": ["reductions", "signatures"],
+    "reduction_axis": ["reduction_axis", "reduction_patterns", "reductions"],
+    "nonfinite": ["dma_copy_shape", "matmul_psum"],
+    "rule": ["api_core", "signatures"],
+    "dma_shape": ["dma_copy_shape", "tile_limits"],
+    "tile_rank": ["tile_rank", "dma_copy_shape"],
+    "ragged": ["tile_limits", "dma_copy_shape"],
+    "traffic": ["matmul_psum", "matmul_tiling"],
+    "signature": ["signatures"],
+    "generic": ["api_core"],
+}
+
+GENERIC_BASE_CARDS = ["api_core", "dma_copy_shape", "signatures"]
+
+GENERIC_DOCS_CARDS = [
+    "api_core",
+    "dma_copy_shape",
+    "tile_rank",
+    "tile_limits",
+    "access_patterns",
+    "reduction_patterns",
+    "reduction_axis",
+    "matmul_psum",
+    "matmul_tiling",
+    "signatures",
+]
+
+FULL_GENERIC_GUIDE = """
+Generic NKI kernel-writing guide.
+
+Mental model:
+- HBM tensors are the function inputs and returned output. SBUF/PSUM are on-chip tiles.
+- Load from HBM into SBUF with nisa.dma_copy, compute on SBUF/PSUM tiles, then copy final SBUF
+  tiles back to the returned shared_hbm output.
+- Memory regions are constants, not constructors: use buffer=nl.sbuf, buffer=nl.psum,
+  buffer=nl.shared_hbm. Never call nl.sbuf() or nl.shared_hbm().
+- Prefer tile operations and nl.affine_range loops. Avoid Python scalar loops that assign one
+  element at a time unless the verifier proves it is legal.
+
+Allocation and dtype:
+- nl.ndarray(shape, dtype=..., buffer=...) always needs dtype and buffer.
+- Use input.dtype when matching an input tensor. Use nl.float32 or nl.bfloat16 for explicit NKI
+  dtypes. Do not pass NumPy dtypes such as np.float32.
+- SBUF and PSUM tiles must have at least two dimensions: partition dimension first, free dimension
+  second or later. Represent a vector as (1, N) or (N, 1), not (N,).
+- Tile-size limits are maximums. If a dimension exceeds a limit, loop over chunks; final chunks
+  must use the remaining valid size.
+
+DMA and shape rules:
+- nisa.dma_copy(dst=tile_or_output_slice, src=tensor_or_slice) requires src and dst to have the
+  same number of elements and compatible shape. It does not reshape, broadcast, pad, or slice for
+  you.
+- Allocate an SBUF tile to match the exact HBM slice being copied. Copy final computed SBUF tiles
+  into the exact returned output slice.
+- If the verifier says src/dst element counts differ, fix the tile/slice shape first.
+
+Views, reductions, and scaling:
+- NKI tensors are not NumPy arrays: do not use .reshape(), .mean(), .copy_from(), Python / on
+  tiles, or .shape on instruction results.
+- Use access-pattern/strided views when logical grouping is needed without reshaping the tile.
+  Derive strides from the physical layout; do not invent zero strides.
+- Use nl.sum(view, axis=[...]) for reductions. It returns a tile/instruction; it does not take a
+  dst argument.
+- nl.sum can reduce only trailing contiguous dimensions of the tile/view. If logical reduction axes
+  are not trailing, form a view where the reduced dimensions are trailing and contiguous.
+- Scale or multiply a tile with nisa.tensor_scalar(dst=..., data=..., op0=nl.multiply,
+  operand0=constant). Write into a destination tile; do not rely on Python arithmetic.
+
+Matmul rules:
+- nisa.nc_matmul(dst=..., stationary=..., moving=...) writes into a PSUM dst tile.
+- stationary and moving operands must be SBUF tiles. The left/stationary operand often has the K
+  contraction dimension on the partition axis.
+- For tiled matmul, keep one PSUM tile for an output block across the K loop, accumulate all K
+  chunks into it, tensor_copy PSUM to SBUF, then dma_copy the final block to shared_hbm.
+
+Verifier-driven repair:
+- Treat the observed verifier result as evidence. The hint and docs may be imperfect.
+- Fix the first concrete API/shape/rule failure before optimizing.
+- Preserve fixes from previous failures: do not reintroduce missing dtype, called memory regions,
+  1D SBUF/PSUM tiles, nisa.sum, .mean(), Python tile arithmetic, or wrong dma_copy shapes.
+- If the same failure class repeats, stop making surface syntax edits and rebuild the shape plan:
+  source slice, temporary tile, computed tile, and output slice must all agree.
+- If a new attempt lowers reward, return to the best-scoring kernel and make a smaller change.
+
+Common legal API surface:
+- Imports: import nki; import nki.language as nl; import nki.isa as nisa.
+- Entry point: decorate the submitted function with @nki.jit and return an nl.shared_hbm tensor.
+- Allocation: nl.ndarray(shape, dtype=..., buffer=nl.sbuf/nl.psum/nl.shared_hbm).
+- Loops: use nl.affine_range for static kernel loops where possible.
+- HBM movement: nisa.dma_copy(dst=..., src=...) between shared_hbm tensors/slices and SBUF tiles.
+- On-chip copy: nisa.tensor_copy(dst=..., src=...) between SBUF/PSUM-compatible tiles.
+- Reductions: nl.sum(tile_or_view, axis=[...], dtype=None, keepdims=False).
+- Scaling: nisa.tensor_scalar(dst=..., data=..., op0=nl.multiply, operand0=constant).
+- Matmul: nisa.nc_matmul(dst=psum_tile, stationary=sbuf_tile, moving=sbuf_tile).
+- Dtypes: use input.dtype to preserve input type, or nl.float32/nl.bfloat16 for explicit NKI dtype.
+
+Generic implementation checklist:
+- Allocate the returned output first in shared HBM with the exact output shape.
+- For each output tile, copy the needed input slice into SBUF, compute using NKI operations, then copy
+  the computed SBUF tile into the matching output slice.
+- Keep all SBUF/PSUM allocations at least 2D and within tile limits. If a logical value is scalar or
+  vector-like, still represent it as a 2D tile.
+- Preserve shape compatibility across copy calls. The source slice and destination tile should have
+  the same element count and compatible layout.
+- For reductions, arrange the tile/view so reduced axes are trailing and contiguous before nl.sum.
+- Use explicit destination tiles for operations that write results; avoid expressions that assume NKI
+  tiles behave like NumPy arrays.
+- Handle partial final tiles by allocating/copying only the valid remaining shape.
+"""
+
+DOC_CHUNKS = {
+    "generic_mental_model": """
+Generic accelerator kernel mental model:
+- The submitted function is not normal NumPy code. It is a device kernel with explicit memory.
+- Inputs live in HBM. The output you return should be allocated in shared HBM.
+- SBUF and PSUM are on-chip memories. You explicitly move data into them, operate there, then copy
+  results back out.
+- A correct kernel usually has this structure: allocate output in shared HBM; loop over output tiles;
+  copy the needed input slice into SBUF; compute with NKI primitives; copy the computed tile into the
+  matching output slice.
+- Shape compatibility matters more than surface syntax. Every copy and compute op should have a
+  source tile/view and destination tile with compatible element counts and layout.
+""",
+    "api_signatures": """
+Core API signatures and legal names:
+- import nki
+- import nki.language as nl
+- import nki.isa as nisa
+- @nki.jit decorates the entry function.
+- nl.ndarray(shape, dtype=..., buffer=...) allocates a tensor/tile. The buffer is one of nl.sbuf,
+  nl.psum, or nl.shared_hbm. These are values, not functions.
+- nl.affine_range(n) is the standard loop form inside kernels.
+- nl.sum(x, axis, dtype=None, keepdims=False) reduces a tile/view and returns a tile-like value.
+- nisa.dma_copy(dst=..., src=...) moves between HBM/shared_hbm and SBUF-compatible storage.
+- nisa.tensor_copy(dst=..., src=...) copies between on-chip tile buffers such as PSUM and SBUF.
+- nisa.tensor_scalar(dst=..., data=..., op0=nl.multiply, operand0=...) writes a scaled tile.
+- nisa.nc_matmul(dst=..., stationary=..., moving=...) writes matmul results into a PSUM tile.
+Do not invent helpers such as nl.value, nl.scalar, nl.sbuf_scalar, nisa.sum, tile.mean, tile.reshape,
+or copy_from. If an operation is not listed here, assume it is unavailable.
+""",
+    "memory_and_dtype": """
+Allocation, buffers, and dtype:
+- nl.ndarray always needs a shape, dtype, and buffer.
+- For output tensors, allocate with buffer=nl.shared_hbm and return that object.
+- For input tiles, allocate with buffer=nl.sbuf and copy input slices into them.
+- For matrix accumulation, allocate accumulator tiles with buffer=nl.psum and dtype=nl.float32 when
+  accumulation precision matters.
+- Use input_tensor.dtype when output should match the input dtype.
+- Use nl.float32 or nl.bfloat16 for explicit NKI dtypes. Do not pass np.float32 or NumPy dtype objects.
+- SBUF/PSUM tiles must be at least 2D. Use (1, N), (N, 1), or another 2D layout for vector/scalar-like
+  intermediates.
+- The partition dimension is the first tile dimension and has a hardware limit. If it exceeds the
+  limit, split the work into chunks and handle the final partial chunk explicitly.
+""",
+    "copy_and_shape": """
+DMA/copy shape rules:
+- nisa.dma_copy does not reshape, broadcast, pad, or slice implicitly.
+- The destination tile/slice and source tile/slice must have the same number of elements and a
+  compatible shape.
+- Allocate SBUF tiles to match the exact HBM slice you are copying.
+- Copy final computed tiles into the exact output slice they represent.
+- If the verifier reports different src/dst element counts, fix the slice/tile shape first rather
+  than changing arithmetic.
+- Avoid assigning individual Python scalar elements. Prefer tile-sized copies and tile operations.
+- For ragged final chunks, use the remaining valid rows/columns instead of reading or writing past the
+  logical tensor boundary.
+""",
+    "reductions_and_views": """
+Reductions, views, and scaling:
+- NKI tensors are not NumPy arrays. Do not use .reshape(), .mean(), direct Python division on tiles,
+  or Python arithmetic expecting NumPy broadcasting.
+- Use access-pattern/strided views when logical grouping is needed without physically reshaping.
+- Derive access-pattern strides from the physical layout in SBUF; do not guess zero strides.
+- nl.sum can reduce only trailing contiguous dimensions of the tile/view. If the logical reduction
+  axes are not trailing, build a view where they become trailing and contiguous.
+- nl.sum does not take dst. It returns a value/tile-like result that should be copied or scaled into
+  a destination tile.
+- To divide a reduced result by a constant, use nisa.tensor_scalar with an explicit destination tile
+  and op0=nl.multiply, operand0=reciprocal.
+""",
+    "matmul_rules": """
+Matmul-specific generic rules:
+- nisa.nc_matmul writes into a PSUM destination tile.
+- stationary and moving operands must be SBUF tiles.
+- After matmul, copy PSUM to SBUF with nisa.tensor_copy, then copy SBUF to shared HBM output with
+  nisa.dma_copy.
+- For tiled matmul, keep one PSUM tile for an output block across the contraction loop and accumulate
+  all contraction chunks before copying the final block out.
+- Do not allocate a fresh PSUM for every contraction chunk unless the intended semantics reset the
+  accumulator.
+""",
+    "repair_strategy": """
+Verifier-driven repair strategy:
+- Treat the observed verifier result as primary evidence. Hints and docs may be incomplete.
+- First fix parse/rule/API failures, then simulation failures, then numerical mismatches, then traffic.
+- Preserve all previous fixes. Do not reintroduce called memory regions, missing dtype, nisa.sum,
+  NumPy dtype objects, 1D SBUF/PSUM tiles, .mean(), .reshape(), Python tile arithmetic, or bad copy
+  shapes.
+- If a candidate regresses to an earlier verifier phase, repair from the strongest archived candidate,
+  not the latest broken text.
+- Make one minimal change that directly explains the current failure.
+""",
+    "generalized_error_lessons": """
+Generalized lessons from failed repairs:
+- If a reply is a diff instead of full code, apply it to the current candidate before judging the
+  kernel semantics.
+- If the same failure repeats with different constants, the model is probably changing syntax without
+  rebuilding the reasoning. Explicitly compare source slice shape, temporary tile shape, computed tile
+  shape, and output slice shape.
+- For copy errors, derive destination tile dimensions from the actual source slice for this loop
+  iteration. Do not use hardware limits as target sizes.
+- For out-of-bounds errors, re-derive loop bounds from logical tensor shapes and clamp final partial
+  chunks to the remaining valid extent.
+- For API-signature errors, fix only the unsupported call, keyword, or namespace first; do not rewrite
+  the algorithm at the same time.
+- For reduction errors, distinguish logical reduction axes from physical tile/view layout, then make
+  the reduction axes trailing and contiguous.
+- A useful repair should cause a meaningfully different verifier result. Repeating the same class with
+  only changed constants usually means the shape plan is still wrong.
+""",
+    "patch_format": """
+Patch response format:
+- Return a valid unified diff only.
+- Include file headers exactly like --- a/kernel.py and +++ b/kernel.py.
+- Include at least one @@ hunk header.
+- Keep context lines in the hunk so the patch can be applied.
+- Do not return prose, markdown explanation, or a full rewritten file when patch mode is requested.
+""",
+    "hardware_constraints": """
+Generic hardware and tiling constraints:
+- Kernels are explicit-memory programs. Whole-array host operations are not acceptable substitutes for
+  tiled device work.
+- Work should be expressed as loops over tiles. A tile is the unit of movement/computation, not the
+  whole tensor unless the verifier shapes genuinely fit.
+- Partition dimension comes first. Many failures come from treating a logical vector as a 1D tile,
+  but SBUF/PSUM require two dimensions.
+- Tile limits are upper bounds, not target shapes. If an input/output dimension is larger than the
+  hardware tile limit, split it; if the last block is smaller, make the final tile/slice smaller.
+- Reads and writes must stay inside the logical tensor bounds. Padding or reading past the valid
+  shape can accidentally pass friendly tests and fail ragged/hostile tests.
+- HBM traffic matters only after correctness. First produce correct output for all tested shapes,
+  then reduce redundant copies and transfers.
+- Do not hide work in framework calls such as NumPy, PyTorch, JAX, @ matrix multiply, input.T, or
+  reshape/mean methods. The verifier treats those as rule violations because they bypass explicit
+  kernel logic.
+""",
+    "verifier_interpretation": """
+How to interpret verifier phases:
+- Parse failure: the response is not valid Python code or a patch was malformed. Fix formatting first.
+- Rule failure: the code uses a prohibited host/framework shortcut, wrong entry point, missing
+  @nki.jit, over-large tile, or other statically visible violation. Fix rules before semantics.
+- Load/import failure: the file imports but the expected function or legal modules are wrong. Keep
+  imports limited to nki, nki.language as nl, and nki.isa as nisa.
+- Simulation failure: the NKI simulator raised. This usually means wrong API signature, wrong buffer
+  location, invalid tile shape/rank, invalid dtype, or incompatible copy shape.
+- Numerical failure: the code ran but output differs. Use the named case/index/shape to decide whether
+  the bug is output path, scale, reduction axis/order, missing initialization, ragged edge, or core
+  arithmetic.
+- Traffic/issue-bound warning: numerics are correct but movement is inefficient. Do not optimize
+  traffic before correctness.
+""",
+    "common_failures": """
+Common generic failure patterns and likely repairs:
+- MemoryRegion object is not callable: change nl.sbuf(), nl.psum(), nl.shared_hbm() to nl.sbuf,
+  nl.psum, nl.shared_hbm as buffer values.
+- ndarray missing dtype: add dtype=input.dtype when matching an input/output, or dtype=nl.float32 for
+  accumulation/intermediate math where explicit precision is needed.
+- unknown dtype np.float32: use nl.float32 or an input tensor's dtype.
+- module nki.isa has no sum: reductions are nl.sum, not nisa.sum.
+- NKI tensor has no mean/reshape/copy_from: use explicit SBUF tiles, access-pattern views, nl.sum,
+  nisa.tensor_scalar, and nisa.dma_copy/tensor_copy.
+- SBUF/PSUM must have at least 2 dimensions: represent scalar/vector intermediates as 2D tiles.
+- dma_copy element-count mismatch: make the destination tile shape match the source slice exactly.
+- tensor_reduce axis must be trailing contiguous: build a tile/view where reduction axes are the final
+  contiguous axes, then call nl.sum over those axes.
+- unsupported Python operator on tile: use an explicit NKI instruction with a destination tile.
+- output all zeros or nonfinite: check that every computed tile is copied into the returned
+  shared_hbm output and that accumulators are initialized/written before reading.
+""",
+    "planning_checklist": """
+Before writing or patching code, make this internal checklist concrete:
+1. What is the exact input shape and output shape relationship from the reference?
+2. What output tile is being produced by the current loop iteration?
+3. Which input slice is needed for that output tile?
+4. What SBUF/PSUM tiles are allocated, with what shape, dtype, and buffer?
+5. Which copy moves HBM input into SBUF, and do src/dst element counts match?
+6. Which NKI instruction computes the result, and where is its destination tile?
+7. If reducing, are the reduction axes trailing and contiguous in the tile/view?
+8. If scaling, is the result written into a destination tile rather than using Python arithmetic?
+9. Which copy writes the computed SBUF tile to the exact shared_hbm output slice?
+10. What previous failure must not be reintroduced?
+""",
+    "anti_patterns": """
+Generic anti-patterns to avoid:
+- Do not translate the NumPy reference literally. NumPy references often use reshape, transpose,
+  vectorized broadcasting, mean, sum over arbitrary axes, slicing conveniences, or implicit temporary
+  arrays. In NKI these usually need explicit tiles, loops, copies, views, and destination buffers.
+- Do not allocate a single SBUF tile for an arbitrarily large tensor. Tile limits are real hardware
+  constraints; loop over chunks when needed.
+- Do not use Python range for kernel-space iteration when an NKI loop is expected; prefer
+  nl.affine_range for static device loops.
+- Do not create 1D SBUF/PSUM intermediates. Even if the logical value is one-dimensional, allocate a
+  2D tile representation.
+- Do not perform tile arithmetic with Python operators such as tile / scalar, tile + tile, or +=
+  unless the API explicitly supports it. Use NKI instructions with destination tiles.
+- Do not return an SBUF/PSUM tile. Return the shared_hbm output allocation.
+- Do not forget the final write-back. A kernel can compute the right intermediate and still return
+  zeros if it never copies into the returned output.
+- Do not fix a numerical mismatch by changing the reference operation. The function must match the
+  reference semantics; only implementation strategy should change.
+- Do not optimize traffic before correctness. A fast wrong kernel is still wrong.
+""",
+    "debugging_playbook": """
+Generic debugging playbook:
+- If parsing fails, ignore kernel semantics and return syntactically complete Python only.
+- If the entry point is missing or undecorated, fix the function name/import/decorator first.
+- If a rule violation mentions a host shortcut, replace that shortcut with explicit tile movement and
+  NKI operations.
+- If an API name is missing, check namespace: reductions are in nl, movement/compute instructions are
+  commonly in nisa, memory regions are nl values.
+- If a buffer-location error says an operand must be in SBUF/PSUM, allocate/copy that operand into the
+  required on-chip buffer before calling the instruction.
+- If a copy shape mismatch occurs, write down source slice shape, destination tile shape, and output
+  slice shape. Make them agree before touching arithmetic.
+- If a reduction axis error occurs, inspect the physical tile/view layout. The reduced axes must be
+  trailing contiguous axes in that tile/view.
+- If a scale error occurs, preserve the reduction and copy structure, then fix only the scalar factor
+  or denominator.
+- If a ragged-edge mismatch occurs, handle final partial tile bounds separately from full tiles.
+- If output is all zero or unchanged, inspect the output write-back path before compute logic.
+- If a patch is requested, change only the smallest region needed; broad rewrites often lose working
+  imports, decorators, dtype, buffers, or output copies.
+""",
+    "shape_reasoning": """
+Shape reasoning rules:
+- Keep separate the logical tensor shape, the HBM slice shape, the SBUF tile shape, the PSUM tile
+  shape, and the output slice shape.
+- The output shape comes from the reference. Do not infer output shape from a convenient tile shape.
+- A loop index usually identifies a logical tile in the output. Convert that to exact input slice
+  bounds and output slice bounds.
+- For each copy, compare the source and destination element counts. If they differ, the copy is wrong
+  even if the code parses.
+- For reductions, distinguish the dimensions being preserved from the dimensions being reduced. The
+  reduced dimensions disappear or become size one depending on API behavior; allocate the destination
+  tile accordingly.
+- When flattening logical groups into a free dimension, preserve the partition dimension as the first
+  tile dimension and ensure access-pattern strides reflect the actual layout.
+- For partial tiles, compute remaining rows/columns from tensor bounds rather than assuming full tile
+  size.
+""",
+    "namespace_reference": """
+Namespace reference and decision rules:
+- Use nl for language-level constructs, tensor allocation, dtypes, memory-region constants, loops,
+  arithmetic operators/constants exposed by the language, and reductions such as nl.sum.
+- Use nisa for instruction-level operations that move/copy/compute into explicit destination tiles,
+  such as dma_copy, tensor_copy, tensor_scalar, and nc_matmul.
+- Memory regions are not allocators. The allocator is nl.ndarray; the region is passed through the
+  buffer keyword.
+- If an operation needs a destination, allocate that destination explicitly before the instruction.
+- If an instruction error says a parameter is bound twice, use keyword arguments only and match the
+  documented signature.
+- If an instruction says a buffer must be sbuf or psum, first copy/allocate data into that buffer;
+  do not pass shared_hbm directly to on-chip-only instructions.
+- If a language object lacks a NumPy method, do not search for the same method in another namespace;
+  reformulate the operation with the available NKI primitives.
+- If a dtype or scalar constant is needed inside the kernel, prefer NKI language constants and
+  instruction operands over host NumPy objects.
+- If in doubt between changing API syntax and changing algorithm semantics, fix API syntax first and
+  preserve the intended operation.
+""",
+}
+
+DOC_PRIORITIES = {
+    "signature": ["api_signatures", "memory_and_dtype", "repair_strategy"],
+    "rule": ["api_signatures", "memory_and_dtype", "copy_and_shape", "repair_strategy"],
+    "dma_shape": ["copy_and_shape", "memory_and_dtype", "repair_strategy"],
+    "tile_rank": ["memory_and_dtype", "copy_and_shape", "repair_strategy"],
+    "reduction_api": ["reductions_and_views", "api_signatures", "memory_and_dtype", "repair_strategy"],
+    "reduction_axis": ["reductions_and_views", "copy_and_shape", "repair_strategy"],
+    "scale": ["reductions_and_views", "api_signatures", "repair_strategy"],
+    "ragged": ["copy_and_shape", "memory_and_dtype", "repair_strategy"],
+    "traffic": ["copy_and_shape", "matmul_rules", "repair_strategy"],
+    "nonfinite": ["copy_and_shape", "memory_and_dtype", "repair_strategy"],
+    "generic": ["generic_mental_model", "hardware_constraints", "api_signatures", "memory_and_dtype",
+                "copy_and_shape", "reductions_and_views", "verifier_interpretation",
+                "common_failures", "namespace_reference", "debugging_playbook", "shape_reasoning",
+                "generalized_error_lessons", "anti_patterns", "planning_checklist", "repair_strategy"],
+}
+
 
 # ---------------------------------------------------------------- reward
 #
@@ -50,6 +514,130 @@ REASONING_KEYS = ("reasoning", "reasoning_content")
 # until the kernel is right.
 
 WEIGHTS = dict(parses=0.1, rules=0.2, runs=0.2, correct=0.5)
+PHASE_ORDER = {"empty": 0, "parse": 1, "rules": 2, "load": 3, "simulate": 4,
+               "numerics": 5, "traffic": 6, "correct": 7}
+
+
+class _PreflightFixer(ast.NodeTransformer):
+    def __init__(self):
+        self.fixes = []
+
+    def visit_Call(self, node):
+        self.generic_visit(node)
+        if not (isinstance(node.func, ast.Attribute) and node.func.attr == "ndarray"):
+            return node
+        if not (isinstance(node.func.value, ast.Name) and node.func.value.id == "nl"):
+            return node
+        has_dtype = any(kw.arg == "dtype" for kw in node.keywords)
+        if has_dtype or len(node.args) >= 2 or not node.args:
+            return node
+        shape = node.args[0]
+        dtype = None
+        if isinstance(shape, ast.Attribute) and shape.attr == "shape" and isinstance(shape.value, ast.Name):
+            dtype = ast.Attribute(value=ast.Name(id=shape.value.id, ctx=ast.Load()),
+                                  attr="dtype", ctx=ast.Load())
+        elif isinstance(shape, ast.Subscript) and isinstance(shape.value, ast.Attribute) \
+                and shape.value.attr == "shape" and isinstance(shape.value.value, ast.Name):
+            dtype = ast.Attribute(value=ast.Name(id=shape.value.value.id, ctx=ast.Load()),
+                                  attr="dtype", ctx=ast.Load())
+        else:
+            dtype = ast.Attribute(value=ast.Name(id="nl", ctx=ast.Load()),
+                                  attr="float32", ctx=ast.Load())
+        node.keywords.insert(0, ast.keyword(arg="dtype", value=dtype))
+        self.fixes.append("added missing dtype to nl.ndarray")
+        return node
+
+
+def _slice_from_src_slice(value):
+    if not isinstance(value, ast.Tuple):
+        return None
+    parts = list(value.elts)
+    if len(parts) == 5:
+        return ast.Tuple(elts=[
+            parts[0],
+            ast.Slice(lower=parts[1], upper=parts[3], step=None),
+            ast.Slice(lower=parts[2], upper=parts[4], step=None),
+        ], ctx=ast.Load())
+    dims = []
+    if len(parts) % 2 == 1:
+        dims.append(parts.pop(0))
+    if len(parts) % 2 != 0:
+        return None
+    for i in range(0, len(parts), 2):
+        dims.append(ast.Slice(lower=parts[i], upper=parts[i + 1], step=None))
+    return ast.Tuple(elts=dims, ctx=ast.Load())
+
+
+class _DmaCopyKeywordFixer(ast.NodeTransformer):
+    def __init__(self):
+        self.fixes = []
+
+    def visit_Call(self, node):
+        node = self.generic_visit(node)
+        if not (isinstance(node.func, ast.Attribute)
+                and node.func.attr == "dma_copy"
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id == "nisa"):
+            return node
+        src_kw = None
+        src_slice_kw = None
+        kept = []
+        for kw in node.keywords:
+            if kw.arg == "src":
+                src_kw = kw
+                kept.append(kw)
+            elif kw.arg == "src_slice":
+                src_slice_kw = kw
+            else:
+                kept.append(kw)
+        if src_kw is None or src_slice_kw is None:
+            return node
+        src_slice = _slice_from_src_slice(src_slice_kw.value)
+        if src_slice is None:
+            return node
+        src_kw.value = ast.Subscript(value=src_kw.value, slice=src_slice, ctx=ast.Load())
+        node.keywords = kept
+        self.fixes.append("moved dma_copy src_slice into src[...] and removed unsupported keyword")
+        return node
+
+
+def static_preflight_fix(source):
+    """Patch obvious global NKI API typos before the verifier sees the candidate."""
+    fixed = source
+    replacements = [
+        ("nl.sbuf()", "nl.sbuf"),
+        ("nl.psum()", "nl.psum"),
+        ("nl.shared_hbm()", "nl.shared_hbm"),
+        ("nisa.sum", "nl.sum"),
+        ("np.float32", "nl.float32"),
+    ]
+    fixes = []
+    for old, new in replacements:
+        if old in fixed:
+            fixed = fixed.replace(old, new)
+            fixes.append(f"{old} -> {new}")
+
+    try:
+        tree = ast.parse(fixed)
+    except SyntaxError:
+        return fixed, fixes
+    fixer = _PreflightFixer()
+    tree = fixer.visit(tree)
+    ast.fix_missing_locations(tree)
+    if fixer.fixes:
+        fixed = ast.unparse(tree)
+        fixes.extend(fixer.fixes)
+    try:
+        tree = ast.parse(fixed)
+    except SyntaxError:
+        return fixed, fixes
+    dma_fixer = _DmaCopyKeywordFixer()
+    tree = dma_fixer.visit(tree)
+    ast.fix_missing_locations(tree)
+    if dma_fixer.fixes:
+        fixed = ast.unparse(tree)
+        fixes.extend(dma_fixer.fixes)
+    return fixed, fixes
 
 
 def grade(source, level):
@@ -59,6 +647,7 @@ def grade(source, level):
     if not source.strip():
         return 0.0, parts, ("No code came back. Reply with one python code block containing the "
                             "kernel and nothing else.")
+    source, _ = static_preflight_fix(source)
     try:
         compile(source, "<candidate>", "exec")
         parts["parses"] = True
@@ -160,6 +749,70 @@ def grade(source, level):
     if intensity:
         note += " " + nkibench.explain_roofline(intensity)
     return reward, parts, note
+
+
+def failure_phase(parts, feedback):
+    text = compact_feedback(feedback).lower()
+    if parts.get("correct"):
+        return "correct"
+    if not any(parts.values()):
+        return "empty" if "no code came back" in text else "parse"
+    if not parts.get("rules"):
+        return "rules"
+    if "could not be loaded" in text or "there is no module named" in text:
+        return "load"
+    if not parts.get("runs") or "raised " in text or "cannot simulate" in text:
+        return "simulate"
+    if "traffic " in text or "byte floor" in text or "issue-bound" in text:
+        return "traffic"
+    return "numerics"
+
+
+def structured_failure(parts, feedback):
+    phase = failure_phase(parts, feedback)
+    key = failure_key(feedback)
+    return {
+        "phase": phase,
+        "key": key,
+        "summary": ledger_line(feedback),
+        "compact": compact_feedback(feedback),
+    }
+
+
+def phase_score(parts, feedback):
+    return PHASE_ORDER.get(failure_phase(parts, feedback), 0)
+
+
+def update_candidate_archive(archive, candidate):
+    reward, src, feedback, parts = candidate
+    if not (src or "").strip():
+        return
+    phase = failure_phase(parts, feedback)
+    old = archive.get(phase)
+    if old is None or reward > old[0]:
+        archive[phase] = candidate
+
+
+def strongest_archived_candidate(archive):
+    if not archive:
+        return None
+    return max(archive.values(), key=lambda c: (phase_score(c[3], c[2]), c[0]))
+
+
+def choose_repair_base(top, best, latest, repeats, archive=None):
+    """Choose which candidate to repair using verifier outcomes, not prompt wording."""
+    top_reward, top_src, top_feedback, top_parts = top
+    best_reward, best_src, best_feedback, best_parts = best
+    if not (top_src or "").strip():
+        return latest, "latest_empty"
+    if top_reward >= best_reward:
+        return (top_src, top_feedback), "latest"
+    archived = strongest_archived_candidate(archive or {})
+    if archived and (archived[1] or "").strip() and archived[0] > top_reward:
+        return (archived[1], archived[2]), "candidate_archive"
+    if (best_src or "").strip():
+        return (best_src, best_feedback), "best"
+    return (top_src, top_feedback), "latest_repeat"
 
 
 # ---------------------------------------------------------------- prompting
@@ -337,6 +990,11 @@ def enrich(error_text):
     if "cannot reshape array of size" in error_text:
         return (error_text + " Do not reshape. Work with the shapes you were given and slice "
                 "them into tiles, e.g. src=a[0:128, 0:64].")
+    if "ap() pattern has invalid partition stride" in error_text:
+        return (error_text + " Fix the access-pattern strides from the actual SBUF layout. The "
+                "partition-axis stride should span the free dimensions behind one partition row; "
+                "do not use zero or guessed strides. Keep reduced logical dimensions trailing if "
+                "the view will feed nl.sum.")
     m = re.search(r"module '([\w.]+)' has no attribute '(\w+)'", error_text)
     if m:
         return error_text + available_names(f"{m.group(1)}.{m.group(2)}")
@@ -346,7 +1004,384 @@ def enrich(error_text):
                 f"`{m.group(2)}`. Use the nl/nisa functions instead.")
     return error_text
 
-def first_prompt(level, terse=0):
+
+def select_context_cards(level, feedback="", source="", max_cards=4):
+    """Pick general context cards by failure category, not by visible test shape."""
+    text = f"{feedback}\n{source}".lower()
+    chosen = []
+
+    def add(name):
+        if name in CONTEXT_CARDS and name not in chosen:
+            chosen.append(name)
+
+    for name in GENERIC_BASE_CARDS:
+        add(name)
+
+    triggers = [
+        ("dma_copy", "dma_copy_shape"),
+        ("same number of elements", "dma_copy_shape"),
+        ("partition dimension", "tile_limits"),
+        ("exceeds maximum", "tile_limits"),
+        ("out-of-bound", "tile_limits"),
+        ("ragged", "tile_limits"),
+        ("at least 2 dimensions", "tile_rank"),
+        ("1-d tile", "tile_rank"),
+        ("nl.sum", "reductions"),
+        ("sum()", "reductions"),
+        ("unexpected keyword argument 'dst'", "reductions"),
+        ("ap() pattern", "access_patterns"),
+        ("access pattern", "access_patterns"),
+        ("nc_matmul", "matmul_psum"),
+        ("psum", "matmul_psum"),
+        ("stationary", "matmul_psum"),
+        ("moving", "matmul_psum"),
+        ("contraction", "matmul_tiling"),
+        ("k loop", "matmul_tiling"),
+        ("unexpected keyword argument", "signatures"),
+        ("no attribute", "signatures"),
+    ]
+    for needle, card in triggers:
+        if needle in text:
+            add(card)
+
+    return chosen[:max_cards]
+
+
+def render_context_cards(names):
+    if not names:
+        return ""
+    lines = ["Relevant context cards:"]
+    for name in names:
+        lines.append(f"- {name}: {CONTEXT_CARDS[name]}")
+    return "\n".join(lines)
+
+
+def repair_card_names(level, category):
+    names = list(REPAIR_CARD_NAMES.get(category, ["api_core"]))
+    deduped = []
+    for name in names:
+        if name not in deduped:
+            deduped.append(name)
+    return deduped
+
+
+def failure_key(feedback):
+    text = compact_feedback(feedback)
+    low = text.lower()
+    if "memoryregion" in low or "not callable" in low:
+        return "signature.memory_region_called"
+    if "unexpected keyword argument" in low and "src_slice" in low:
+        return "signature.unexpected_keyword_src_slice"
+    if "unexpected keyword argument" in low:
+        return "signature.unexpected_keyword"
+    if "missing 1 required positional argument" in low and "dtype" in low:
+        return "signature.ndarray_missing_dtype"
+    if "unknown dtype" in low:
+        return "signature.unknown_dtype"
+    if "has no `mean`" in low or "attribute 'mean'" in low:
+        return "reduction.mean_not_supported"
+    if "nki.isa" in low and ("has no `sum`" in low or "has no attribute 'sum'" in low):
+        return "signature.nisa_sum_not_found"
+    if "tensor_reduce axis" in low or "last contiguous" in low:
+        return "reduction.axes_not_trailing"
+    if "same number of elements" in low or "dma_copy requires" in low:
+        return "dma.shape_mismatch"
+    if "at least 2 dimensions" in low or "1-d tile" in low or "1d" in low:
+        return "tile.rank_1d"
+    if "unsupported operand type" in low or "python operators" in low:
+        return "api.python_operator_on_tile"
+    if "has no `shape`" in low or "attribute 'shape'" in low:
+        return "api.instruction_shape"
+    if "nonfinite:" in low or "nan" in low:
+        return "numeric.nonfinite"
+    if "scale:" in low or "consistent scale" in low:
+        return "numeric.scale"
+    if "byte floor" in low or "traffic " in low or " transfers" in low or "issue-bound" in low:
+        return "traffic.hbm"
+    return "generic." + re.sub(r"[^a-z0-9]+", "_", low[:60]).strip("_")
+
+
+def ledger_line(feedback):
+    key = failure_key(feedback)
+    compact = compact_feedback(feedback)
+    evidence = error_context(feedback)
+    summary = {
+        "signature.memory_region_called": "memory regions called as functions; use buffer=nl.sbuf",
+        "signature.unexpected_keyword_src_slice": "dma_copy does not take src_slice; slice the source tensor directly",
+        "signature.unexpected_keyword": "invalid keyword argument; use the real NKI signature",
+        "signature.ndarray_missing_dtype": "nl.ndarray missing dtype",
+        "signature.unknown_dtype": "used non-NKI dtype; use nl.float32 or input.dtype, not np.float32",
+        "reduction.mean_not_supported": ".mean() used on NKI tensor",
+        "signature.nisa_sum_not_found": "used nisa.sum; use nl.sum",
+        "reduction.axes_not_trailing": "nl.sum axes not trailing contiguous",
+        "dma.shape_mismatch": "dma_copy src/dst shapes differ",
+        "tile.rank_1d": "created 1D SBUF/PSUM tile",
+        "api.python_operator_on_tile": "used Python operator on tile",
+        "api.instruction_shape": "read .shape from instruction result",
+        "numeric.nonfinite": "nonfinite output",
+        "numeric.scale": "consistent scale error",
+        "traffic.hbm": "excess HBM traffic",
+    }.get(key, compact[:120])
+    return f"{key}: {summary}"
+
+
+def compact_ledger(failures, limit=5):
+    by_key = {}
+    for failure in failures:
+        by_key[failure_key(failure)] = ledger_line(failure)
+    return "\n".join(f"- {line}" for line in list(by_key.values())[-limit:])
+
+
+def retrieved_card_names(level, category, feedback="", source="", max_cards=5):
+    names = repair_card_names(level, category)
+    names += select_context_cards(level, feedback=feedback, source=source, max_cards=max_cards)
+    deduped = []
+    for name in names:
+        if name not in deduped:
+            deduped.append(name)
+    return deduped[:max_cards]
+
+
+def known_invalid_patterns(failures):
+    text = "\n".join(compact_feedback(f) for f in failures or []).lower()
+    patterns = []
+    checks = [
+        ("memoryregion" in text or "not callable" in text,
+         "do not call nl.sbuf/nl.psum/nl.shared_hbm; pass them as buffer=nl.sbuf"),
+        ("unexpected keyword argument" in text and "src_slice" in text,
+         "do not pass src_slice= to dma_copy; slice the source tensor directly in src=..."),
+        ("unexpected keyword argument" in text,
+         "remove unsupported keyword arguments and use the real NKI function signature"),
+        ("missing 1 required positional argument" in text and "dtype" in text,
+         "add explicit dtype=... to every nl.ndarray allocation"),
+        ("unknown dtype" in text,
+         "use NKI dtype constants such as nl.float32 or input.dtype; do not use np.float32"),
+        ("has no `mean`" in text or "attribute 'mean'" in text,
+         "replace .mean() with nl.sum plus nisa.tensor_scalar"),
+        ("reshape" in text,
+         "do not call .reshape() on NKI tensors; allocate/copy the intended tile shape directly"),
+        ("copy_from" in text,
+         "do not call .copy_from(); use nisa.dma_copy(dst=..., src=...)"),
+        ("unsupported operand type" in text or "python operators" in text,
+         "do not use Python arithmetic on tiles; use nisa.tensor_scalar or NKI instructions"),
+        ("has no `shape`" in text or "attribute 'shape'" in text,
+         "do not read .shape from NKI instruction results; keep explicit tile shapes"),
+        ("tensor_reduce axis" in text or "last contiguous" in text,
+         "make reduction axes trailing contiguous before calling nl.sum"),
+    ]
+    for ok, desc in checks:
+        if ok and desc not in patterns:
+            patterns.append(desc)
+    return patterns
+
+
+def invalid_patterns_text(failures):
+    patterns = known_invalid_patterns(failures)
+    if not patterns:
+        return ""
+    return "Known invalid patterns from earlier attempts; fix these too:\n" + "\n".join(
+        f"- {p}" for p in patterns)
+
+
+def history_text(failures, limit=8):
+    if not failures:
+        return ""
+    lines = ["Repair history, newest last:"]
+    seen = set()
+    for i, failure in enumerate(failures[-limit:], 1):
+        key = failure_key(failure)
+        line = ledger_line(failure)
+        marker = "repeat" if key in seen else "new"
+        seen.add(key)
+        lines.append(f"- attempt {i}: {marker} {line}")
+    return "\n".join(lines)
+
+
+def compact_feedback(feedback):
+    fn = getattr(nkibench, "compact_message", None)
+    return fn(feedback) if fn else " ".join(str(feedback).split())[:360]
+
+
+def distill_failure(feedback):
+    text = compact_feedback(feedback)
+    low = text.lower()
+    if "scale:" in low or "consistent scale" in low:
+        return ("scale",
+                "Fix only the scalar scaling after the reduction. Divide by the full reduction "
+                "count/area and keep the tiling/copy structure unchanged.")
+    if "nonfinite:" in low or "nan" in low or "shared_hbm output" in low:
+        return ("nonfinite",
+                "Fix only the final output path. Ensure every computed tile is written into the "
+                "returned shared_hbm output with nisa.dma_copy to the exact output slice.")
+    if "fail rules" in low or "rule violations" in low or "calls `np." in low:
+        return ("rule",
+                "Fix only the rule violation. Replace framework/host operations with explicit NKI "
+                "tile operations; keep the entry point and operation unchanged.")
+    if "has no `mean`" in low or "object has no attribute 'mean'" in low:
+        return ("reduction_api",
+                "Fix only the reduction. NKI tensors do not have .mean(); use nl.sum over the "
+                "reduction axes, then nisa.tensor_scalar to divide by the full reduction area.")
+    if "tensor_reduce axis" in low or "last contiguous" in low:
+        return ("reduction_axis",
+                "Fix only the reduction view axes. nl.sum can reduce only trailing contiguous "
+                "dimensions, so make the pool dimensions the final axes of the access-pattern view "
+                "and reduce axis=[3, 4].")
+    if "memoryregion" in low or "not callable" in low:
+        return ("signature",
+                "Fix only the memory-region allocation calls. nl.sbuf, nl.psum and nl.shared_hbm "
+                "are values, not functions: use buffer=nl.sbuf or buffer=nl.shared_hbm, without "
+                "parentheses.")
+    if "unknown dtype" in low:
+        return ("signature",
+                "Fix only the dtype arguments. Use NKI dtype constants like nl.float32 or reuse an "
+                "input tensor dtype; do not pass NumPy dtype objects such as np.float32.")
+    if "same number of elements" in low or "dma_copy requires" in low:
+        return ("dma_shape",
+                "Fix only the dma_copy shape mismatch. Allocate the destination tile to exactly "
+                "match the source slice being copied; do not pad, reshape, or copy a whole tensor "
+                "into a smaller/larger tile.")
+    if "at least 2 dimensions" in low or "1d" in low or "1-d" in low:
+        return ("tile_rank",
+                "Fix only the tile rank. SBUF/PSUM tiles must be 2D, with partition dimension "
+                "first and free dimension second.")
+    if "ragged edge" in low or "final partial" in low:
+        return ("ragged",
+                "Fix only the final partial tile bounds. Use the remaining size for the last "
+                "chunk and copy/write only the valid output slice.")
+    if "byte floor" in low or "traffic " in low or " transfers" in low or "issue-bound" in low:
+        return ("traffic",
+                "Fix only HBM traffic. Reuse tiles, keep one PSUM tile across the K loop, and copy "
+                "the final block out once.")
+    if "missing 1 required positional argument" in low and "dtype" in low:
+        return ("signature",
+                "Fix only the nl.ndarray allocation calls. Every nl.ndarray needs an explicit "
+                "dtype argument, usually dtype=input_tensor.dtype, plus the intended buffer.")
+    if "unexpected keyword argument" in low or "no attribute" in low:
+        return ("signature",
+                "Fix only the invalid API call. Use the real NKI signature named by the checker; "
+                "do not invent keyword arguments or helper functions.")
+    return ("generic", "Fix exactly the checker-reported issue and keep unrelated code unchanged.")
+
+
+def estimate_tokens(text):
+    return max(1, len(text) // 4)
+
+
+def dedupe(names):
+    out = []
+    for name in names:
+        if name not in out:
+            out.append(name)
+    return out
+
+
+def render_doc_chunks(names, token_budget):
+    lines, used = [], 0
+    for name in dedupe(names):
+        text = DOC_CHUNKS.get(name, "").strip()
+        if not text:
+            continue
+        cost = estimate_tokens(text) + 8
+        if lines and used + cost > token_budget:
+            continue
+        lines.append(f"## {name}\n{text}")
+        used += cost
+    return "\n\n".join(lines), used
+
+
+def initial_doc_names(style):
+    if style == "minimal":
+        return []
+    names = ["generic_mental_model", "hardware_constraints", "api_signatures", "memory_and_dtype",
+             "copy_and_shape", "reductions_and_views", "verifier_interpretation",
+             "common_failures", "namespace_reference", "debugging_playbook", "shape_reasoning",
+             "generalized_error_lessons", "anti_patterns", "planning_checklist", "repair_strategy"]
+    if style == "full-docs":
+        names += ["matmul_rules", "patch_format"]
+    if style == "reference":
+        names += ["matmul_rules"]
+    return names
+
+
+def repair_doc_names(category, feedback="", source="", patch_mode=False):
+    key = failure_key(feedback)
+    names = list(DOC_PRIORITIES.get(category, DOC_PRIORITIES["generic"]))
+    if key in {"signature.memory_region_called", "signature.ndarray_missing_dtype",
+               "signature.unknown_dtype", "signature.nisa_sum_not_found"}:
+        names = ["api_signatures", "memory_and_dtype"] + names
+    if key in {"tile.rank_1d"}:
+        names = ["memory_and_dtype", "copy_and_shape"] + names
+    if key in {"dma.shape_mismatch"}:
+        names = ["copy_and_shape", "memory_and_dtype"] + names
+    if key in {"reduction.mean_not_supported", "reduction.axes_not_trailing"}:
+        names = ["reductions_and_views", "api_signatures"] + names
+    if "nc_matmul" in source or "matmul" in feedback.lower() or "psum" in feedback.lower():
+        names += ["matmul_rules"]
+    if patch_mode:
+        names = ["patch_format"] + names
+    names += ["verifier_interpretation", "common_failures", "namespace_reference", "debugging_playbook",
+              "shape_reasoning", "planning_checklist", "repair_strategy"]
+    names += initial_doc_names("full-docs")
+    return dedupe(names)
+
+
+def error_context(feedback, limit=1800):
+    text = str(feedback or "").strip()
+    if len(text) <= limit:
+        return text
+    return text[:limit - 3].rstrip() + "..."
+
+
+def doc_budget(context_budget, answer_budget, fixed_text="", minimum=800):
+    target_prompt = max(1000, context_budget - answer_budget - 128)
+    return max(minimum, target_prompt - estimate_tokens(fixed_text))
+
+
+def prompt_accounting(reference="", code="", feedback="", cards="", ledger="", instruction="", core=""):
+    sections = {
+        "core": estimate_tokens(core),
+        "reference": estimate_tokens(reference),
+        "code": estimate_tokens(code),
+        "feedback": estimate_tokens(feedback),
+        "cards": estimate_tokens(cards),
+        "ledger": estimate_tokens(ledger),
+        "instruction": estimate_tokens(instruction),
+    }
+    sections["total"] = sum(sections.values())
+    return sections
+
+
+def start_card_names(level, style="minimal"):
+    names = []
+    if style in {"docs", "full-docs", "reference"}:
+        names += GENERIC_DOCS_CARDS
+    deduped = []
+    for name in names:
+        if name not in deduped:
+            deduped.append(name)
+    return deduped
+
+
+def start_context(level, style="minimal", context_budget=8192, answer_budget=MIN_ANSWER_TOKENS,
+                  fixed_text=""):
+    text = render_context_cards(start_card_names(level, style))
+    names = initial_doc_names(style)
+    if names:
+        chunks, _ = render_doc_chunks(names, doc_budget(context_budget, answer_budget, fixed_text))
+        text = "\n\n".join(t for t in (text, chunks) if t)
+    return text
+
+
+def reference_kernel_text(level):
+    path = os.path.join(os.path.dirname(__file__), f"reference_level{level}.py")
+    try:
+        return open(path).read().strip()
+    except OSError:
+        return ""
+
+
+def first_prompt(level, terse=0, style="minimal", context_budget=8192,
+                 answer_budget=MIN_ANSWER_TOKENS):
     """Deliberately short, and it does NOT list the rules.
 
     Measured twice in this repo: hand a model an enumerated list of prohibitions and it audits
@@ -356,54 +1391,327 @@ def first_prompt(level, terse=0):
     """
     s = nkibench.LEVELS[level]
     import inspect
+    ref = inspect.getsource(s['ref'])
+    reference_text = ""
+    if style == "reference":
+        ref_kernel = reference_kernel_text(level)
+        if ref_kernel:
+            reference_text = (
+                "\n\nShipped reference kernel pattern for this level. Use it as an API/style "
+                "example and adapt it to the requested entry point; return one complete kernel:\n"
+                f"```python\n{ref_kernel}\n```")
     if terse >= 2:
+        fixed = (f"Write a Python function `{s['entry']}` decorated with @nki.jit that computes "
+                 f"the same thing as this, using nki.language as nl and nki.isa as nisa:\n\n"
+                 f"{ref}\n{reference_text}\n")
+        start_cards = start_context(level, style, context_budget, answer_budget, fixed)
+        start_text = f"\n\n{start_cards}" if start_cards else ""
         # Last resort. Measured on this endpoint: one-sentence prompts answered in 300-700
         # tokens while every structured, rule-carrying prompt spiralled.
-        return (f"Write a Python function `{s['entry']}` decorated with @nki.jit that computes "
-                f"the same thing as this, using nki.language as nl and nki.isa as nisa:\n\n"
-                f"{inspect.getsource(s['ref'])}\n"
-                f"Reply with one python code block.")
+        return fixed + f"{CORE_CARD}{start_text}\nReply with one python code block."
     if terse >= 1:
-        # The matmul memory rules are the substance of levels 3 and 4, and the short prompt has to
-        # carry them: measured, the agent cycled between "dst must be in ['psum']" and "moving must
-        # be in ['sbuf']" because nothing told it where the operands live.
-        mm = ("nisa.nc_matmul(dst=, stationary=, moving=) needs dst in nl.psum and both operands "
-              "in nl.sbuf. So: dma_copy the operands HBM->sbuf, allocate a psum tile, nc_matmul "
-              "into it, tensor_copy psum->sbuf, then dma_copy sbuf->the shared_hbm output you "
-              "return. The left operand is already transposed, with K on the partition axis.\n"
-              if level >= 3 else "")
-        return (f"Write an AWS Neuron NKI kernel: a function `{s['entry']}` decorated with "
-                f"@nki.jit that computes what this reference computes.\n\n"
-                f"{inspect.getsource(s['ref'])}\n"
-                f"Allocate with nl.ndarray(shape, dtype=..., buffer=nl.sbuf), move data with "
-                f"nisa.dma_copy(dst=, src=), loop with nl.affine_range(n). A tile's partition "
-                f"dimension is at most {nkibench.PMAX}.\n{mm}\n"
-                f"Reply with one python code block.")
-    return (
+        fixed = (f"Write an AWS Neuron NKI kernel: a function `{s['entry']}` decorated with "
+                 f"@nki.jit that computes what this reference computes.\n\n"
+                 f"{ref}\n{reference_text}\n")
+        start_cards = start_context(level, style, context_budget, answer_budget, fixed)
+        start_text = f"\n\n{start_cards}" if start_cards else ""
+        return fixed + f"{CORE_CARD}{start_text}\nReply with one python code block."
+    fixed = (
         f"Write an AWS Neuron NKI kernel.\n\n"
         f"Operation: {s['op']}\n"
         f"Entry point: a function named `{s['entry']}`, decorated with `@nki.jit`.\n"
         f"It must compute exactly what this NumPy reference computes:\n\n"
-        f"{inspect.getsource(s['ref'])}\n"
-        f"Hardware limits: a tile's partition dimension is at most {nkibench.PMAX}. For matmul, "
-        f"the stationary free dimension is at most {nkibench.GEMM_STATIONARY_FMAX} and the "
-        f"moving free dimension at most {nkibench.GEMM_MOVING_FMAX}.\n\n"
-        f"Import nki, nki.language as nl, and nki.isa as nisa.\n\n{API_CARD}\n\n"
-        f"Reply with ONE python code block containing the imports and the function. No prose.")
+        f"{ref}\n{reference_text}\n\n")
+    start_cards = start_context(level, style, context_budget, answer_budget, fixed)
+    start_text = f"\n\n{start_cards}" if start_cards else ""
+    return (fixed + f"{CORE_CARD}{start_text}\n\n"
+            f"Reply with ONE python code block containing the imports and the function. No prose.")
 
 
-def repair_prompt(level, source, feedback):
-    """One named change, and the previous code. No rules list, no reference re-sent.
+def repair_prompt(level, source, feedback, tried=None, best_reward=None, current_reward=None,
+                  context_budget=8192, answer_budget=MIN_ANSWER_TOKENS):
+    """Evidence-weighted repair prompt.
 
-    The lesson this whole repo keeps re-learning: feeding a verifier's report back verbatim
-    reproduces the same mistake, because a report says what is wrong and never what to do.
+    The checker report is the primary evidence. The category only retrieves compact docs and helps
+    logs; it must not replace the observed failure, because a wrong category can make a good
+    checker message worse.
     """
-    return (
+    compact = compact_feedback(feedback)
+    evidence = error_context(feedback)
+    category, instruction = distill_failure(compact)
+    card_names = retrieved_card_names(level, category, feedback=compact, source=source, max_cards=10)
+    ledger = compact_ledger(tried or [])
+    ledger_text = f"\n\nPrevious unique failures to avoid repeating:\n{ledger}" if ledger else ""
+    hist = history_text(tried or [])
+    history = f"\n\n{hist}" if hist else ""
+    invalid_text = invalid_patterns_text(tried or [])
+    invalid_text = f"\n\n{invalid_text}" if invalid_text else ""
+    score_text = ""
+    if best_reward is not None or current_reward is not None:
+        score_text = (f"\n\nScore context: best_reward={best_reward if best_reward is not None else '?'}; "
+                      f"current_reward={current_reward if current_reward is not None else '?'}. "
+                      "Preserve changes that improved reward and avoid regressions.")
+    fixed = (
         f"This NKI kernel for {nkibench.LEVELS[level]['op']} is not right yet.\n\n"
+        f"Candidate code:\n"
         f"```python\n{source}\n```\n\n"
-        f"A checker reports:\n{feedback}\n\n"
-        f"Change exactly what the checker names and keep everything else identical. Reply with "
-        f"ONE python code block.")
+        f"Observed verifier result, primary evidence:\n{evidence}\n\n"
+        f"Verifier hint, may be imperfect:\n{instruction}\n\n"
+    )
+    doc_names = repair_doc_names(category, feedback=compact, source=source, patch_mode=False)
+    docs, _ = render_doc_chunks(doc_names, doc_budget(
+        context_budget, answer_budget,
+        fixed + score_text + invalid_text + ledger_text + history))
+    cards = "\n\n".join(t for t in (render_context_cards(card_names), docs) if t)
+    return (
+        fixed +
+        f"{cards}\n\n"
+        f"Use the observed verifier result as the main evidence. The hint and docs are supporting "
+        f"context, not commands to follow blindly. Make the smallest code change that best explains "
+        f"and fixes the observed failure. Also fix known invalid NKI API patterns from earlier "
+        f"attempts. Keep unrelated logic unchanged.{score_text}{invalid_text}{ledger_text}{history}\n\n"
+        f"Reply with ONE python code block.")
+
+
+def patch_repair_prompt(level, source, feedback, tried=None, best_reward=None, current_reward=None,
+                        context_budget=8192, answer_budget=MIN_ANSWER_TOKENS):
+    compact = compact_feedback(feedback)
+    evidence = error_context(feedback)
+    category, instruction = distill_failure(compact)
+    card_names = retrieved_card_names(level, category, feedback=compact, source=source, max_cards=10)
+    ledger = compact_ledger(tried or [])
+    ledger_text = f"\n\nPrevious unique failures to avoid repeating:\n{ledger}" if ledger else ""
+    invalid_text = invalid_patterns_text(tried or [])
+    invalid_text = f"\n\n{invalid_text}" if invalid_text else ""
+    score_text = ""
+    if best_reward is not None or current_reward is not None:
+        score_text = (f"\n\nScore context: best_reward={best_reward if best_reward is not None else '?'}; "
+                      f"current_reward={current_reward if current_reward is not None else '?'}.")
+    fixed = (
+        f"This NKI kernel for {nkibench.LEVELS[level]['op']} needs one small repair.\n\n"
+        f"Current best candidate:\n"
+        f"```python\n{source}\n```\n\n"
+        f"Observed verifier result, primary evidence:\n{evidence}\n\n"
+        f"Verifier hint, may be imperfect:\n{instruction}\n\n"
+    )
+    doc_names = repair_doc_names(category, feedback=compact, source=source, patch_mode=True)
+    docs, _ = render_doc_chunks(doc_names, doc_budget(
+        context_budget, answer_budget,
+        fixed + score_text + invalid_text + ledger_text))
+    cards = "\n\n".join(t for t in (render_context_cards(card_names), docs) if t)
+    return (
+        fixed +
+        f"{cards}\n\n"
+        f"Return a minimal unified diff patch against the current best candidate. The patch must "
+        f"include --- a/kernel.py, +++ b/kernel.py, and at least one @@ hunk header. Do not rewrite "
+        f"the whole file. Keep unrelated code unchanged."
+        f"{score_text}{invalid_text}{ledger_text}\n\n"
+        f"Reply with ONE ```diff code block and no prose.")
+
+
+DIFF_BLOCK = re.compile(r"```(?:diff|patch)?\s*(.*?)```", re.S)
+
+
+def extract_patch(text):
+    text = text or ""
+    blocks = DIFF_BLOCK.findall(text)
+    for block in blocks:
+        if "@@" in block and ("--- " in block or "+++ " in block):
+            return block.strip()
+    return text.strip() if "@@" in text and ("--- " in text or "+++ " in text) else ""
+
+
+def _parse_hunk_header(line):
+    m = re.match(r"@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@", line)
+    if not m:
+        raise ValueError(f"bad hunk header: {line}")
+    return int(m.group(1))
+
+
+def apply_unified_patch(source, patch):
+    """Apply a simple unified diff to one in-memory source string."""
+    if not patch.strip():
+        raise ValueError("empty patch")
+    old = source.splitlines()
+    out, i, pos = [], 0, 0
+    lines = patch.splitlines()
+    saw_hunk = False
+    while i < len(lines):
+        line = lines[i]
+        if line.startswith(("--- ", "+++ ", "diff ", "index ")):
+            i += 1
+            continue
+        if not line.startswith("@@"):
+            i += 1
+            continue
+        saw_hunk = True
+        start = _parse_hunk_header(line) - 1
+        if start < pos:
+            raise ValueError("overlapping hunks")
+        out.extend(old[pos:start])
+        pos = start
+        i += 1
+        while i < len(lines) and not lines[i].startswith("@@"):
+            h = lines[i]
+            if h == r"\ No newline at end of file":
+                i += 1
+                continue
+            if not h:
+                raise ValueError("empty diff line without prefix")
+            tag, text = h[0], h[1:]
+            if tag == " ":
+                if pos >= len(old) or old[pos] != text:
+                    raise ValueError("patch context does not match source")
+                out.append(old[pos])
+                pos += 1
+            elif tag == "-":
+                if pos >= len(old) or old[pos] != text:
+                    raise ValueError("patch removal does not match source")
+                pos += 1
+            elif tag == "+":
+                out.append(text)
+            else:
+                raise ValueError(f"bad diff line: {h}")
+            i += 1
+    if not saw_hunk:
+        raise ValueError("patch has no hunk header")
+    out.extend(old[pos:])
+    return "\n".join(out).rstrip() + "\n"
+
+
+AUDIT_FAILURES = {
+    "dtype": "raised TypeError: ndarray() missing 1 required positional argument: 'dtype'",
+    "mean": "raised AttributeError: 'NkiTensor' object has no attribute 'mean'",
+    "dma": "nisa.dma_copy requires src and dst to have the same number of elements",
+    "scale": "CONSISTENT SCALE ERROR: output is about 2x the reference across most elements.",
+    "axis": "raised AssertionError: tensor_reduce axis must be the last contiguous dim(s) of the tile. Got axis=(2, 4)",
+    "nonfinite": "NON-FINITE OUTPUT: output contains NaN/Inf. Check the final copy path.",
+    "traffic": "traffic K=256 M=256 N=1024: 2.0x byte floor.",
+}
+
+
+def print_budget(name, budget):
+    parts = ", ".join(f"{k}={v}" for k, v in budget.items() if k != "total")
+    print(f"  {name}: total~{budget['total']} tokens ({parts})")
+
+
+def audit_context(level):
+    import inspect
+    ref = inspect.getsource(nkibench.LEVELS[level]["ref"])
+    print(f"level {level}: {nkibench.LEVELS[level]['op']}")
+    for style in ("minimal", "docs", "full-docs", "reference"):
+        first = first_prompt(level, style=style)
+        first_budget = prompt_accounting(
+            reference=ref, core=CORE_CARD, cards=start_context(level, style),
+            code=reference_kernel_text(level) if style == "reference" else "")
+        print_budget(f"first prompt [{style}]", first_budget)
+        first_cards = ["core_minimal"] + start_card_names(level, style)
+        print(f"    chars={len(first)} cards={', '.join(first_cards)}")
+
+    source = (
+        "import nki\nimport nki.language as nl\nimport nki.isa as nisa\n\n"
+        f"@nki.jit\ndef {nkibench.LEVELS[level]['entry']}(*args):\n"
+        "    out = nl.ndarray(args[0].shape, dtype=args[0].dtype, buffer=nl.shared_hbm)\n"
+        "    return out\n"
+    )
+    for name, feedback in AUDIT_FAILURES.items():
+        cat, inst = distill_failure(feedback)
+        cards = retrieved_card_names(level, cat, feedback=feedback, source=source)
+        rendered = render_context_cards(cards)
+        prompt = repair_prompt(level, source, feedback, tried=[feedback])
+        budget = prompt_accounting(code=source, feedback=compact_feedback(feedback),
+                                   cards=rendered,
+                                   ledger=(compact_ledger([feedback]) + "\n"
+                                           + invalid_patterns_text([feedback])),
+                                   instruction=inst)
+        print(f"\n  case={name} category={cat}")
+        print(f"    cards={', '.join(cards)}")
+        print(f"    instruction={inst}")
+        print_budget("repair prompt", budget)
+        print(f"    chars={len(prompt)} compact_feedback={compact_feedback(feedback)}")
+
+
+def summarize_log(path):
+    rows = []
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                rows.append(json.loads(line))
+    if not rows:
+        print(f"{path}: no attempts")
+        return
+
+    print(f"{path}: {len(rows)} attempt(s)")
+    by_cat = {}
+    for r in rows:
+        cat = r.get("failure_category", "unknown")
+        by_cat[cat] = by_cat.get(cat, 0) + 1
+    print("failure categories:")
+    for cat, n in sorted(by_cat.items(), key=lambda kv: (-kv[1], kv[0])):
+        print(f"  {cat}: {n}")
+    by_key = {}
+    for r in rows:
+        key = r.get("failure_key") or failure_key(r.get("feedback", r.get("compact_feedback", "")))
+        by_key[key] = by_key.get(key, 0) + 1
+    print("failure keys:")
+    for key, n in sorted(by_key.items(), key=lambda kv: (-kv[1], kv[0])):
+        print(f"  {key}: {n}")
+
+    print("\nattempts:")
+    for r in rows:
+        b = r.get("prompt_budget") or {}
+        cards = ",".join(r.get("context_cards") or [])
+        docs = b.get("cards", 0) + b.get("core", 0) + b.get("reference", 0)
+        evidence = b.get("feedback", 0) + b.get("ledger", 0)
+        print(
+            f"  L{r.get('level')} R{r.get('round')}: reward={r.get('reward'):.2f} "
+            f"cat={r.get('failure_category', 'unknown')} "
+            f"key={r.get('failure_key', '?')} "
+            f"prompt~{b.get('actual_prompt', b.get('total', len(str(r.get('prompt_chars', ''))) // 4))}tok "
+            f"limit={b.get('limit', '?')} "
+            f"docs~{docs} evidence~{evidence} code~{b.get('code', 0)} "
+            f"cards={cards or 'none'}"
+        )
+
+
+def show_attempt(path, round_n=None, index=None):
+    rows = []
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                rows.append(json.loads(line))
+    if not rows:
+        print(f"{path}: no attempts")
+        return
+    if index is not None:
+        row = rows[index]
+    elif round_n is not None:
+        matches = [r for r in rows if r.get("round") == round_n]
+        if not matches:
+            raise SystemExit(f"no attempt with round={round_n}")
+        row = matches[0]
+    else:
+        row = rows[-1]
+
+    print(f"level={row.get('level')} round={row.get('round')} reward={row.get('reward')}")
+    print(f"category={row.get('failure_category')} mode={row.get('repair_mode', 'full')} "
+          f"cards={','.join(row.get('context_cards') or [])}")
+    print(f"budget={row.get('prompt_budget')}")
+    print("\n========== PROMPT ==========")
+    print(row.get("prompt", "<prompt was not logged; rerun with --dump-prompts>"))
+    print("\n========== RAW REPLY ==========")
+    print(row.get("raw_reply", "<reply was not logged; rerun with --dump-prompts>"))
+    if row.get("patch") or row.get("patch_error"):
+        print("\n========== PATCH ==========")
+        print(row.get("patch", ""))
+        if row.get("patch_error"):
+            print(f"\nPATCH ERROR: {row.get('patch_error')}")
+    print("\n========== EXTRACTED CODE ==========")
+    print(row.get("code", ""))
+    print("\n========== CHECKER ==========")
+    print(row.get("feedback", ""))
 
 
 CODE_BLOCK = re.compile(r"```(?:python)?\s*(.*?)```", re.S)
@@ -490,31 +1798,85 @@ def offline_answers(level, n, rnd):
 def solve(a, level, log):
     print(f"\n=========== level {level}: {nkibench.LEVELS[level]['op']} ===========")
     terse = a.terse
-    prompt = first_prompt(level, terse)
-    best = (0.0, None, "")
+    prompt = first_prompt(level, terse, a.prompt_style, a.context, a.max_tokens)
+    prompt_cards = ["core_minimal"] + start_card_names(level, a.prompt_style)
+    prompt_budget = prompt_accounting(
+        reference=__import__("inspect").getsource(nkibench.LEVELS[level]["ref"]),
+        core=CORE_CARD,
+        cards=start_context(level, a.prompt_style, a.context, a.max_tokens),
+        code=reference_kernel_text(level) if a.prompt_style == "reference" else "")
+    best = (0.0, None, "", dict(parses=False, rules=False, runs=False, correct=False))
+    candidate_archive = {}
     tried, streak, seen = [], 0, {}
     latest = ("", "")
+    patch_base = None
     for rnd in range(a.rounds):
         t0 = time.perf_counter()
         replies = (offline_answers(level, a.samples, rnd) if a.offline
                    else ask_parallel(a, prompt, a.samples))
         graded = []
         for reply in replies:
-            src = extract_code(reply)
+            patch_text, patch_error = "", ""
+            patch_source = None
+            reply_patch = extract_patch(reply)
+            if reply_patch and repair_base and (repair_base[0] or "").strip():
+                patch_source = repair_base[0]
+                patch_text = reply_patch
+                try:
+                    src = apply_unified_patch(patch_source, patch_text)
+                except Exception as e:
+                    patch_error = f"{type(e).__name__}: {e}"
+                    fallback_src = extract_code(reply)
+                    src = fallback_src if fallback_src.strip() else patch_source
+            elif patch_base and a.repair_mode == "patch":
+                patch_source = patch_base[0]
+                patch_text = extract_patch(reply)
+                try:
+                    src = apply_unified_patch(patch_source, patch_text)
+                except Exception as e:
+                    patch_error = f"{type(e).__name__}: {e}"
+                    fallback_src = extract_code(reply)
+                    src = fallback_src if fallback_src.strip() else patch_source
+            else:
+                src = extract_code(reply)
+            src, preflight_fixes = static_preflight_fix(src)
             reward, parts, feedback = grade(src, level)
+            if patch_error and patch_source is not None and src == patch_source:
+                reward = 0.0
+                parts = dict(parses=False, rules=False, runs=False, correct=False)
+                feedback = f"Patch could not be applied: {patch_error}. Return a valid unified diff."
+            failure_category, repair_instruction = distill_failure(feedback)
+            failure = structured_failure(parts, feedback)
             graded.append((reward, src, feedback, parts))
-            log.write(json.dumps(dict(level=level, round=rnd, reward=reward, parts=parts,
-                                      prompt_chars=len(prompt), reply_chars=len(reply),
-                                      code=src, feedback=feedback)) + "\n")
+            if not patch_error:
+                update_candidate_archive(candidate_archive, graded[-1])
+            row = dict(level=level, round=rnd, reward=reward, parts=parts,
+                       prompt_chars=len(prompt), reply_chars=len(reply),
+                       context_cards=prompt_cards,
+                       prompt_budget={**prompt_budget,
+                                      "actual_prompt": estimate_tokens(prompt),
+                                      "limit": a.context},
+                       failure_category=failure_category,
+                       failure_key=failure_key(feedback),
+                       failure=failure,
+                       repair_instruction=repair_instruction,
+                       compact_feedback=compact_feedback(feedback),
+                       preflight_fixes=preflight_fixes,
+                       repair_mode=("patch" if patch_base and a.repair_mode == "patch" else "full"),
+                       patch=patch_text,
+                       patch_error=patch_error,
+                       code=src, feedback=feedback)
+            if a.dump_prompts:
+                row["prompt"] = prompt
+                row["raw_reply"] = reply
+            log.write(json.dumps(row) + "\n")
         log.flush()
         graded.sort(key=lambda g: g[0], reverse=True)
         top = graded[0]
         if top[0] > best[0]:
-            best = (top[0], top[1], top[2])
-        # Repair the LATEST attempt, not the best one. Rebuilding from the best attempt with the
-        # best attempt's feedback is a fixed point: once a round scores worse, the prompt stops
-        # changing, and a greedy model then returns the same answer forever. Measured: level 2
-        # stuck at 0.10 for four rounds while the prompt still carried the 0.50 code.
+            best = (top[0], top[1], top[2], top[3])
+        # Default to repairing the latest attempt so the prompt keeps changing. Fall back to the
+        # best candidate only when verifier outcomes show a regression or a repeat loop.
         if (top[1] or "").strip():
             latest = (top[1], top[2])
         same = top[2] == (tried[-1] if tried else None)
@@ -524,7 +1886,10 @@ def solve(a, level, log):
         else:
             print(f"round {rnd}: this round {top[0]:.2f}  best so far {best[0]:.2f}  "
                   f"({time.perf_counter() - t0:.1f}s)")
-            print(f"  {top[2][:400]}")
+            print(f"  context cards: {', '.join(prompt_cards) if prompt_cards else 'none'}")
+            cat, inst = distill_failure(top[2])
+            print(f"  failure: {cat}; {inst[:260]}")
+            print(f"  checker: {compact_feedback(top[2])[:300]}")
         if top[0] >= sum(WEIGHTS.values()) - 1e-9:
             print(f"  SOLVED on round {rnd}. {top[2]}")
             print("  ---------------- the kernel ----------------")
@@ -544,26 +1909,60 @@ def solve(a, level, log):
             return best[0], rnd + 1
         tried.append(top[2])
         repeats = streak
-        if repeats >= 2 and (best[1] or "").strip():
+        repair_base, repair_base_reason = choose_repair_base(top, best, latest, repeats,
+                                                             candidate_archive)
+        if repeats >= 2 and (repair_base[0] or "").strip():
             # Sampling on this endpoint is greedy, so an unchanged prompt returns an unchanged
             # answer. Measured: the same TypeError 19 rounds running. Changing the prompt is the
             # only thing that can change the answer, so say what has already been tried.
             ledger = "\n".join(f"- {t[:160]}" for t in dict.fromkeys(tried))
-            prompt = (repair_prompt(level, latest[0], latest[1])
+            make_prompt = patch_repair_prompt if a.repair_mode == "patch" else repair_prompt
+            prompt = (make_prompt(level, repair_base[0], repair_base[1], tried,
+                                  best_reward=best[0], current_reward=top[0],
+                                  context_budget=a.context, answer_budget=a.max_tokens)
                       + f"\n\nThese approaches have already failed, so do something different:\n"
                         f"{ledger}")
+            patch_base = repair_base if a.repair_mode == "patch" else None
+            cat, inst = distill_failure(repair_base[1])
+            prompt_cards = retrieved_card_names(level, cat, feedback=repair_base[1],
+                                                source=repair_base[0])
+            prompt_budget = prompt_accounting(
+                code=repair_base[0], feedback=compact_feedback(repair_base[1]),
+                cards=render_context_cards(prompt_cards),
+                ledger=(compact_ledger(tried) + "\n" + invalid_patterns_text(tried)),
+                instruction=inst)
             print(f"  same failure {repeats}x — adding a ledger of {len(set(tried))} failed "
-                  f"attempts to break the repeat")
+                  f"attempts to break the repeat; repairing {repair_base_reason}")
             continue
-        if not (latest[0] or "").strip():
+        if not (repair_base[0] or "").strip():
             # Nothing came back to repair. Asking it to "fix" an empty code block produced a
             # 202-character prompt and, under greedy sampling, the identical non-answer six
             # rounds running. Shorten and re-ask instead.
             terse = min(terse + 1, 2)
-            prompt = first_prompt(level, terse)
+            prompt = first_prompt(level, terse, a.prompt_style, a.context, a.max_tokens)
+            prompt_cards = ["core_minimal"] + start_card_names(level, a.prompt_style)
+            prompt_budget = prompt_accounting(
+                reference=__import__("inspect").getsource(nkibench.LEVELS[level]["ref"]),
+                core=CORE_CARD,
+                cards=start_context(level, a.prompt_style, a.context, a.max_tokens),
+                code=reference_kernel_text(level) if a.prompt_style == "reference" else "")
             print(f"  no code yet, so re-asking with a shorter prompt (terseness {terse})")
         else:
-            prompt = repair_prompt(level, latest[0], latest[1])
+            make_prompt = patch_repair_prompt if a.repair_mode == "patch" else repair_prompt
+            prompt = make_prompt(level, repair_base[0], repair_base[1], tried,
+                                 best_reward=best[0], current_reward=top[0],
+                                 context_budget=a.context, answer_budget=a.max_tokens)
+            patch_base = repair_base if a.repair_mode == "patch" else None
+            cat, inst = distill_failure(repair_base[1])
+            prompt_cards = retrieved_card_names(level, cat, feedback=repair_base[1],
+                                                source=repair_base[0])
+            prompt_budget = prompt_accounting(
+                code=repair_base[0], feedback=compact_feedback(repair_base[1]),
+                cards=render_context_cards(prompt_cards),
+                ledger=(compact_ledger(tried) + "\n" + invalid_patterns_text(tried)),
+                instruction=inst)
+            if repair_base_reason != "latest":
+                print(f"  repairing {repair_base_reason}")
     print(f"  not solved in {a.rounds} rounds; best reward {best[0]:.2f}")
     return best[0], a.rounds
 
@@ -584,6 +1983,8 @@ def main():
                          "result: measured, the same config scored 1.00, 1.00 and 0.50 on level 2 "
                          "across three runs with no code change.")
     ap.add_argument("--log", default="attempts.jsonl")
+    ap.add_argument("--repair-mode", choices=("patch", "full"), default="full",
+                    help="repair by asking for a full rewritten code block, or experimental minimal unified diff")
     ap.add_argument("--give-up-after", type=int, default=4,
                     help="stop a level after this many identical failures in a row. Measured: 15 "
                          "was pure waste, because the prompt had stopped changing.")
@@ -591,12 +1992,43 @@ def main():
                     help="starting prompt length. Measured on gpt-oss-20b: 0 produced 13,245 "
                          "chars of hidden reasoning and no answer, while 1 answered with code. "
                          "Qwen3-8B is fine at 0.")
-    ap.add_argument("--context", type=int, default=4096,
+    ap.add_argument("--context", type=int, default=8192,
                     help="the server's max-model-len; prompt + answer must fit inside it")
+    ap.add_argument("--prompt-style", choices=("minimal", "docs", "full-docs", "reference"),
+                    default="full-docs",
+                    help="initial prompt context: minimal cards, generic docs, expanded generic "
+                         "docs, or shipped per-level reference patterns")
     ap.add_argument("--think", action="store_true",
                     help="let the model reason first; costs budget, and it ran out")
     ap.add_argument("--offline", action="store_true")
+    ap.add_argument("--audit-context", action="store_true",
+                    help="print prompt cards and token estimates for representative failures, "
+                         "without calling the model")
+    ap.add_argument("--summarize-log", metavar="PATH",
+                    help="summarize an attempts JSONL log without calling the model")
+    ap.add_argument("--dump-prompts", action="store_true",
+                    help="store full prompt and raw model reply in the JSONL log")
+    ap.add_argument("--show-attempt", metavar="PATH",
+                    help="print one logged attempt, including prompt/reply if dumped")
+    ap.add_argument("--show-round", type=int,
+                    help="with --show-attempt, choose this round; defaults to last attempt")
+    ap.add_argument("--show-index", type=int,
+                    help="with --show-attempt, choose this zero-based JSONL row")
     a = ap.parse_args()
+
+    if a.show_attempt:
+        show_attempt(a.show_attempt, round_n=a.show_round, index=a.show_index)
+        return
+
+    if a.summarize_log:
+        summarize_log(a.summarize_log)
+        return
+
+    if a.audit_context:
+        levels = sorted(nkibench.LEVELS)[:4] if a.all else [a.level or 1]
+        for level in levels:
+            audit_context(level)
+        return
 
     if not a.offline:
         # Validate before the first request. An empty or scheme-less value produces a hostname
