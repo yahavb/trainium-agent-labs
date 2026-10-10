@@ -10,7 +10,7 @@ every number comes from the NKI 0.6.0 CPU simulator (`nki.simulate`), graded by 
 **In one paragraph.** We built a checker-driven agent that writes NKI kernels with a model that sees 8,192
 tokens (Qwen3-8B, served on the seat's Trainium2). The organizers' agent solved only level 2 (3 runs of 5).
 The final version solves level 1 in 5 of 5 runs with five different kernels, levels 3 and 4 in 5 of 5, and
-level 2 in 5 of 9, and in 5 of 6 once the checker says what a wrong level-2 kernel actually computed (v8.3)
+level 2 in 5 of 9, and in 7 of 9 once the checker says what a wrong level-2 kernel actually computed (v8.3)
 [[TBD: final counts]]; every solve passed a
 fresh-process re-audit and a held-out set of new shapes and hostile values [[TBD: final-run numbers]]. The
 model never changed; what it was shown did. One worked example in the first prompt solves level 3; the code
@@ -64,10 +64,11 @@ replaces v8.2 on level 2]]
 |---|---|---|---|---|---|---|
 | 1 | average pool 2D | 0/5 · .30 .30 .30 .30 .30 | 0/1 · best 0.50 | **5/5** · rounds 2, 2, 0, 4, 2 | 5 different solving kernels | all VERIFIED (20/20 each); all 5 fully built for trn2 and matching in birsim on two shapes |
 | 2 | 2D transpose | 3/5 · 1 .30 1 .30 1 (replication 2/5) | 0/3 | **5/9** · .50 1 .50 .50 1 .50 1 1 1 [[TBD: rounds]] | [[TBD: trajectories over 9 runs]] | 5 VERIFIED, 4 NOT SOLVED; both verdicts agree; every solve builds for trn2 and matches in birsim |
-| 3 | matmul, one tile | 0/5 · .30 .30 .30 .30 .30 | 5/5 · round 0 | **5/5** · rounds 0, 2, 0, 0, 0 | 3 solving kernels | [[TBD: held-out]]; builds for trn2, matches in birsim |
+| 3 | matmul, one tile | 0/5 · .30 .30 .30 .30 .30 | 5/5 · round 0 | **5/6** · rounds 0, 2, 0, 0, 0; the sixth, inside the one-command `--all` run, stopped at 0.30 after four identical failures | 3 solving kernels | [[TBD: held-out]]; builds for trn2, matches in birsim |
 | 4 | matmul, tiled | 0/5 · .62 .62 .50 .62 .62 | 5/5 · round 2 | **5/5** · round 2 every run | **1 trajectory**: five copies of one path, the same kernel v7 found | [[TBD: held-out]]; builds for trn2, matches in birsim |
 
-Every solving kernel passed a fresh-process re-audit on trn2, and every one of v8.2's and v8.3's solves on
+We also ran the final version once end to end, one command for all four levels (`--all --repeat 1`): levels 1,
+2 and 4 solved, level 3 did not, and that run is counted above. Every solving kernel passed a fresh-process re-audit on trn2, and every one of v8.2's and v8.3's solves on
 levels 1–4 also builds in full for trn2 and matches in birsim, the compiler's instruction-level simulator
 (§10). Against our held-out set, no verdict was confident (≥ 0.5) and wrong; against a full trn2 build, v7's
 verdict was once, on liuyq's seat-115 run (§5).
@@ -247,7 +248,7 @@ written down before the results came in ([PLAN.md](PLAN.md) §4).
 | v8 | E-div + skeleton feedback + cut-off answers not graded + level-1 call fixes; liuyq's level-1 compiler gate in the base | L1–L4 | **L1: our first level-1 solve**, in its first repair round; VERIFIED by both verdicts, held-out 20/20, lowers for trn2, re-audit PASS (1 of 3 runs). L4: 0.62 twice (v7: 5/5). L3: solved, two rounds later than v7. L2, round 0 only: 0/20 | skeleton dropped (see below); the rest kept |
 | L2 sampling | v8 with the first prompt and the sampling settings back to the organizers' | L2, round 0, 20 samples | 2/20, the same as the organizers' agent re-run today (2/20); with v7's sampling settings 0/20 | the level-2 regression was v7's sampling settings |
 | v8.1 | v8 without the skeleton, plus samples 1 and 3 on the original sampling and 2 and 4 on v7's, plus one sentence restating the level-2 task when the model transposes the whole input | L2 | the first level-2 solve in a repair round today (round 2), through the existing numeric-mismatch message; stopped after one run for v8.2 | folded into v8.2 |
-| v8.3 (5c3aba2) | v8.2 plus **error distillation on level 2**: when a level-2 kernel runs but its numbers are wrong, the checker runs it once more on `arange` input, reads off where each output element came from, and says what the kernel actually did ("your output at row position i*B+j holds x[i]: the source index uses only i") and what the task needs, without code. Only level 2's mismatch path changes: on levels 1, 3 and 4, v8.3 sends byte-identical requests to v8.2 (27 requests, 18 of them repair rounds, compared by two of us separately: [analysis/v83_l134_identity.md](analysis/v83_l134_identity.md)), so v8.2's runs on those levels are v8.3's runs | L2 | **5/6** so far (solved in rounds 2, 1, 3, 2, 0), against v8.2's 5/9 on the same seats. In 3 of the 5 solves the best kernel's feedback carried the distilled explanation in the round before (e.g. 0.50 → 1.00); the one miss stalled on `WRONG SHAPE: returned ()`, which is not a numeric error, so the distillation never spoke | final if it holds at 17:45 [[TBD]] |
+| v8.3 (5c3aba2) | v8.2 plus **error distillation on level 2**: when a level-2 kernel runs but its numbers are wrong, the checker runs it once more on `arange` input, reads off where each output element came from, and says what the kernel actually did ("your output at row position i*B+j holds x[i]: the source index uses only i") and what the task needs, without code. Only level 2's mismatch path changes: on levels 1, 3 and 4, v8.3 sends byte-identical requests to v8.2 (27 requests, 18 of them repair rounds, compared by two of us separately: [analysis/v83_l134_identity.md](analysis/v83_l134_identity.md)), so v8.2's runs on those levels are v8.3's runs | L2 | **7/9** so far, against v8.2's 5/9 on the same seats. In 3 of the 5 solves the best kernel's feedback carried the distilled explanation in the round before (e.g. 0.50 → 1.00); the one miss stalled on `WRONG SHAPE: returned ()`, which is not a numeric error, so the distillation never spoke | final if it holds at 17:45 [[TBD]] |
 | **v8.2** (final candidate, 96a9fc9) | v8.1 plus **E-mix**: in every repair round, sample 1 repairs the best kernel as before and samples 2–4 start over from the first prompt, each tagged differently. Level 2 had only ever been solved in round 0, so its repair rounds now also buy fresh first attempts | L1–L4 | **L1 5/5** (rounds 2, 2, 0, 4, 2; five different kernels, all built in full for trn2 and matching in birsim), **L2 5/9**, **L3 5/5**, **L4 5/5** (one trajectory); every solve re-audited, VERIFIED on the held-out set. Two level-1 solves are told in §8 | final candidate |
 
 **The skeleton gamble, and why it lost.** v8 hollowed out the code in the repair messages (`t[<…>]`) so that the
@@ -496,7 +497,8 @@ repository from a logged run.
 - *On a NeuronCore*: liuyq ran 63 kernel-shapes on seat-115's chip in three runs, the hand-in candidates
   for levels 1-4, 9 and 11 among them, with the organizers' references as controls; the full build
   predicted every result (§5, [analysis/seat115_chip_and_l1rule.md](analysis/seat115_chip_and_l1rule.md)).
-  [[TBD: final hand-in kernels, if run]]
+  One of v8.2's level-1 solves (53900f4b) ran on a NeuronCore of seat 116 on 4 shapes and matched the reference
+  on all four (device error 2.4e-7 to 4.8e-7 of the RMS; the simulator's was 1.7e-7 to 2.4e-7).
 - *Measured or inferred.* Rates, counts and timings are measured. Explanations (why the skeleton failed, why
   level 2 repairs never succeed) are our reading of the logs, and each one points to the log it rests on.
 
