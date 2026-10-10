@@ -204,6 +204,31 @@ def copy_kernel(a):
 """
 
 
+# Keep pooling guidance separate from the matmul card. In the seat-21 baseline,
+# level-1 samples used nc_matmul for a pooling window, then spent their repair
+# rounds fixing that operation's API instead of computing a window average.
+POOL_METHOD = """Average pooling is a window reduction: sum each pool_size by pool_size window,
+then scale by 1.0 / (pool_size * pool_size). Keep channels on the partition axis.
+Use nl.sum for the reduction and nisa.tensor_scalar with op0=nl.multiply to scale.
+"""
+
+POOL_API_CARD = """NKI pooling primitives:
+  nl.ndarray(shape, dtype=..., buffer=nl.sbuf) allocates an on-chip tile.
+  nl.ndarray(shape, dtype=..., buffer=nl.shared_hbm) allocates the returned output.
+  nisa.dma_copy(dst=tile, src=input_slice) loads a tile; both sides must have the
+    same element count. Derive tile sizes from the input, with at most 128 channels.
+    Preserve the channel axis when slicing, even for a single channel.
+  tile.ap([[stride, count], ...]) creates a view, with strides in ELEMENTS.
+    For pooling, group the tile as [channels, output_rows, output_cols, pool_rows,
+    pool_cols]. Derive strides from the original row width and pool_size.
+  sums = nl.sum(window_view, axis=[3, 4]) reduces the two window axes.
+  scaled = nl.ndarray(sums.shape, dtype=sums.dtype, buffer=nl.sbuf)
+  nisa.tensor_scalar(dst=scaled, data=sums, op0=nl.multiply,
+                     operand0=1.0 / (pool_size * pool_size)) scales the sums.
+  nisa.dma_copy(dst=output_slice, src=scaled) stores the matching output tile.
+"""
+
+
 def available_names(dotted):
     """Turn 'no attribute X' into 'here are the real ones'.
 
@@ -356,6 +381,22 @@ def first_prompt(level, terse=0):
     """
     s = nkibench.LEVELS[level]
     import inspect
+    if level == 1:
+        # A task-specific card avoids teaching matmul's PSUM workflow to a
+        # reduction. Retain the operation and scalar API when shortening retries.
+        card = POOL_API_CARD if terse == 0 else (
+            "Allocate with nl.ndarray(shape, dtype=..., buffer=nl.sbuf); return an "
+            "nl.shared_hbm output. Move matching slices with nisa.dma_copy(dst=, src=). "
+            "Use tile.ap([[stride, count], ...]) to group windows, nl.sum(view, axis=[3, 4]), "
+            "then nisa.tensor_scalar(dst=, data=, op0=nl.multiply, operand0=).\n")
+        if terse >= 2:
+            card = "Scale with nisa.tensor_scalar(dst=, data=, op0=nl.multiply, operand0=).\n"
+        return (
+            f"Write an AWS Neuron NKI kernel named `{s['entry']}`, decorated with @nki.jit.\n"
+            f"Compute exactly what this NumPy reference computes:\n\n"
+            f"{inspect.getsource(s['ref'])}\n{POOL_METHOD}\n{card}\n"
+            f"Import nki, nki.language as nl, and nki.isa as nisa. "
+            f"Reply with ONE python code block containing the imports and function.")
     if terse >= 2:
         # Last resort. Measured on this endpoint: one-sentence prompts answered in 300-700
         # tokens while every structured, rule-carrying prompt spiralled.
@@ -398,6 +439,19 @@ def repair_prompt(level, source, feedback):
     The lesson this whole repo keeps re-learning: feeding a verifier's report back verbatim
     reproduces the same mistake, because a report says what is wrong and never what to do.
     """
+    if level == 1:
+        # A local API repair cannot rescue an algorithm that multiplies a window
+        # by itself. Let the model replace that computation while preserving the
+        # entry point and the original operation's shape contract.
+        return (
+            f"Repair this NKI average-pooling kernel:\n\n```python\n{source}\n```\n\n"
+            f"A checker reports:\n{feedback}\n\n"
+            f"Required output: [C, H//pool_size, W//pool_size]; use complete windows "
+            f"of the [C, H, W] input and return the input dtype.\n"
+            f"{POOL_METHOD}\n{POOL_API_CARD}\n"
+            f"Fix the reported error and any computation that does not average a window. "
+            f"You may replace the algorithm; preserve the entry point and arguments. "
+            f"Reply with ONE complete python code block.")
     return (
         f"This NKI kernel for {nkibench.LEVELS[level]['op']} is not right yet.\n\n"
         f"```python\n{source}\n```\n\n"
