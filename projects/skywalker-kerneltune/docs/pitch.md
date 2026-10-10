@@ -1,34 +1,34 @@
-# Pitch (3 minutes)
+# KernelTune: the pitch (3 minutes)
 
-Every number here is in `docs/note.md` and comes from the real chip. Do not say a number that is
-not there.
+Team Skywalker, seats 205–209. Every number here is in `docs/note.md` or the README and comes from
+the real chip. Do not say a number that is not there.
 
 ## 0:00 — The opening
 
-> "The question for today was whether a small model, in a loop, on your chip, can tune a kernel.
-> We built that loop with two 8-billion-parameter models and measured every answer on a real
-> Trainium2 core. What we found is that the model is not what decides the outcome. The checker is.
-> Same model, same chip, same budget: by redesigning only what the checker says, we took the loop
-> from 3 good runs out of 30 to 29 out of 30."
+> "A hand-written chip kernel has settings that decide how fast it runs. Pick wrong and it is up to
+> seven times slower, and the right answer changes with every shape and precision. Today an engineer
+> finds it by trial and error. We built KernelTune: a loop where two 8-billion-parameter models tune
+> those settings, with every attempt measured on a real Trainium2 core. And we found that the model
+> is not what decides whether it works. The checker is. Same model, same chip, same budget: by
+> redesigning only what the checker says, we went from 3 good runs out of 30 to 29 out of 30."
 
-## 0:25 — The method
+## 0:30 — What we built
 
 Three roles, as our mentor asked for.
 
-1. **The workload.** AWS's blocked matmul kernel on a Trainium2 core. Three settings control how much data it loads per transfer and how much it keeps on the chip.
-2. **The checker.** Code runs the kernel on the chip and asks first: is the answer still right? Then a small model reads the measurements and writes **one instruction**.
-3. **The optimiser.** A second small model reads that instruction and sets the three values. Then we measure again.
+1. **The workload.** AWS's blocked matmul kernel. Three settings say how much data it loads per trip and how much it keeps on the chip. There are 75 to 96 legal combinations depending on the shape.
+2. **The checker.** Code runs the kernel on the chip and first asks: is the answer still right? Then a small model reads the measurements and says what to change.
+3. **The optimiser.** A second small model edits the setting. Then we measure again. Ten attempts, keeping the fastest.
 
-Say this plainly: the models choose three numbers; they do not write kernel code. And: we measured
-every legal setting on the chip at two shapes, 75 and 96 of them, so we know the right answer for
-every run.
+Say plainly: the models choose three numbers; they do not write kernel code. And: we measured every
+legal setting on the chip, so we know the right answer for every run.
 
-## 0:50 — The story: five checkers, one model
+## 0:50 — Five checkers, one model
 
 Show `results/curve_s30_K256_M4096_N12288.png`.
 
-The shape is a rank-256 adapter-style layer sized to Qwen3-8B's own layer widths. Only 4 of 96 settings are good,
-and a bad one is 7 times slower. AWS's default settings do not even run here.
+The shape is an adapter-style layer sized to Qwen3-8B's layer widths. Only 4 of 96 settings are
+good, the worst is 7.1 times slower than the best, and AWS's suggested settings do not run here.
 
 > "Version one showed the model the raw profile. It lost badly to random guessing. We read the log.
 > The checker said 'increase N to 24, that reduces data movement', the chip came back two and a
@@ -48,45 +48,43 @@ and a bad one is 7 times slower. AWS's default settings do not even run here.
 
 > "That is the workshop's own lesson, measured: fix the feedback, not the model."
 
-## 1:40 — The limit we found
+## 1:35 — The limit we found
 
 > "Here is the part we did not expect. Take the menu our checker builds and replace the model with
 > a one-line rule: pick the move with the best measured record. No model at all. It finds the best
 > setting in 71% of runs. The 8B model manages 50%, and random 38%. So the value is in the
-> measured menu. The model choosing from it adds nothing we could measure."
+> measured menu, not in the model choosing from it."
 
 Do not say the model beats random at finding the best: 50% against 38% is not conclusive at 30 runs.
 "More reliable than random" is supported (29 of 30 within 10%, against 73%).
 
-On the easy shape, 2048 square, everything works including guessing: 39 of 75 settings are within
-2% of the best and AWS's default is one of them. One sentence, then move on.
+## 1:55 — Does it reach a model?
 
-## 2:05 — Does it change real inference time?
+> "We ran the loop on every linear-layer shape in Qwen3-8B and compared it with AWS's own compiler
+> doing the same multiply with no hand-written kernel."
 
-> "We put the kernel inside a model built from Qwen3-8B's feed-forward block and timed inference
-> on the chip, against plain PyTorch at the same precision."
-
-| Two feed-forward blocks, 512 tokens | 32-bit | 16-bit |
-|---|---|---|
-| Our kernel, untuned | 20.12 ms | 16.53 ms |
-| Our kernel, tuned | 17.40 ms | 5.02 ms |
-| Plain PyTorch | 17.26 ms | 4.77 ms |
-
-> "With the settings our loop chose, inference time dropped 13.5%, level with PyTorch's own. At
-> 16-bit the 32-bit answer no longer holds, so we ran the loop again at 16-bit, scored on the
-> block's own inference time. Five runs, five different starts, as slow as 8.6 milliseconds. All
-> five ended between 2.86 and 2.89, about three times faster, within 5% of PyTorch at 2.75."
-
-| One feed-forward block, 16-bit, loop scored on inference time | |
+| Qwen3-8B, all 252 projections, 512 tokens, 32-bit | Time |
 |---|---|
-| Slowest start | 8.63 ms |
-| Where the five loop runs ended | 2.86 to 2.89 ms |
-| Best of all 72 settings | 2.86 ms |
-| Plain PyTorch | 2.75 ms |
+| Our kernel, untuned | 434.1 ms |
+| Our kernel, tuned by the loop | 370.9 ms |
+| AWS compiler | 372.6 ms |
 
-Say that random choice also gets within 2% of the best in 83% of runs on this problem, so this is
-not evidence that the model beats random. Say that these are small models with random weights, not
-Qwen3-8B itself. The 16-bit column in the two-block table above is a hand-found setting.
+> "Untuned, a hand-written kernel is 12 to 30 percent slower than the compiler. Tuned by the loop
+> it is level with it on every layer. Then we ran the loop at 16-bit, the precision real models
+> use, scored on real inference time. From as slow as 8.6 milliseconds, all five runs ended at
+> about 2.9, within 5% of the compiler at 2.75."
+
+| One Qwen3-8B feed-forward block, 16-bit | Inference time |
+|---|---|
+| Our kernel, untuned | 8.63 ms |
+| Our kernel, tuned by the loop (five runs) | 2.86 to 2.89 ms |
+| Best of all 72 settings | 2.86 ms |
+| AWS compiler | 2.75 ms |
+
+Say that the 434 / 371 / 373 figures are sums of standalone kernel times, not the model running,
+and that the 16-bit test is a small model with random weights at Qwen3-8B's sizes. Say "level with
+the compiler", never "faster than": the differences per layer are 1.5% or less and were measured on
+different seats.
 
 ## 2:30 — What the checker caught
 
@@ -94,35 +92,39 @@ Pick two, by time.
 
 - **The simulator and the chip disagree.** On two of four small shapes the simulator counts wasted re-reads where the chip moved the minimum. The hackathon's optimisation levels are scored on the simulator.
 - **The pod's default core setting doubles every profile count.** Our first profile was wrong for this reason.
-- **AWS's tutorial default settings run on none of Qwen3-8B's four layer shapes at 512 tokens.**
-- **An untuned 16-bit kernel came out 2.4% wrong with no error.** The checker's numerics stage is what catches it.
+- **AWS's suggested settings run on none of Qwen3-8B's four layer shapes at 512 tokens.**
+- **An untuned 16-bit kernel came out 2.4% wrong with no error.** The checker's accuracy stage is what catches it.
 
-## 2:45 — The honest claim, and close
+## 2:45 — The close
 
-- We did not beat AWS's compiler. Tuned, a hand-written kernel ties it at best.
-- The small model is not better than a one-line rule.
-- What we are handing over: an on-chip checker, full ground truth at two shapes, and measured evidence of what makes a small-model loop work and what does not.
-
-> "We came to show that a small model could tune your chip. What we can show instead is exactly
-> what the model needs to be told, and that once you can say it that clearly, you may not need the
-> model. The next step is to point this at an operation the compiler does not already handle
-> well, where a hand-written kernel is actually needed."
+> "So what are we handing over? An on-chip checker this track did not have. Full ground truth at
+> two shapes. And measured evidence of what a small-model loop needs: tell it what the chip
+> measured, not what to think. We do not beat your compiler, and for matmul nobody needs to. The
+> next step is to point KernelTune at the kernels people do write by hand, fused attention and
+> quantised operations, where there is no compiler version to fall back on."
 
 ## Likely questions
 
 | Question | Answer |
 |---|---|
-| Does your tuned kernel beat AWS's compiler? | No. It ties it at 32-bit (17.40 against 17.26 ms) and is about 5% behind at 16-bit (2.86 against 2.75 ms for one block). Where the compiler can fuse the matmul with the next operation it is 28% ahead. |
-| Then why use a hand-written kernel at all? | Only where the compiler has no good answer: a new operation, or a pattern it does not fuse. We did not test such a case; matmul was the kernel we could measure completely in a day. |
-| Why a model at all, if a rule does better? | On this problem, we would not. That is our finding. The model was the way we discovered what the rule needed to know. |
+| What exactly are the settings? | Three block sizes, M, N and K: how many tiles of each matrix are loaded per transfer and kept on the chip. Bigger blocks mean fewer trips and more reuse, but need more of a small on-chip buffer. |
+| What does "untuned" mean? | Our kernel with all three settings at 1: one tile at a time, the most trips, no reuse. |
+| How does the loop get M, N and K from the hardware profile? | It does not calculate them. It tries a change, times it on the chip, and keeps what is faster. The profile is the scoreboard. The designs that worked show the model which changes measurably helped, instead of asking it to reason from the raw profile. |
+| How is there a compiler number if the kernel is hand-written? | They are two ways to do the same multiply. The compiler number is plain PyTorch compiled by `neuronx-cc`, with no hand-written kernel and no settings. It is our yardstick. |
+| Does your tuned kernel beat AWS's compiler? | No. It is level with it at 32-bit (370.9 against 372.6 ms across Qwen3-8B's layers) and 4% to 5% behind at 16-bit (2.86 against 2.75 ms for one block). Where the compiler can merge the multiply with the next operation it is 28% ahead. |
+| Then why would anyone hand-write a kernel? | For a matmul, they would not. Hand-written kernels are for what the compiler does not cover or covers badly: fused attention, custom normalisation, quantised multiplies. We used matmul because it has a public reference kernel, a compiler version to compare against, and few enough settings to measure all of them. |
+| How would this help someone running, say, YOLOv8? | Not at all if they use the stock model through the compiler. It helps where part of the model is a hand-written kernel: give the loop the kernel's settings, a reference answer and the legal values, and it tunes that kernel for every shape in the model. We have not built a convolution kernel. |
+| Why a model at all, if a rule does better? | On this problem, we would not use one. That is our finding. The model was the way we discovered what the rule needed to know. |
 | Does the model beat random? | It is more reliable: 29 of 30 runs within 10% of the best, against 73% for random. At finding the exact best it is 50% against 38%, which is not conclusive at 30 runs. |
-| Did you make Qwen3-8B itself faster? | No. Its matmuls come from AWS's compiler, so our settings have nothing to plug into. We timed small models built from its layer sizes. One loop run per layer shape improved all four by 1.14x to 1.31x as standalone kernels. |
-| Why 16-bit? Is that a fair comparison? | Only like for like: 32-bit against 32-bit, 16-bit against 16-bit. Both tables are in the note. |
+| Did you make Qwen3-8B itself faster? | No. Its multiplies come from AWS's compiler, so our settings have nothing to plug into. We tuned standalone kernels at its four layer shapes (1.14x to 1.31x over untuned) and timed small models built from its layer sizes. |
+| Inside a model, what did tuning change? | Two feed-forward blocks at Qwen3-8B's sizes, 32-bit: 20.12 ms untuned, 17.40 ms with the loop's settings (13.5% less), 17.26 ms for the compiler. |
+| Why is the adapter shape so different from 2048? | It has a small shared dimension, so there is little arithmetic per byte and the chip spends its time moving data. Our settings control how data is moved, so they matter 7x there and barely at all at 2048. We picked that shape on purpose as the hard case. |
 | How is this different from `neuron-explorer recommend`? | We ran it in print-only mode. It is Bedrock-powered, sends a 155,604-character prompt, and is told not to give code. It advises a person. Ours is an 8B model with a prompt of a few thousand characters, in a loop that changes the kernel and measures again. |
 | Do the models write the kernel? | No. They choose three block-size settings; code applies them. |
-| Is 1.34x at size 2048 a gain over what AWS ships? | No. It is from the slowest setting. AWS's default there measures 905.5 µs against a best of 904.7. |
+| Is 1.34x at size 2048 a gain over what AWS ships? | No. It is from the slowest setting. AWS's suggested settings there measure 905.5 µs against a best of 904.7. |
+| At 16-bit, did the loop beat random? | No evidence of it. All five runs ended within 2% of the best, but random does that in 83% of runs on that problem. It shows the loop working on real inference time. |
 | How noisy are the timings? | Under 1% across three captures. |
 | Why do runs start from different settings? | The served model answers the same prompt almost identically each time, so repeats from one start are not independent. |
 | Did the model just remember the AWS tutorial? | Possibly; it is public. Every model arm uses the same model, so differences between checker designs are not explained by memory. |
-| Energy? | Not measured. The pod exposes no power reading. |
+| Energy? | Not measured. The pods expose no power reading. |
 | Was a large model involved? | Only to write the harness. Nothing larger than 8B is in the loop. |
