@@ -1,53 +1,76 @@
-# Our checker
+# What the kernel-agent checker actually verifies
 
-The checker is the artifact the judges keep. This documents what it accepts, what it rejects, and
-*why* — the reasoning is the point, not just the code.
+This document describes the checks implemented in this repository and their limits. A passing
+check is evidence for the scope listed below; it is not a claim that every kernel is correct or
+fast on hardware.
 
-## What it accepts / rejects, and why
+## Checks and scope
 
-| Stage | Rejects | Why (what would go wrong if we accepted it) | Cost |
-|---|---|---|---|
-| Parse | code that does not compile as Python | a parse error blamed on the model is really the extractor's bug | ms |
-| Static rules | framework calls (**alias-resolved**: `np.mean`, `xp.mean`, `from numpy import mean`), partition dim > 128, missing `@nki.jit`, wrong entry name, `.T` on an arg, `@` operator | these hand the whole operation to a framework, or cannot run on the device | ms |
-| Simulate (`nki.simulate`) | exceptions, wrong shape, NaN/Inf, mismatch > tol, input mutation, HW-hazard warnings | wrong numbers, or correct-on-CPU-wrong-on-device | s |
-| Fresh seeds + ragged + hostile | kernels that pass the fixed inputs by luck, or break on the ragged edge / hostile values | the fixed inputs are seeded, so overfitting to them is possible | s |
-| Traffic bar (L5–7) | `bytes > k × floor`; **unmeasured transfers fail closed** | levels 5–7 are graded on bytes, and an un-instrumented data path must not read as optimal | s |
-| Compile gate (`calibrate.py`) | kernels that simulate but do not compile to a NEFF | the simulator does not model SBUF/PSUM capacity or restricted-Python compile errors | ~min |
-| Device (optional) | mismatch on NC 0–1 | simulator numerics ≠ hardware | ~min |
+| Check | What it does | Scope and limits |
+|---|---|---|
+| Python syntax | Compiles the generated source as Python before loading it. | A syntax failure can come from the model output or extraction; it does not by itself identify which one. |
+| Static rules | Scans the AST for selected host-side framework operations (including recognized NumPy aliases and imported aliases), `.T` on an input, `@`, the required entry-point name and `@nki.jit`, and some literal oversized `nl.ndarray` partition dimensions. | This is a targeted rule set, not a proof that all prohibited calls, dynamic oversized tiles, or invalid NKI programs are absent. |
+| Agent simulation grade | Loads the required kernel and runs it with `nki.simulate` on the registered shapes. Checks output shape and values, non-finite values, whether the input was modified, and selected simulator hardware-hazard warnings. | Covers the configured simulator, inputs, shapes, and warning strings. It does not establish correctness for every input or on physical hardware. |
+| Traffic bar (levels 5–7) | Instruments recognized `nisa.dma_copy` calls and rejects a measured byte count above that level's configured multiple of the minimum traffic floor. It fails closed when the measured byte count or transfer count is zero. | Only recognized/instrumented transfers are counted; other data-movement paths may be missed. The bar gates bytes, not transfer count. The level thresholds overlap, so passing a byte threshold alone does not demonstrate a unique optimization at that level. |
+| Fresh-seed calibration | `calibrate.py` runs a separate numerical check using seeds 101, 202, and 303 on that level's registered shapes. | This is a separate calibration command, not part of every normal agent round, and it checks numerical results rather than all grading gates. |
+| Compile calibration | `calibrate.py` tries `nki.baremetal(kernel)` when available and otherwise falls back to `nki.simulate(kernel)`. | The current success label can say `COMPILED_OK` / `VERIFIED-COMPILED` after the simulation fallback. That label therefore does not always prove NEFF compilation. |
+| Device validation | The `--device` path currently reports that an `nrtpy` run on NC 0–1 is the next step. | It is not wired to execute a device test or validate hardware results. |
 
-## Tolerance and why
-`max |got − want| / RMS(want) ≤ 2e-2`. Justification: the test inputs are float32; the ridge the
-roofline quotes is the published **bf16** figure, so the tool labels float32 verdicts *indicative*.
-`<fill in: did NKI_PRECISE_FP=0 vs 1 flip any verdict? state the eps you observed>`.
+`python nkibench.py --check <file>` is a useful standalone check, but it is not identical to the
+agent's grading path: its report does not apply every agent gate, including the input-mutation,
+hardware-warning, and level 5–7 traffic-bar checks. Also, `agent.py --all` runs levels 1–4; levels
+5–7 and the held-out levels need their own invocations (`--level N` and `--heldout`, respectively).
 
-## Kill matrix (mutation tests)
-Run `python mutants.py` (full) or `python mutants.py --rules-only` (no device). Paste the table:
+## Numerical tolerance
 
-| mutant | level | caught? | message class correct? |
-|---|---|---|---|
-| numpy_alias | 1 | ✅ | framework (alias-resolved) |
-| from_import_matmul | 3 | ✅ | framework (alias-resolved) |
-| drop_jit | 2 | ✅ | @nki.jit |
-| rename_entry | 3 | ✅ | no function named |
-| oversized_tile | 3 | ✅ | partition 256 > 128 |
-| transpose_swap | 2 | NEEDS-DEVICE | numerics |
-| pool_divisor | 1 | NEEDS-DEVICE | numerics |
-| matmul_no_copyout | 3 | NEEDS-DEVICE | output zeros |
+The numerical comparison converts the result and reference to float64, computes
+`scale = sqrt(mean(reference ** 2))` (using 1 when that value is zero), and accepts when
+`max(abs(result - reference)) / scale <= 0.02`.
 
-(The rules-only rows are verified off-device; the numeric rows must be run in the pod and the table
-updated with the real result.)
+The repository does not establish this tolerance by a measured comparison of `NKI_PRECISE_FP=0`
+and `NKI_PRECISE_FP=1`. The published bf16 roofline figure is separate from this float32 numerical
+tolerance and is not evidence for why the tolerance is appropriate.
 
-## Feedback design: verdict → instruction
-Three before/after examples with the measured effect. The level-3 reshape message is the worked one:
+## Mutation checks
 
-- **Before:** "Do not reshape. Work with the shapes you were given and slice them into tiles."
-- **After:** names the `lhsT [K,M] / rhs [K,N]` transposed layout and the exact single-tile
-  `nc_matmul → psum → tensor_copy → dma_copy` sequence.
-- **Effect:** `<fill in from --repeat on level 3, before vs after>`.
+The Seat 20 output provided for `python mutants.py --rules-only` reports these static-rule results:
 
-`<add two more from your taxonomy>`
+| Mutant | Level | Result in the supplied `--rules-only` output |
+|---|---:|---|
+| `numpy_alias` | 1 | Caught; message reported correct |
+| `from_import_matmul` | 3 | Caught; message reported correct |
+| `drop_jit` | 2 | Caught; message reported correct |
+| `rename_entry` | 3 | Caught; message reported correct |
+| `oversized_tile` | 3 | Caught; message reported correct |
+| `transpose_swap` | 2 | Not run by `--rules-only`; numerical mutant |
+| `pool_divisor` | 1 | Not run by `--rules-only`; numerical mutant |
+| `matmul_no_copyout` | 3 | Not run by `--rules-only`; numerical mutant |
 
-## Known gaps (honest)
-- Latency (layers 2–3) is not measured; every intensity number is throughput reasoning.
-- The device rung of the calibration ladder is scaffolded, not wired to `nrtpy` (see plan S2).
-- Reference kernels for levels 5–7 are not shipped, so those traffic bars are untested end-to-end.
+The supplied output proves the five static cases above passed. It does not prove the numeric
+mutants were caught. Run `python mutants.py` in an environment with the NKI simulator available to
+evaluate those cases; a physical accelerator is not inherently required for simulator mutations.
+
+## Feedback design and evidence
+
+Level 3 feedback gives the model the operand orientation and result shape for the transposed-left
+matmul, then describes the intended tiled matmul, PSUM accumulation, and copy-out path. This is a
+design description, not measured evidence that the feedback improves pass rate or runtime.
+
+No controlled before/after `--repeat` results are included here. To claim an effect, compare the
+same model, prompt settings, level, seeds, and repeat count before and after the feedback change,
+and report the logs and pass counts. The same evidence standard applies to feedback changes at
+other levels.
+
+## Known gaps
+
+- Physical-device correctness and latency have not been established by the current `--device` path.
+- A successful simulation fallback in compile calibration must not be presented as proof of NEFF
+  compilation.
+- Traffic accounting recognizes instrumented DMA copies and may not include every possible data
+  movement operation. The level 5–7 byte bars alone do not validate transfer efficiency or device
+  performance.
+- Levels 5–7 have reference kernels and validators in the repository, but that does not mean they
+  have passed on hardware or in a full end-to-end agent run.
+- A successful `nkibench.py --selftest` or `mutants.py --rules-only` validates only the checks
+  included in those commands. Neither establishes that all seven levels solve cleanly across five
+  repeated agent runs.

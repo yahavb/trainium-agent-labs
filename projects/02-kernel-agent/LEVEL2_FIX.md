@@ -1,64 +1,47 @@
-# Level 2: transpose repair
+# Level 2: per-row 2D transpose
 
-Branch: `fix/kernel-agent-level2`, based on `master` at `8f1ca41`.
+Level 2 takes two arguments: `x` with shape `(P, F)` and `shape2D=(F1, F2)`, where
+`F = F1 * F2`. It transposes the two free dimensions within each partition row and returns a
+`(P, F)` tensor with the input dtype. The partition axis is preserved.
 
-In seat 21's first baseline pass, 28 attempts scored 0.30 or 0.50 and none
-passed all shapes. Candidates allocated 128-row tiles for smaller inputs,
-loaded only part of the flattened free axis, or used `nl.min(128, P)` for an
-integer bound. The last call raises an `int`/`dtype` error; the old feedback
-incorrectly told the model to use more nl/nisa functions.
+## Current agent guidance
 
-The change gives level 2 a transpose-specific API card, keeps the partition
-axis intact, describes shape-derived tiles and rank-preserving column copies,
-and distinguishes Python integer bounds from tensor reductions. Repair prompts
-permit correcting allocations and index mappings. Other levels keep their
-prompts and feedback; scoring and numeric tolerances are unchanged.
+The level-specific prompt and repair feedback in `agent.py` require the two-argument entry point,
+derive sizes and offsets from the arguments, and use separate input and output SBUF tiles plus a
+returned shared-HBM output. The current prompt describes copying columns between SBUF views with
+`nisa.tensor_copy`, then storing the completed tile with `nisa.dma_copy`. It also specifies Python
+`min` for tile-row sizing; `nl.min` is a tensor reduction and is not an integer-bound helper.
+Repair feedback covers the positional-argument, partition-stride, DMA-size, and scalar-index
+failures encountered in earlier attempts.
 
-Validation performed: Python compilation and the checker self-test passed.
-The pod's NKI simulator reproduced the `nl.min(128, P)` integer/dtype failure;
-replacing that call with Python `min` in the diagnostic kernel passed all four
-configured shapes. The shipped reference also passed 4/4. Non-target initial
-and repair prompts, representative error messages and scoring weights were
-compared against `master` and remained unchanged.
+These are generation and repair instructions, not a guarantee that a model-generated candidate
+will pass. `agent.py --all` includes level 2, but the held-out tests and repeated model outcomes
+are separate evidence.
 
-Run this branch in a separate checkout after other agent runs have stopped:
+## Recorded observations and validation
+
+The original level-2 branch notes recorded a first baseline with 28 attempts scoring 0.30 or 0.50
+and no complete pass. Later notes describe a baseline run that solved all four shapes without the
+patch; that is evidence of run-to-run variance, not proof that the patch caused an improvement.
+The notes also record failures from using `nl.min` as an integer helper, copying mismatched tile
+shapes, dropping the required second function argument, and attempting an unsafe in-place
+rectangular transpose.
+
+The branch notes report that the shipped level-2 reference passed all four configured shapes and
+that a diagnostic kernel using Python `min` passed those shapes in the pod simulator. They also
+report replaying a saved run-5 candidate to confirm that its scalar-index error reached the new
+feedback. These are recorded checks, not a current-device run or an end-to-end model solve-rate
+measurement. No controlled before/after solve-rate result is available here.
+
+Run the current checkout sequentially on the pod to collect fresh results:
 
 ```bash
 python nkibench.py --selftest
 python nkibench.py --level 2 --check reference_level2.py
-nohup python -u agent.py --level 2 --rounds 8 --samples 4 --context 8192 --repeat 5 \
-  --log attempts-level2-fix.jsonl > run-level2-fix.log 2>&1 < /dev/null &
-tail -f run-level2-fix.log
+python -u agent.py --level 2 --rounds 8 --samples 4 --context 8192 --repeat 5 \
+  --log attempts-level2.jsonl
 ```
 
-The live solve-rate improvement is **not yet measured**. Compare the five-run
-solve rate against an unchanged baseline. The harness uses a shared
-`/tmp/_agent_level2.py` path, so separate working directories alone do not make
-concurrent agent runs safe.
-
-## Baseline runs 2 and 3
-
-Run 2 repeatedly copied a 12-element partition row into a 1,536-element
-PSUM tile. Feedback now identifies that intermediate copy and supplies matching
-2-D SBUF column views and the flattened transpose offsets. Run 3 solved all
-four shapes at round 0 without this patch; it is baseline variance, not evidence
-that the branch improved the model. Live branch comparison remains pending.
-
-## Baseline run 5
-
-The repair shrinks the SBUF to (F1, F2), crops x to x[:F1, :F2], then
-executes tile[i,j] = tile[j,i]. With F1=3 and F2=4, source row index 3
-is out of bounds. This also confuses the partition axis with the free axes
-and overwrites source values. The scalar-index error spelling previously
-missed the range-only error matcher.
-
-Level-2-specific DMA feedback now preserves (rows, F1*F2) and complete
-partition rows. Scalar-index feedback supplies separate input/output tiles
-and correct flattened offsets, avoiding the unsafe in-place transpose.
-Other levels retain their existing feedback. Live model evaluation is pending.
-
-Validation: replayed the saved run-5 candidate with an isolated temporary
-harness path and confirmed the scalar-index failure reaches the new guidance.
-The reference passes all four shapes. Other-level prompts and representative
-feedback, including the scalar-index error, remain unchanged. No model
-requests were made and no running experiment files were modified.
+Compare the five-run solve rate using the resulting log and `analyze.py`. Do not run two agent
+experiments concurrently in separate checkouts: `grade()` writes candidates to the shared
+`/tmp/_agent_level2.py` path.

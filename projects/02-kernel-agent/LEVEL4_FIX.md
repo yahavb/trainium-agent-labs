@@ -1,43 +1,45 @@
-# Level 4: tiled matmul repair
+# Level 4: tiled matmul
 
-Branch: `fix/kernel-agent-level4`, based on `master` at `8f1ca41`.
+Level 4 computes `lhsT.T @ rhs`, where `lhsT` has shape `(K, M)`, `rhs` has shape `(K, N)`, and
+the result has shape `(M, N)`. The left input is already transposed for `nisa.nc_matmul`. Unlike
+level 3, this level's configured shapes require tiling across M, N, and K.
 
-In seat 21's first baseline pass, all 16 attempts scored 0.30. The selected
-candidate copied a 128-by-512 PSUM result (65,536 elements) into the
-128-by-128 stationary input buffer (16,384 elements). The old feedback
-described this as a generic assignment mismatch and suggested indexing the
-output, leaving the actual PSUM-to-SBUF copy unchanged.
+## Current agent guidance
 
-The level-4 feedback now identifies the separate, matching result SBUF tile
-needed for that copy. The initial and repair prompts explain the different
-input/result tile shapes, tiling across M, N and K, and the accumulator's
-lifetime across K tiles. Later feedback also diagnoses the M=128 zero-loop
-case: using M//512 for tile count skips every output write. Scoring and
-numeric tolerances are unchanged.
+The initial and repair prompts describe separate SBUF operand tiles, one float32 PSUM accumulator
+per output tile, and a same-shaped SBUF tile for copying the completed PSUM before storing to the
+shared-HBM output. The accumulator must persist across the K-tile loop; each output tile must be
+written to its corresponding output slice.
 
-On the first level-4 repair after a nonempty failed candidate, the agent now
-adds a clearly labeled three-axis loop scaffold. It asks the model to complete
-the input loads, matmul, and output copies, then the normal checker grades the
-candidate. There is no reference-kernel fallback. Each attempt record includes
-a `scaffolded` field so scaffolded results can be reported separately from
-unscaffolded runs.
+For level 4, the agent adds a labeled three-axis loop scaffold to the first repair after a
+nonempty candidate fails. The model is asked to complete or repair the scaffold's loads, matmul,
+and stores; the ordinary checker still grades the returned candidate. This is prompting help, not
+a reference-kernel fallback or a guarantee of success. The attempt log records whether the
+scaffold was used.
 
-Validation performed locally: Python compilation, checker self-test, and a
-prompt-structure check passed. The self-test reports that its NKI simulation
-portion needs verification on the pod. This does not establish that the model
-will solve the level. No successful model-generated runs have been measured yet.
+This guidance addresses earlier reported failures including a PSUM-to-SBUF copy-size mismatch,
+an output loop whose integer division yielded zero iterations, and wrong M/N tile origins. The
+checker feedback now includes tile coverage and slice-origin guidance for relevant level-4
+failures. It does not prove that all failures are covered.
 
-On the pod, evaluate five independent runs, each with at most five rounds:
+## Recorded validation and open results
+
+The original level-4 branch notes report local Python compilation, checker self-test, and a
+prompt-structure check. They explicitly say the NKI simulation portion needed verification on the
+pod. The notes do not report a successful model-generated level-4 run or a measured solve-rate
+improvement. Treat the target of five successful repeats as an evaluation goal, not as an achieved
+result.
+
+Run the current checkout on the pod and retain the output log:
 
 ```bash
 python nkibench.py --selftest
 python nkibench.py --level 4 --check reference_level4.py
-nohup python -u agent.py --level 4 --rounds 5 --samples 4 --context 8192 --repeat 5 \
-  --log attempts-level4-scaffold.jsonl > run-level4-scaffold.log 2>&1 < /dev/null &
-tail -f run-level4-scaffold.log
+python -u agent.py --level 4 --rounds 5 --samples 4 --context 8192 --repeat 5 \
+  --log attempts-level4.jsonl
 ```
 
-The target is reward 1.00 in all five runs (summary: `solved 5/5`). The live
-solve rate remains unmeasured until that pod run completes. Run agents
-sequentially within the pod: the harness shares `/tmp/_agent_level4.py` even
-across checkouts.
+Use `analyze.py` on the generated JSONL to report the actual per-run results. A clean reference
+check validates the reference kernel, not the model's ability to generate a kernel. Run agent
+experiments sequentially: candidates are written to the shared `/tmp/_agent_level4.py` path, so
+separate checkouts alone do not make concurrent runs safe.
