@@ -79,25 +79,16 @@ CONTEXT_CARDS = {
         "dst argument. To divide by a constant, write the sum into another tile with "
         "nisa.tensor_scalar(dst=..., data=sum_tile, op0=nl.multiply, operand0=scale)."
     ),
-    "avgpool_reduction": (
-        "Avgpool reduction pattern: copy the input block into SBUF, make an access-pattern view "
-        "whose axes separate output rows, output columns, and the pool rows/columns, reduce only "
-        "the pool axes with nl.sum(..., axis=[...]), then multiply by "
-        "1.0 / (pool_size * pool_size). Do not call .mean() on an NKI tensor."
-    ),
-    "level1_avgpool_api": (
-        "Level 1 avgpool essentials: allocate with nl.ndarray(..., dtype=x.dtype, buffer=nl.sbuf "
-        "or nl.shared_hbm), never nl.sbuf(). SBUF tiles must be 2D or higher. Use nl.sum, not "
-        "nisa.sum. nl.sum reduces trailing contiguous axes only; arrange the pool dimensions as "
-        "the final axes before reducing. Scale with nisa.tensor_scalar(dst=..., data=..., "
-        "op0=nl.multiply, operand0=1.0/(pool_size*pool_size)). Write final tiles with "
-        "nisa.dma_copy(dst=output_slice, src=tile)."
+    "reduction_patterns": (
+        "Reduction pattern: copy or construct a tile in SBUF, form any needed strided view, reduce "
+        "with nl.sum(..., axis=[...]), then write scaled results into a separate SBUF/output tile "
+        "with nisa.tensor_scalar. Do not call .mean() on an NKI tensor, and do not use direct "
+        "Python arithmetic on tile values."
     ),
     "reduction_axis": (
         "NKI reduction axis rule: nl.sum can reduce only the last contiguous dimensions of a tile. "
-        "For a 5D avgpool access-pattern view shaped like output_h, pool_h, output_w, pool_w, the "
-        "pool axes are not both trailing. Build/reorder the access pattern so the two pool "
-        "dimensions are the final axes, then reduce axis=[3, 4]."
+        "When a reduction spans non-adjacent logical axes, build or reorder the SBUF/access-pattern "
+        "view so the reduced dimensions are trailing and contiguous, then reduce those trailing axes."
     ),
     "access_patterns": (
         "Access-pattern views use strides and counts over an existing SBUF tile. The first stride "
@@ -126,7 +117,7 @@ CONTEXT_CARDS = {
 REPAIR_CARD_NAMES = {
     "scale": ["reductions", "signatures"],
     "reduction_api": ["reductions", "signatures"],
-    "reduction_axis": ["reduction_axis", "avgpool_reduction", "reductions"],
+    "reduction_axis": ["reduction_axis", "reduction_patterns", "reductions"],
     "nonfinite": ["dma_copy_shape", "matmul_psum"],
     "rule": ["api_core", "signatures"],
     "dma_shape": ["dma_copy_shape", "tile_limits"],
@@ -145,14 +136,14 @@ LEVEL_BASE_CARDS = {
 }
 
 LEVEL_START_CARDS = {
-    1: ["level1_avgpool_api"],
+    1: [],
     2: [],
-    3: ["matmul_psum"],
-    4: ["matmul_psum", "matmul_tiling"],
+    3: [],
+    4: [],
 }
 
 DOCS_EXTRA_CARDS = {
-    1: ["api_core", "dma_copy_shape", "tile_rank", "access_patterns", "avgpool_reduction",
+    1: ["api_core", "dma_copy_shape", "tile_rank", "access_patterns", "reduction_patterns",
         "reduction_axis", "signatures"],
     2: ["api_core", "dma_copy_shape", "tile_rank", "signatures"],
     3: ["api_core", "dma_copy_shape", "matmul_psum", "signatures"],
@@ -524,8 +515,6 @@ def render_context_cards(names):
 
 def repair_card_names(level, category):
     names = list(REPAIR_CARD_NAMES.get(category, ["api_core"]))
-    if level == 1 and category in {"scale", "reduction_api", "reduction_axis"}:
-        names.insert(0, "avgpool_reduction")
     deduped = []
     for name in names:
         if name not in deduped:
@@ -726,7 +715,7 @@ def prompt_accounting(reference="", code="", feedback="", cards="", ledger="", i
 
 def start_card_names(level, style="minimal"):
     names = list(LEVEL_START_CARDS.get(level, []))
-    if style in {"docs", "reference"}:
+    if style == "docs":
         names += DOCS_EXTRA_CARDS.get(level, [])
     deduped = []
     for name in names:
@@ -737,15 +726,6 @@ def start_card_names(level, style="minimal"):
 
 def start_context(level, style="minimal"):
     return render_context_cards(start_card_names(level, style))
-
-
-def reference_kernel_text(level):
-    path = os.path.join(os.path.dirname(__file__), f"reference_level{level}.py")
-    try:
-        src = open(path).read()
-    except OSError:
-        return ""
-    return src
 
 
 def first_prompt(level, terse=0, style="minimal"):
@@ -761,21 +741,13 @@ def first_prompt(level, terse=0, style="minimal"):
     ref = inspect.getsource(s['ref'])
     start_cards = start_context(level, style)
     start_text = f"\n\n{start_cards}" if start_cards else ""
-    reference_text = ""
-    if style == "reference":
-        ref_kernel = reference_kernel_text(level)
-        if ref_kernel:
-            reference_text = (
-                "\n\nShipped reference kernel pattern. Use it as an API/style example, but still "
-                "return your own complete kernel:\n"
-                f"```python\n{ref_kernel}\n```")
     if terse >= 2:
         # Last resort. Measured on this endpoint: one-sentence prompts answered in 300-700
         # tokens while every structured, rule-carrying prompt spiralled.
         return (f"Write a Python function `{s['entry']}` decorated with @nki.jit that computes "
                 f"the same thing as this, using nki.language as nl and nki.isa as nisa:\n\n"
                 f"{ref}\n"
-                f"{CORE_CARD}{start_text}{reference_text}\nReply with one python code block.")
+                f"{CORE_CARD}{start_text}\nReply with one python code block.")
     if terse >= 1:
         # The matmul memory rules are the substance of levels 3 and 4, and the short prompt has to
         # carry them: measured, the agent cycled between "dst must be in ['psum']" and "moving must
@@ -788,7 +760,7 @@ def first_prompt(level, terse=0, style="minimal"):
         return (f"Write an AWS Neuron NKI kernel: a function `{s['entry']}` decorated with "
                 f"@nki.jit that computes what this reference computes.\n\n"
                 f"{ref}\n"
-                f"{CORE_CARD}{start_text}{reference_text}\n{mm}\n"
+                f"{CORE_CARD}{start_text}\n{mm}\n"
                 f"Reply with one python code block.")
     return (
         f"Write an AWS Neuron NKI kernel.\n\n"
@@ -796,7 +768,7 @@ def first_prompt(level, terse=0, style="minimal"):
         f"Entry point: a function named `{s['entry']}`, decorated with `@nki.jit`.\n"
         f"It must compute exactly what this NumPy reference computes:\n\n"
         f"{ref}\n\n"
-        f"{CORE_CARD}{start_text}{reference_text}\n\n"
+        f"{CORE_CARD}{start_text}\n\n"
         f"Reply with ONE python code block containing the imports and the function. No prose.")
 
 
@@ -849,11 +821,10 @@ def audit_context(level):
     import inspect
     ref = inspect.getsource(nkibench.LEVELS[level]["ref"])
     print(f"level {level}: {nkibench.LEVELS[level]['op']}")
-    for style in ("minimal", "docs", "reference"):
+    for style in ("minimal", "docs"):
         first = first_prompt(level, style=style)
         first_budget = prompt_accounting(
-            reference=ref, core=CORE_CARD, cards=start_context(level, style),
-            code=reference_kernel_text(level) if style == "reference" else "")
+            reference=ref, core=CORE_CARD, cards=start_context(level, style))
         print_budget(f"first prompt [{style}]", first_budget)
         first_cards = ["core_minimal"] + start_card_names(level, style)
         print(f"    chars={len(first)} cards={', '.join(first_cards)}")
@@ -1046,8 +1017,7 @@ def solve(a, level, log):
     prompt_budget = prompt_accounting(
         reference=__import__("inspect").getsource(nkibench.LEVELS[level]["ref"]),
         core=CORE_CARD,
-        cards=start_context(level, a.prompt_style),
-        code=reference_kernel_text(level) if a.prompt_style == "reference" else "")
+        cards=start_context(level, a.prompt_style))
     best = (0.0, None, "")
     tried, streak, seen = [], 0, {}
     latest = ("", "")
@@ -1143,8 +1113,7 @@ def solve(a, level, log):
             prompt_budget = prompt_accounting(
                 reference=__import__("inspect").getsource(nkibench.LEVELS[level]["ref"]),
                 core=CORE_CARD,
-                cards=start_context(level, a.prompt_style),
-                code=reference_kernel_text(level) if a.prompt_style == "reference" else "")
+                cards=start_context(level, a.prompt_style))
             print(f"  no code yet, so re-asking with a shorter prompt (terseness {terse})")
         else:
             prompt = repair_prompt(level, latest[0], latest[1], tried)
@@ -1184,9 +1153,8 @@ def main():
                          "Qwen3-8B is fine at 0.")
     ap.add_argument("--context", type=int, default=4096,
                     help="the server's max-model-len; prompt + answer must fit inside it")
-    ap.add_argument("--prompt-style", choices=("minimal", "docs", "reference"), default="minimal",
-                    help="initial prompt context: minimal cards, richer API docs, or docs plus the "
-                         "shipped reference kernel pattern")
+    ap.add_argument("--prompt-style", choices=("minimal", "docs"), default="minimal",
+                    help="initial prompt context: minimal cards or richer generic API docs")
     ap.add_argument("--think", action="store_true",
                     help="let the model reason first; costs budget, and it ran out")
     ap.add_argument("--offline", action="store_true")

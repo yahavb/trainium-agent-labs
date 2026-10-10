@@ -317,6 +317,28 @@ Level 1 prompt sizes:
 Use this to compare first-attempt reward/error category instead of guessing whether more context
 helps.
 
+## Generic-agent cleanup
+
+Removed context that was too level-specific for a generic kernel agent:
+
+- removed `level1_avgpool_api`;
+- removed the avgpool-specific reduction card;
+- removed/disabled `--prompt-style reference`;
+- removed shipped reference kernel code from all prompt paths.
+
+`--prompt-style docs` now uses only generic API/rule cards:
+
+- core NKI API;
+- DMA copy shape rules;
+- SBUF/PSUM rank rules;
+- generic access-pattern guidance;
+- generic reduction/scaling rules;
+- generic reduction-axis rule;
+- signatures/dtype/memory-region syntax.
+
+This may reduce immediate benchmark accuracy, but it is more defensible for a generic kernel-writing
+agent and avoids solution-code leakage.
+
 ## Context manager improvements: keys, ledger, retrieval, report
 
 Added normalized failure keys and a compressed unique ledger.
