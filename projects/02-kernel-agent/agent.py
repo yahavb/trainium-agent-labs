@@ -36,6 +36,12 @@ import nkibench
 
 MODEL = os.environ.get("KERNEL_AGENT_MODEL", "Qwen/Qwen3-8B")
 
+# --persona: one role sentence put in front of EVERY request (task, repair, think, summary, plan).
+# It adds no facts about NKI on purpose, so a difference in results is the role framing alone.
+DEFAULT_PERSONA = ("You are a senior AWS Neuron kernel engineer with years of experience writing "
+                   "correct NKI kernels for Trainium.")
+PERSONA = ""
+
 # The model writes to a hidden reasoning channel before it writes any answer. Measured on this
 # endpoint: a coding task burned 900 tokens thinking and returned EMPTY content. See gptoss/README.
 MIN_ANSWER_TOKENS = 2500
@@ -52,8 +58,12 @@ REASONING_KEYS = ("reasoning", "reasoning_content")
 WEIGHTS = dict(parses=0.1, rules=0.2, runs=0.2, correct=0.5)
 
 
-def grade_run(source, level):
-    """Returns (reward, parts, feedback). Feedback is an INSTRUCTION, never just a verdict."""
+def grade_run(source, level, ref=None):
+    """Returns (reward, parts, feedback). Feedback is an INSTRUCTION, never just a verdict.
+
+    ref: grade against this function instead of the level's reference (--decompose grades each
+    step's kernel against the model's own NumPy stage). The traffic bar is skipped then: it is a
+    property of the finished kernel, not of an intermediate step."""
     parts = dict(parses=False, rules=False, runs=False, correct=False)
 
     if not source.strip():
@@ -118,7 +128,8 @@ def grade_run(source, level):
     for case in spec["shapes"]:
         args, _ = nkibench.make_inputs(case, level)
         before = [x.copy() if isinstance(x, np.ndarray) else x for x in args]
-        want = spec["ref"](*args)
+        want = (spec["ref"](*args) if ref is None
+                else ref(*[x.copy() if isinstance(x, np.ndarray) else x for x in args]))
         try:
             got, counted = nkibench.simulate_and_count(kernel, args)
         except nkibench.NkiMissing as e:
@@ -131,7 +142,7 @@ def grade_run(source, level):
         parts["runs"] = True
         m = (nkibench.check_inputs_untouched(before, args)
              or nkibench.describe_mismatch(got, want)
-             or nkibench.check_traffic_bar(level, counted, args, want))
+             or (ref is None and nkibench.check_traffic_bar(level, counted, args, want)))
         # A simulator warning about a hardware-correctness hazard counts as a failure even when the
         # numbers happen to match on CPU: the kernel would be wrong on the device.
         hazards = [w for w in counted.get("warnings", [])
@@ -328,9 +339,9 @@ def static_check(source):
     return found[:8]
 
 
-def grade(source, level):
+def grade(source, level, ref=None):
     """grade_run(), plus the static check's findings in front of the feedback when not correct."""
-    reward, parts, feedback = grade_run(source, level)
+    reward, parts, feedback = grade_run(source, level, ref)
     if STATIC_CHECK and parts.get("parses") and not parts.get("correct"):
         try:
             findings = static_check(source)
@@ -802,6 +813,8 @@ def chat(a, prompt, think, max_tokens, temperature=0.6):
     import httpx
     # Keep prompt + answer inside the server's context, or the answer is silently cut off and
     # every parse error below is really a budget error. Repair prompts grow with the kernel.
+    if PERSONA:
+        prompt = f"{PERSONA}\n\n{prompt}"
     est_prompt = len(prompt) // 4
     budget = min(max_tokens, max(256, a.context - est_prompt - 64))
     if budget < max_tokens:
@@ -1134,6 +1147,228 @@ def solve(a, level, log, transcript=None, run=0):
     return best[0], a.rounds
 
 
+# ---------------------------------------------------------------- --decompose
+#
+# Split the task into steps, then build the kernel one checked step at a time.
+#
+#  1. PLAN.   The model writes NumPy functions stage_1 .. stage_n with the reference's arguments.
+#             Each returns the intermediate result after that many steps; the last returns what the
+#             reference returns. The model writes the steps, not us: nothing hand-written.
+#  2. CHECK.  The harness runs the stages on CPU on every test shape. The plan is accepted only if
+#             every stage runs and the last one matches the reference -- a wrong plan costs one
+#             cheap retry instead of six kernel rounds.
+#  3. BUILD.  Step k's kernel must return exactly what stage_k returns, graded by the same grader
+#             with stage_k in place of the reference. Once a step passes, its kernel is the
+#             starting point of the next step, so a later fix never has to rediscover it. The
+#             feedback always names one step.
+#
+# Steps are built ON TOP of each other rather than written separately and joined, because inside a
+# kernel an intermediate lives in an SBUF tile; joining separate kernels would be a new place to
+# fail. Measured motivation: merge_multi rounds 4-5 and merge_history round 3 broke code that
+# already worked while fixing something else.
+
+PLAN_PROMPT = """Here is a NumPy reference function:
+
+{code}
+We will write an AWS Neuron NKI kernel that computes the same thing, one small step at a time.
+Before any kernel code, split the computation into {lo} to {hi} steps that build on each other.
+
+Write the steps as NumPy functions named stage_1, stage_2, ... Each takes exactly the same
+arguments as the reference ({args}) and returns a NumPy array: the result after that many steps.
+stage_1 does only the first step; every later stage does everything the one before it does plus
+one more step; the last stage returns exactly what the reference returns, with the same shape and
+dtype. Make each step small enough to be one or two operations in a kernel.
+
+Reply with ONE python code block containing `import numpy as np` and the stage functions only."""
+
+
+def check_plan(src, level, lo=2, hi=5):
+    """Run the model's stages on every test shape. Returns ([(name, fn), ...], None) or (None, why)."""
+    if not (src or "").strip():
+        return None, "No code came back. Reply with one python code block."
+    ns = {"np": np, "numpy": np}
+    try:
+        exec(compile(src, "<plan>", "exec"), ns)
+    except Exception as e:
+        return None, f"The plan does not run: {type(e).__name__}: {e}"
+    found = sorted(((int(m.group(1)), k) for k in ns
+                    for m in [re.fullmatch(r"stage_(\d+)", k)] if m and callable(ns[k])))
+    if [i for i, _ in found] != list(range(1, len(found) + 1)):
+        return None, (f"The stages must be named stage_1, stage_2, ... with no gaps; found "
+                      f"{[k for _, k in found] or 'none'}.")
+    if not lo <= len(found) <= hi:
+        return None, f"Split the computation into {lo} to {hi} stages; there are {len(found)}."
+    spec = nkibench.LEVELS[level]
+    for case in spec["shapes"]:
+        args, _ = nkibench.make_inputs(case, level)
+        want = spec["ref"](*args)
+        lbl = nkibench.label(case, level)
+        for _, name in found:
+            try:
+                got = ns[name](*[x.copy() if isinstance(x, np.ndarray) else x for x in args])
+            except Exception as e:
+                return None, f"On {lbl}, {name} raises {type(e).__name__}: {e}"
+            if not isinstance(got, np.ndarray) or got.ndim == 0:
+                return None, (f"On {lbl}, {name} returns {type(got).__name__}, not an array. Every "
+                              f"stage must return a NumPy array a kernel could return.")
+        m = nkibench.describe_mismatch(got, want)
+        if m:
+            return None, (f"On {lbl}, the last stage ({found[-1][1]}) does not match the "
+                          f"reference: {m}")
+    return [(name, ns[name]) for _, name in found], None
+
+
+def make_plan(a, level, transcript):
+    """Ask for the stages (thinking off), check them, and retry with the reason up to --plan-tries."""
+    import inspect
+    ref = nkibench.LEVELS[level]["ref"]
+    base = PLAN_PROMPT.format(code=inspect.getsource(ref), lo=2, hi=5,
+                              args=", ".join(inspect.signature(ref).parameters))
+    prompt = base
+    for t in range(a.plan_tries):
+        r = chat(a, prompt, False, a.max_tokens)
+        src = extract_code(r["content"])
+        stages, why = check_plan(src, level)
+        print(f"  plan attempt {t}: " + (f"OK, {len(stages)} steps ({r['seconds']}s)" if stages
+                                         else f"rejected ({r['seconds']}s): {why[:300]}"))
+        if transcript is not None:
+            print("=" * 80 + f"\nlevel {level}  PLAN attempt {t}  "
+                  + ("ACCEPTED" if stages else "REJECTED") + "\n" + "-" * 30 + " PROMPT "
+                  + "-" * 30 + f"\n{prompt}\n" + "-" * 30 + " REPLY " + "-" * 31
+                  + f"\n{r['content']}\n" + "-" * 30 + " CHECK " + "-" * 31
+                  + f"\n{why or 'every stage runs on every test shape; the last matches the reference'}",
+                  file=transcript)
+            transcript.flush()
+        if stages:
+            return src, stages
+        prompt = (f"{base}\n\nYour previous answer:\n```python\n{src}\n```\n"
+                  f"It does not check out: {why}\nFix it. Reply with ONE python code block.")
+    return None, None
+
+
+def stage_first_prompt(level, plan, k, n, base):
+    """Like first_prompt, plus the checked plan and the target of this one step."""
+    import inspect
+    s = nkibench.LEVELS[level]
+    start = ("" if base is None else
+             f"This kernel already passes step {k - 1}. Extend it to step {k}, and keep what "
+             f"already works:\n\n```python\n{base}\n```\n\n")
+    return (
+        f"Write an AWS Neuron NKI kernel, one step at a time.\n\n"
+        f"Operation: {s['op']}\n"
+        f"Entry point: a function named `{s['entry']}`, decorated with `@nki.jit`.\n"
+        f"The full task is this NumPy reference:\n\n{inspect.getsource(s['ref'])}\n"
+        f"It has been split into steps. Each stage_k does everything the stage before it does, "
+        f"plus one more step:\n\n```python\n{plan}\n```\n\n"
+        f"Write the kernel for STEP {k} OF {n}: `{s['entry']}` must return exactly what "
+        f"stage_{k} returns (same shape, same values), nothing more.\n\n{start}"
+        f"Hardware limits: a tile's partition dimension is at most {nkibench.PMAX}. For matmul, "
+        f"the stationary free dimension is at most {nkibench.GEMM_STATIONARY_FMAX} and the "
+        f"moving free dimension at most {nkibench.GEMM_MOVING_FMAX}.\n\n"
+        f"Import nki, nki.language as nl, and nki.isa as nisa.\n\n{API_CARD}\n\n"
+        f"Reply with ONE python code block containing the imports and the function. No prose.")
+
+
+def stage_repair_prompt(level, plan, k, n, source, feedback, card=True, history=""):
+    """repair_prompt with the step's target named, so the checker's report is read against it."""
+    api = f"{API_CARD}\n" if card else ""
+    return (
+        f"{history}"
+        f"We are building an NKI kernel for {nkibench.LEVELS[level]['op']} one step at a time, "
+        f"from these NumPy steps:\n\n```python\n{plan}\n```\n\n"
+        f"This kernel is for STEP {k} OF {n}: it must return exactly what stage_{k} returns. It "
+        f"is not right yet.\n\n```python\n{source}\n```\n\n"
+        f"{api}"
+        f"A checker, comparing it with stage_{k}, reports:\n{feedback}\n\n"
+        f"Make only the changes that are necessary to fix this. Reply with ONE python code block.")
+
+
+def solve_decomposed(a, level, log, transcript=None, run=0):
+    """--decompose: plan, check the plan, then one checked step at a time.
+
+    Returns (reward, rounds) like solve(). The reward is the REAL grade (the level's own reference)
+    of the latest kernel that passed a step. Before the last step that kernel computes an
+    intermediate, not the task, so it is printed with the step it passed."""
+    print(f"\n=========== level {level}: {nkibench.LEVELS[level]['op']} (decomposed) ===========")
+    plan, stages = make_plan(a, level, transcript)
+    if not stages:
+        print(f"  no plan passed the check in {a.plan_tries} tries; stopping this level")
+        return 0.0, 0
+    n = len(stages)
+    print(textwrap.indent(plan, "    | "))
+    full = sum(WEIGHTS.values())
+    base, base_real, base_step = None, 0.0, 0
+    stage_rounds = a.stage_rounds or a.rounds
+    used = 0
+    for k, (name, fn) in enumerate(stages, 1):
+        prompt = stage_first_prompt(level, plan, k, n, base)
+        latest, attempts, tried, seen, streak = None, [], [], {}, 0
+        passed = False
+        for r in range(stage_rounds):
+            t0 = time.perf_counter()
+            replies = ask_parallel(a, prompt, a.samples)
+            graded, records = [], []
+            for rep in replies:
+                src = extract_code(rep["reply"])
+                reward, parts, feedback = grade(src, level, ref=fn)
+                graded.append((reward, src, feedback, parts))
+                rec = dict(run=run, level=level, round=used, step=k, steps=n, step_round=r,
+                           reward=reward, parts=parts, prompt_chars=len(prompt),
+                           reply_chars=len(rep["reply"]), prompt=prompt,
+                           thinking=rep["thinking"], summary=rep["summary"], reply=rep["reply"],
+                           stages=rep["stages"], code=src, feedback=feedback, plan=plan,
+                           persona=PERSONA)
+                records.append(rec)
+                log.write(json.dumps(rec) + "\n")
+            log.flush()
+            write_transcript(transcript, run, level, f"{used} (step {k} of {n}, try {r})",
+                             prompt, records)
+            used += 1
+            graded.sort(key=lambda g: g[0], reverse=True)
+            top = graded[0]
+            print(f"step {k}/{n} round {r}: best {top[0]:.2f}  ({time.perf_counter() - t0:.1f}s)")
+            if top[3].get("correct"):
+                base = top[1]
+                base_real, _, real_fb = grade_run(base, level)
+                base_step = k
+                print(f"  STEP {k} PASSED (matches {name} on every shape). Against the real "
+                      f"reference this kernel scores {base_real:.2f}"
+                      + ("" if k < n else f": {real_fb[:200]}"))
+                passed = True
+                break
+            print(f"  {top[2][:400]}")
+            if (top[1] or "").strip():
+                latest = (top[1], top[2])
+                attempts.append((r, top[1], top[2]))
+            same = tried and top[2] == tried[-1]
+            streak = streak + 1 if same else 1
+            seen[top[2]] = seen.get(top[2], 0) + 1
+            if seen[top[2]] >= a.give_up_after:
+                print(f"  STOPPING at step {k}: the same failure {seen[top[2]]} times")
+                break
+            tried.append(top[2])
+            if latest is None:
+                prompt = stage_first_prompt(level, plan, k, n, base)
+                continue
+            hist = history_block([x for x in attempts if x[1] != latest[0]], a.history)
+            prompt = stage_repair_prompt(level, plan, k, n, latest[0], latest[1],
+                                         a.repair_card, hist)
+            if streak >= 2:
+                ledger = "\n".join(f"- {t[:160]}" for t in dict.fromkeys(tried))
+                prompt += (f"\n\nThese approaches have already failed, so do something "
+                           f"different:\n{ledger}")
+        if not passed:
+            break
+    if base_step == n and base_real >= full - 1e-9:
+        print(f"  SOLVED through {n} steps in {used} rounds.")
+        print(textwrap.indent(base, "  "))
+    else:
+        print(f"  passed {base_step} of {n} steps in {used} rounds"
+              + (f"; the step-{base_step} kernel scores {base_real:.2f} against the real reference "
+                 f"(it computes stage_{base_step}, not the whole task)" if base_step else ""))
+    return base_real, used
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--level", type=int, choices=sorted(nkibench.LEVELS))
@@ -1195,8 +1430,22 @@ def main():
                     help="readable transcript of this run (prompt, thinking, summary, reply, "
                          "feedback per round). Default: the --log name with .txt instead of "
                          ".jsonl. Overwritten each time, unlike the .jsonl log, which appends.")
+    ap.add_argument("--persona", nargs="?", const=DEFAULT_PERSONA, default=None,
+                    help="put a role sentence in front of every request. Alone: the default "
+                         f"sentence ({DEFAULT_PERSONA!r}); or --persona \"your own sentence\". "
+                         "Off by default")
+    ap.add_argument("--decompose", action="store_true",
+                    help="the model first splits the task into NumPy steps stage_1..stage_n, the "
+                         "harness checks them on CPU, then the kernel is built and checked one step "
+                         "at a time, each passing step the start of the next")
+    ap.add_argument("--plan-tries", type=int, default=3,
+                    help="--decompose: attempts to get a plan that passes the check")
+    ap.add_argument("--stage-rounds", type=int, default=None,
+                    help="--decompose: rounds allowed per step (default: --rounds)")
     ap.add_argument("--offline", action="store_true")
     a = ap.parse_args()
+    if a.decompose and a.offline:
+        sys.exit("--decompose needs a model to write the plan; it cannot run --offline.")
 
     if not a.offline:
         # Validate before the first request. An empty or scheme-less value produces a hostname
@@ -1224,8 +1473,14 @@ def main():
     full = sum(WEIGHTS.values())
     history = {lv: [] for lv in levels}
 
-    global STATIC_CHECK
+    global STATIC_CHECK, PERSONA
     STATIC_CHECK = bool(a.static_check)
+    PERSONA = (a.persona or "").strip()
+    if PERSONA:
+        print(f"persona: {PERSONA}")
+    if a.decompose:
+        print(f"decompose mode: plan into 2-5 NumPy steps (up to {a.plan_tries} tries), then "
+              f"{a.stage_rounds or a.rounds} rounds per step")
     if a.transcript is None:
         a.transcript = os.path.splitext(a.log)[0] + ".txt"
     if a.think_temps is None:
@@ -1241,12 +1496,16 @@ def main():
     with open(a.log, "a") as log, open(a.transcript, "w", encoding="utf-8") as transcript:
         print(f"command: {' '.join(sys.argv)}", file=transcript)
         print(f"started: {time.strftime('%Y-%m-%d %H:%M:%S')}  model {a.model}", file=transcript)
+        if PERSONA:
+            print(f"persona (put in front of every request, not shown in the prompts below): "
+                  f"{PERSONA}", file=transcript)
         for rep in range(a.repeat):
             if a.repeat > 1:
                 print(f"\n################ run {rep + 1} of {a.repeat} ################")
             results = []
             for level in levels:
-                results.append((level,) + solve(a, level, log, transcript, rep))
+                go = solve_decomposed if a.decompose else solve
+                results.append((level,) + go(a, level, log, transcript, rep))
                 history[level].append(results[-1][1])
 
             print("\n=========== summary ===========")
