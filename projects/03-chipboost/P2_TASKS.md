@@ -1,5 +1,9 @@
 # P2 (`kernels-search`): tasks for the second coding agent
 
+> **DONE 14:20 by P2 directly; this spec is kept for the record.** `search.py` (adopted from the second
+> agent's unpushed draft and brought to the current contracts), `check_kernels.py`, `pod_check.sh` and
+> `tests/test_search.py` are on `kernels-search`. Nothing else should pick these up.
+
 > **CHANGED 13:55: P1's referee contract (TEAM.md, from `referee-timing`, merged into this branch).**
 > Call `rec = speedcheck.check_isolated(path, op="matmul")`, with **no `heldout=` argument**. Held-out
 > shapes now run automatically, and only for a candidate that would be `faster`. It **returns `None` when

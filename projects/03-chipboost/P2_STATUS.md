@@ -29,7 +29,10 @@ one held-out check of the best kernel at the end; `--budget` counted in referee 
 | `kernels/matmul_expert_aws.py` (AWS as published) | Done. **Fails the referee**: 5.3 bf16 ulps (limit 4) |
 | `kernels/rmsnorm_start.py` | Done. Correct on 7 chip shapes: ragged rows, the eps trap, a 1-token decode |
 | `kernels/copy_tiled.py`, `kernels/copy_floor.py` (RMSNorm's floor) | Tiled floor measured; packed floor written, not yet run |
-| `search.py` (arm c: random search, no AI) | In progress: second agent, branch `p2-tools` |
+| `search.py` (arm c: random search, no AI) | **Done**, tested (5 tests, stub run). Ready to run in the pod |
+| `check_kernels.py`, `pod_check.sh` | **Done**: every kernel x dev / held-out shape in the simulator |
+| `heldout_grid.py` (panel 5) | **Done, run on the chip**: `results_heldout_matmul.json`, 18 cells, 1 failing (AWS at K=6144) |
+| Hardened referee (P1) | Merged into this branch; `shapes.py` meets its contract (`out`, `heldout` samplers) |
 | `results_p2.json` (for the dashboard) | Done, from the numbers below |
 
 ## Measured
@@ -135,10 +138,24 @@ python speedcheck.py --op copy --check kernels/copy_floor.py --baseline kernels/
 - **The Amdahl share of matmul in a Qwen3 layer needs a profile of the served model, which we have not
   taken.** Any end-to-end figure we quote will be labelled a projection.
 
+## The random-search arm (arm c)
+
+`search.py` searches the expert kernel's three block caps. It does not write kernels.
+- **The space:** at the primary shape (K=4096, M=256, N=6144) the tile counts are M 2, N 12, K 32, giving
+  72 triples. 62 fit SBUF.
+- **The order:** attempt 0 is the expert as shipped (caps 16, 2, 8, which run as 2, 2, 8), then 23 distinct
+  random triples.
+- **The budget:** 24 referee evaluations, the team's unit (agent.py's too).
+- **The asymmetry, said plainly:** random search starts from AWS's kernel design and only tunes its knobs,
+  so its curve starts near 2.5x. The model arms start from the slow tiled kernel and must find the design.
+  That is the comparison as TEAM.md defines it, and the note must say so.
+
+    nohup python search.py --budget 24 --seed 0 > logs/seat-102/search_s0.log 2>&1 < /dev/null &
+
 ## Next
 
-1. Re-measure `rmsnorm_start` and the copy floors at the 2048-token timing shapes; update `results_p2.json`.
-2. Merge `p2-tools` into this branch and run `search.py` against the referee, on the same budget as the
-   agent arms.
+1. Run arm c (seed 0), then repeats with seeds 1 and 2 for the spread. Copy `logs/seat-102/` out of the
+   pod and commit it.
+2. Re-run `heldout_grid.py` at the end with every arm's best: its rows come from the logs.
 3. No code goes to master, only docs: teammates who need P2's code merge `kernels-search` into their own
    branch.
