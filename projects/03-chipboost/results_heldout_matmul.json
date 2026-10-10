@@ -2,7 +2,7 @@
  "owner": "P2 heldout_grid.py",
  "source": "chip",
  "seed": 20261010,
- "measured": "2026-10-10 17:46:35",
+ "measured": "2026-10-10 20:36:20",
  "seat": "102",
  "heldout": [
   {
@@ -11,7 +11,7 @@
    "shape": "256x6144x4096",
    "passed": true,
    "speedup": 1.0,
-   "time_us": 770.3,
+   "time_us": 770.5,
    "message": ""
   },
   {
@@ -29,7 +29,7 @@
    "shape": "512x4096x2048",
    "passed": true,
    "speedup": 1.0,
-   "time_us": 522.9,
+   "time_us": 523.1,
    "message": ""
   },
   {
@@ -38,7 +38,7 @@
    "shape": "128x4096x6144",
    "passed": true,
    "speedup": 1.0,
-   "time_us": 353.9,
+   "time_us": 353.8,
    "message": ""
   },
   {
@@ -56,7 +56,7 @@
    "shape": "1024x4096x512",
    "passed": true,
    "speedup": 1.0,
-   "time_us": 243.7,
+   "time_us": 243.8,
    "message": ""
   },
   {
@@ -64,8 +64,8 @@
    "which": "expert",
    "shape": "256x6144x4096",
    "passed": true,
-   "speedup": 2.824,
-   "time_us": 272.7,
+   "speedup": 2.823,
+   "time_us": 272.9,
    "message": ""
   },
   {
@@ -73,8 +73,8 @@
    "which": "expert",
    "shape": "256x2048x4096",
    "passed": true,
-   "speedup": 2.081,
-   "time_us": 110.9,
+   "speedup": 2.077,
+   "time_us": 111.2,
    "message": ""
   },
   {
@@ -82,7 +82,7 @@
    "which": "expert",
    "shape": "512x4096x2048",
    "passed": true,
-   "speedup": 3.785,
+   "speedup": 3.786,
    "time_us": 138.1,
    "message": ""
   },
@@ -91,8 +91,8 @@
    "which": "expert",
    "shape": "128x4096x6144",
    "passed": true,
-   "speedup": 1.277,
-   "time_us": 277.2,
+   "speedup": 1.276,
+   "time_us": 277.5,
    "message": ""
   },
   {
@@ -100,7 +100,7 @@
    "which": "expert",
    "shape": "640x1280x2560",
    "passed": true,
-   "speedup": 1.568,
+   "speedup": 1.569,
    "time_us": 99.9,
    "message": ""
   },
@@ -109,8 +109,8 @@
    "which": "expert",
    "shape": "1024x4096x512",
    "passed": true,
-   "speedup": 3.061,
-   "time_us": 79.6,
+   "speedup": 3.05,
+   "time_us": 79.9,
    "message": ""
   },
   {
@@ -120,15 +120,15 @@
    "passed": false,
    "speedup": null,
    "time_us": null,
-   "message": "at held-out 256x6144x4096: PRECISION LOSS: errors up to 4.9 bf16 ulps against an fp32 reference (the limit is 4; honest bf16 output rounding is ~1). Accumulate in an fp32 PSUM tile across the whole contraction and round to bf16 once, at the end."
+   "message": "at held-out 256x6144x4096: PRECISION LOSS: errors up to 4.9 bf16 ulps against an fp32 reference (the limit is 4; honest bf16 output rounding is ~0.5). Accumulate in an fp32 PSUM tile across the whole contraction and round to bf16 once, at the end."
   },
   {
    "kernel": "matmul",
    "which": "aws as published",
    "shape": "256x2048x4096",
    "passed": true,
-   "speedup": 2.131,
-   "time_us": 108.3,
+   "speedup": 2.122,
+   "time_us": 108.8,
    "message": ""
   },
   {
@@ -136,8 +136,8 @@
    "which": "aws as published",
    "shape": "512x4096x2048",
    "passed": true,
-   "speedup": 3.808,
-   "time_us": 137.3,
+   "speedup": 3.795,
+   "time_us": 137.8,
    "message": ""
   },
   {
@@ -154,8 +154,8 @@
    "which": "aws as published",
    "shape": "640x1280x2560",
    "passed": true,
-   "speedup": 1.588,
-   "time_us": 98.6,
+   "speedup": 1.587,
+   "time_us": 98.8,
    "message": ""
   },
   {
@@ -163,8 +163,62 @@
    "which": "aws as published",
    "shape": "1024x4096x512",
    "passed": true,
-   "speedup": 2.951,
-   "time_us": 82.6,
+   "speedup": 2.956,
+   "time_us": 82.5,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "best random_search",
+   "shape": "256x6144x4096",
+   "passed": true,
+   "speedup": 3.987,
+   "time_us": 193.2,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "best random_search",
+   "shape": "256x2048x4096",
+   "passed": true,
+   "speedup": 2.837,
+   "time_us": 81.4,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "best random_search",
+   "shape": "512x4096x2048",
+   "passed": true,
+   "speedup": 3.8,
+   "time_us": 137.6,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "best random_search",
+   "shape": "128x4096x6144",
+   "passed": true,
+   "speedup": 2.342,
+   "time_us": 151.2,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "best random_search",
+   "shape": "640x1280x2560",
+   "passed": true,
+   "speedup": 1.456,
+   "time_us": 107.7,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "best random_search",
+   "shape": "1024x4096x512",
+   "passed": true,
+   "speedup": 1.2,
+   "time_us": 203.3,
    "message": ""
   }
  ]
