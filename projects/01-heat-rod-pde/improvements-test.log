@@ -1,0 +1,17 @@
+test_best_answer_is_not_discarded (test_improvements.AgentTests.test_best_answer_is_not_discarded) ... level0.1 round 0: rewards [0.8], errors 0
+level0.1 round 1: rewards [0.0], errors 0
+level0.1 round 2: rewards [1.0], errors 0
+ok
+test_http_500_retry (test_improvements.AgentTests.test_http_500_retry) ... ok
+test_service_failure_is_not_math_failure (test_improvements.AgentTests.test_service_failure_is_not_math_failure) ... ok
+test_tool_trace_retains_integral (test_improvements.AgentTests.test_tool_trace_retains_integral) ... ok
+test_exact_answers_across_seeds_without_oracle (test_improvements.PhysicsTests.test_exact_answers_across_seeds_without_oracle) ... ok
+test_high_frequency_grid_alias_is_rejected (test_improvements.PhysicsTests.test_high_frequency_grid_alias_is_rejected) ... ok
+test_series_truncation_threshold (test_improvements.PhysicsTests.test_series_truncation_threshold) ... ok
+test_untrusted_expression_rejected (test_improvements.PhysicsTests.test_untrusted_expression_rejected) ... ok
+test_wrong_decay_and_boundary (test_improvements.PhysicsTests.test_wrong_decay_and_boundary) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.543s
+
+OK

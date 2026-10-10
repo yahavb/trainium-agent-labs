@@ -1,0 +1,26 @@
+
+=========== level0.3 ===========
+Solve the heat equation on a rod.
+
+  u_t = 1/2 * u_xx,   for 0 < x < 1, t > 0
+  u(0, t) = 0 and u(1, t) = 0
+  u(x, 0) = sin(pi*x) - sin(3*pi*x) + 3*sin(5*pi*x)
+
+On the last line write exactly
+  u(x, t) = <expression>
+Write every term out with its numbers filled in, in Python syntax, like this:
+  u(x, t) = 3*exp(-2*pi**2*t)*sin(pi*x) - 0.5*exp(-8*pi**2*t)*sin(2*pi*x)
+Use exp, sin, cos, pi and ** for powers. No summation sign, no unknown constants, no LaTeX.
+
+round 0: rewards [0.0, 0.0]  mean 0.00  best 0.0  0 tool call(s)  (39.8s)
+  best: 1 \cdot e**{-\frac{1}{2} pi**2 t} \sin(pi x) + (-1) \cdot e**{-\frac{1}{2} (9pi**2) t} \sin(3pi x) + 3
+  checker: Could not read the expression '1 \\cdot e**{-\\frac{1}{2} pi**2 t} \\sin(pi x) + (-1) \\cdot e**{-\\frac{1': TokenError. Do not write a summation or LaTeX. Expand the sum: write each term separately with its number in front, joined by + and -, for example 3*exp(-2*pi**2*t)*sin(pi*x) - 0.5*exp(-8*pi**2*t)*sin(2*pi*x).
+
+round 1: rewards [1.0, 1.0]  mean 1.00  best 1.0  4 tool call(s)  (35.5s)
+SOLVED: u(x, t) = 1*exp(-0.5*pi**2*t)*sin(pi*x) - 1*exp(-4.5*pi**2*t)*sin(3*pi*x) + 3*exp(-12.5*pi**2*t)*sin(5*pi*x)
+
+=========== summary: level 0 ===========
+  level0.3     reward 1.0 after 2 round(s)  SOLVED
+  solved 1/1
+
+attempts logged to benchmark-results/20261010T170025Z/baseline-level0.3-seed0/attempts.jsonl

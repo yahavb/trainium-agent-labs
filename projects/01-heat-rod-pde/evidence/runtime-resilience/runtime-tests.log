@@ -1,0 +1,58 @@
+test_original_full_score_is_the_reported_success (test_comparison.ComparisonTests.test_original_full_score_is_the_reported_success) ... ok
+test_repaired_output_is_distinct_from_model_success_and_tokens (test_comparison.ComparisonTests.test_repaired_output_is_distinct_from_model_success_and_tokens) ... ok
+test_agent_accepts_original_checker_tool_output_and_logs_both_answers (test_decay_repair.DecayRepairTests.test_agent_accepts_original_checker_tool_output_and_logs_both_answers) ... level0.1 round 0: rewards [1.0], errors 0
+ok
+test_agent_does_not_repair_wrong_initial_shape (test_decay_repair.DecayRepairTests.test_agent_does_not_repair_wrong_initial_shape) ... level0.1 round 0: rewards [0.4], errors 0
+ok
+test_correct_modes_coefficients_and_start_error_are_preserved (test_decay_repair.DecayRepairTests.test_correct_modes_coefficients_and_start_error_are_preserved) ... ok
+test_declines_unsupported_or_already_correct_expressions (test_decay_repair.DecayRepairTests.test_declines_unsupported_or_already_correct_expressions) ... ok
+test_derives_rates_for_multiple_conductivities_and_lengths (test_decay_repair.DecayRepairTests.test_derives_rates_for_multiple_conductivities_and_lengths) ... ok
+test_best_answer_is_not_discarded (test_improvements.AgentTests.test_best_answer_is_not_discarded) ... level0.1 round 0: rewards [0.8], errors 0
+level0.1 round 1: rewards [0.0], errors 0
+level0.1 round 2: rewards [1.0], errors 0
+ok
+test_http_500_retry (test_improvements.AgentTests.test_http_500_retry) ... ok
+test_service_failure_is_not_math_failure (test_improvements.AgentTests.test_service_failure_is_not_math_failure) ... level0.1 round 0: rewards [], errors 1
+ok
+test_tool_trace_retains_integral (test_improvements.AgentTests.test_tool_trace_retains_integral) ... ok
+test_original_acceptance_and_parser_are_not_overridden (test_improvements.CheckerParityTests.test_original_acceptance_and_parser_are_not_overridden) ... level0.1 round 0: rewards [1.0], errors 0
+level0.1 round 0: rewards [1.0], errors 0
+ok
+test_syntax_limits_apply_only_to_the_optional_tool (test_improvements.CheckerParityTests.test_syntax_limits_apply_only_to_the_optional_tool) ... ok
+test_artifact_corruption_stops_batch_after_preserving_results (test_runtime_resilience.ComparisonResilienceTests.test_artifact_corruption_stops_batch_after_preserving_results) ... ok
+test_bad_unicode_and_bad_schema_do_not_erase_valid_records (test_runtime_resilience.ComparisonResilienceTests.test_bad_unicode_and_bad_schema_do_not_erase_valid_records) ... ok
+test_checker_failure_in_saved_candidate_does_not_crash_summary (test_runtime_resilience.ComparisonResilienceTests.test_checker_failure_in_saved_candidate_does_not_crash_summary) ... ok
+test_corrupt_middle_line_is_reported_while_later_records_are_recovered (test_runtime_resilience.ComparisonResilienceTests.test_corrupt_middle_line_is_reported_while_later_records_are_recovered) ... ok
+test_failed_requests_count_and_unknown_tokens_stay_unknown (test_runtime_resilience.ComparisonResilienceTests.test_failed_requests_count_and_unknown_tokens_stay_unknown) ... ok
+test_healthy_batch_still_completes (test_runtime_resilience.ComparisonResilienceTests.test_healthy_batch_still_completes) ... ok
+test_interruption_is_preserved_and_stops_new_cases (test_runtime_resilience.ComparisonResilienceTests.test_interruption_is_preserved_and_stops_new_cases) ... ok
+test_legacy_untyped_trace_and_absent_usage (test_runtime_resilience.ComparisonResilienceTests.test_legacy_untyped_trace_and_absent_usage) ... ok
+test_missing_log_is_an_explicit_artifact_error (test_runtime_resilience.ComparisonResilienceTests.test_missing_log_is_an_explicit_artifact_error) ... ok
+test_partial_log_retains_complete_candidate_and_reports_exact_line (test_runtime_resilience.ComparisonResilienceTests.test_partial_log_retains_complete_candidate_and_reports_exact_line) ... ok
+test_service_failure_stops_batch_for_both_old_and_new_agent_exit_codes (test_runtime_resilience.ComparisonResilienceTests.test_service_failure_stops_batch_for_both_old_and_new_agent_exit_codes) ... ok
+test_timeout_with_partial_log_retains_timeout_and_marks_incomplete (test_runtime_resilience.ComparisonResilienceTests.test_timeout_with_partial_log_retains_timeout_and_marks_incomplete) ... ok
+test_legacy_entrypoint_also_stops_on_service_failure (test_runtime_resilience.LegacyBenchmarkTests.test_legacy_entrypoint_also_stops_on_service_failure) ... ok
+test_legacy_entrypoint_preserves_partial_evidence (test_runtime_resilience.LegacyBenchmarkTests.test_legacy_entrypoint_preserves_partial_evidence) ... ok
+test_agent_cli_saves_failure_and_does_not_start_next_problem (test_runtime_resilience.RuntimeTests.test_agent_cli_saves_failure_and_does_not_start_next_problem) ... Stopped: infrastructure_error. Artifacts: /tmp/tmpny024nzy/20261010T190509Z-507d0d10
+ok
+test_all_checker_exceptions_end_with_unknown_score_within_budget (test_runtime_resilience.RuntimeTests.test_all_checker_exceptions_end_with_unknown_score_within_budget) ... level0.1 round 0: rewards [], errors 1
+level0.1 round 1: rewards [], errors 1
+ok
+test_calculator_container_errors_are_returned_with_trace_and_can_recover (test_runtime_resilience.RuntimeTests.test_calculator_container_errors_are_returned_with_trace_and_can_recover) ... ok
+test_checker_exception_is_logged_and_next_round_can_solve (test_runtime_resilience.RuntimeTests.test_checker_exception_is_logged_and_next_round_can_solve) ... level0.1 round 0: rewards [], errors 1
+level0.1 round 1: rewards [1.0], errors 0
+level0.1 round 0: rewards [], errors 1
+level0.1 round 1: rewards [1.0], errors 0
+ok
+test_checker_interrupt_is_not_swallowed (test_runtime_resilience.RuntimeTests.test_checker_interrupt_is_not_swallowed) ... ok
+test_failed_request_stops_after_logging_all_inflight_samples (test_runtime_resilience.RuntimeTests.test_failed_request_stops_after_logging_all_inflight_samples) ... level0.1 round 0: rewards [1.0], errors 1
+ok
+test_grade_failure_does_not_discard_previous_scored_candidate (test_runtime_resilience.RuntimeTests.test_grade_failure_does_not_discard_previous_scored_candidate) ... level0.1 round 0: rewards [0.8], errors 0
+level0.1 round 1: rewards [], errors 1
+ok
+test_original_checker_results_remain_unchanged (test_runtime_resilience.RuntimeTests.test_original_checker_results_remain_unchanged) ... ok
+
+----------------------------------------------------------------------
+Ran 35 tests in 2.707s
+
+OK

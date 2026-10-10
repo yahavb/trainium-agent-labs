@@ -57,6 +57,9 @@ def compute(expr_str):
     except Exception as e:
         return f"could not read that expression: {type(e).__name__}"
 
+    if not isinstance(expr, sp.Expr):
+        return ("unsupported expression: expected one scalar expression; put each "
+                "calculation on its own COMPUTE: line")
     bad = expr.free_symbols - {x, t, n}
     if bad:
         return (f"the expression contains the unknown {sorted(map(str, bad))}; substitute a "
@@ -66,6 +69,8 @@ def compute(expr_str):
     except Exception as e:
         return f"could not evaluate that: {type(e).__name__}"
 
+    if not isinstance(value, sp.Expr):
+        return "could not evaluate that: result is not a scalar expression"
     out = sp.sstr(value)
     if not value.free_symbols:
         try:
@@ -85,6 +90,15 @@ INSTRUCTIONS = (
     "You may write several such lines. Stop there and send them; I will reply with the "
     "values, and then you give the final answer. Do the integrals this way rather than "
     "guessing the coefficients."
+)
+
+# An experimental output protocol, not a smaller token limit or a supplied answer.
+CONCISE_INSTRUCTIONS = (
+    "You have a calculator. Set up the integrals yourself. To request calculations, "
+    "reply with only COMPUTE: <expression> lines, one expression per line. Example:\n"
+    "COMPUTE: Integral(x*(2 - x)*sin(pi*x/2), (x, 0, 2))\n"
+    "Send those lines directly, without an explanation. After receiving the values, "
+    "give only the complete u(x, t) = <expression> answer line."
 )
 
 

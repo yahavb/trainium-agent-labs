@@ -1,5 +1,45 @@
 # Project 1 — The heat-rod agent
 
+**Submission status: NOT READY; engineering review also required.**
+The [fixed project baseline](PROJECT_BASELINE.md) governs future changes.
+See the [current readiness assessment](submission/READINESS.md), including the
+[checker rationale](submission/CHECKER.md) and [one-page note](submission/ONE_PAGE_NOTE.md).
+Historical solved examples below are not the current submission gate.
+
+The integrated team agent is `improved_agent.py`. Optional `--decay-repair` derives
+exponential rates from the model's submitted spatial waves, preserving its coefficients
+and initial expression; it accepts a proposal only when the original `pdecheck.check`
+returns 1.0. No independent physics validator participates in grading or stopping. This is symbolic tool-assisted inference, not model training.
+See [matched optimization results](OPTIMIZATION_RESULTS.md) and the source/attempt artifacts
+under `evidence/decay-repair/`. Those recorded experiments and the historical seat-85
+reports used an earlier stricter acceptance policy; they are not fresh measurements
+of the current original-checker-only implementation.
+
+```bash
+python improved_agent.py --level 1 --all --samples 2 --workers 2 --tool-steps 1 --decay-repair
+python compare_agents.py --variants improved decay --samples 2 --rounds 3 --max-tokens 1200
+```
+
+`compare_agents.py` runs sequentially, snapshots source, alternates variant order by case,
+keeps the same problem seeds and budgets, and records model-only and executed-answer
+success separately, both using the original checker. Settings record
+`grading_policy: original_checker`. `--repeats` repeats the same cases; `improved_agent.py`
+uses `--repeat` to advance problem seeds. `--decay-repair` remains opt-in.
+
+Runtime failures are recorded separately from checker scores: an unscorable candidate
+has a null reward and can be corrected within the existing round budget. Exhausted model
+request failures stop the batch after saving partial results. Corrupt logs are flagged,
+and request totals include failed requests; unknown token usage remains null.
+See [runtime fixes and regression evidence](RUNTIME_FIXES.md).
+
+**Team experiments:** [baseline configuration](configs/baseline.json) ·
+[structured-feedback configuration](configs/structured.json) ·
+[concise-tool configuration](configs/concise_tools.json).
+`run_experiments.py` repeats a fixed problem, snapshots the executed code, and saves per-run logs
+and a summary. `structured` feedback is an unmeasured experiment; the original checker is unchanged.
+The concise calculator protocol failed its first live trial and remains opt-in; see
+[preliminary results](EXPERIMENT_RESULTS.md). Baseline remains the default.
+
 **A small model on your chip solves heat-equation problems it cannot solve in one shot. The checker
 does the work.**
 

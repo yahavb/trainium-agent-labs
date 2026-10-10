@@ -1,0 +1,71 @@
+{
+  "status": "complete",
+  "settings": {
+    "team": 18,
+    "tested_commit": "31a150d86a536e82f085a68d023558fb55d821c1",
+    "branch": "challenge1-runtime-resilience",
+    "pr": "https://github.com/ChenYujunjks/trainium-agent-labs/pull/5",
+    "entrypoint": "algorithm_agent.py via external enhanced_agent_adapter.py",
+    "level": 1,
+    "subproblems": [
+      1,
+      2,
+      3
+    ],
+    "seed": 0,
+    "samples": 4,
+    "workers": 4,
+    "rounds": 4,
+    "max_tokens": 1200,
+    "tool_steps": 1,
+    "timeout": 900,
+    "deadline": 900,
+    "features": "cache,final,feedback,adaptive",
+    "grading_policy": "enhanced_validation_grade_v2_opt_in",
+    "additional_validation_status": "run",
+    "source_matches_master": {
+      "pdecheck.py": true,
+      "checker_runtime.py": true,
+      "improved_agent.py": true
+    },
+    "seat": "seat-87",
+    "model": "Qwen/Qwen3-8B",
+    "comparison_limit": "Optional enhanced checker enabled for acceptance and feedback; not directly comparable with original-only Attempt 2.",
+    "comparison_reference_commit": "cd16f7b57a878661bb371f4c1ef09bd6864ff356",
+    "acceptance": "Existing validation.grade combined policy: its baseline protocol must score 1.0 and enhanced validation must accept; public pdecheck score is independently recorded.",
+    "original_checker_reference": "pdecheck.check via unchanged checker_runtime.grade_candidate",
+    "test_only_adapter": true,
+    "official_selftests_and_regressions": "/workspace/trainium-team87/projects/01-heat-rod-pde/results/team18-31a150d-20261010T214245Z-d8f50c",
+    "restarted_from_original_only_batch": "/workspace/trainium-team87/projects/01-heat-rod-pde/results/team18-31a150d-20261010T214245Z-d8f50c",
+    "started_utc": "2026-10-10T21:46:26.305798+00:00",
+    "adapter_sha256": {
+      "enhanced_agent_adapter.py": "90885065b8867ca68ac58564697734322807a962f914e2f60a56ee6898544a8b",
+      "optional_checker_checks.py": "fcdab6c86f5e1c8f6ab18058b4bf8fd396603a6089ffe480d368a9d795744231",
+      "runner.py": "6887a901a16a5c7db93ac724115e35661ee1034ad938eb420bc1de4ecac5e9a6"
+    }
+  },
+  "cases": [
+    {
+      "problem": "level1.1",
+      "exit_code": 0,
+      "process_wall_seconds": 15.755406819997006
+    },
+    {
+      "problem": "level1.2",
+      "exit_code": 0,
+      "process_wall_seconds": 59.60144015800324
+    },
+    {
+      "problem": "level1.3",
+      "exit_code": 0,
+      "process_wall_seconds": 113.41581527900416
+    }
+  ],
+  "offline_checks": [
+    {
+      "log": "optional-checker-checks.log",
+      "exit_code": 1
+    }
+  ],
+  "process_wall_seconds": 194.495221545003
+}

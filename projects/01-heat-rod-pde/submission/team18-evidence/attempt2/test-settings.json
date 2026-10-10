@@ -1,0 +1,39 @@
+{
+  "team": 18,
+  "tested_commit": "cd16f7b57a878661bb371f4c1ef09bd6864ff356",
+  "branch": "challenge1-runtime-resilience",
+  "pr": "https://github.com/ChenYujunjks/trainium-agent-labs/pull/5",
+  "entrypoint": "algorithm_agent.py",
+  "level": 1,
+  "subproblems": [
+    1,
+    2,
+    3
+  ],
+  "seed": 0,
+  "samples": 4,
+  "workers": 4,
+  "rounds": 4,
+  "max_tokens": 1200,
+  "tool_steps": 1,
+  "timeout": 900,
+  "deadline": 900,
+  "features": "cache,final,feedback,adaptive",
+  "grading_policy": "original_checker",
+  "additional_validation_status": "not_run",
+  "source_matches_master": {
+    "pdecheck.py": true,
+    "checker_runtime.py": true,
+    "improved_agent.py": true
+  },
+  "seat": "seat-87",
+  "model": "Qwen/Qwen3-8B",
+  "comparison_limit": "Different entrypoint/features from supplied Attempt 2; not a controlled implementation comparison without matched control.",
+  "restarted_from_partial_batch": "/workspace/trainium-team87/projects/01-heat-rod-pde/results/team18-pr5-algorithm-20261010T211253Z-21c640",
+  "prior_selftest_evidence": {
+    "source_commit": "a4b58a5b0ec6f4cc96ab7d9517cb35c00b0cbb68",
+    "log": "/workspace/trainium-team87/projects/01-heat-rod-pde/results/team18-pr5-algorithm-20261010T211253Z-21c640/selftests.log",
+    "selftests_repeated": false,
+    "reason": "Agent/checker source unchanged; latest commit adds evidence files only."
+  }
+}

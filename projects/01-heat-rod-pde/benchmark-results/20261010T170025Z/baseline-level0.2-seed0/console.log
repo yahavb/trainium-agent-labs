@@ -1,0 +1,32 @@
+
+=========== level0.2 ===========
+Solve the heat equation on a rod.
+
+  u_t = 1/2 * u_xx,   for 0 < x < 2, t > 0
+  u(0, t) = 0 and u(2, t) = 0
+  u(x, 0) = sin(pi*x)
+
+On the last line write exactly
+  u(x, t) = <expression>
+Write every term out with its numbers filled in, in Python syntax, like this:
+  u(x, t) = 3*exp(-2*pi**2*t)*sin(pi*x) - 0.5*exp(-8*pi**2*t)*sin(2*pi*x)
+Use exp, sin, cos, pi and ** for powers. No summation sign, no unknown constants, no LaTeX.
+
+round 0: rewards [0.0, 0.0]  mean 0.00  best 0.0  0 tool call(s)  (40.0s)
+  best: \sum_{n=1}**{\infty} B_n e**{-\frac{n**2 pi**2}{8} t} \sin\left(\frac{npi x}{2}\right)
+  checker: Could not read the expression '\\sum_{n=1}**{\\infty} B_n e**{-\\frac{n**2 pi**2}{8} t} \\sin\\left(\\frac{': TokenError. Do not write a summation or LaTeX. Expand the sum: write each term separately with its number in front, joined by + and -, for example 3*exp(-2*pi**2*t)*sin(pi*x) - 0.5*exp(-8*pi**2*t)*sin(2*pi*x).
+
+round 1: rewards [0.0, 0.0]  mean 0.00  best 0.0  5 tool call(s)  (47.6s)
+  best: \sum_{n=1}**{\infty} B_n e**{-\frac{n**2 pi**2}{8} t} \sin\left(\frac{n pi x}{2}\right)
+  checker: Could not read the expression '\\sum_{n=1}**{\\infty} B_n e**{-\\frac{n**2 pi**2}{8} t} \\sin\\left(\\frac{': TokenError. Do not write a summation or LaTeX. Expand the sum: write each term separately with its number in front, joined by + and -, for example 3*exp(-2*pi**2*t)*sin(pi*x) - 0.5*exp(-8*pi**2*t)*sin(2*pi*x).
+
+round 2: rewards [0.0, 0.0]  mean 0.00  best 0.0  0 tool call(s)  (40.0s)
+  best: \sum_{n=1}**{\infty} B_n e**{-\frac{n**2 pi**2}{8} t} \sin\left(\frac{n pi x}{2}\right)
+  checker: Could not read the expression '\\sum_{n=1}**{\\infty} B_n e**{-\\frac{n**2 pi**2}{8} t} \\sin\\left(\\frac{': TokenError. Do not write a summation or LaTeX. Expand the sum: write each term separately with its number in front, joined by + and -, for example 3*exp(-2*pi**2*t)*sin(pi*x) - 0.5*exp(-8*pi**2*t)*sin(2*pi*x).
+not solved in 3 rounds; best reward 0.0
+
+=========== summary: level 0 ===========
+  level0.2     reward 0.0 after 3 round(s)
+  solved 0/1
+
+attempts logged to benchmark-results/20261010T170025Z/baseline-level0.2-seed0/attempts.jsonl

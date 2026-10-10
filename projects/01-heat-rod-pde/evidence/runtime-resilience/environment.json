@@ -1,0 +1,39 @@
+{
+  "baseline_commit": "6ea9f98583c1c01db92705903c9cab167096b882",
+  "python": "3.13.7 | packaged by conda-forge | (main, Sep  3 2025, 14:30:35) [GCC 14.3.0]",
+  "packages": {
+    "sympy": "1.14.0",
+    "numpy": "2.4.6",
+    "httpx": "0.28.1"
+  },
+  "real_model_requests": 0,
+  "protected_files_unchanged": {
+    "agent.py": true,
+    "pdecheck.py": true,
+    "level0_heatrod.py": true,
+    "level1_heatrod.py": true
+  },
+  "source_sha256": {
+    "agent.py": "0b917b86e894182433965d6f031605b3921a82044562994c594fc911a34f42ee",
+    "answer_syntax.py": "1cc8bb83d793b363f221bbb22f496e7955a7ba451b64ca610c35f2c7046e2fb2",
+    "attempt_records.py": "1cec8edacd1d55844176fdf16c1ef546ea2a62378ba3f421070b8a82547e1271",
+    "benchmark.py": "1b1fbba44c3a27d81c59d637c00745f30b556ff7ba12fa25c7a89dd2e7ddb0e1",
+    "checker_runtime.py": "db0fc57969bde4aae9fdc2bff158f791398cbc5f627adbf33b0dc840def70f10",
+    "compare_agents.py": "693e54cdbe73e22ee772d165228472bf0d7b847384a33bc849720ab53472ebe6",
+    "decay_repair.py": "b73c1f62bab06c0c0e51bae85445b3ae74f5a0022cbea912252685a22dff5f97",
+    "improved_agent.py": "ed16f49c762b845f78803cfb8ca16febf8c1860faa2d0ff01aecfa177dbe293b",
+    "level0_heatrod.py": "b28f1daef3f05538f905d13ee78d45e371491c4654bb95d40409c6c25b015944",
+    "level1_heatrod.py": "307ef74cf721247d154e8dee0727f73bfbaa4f90deae33165fc88f8105dbb9d9",
+    "pdecheck.py": "186d940ebc909a33e6a6b77b6f81a30dbc43d702f97dc182edc97f04a9393caa",
+    "replay_decay_repair.py": "34b2afef53593c2806a068e10232d16adca85afea1fcce2a590fef9e08303875",
+    "report_retest.py": "316bf1a48d88a5c2a7b5002c4b271e25c79ce1fc05b4c4cb2460b8c33a59675a",
+    "review_probes.py": "df3cb2b42733a8ea42bd9f7aa7d8e6142750a5351611a7ddec26ca16fc5cfb60",
+    "run_experiments.py": "6d0a644a91cae97948ad124055f547280170c1a5228fe0c60cea1b3d1dd4ef39",
+    "test_comparison.py": "f7d4aa72448364d26c940041223a7b7100ef209465f88400e31092185c4b3994",
+    "test_decay_repair.py": "c533bf105363dd6933ca6064226d0375478cabad7cb98b9651519d8a6bd2276a",
+    "test_improvements.py": "f9abd60775c571f194b045ae192528062695c721b21c0bde0e4e5d161f851915",
+    "test_runtime_resilience.py": "23728c06467f766cc08057146f7e7995d5d0e573d6525b4cfe03ef278e2261bc",
+    "tool_calc.py": "3d63de0a81763e2a6decb6b6b98bead9402e6ecc6958827fc5198feed67cf048",
+    "write_report.py": "f194e587d374025f0cd0f6f892cf39d2d5986ab5b49f5e1bf8223f6f4c5174ea"
+  }
+}

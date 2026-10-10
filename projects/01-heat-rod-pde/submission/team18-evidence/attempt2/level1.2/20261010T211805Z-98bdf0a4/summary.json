@@ -1,0 +1,49 @@
+{
+  "run_id": "20261010T211805Z-98bdf0a4",
+  "settings": {
+    "level": 1,
+    "sub": 2,
+    "seed": 0,
+    "samples": 4,
+    "rounds": 4,
+    "max_tokens": 1200,
+    "tool_steps": 1,
+    "workers": 4,
+    "features": "cache,final,feedback,adaptive",
+    "deadline": 900.0,
+    "timeout": 900.0,
+    "model": "Qwen/Qwen3-8B",
+    "base": "http://localhost:8000/v1",
+    "output": "/workspace/trainium-team87/projects/01-heat-rod-pde/results/team18-pr5-latest-20261010T211750Z-ba55c1/level1.2",
+    "telemetry": "/workspace/trainium-team87/projects/01-heat-rod-pde/results/team18-pr5-latest-20261010T211750Z-ba55c1/level1.2/20261010T211805Z-98bdf0a4/telemetry.jsonl"
+  },
+  "results": [
+    {
+      "problem": "level1.2",
+      "seed": 0,
+      "status": "solved",
+      "reward": 1.0,
+      "original_reward": 1.0,
+      "grading_policy": "original_checker",
+      "additional_validation_status": "not_run",
+      "answer": "sin(pi*x/6)*exp(-3/2*(pi/6)**2*t) + 2*sin(5*pi*x/6)*exp(-3/2*(5*pi/6)**2*t)",
+      "rounds": 1,
+      "requests": 8,
+      "prompt_tokens": 4420,
+      "completion_tokens": 1506,
+      "tool_calls": 0,
+      "tool_executions": 0,
+      "cache_hits": 0,
+      "validation_failures": 3,
+      "duplicate_candidates": 0,
+      "repair_requests": 4,
+      "features": [
+        "adaptive",
+        "cache",
+        "feedback",
+        "final"
+      ],
+      "seconds": 73.8715014319896
+    }
+  ]
+}

@@ -1,0 +1,561 @@
+{
+  "team": 18,
+  "tested_commit": "31a150d86a536e82f085a68d023558fb55d821c1",
+  "formal_attempt_number": null,
+  "reason": "Additional enhanced-checker test; not reassigned as Attempt 2 or 3 without owner designation.",
+  "grading_policy": "enhanced_validation_grade_v2_opt_in",
+  "public_original_grades_recorded_separately": true,
+  "source_unchanged_vs_attempt2": {
+    "pdecheck.py": true,
+    "checker_runtime.py": true,
+    "algorithm_agent.py": true,
+    "algorithm_tools.py": true
+  },
+  "aggregate": {
+    "solved": 3,
+    "problems": 3,
+    "seconds": 186.99884789100906,
+    "requests": 29,
+    "candidates": 16,
+    "full_score_candidates": 7,
+    "completion_tokens": 3755,
+    "prompt_tokens": 17918,
+    "transport_error_candidates": 0,
+    "evaluation_errors": 0,
+    "checker_calls": 24,
+    "recorded_checker_seconds": 10.038045169043471
+  },
+  "results": [
+    {
+      "problem": "level1.1",
+      "seed": 0,
+      "status": "solved",
+      "reward": 1.0,
+      "original_reward": 1.0,
+      "grading_policy": "enhanced_validation_grade_v2_opt_in",
+      "additional_validation_status": "run",
+      "answer": "exp(-pi**2*t/4)*sin(pi*x/2)",
+      "rounds": 1,
+      "requests": 8,
+      "prompt_tokens": 2418,
+      "completion_tokens": 262,
+      "tool_calls": 4,
+      "tool_executions": 2,
+      "cache_hits": 2,
+      "validation_failures": 0,
+      "duplicate_candidates": 2,
+      "repair_requests": 0,
+      "features": [
+        "adaptive",
+        "cache",
+        "feedback",
+        "final"
+      ],
+      "seconds": 15.186874103004811,
+      "test_adapter": "enhanced_agent_adapter.py",
+      "enhanced_protocol_original_reward": 1.0,
+      "validation": {
+        "accepted": true,
+        "status": "valid",
+        "parts": {
+          "equation": true,
+          "left_bc": true,
+          "right_bc": true,
+          "start_shape": true
+        },
+        "conditions": {
+          "equation": {
+            "status": "pass",
+            "error": 0.0,
+            "threshold": 1e-06,
+            "value": 0.0,
+            "location": {
+              "x": 0.5013672365125056,
+              "t": 0.02545768954388812
+            },
+            "symbolic_zero": true,
+            "precision_audits": [
+              {
+                "x": 0.5013672365125056,
+                "t": 0.02545768954388812,
+                "normalized_error": 0.0
+              }
+            ]
+          },
+          "left_bc": {
+            "status": "pass",
+            "error": 0.0,
+            "threshold": 1e-06,
+            "value": 0.0,
+            "location": {
+              "x": 0.0,
+              "t": 0.02545768954388812
+            },
+            "symbolic_zero": true,
+            "precision_audits": [
+              {
+                "x": 0.0,
+                "t": 0.02545768954388812,
+                "normalized_error": 0.0
+              }
+            ]
+          },
+          "right_bc": {
+            "status": "pass",
+            "error": 0.0,
+            "threshold": 1e-06,
+            "value": 0.0,
+            "location": {
+              "x": 1.0,
+              "t": 0.02545768954388812
+            },
+            "symbolic_zero": true,
+            "precision_audits": [
+              {
+                "x": 1.0,
+                "t": 0.02545768954388812,
+                "normalized_error": 0.0
+              }
+            ]
+          },
+          "start_shape": {
+            "status": "pass",
+            "error": 0.0,
+            "threshold": 1e-06,
+            "grid_errors": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "quadrature_stable": true,
+            "grid_sizes": [
+              1601,
+              1601,
+              3201
+            ],
+            "estimated_frequency_bound_cycles": 0.25,
+            "frequency_bound_resolved": true,
+            "quadrature_uncertainty_estimate": 0.0,
+            "location": {
+              "x": 0.0,
+              "t": 0.0
+            },
+            "local_deviation": 0.0,
+            "local_refinement_points": 17,
+            "local_deviation_role": "diagnostic only; acceptance uses relative L2"
+          }
+        },
+        "errors": {
+          "equation": 0.0,
+          "left_bc": 0.0,
+          "right_bc": 0.0
+        },
+        "start_error": 0.0,
+        "diagnostics": [
+          {
+            "category": "VALID_SOLUTION",
+            "severity": "info",
+            "condition": "all",
+            "evidence": {
+              "criteria": "existing tolerances on bounded verification samples"
+            },
+            "location": null,
+            "correction": "All required sampled checks pass. This is numerical validation, not a general symbolic proof."
+          }
+        ],
+        "feedback": "VALID_SOLUTION: All required sampled checks pass. This is numerical validation, not a general symbolic proof.",
+        "validation_seed": 9173,
+        "points": 1944,
+        "shape_points": 3201,
+        "protocol": "enhanced-checker-v2",
+        "validation_complete": true,
+        "diagnostics_complete": true
+      },
+      "public_original_best_reward": 1.0,
+      "public_original_solved_candidates": 4,
+      "enhanced_solved_candidates": 4,
+      "evaluation_errors": 0,
+      "candidate_rounds": [
+        {
+          "round": 0,
+          "new_checker_scores": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "public_original_scores": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ],
+      "original_artifact_directory": "level1.1/20261010T214632Z-ec9cc17c"
+    },
+    {
+      "problem": "level1.2",
+      "seed": 0,
+      "status": "solved",
+      "reward": 1.0,
+      "original_reward": 1.0,
+      "grading_policy": "enhanced_validation_grade_v2_opt_in",
+      "additional_validation_status": "run",
+      "answer": "sin(pi*x/6)*exp(- (3/2)*(pi**2/36)*t) + 2*sin(5*pi*x/6)*exp(- (3/2)*(25*pi**2/36)*t)",
+      "rounds": 1,
+      "requests": 7,
+      "prompt_tokens": 3622,
+      "completion_tokens": 1220,
+      "tool_calls": 0,
+      "tool_executions": 0,
+      "cache_hits": 0,
+      "validation_failures": 3,
+      "duplicate_candidates": 0,
+      "repair_requests": 3,
+      "features": [
+        "adaptive",
+        "cache",
+        "feedback",
+        "final"
+      ],
+      "seconds": 58.99541676900117,
+      "test_adapter": "enhanced_agent_adapter.py",
+      "enhanced_protocol_original_reward": 1.0,
+      "validation": {
+        "accepted": true,
+        "status": "valid",
+        "parts": {
+          "equation": true,
+          "left_bc": true,
+          "right_bc": true,
+          "start_shape": true
+        },
+        "conditions": {
+          "equation": {
+            "status": "pass",
+            "error": 0.0,
+            "threshold": 1e-06,
+            "value": 0.0,
+            "location": {
+              "x": 2.9276053530776953,
+              "t": 0.8419933386403667
+            },
+            "symbolic_zero": true,
+            "precision_audits": [
+              {
+                "x": 2.9276053530776953,
+                "t": 0.8419933386403667,
+                "normalized_error": 0.0
+              }
+            ]
+          },
+          "left_bc": {
+            "status": "pass",
+            "error": 0.0,
+            "threshold": 1e-06,
+            "value": 0.0,
+            "location": {
+              "x": 0.0,
+              "t": 0.8419933386403667
+            },
+            "symbolic_zero": true,
+            "precision_audits": [
+              {
+                "x": 0.0,
+                "t": 0.8419933386403667,
+                "normalized_error": 0.0
+              }
+            ]
+          },
+          "right_bc": {
+            "status": "pass",
+            "error": 0.0,
+            "threshold": 1e-06,
+            "value": 0.0,
+            "location": {
+              "x": 3.0,
+              "t": 0.8419933386403667
+            },
+            "symbolic_zero": true,
+            "precision_audits": [
+              {
+                "x": 3.0,
+                "t": 0.8419933386403667,
+                "normalized_error": 0.0
+              }
+            ]
+          },
+          "start_shape": {
+            "status": "pass",
+            "error": 0.0,
+            "threshold": 1e-06,
+            "grid_errors": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "quadrature_stable": true,
+            "grid_sizes": [
+              1601,
+              1601,
+              3201
+            ],
+            "estimated_frequency_bound_cycles": 1.5,
+            "frequency_bound_resolved": true,
+            "quadrature_uncertainty_estimate": 0.0,
+            "location": {
+              "x": 0.0,
+              "t": 0.0
+            },
+            "local_deviation": 0.0,
+            "local_refinement_points": 17,
+            "local_deviation_role": "diagnostic only; acceptance uses relative L2"
+          }
+        },
+        "errors": {
+          "equation": 0.0,
+          "left_bc": 0.0,
+          "right_bc": 0.0
+        },
+        "start_error": 0.0,
+        "diagnostics": [
+          {
+            "category": "VALID_SOLUTION",
+            "severity": "info",
+            "condition": "all",
+            "evidence": {
+              "criteria": "existing tolerances on bounded verification samples"
+            },
+            "location": null,
+            "correction": "All required sampled checks pass. This is numerical validation, not a general symbolic proof."
+          }
+        ],
+        "feedback": "VALID_SOLUTION: All required sampled checks pass. This is numerical validation, not a general symbolic proof.",
+        "validation_seed": 9173,
+        "points": 1944,
+        "shape_points": 3201,
+        "protocol": "enhanced-checker-v2",
+        "validation_complete": true,
+        "diagnostics_complete": true
+      },
+      "public_original_best_reward": 1.0,
+      "public_original_solved_candidates": 1,
+      "enhanced_solved_candidates": 1,
+      "evaluation_errors": 0,
+      "candidate_rounds": [
+        {
+          "round": 0,
+          "new_checker_scores": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "public_original_scores": [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "original_artifact_directory": "level1.2/20261010T214648Z-615b7cbe"
+    },
+    {
+      "problem": "level1.3",
+      "seed": 0,
+      "status": "solved",
+      "reward": 1.0,
+      "original_reward": 1.0,
+      "grading_policy": "enhanced_validation_grade_v2_opt_in",
+      "additional_validation_status": "run",
+      "answer": "(32/pi**3)*sin(pi*x/2)*exp(-2*(pi/2)**2*t) + (32/(27*pi**3))*sin(3*pi*x/2)*exp(-2*(3*pi/2)**2*t) + (32/(125*pi**3))*sin(5*pi*x/2)*exp(-2*(5*pi/2)**2*t)",
+      "rounds": 2,
+      "requests": 14,
+      "prompt_tokens": 11878,
+      "completion_tokens": 2273,
+      "tool_calls": 24,
+      "tool_executions": 6,
+      "cache_hits": 18,
+      "validation_failures": 0,
+      "duplicate_candidates": 5,
+      "repair_requests": 2,
+      "features": [
+        "adaptive",
+        "cache",
+        "feedback",
+        "final"
+      ],
+      "seconds": 112.81655701900308,
+      "test_adapter": "enhanced_agent_adapter.py",
+      "enhanced_protocol_original_reward": 1.0,
+      "validation": {
+        "accepted": true,
+        "status": "valid",
+        "parts": {
+          "equation": true,
+          "left_bc": true,
+          "right_bc": true,
+          "start_shape": true
+        },
+        "conditions": {
+          "equation": {
+            "status": "pass",
+            "error": 0.0,
+            "threshold": 1e-06,
+            "value": 0.0,
+            "location": {
+              "x": 0.2802083708146379,
+              "t": 0.09476194363127344
+            },
+            "symbolic_zero": true,
+            "precision_audits": [
+              {
+                "x": 0.2802083708146379,
+                "t": 0.09476194363127344,
+                "normalized_error": 0.0
+              }
+            ]
+          },
+          "left_bc": {
+            "status": "pass",
+            "error": 0.0,
+            "threshold": 1e-06,
+            "value": 0.0,
+            "location": {
+              "x": 0.0,
+              "t": 0.09476194363127344
+            },
+            "symbolic_zero": true,
+            "precision_audits": [
+              {
+                "x": 0.0,
+                "t": 0.09476194363127344,
+                "normalized_error": 0.0
+              }
+            ]
+          },
+          "right_bc": {
+            "status": "pass",
+            "error": 0.0,
+            "threshold": 1e-06,
+            "value": 0.0,
+            "location": {
+              "x": 2.0,
+              "t": 0.09476194363127344
+            },
+            "symbolic_zero": true,
+            "precision_audits": [
+              {
+                "x": 2.0,
+                "t": 0.09476194363127344,
+                "normalized_error": 0.0
+              }
+            ]
+          },
+          "start_shape": {
+            "status": "pass",
+            "error": 0.0033642458617409604,
+            "threshold": 0.005,
+            "grid_errors": [
+              0.0033642458617409604,
+              0.0033642449471111653,
+              0.003364245752907473
+            ],
+            "quadrature_stable": true,
+            "grid_sizes": [
+              1601,
+              1601,
+              3201
+            ],
+            "estimated_frequency_bound_cycles": 4.5,
+            "frequency_bound_resolved": true,
+            "quadrature_uncertainty_estimate": 8.057963077172381e-10,
+            "location": {
+              "x": 1.9083294856155617,
+              "t": 0.0
+            },
+            "local_deviation": -0.005392438840311264,
+            "local_refinement_points": 17,
+            "local_deviation_role": "diagnostic only; acceptance uses relative L2"
+          }
+        },
+        "errors": {
+          "equation": 0.0,
+          "left_bc": 0.0,
+          "right_bc": 0.0
+        },
+        "start_error": 0.0033642458617409604,
+        "diagnostics": [
+          {
+            "category": "VALID_SOLUTION",
+            "severity": "info",
+            "condition": "all",
+            "evidence": {
+              "criteria": "existing tolerances on bounded verification samples"
+            },
+            "location": null,
+            "correction": "All required sampled checks pass. This is numerical validation, not a general symbolic proof."
+          }
+        ],
+        "feedback": "VALID_SOLUTION: All required sampled checks pass. This is numerical validation, not a general symbolic proof.",
+        "validation_seed": 9173,
+        "points": 1944,
+        "shape_points": 3201,
+        "protocol": "enhanced-checker-v2",
+        "validation_complete": true,
+        "diagnostics_complete": true
+      },
+      "public_original_best_reward": 1.0,
+      "public_original_solved_candidates": 2,
+      "enhanced_solved_candidates": 2,
+      "evaluation_errors": 0,
+      "candidate_rounds": [
+        {
+          "round": 0,
+          "new_checker_scores": [
+            0.6,
+            0.6,
+            0.6,
+            0.6
+          ],
+          "public_original_scores": [
+            0.6,
+            0.6,
+            0.6,
+            0.6
+          ]
+        },
+        {
+          "round": 1,
+          "new_checker_scores": [
+            1.0,
+            0.6,
+            0.6,
+            1.0
+          ],
+          "public_original_scores": [
+            1.0,
+            0.6,
+            0.6,
+            1.0
+          ]
+        }
+      ],
+      "original_artifact_directory": "level1.3/20261010T214747Z-183bd184"
+    }
+  ],
+  "offline_checks": {
+    "existing_regressions_passed": 62,
+    "official_selftests_passed": true,
+    "initial_passed": 21,
+    "initial_total": 23,
+    "followup_passed": 2,
+    "followup_total": 3,
+    "numeric_fixture_issue_corrected": true,
+    "confirmed_bug": "Pre-core worker timeout creates self-reference in worker_issue and raises RecursionError in both validation.verify and validation.grade."
+  },
+  "source_modifications": false,
+  "merged": false
+}

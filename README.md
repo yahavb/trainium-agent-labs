@@ -1,5 +1,7 @@
 # Hack the Chip — NYU × Annapurna Labs
 
+**Our team is working on [Project 1](projects/01-heat-rod-pde/).**
+
 **Annapurna Labs** is the Amazon team that designs **AWS Trainium**, the custom silicon behind a large
 share of AI training and inference on AWS. For one day we are handing you that hardware, a language model
 already running on it, and a question we care about.
