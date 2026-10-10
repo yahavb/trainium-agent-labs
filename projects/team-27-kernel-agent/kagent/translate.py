@@ -134,6 +134,14 @@ def rownorm_fix(level_name):
             f"vectors of length i1 - i0, computed over the whole row first).")
 
 
+def empty_value_fix(slot):
+    # live v2/v3 L6: y[j:end_j, r] = tile[r - i, j:end_j] -- a tile sliced with global columns
+    return (f"The right-hand side is EMPTY (shape (0,)) while the slot is ({slot}): a slice with global "
+            f"positions was taken from a tile that only has local ones. A tile t = x[i0:i1, j0:j1] is "
+            f"indexed t[r - i0, 0:j1 - j0]; the full array x is indexed x[r, j0:j1]. Index x directly "
+            f"with global positions and drop the tile variable.")
+
+
 def crash_fix(msg, level_name=None):
     """The fix for the crashes the model actually produces (live L2, L4, L5, L6, L10); None if the
     message is not one we know."""
@@ -146,6 +154,9 @@ def crash_fix(msg, level_name=None):
                 f"start .. end - 1; never mix the two, and never assume a full-size tile.")
     if level_name in ROWNORM_COLUMN and "broadcast" in msg:
         return rownorm_fix(level_name)
+    m = re.search(r"could not broadcast input array from shape \(0,?\) into shape \(([^)]*)\)", msg)
+    if m:
+        return empty_value_fix(m.group(1))
     m = re.search(r"could not broadcast input array from shape \(([^)]*)\) into shape \(([^)]*)\)", msg)
     if m:
         return (f"An assignment puts a value of shape ({m.group(1)}) into a slot of shape "
@@ -206,30 +217,57 @@ SKELETON = {
         "Pass 3, the same loops: out[i0:i1, j] = (x[i0:i1, j] - mu) * rinv. "
         "Every statistic covers the whole row (all column tiles) before it is used; every operand is a "
         "column vector of length i1 - i0 or a scalar."),
+    "softmax": (
+        "for each row tile i0..i1 (128 rows): "
+        "pass 1, m = np.full(i1 - i0, -np.inf), then for every column tile j0..j1 and every j in it: "
+        "m = np.maximum(m, x[i0:i1, j]). "
+        "Pass 2, the same loops: s += np.exp((x[i0:i1, j] - m).astype(np.float64)) with "
+        "s = np.zeros(i1 - i0, dtype=np.float64). "
+        "Pass 3, the same loops: out[i0:i1, j] = np.exp((x[i0:i1, j] - m).astype(np.float64)) / s. "
+        "The max and the sum cover the whole row (all column tiles) before they are used; every "
+        "operand is a column vector of length i1 - i0 or a scalar."),
+    "transpose": (
+        "out = np.empty((N, M), dtype=x.dtype); for each row tile i0..i1 (128 rows) and column tile "
+        "j0..j1 (512 columns) of x, and each row i in i0..i1: out[j0:j1, i] = x[i, j0:j1]. "
+        "Both sides use GLOBAL positions j0:j1 and i; no reshape, .T, transpose or 2-D slice of out."),
+    "matmul": (
+        "for each row tile i0..i1 (128 rows of a) and column tile j0..j1 (512 columns of b): "
+        "acc = np.zeros((i1 - i0, j1 - j0), dtype=np.float64); for each K tile k0..k1 (128): "
+        "at = a[i0:i1, k0:k1].astype(np.float64); bt = b[k0:k1, j0:j1].astype(np.float64); for k in "
+        "range(k1 - k0): for r in range(i1 - i0): acc[r, :] += at[r, k] * bt[k, :]. After the K "
+        "loop: out[i0:i1, j0:j1] = acc. No @, np.dot, matmul or einsum, and no slice of a or b that "
+        "is longer than one tile in any dimension (K included)."),
     "band_attention": (
         "for each query row i: lo, hi = max(0, i - w), min(S - 1, i + w); n = hi - lo + 1. "
         "Scores: s = np.zeros(n, dtype=np.float64); for each chunk c0..c1 of at most 128 keys and "
-        "each feature c in range(d): s[c0:c1] += q[i, c] * k[lo + c0:lo + c1, c]. "
+        "each feature c in range(d): s[c0:c1] += q[i, c] * k[lo + c0:lo + c1, c].astype(np.float64). "
         "Row max with a scalar loop: m = -np.inf; for t in range(n): m = max(m, s[t]). "
         "p[c0:c1] = np.exp((s[c0:c1] - m) / np.sqrt(d)) per chunk. "
         "Output: total = 0.0; acc = np.zeros(d, dtype=np.float64); for t in range(n): total += p[t]; "
-        "acc += p[t] * v[lo + t, :]; then out[i, :] = acc / total. "
+        "acc += p[t] * v[lo + t, :].astype(np.float64); then out[i, :] = acc / total. "
         "No np.dot, @, einsum, masks or full S x S score matrix: only keys inside the band are touched."),
 }
 
 
-def rewrite_directive(rep):
+def rewrite_directive(rep, cycling=False):
     """A whole-kernel rewrite in the op's legal loop shape, or None (op without a skeleton, or a
-    near miss with few violations)."""
-    if len(rep.violations) < REWRITE_AT or rep.level.name not in SKELETON:
+    near miss with few violations). cycling: the run has already failed on several different
+    rules, so patching is going round in circles (live v2/v3 L5: sum-like -> max-like -> layout ->
+    crash -> sum-like ... until the budget ran out)."""
+    if rep.level.name not in SKELETON or not (rep.violations or cycling):
+        return None
+    if len(rep.violations) < REWRITE_AT and not cycling:
         return None
     kinds = sorted({v.kind for v in rep.violations})
+    why = (f"({len(rep.violations)} violations: {', '.join(kinds)}), so patching it one line at a "
+           f"time will not finish" if not cycling else
+           "and the previous repairs have cycled through several different rule problems, so "
+           "patching one line at a time is going round in circles")
     return Directive(
         "rule:rewrite",
-        f"This draft computes the whole operation with array operations the rules ban "
-        f"({len(rep.violations)} violations: {', '.join(kinds)}), so patching it one line at a time "
-        f"will not finish. Rewrite the function body from scratch in this loop shape, keeping the "
-        f"signature: {SKELETON[rep.level.name]}",
+        f"This draft computes the operation with array operations the rules ban {why}. Rewrite the "
+        f"function body from scratch in this loop shape, keeping the signature: "
+        f"{SKELETON[rep.level.name]}",
         f"{len(rep.violations)} rule violations of {len(kinds)} kinds.")
 
 
@@ -238,10 +276,18 @@ def rewrite_directive(rep):
 # model kept `np.dot(q_slice, k_window[t])` on a (257, d) window. For an op with a skeleton, a
 # structural rule fix names the skeleton line that replaces the banned one.
 SKELETON_LINE = {
+    "transpose": (
+        "In a transpose write one output COLUMN segment per input row, 1-D on both sides: "
+        "out[j0:j1, i] = x[i, j0:j1] (global positions, at most 512 columns of x per segment)."),
+    "matmul": (
+        "In a matmul every operand slice is one tile: at = a[i0:i1, k0:k1], bt = b[k0:k1, j0:j1] "
+        "(K tiled in steps of 128 too), cast to float64, and accumulate acc[r, :] += at[r, k] * "
+        "bt[k, :] into a (i1 - i0, j1 - j0) float64 accumulator; write out[i0:i1, j0:j1] = acc once "
+        "after the K loop."),
     "band_attention": (
         "In band attention the only legal way to form the scores is one feature column at a time "
         "over a chunk of at most 128 keys: for c0 in range(0, n, 128): c1 = min(c0 + 128, n); for c "
-        "in range(d): s[c0:c1] += q[i, c] * k[lo + c0:lo + c1, c]. No np.dot, no slice of k with "
+        "in range(d): s[c0:c1] += q[i, c] * k[lo + c0:lo + c1, c].astype(np.float64). No np.dot, no slice of k with "
         "more than 128 rows, no per-key dot product."),
 }
 SKELETON_KINDS = {"whole-array", "linalg", "broadcast", "sum-like", "layout", "newaxis"}
@@ -305,7 +351,12 @@ def translate(rep):
         where = ", ".join(f"line {v.line} `{v.source_line}`" for v in vs if v.line)
         rest = len(rep.violations) - len(vs)
         later = f" ({rest} other rule problem(s) will be handled after this one.)" if rest else ""
-        if kind in ("layout", "newaxis", "broadcast") and rep.level.name in ROWNORM_COLUMN:
+        m0 = re.search(r"assigning shape \(0,?\) into a region of shape \(([^)]*)\)", vs[0].what)
+        if kind == "broadcast" and m0:
+            fix = empty_value_fix(m0.group(1))
+            if rep.level.name in SKELETON_LINE:
+                fix += " " + SKELETON_LINE[rep.level.name]
+        elif kind in ("layout", "newaxis", "broadcast") and rep.level.name in ROWNORM_COLUMN:
             fix = rownorm_fix(rep.level.name)
         elif kind in SKELETON_KINDS and rep.level.name in SKELETON_LINE:
             fix = vs[0].fix() + " " + SKELETON_LINE[rep.level.name]

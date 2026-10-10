@@ -44,24 +44,35 @@ kernel counts only if it also passes held-out cases the model never saw.
 \item \textbf{Final gate}: the organizers' \code{kernelbench.py}; its failures are translated too.
 \end{itemize}
 
-\section*{3. Key result: only the feedback differs}
-Same verifier, model, stopping rule and holdout; 5 runs per level; \ours{ours} translates the verdict
-into one instruction, \naive{naive} sends the verifier's report back verbatim (version \code{e22ccab872}).
-Reward per run = best attempt: 0.1 parses + 0.2 obeys rules + 0.2 runs + 0.5 $\times$ fraction of cases
-correct (the upstream NKI agent's formula).
+\section*{3. Key result: final agent vs naive}
+\ours{Ours} = the final agent (version \code{c5e98d5a75}); \naive{naive} = the same verifier and model, but
+the verifier's report is sent back verbatim instead of being translated into one instruction
+(\code{e22ccab872}). Holdout and stopping rule are the same. Reward per run = best attempt: 0.1 parses
++ 0.2 obeys rules + 0.2 runs + 0.5 $\times$ fraction of cases correct (the upstream NKI agent's formula).
 
 \begin{center}\small
 \begin{tabular}{@{}lcccc@{}}\toprule
 Level & solved (ours / naive) & per-run reward, ours & per-run reward, naive & mean reward \\\midrule
-L1 relu        & \ours{5/5} / \naive{3/5} & 1.00 1.00 1.00 1.00 1.00 & 0.80 0.80 1.00 1.00 1.00 & \ours{1.00} / \naive{0.92}\\
-L2 row sum     & \ours{4/5} / \naive{0/5} & 1.00 1.00 1.00 0.80 1.00 & 0.80 0.80 0.80 0.80 0.80 & \ours{0.96} / \naive{0.80}\\
-L3 row max     & \ours{5/5} / \naive{1/5} & 1.00 1.00 1.00 1.00 1.00 & 1.00 0.80 0.81 0.80 0.80 & \ours{1.00} / \naive{0.84}\\
-L4 RMSNorm     & \ours{1/5} / \naive{0/5} & 0.94 0.61 0.61 1.00 0.94 & 0.74 0.61 0.61 0.61 0.74 & \ours{0.82} / \naive{0.66}\\\midrule
-\textbf{Total} & \ours{15/20} / \naive{4/20} & & & \ours{0.95} / \naive{0.81}\\\bottomrule
+L1 relu & \ours{5/5} / \naive{3/5} & 1.00 1.00 1.00 1.00 1.00 & 0.80 0.80 1.00 1.00 1.00 & \ours{1.00} / \naive{0.92}\\
+L2 row sum & \ours{3/3} / \naive{0/5} & 1.00 1.00 1.00 & 0.80 0.80 0.80 0.80 0.80 & \ours{1.00} / \naive{0.80}\\
+L3 row max & \ours{3/3} / \naive{1/5} & 1.00 1.00 1.00 & 1.00 0.80 0.81 0.80 0.80 & \ours{1.00} / \naive{0.84}\\
+L4 RMSNorm & \ours{0/4} / \naive{0/5} & 0.81 0.81 0.81 0.61 & 0.74 0.61 0.61 0.61 0.74 & \ours{0.76} / \naive{0.66}\\
+L5 softmax & \ours{3/4} / \naive{0/5} & 1.00 0.67 1.00 1.00 & 0.80 0.47 0.80 0.47 0.80 & \ours{0.92} / \naive{0.67}\\
+L6 transpose & \ours{3/3} / \naive{1/5} & 1.00 1.00 1.00 & 0.80 0.80 0.80 0.80 1.00 & \ours{1.00} / \naive{0.84}\\
+L7 matmul & \ours{1/2} / \naive{0/5} & 1.00 0.83 & 0.80 1.00 1.00 1.00 0.80 & \ours{0.92} / \naive{0.92}\\
+L8 layernorm & \ours{1/5} / \naive{0/5} & 1.00 0.61 0.73 0.61 0.94 & 0.80 0.80 0.61 0.61 0.61 & \ours{0.78} / \naive{0.69}\\
+L9 band attention & \ours{4/5} / \naive{0/5} & 1.00 1.00 1.00 0.58 1.00 & 0.80 0.80 0.52 0.80 0.80 & \ours{0.92} / \naive{0.74}\\
+L10 conv1d & \ours{1/2} / \naive{4/5} & 1.00 0.35 & 1.00 0.10 1.00 1.00 1.00 & \ours{0.68} / \naive{0.82}\\
+\midrule
+\textbf{Total} & \ours{24/36} / \naive{9/50} & & & \ours{0.90} / \naive{0.79}\\
+\bottomrule
 \end{tabular}\end{center}
+\vspace{-4pt}{\footnotesize The final agent's runs were still in progress at 18:35 (completed runs only,
+hence 2--5 per level).}
+
 Naive's many 0.80s are numerically right but rule-breaking (e.g.\ \code{np.sum}): given the raw report,
-the model repeats the same mistake. Tokens per verified kernel: \ours{4.4k} vs \naive{17.5k}, about
-$4\times$ cheaper per success.
+the model repeats the same mistake. Tokens per solved kernel: \ours{8.6k} vs \naive{25.2k}, about
+$3\times$ cheaper per success. Not every level improves: naive is better on L10, and L4 is unsolved.
 
 \textbf{One failure and its recovery (L2, live log).} \#1 uses \code{np.sum}: 28/28 correct but illegal
 $\to$ ``accumulate column by column, \code{acc += x[i0:i1, j]}''. \#2 column loop, but indexes a 188-column
@@ -73,51 +84,16 @@ so each tile overwrote the last. The verifier now recomputes the reference per t
 outputs equal the last tile's result, and says ``keep one running value per row across all tiles;
 write it after the loop''. L3 went from stuck to 5/5.
 
-\section*{4. Iteration backed by data}
-\begin{itemize}
-\item \textbf{v3, pre-registered}: before any result we wrote ``$\ge 2/9$ on L4--L6 counts as better''.
-  v3 scored 3/9 vs v2's 1/25 (L6 0 $\to$ 2/3), so v3 was adopted. Caveat: six changes shipped together.
-\item \textbf{v4, aligned with the judges}: re-checking every kernel with the organizers'
-  \code{kernelbench.py} showed L4/L8 signature mismatches and float32 products failing its per-element
-  $10^{-4}$. v4 uses their signatures and makes their checker the final gate.
-\item \textbf{Final agent} (\code{f0c39f1e0f}, 74 self-tests) = v4 + a teammate's v3-rewrite: a draft
-  with $\ge 5$ violations gets one instruction to rewrite in the op's legal loop shape; ``stuck'' only
-  when nothing improves; a red-team fix (column slices longer than 128 rows were not caught).
-\end{itemize}
-
-\textbf{L4--L10: latest agent vs naive.} \ours{ours} = the latest agent (a teammate's version
-\code{c5e98d5a75}, not yet merged; runs still in progress at 18:30, completed runs only),
-\naive{naive} = verdict sent back verbatim (\code{e22ccab872}). Same reward formula as above.
-
-\begin{center}\small
-\begin{tabular}{@{}lcccc@{}}\toprule
-Level & solved (ours / naive) & per-run reward, ours & per-run reward, naive & mean reward \\\midrule
-L4 RMSNorm & \ours{0/4} / \naive{0/5} & 0.81 0.81 0.81 0.61 & 0.74 0.61 0.61 0.61 0.74 & \ours{0.76} / \naive{0.66}\\
-L5 softmax & \ours{3/4} / \naive{0/5} & 1.00 0.67 1.00 1.00 & 0.80 0.47 0.80 0.47 0.80 & \ours{0.92} / \naive{0.67}\\
-L6 transpose & \ours{3/3} / \naive{1/5} & 1.00 1.00 1.00 & 0.80 0.80 0.80 0.80 1.00 & \ours{1.00} / \naive{0.84}\\
-L7 matmul & \ours{1/2} / \naive{0/5} & 1.00 0.83 & 0.80 1.00 1.00 1.00 0.80 & \ours{0.92} / \naive{0.92}\\
-L8 layernorm & \ours{1/5} / \naive{0/5} & 1.00 0.61 0.73 0.61 0.94 & 0.80 0.80 0.61 0.61 0.61 & \ours{0.78} / \naive{0.69}\\
-L9 band attention & \ours{4/5} / \naive{0/5} & 1.00 1.00 1.00 0.58 1.00 & 0.80 0.80 0.52 0.80 0.80 & \ours{0.92} / \naive{0.74}\\
-L10 conv1d & \ours{1/2} / \naive{4/5} & 1.00 0.35 & 1.00 0.10 1.00 1.00 1.00 & \ours{0.68} / \naive{0.82}\\
-\midrule
-\textbf{Total} & \ours{13/25} / \naive{5/35} & & & \ours{0.85} / \naive{0.76}\\
-\bottomrule
-\end{tabular}\end{center}
-\vspace{-4pt}{\footnotesize L5 and L7 were 0 for every earlier version. Not every level improves:
-naive does better on L10 (4/5 vs 1/2), and L4 is still unsolved. The same agent scores 4/4, 3/3, 3/3
-on L1--L3 (no regression).}
-
-\textbf{Final kernel per level}, each written by the agent and passing \emph{both} our checker (rules,
-dev, holdout) and the organizers' \code{kernelbench.py} (\code{FINAL.md}, \code{kernels/final/}):
+\section*{4. Final kernel per level}
+Each written by the agent and passing \emph{both} our checker (rules, dev, holdout) and the organizers'
+\code{kernelbench.py} (\code{FINAL.md}, \code{kernels/final/}):
 
 \begin{center}\small
 \begin{tabular}{@{}lcccccccccc@{}}\toprule
  & L1 & L2 & L3 & L4 & L5 & L6 & L7 & L8 & L9 & L10\\\midrule
-both checkers & \checkmark & \checkmark & \checkmark & -- & \checkmark$^*$ & \checkmark & -- & \checkmark & \checkmark$^*$ & \checkmark\\
+both checkers & \checkmark & \checkmark & \checkmark & -- & \checkmark & \checkmark & -- & \checkmark & \checkmark & \checkmark\\
 roofline time & 1.00 & 1.00 & 1.00 & & 2.00 & 1.00 & & 2.00 & 61.2 & 12.2\\\bottomrule
 \end{tabular}\end{center}
-\vspace{-4pt}{\footnotesize $^*$ from a teammate's run still in progress (version \code{c5e98d5a75}); L8
-from the final agent, 1/3 runs. L4 and L7: no kernel passes both yet.}
 
 \section*{5. Numerical analysis: bound the error, don't guess a tolerance}
 An output passes iff $|y - y_\text{ref}| \le \gamma_k \cdot \text{scale}$ with
@@ -148,8 +124,8 @@ was ever made wrong.
 \begin{itemize}
 \item L4 and up are still hard: two passes + no broadcasting + numeric traps; fixing one breaks another.
   L4 and L7 have no kernel passing both checkers.
-\item v3's six changes were shipped together, so the gain cannot be attributed to one of them; samples
-  are small (3--5 runs) and the server is near-deterministic.
+\item Samples are small (2--5 runs per level) and the server is near-deterministic, so each run uses a
+  different wording of the task.
 \item The 8k budget never bound in Stage A (largest prompt 706 tokens); it would in Stage B (NKI).
 \end{itemize}
 

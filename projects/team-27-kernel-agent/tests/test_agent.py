@@ -115,3 +115,16 @@ def test_same_class_with_falling_violation_count_is_not_stuck():
     res, _ = run([_escapes(3), _escapes(2), _escapes(1), GOOD], patience=3)
     assert res.keys == ["rule:escape"] * 3
     assert res.status == "verified" and res.attempts == 4
+
+
+def test_cycling_through_rule_classes_brings_the_rewrite():
+    # live v2/v3 L5: sum-like -> max-like -> layout -> ... never 'stuck', never finished
+    from kagent.levels import LEVELS
+    from kagent.agent import ScriptedModel, solve
+    soft = (K / "hand/l5_softmax.py").read_text()
+    a = soft.replace("m = np.maximum(m, x[i0:i1, j])", "m = np.maximum(m, np.max(x[i0:i1, j0:min(j0 + 512, N)], axis=1))")
+    b = soft.replace("s += np.exp((x[i0:i1, j] - m).astype(np.float64))", "s += np.sum(np.exp(x[i0:i1, j0:min(j0 + 512, N)] - m[:, None]), axis=1)")
+    c = soft.replace("out[i0:i1, j] = np.exp", "out[i0:i1, j:j + 1] = np.exp")
+    m = ScriptedModel([block(x) for x in (a, b, c, soft)])
+    res = solve(LEVELS[5], m, say=lambda *_: None, patience=3)
+    assert len({k for k in res.keys}) >= 3 and "going round in circles" in m.prompts[3], res.keys

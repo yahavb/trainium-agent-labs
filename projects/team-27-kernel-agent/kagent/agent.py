@@ -26,7 +26,7 @@ from .extract import extract_code
 from .harness import verify
 from .levels import LEVELS
 from . import judge
-from .translate import Directive, judge_directive, translate
+from .translate import Directive, judge_directive, rewrite_directive, translate
 
 def code_version():
     """Hash of the agent/harness sources, logged with every result so runs on different pods can
@@ -196,6 +196,9 @@ def _rank(rep):
     return (rep.passed, rep.load_error is None, -crashes, rep.n_pass, -len(rep.violations))
 
 
+CYCLE_AT = 3  # distinct rule/crash classes in one run before a forced rewrite
+
+
 def _progress(rep):
     """How far a failing kernel got: fewer crashes, more cases right, fewer rule violations."""
     crashes = sum(r.status in ("error", "timeout") for r in rep.results)
@@ -279,6 +282,13 @@ def solve(level, model, run=0, max_attempts=8, samples=1, patience=3, log=None, 
             return res
 
         directive = judge_fail or translate(rep)  # naive mode uses only the key, for the taxonomy
+        # Repairs that keep landing on a different rule or crash are going round in circles (live
+        # v2/v3 L5: sum-like -> max-like -> layout -> crash -> sum-like until the budget ran out, so
+        # 'stuck' never fired). Once per run, after CYCLE_AT distinct such classes, ask for the rewrite.
+        if not naive and not judge_fail and directive.key != "rule:rewrite" and "rule:rewrite" not in keys:
+            seen = {k for k in keys if k.startswith(("rule:", "crash:"))} | {directive.key}
+            if len(seen) >= CYCLE_AT:
+                directive = rewrite_directive(rep, cycling=True) or directive
         report_text = rep.text() if judge_fail is None else f"{rep.summary()}\nFinal check: {judge_fail.evidence}"
         repeat_code = _code_hash(src) in seen_hashes
         seen_hashes.add(_code_hash(src))

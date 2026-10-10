@@ -205,3 +205,26 @@ def test_column_slice_longer_than_a_tile_is_a_violation():
              "    for j in range(N):\n        out += x[:, j]\n    return out\n")
     rep = verify(LEVELS[2], probe)
     assert not rep.passed and any(v.kind == "whole-array" and "column slice" in v.what for v in rep.violations), rep.text()
+
+
+def test_empty_value_crash_names_global_vs_local_columns():
+    # live v3 L6: y[j:end_j, r] = tile[r - i, j:end_j] crashed 3 runs in a row as a generic ValueError
+    from kagent.translate import translate
+    d = translate(run(6, "broken/l6_live_global_in_tile.py"))
+    # the crash is on the line the broadcast rule flags, so it is reported as that rule
+    assert d.key == "rule:broadcast" and "EMPTY" in d.instruction and "out[j0:j1, i] = x[i, j0:j1]" in d.instruction, d.instruction
+
+
+def test_matmul_whole_array_near_miss_names_the_tiled_operands():
+    from kagent.translate import translate
+    d = translate(run(7, "broken/l7_live_whole_array.py"))
+    assert d.key.startswith("rule:") and ("b[k0:k1, j0:j1]" in d.instruction), d.instruction
+
+
+@pytest.mark.parametrize("lv", [5, 6, 7])
+def test_cycling_rewrite_is_available_for_l5_to_l7(lv):
+    from kagent.translate import rewrite_directive
+    rep = run(lv, {5: "broken/l5_per_tile_softmax.py", 6: "broken/l6_live_global_in_tile.py",
+                   7: "broken/l7_live_whole_array.py"}[lv])
+    d = rewrite_directive(rep, cycling=True)
+    assert d is not None and d.key == "rule:rewrite" and "going round in circles" in d.instruction

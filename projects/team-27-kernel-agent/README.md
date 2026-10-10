@@ -54,7 +54,7 @@ python3 scripts/optimize.py --from runs/ours-L1234-seat-130.jsonl --rounds 3 --o
 uv run python scripts/opt_report.py $R/opt2-live.jsonl
 ```
 
-`main` is the final agent, version `f0c39f1e0f`: v4 (the organizers' signatures, and their
+`main` is the final agent, version `c5e98d5a75` (PR #13: + L5–L7 skeletons, rewrite on cycling): v4 (the organizers' signatures, and their
 `kernelbench.py` as the final acceptance gate) merged with the teammate's v3-rewrite (PR #10: a
 whole-kernel rewrite in the op's legal loop shape when a draft breaks many rules, progress-aware
 stuck detection, and a checker fix for column slices longer than one tile). Without `kernelbench.py`
