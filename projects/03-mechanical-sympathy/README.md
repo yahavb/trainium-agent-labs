@@ -3,6 +3,7 @@
 This project checks Samudra inference against a CPU reference and then improves
 the same workload on AWS Trainium.
 
+![Samudra forward progress, simulated years per minute](results/easy-wins-2026-10-10/years_per_minute.png)
 
 ### Temperature
 
@@ -254,7 +255,7 @@ The same trials as throughput. Each run simulates 8.19 years (598 five-day
 steps), so the best result runs **11.53 simulated years per minute**, up from
 5.42 for the FP32 baseline.
 
-![Samudra forward progress, simulated years per minute](results/easy-wins-2026-10-10/years_per_minute.png)
+
 
 See the [follow-up report](results/easy-wins-2026-10-10/README.md) for the
 device-only check and plot reproduction commands.
