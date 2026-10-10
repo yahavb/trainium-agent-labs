@@ -14,6 +14,9 @@ def main():
     parser.add_argument('--root', required=True)
     parser.add_argument('--out', required=True)
     parser.add_argument('--core', type=int, required=True)
+    parser.add_argument('--think', action='store_true')
+    parser.add_argument('--max-tokens', type=int, default=2500)
+    parser.add_argument('--label', default='full_feedback_and_repair_controller_pilot')
     a = parser.parse_args()
     root = Path(a.root).resolve() / 'projects/03-chipboost'
     out = Path(a.out).resolve()
@@ -30,10 +33,12 @@ def main():
     spec.loader.exec_module(agent)
     baseline = root.parent/'02-kernel-agent/reference_level4.py'
     state = dict(phase='acceptance', pid=os.getpid(), core=a.core, budget=8,
-                 treatment='full_feedback_and_repair_controller_pilot',
+                 treatment=a.label, think=a.think, max_tokens=a.max_tokens,
                  warning='Exploratory multi-change treatment; not DMA-only v2 or original comparison',
                  model='Qwen/Qwen3-8B', sources={str(p.relative_to(root.parent)):hashlib.sha256(p.read_bytes()).hexdigest()
-                 for p in (root/'speedcheck.py', root/'experimental_agent.py', baseline)})
+                 for p in (root/'speedcheck.py', root/'experimental_agent.py', baseline,
+                           root.parent/'02-kernel-agent/agent.py', root.parent/'02-kernel-agent/nkibench.py',
+                           root/'schema.py')})
     def save():
         (out/'state.json').write_text(json.dumps(state, indent=2)+'\n')
     save()
@@ -63,11 +68,16 @@ def main():
             sys.argv = ['experimental_agent.py', '--arm', 'referee', '--budget', '8', '--repeat', '1',
                         '--samples', '1', '--give-up-after', '0', '--start', str(baseline),
                         '--base', 'http://localhost:8000/v1', '--model', state['model'],
-                        '--max-tokens', '2500', '--context', '8192', '--seat', '100',
+                        '--max-tokens', str(a.max_tokens), '--context', '8192', '--seat', '100',
                         '--log', str(out/'pilot.jsonl')]
+            if a.think:
+                sys.argv.append('--think')
             agent.main()
             rows=[json.loads(line) for line in (out/'pilot.jsonl').read_text().splitlines() if line.strip()]
             assert len(rows)==8 and all(not schema.validate(r) for r in rows)
+            assert not bridge.pending_start
+            assert [r['attempt_no'] for r in rows]==list(range(1,9))
+            assert all(r['arm']=='referee' for r in rows)
             state.update(phase='complete', attempts=len(rows),
                          faster=sum(r['verdict']=='faster' for r in rows),
                          best_valid_speedup=max((r['speedup'] for r in rows if r['verdict']=='faster'), default=None))

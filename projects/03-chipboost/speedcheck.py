@@ -828,7 +828,65 @@ _DMA_4X_INSTR = (
 )
 
 
-def _child_failure(e, label=""):
+_NKI_UNSUPPORTED_ERROR = (
+    "error: failed to specialize NKI kernel: Collected 1 different diagnostics: "
+    "- [x1] error: unsupported expression"
+)
+_NKI_TILE_LIST_INSTR = (
+    "NKI_TILE_LIST: the source contains a Python list comprehension of RHS SBUF tiles, "
+    "a likely cause of this unsupported-expression error. Replace it with one nl.ndarray "
+    "of shape (TILE_K, K // TILE_K, TILE_N), with the partition axis first, and access "
+    "each tile as rhs_tiles[:, k, :]. With the canonical tile sizes this is "
+    "(128, K // 128, 512). Preserve the K-dependent source slices and accumulate every "
+    "K piece. Bound the resident K tiles to fit SBUF for all supported shapes; if needed, "
+    "process K in blocks or keep a single tile inside the K loop. This repairs the "
+    "container representation; it does not by itself remove repeated HBM loads."
+)
+
+
+def _rhs_tile_list(src):
+    """Recognize the observed canonical allocation without executing candidate code."""
+    if not src:
+        return False
+    try:
+        tree = ast.parse(src)
+    except (SyntaxError, ValueError, TypeError):
+        return False
+    entries = [n for n in tree.body if isinstance(n, ast.FunctionDef)
+               and n.name == "nki_matmul_tiled_"]
+    if len(entries) != 1:
+        return False
+    entry = entries[0]
+    expected = {"TILE_K": "nl.tile_size.pmax", "TILE_N": "nl.tile_size.gemm_moving_fmax"}
+    for name, value in expected.items():
+        writes = [n for n in ast.walk(entry) if isinstance(n, ast.Name)
+                  and isinstance(n.ctx, ast.Store) and n.id == name]
+        assigns = [n for n in ast.walk(entry) if isinstance(n, ast.Assign)
+                   and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name)
+                   and n.targets[0].id == name and ast.unparse(n.value) == value]
+        if len(writes) != 1 or len(assigns) != 1:
+            return False
+    for node in ast.walk(entry):
+        if not (isinstance(node, ast.Assign) and len(node.targets) == 1
+                and isinstance(node.targets[0], ast.Name) and node.targets[0].id == "rhs_tiles"
+                and isinstance(node.value, ast.ListComp)):
+            continue
+        comp = node.value
+        if len(comp.generators) != 1:
+            continue
+        gen = comp.generators[0]
+        call = comp.elt
+        if (gen.is_async or gen.ifs or ast.unparse(gen.iter) != "range(K // TILE_K)"
+                or not isinstance(call, ast.Call) or ast.unparse(call.func) != "nl.ndarray"
+                or len(call.args) != 1 or ast.unparse(call.args[0]) != "(TILE_K, TILE_N)"):
+            continue
+        kws = {kw.arg: ast.unparse(kw.value) for kw in call.keywords}
+        if kws == {"dtype": "rhs.dtype", "buffer": "nl.sbuf"}:
+            return True
+    return False
+
+
+def _child_failure(e, label="", *, src=None):
     """Referee-authored text, with the candidate's own message quoted as data (it can say anything)."""
     msg = " ".join(str(e.get("msg", "")).split()).replace("<<", "<").replace(">>", ">")
     where = f" at {tuple(e['shape'])}" if e.get("shape") else ""
@@ -844,6 +902,9 @@ def _child_failure(e, label=""):
     if (e.get("stage") == "simulate" and e.get("type") == "AssertionError"
             and e.get("msg") == _DMA_4X_ERROR):
         instr = _DMA_4X_INSTR
+    elif (e.get("stage") == "compile" and e.get("type") == "RuntimeError"
+          and e.get("msg") == _NKI_UNSUPPORTED_ERROR and _rhs_tile_list(src)):
+        instr = _NKI_TILE_LIST_INSTR
     return text, instr
 
 
@@ -1251,7 +1312,7 @@ def check(path, op="matmul", baseline=None, rounds=3, verbose=False):
         res = run_child(src, op, sim_seed, True, [(f"t{i}", x) for i, x in enumerate(spec["time_shapes"])],
                         baseline, workdirs)
         if res["error"]:
-            text, instr = _child_failure(res["error"])
+            text, instr = _child_failure(res["error"], src=src)
             return _record(**base, verdict="wrong", referee_message=text, instruction_given=instr)
         sims = res["sim"]
         if [tuple(x.get("shape", ())) if isinstance(x, dict) else None for x in sims] != spec["sim_shapes"]:
