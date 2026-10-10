@@ -1,0 +1,60 @@
+=== R4K: changed=True; code lines 6; slices/shapes/loop counts left in code: 0; note added: True
+   - for k in nl.affine_range(lhsT.shape[0] // 128):
+   + for k in nl.affine_range(<…>):
+   - sbuf_stationary = nl.ndarray((128, lhsT.shape[1]), dtype=lhsT.dtype, buffer=nl.sbuf)
+   + sbuf_stationary = nl.ndarray(<…>, dtype=lhsT.dtype, buffer=nl.sbuf)
+   - sbuf_moving = nl.ndarray((128, rhs.shape[1]), dtype=rhs.dtype, buffer=nl.sbuf)
+   + sbuf_moving = nl.ndarray(<…>, dtype=rhs.dtype, buffer=nl.sbuf)
+   - nisa.dma_copy(dst=sbuf_stationary, src=lhsT[k * 128:(k + 1) * 128, :])
+   + nisa.dma_copy(dst=sbuf_stationary, src=lhsT[<…>])
+   - nisa.dma_copy(dst=sbuf_moving, src=rhs[k * 128:(k + 1) * 128, :])
+   + nisa.dma_copy(dst=sbuf_moving, src=rhs[<…>])
+=== R5: changed=True; code lines 7; slices/shapes/loop counts left in code: 0; note added: True
+   - for m in nl.affine_range(lhsT.shape[1] // 128):
+   + for m in nl.affine_range(<…>):
+   - psum = nl.ndarray((128, rhs.shape[1]), dtype=nl.float32, buffer=nl.psum)
+   + psum = nl.ndarray(<…>, dtype=nl.float32, buffer=nl.psum)
+   - nisa.nc_matmul(dst=psum, stationary=sbuf_stationary[:, m * 128:(m + 1) * 128], moving=sbuf_moving)
+   + nisa.nc_matmul(dst=psum, stationary=sbuf_stationary[<…>], moving=sbuf_moving)
+   - res = nl.ndarray(psum.shape, dtype=out.dtype, buffer=nl.sbuf)
+   + res = nl.ndarray(<…>, dtype=out.dtype, buffer=nl.sbuf)
+   - nisa.dma_copy(dst=out[m * 128:(m + 1) * 128, :], src=res)
+   + nisa.dma_copy(dst=out[<…>], src=res)
+=== R5b: changed=True; code lines 5; slices/shapes/loop counts left in code: 0; note added: True
+   - for n in nl.affine_range(rhs.shape[1] // 512):
+   + for n in nl.affine_range(<…>):
+   - p = nl.ndarray((<rows of this block>, 512), dtype=nl.float32, buffer=nl.psum)
+   + p = nl.ndarray(<…>, dtype=nl.float32, buffer=nl.psum)
+   - nisa.nc_matmul(dst=p, stationary=a, moving=b[:, n * 512:(n + 1) * 512])
+   + nisa.nc_matmul(dst=p, stationary=a, moving=b[<…>])
+   - ...   # then copy p out to out[<rows of this block>, n * 512:(n + 1) * 512]
+   + ...   # then copy p out to out[<…>]
+=== v7 L4 three loops (v5): changed=True; code lines 16; slices/shapes/loop counts left in code: 0; note added: True
+   - out = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+   + out = nl.ndarray(<…>, dtype=lhsT.dtype, buffer=nl.shared_hbm)
+   - for m in nl.affine_range(lhsT.shape[1] // TM):
+   + for m in nl.affine_range(<…>):
+   - for n in nl.affine_range(rhs.shape[1] // TN):
+   + for n in nl.affine_range(<…>):
+   - psum_tile = nl.ndarray((TM, TN), dtype=nl.float32, buffer=nl.psum)
+   + psum_tile = nl.ndarray(<…>, dtype=nl.float32, buffer=nl.psum)
+   - for k in nl.affine_range(lhsT.shape[0] // TK):
+   + for k in nl.affine_range(<…>):
+   - lhs_tile = nl.ndarray((TK, TM), dtype=lhsT.dtype, buffer=nl.sbuf)
+   + lhs_tile = nl.ndarray(<…>, dtype=lhsT.dtype, buffer=nl.sbuf)
+   - rhs_tile = nl.ndarray((TK, TN), dtype=rhs.dtype, buffer=nl.sbuf)
+   + rhs_tile = nl.ndarray(<…>, dtype=rhs.dtype, buffer=nl.sbuf)
+   - nisa.dma_copy(dst=lhs_tile, src=lhsT[k * TK:(k + 1) * TK, m * TM:(m + 1) * TM])
+   + nisa.dma_copy(dst=lhs_tile, src=lhsT[<…>])
+   - nisa.dma_copy(dst=rhs_tile, src=rhs[k * TK:(k + 1) * TK, n * TN:(n + 1) * TN])
+   + nisa.dma_copy(dst=rhs_tile, src=rhs[<…>])
+   - res = nl.ndarray((TM, TN), dtype=out.dtype, buffer=nl.sbuf)
+   + res = nl.ndarray(<…>, dtype=out.dtype, buffer=nl.sbuf)
+   - nisa.dma_copy(dst=out[m * TM:(m + 1) * TM, n * TN:(n + 1) * TN], src=res)
+   + nisa.dma_copy(dst=out[<…>], src=res)
+=== R8: changed=True; code lines 1; slices/shapes/loop counts left in code: 0; note added: True
+   - sbuf_moving = nl.ndarray(rhs[k * 128:(k + 1) * 128, :].shape, dtype=rhs.dtype, buffer=nl.sbuf)
+   + sbuf_moving = nl.ndarray(<…>, dtype=rhs.dtype, buffer=nl.sbuf)
+=== v7 L4 broadcast (prose only): changed=False; code lines 0; slices/shapes/loop counts left in code: 0; note added: False
+=== R7 (must stay): changed=False; code lines 1; slices/shapes/loop counts left in code: 0; note added: False
+RESULT: blocks with numeric slices/shapes left = 0
