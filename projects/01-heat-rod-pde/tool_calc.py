@@ -57,6 +57,9 @@ def compute(expr_str):
     except Exception as e:
         return f"could not read that expression: {type(e).__name__}"
 
+    if not isinstance(expr, sp.Expr):
+        return ("unsupported expression: expected one scalar expression; put each "
+                "calculation on its own COMPUTE: line")
     bad = expr.free_symbols - {x, t, n}
     if bad:
         return (f"the expression contains the unknown {sorted(map(str, bad))}; substitute a "
@@ -66,6 +69,8 @@ def compute(expr_str):
     except Exception as e:
         return f"could not evaluate that: {type(e).__name__}"
 
+    if not isinstance(value, sp.Expr):
+        return "could not evaluate that: result is not a scalar expression"
     out = sp.sstr(value)
     if not value.free_symbols:
         try:

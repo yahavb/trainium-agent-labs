@@ -20,6 +20,12 @@ success separately, both using the original checker. Settings record
 `grading_policy: original_checker`. `--repeats` repeats the same cases; `improved_agent.py`
 uses `--repeat` to advance problem seeds. `--decay-repair` remains opt-in.
 
+Runtime failures are recorded separately from checker scores: an unscorable candidate
+has a null reward and can be corrected within the existing round budget. Exhausted model
+request failures stop the batch after saving partial results. Corrupt logs are flagged,
+and request totals include failed requests; unknown token usage remains null.
+See [runtime fixes and regression evidence](RUNTIME_FIXES.md).
+
 **Team experiments:** [baseline configuration](configs/baseline.json) ·
 [structured-feedback configuration](configs/structured.json) ·
 [concise-tool configuration](configs/concise_tools.json).

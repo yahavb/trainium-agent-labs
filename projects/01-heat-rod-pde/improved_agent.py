@@ -3,9 +3,9 @@ import argparse
 import concurrent.futures as cf
 import datetime
 import json
-import math
 import os
 from pathlib import Path
+import sys
 import time
 import uuid
 import httpx
@@ -13,21 +13,11 @@ import agent as upstream
 import pdecheck
 import tool_calc
 import decay_repair
+from checker_runtime import grade_candidate
 
 
 class ModelError(RuntimeError):
     pass
-
-
-def grade_candidate(problem, answer):
-    """Use the upstream checker directly; metadata adds no acceptance conditions."""
-    result = pdecheck.check(problem, answer)
-    result.update(original_reward=result['reward'], original_parts=dict(result['parts']),
-                  grading_policy='original_checker')
-    # Strict JSON cannot represent infinity. This changes only log representation.
-    if result['start_error'] is not None and not math.isfinite(result['start_error']):
-        result['start_error'] = None
-    return result
 
 
 def ask(a, messages, trace, seed):
@@ -104,21 +94,34 @@ def repair_prompt(problem, best, history):
 
 def solve(problem, a, log, run_id):
     prompt = pdecheck.prompt_of(problem)
-    best, history, calls, errors = None, [], 0, 0
+    best, history, calls, errors, evaluation_errors = None, [], 0, 0, 0
     started = time.perf_counter()
+    def outcome(status, rounds):
+        reward = best['reward'] if best else None
+        return dict(problem=problem['name'], seed=a.seed, status=status, reward=reward,
+                    original_reward=reward, grading_policy='original_checker',
+                    rounds=rounds, requests=calls, errors=errors,
+                    evaluation_errors=evaluation_errors,
+                    seconds=time.perf_counter() - started,
+                    answer=best['expr'] if best else None)
+
     for rnd in range(a.rounds):
         with cf.ThreadPoolExecutor(max_workers=a.workers) as pool:
             answers = list(pool.map(lambda i: attempt(a, prompt, a.seed * 100000 + rnd * 100 + i),
                                     range(a.samples)))
-        valid = []
+        valid, evaluation_feedback, request_errors = [], [], 0
         for sample, response in enumerate(answers):
             calls += sum(t['type'] in ('model', 'http_error', 'transport_error') for t in response['trace'])
             if response['error']:
                 errors += 1
+                request_errors += 1
                 graded = None
             else:
                 graded = grade_candidate(problem, response['answer'])
                 response['model_grade'] = dict(graded)
+                if graded['evaluation_error']:
+                    evaluation_errors += 1
+                    evaluation_feedback.append(graded['feedback'])
                 if (getattr(a, 'decay_repair', False)
                         and graded['parts'].get('equation') is False
                         and all(graded['parts'].get(key) is True
@@ -127,6 +130,8 @@ def solve(problem, a, log, run_id):
                     proposal = decay_repair.repair(response['answer'], problem['k'])
                     repaired_grade = (grade_candidate(problem, proposal['answer'])
                                       if proposal['applied'] else None)
+                    if repaired_grade and repaired_grade['evaluation_error']:
+                        evaluation_errors += 1
                     accepted = repaired_grade is not None and repaired_grade['reward'] == 1.0
                     response['trace'].append({'type': 'decay_repair', 'proposal': proposal,
                                               'input_grade': dict(graded),
@@ -140,36 +145,32 @@ def solve(problem, a, log, run_id):
                         graded = repaired_grade
                 last_model = next((turn for turn in reversed(response['trace'])
                                    if turn.get('type') == 'model'), {})
-                if last_model.get('finish_reason') == 'length' and graded['reward'] < 1.0:
+                if last_model.get('finish_reason') == 'length' and graded['reward'] != 1.0:
                     graded['feedback'] = ('Your output was truncated before a usable solution. '
                                           'Skip the derivation; output only calculator requests or the final expression. ' + graded['feedback'])
-                valid.append(graded)
+                if graded['reward'] is not None:
+                    valid.append(graded)
             log.write(json.dumps({'run_id': run_id, 'problem': problem['name'], 'seed': a.seed,
                                   'round': rnd, 'sample': sample, 'prompt': prompt,
                                   **response, 'grade': graded}, allow_nan=False) + '\n')
             log.flush()
-        if not valid:
-            return {'problem': problem['name'], 'seed': a.seed, 'status': 'infrastructure_error',
-                    'reward': best['reward'] if best else None, 'rounds': rnd + 1,
-                    'requests': calls, 'errors': errors, 'seconds': time.perf_counter() - started}
-        candidate = max(valid, key=lambda g: (g['reward'], -(g['start_error'] if g['start_error'] is not None else 1e99)))
-        if best is None or (candidate['reward'], -(candidate['start_error'] if candidate['start_error'] is not None else 1e99)) > (best['reward'], -(best['start_error'] if best['start_error'] is not None else 1e99)):
-            best = candidate
+        candidate = None
+        if valid:
+            candidate = max(valid, key=lambda g: (g['reward'], -(g['start_error'] if g['start_error'] is not None else 1e99)))
+            if best is None or (candidate['reward'], -(candidate['start_error'] if candidate['start_error'] is not None else 1e99)) > (best['reward'], -(best['start_error'] if best['start_error'] is not None else 1e99)):
+                best = candidate
         print(f"{problem['name']} round {rnd}: rewards {[g['reward'] for g in valid]}, errors {len(answers)-len(valid)}", flush=True)
-        if best['reward'] == 1.0:
-            return {'problem': problem['name'], 'seed': a.seed, 'status': 'solved', 'reward': 1.0,
-                    'original_reward': best['original_reward'],
-                    'grading_policy': 'original_checker',
-                    'rounds': rnd + 1, 'requests': calls, 'errors': errors,
-                    'seconds': time.perf_counter() - started, 'answer': best['expr']}
-        if candidate['expr'] and all(h['expr'] != candidate['expr'] for h in history):
+        # Finish logging in-flight samples, then stop after any exhausted request failure.
+        if request_errors:
+            return outcome('infrastructure_error', rnd + 1)
+        if best and best['reward'] == 1.0:
+            return outcome('solved', rnd + 1)
+        if candidate and candidate['expr'] and all(h['expr'] != candidate['expr'] for h in history):
             history.append(candidate)
-        prompt = repair_prompt(problem, best, history)
-    return {'problem': problem['name'], 'seed': a.seed, 'status': 'unsolved', 'reward': best['reward'],
-            'original_reward': best['original_reward'],
-            'grading_policy': 'original_checker',
-            'rounds': a.rounds, 'requests': calls, 'errors': errors,
-            'seconds': time.perf_counter() - started, 'answer': best['expr']}
+        prompt = repair_prompt(problem, best, history) if best else pdecheck.prompt_of(problem)
+        if evaluation_feedback:
+            prompt += '\n\n' + '\n'.join(dict.fromkeys(evaluation_feedback))
+    return outcome('unsolved' if best else 'evaluation_error', a.rounds)
 
 
 def main():
@@ -209,9 +210,13 @@ def main():
                 results.append(solve(upstream.LEVELS[a.level].make(sub, a.seed), a, log, run_id))
                 (output / 'summary.json').write_text(json.dumps({'run_id': run_id, 'settings': settings,
                                                                'results': results}, indent=2, allow_nan=False))
+                if results[-1]['status'] in ('infrastructure_error', 'evaluation_error'):
+                    print(f"Stopped: {results[-1]['status']}. Artifacts: {output}", flush=True)
+                    return 1
     print(json.dumps(results, indent=2), flush=True)
     print(f'Artifacts: {output}', flush=True)
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
