@@ -1,0 +1,2038 @@
+[
+  {
+    "name": "correct separated DD mode",
+    "kind": "constructed_case",
+    "passed": true,
+    "result": {
+      "accepted": true,
+      "status": "valid",
+      "parts": {
+        "equation": true,
+        "left_bc": true,
+        "right_bc": true,
+        "start_shape": true
+      },
+      "conditions": {
+        "equation": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 0.17784121411614884,
+            "t": 0.02074747883410767
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 0.17784121411614884,
+              "t": 0.02074747883410767,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "left_bc": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 0.0,
+            "t": 0.02074747883410767
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 0.0,
+              "t": 0.02074747883410767,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "right_bc": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 1.0,
+            "t": 0.02074747883410767
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 1.0,
+              "t": 0.02074747883410767,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "start_shape": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 0.005,
+          "grid_errors": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "quadrature_stable": true,
+          "grid_sizes": [
+            1601,
+            1601,
+            3201
+          ],
+          "estimated_frequency_bound_cycles": 0.5,
+          "frequency_bound_resolved": true,
+          "quadrature_uncertainty_estimate": 0.0,
+          "location": {
+            "x": 0.0,
+            "t": 0.0
+          },
+          "local_deviation": 0.0,
+          "local_refinement_points": 17,
+          "local_deviation_role": "diagnostic only; acceptance uses relative L2"
+        }
+      },
+      "errors": {
+        "equation": 0.0,
+        "left_bc": 0.0,
+        "right_bc": 0.0
+      },
+      "start_error": 0.0,
+      "diagnostics": [
+        {
+          "category": "VALID_SOLUTION",
+          "severity": "info",
+          "condition": "all",
+          "evidence": {
+            "criteria": "existing tolerances on bounded verification samples"
+          },
+          "location": null,
+          "correction": "All required sampled checks pass. This is numerical validation, not a general symbolic proof."
+        }
+      ],
+      "feedback": "VALID_SOLUTION: All required sampled checks pass. This is numerical validation, not a general symbolic proof.",
+      "validation_seed": 9173,
+      "points": 1944,
+      "shape_points": 3201,
+      "protocol": "enhanced-checker-v2",
+      "validation_complete": true,
+      "diagnostics_complete": true
+    },
+    "seconds": 0.4246810439944966
+  },
+  {
+    "name": "wrong decay rejects PDE with diagnostic",
+    "kind": "constructed_case",
+    "passed": true,
+    "result": {
+      "accepted": false,
+      "status": "invalid",
+      "parts": {
+        "equation": false,
+        "left_bc": true,
+        "right_bc": true,
+        "start_shape": true
+      },
+      "conditions": {
+        "equation": {
+          "status": "fail",
+          "error": 9.86960440089454,
+          "threshold": 1e-06,
+          "value": -9.86960440089454,
+          "location": {
+            "x": 0.5,
+            "t": 1e-12
+          },
+          "symbolic_zero": false,
+          "precision_audits": [
+            {
+              "x": 0.5,
+              "t": 1e-12,
+              "normalized_error": 9.86960440089454
+            },
+            {
+              "x": 0.17784121411614884,
+              "t": 0.02074747883410767,
+              "normalized_error": 3.473661416702582
+            },
+            {
+              "x": 0.9848484848484849,
+              "t": 0.1,
+              "normalized_error": 0.06523470814862713
+            }
+          ]
+        },
+        "left_bc": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 0.0,
+            "t": 0.02074747883410767
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 0.0,
+              "t": 0.02074747883410767,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "right_bc": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 1.0,
+            "t": 0.02074747883410767
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 1.0,
+              "t": 0.02074747883410767,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "start_shape": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 0.005,
+          "grid_errors": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "quadrature_stable": true,
+          "grid_sizes": [
+            1601,
+            1601,
+            3201
+          ],
+          "estimated_frequency_bound_cycles": 0.5,
+          "frequency_bound_resolved": true,
+          "quadrature_uncertainty_estimate": 0.0,
+          "location": {
+            "x": 0.0,
+            "t": 0.0
+          },
+          "local_deviation": 0.0,
+          "local_refinement_points": 17,
+          "local_deviation_role": "diagnostic only; acceptance uses relative L2"
+        }
+      },
+      "errors": {
+        "equation": 9.86960440089454,
+        "left_bc": 0.0,
+        "right_bc": 0.0
+      },
+      "start_error": 0.0,
+      "diagnostics": [
+        {
+          "category": "PDE_RESIDUAL_ERROR",
+          "severity": "error",
+          "condition": "equation",
+          "evidence": {
+            "status": "fail",
+            "error": 9.86960440089454,
+            "threshold": 1e-06,
+            "value": -9.86960440089454,
+            "location": {
+              "x": 0.5,
+              "t": 1e-12
+            },
+            "symbolic_zero": false,
+            "precision_audits": [
+              {
+                "x": 0.5,
+                "t": 1e-12,
+                "normalized_error": 9.86960440089454
+              },
+              {
+                "x": 0.17784121411614884,
+                "t": 0.02074747883410767,
+                "normalized_error": 3.473661416702582
+              },
+              {
+                "x": 0.9848484848484849,
+                "t": 0.1,
+                "normalized_error": 0.06523470814862713
+              }
+            ]
+          },
+          "location": {
+            "x": 0.5,
+            "t": 1e-12
+          },
+          "correction": "Recheck u_t - k*u_xx, using the actual k and L. Pair each spatial frequency with its own k*frequency**2 decay."
+        },
+        {
+          "category": "DECAY_RATE_ERROR",
+          "severity": "error",
+          "condition": "equation",
+          "evidence": {
+            "spatial_factor": "sin(pi*x)",
+            "candidate_rate": 19.739208802178716,
+            "k_times_frequency_squared": 9.869604401089358,
+            "scope": "explicit term; cancellation with other terms is not excluded"
+          },
+          "location": null,
+          "correction": "The displayed sin(pi*x) term uses a decay rate inconsistent with k*frequency**2. Reassemble paired spatial and temporal factors; the full PDE residual also fails."
+        }
+      ],
+      "feedback": "Preserve the passing conditions: left_bc, right_bc, start_shape. PDE_RESIDUAL_ERROR: Recheck u_t - k*u_xx, using the actual k and L. Pair each spatial frequency with its own k*frequency**2 decay. Evidence: normalized error=9.87, limit=1e-06. Location: {'x': 0.5, 't': 1e-12}. DECAY_RATE_ERROR: The displayed sin(pi*x) term uses a decay rate inconsistent with k*frequency**2. Reassemble paired spatial and temporal factors; the full PDE residual also fails.",
+      "validation_seed": 9173,
+      "points": 1944,
+      "shape_points": 3201,
+      "protocol": "enhanced-checker-v2",
+      "validation_complete": true,
+      "diagnostics_complete": true
+    },
+    "seconds": 0.4170820970030036
+  },
+  {
+    "name": "one percent amplitude error rejects initial shape",
+    "kind": "constructed_case",
+    "passed": true,
+    "result": {
+      "accepted": false,
+      "status": "invalid",
+      "parts": {
+        "equation": true,
+        "left_bc": true,
+        "right_bc": true,
+        "start_shape": false
+      },
+      "conditions": {
+        "equation": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 0.17784121411614884,
+            "t": 0.02074747883410767
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 0.17784121411614884,
+              "t": 0.02074747883410767,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "left_bc": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 0.0,
+            "t": 0.02074747883410767
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 0.0,
+              "t": 0.02074747883410767,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "right_bc": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 1.0,
+            "t": 0.02074747883410767
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 1.0,
+              "t": 0.02074747883410767,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "start_shape": {
+          "status": "fail",
+          "error": 0.010000000000000009,
+          "threshold": 0.005,
+          "grid_errors": [
+            0.010000000000000007,
+            0.010000000000000009,
+            0.010000000000000009
+          ],
+          "quadrature_stable": true,
+          "grid_sizes": [
+            1601,
+            1601,
+            3201
+          ],
+          "estimated_frequency_bound_cycles": 0.5,
+          "frequency_bound_resolved": true,
+          "quadrature_uncertainty_estimate": 1.776356839400252e-17,
+          "location": {
+            "x": 0.5000014321140829,
+            "t": 0.0
+          },
+          "local_deviation": -0.009999999999898757,
+          "local_refinement_points": 17,
+          "local_deviation_role": "diagnostic only; acceptance uses relative L2"
+        }
+      },
+      "errors": {
+        "equation": 0.0,
+        "left_bc": 0.0,
+        "right_bc": 0.0
+      },
+      "start_error": 0.010000000000000009,
+      "diagnostics": [
+        {
+          "category": "INITIAL_CONDITION_ERROR",
+          "severity": "error",
+          "condition": "start_shape",
+          "evidence": {
+            "status": "fail",
+            "error": 0.010000000000000009,
+            "threshold": 0.005,
+            "grid_errors": [
+              0.010000000000000007,
+              0.010000000000000009,
+              0.010000000000000009
+            ],
+            "quadrature_stable": true,
+            "grid_sizes": [
+              1601,
+              1601,
+              3201
+            ],
+            "estimated_frequency_bound_cycles": 0.5,
+            "frequency_bound_resolved": true,
+            "quadrature_uncertainty_estimate": 1.776356839400252e-17,
+            "location": {
+              "x": 0.5000014321140829,
+              "t": 0.0
+            },
+            "local_deviation": -0.009999999999898757,
+            "local_refinement_points": 17,
+            "local_deviation_role": "diagnostic only; acceptance uses relative L2"
+          },
+          "location": {
+            "x": 0.5000014321140829,
+            "t": 0.0
+          },
+          "correction": "Recheck coefficients against the public f(x). Meet the stated relative L2 tolerance; the largest local deviation is diagnostic, not an extra acceptance threshold."
+        },
+        {
+          "category": "FOURIER_COEFFICIENT_ERROR",
+          "severity": "error",
+          "condition": "start_shape",
+          "evidence": {
+            "mode": 1,
+            "basis": "sin(pi*x)",
+            "direction": "too small",
+            "projection_error": 0.010000000000000009
+          },
+          "location": null,
+          "correction": "The initial projection onto sin(pi*x) is too small. Recompute its coefficient as integral(f*b)/integral(b*b); preserve each mode's own decay."
+        },
+        {
+          "category": "FOURIER_DIAGNOSIS_INCONCLUSIVE",
+          "severity": "warning",
+          "condition": "start_shape",
+          "evidence": {
+            "unresolved_inspected_modes": [
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8
+            ]
+          },
+          "location": null,
+          "correction": "Projection grids disagree beyond the diagnostic precision budget. Use initial-condition evidence; a truncation-only cause has not been established."
+        }
+      ],
+      "feedback": "Preserve the passing conditions: equation, left_bc, right_bc. INITIAL_CONDITION_ERROR: Recheck coefficients against the public f(x). Meet the stated relative L2 tolerance; the largest local deviation is diagnostic, not an extra acceptance threshold. Evidence: normalized error=0.01, limit=0.005. Location: {'x': 0.5000014321140829, 't': 0.0}. FOURIER_COEFFICIENT_ERROR: The initial projection onto sin(pi*x) is too small. Recompute its coefficient as integral(f*b)/integral(b*b); preserve each mode's own decay. FOURIER_DIAGNOSIS_INCONCLUSIVE: Projection grids disagree beyond the diagnostic precision budget. Use initial-condition evidence; a truncation-only cause has not been established.",
+      "validation_seed": 9173,
+      "points": 1944,
+      "shape_points": 3201,
+      "protocol": "enhanced-checker-v2",
+      "validation_complete": true,
+      "diagnostics_complete": true
+    },
+    "seconds": 0.43016964200069197
+  },
+  {
+    "name": "wrong spatial mode rejects initial shape",
+    "kind": "constructed_case",
+    "passed": true,
+    "result": {
+      "accepted": false,
+      "status": "invalid",
+      "parts": {
+        "equation": true,
+        "left_bc": true,
+        "right_bc": true,
+        "start_shape": false
+      },
+      "conditions": {
+        "equation": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 0.17784121411614884,
+            "t": 0.02074747883410767
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 0.17784121411614884,
+              "t": 0.02074747883410767,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "left_bc": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 0.0,
+            "t": 0.02074747883410767
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 0.0,
+              "t": 0.02074747883410767,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "right_bc": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 1.0,
+            "t": 0.02074747883410767
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 1.0,
+              "t": 0.02074747883410767,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "start_shape": {
+          "status": "fail",
+          "error": 1.4142135762534322,
+          "threshold": 0.005,
+          "grid_errors": [
+            1.414213562373095,
+            1.4142135762534322,
+            1.4142135638461792
+          ],
+          "quadrature_stable": true,
+          "grid_sizes": [
+            1601,
+            1601,
+            3201
+          ],
+          "estimated_frequency_bound_cycles": 1.0,
+          "frequency_bound_resolved": true,
+          "quadrature_uncertainty_estimate": 1.2407253002777452e-08,
+          "location": {
+            "x": 0.702091001493451,
+            "t": 0.0
+          },
+          "local_deviation": -1.7601725920518427,
+          "local_refinement_points": 17,
+          "local_deviation_role": "diagnostic only; acceptance uses relative L2"
+        }
+      },
+      "errors": {
+        "equation": 0.0,
+        "left_bc": 0.0,
+        "right_bc": 0.0
+      },
+      "start_error": 1.4142135762534322,
+      "diagnostics": [
+        {
+          "category": "INITIAL_CONDITION_ERROR",
+          "severity": "error",
+          "condition": "start_shape",
+          "evidence": {
+            "status": "fail",
+            "error": 1.4142135762534322,
+            "threshold": 0.005,
+            "grid_errors": [
+              1.414213562373095,
+              1.4142135762534322,
+              1.4142135638461792
+            ],
+            "quadrature_stable": true,
+            "grid_sizes": [
+              1601,
+              1601,
+              3201
+            ],
+            "estimated_frequency_bound_cycles": 1.0,
+            "frequency_bound_resolved": true,
+            "quadrature_uncertainty_estimate": 1.2407253002777452e-08,
+            "location": {
+              "x": 0.702091001493451,
+              "t": 0.0
+            },
+            "local_deviation": -1.7601725920518427,
+            "local_refinement_points": 17,
+            "local_deviation_role": "diagnostic only; acceptance uses relative L2"
+          },
+          "location": {
+            "x": 0.702091001493451,
+            "t": 0.0
+          },
+          "correction": "Recheck coefficients against the public f(x). Meet the stated relative L2 tolerance; the largest local deviation is diagnostic, not an extra acceptance threshold."
+        },
+        {
+          "category": "FOURIER_COEFFICIENT_ERROR",
+          "severity": "error",
+          "condition": "start_shape",
+          "evidence": {
+            "mode": 2,
+            "basis": "sin(2*pi*x)",
+            "direction": "spurious",
+            "projection_error": 1.0000000017102002
+          },
+          "location": null,
+          "correction": "The initial projection onto sin(2*pi*x) is spurious. Recompute its coefficient as integral(f*b)/integral(b*b); preserve each mode's own decay."
+        },
+        {
+          "category": "FOURIER_DIAGNOSIS_INCONCLUSIVE",
+          "severity": "warning",
+          "condition": "start_shape",
+          "evidence": {
+            "unresolved_inspected_modes": [
+              3,
+              4,
+              5,
+              6,
+              7,
+              8
+            ]
+          },
+          "location": null,
+          "correction": "Projection grids disagree beyond the diagnostic precision budget. Use initial-condition evidence; a truncation-only cause has not been established."
+        },
+        {
+          "category": "FOURIER_COEFFICIENT_ERROR",
+          "severity": "error",
+          "condition": "start_shape",
+          "evidence": {
+            "missing_inspected_modes": [
+              1
+            ]
+          },
+          "location": null,
+          "correction": "Required initial-profile projections are missing. Correct existing coefficients and mode choices before assuming that adding higher terms is sufficient."
+        }
+      ],
+      "feedback": "Preserve the passing conditions: equation, left_bc, right_bc. INITIAL_CONDITION_ERROR: Recheck coefficients against the public f(x). Meet the stated relative L2 tolerance; the largest local deviation is diagnostic, not an extra acceptance threshold. Evidence: normalized error=1.414, limit=0.005. Location: {'x': 0.702091001493451, 't': 0.0}. FOURIER_COEFFICIENT_ERROR: The initial projection onto sin(2*pi*x) is spurious. Recompute its coefficient as integral(f*b)/integral(b*b); preserve each mode's own decay. FOURIER_DIAGNOSIS_INCONCLUSIVE: Projection grids disagree beyond the diagnostic precision budget. Use initial-condition evidence; a truncation-only cause has not been established. FOURIER_COEFFICIENT_ERROR: Required initial-profile projections are missing. Correct existing coefficients and mode choices before assuming that adding higher terms is sufficient.",
+      "validation_seed": 9173,
+      "points": 1944,
+      "shape_points": 3201,
+      "protocol": "enhanced-checker-v2",
+      "validation_complete": true,
+      "diagnostics_complete": true
+    },
+    "seconds": 0.43239833301049657
+  },
+  {
+    "name": "exact rational endpoint DN mode",
+    "kind": "constructed_case",
+    "passed": true,
+    "result": {
+      "accepted": true,
+      "status": "valid",
+      "parts": {
+        "equation": true,
+        "left_bc": true,
+        "right_bc": true,
+        "start_shape": true
+      },
+      "conditions": {
+        "equation": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 0.30023606195896135,
+            "t": 0.008652215849857967
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 0.30023606195896135,
+              "t": 0.008652215849857967,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "left_bc": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 0.0,
+            "t": 0.008652215849857967
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 0.0,
+              "t": 0.008652215849857967,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "right_bc": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 0.3333333333333333,
+            "t": 0.008652215849857967
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 0.3333333333333333,
+              "t": 0.008652215849857967,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "start_shape": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 0.005,
+          "grid_errors": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "quadrature_stable": true,
+          "grid_sizes": [
+            1601,
+            1601,
+            3201
+          ],
+          "estimated_frequency_bound_cycles": 0.25,
+          "frequency_bound_resolved": true,
+          "quadrature_uncertainty_estimate": 0.0,
+          "location": {
+            "x": 0.0,
+            "t": 0.0
+          },
+          "local_deviation": 0.0,
+          "local_refinement_points": 17,
+          "local_deviation_role": "diagnostic only; acceptance uses relative L2"
+        }
+      },
+      "errors": {
+        "equation": 0.0,
+        "left_bc": 0.0,
+        "right_bc": 0.0
+      },
+      "start_error": 0.0,
+      "diagnostics": [
+        {
+          "category": "VALID_SOLUTION",
+          "severity": "info",
+          "condition": "all",
+          "evidence": {
+            "criteria": "existing tolerances on bounded verification samples"
+          },
+          "location": null,
+          "correction": "All required sampled checks pass. This is numerical validation, not a general symbolic proof."
+        }
+      ],
+      "feedback": "VALID_SOLUTION: All required sampled checks pass. This is numerical validation, not a general symbolic proof.",
+      "validation_seed": 9173,
+      "points": 1944,
+      "shape_points": 3201,
+      "protocol": "enhanced-checker-v2",
+      "validation_complete": true,
+      "diagnostics_complete": true
+    },
+    "seconds": 0.4265153640008066
+  },
+  {
+    "name": "DN integer wave rejects right slope",
+    "kind": "constructed_case",
+    "passed": true,
+    "result": {
+      "accepted": false,
+      "status": "invalid",
+      "parts": {
+        "equation": true,
+        "left_bc": true,
+        "right_bc": false,
+        "start_shape": false
+      },
+      "conditions": {
+        "equation": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 0.30023606195896135,
+            "t": 0.008652215849857967
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 0.30023606195896135,
+              "t": 0.008652215849857967,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "left_bc": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 0.0,
+            "t": 0.008652215849857967
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 0.0,
+              "t": 0.008652215849857967,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "right_bc": {
+          "status": "fail",
+          "error": 3.141592653558787,
+          "threshold": 1e-06,
+          "value": -3.141592653558787,
+          "location": {
+            "x": 0.3333333333333333,
+            "t": 1.111111111111111e-13
+          },
+          "symbolic_zero": false,
+          "precision_audits": [
+            {
+              "x": 0.3333333333333333,
+              "t": 1.111111111111111e-13,
+              "normalized_error": 3.141592653558787
+            },
+            {
+              "x": 0.3333333333333333,
+              "t": 0.008652215849857967,
+              "normalized_error": 1.456715664996448
+            },
+            {
+              "x": 0.3333333333333333,
+              "t": 0.011111111111111112,
+              "normalized_error": 1.170896208477289
+            }
+          ]
+        },
+        "start_shape": {
+          "status": "fail",
+          "error": 0.549861629710598,
+          "threshold": 0.005,
+          "grid_errors": [
+            0.5498615123356417,
+            0.549861629710598,
+            0.549861261532348
+          ],
+          "quadrature_stable": true,
+          "grid_sizes": [
+            1601,
+            1601,
+            3201
+          ],
+          "estimated_frequency_bound_cycles": 0.5,
+          "frequency_bound_resolved": true,
+          "quadrature_uncertainty_estimate": 3.681782499986852e-07,
+          "location": {
+            "x": 0.3333333333333333,
+            "t": 0.0
+          },
+          "local_deviation": -0.9999999999999999,
+          "local_refinement_points": 17,
+          "local_deviation_role": "diagnostic only; acceptance uses relative L2"
+        }
+      },
+      "errors": {
+        "equation": 0.0,
+        "left_bc": 0.0,
+        "right_bc": 3.141592653558787
+      },
+      "start_error": 0.549861629710598,
+      "diagnostics": [
+        {
+          "category": "RIGHT_BOUNDARY_ERROR",
+          "severity": "error",
+          "condition": "right_bc",
+          "evidence": {
+            "status": "fail",
+            "error": 3.141592653558787,
+            "threshold": 1e-06,
+            "value": -3.141592653558787,
+            "location": {
+              "x": 0.3333333333333333,
+              "t": 1.111111111111111e-13
+            },
+            "symbolic_zero": false,
+            "precision_audits": [
+              {
+                "x": 0.3333333333333333,
+                "t": 1.111111111111111e-13,
+                "normalized_error": 3.141592653558787
+              },
+              {
+                "x": 0.3333333333333333,
+                "t": 0.008652215849857967,
+                "normalized_error": 1.456715664996448
+              },
+              {
+                "x": 0.3333333333333333,
+                "t": 0.011111111111111112,
+                "normalized_error": 1.170896208477289
+              }
+            ]
+          },
+          "location": {
+            "x": 0.3333333333333333,
+            "t": 1.111111111111111e-13
+          },
+          "correction": "Correct the right neumann boundary: slope u_x must be zero. Choose modes compatible with both stated boundaries, including the actual rod length."
+        },
+        {
+          "category": "INITIAL_CONDITION_ERROR",
+          "severity": "error",
+          "condition": "start_shape",
+          "evidence": {
+            "status": "fail",
+            "error": 0.549861629710598,
+            "threshold": 0.005,
+            "grid_errors": [
+              0.5498615123356417,
+              0.549861629710598,
+              0.549861261532348
+            ],
+            "quadrature_stable": true,
+            "grid_sizes": [
+              1601,
+              1601,
+              3201
+            ],
+            "estimated_frequency_bound_cycles": 0.5,
+            "frequency_bound_resolved": true,
+            "quadrature_uncertainty_estimate": 3.681782499986852e-07,
+            "location": {
+              "x": 0.3333333333333333,
+              "t": 0.0
+            },
+            "local_deviation": -0.9999999999999999,
+            "local_refinement_points": 17,
+            "local_deviation_role": "diagnostic only; acceptance uses relative L2"
+          },
+          "location": {
+            "x": 0.3333333333333333,
+            "t": 0.0
+          },
+          "correction": "Recheck coefficients against the public f(x). Meet the stated relative L2 tolerance; the largest local deviation is diagnostic, not an extra acceptance threshold."
+        },
+        {
+          "category": "SPATIAL_BASIS_MISMATCH",
+          "severity": "warning",
+          "condition": "boundary_basis",
+          "evidence": {
+            "factor": "sin((3*pi)*x)",
+            "sides": [
+              "right"
+            ],
+            "scope": "individual factor, not a proof of a unique root cause"
+          },
+          "location": null,
+          "correction": "The factor sin((3*pi)*x) alone violates a failing boundary. Recheck sine/cosine choice, phase and wave number. Other terms can cancel individual boundary defects; judge the assembled solution."
+        },
+        {
+          "category": "FOURIER_COEFFICIENT_ERROR",
+          "severity": "error",
+          "condition": "start_shape",
+          "evidence": {
+            "mode": 2,
+            "basis": "sin(9*pi*x/2)",
+            "direction": "spurious",
+            "projection_error": 0.5092958853820201
+          },
+          "location": null,
+          "correction": "The initial projection onto sin(9*pi*x/2) is spurious. Recompute its coefficient as integral(f*b)/integral(b*b); preserve each mode's own decay."
+        },
+        {
+          "category": "FOURIER_COEFFICIENT_ERROR",
+          "severity": "error",
+          "condition": "start_shape",
+          "evidence": {
+            "mode": 1,
+            "basis": "sin(3*pi*x/2)",
+            "direction": "too small",
+            "projection_error": 0.15117370421524046
+          },
+          "location": null,
+          "correction": "The initial projection onto sin(3*pi*x/2) is too small. Recompute its coefficient as integral(f*b)/integral(b*b); preserve each mode's own decay."
+        },
+        {
+          "category": "FOURIER_COEFFICIENT_ERROR",
+          "severity": "error",
+          "condition": "start_shape",
+          "evidence": {
+            "mode": 3,
+            "basis": "sin(15*pi*x/2)",
+            "direction": "spurious",
+            "projection_error": 0.1212609824064324
+          },
+          "location": null,
+          "correction": "The initial projection onto sin(15*pi*x/2) is spurious. Recompute its coefficient as integral(f*b)/integral(b*b); preserve each mode's own decay."
+        }
+      ],
+      "feedback": "Preserve the passing conditions: equation, left_bc. RIGHT_BOUNDARY_ERROR: Correct the right neumann boundary: slope u_x must be zero. Choose modes compatible with both stated boundaries, including the actual rod length. Evidence: normalized error=3.142, limit=1e-06. Location: {'x': 0.3333333333333333, 't': 1.111111111111111e-13}. INITIAL_CONDITION_ERROR: Recheck coefficients against the public f(x). Meet the stated relative L2 tolerance; the largest local deviation is diagnostic, not an extra acceptance threshold. Evidence: normalized error=0.5499, limit=0.005. Location: {'x': 0.3333333333333333, 't': 0.0}. SPATIAL_BASIS_MISMATCH: The factor sin((3*pi)*x) alone violates a failing boundary. Recheck sine/cosine choice, phase and wave number. Other terms can cancel individual boundary defects; judge the assembled solution. FOURIER_COEFFICIENT_ERROR: The initial projection onto sin(9*pi*x/2) is spurious. Recompute its coefficient as integral(f*b)/integral(b*b); preserve each mode's own decay. FOURIER_COEFFICIENT_ERROR: The initial projection onto sin(3*pi*x/2) is too small. Recompute its coefficient as integral(f*b)/integral(b*b); preserve each mode's own decay. FOURIER_COEFFICIENT_ERROR: The initial projection onto sin(15*pi*x/2) is spurious. Recompute its coefficient as integral(f*b)/integral(b*b); preserve each mode's own decay.",
+      "validation_seed": 9173,
+      "points": 1944,
+      "shape_points": 3201,
+      "protocol": "enhanced-checker-v2",
+      "validation_complete": true,
+      "diagnostics_complete": true
+    },
+    "seconds": 0.43586543599667493
+  },
+  {
+    "name": "three-mode parabola accepted",
+    "kind": "constructed_case",
+    "passed": true,
+    "result": {
+      "accepted": true,
+      "status": "valid",
+      "parts": {
+        "equation": true,
+        "left_bc": true,
+        "right_bc": true,
+        "start_shape": true
+      },
+      "conditions": {
+        "equation": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 1.063036637971242,
+            "t": 0.02705303922514144
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 1.063036637971242,
+              "t": 0.02705303922514144,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "left_bc": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 0.0,
+            "t": 0.02705303922514144
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 0.0,
+              "t": 0.02705303922514144,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "right_bc": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 2.0,
+            "t": 0.02705303922514144
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 2.0,
+              "t": 0.02705303922514144,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "start_shape": {
+          "status": "pass",
+          "error": 0.0033642464198011196,
+          "threshold": 0.005,
+          "grid_errors": [
+            0.0033642458617409612,
+            0.0033642463141570003,
+            0.0033642464198011196
+          ],
+          "quadrature_stable": true,
+          "grid_sizes": [
+            1601,
+            1601,
+            3201
+          ],
+          "estimated_frequency_bound_cycles": 4.5,
+          "frequency_bound_resolved": true,
+          "quadrature_uncertainty_estimate": 1.0564411932062479e-10,
+          "location": {
+            "x": 0.0916034080384899,
+            "t": 0.0
+          },
+          "local_deviation": -0.005392438965621499,
+          "local_refinement_points": 17,
+          "local_deviation_role": "diagnostic only; acceptance uses relative L2"
+        }
+      },
+      "errors": {
+        "equation": 0.0,
+        "left_bc": 0.0,
+        "right_bc": 0.0
+      },
+      "start_error": 0.0033642464198011196,
+      "diagnostics": [
+        {
+          "category": "VALID_SOLUTION",
+          "severity": "info",
+          "condition": "all",
+          "evidence": {
+            "criteria": "existing tolerances on bounded verification samples"
+          },
+          "location": null,
+          "correction": "All required sampled checks pass. This is numerical validation, not a general symbolic proof."
+        }
+      ],
+      "feedback": "VALID_SOLUTION: All required sampled checks pass. This is numerical validation, not a general symbolic proof.",
+      "validation_seed": 9173,
+      "points": 1944,
+      "shape_points": 3201,
+      "protocol": "enhanced-checker-v2",
+      "validation_complete": true,
+      "diagnostics_complete": true
+    },
+    "seconds": 0.46999951598991174
+  },
+  {
+    "name": "one-mode parabola fails initial shape",
+    "kind": "constructed_case",
+    "passed": true,
+    "result": {
+      "accepted": false,
+      "status": "invalid",
+      "parts": {
+        "equation": true,
+        "left_bc": true,
+        "right_bc": true,
+        "start_shape": false
+      },
+      "conditions": {
+        "equation": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 1.063036637971242,
+            "t": 0.02705303922514144
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 1.063036637971242,
+              "t": 0.02705303922514144,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "left_bc": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 0.0,
+            "t": 0.02705303922514144
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 0.0,
+              "t": 0.02705303922514144,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "right_bc": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 2.0,
+            "t": 0.02705303922514144
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 2.0,
+              "t": 0.02705303922514144,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "start_shape": {
+          "status": "fail",
+          "error": 0.03801296743321193,
+          "threshold": 0.005,
+          "grid_errors": [
+            0.03801296668181937,
+            0.03801296538998719,
+            0.03801296743321193
+          ],
+          "quadrature_stable": true,
+          "grid_sizes": [
+            1601,
+            1601,
+            3201
+          ],
+          "estimated_frequency_bound_cycles": 0.5,
+          "frequency_bound_resolved": true,
+          "quadrature_uncertainty_estimate": 2.0432247421764416e-09,
+          "location": {
+            "x": 0.2521930928744076,
+            "t": 0.0
+          },
+          "local_deviation": -0.04255441044595826,
+          "local_refinement_points": 17,
+          "local_deviation_role": "diagnostic only; acceptance uses relative L2"
+        }
+      },
+      "errors": {
+        "equation": 0.0,
+        "left_bc": 0.0,
+        "right_bc": 0.0
+      },
+      "start_error": 0.03801296743321193,
+      "diagnostics": [
+        {
+          "category": "INITIAL_CONDITION_ERROR",
+          "severity": "error",
+          "condition": "start_shape",
+          "evidence": {
+            "status": "fail",
+            "error": 0.03801296743321193,
+            "threshold": 0.005,
+            "grid_errors": [
+              0.03801296668181937,
+              0.03801296538998719,
+              0.03801296743321193
+            ],
+            "quadrature_stable": true,
+            "grid_sizes": [
+              1601,
+              1601,
+              3201
+            ],
+            "estimated_frequency_bound_cycles": 0.5,
+            "frequency_bound_resolved": true,
+            "quadrature_uncertainty_estimate": 2.0432247421764416e-09,
+            "location": {
+              "x": 0.2521930928744076,
+              "t": 0.0
+            },
+            "local_deviation": -0.04255441044595826,
+            "local_refinement_points": 17,
+            "local_deviation_role": "diagnostic only; acceptance uses relative L2"
+          },
+          "location": {
+            "x": 0.2521930928744076,
+            "t": 0.0
+          },
+          "correction": "Recheck coefficients against the public f(x). Meet the stated relative L2 tolerance; the largest local deviation is diagnostic, not an extra acceptance threshold."
+        },
+        {
+          "category": "FOURIER_DIAGNOSIS_INCONCLUSIVE",
+          "severity": "warning",
+          "condition": "start_shape",
+          "evidence": {
+            "unresolved_inspected_modes": [
+              2,
+              4,
+              6,
+              7,
+              8
+            ]
+          },
+          "location": null,
+          "correction": "Projection grids disagree beyond the diagnostic precision budget. Use initial-condition evidence; a truncation-only cause has not been established."
+        },
+        {
+          "category": "FOURIER_COEFFICIENT_ERROR",
+          "severity": "error",
+          "condition": "start_shape",
+          "evidence": {
+            "missing_inspected_modes": [
+              3,
+              5
+            ]
+          },
+          "location": null,
+          "correction": "Required initial-profile projections are missing. Correct existing coefficients and mode choices before assuming that adding higher terms is sufficient."
+        }
+      ],
+      "feedback": "Preserve the passing conditions: equation, left_bc, right_bc. INITIAL_CONDITION_ERROR: Recheck coefficients against the public f(x). Meet the stated relative L2 tolerance; the largest local deviation is diagnostic, not an extra acceptance threshold. Evidence: normalized error=0.03801, limit=0.005. Location: {'x': 0.2521930928744076, 't': 0.0}. FOURIER_DIAGNOSIS_INCONCLUSIVE: Projection grids disagree beyond the diagnostic precision budget. Use initial-condition evidence; a truncation-only cause has not been established. FOURIER_COEFFICIENT_ERROR: Required initial-profile projections are missing. Correct existing coefficients and mode choices before assuming that adding higher terms is sufficient.",
+      "validation_seed": 9173,
+      "points": 1944,
+      "shape_points": 3201,
+      "protocol": "enhanced-checker-v2",
+      "validation_complete": true,
+      "diagnostics_complete": true
+    },
+    "seconds": 0.4385399560123915
+  },
+  {
+    "name": "unbound index rejected",
+    "kind": "constructed_case",
+    "passed": true,
+    "result": {
+      "accepted": false,
+      "parts": {},
+      "errors": {},
+      "start_error": null,
+      "status": "invalid",
+      "error": "Evaluate coefficients and expand or bind each index; do not delete an unbound index.",
+      "feedback": "Evaluate coefficients and expand or bind each index; do not delete an unbound index.",
+      "diagnostics": [
+        {
+          "category": "UNBOUND_SYMBOL",
+          "severity": "error",
+          "condition": "expression",
+          "evidence": {
+            "symbols": [
+              "n"
+            ]
+          },
+          "location": null,
+          "correction": "Evaluate coefficients and expand or bind each index; do not delete an unbound index."
+        }
+      ]
+    },
+    "seconds": 0.29683770799601916
+  },
+  {
+    "name": "unfinished coefficient rejected",
+    "kind": "constructed_case",
+    "passed": true,
+    "result": {
+      "accepted": false,
+      "parts": {},
+      "errors": {},
+      "start_error": null,
+      "status": "invalid",
+      "error": "Evaluate coefficients and derivatives before submitting the solution.",
+      "feedback": "Evaluate coefficients and derivatives before submitting the solution.",
+      "diagnostics": [
+        {
+          "category": "INCOMPLETE_EXPRESSION",
+          "severity": "error",
+          "condition": "expression",
+          "evidence": {
+            "construct": "Integral"
+          },
+          "location": null,
+          "correction": "Evaluate coefficients and derivatives before submitting the solution."
+        }
+      ]
+    },
+    "seconds": 0.29227911299676634
+  },
+  {
+    "name": "parser bound Float('1e13')",
+    "kind": "constructed_case",
+    "passed": true,
+    "result": {
+      "rejected": true,
+      "category": "NUMERICAL_VALIDATION_INCONCLUSIVE"
+    },
+    "seconds": 0.0001675950043136254
+  },
+  {
+    "name": "parser bound Float('1e-10001')",
+    "kind": "constructed_case",
+    "passed": true,
+    "result": {
+      "rejected": true,
+      "category": "NUMERICAL_VALIDATION_INCONCLUSIVE"
+    },
+    "seconds": 7.907299732323736e-05
+  },
+  {
+    "name": "parser bound x**(-10001)",
+    "kind": "constructed_case",
+    "passed": true,
+    "result": {
+      "rejected": true,
+      "category": "NUMERICAL_VALIDATION_INCONCLUSIVE"
+    },
+    "seconds": 0.0004086260014446452
+  },
+  {
+    "name": "parser bound x**(10000+1)",
+    "kind": "constructed_case",
+    "passed": true,
+    "result": {
+      "rejected": true,
+      "category": "NUMERICAL_VALIDATION_INCONCLUSIVE"
+    },
+    "seconds": 0.0003584829973988235
+  },
+  {
+    "name": "parser bound x**(2**10)",
+    "kind": "constructed_case",
+    "passed": true,
+    "result": {
+      "rejected": true,
+      "category": "NUMERICAL_VALIDATION_INCONCLUSIVE"
+    },
+    "seconds": 0.00016512599540874362
+  },
+  {
+    "name": "simple fractional exponent remains supported",
+    "kind": "constructed_case",
+    "passed": true,
+    "result": {
+      "expr": "x**(1/2)"
+    },
+    "seconds": 0.0003544630017131567
+  },
+  {
+    "name": "scaled IC norm avoids large-profile square overflow",
+    "kind": "constructed_case",
+    "passed": false,
+    "error": "TypeError(\"unsupported operand type(s) for -: 'NoneType' and 'float'\")",
+    "seconds": 0.2916817799996352
+  },
+  {
+    "name": "threshold overlap never certified",
+    "kind": "constructed_case",
+    "passed": true,
+    "result": {
+      "accepted": false,
+      "status": "inconclusive",
+      "parts": {
+        "equation": true,
+        "left_bc": true,
+        "right_bc": true,
+        "start_shape": false
+      },
+      "conditions": {
+        "equation": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 0.17784121411614884,
+            "t": 0.02074747883410767
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 0.17784121411614884,
+              "t": 0.02074747883410767,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "left_bc": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 0.0,
+            "t": 0.02074747883410767
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 0.0,
+              "t": 0.02074747883410767,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "right_bc": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 1.0,
+            "t": 0.02074747883410767
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 1.0,
+              "t": 0.02074747883410767,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "start_shape": {
+          "status": "inconclusive",
+          "error": 0.0050000000000000044,
+          "threshold": 0.005,
+          "grid_errors": [
+            0.005000000000000004,
+            0.0050000000000000044,
+            0.0050000000000000044
+          ],
+          "quadrature_stable": true,
+          "grid_sizes": [
+            1601,
+            1601,
+            3201
+          ],
+          "estimated_frequency_bound_cycles": 0.5,
+          "frequency_bound_resolved": true,
+          "quadrature_uncertainty_estimate": 8.88178419700126e-18,
+          "location": {
+            "x": 0.5000014321140829,
+            "t": 0.0
+          },
+          "local_deviation": -0.004999999999949378,
+          "local_refinement_points": 17,
+          "local_deviation_role": "diagnostic only; acceptance uses relative L2"
+        }
+      },
+      "errors": {
+        "equation": 0.0,
+        "left_bc": 0.0,
+        "right_bc": 0.0
+      },
+      "start_error": 0.0050000000000000044,
+      "diagnostics": [
+        {
+          "category": "NUMERICAL_VALIDATION_INCONCLUSIVE",
+          "severity": "warning",
+          "condition": "start_shape",
+          "evidence": {
+            "status": "inconclusive",
+            "error": 0.0050000000000000044,
+            "threshold": 0.005,
+            "grid_errors": [
+              0.005000000000000004,
+              0.0050000000000000044,
+              0.0050000000000000044
+            ],
+            "quadrature_stable": true,
+            "grid_sizes": [
+              1601,
+              1601,
+              3201
+            ],
+            "estimated_frequency_bound_cycles": 0.5,
+            "frequency_bound_resolved": true,
+            "quadrature_uncertainty_estimate": 8.88178419700126e-18,
+            "location": {
+              "x": 0.5000014321140829,
+              "t": 0.0
+            },
+            "local_deviation": -0.004999999999949378,
+            "local_refinement_points": 17,
+            "local_deviation_role": "diagnostic only; acceptance uses relative L2"
+          },
+          "location": {
+            "x": 0.5000014321140829,
+            "t": 0.0
+          },
+          "correction": "Evaluation was not reliable enough to decide this condition. Simplify the expression or increase verification resolution in a separately reviewed run."
+        }
+      ],
+      "feedback": "Preserve the passing conditions: equation, left_bc, right_bc. NUMERICAL_VALIDATION_INCONCLUSIVE: Evaluation was not reliable enough to decide this condition. Simplify the expression or increase verification resolution in a separately reviewed run. Evidence: normalized error=0.005, limit=0.005. Location: {'x': 0.5000014321140829, 't': 0.0}.",
+      "validation_seed": 9173,
+      "points": 1944,
+      "shape_points": 3201,
+      "protocol": "enhanced-checker-v2",
+      "validation_complete": true,
+      "diagnostics_complete": true
+    },
+    "seconds": 0.4149840350000886
+  },
+  {
+    "name": "unresolved nonlinear oscillation cannot certify unequal IC",
+    "kind": "constructed_case",
+    "passed": true,
+    "result": {
+      "accepted": false,
+      "status": "inconclusive",
+      "parts": {
+        "equation": false,
+        "left_bc": true,
+        "right_bc": false,
+        "start_shape": false
+      },
+      "conditions": {
+        "equation": {
+          "status": "fail",
+          "error": 0.3196999532803796,
+          "threshold": 1e-06,
+          "value": 0.3196999532803796,
+          "location": {
+            "x": 0.895596905609077,
+            "t": 1e-12
+          },
+          "symbolic_zero": false,
+          "precision_audits": [
+            {
+              "x": 0.895596905609077,
+              "t": 1e-12,
+              "normalized_error": 0.3196999532803796
+            },
+            {
+              "x": 0.17784121411614884,
+              "t": 0.02074747883410767,
+              "normalized_error": 0.015073191233186886
+            },
+            {
+              "x": 0.9848484848484849,
+              "t": 0.1,
+              "normalized_error": 0.0859095396431893
+            }
+          ]
+        },
+        "left_bc": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 0.0,
+            "t": 0.02074747883410767
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 0.0,
+              "t": 0.02074747883410767,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "right_bc": {
+          "status": "fail",
+          "error": 0.0005440211108893697,
+          "threshold": 1e-06,
+          "value": -0.0005440211108893697,
+          "location": {
+            "x": 1.0,
+            "t": 0.02074747883410767
+          },
+          "symbolic_zero": false,
+          "precision_audits": [
+            {
+              "x": 1.0,
+              "t": 0.02074747883410767,
+              "normalized_error": 0.0005440211108893698
+            },
+            {
+              "x": 1.0,
+              "t": 0.1,
+              "normalized_error": 0.0005440211108893698
+            }
+          ]
+        },
+        "start_shape": {
+          "status": "inconclusive",
+          "error": 0.000915067172245708,
+          "threshold": 0.005,
+          "grid_errors": [
+            0.0009150669015070294,
+            0.000915067172245708,
+            0.0009150664797501827
+          ],
+          "quadrature_stable": true,
+          "grid_sizes": [
+            1601,
+            1601,
+            3201
+          ],
+          "estimated_frequency_bound_cycles": 0.5,
+          "frequency_bound_resolved": false,
+          "quadrature_uncertainty_estimate": 6.924955253326259e-10,
+          "location": {
+            "x": 0.3963145192866101,
+            "t": 0.0
+          },
+          "local_deviation": 0.0009999999895823342,
+          "local_refinement_points": 17,
+          "local_deviation_role": "diagnostic only; acceptance uses relative L2"
+        }
+      },
+      "errors": {
+        "equation": 0.3196999532803796,
+        "left_bc": 0.0,
+        "right_bc": 0.0005440211108893697
+      },
+      "start_error": 0.000915067172245708,
+      "diagnostics": [
+        {
+          "category": "PDE_RESIDUAL_ERROR",
+          "severity": "error",
+          "condition": "equation",
+          "evidence": {
+            "status": "fail",
+            "error": 0.3196999532803796,
+            "threshold": 1e-06,
+            "value": 0.3196999532803796,
+            "location": {
+              "x": 0.895596905609077,
+              "t": 1e-12
+            },
+            "symbolic_zero": false,
+            "precision_audits": [
+              {
+                "x": 0.895596905609077,
+                "t": 1e-12,
+                "normalized_error": 0.3196999532803796
+              },
+              {
+                "x": 0.17784121411614884,
+                "t": 0.02074747883410767,
+                "normalized_error": 0.015073191233186886
+              },
+              {
+                "x": 0.9848484848484849,
+                "t": 0.1,
+                "normalized_error": 0.0859095396431893
+              }
+            ]
+          },
+          "location": {
+            "x": 0.895596905609077,
+            "t": 1e-12
+          },
+          "correction": "Recheck u_t - k*u_xx, using the actual k and L. Pair each spatial frequency with its own k*frequency**2 decay."
+        },
+        {
+          "category": "RIGHT_BOUNDARY_ERROR",
+          "severity": "error",
+          "condition": "right_bc",
+          "evidence": {
+            "status": "fail",
+            "error": 0.0005440211108893697,
+            "threshold": 1e-06,
+            "value": -0.0005440211108893697,
+            "location": {
+              "x": 1.0,
+              "t": 0.02074747883410767
+            },
+            "symbolic_zero": false,
+            "precision_audits": [
+              {
+                "x": 1.0,
+                "t": 0.02074747883410767,
+                "normalized_error": 0.0005440211108893698
+              },
+              {
+                "x": 1.0,
+                "t": 0.1,
+                "normalized_error": 0.0005440211108893698
+              }
+            ]
+          },
+          "location": {
+            "x": 1.0,
+            "t": 0.02074747883410767
+          },
+          "correction": "Correct the right dirichlet boundary: temperature u must be zero. Choose modes compatible with both stated boundaries, including the actual rod length."
+        },
+        {
+          "category": "NUMERICAL_VALIDATION_INCONCLUSIVE",
+          "severity": "warning",
+          "condition": "start_shape",
+          "evidence": {
+            "status": "inconclusive",
+            "error": 0.000915067172245708,
+            "threshold": 0.005,
+            "grid_errors": [
+              0.0009150669015070294,
+              0.000915067172245708,
+              0.0009150664797501827
+            ],
+            "quadrature_stable": true,
+            "grid_sizes": [
+              1601,
+              1601,
+              3201
+            ],
+            "estimated_frequency_bound_cycles": 0.5,
+            "frequency_bound_resolved": false,
+            "quadrature_uncertainty_estimate": 6.924955253326259e-10,
+            "location": {
+              "x": 0.3963145192866101,
+              "t": 0.0
+            },
+            "local_deviation": 0.0009999999895823342,
+            "local_refinement_points": 17,
+            "local_deviation_role": "diagnostic only; acceptance uses relative L2"
+          },
+          "location": {
+            "x": 0.3963145192866101,
+            "t": 0.0
+          },
+          "correction": "Evaluation was not reliable enough to decide this condition. Simplify the expression or increase verification resolution in a separately reviewed run."
+        }
+      ],
+      "feedback": "Preserve the passing conditions: left_bc. PDE_RESIDUAL_ERROR: Recheck u_t - k*u_xx, using the actual k and L. Pair each spatial frequency with its own k*frequency**2 decay. Evidence: normalized error=0.3197, limit=1e-06. Location: {'x': 0.895596905609077, 't': 1e-12}. RIGHT_BOUNDARY_ERROR: Correct the right dirichlet boundary: temperature u must be zero. Choose modes compatible with both stated boundaries, including the actual rod length. Evidence: normalized error=0.000544, limit=1e-06. Location: {'x': 1.0, 't': 0.02074747883410767}. NUMERICAL_VALIDATION_INCONCLUSIVE: Evaluation was not reliable enough to decide this condition. Simplify the expression or increase verification resolution in a separately reviewed run. Evidence: normalized error=0.0009151, limit=0.005. Location: {'x': 0.3963145192866101, 't': 0.0}.",
+      "validation_seed": 9173,
+      "points": 1944,
+      "shape_points": 3201,
+      "protocol": "enhanced-checker-v2",
+      "validation_complete": true,
+      "diagnostics_complete": true
+    },
+    "seconds": 0.43472968600690365
+  },
+  {
+    "name": "precision disagreement retains uncertainty",
+    "kind": "controlled_numeric_audit",
+    "passed": true,
+    "result": {
+      "status": "inconclusive",
+      "error": 0.0,
+      "threshold": 1e-06,
+      "value": 0.0,
+      "location": {
+        "x": 0.1,
+        "t": 0.1
+      },
+      "symbolic_zero": false,
+      "precision_audits": [
+        {
+          "x": 0.1,
+          "t": 0.1,
+          "normalized_error": 0.001
+        },
+        {
+          "x": 0.3,
+          "t": 0.3,
+          "normalized_error": 0.001
+        }
+      ]
+    },
+    "seconds": 0.0007592550100525841
+  },
+  {
+    "name": "pre-core timeout remains inconclusive",
+    "kind": "controlled_timeout",
+    "passed": false,
+    "error": "RecursionError('maximum recursion depth exceeded')",
+    "seconds": 0.004867745999945328
+  },
+  {
+    "name": "post-core timeout preserves completed pass",
+    "kind": "controlled_timeout",
+    "passed": true,
+    "result": {
+      "accepted": true,
+      "status": "valid",
+      "parts": {
+        "equation": true,
+        "left_bc": true,
+        "right_bc": true,
+        "start_shape": true
+      },
+      "errors": {},
+      "start_error": 0,
+      "diagnostics": [
+        {
+          "category": "DIAGNOSTIC_UNAVAILABLE",
+          "severity": "warning",
+          "condition": "optional_analysis",
+          "evidence": {
+            "worker_failure": {
+              "accepted": false,
+              "parts": {},
+              "errors": {},
+              "start_error": null,
+              "status": "inconclusive",
+              "error": "Checker exceeded its wall-time budget; simplify the expression and resubmit.",
+              "feedback": "Checker exceeded its wall-time budget; simplify the expression and resubmit.",
+              "diagnostics": [
+                {
+                  "category": "NUMERICAL_VALIDATION_INCONCLUSIVE",
+                  "severity": "warning",
+                  "condition": "evaluation",
+                  "evidence": {
+                    "timeout_seconds": 8
+                  },
+                  "location": null,
+                  "correction": "Checker exceeded its wall-time budget; simplify the expression and resubmit."
+                }
+              ]
+            },
+            "wall_seconds": 8
+          },
+          "location": null,
+          "correction": "Required condition checks completed. Optional modal diagnostics did not finish; no additional root cause is established."
+        }
+      ],
+      "feedback": "All required conditions passed. Optional modal diagnostics did not finish; retain the completed condition-level evidence.",
+      "validation_complete": true,
+      "diagnostics_complete": false,
+      "protocol": "enhanced-checker-v2",
+      "worker_issue": {
+        "accepted": false,
+        "parts": {},
+        "errors": {},
+        "start_error": null,
+        "status": "inconclusive",
+        "error": "Checker exceeded its wall-time budget; simplify the expression and resubmit.",
+        "feedback": "Checker exceeded its wall-time budget; simplify the expression and resubmit.",
+        "diagnostics": [
+          {
+            "category": "NUMERICAL_VALIDATION_INCONCLUSIVE",
+            "severity": "warning",
+            "condition": "evaluation",
+            "evidence": {
+              "timeout_seconds": 8
+            },
+            "location": null,
+            "correction": "Checker exceeded its wall-time budget; simplify the expression and resubmit."
+          }
+        ]
+      }
+    },
+    "seconds": 0.0003904200129909441
+  },
+  {
+    "name": "post-core timeout preserves failed condition",
+    "kind": "controlled_timeout",
+    "passed": true,
+    "result": {
+      "accepted": false,
+      "status": "invalid",
+      "parts": {
+        "equation": false,
+        "left_bc": true,
+        "right_bc": true,
+        "start_shape": true
+      },
+      "errors": {},
+      "start_error": 0,
+      "diagnostics": [
+        {
+          "category": "DIAGNOSTIC_UNAVAILABLE",
+          "severity": "warning",
+          "condition": "optional_analysis",
+          "evidence": {
+            "worker_failure": {
+              "accepted": false,
+              "parts": {},
+              "errors": {},
+              "start_error": null,
+              "status": "inconclusive",
+              "error": "Checker exceeded its wall-time budget; simplify the expression and resubmit.",
+              "feedback": "Checker exceeded its wall-time budget; simplify the expression and resubmit.",
+              "diagnostics": [
+                {
+                  "category": "NUMERICAL_VALIDATION_INCONCLUSIVE",
+                  "severity": "warning",
+                  "condition": "evaluation",
+                  "evidence": {
+                    "timeout_seconds": 8
+                  },
+                  "location": null,
+                  "correction": "Checker exceeded its wall-time budget; simplify the expression and resubmit."
+                }
+              ]
+            },
+            "wall_seconds": 8
+          },
+          "location": null,
+          "correction": "Required condition checks completed. Optional modal diagnostics did not finish; no additional root cause is established."
+        }
+      ],
+      "feedback": "All required conditions passed. Optional modal diagnostics did not finish; retain the completed condition-level evidence.",
+      "validation_complete": true,
+      "diagnostics_complete": false,
+      "protocol": "enhanced-checker-v2",
+      "worker_issue": {
+        "accepted": false,
+        "parts": {},
+        "errors": {},
+        "start_error": null,
+        "status": "inconclusive",
+        "error": "Checker exceeded its wall-time budget; simplify the expression and resubmit.",
+        "feedback": "Checker exceeded its wall-time budget; simplify the expression and resubmit.",
+        "diagnostics": [
+          {
+            "category": "NUMERICAL_VALIDATION_INCONCLUSIVE",
+            "severity": "warning",
+            "condition": "evaluation",
+            "evidence": {
+              "timeout_seconds": 8
+            },
+            "location": null,
+            "correction": "Checker exceeded its wall-time budget; simplify the expression and resubmit."
+          }
+        ]
+      }
+    },
+    "seconds": 0.00032436400942970067
+  }
+]

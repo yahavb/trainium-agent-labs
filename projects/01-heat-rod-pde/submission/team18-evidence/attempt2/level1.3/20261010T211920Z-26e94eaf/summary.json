@@ -1,0 +1,49 @@
+{
+  "run_id": "20261010T211920Z-26e94eaf",
+  "settings": {
+    "level": 1,
+    "sub": 3,
+    "seed": 0,
+    "samples": 4,
+    "rounds": 4,
+    "max_tokens": 1200,
+    "tool_steps": 1,
+    "workers": 4,
+    "features": "cache,final,feedback,adaptive",
+    "deadline": 900.0,
+    "timeout": 900.0,
+    "model": "Qwen/Qwen3-8B",
+    "base": "http://localhost:8000/v1",
+    "output": "/workspace/trainium-team87/projects/01-heat-rod-pde/results/team18-pr5-latest-20261010T211750Z-ba55c1/level1.3",
+    "telemetry": "/workspace/trainium-team87/projects/01-heat-rod-pde/results/team18-pr5-latest-20261010T211750Z-ba55c1/level1.3/20261010T211920Z-26e94eaf/telemetry.jsonl"
+  },
+  "results": [
+    {
+      "problem": "level1.3",
+      "seed": 0,
+      "status": "solved",
+      "reward": 1.0,
+      "original_reward": 1.0,
+      "grading_policy": "original_checker",
+      "additional_validation_status": "not_run",
+      "answer": "32/pi**3 * sin(pi*x/2)*exp(- ( (pi/2)**2 )*2 * t) + 32/(27*pi**3) * sin(3*pi*x/2)*exp(- ( (3*pi/2)**2 )*2 * t) + 32/(125*pi**3) * sin(5*pi*x/2)*exp(- ( (5*pi/2)**2 )*2 * t)",
+      "rounds": 2,
+      "requests": 15,
+      "prompt_tokens": 12771,
+      "completion_tokens": 2724,
+      "tool_calls": 24,
+      "tool_executions": 6,
+      "cache_hits": 18,
+      "validation_failures": 0,
+      "duplicate_candidates": 4,
+      "repair_requests": 3,
+      "features": [
+        "adaptive",
+        "cache",
+        "feedback",
+        "final"
+      ],
+      "seconds": 140.52721492199635
+    }
+  ]
+}

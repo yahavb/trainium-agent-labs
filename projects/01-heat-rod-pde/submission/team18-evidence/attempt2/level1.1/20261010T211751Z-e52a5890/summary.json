@@ -1,0 +1,49 @@
+{
+  "run_id": "20261010T211751Z-e52a5890",
+  "settings": {
+    "level": 1,
+    "sub": 1,
+    "seed": 0,
+    "samples": 4,
+    "rounds": 4,
+    "max_tokens": 1200,
+    "tool_steps": 1,
+    "workers": 4,
+    "features": "cache,final,feedback,adaptive",
+    "deadline": 900.0,
+    "timeout": 900.0,
+    "model": "Qwen/Qwen3-8B",
+    "base": "http://localhost:8000/v1",
+    "output": "/workspace/trainium-team87/projects/01-heat-rod-pde/results/team18-pr5-latest-20261010T211750Z-ba55c1/level1.1",
+    "telemetry": "/workspace/trainium-team87/projects/01-heat-rod-pde/results/team18-pr5-latest-20261010T211750Z-ba55c1/level1.1/20261010T211751Z-e52a5890/telemetry.jsonl"
+  },
+  "results": [
+    {
+      "problem": "level1.1",
+      "seed": 0,
+      "status": "solved",
+      "reward": 1.0,
+      "original_reward": 1.0,
+      "grading_policy": "original_checker",
+      "additional_validation_status": "not_run",
+      "answer": "sin(pi*x/2)*exp(- (pi**2/4)*t)",
+      "rounds": 1,
+      "requests": 8,
+      "prompt_tokens": 2422,
+      "completion_tokens": 264,
+      "tool_calls": 4,
+      "tool_executions": 1,
+      "cache_hits": 3,
+      "validation_failures": 0,
+      "duplicate_candidates": 3,
+      "repair_requests": 0,
+      "features": [
+        "adaptive",
+        "cache",
+        "feedback",
+        "final"
+      ],
+      "seconds": 13.840276973001892
+    }
+  ]
+}

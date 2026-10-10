@@ -1,0 +1,266 @@
+[
+  {
+    "name": "large-profile scaled IC with bounded expression input",
+    "kind": "corrected_constructed_fixture",
+    "passed": true,
+    "result": {
+      "accepted": false,
+      "status": "invalid",
+      "parts": {
+        "equation": true,
+        "left_bc": true,
+        "right_bc": true,
+        "start_shape": false
+      },
+      "conditions": {
+        "equation": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 0.3959499515092545,
+            "t": 0.05551409627754798
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 0.3959499515092545,
+              "t": 0.05551409627754798,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "left_bc": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 0.0,
+            "t": 0.05551409627754798
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 0.0,
+              "t": 0.05551409627754798,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "right_bc": {
+          "status": "pass",
+          "error": 0.0,
+          "threshold": 1e-06,
+          "value": 0.0,
+          "location": {
+            "x": 1.0,
+            "t": 0.05551409627754798
+          },
+          "symbolic_zero": true,
+          "precision_audits": [
+            {
+              "x": 1.0,
+              "t": 0.05551409627754798,
+              "normalized_error": 0.0
+            }
+          ]
+        },
+        "start_shape": {
+          "status": "fail",
+          "error": 0.009999999999999936,
+          "threshold": 0.005,
+          "grid_errors": [
+            0.009999999999999934,
+            0.009999999999999933,
+            0.009999999999999936
+          ],
+          "quadrature_stable": true,
+          "grid_sizes": [
+            1601,
+            1601,
+            3201
+          ],
+          "estimated_frequency_bound_cycles": 0.5,
+          "frequency_bound_resolved": true,
+          "quadrature_uncertainty_estimate": 1.776356839400239e-17,
+          "location": {
+            "x": 0.49999492074814544,
+            "t": 0.0
+          },
+          "local_deviation": -9.999999998726734e+197,
+          "local_refinement_points": 17,
+          "local_deviation_role": "diagnostic only; acceptance uses relative L2"
+        }
+      },
+      "errors": {
+        "equation": 0.0,
+        "left_bc": 0.0,
+        "right_bc": 0.0
+      },
+      "start_error": 0.009999999999999936,
+      "diagnostics": [
+        {
+          "category": "INITIAL_CONDITION_ERROR",
+          "severity": "error",
+          "condition": "start_shape",
+          "evidence": {
+            "status": "fail",
+            "error": 0.009999999999999936,
+            "threshold": 0.005,
+            "grid_errors": [
+              0.009999999999999934,
+              0.009999999999999933,
+              0.009999999999999936
+            ],
+            "quadrature_stable": true,
+            "grid_sizes": [
+              1601,
+              1601,
+              3201
+            ],
+            "estimated_frequency_bound_cycles": 0.5,
+            "frequency_bound_resolved": true,
+            "quadrature_uncertainty_estimate": 1.776356839400239e-17,
+            "location": {
+              "x": 0.49999492074814544,
+              "t": 0.0
+            },
+            "local_deviation": -9.999999998726734e+197,
+            "local_refinement_points": 17,
+            "local_deviation_role": "diagnostic only; acceptance uses relative L2"
+          },
+          "location": {
+            "x": 0.49999492074814544,
+            "t": 0.0
+          },
+          "correction": "Recheck coefficients against the public f(x). Meet the stated relative L2 tolerance; the largest local deviation is diagnostic, not an extra acceptance threshold."
+        },
+        {
+          "category": "FOURIER_COEFFICIENT_ERROR",
+          "severity": "error",
+          "condition": "start_shape",
+          "evidence": {
+            "mode": 1,
+            "basis": "sin(pi*x)",
+            "direction": "too small",
+            "projection_error": 9.999999999999935e+197
+          },
+          "location": null,
+          "correction": "The initial projection onto sin(pi*x) is too small. Recompute its coefficient as integral(f*b)/integral(b*b); preserve each mode's own decay."
+        },
+        {
+          "category": "FOURIER_DIAGNOSIS_INCONCLUSIVE",
+          "severity": "warning",
+          "condition": "start_shape",
+          "evidence": {
+            "unresolved_inspected_modes": [
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8
+            ]
+          },
+          "location": null,
+          "correction": "Projection grids disagree beyond the diagnostic precision budget. Use initial-condition evidence; a truncation-only cause has not been established."
+        }
+      ],
+      "feedback": "Preserve the passing conditions: equation, left_bc, right_bc. INITIAL_CONDITION_ERROR: Recheck coefficients against the public f(x). Meet the stated relative L2 tolerance; the largest local deviation is diagnostic, not an extra acceptance threshold. Evidence: normalized error=0.01, limit=0.005. Location: {'x': 0.49999492074814544, 't': 0.0}. FOURIER_COEFFICIENT_ERROR: The initial projection onto sin(pi*x) is too small. Recompute its coefficient as integral(f*b)/integral(b*b); preserve each mode's own decay. FOURIER_DIAGNOSIS_INCONCLUSIVE: Projection grids disagree beyond the diagnostic precision budget. Use initial-condition evidence; a truncation-only cause has not been established.",
+      "validation_seed": 9173,
+      "points": 1944,
+      "shape_points": 3201,
+      "protocol": "enhanced-checker-v2",
+      "validation_complete": true,
+      "diagnostics_complete": true
+    },
+    "seconds": 0.42886822699801996
+  },
+  {
+    "name": "real subprocess timeout before core returns inconclusive",
+    "kind": "controlled_real_process_timeout",
+    "passed": false,
+    "error": "RecursionError('maximum recursion depth exceeded')",
+    "traceback": "Traceback (most recent call last):\n  File \"/workspace/trainium-team87/projects/01-heat-rod-pde/results/team18-31a150d-enhanced-20261010T214800Z/checker_followup.py\", line 15, in check\n    value=fn();assert ok(value),str(value)\n  File \"/workspace/trainium-team87/projects/01-heat-rod-pde/results/team18-31a150d-enhanced-20261010T214800Z/checker_followup.py\", line 29, in <lambda>\n    check('real subprocess timeout before core returns inconclusive',lambda:timeout(pre),lambda r:r['status']=='inconclusive' and not r['accepted'],'controlled_real_process_timeout')\n                                                                            ~~~~~~~^^^^^\n  File \"/workspace/trainium-team87/projects/01-heat-rod-pde/results/team18-31a150d-enhanced-20261010T214800Z/checker_followup.py\", line 28, in timeout\n    return validation.verify(p,'sin(pi*x)*exp(-pi**2*t)')\n           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/trainium-team87/projects/01-heat-rod-pde/results/team18-31a150d-enhanced-20261010T214800Z/source/projects/01-heat-rod-pde/validation.py\", line 18, in verify\n    return run_check('verify', problem, answer, validation_seed=validation_seed)\n  File \"/workspace/trainium-team87/projects/01-heat-rod-pde/results/team18-31a150d-enhanced-20261010T214800Z/source/projects/01-heat-rod-pde/checker_enhanced_runtime.py\", line 133, in run_check\n    return clean_json(validation)\n  File \"/workspace/trainium-team87/projects/01-heat-rod-pde/results/team18-31a150d-enhanced-20261010T214800Z/source/projects/01-heat-rod-pde/checker_enhanced_runtime.py\", line 62, in clean_json\n    return {key: clean_json(item) for key, item in value.items()}\n                 ~~~~~~~~~~^^^^^^\n  File \"/workspace/trainium-team87/projects/01-heat-rod-pde/results/team18-31a150d-enhanced-20261010T214800Z/source/projects/01-heat-rod-pde/checker_enhanced_runtime.py\", line 62, in clean_json\n    return {key: clean_json(item) for key, item in value.items()}\n                 ~~~~~~~~~~^^^^^^\n  File \"/workspace/trainium-team87/projects/01-heat-rod-pde/results/team18-31a150d-enhanced-20261010T214800Z/source/projects/01-heat-rod-pde/checker_enhanced_runtime.py\", line 62, in clean_json\n    return {key: clean_json(item) for key, item in value.items()}\n                 ~~~~~~~~~~^^^^^^\n  [Previous line repeated 4 more times]\nRecursionError: maximum recursion depth exceeded\n",
+    "seconds": 0.3066926589963259
+  },
+  {
+    "name": "real subprocess timeout after core retains pass and issue",
+    "kind": "controlled_real_process_timeout",
+    "passed": true,
+    "result": {
+      "accepted": true,
+      "status": "valid",
+      "parts": {
+        "equation": true,
+        "left_bc": true,
+        "right_bc": true,
+        "start_shape": true
+      },
+      "errors": {},
+      "start_error": 0,
+      "diagnostics": [
+        {
+          "category": "DIAGNOSTIC_UNAVAILABLE",
+          "severity": "warning",
+          "condition": "optional_analysis",
+          "evidence": {
+            "worker_failure": {
+              "accepted": false,
+              "parts": {},
+              "errors": {},
+              "start_error": null,
+              "status": "inconclusive",
+              "error": "Checker exceeded its wall-time budget; simplify the expression and resubmit.",
+              "feedback": "Checker exceeded its wall-time budget; simplify the expression and resubmit.",
+              "diagnostics": [
+                {
+                  "category": "NUMERICAL_VALIDATION_INCONCLUSIVE",
+                  "severity": "warning",
+                  "condition": "evaluation",
+                  "evidence": {
+                    "timeout_seconds": 0.3
+                  },
+                  "location": null,
+                  "correction": "Checker exceeded its wall-time budget; simplify the expression and resubmit."
+                }
+              ]
+            },
+            "wall_seconds": 0.3
+          },
+          "location": null,
+          "correction": "Required condition checks completed. Optional modal diagnostics did not finish; no additional root cause is established."
+        }
+      ],
+      "feedback": "Controlled completed core. Optional modal diagnostics did not finish; retain the completed condition-level evidence.",
+      "validation_complete": true,
+      "diagnostics_complete": false,
+      "protocol": "enhanced-checker-v2",
+      "worker_issue": {
+        "accepted": false,
+        "parts": {},
+        "errors": {},
+        "start_error": null,
+        "status": "inconclusive",
+        "error": "Checker exceeded its wall-time budget; simplify the expression and resubmit.",
+        "feedback": "Checker exceeded its wall-time budget; simplify the expression and resubmit.",
+        "diagnostics": [
+          {
+            "category": "NUMERICAL_VALIDATION_INCONCLUSIVE",
+            "severity": "warning",
+            "condition": "evaluation",
+            "evidence": {
+              "timeout_seconds": 0.3
+            },
+            "location": null,
+            "correction": "Checker exceeded its wall-time budget; simplify the expression and resubmit."
+          }
+        ]
+      }
+    },
+    "seconds": 0.30120104100205936
+  }
+]

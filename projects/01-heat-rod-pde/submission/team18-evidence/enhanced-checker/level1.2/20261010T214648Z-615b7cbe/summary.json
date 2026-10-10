@@ -1,0 +1,172 @@
+{
+  "run_id": "20261010T214648Z-615b7cbe",
+  "settings": {
+    "level": 1,
+    "sub": 2,
+    "seed": 0,
+    "samples": 4,
+    "rounds": 4,
+    "max_tokens": 1200,
+    "tool_steps": 1,
+    "workers": 4,
+    "features": "cache,final,feedback,adaptive",
+    "deadline": 900.0,
+    "timeout": 900.0,
+    "model": "Qwen/Qwen3-8B",
+    "base": "http://localhost:8000/v1",
+    "output": "/workspace/trainium-team87/projects/01-heat-rod-pde/results/team18-31a150d-enhanced-20261010T214800Z/level1.2",
+    "telemetry": "/workspace/trainium-team87/projects/01-heat-rod-pde/results/team18-31a150d-enhanced-20261010T214800Z/level1.2/20261010T214648Z-615b7cbe/telemetry.jsonl"
+  },
+  "results": [
+    {
+      "problem": "level1.2",
+      "seed": 0,
+      "status": "solved",
+      "reward": 1.0,
+      "original_reward": 1.0,
+      "grading_policy": "enhanced_validation_grade_v2_opt_in",
+      "additional_validation_status": "run",
+      "answer": "sin(pi*x/6)*exp(- (3/2)*(pi**2/36)*t) + 2*sin(5*pi*x/6)*exp(- (3/2)*(25*pi**2/36)*t)",
+      "rounds": 1,
+      "requests": 7,
+      "prompt_tokens": 3622,
+      "completion_tokens": 1220,
+      "tool_calls": 0,
+      "tool_executions": 0,
+      "cache_hits": 0,
+      "validation_failures": 3,
+      "duplicate_candidates": 0,
+      "repair_requests": 3,
+      "features": [
+        "adaptive",
+        "cache",
+        "feedback",
+        "final"
+      ],
+      "seconds": 58.99541676900117,
+      "test_adapter": "enhanced_agent_adapter.py",
+      "enhanced_protocol_original_reward": 1.0,
+      "validation": {
+        "accepted": true,
+        "status": "valid",
+        "parts": {
+          "equation": true,
+          "left_bc": true,
+          "right_bc": true,
+          "start_shape": true
+        },
+        "conditions": {
+          "equation": {
+            "status": "pass",
+            "error": 0.0,
+            "threshold": 1e-06,
+            "value": 0.0,
+            "location": {
+              "x": 2.9276053530776953,
+              "t": 0.8419933386403667
+            },
+            "symbolic_zero": true,
+            "precision_audits": [
+              {
+                "x": 2.9276053530776953,
+                "t": 0.8419933386403667,
+                "normalized_error": 0.0
+              }
+            ]
+          },
+          "left_bc": {
+            "status": "pass",
+            "error": 0.0,
+            "threshold": 1e-06,
+            "value": 0.0,
+            "location": {
+              "x": 0.0,
+              "t": 0.8419933386403667
+            },
+            "symbolic_zero": true,
+            "precision_audits": [
+              {
+                "x": 0.0,
+                "t": 0.8419933386403667,
+                "normalized_error": 0.0
+              }
+            ]
+          },
+          "right_bc": {
+            "status": "pass",
+            "error": 0.0,
+            "threshold": 1e-06,
+            "value": 0.0,
+            "location": {
+              "x": 3.0,
+              "t": 0.8419933386403667
+            },
+            "symbolic_zero": true,
+            "precision_audits": [
+              {
+                "x": 3.0,
+                "t": 0.8419933386403667,
+                "normalized_error": 0.0
+              }
+            ]
+          },
+          "start_shape": {
+            "status": "pass",
+            "error": 0.0,
+            "threshold": 1e-06,
+            "grid_errors": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "quadrature_stable": true,
+            "grid_sizes": [
+              1601,
+              1601,
+              3201
+            ],
+            "estimated_frequency_bound_cycles": 1.5,
+            "frequency_bound_resolved": true,
+            "quadrature_uncertainty_estimate": 0.0,
+            "location": {
+              "x": 0.0,
+              "t": 0.0
+            },
+            "local_deviation": 0.0,
+            "local_refinement_points": 17,
+            "local_deviation_role": "diagnostic only; acceptance uses relative L2"
+          }
+        },
+        "errors": {
+          "equation": 0.0,
+          "left_bc": 0.0,
+          "right_bc": 0.0
+        },
+        "start_error": 0.0,
+        "diagnostics": [
+          {
+            "category": "VALID_SOLUTION",
+            "severity": "info",
+            "condition": "all",
+            "evidence": {
+              "criteria": "existing tolerances on bounded verification samples"
+            },
+            "location": null,
+            "correction": "All required sampled checks pass. This is numerical validation, not a general symbolic proof."
+          }
+        ],
+        "feedback": "VALID_SOLUTION: All required sampled checks pass. This is numerical validation, not a general symbolic proof.",
+        "validation_seed": 9173,
+        "points": 1944,
+        "shape_points": 3201,
+        "protocol": "enhanced-checker-v2",
+        "validation_complete": true,
+        "diagnostics_complete": true
+      },
+      "public_original_best_reward": 1.0,
+      "public_original_solved_candidates": 1,
+      "enhanced_solved_candidates": 1,
+      "evaluation_errors": 0
+    }
+  ]
+}
