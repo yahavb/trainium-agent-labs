@@ -134,7 +134,7 @@ RECOMMENDED ACCUMULATOR PRECISION & BUFFER FLOW:
 
     prompt = f"""
 Round {round_num} Recalibration Directive:
-Your previous kernel failed verification. Do not rewrite from scratch; make only the surgical fix specified below.
+Your previous kernel failed verification. Refactor the kernel using the recommended pipeline architecture to eliminate the diagnosed hazard.
 
 DIAGNOSED HAZARD: {hazard_type}
 SURGICAL REPAIR INSTRUCTION:
@@ -146,7 +146,7 @@ PREVIOUS KERNEL CODE:
 {candidate_code}
 ```
 
-Respond with the corrected code inside ```python ``` and keep all other working pipeline structures unchanged.
+Respond with the complete corrected code inside ```python ```. Ensure it handles single blocks, uses triple buffering with pointer rotation, prefaces prologue and epilogue, and eliminates the hazard.
 """
     return prompt.strip()
 
