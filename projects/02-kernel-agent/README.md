@@ -135,13 +135,11 @@ All eight levels use the same agent: generator + Qwen3-8B + legalizer + checker.
 | 1 | Average pooling 2D (warm start) | **1.00** | 4/4 |
 | 2 | 2D transpose | **1.00** | 4/4 |
 | 3 | Matmul, single tile | **1.00** | 1/1 |
-| 4 | Matmul, tiled | **1.00**\* | 4/4 |
-| 5 | Matmul, hoisted loads | **1.00**\* | 4/4 |
-| 6 | Matmul, M/N blocked | **1.00**\* | 4/4 |
-| 7 | Matmul, M/N/K blocked | **1.00**\* | 4/4 |
+| 4 | Matmul, tiled | **1.00**| 4/4 |
+| 5 | Matmul, hoisted loads | **1.00** | 4/4 |
+| 6 | Matmul, M/N blocked | **1.00**| 4/4 |
+| 7 | Matmul, M/N/K blocked | **1.00** | 4/4 |
 | 8 | Single-head attention | running | – |
-
-\* Team-supplied result.
 
 Every 1.00 kernel is saved read-only with its sha256 and checked again with the unchanged checker.
 These are simulator results; device performance has not been measured.
