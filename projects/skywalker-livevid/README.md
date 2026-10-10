@@ -12,6 +12,14 @@ Every number below was measured on a trn2.48xlarge seat (4 logical NeuronCores) 
 | Correctness vs CPU | UNet cosine >= 0.99993 | cosine >= 0.99996, 47 to 51 dB PSNR |
 | Write-up | `reports/tier1_bench.md`, `reports/tier1_profile.md` | `reports/tier2_story.md` |
 
+## System architecture
+
+The Tier 2 streaming pipeline as it runs on the chip: a driver on the pod feeds four NeuronCores in sequence,
+each holding a group of DiT blocks with its KV cache resident in device memory, with the TAEHV encoder and
+decoder sharing two of the cores. The right-hand column is how each stage was verified and measured.
+
+![LiveVid system architecture](docs/system_design.png)
+
 ## Tier 1: SD-Turbo restyling with a live webcam demo
 
 - Three graphs compiled separately with `torch_neuronx.trace` (bf16, fixed shapes, batch 1): TAESD encoder,
