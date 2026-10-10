@@ -10,7 +10,7 @@ every number comes from the NKI 0.6.0 CPU simulator (`nki.simulate`), graded by 
 **In one paragraph.** We built a checker-driven agent that writes NKI kernels with a model that sees 8,192
 tokens (Qwen3-8B, served on the seat's Trainium2). The organizers' agent solved only level 2 (3 runs of 5).
 The final version solves level 1 in 5 of 5 runs with five different kernels, levels 3 and 4 in 5 of 5, and
-level 2 in 3 of 5, the baseline's own rate [[TBD: final counts]]; every solve passed a
+level 2 in 3 of 6, about the baseline's own rate [[TBD: final counts; v8.3 on level 2]]; every solve passed a
 fresh-process re-audit and a held-out set of new shapes and hostile values [[TBD: final-run numbers]]. The
 model never changed; what it was shown did. One worked example in the first prompt solves level 3; the code
 in the repair messages solves level 4 (hollowed out, level 4 stopped solving). Two of level 1's solves show how: once a
@@ -54,14 +54,14 @@ into one repair instruction, and tries again: at most 8 rounds of 4 samples per 
 | where | [[TBD: 5]] seat pods in parallel, one agent process per model server |
 | speed | about 50 s per round of 4 samples, bound by generation: 13.9 tok/s for one stream, 22.1 tok/s in total for four |
 
-**What came out.** The final candidate is v8.2 (commit 96a9fc9; switches in §4). Five runs per level, rounds
+**What came out.** The final candidate is v8.2 (commit 96a9fc9; switches in §4). At least five runs per level, every one of them reported, rounds
 counted from 0 (round 0 is the first prompt). [[TBD: refresh from `scripts/report.py` on analysis/logs/final/; v8.3 if it
 replaces v8.2 on level 2]]
 
 | level | operation | baseline (organizers' agent) | v7 | **v8.2: solved, first 1.0 at round** | distinct | held-out |
 |---|---|---|---|---|---|---|
 | 1 | average pool 2D | 0/5 · .30 .30 .30 .30 .30 | 0/1 · best 0.50 | **5/5** · rounds 2, 2, 0, 4, 2 | 5 different solving kernels | all VERIFIED (20/20 each) |
-| 2 | 2D transpose | 3/5 · 1 .30 1 .30 1 (replication 2/5) | 0/3 | **3/5** · .50 1 .50 1 1 · rounds 4, 2, 1 | 5 trajectories, 3 solving kernels | 3 VERIFIED, 2 NOT SOLVED; both verdicts agree |
+| 2 | 2D transpose | 3/5 · 1 .30 1 .30 1 (replication 2/5) | 0/3 | **3/6** · .50 1 .50 1 1 .50 · rounds 4, 2, 1 | 3 solving kernels [[TBD: trajectories over 6 runs]] | 3 VERIFIED, 3 NOT SOLVED; both verdicts agree |
 | 3 | matmul, one tile | 0/5 · .30 .30 .30 .30 .30 | 5/5 · round 0 | **5/5** · rounds 0, 2, 0, 0, 0 | 3 solving kernels | [[TBD]] |
 | 4 | matmul, tiled | 0/5 · .62 .62 .50 .62 .62 | 5/5 · round 2 | **5/5** · round 2 every run | **1 trajectory**: five copies of one path, the same kernel v7 found | [[TBD]] |
 
@@ -236,6 +236,7 @@ written down before the results came in ([PLAN.md](PLAN.md) §4).
 | v8 | E-div + skeleton feedback + cut-off answers not graded + level-1 call fixes; liuyq's level-1 compiler gate in the base | L1–L4 | **L1: our first level-1 solve**, in its first repair round; VERIFIED by both verdicts, held-out 20/20, lowers for trn2, re-audit PASS (1 of 3 runs). L4: 0.62 twice (v7: 5/5). L3: solved, two rounds later than v7. L2, round 0 only: 0/20 | skeleton dropped (see below); the rest kept |
 | L2 sampling | v8 with the first prompt and the sampling settings back to the organizers' | L2, round 0, 20 samples | 2/20, the same as the organizers' agent re-run today (2/20); with v7's sampling settings 0/20 | the level-2 regression was v7's sampling settings |
 | v8.1 | v8 without the skeleton, plus samples 1 and 3 on the original sampling and 2 and 4 on v7's, plus one sentence restating the level-2 task when the model transposes the whole input | L2 | the first level-2 solve in a repair round today (round 2), through the existing numeric-mismatch message; stopped after one run for v8.2 | folded into v8.2 |
+| v8.3 (5c3aba2) | v8.2 plus **error distillation on level 2**: when a level-2 kernel runs but its numbers are wrong, the checker runs it once more on `arange` input, reads off where each output element came from, and says what the kernel actually did ("your output at row position i*B+j holds x[i]: the source index uses only i") and what the task needs, without code. Only level 2's mismatch path changes: on the other levels v8.3 sends byte-identical requests to v8.2 | L2 | [[TBD]] | [[TBD]] |
 | **v8.2** (final candidate, 96a9fc9) | v8.1 plus **E-mix**: in every repair round, sample 1 repairs the best kernel as before and samples 2–4 start over from the first prompt, each tagged differently. Level 2 had only ever been solved in round 0, so its repair rounds now also buy fresh first attempts | L1–L4 | so far (16:23): **L1 3/3**, three different kernels (rounds 2, 2 and 0), all re-audited and VERIFIED, held-out 20/20, lowering for trn2; the first was a fresh first attempt (E-mix) held by the compiler gate at 0.95 and repaired with its rewrite. **L2 2/3**. L4 2/2. [[TBD: final counts]] | final candidate |
 
 **The skeleton gamble, and why it lost.** v8 hollowed out the code in the repair messages (`t[<…>]`) so that the
