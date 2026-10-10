@@ -254,3 +254,21 @@ Fix:
 - add known invalid pattern: do not call memory regions, use `buffer=nl.sbuf`;
 - make `traffic` trigger only on actual traffic phrases like `byte floor`, `transfers`, or
   `issue-bound`, not any mention of HBM.
+
+## Agent improvement: evidence-weighted repair prompt
+
+Changed repair prompts so classifier output no longer replaces the checker diagnosis.
+
+New repair prompt structure:
+
+- candidate code;
+- observed verifier result as primary evidence;
+- verifier hint marked as possibly imperfect;
+- relevant docs/cards selected by classifier;
+- known invalid patterns and previous unique failures.
+
+Reason:
+
+- The checker and classifier can both have bugs.
+- The safest loop separates observed facts from heuristic hints and retrieved docs.
+- Classifier is now mainly for card retrieval and logging, not for overriding the checker message.

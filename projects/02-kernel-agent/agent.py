@@ -674,29 +674,32 @@ def first_prompt(level, terse=0):
 
 
 def repair_prompt(level, source, feedback, tried=None):
-    """One named change, and the previous code. No rules list, no reference re-sent.
+    """Evidence-weighted repair prompt.
 
-    The lesson this whole repo keeps re-learning: feeding a verifier's report back verbatim
-    reproduces the same mistake, because a report says what is wrong and never what to do.
+    The checker report is the primary evidence. The category only retrieves compact docs and helps
+    logs; it must not replace the observed failure, because a wrong category can make a good
+    checker message worse.
     """
     compact = compact_feedback(feedback)
     category, instruction = distill_failure(compact)
     card_names = repair_card_names(level, category)
     cards = render_context_cards(card_names)
     ledger = compact_ledger(tried or [])
-    ledger_text = f"\n\nAlready tried; avoid repeating these failures:\n{ledger}" if ledger else ""
+    ledger_text = f"\n\nPrevious unique failures to avoid repeating:\n{ledger}" if ledger else ""
     invalid_text = invalid_patterns_text(tried or [])
     invalid_text = f"\n\n{invalid_text}" if invalid_text else ""
     return (
         f"This NKI kernel for {nkibench.LEVELS[level]['op']} is not right yet.\n\n"
-        f"Repair instruction: {instruction}\n\n"
+        f"Candidate code:\n"
         f"```python\n{source}\n```\n\n"
+        f"Observed verifier result, primary evidence:\n{compact}\n\n"
+        f"Verifier hint, may be imperfect:\n{instruction}\n\n"
         f"{cards}\n\n"
-        f"Compact checker report:\n{compact}\n\n"
-        f"Make the repair instruction above, and also fix any known invalid NKI API patterns "
-        f"listed below. Keep unrelated logic unchanged.{invalid_text}{ledger_text} "
-        f"Reply with "
-        f"ONE python code block.")
+        f"Use the observed verifier result as the main evidence. The hint and docs are supporting "
+        f"context, not commands to follow blindly. Make the smallest code change that best explains "
+        f"and fixes the observed failure. Also fix known invalid NKI API patterns from earlier "
+        f"attempts. Keep unrelated logic unchanged.{invalid_text}{ledger_text}\n\n"
+        f"Reply with ONE python code block.")
 
 
 AUDIT_FAILURES = {
