@@ -147,6 +147,9 @@ python agent.py \
 The controller appends the result to `results/attempts.csv`. It adds timing
 only when correctness passes.
 
+To see where an attempt spends its time, on the host and on the NeuronCore,
+see `PROFILING.md`. Profiling is opt-in and does not change the timed run.
+
 ## Performance rule
 
 The primary metric is completed forecast steps per steady-state second. Keep

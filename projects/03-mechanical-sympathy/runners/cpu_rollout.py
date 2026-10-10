@@ -15,7 +15,6 @@ from types import SimpleNamespace
 
 import torch
 
-
 DATASET_PREFIX = "Samudra/v2026-09/om4_onedeg"
 OSN_ENDPOINT = "https://nyu1.osn.mghpcc.org"
 
@@ -24,6 +23,24 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--samudra-root", type=Path, required=True)
     parser.add_argument("--checkpoint", type=Path, required=True)
+    parser.add_argument(
+        "--optimized",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Inference tuning and forcing preloading; enabled by default",
+    )
+    parser.add_argument("--threads", type=int, default=None)
+    parser.add_argument(
+        "--data-root",
+        type=Path,
+        help="Local directory containing OM4.zarr, OM4_means.zarr and OM4_stds.zarr",
+    )
+    parser.add_argument(
+        "--preload-boundaries",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Stage forcing before the rollout; disable to reduce resident memory",
+    )
     parser.add_argument("--start", default="2014-10-10")
     parser.add_argument("--end", default="2022-12-24")
     parser.add_argument("--report", type=Path, required=True)
@@ -81,6 +98,12 @@ def prediction_store_manifest(path: Path) -> dict[str, object]:
 
 def main() -> int:
     args = parse_args()
+    if args.threads is not None and args.threads < 1:
+        raise ValueError("--threads must be positive")
+    if args.threads is not None or args.optimized:
+        torch.set_num_threads(args.threads or 8)
+    if args.preload_boundaries is None:
+        args.preload_boundaries = args.optimized
     if args.max_steps is not None and args.max_steps < 1:
         raise ValueError("--max-steps must be positive")
 
@@ -92,11 +115,11 @@ def main() -> int:
         raise FileNotFoundError(f"Checkpoint not found: {checkpoint}")
     sys.path.insert(0, str(samudra_root / "src"))
 
+    from samudra.backend import init_eval_backend
     from samudra.config import EvalConfig
     from samudra.data_backend import PythonSourceBackend
     from samudra.datasets import InferenceDataset
     from samudra.utils.location import LocalLocation
-    from samudra.backend import init_eval_backend
     from samudra.utils.writer import ZarrWriter
 
     raw = EvalConfig._load_yaml(
@@ -117,6 +140,12 @@ def main() -> int:
             "data_means_location": "OM4_means.zarr",
             "data_stds_location": "OM4_stds.zarr",
         }[key]
+        if args.data_root is not None:
+            local_store = args.data_root.resolve() / suffix
+            if not local_store.is_dir():
+                raise FileNotFoundError(local_store)
+            source[key] = str(local_store)
+            continue
         source[key] = {
             "type": "s3",
             "endpoint_url": OSN_ENDPOINT,
@@ -145,6 +174,8 @@ def main() -> int:
     boundary_names = source.data_layout.boundary_var_names
     input_steps = cfg.data.input_steps
     output_steps = cfg.data.output_steps
+    if args.optimized:
+        cfg.model.checkpointing = None
     model = cfg.model.build(
         prog_channels=input_steps * len(prognostic_names),
         boundary_channels=input_steps * len(boundary_names),
@@ -158,6 +189,7 @@ def main() -> int:
         {key.removeprefix("module."): value for key, value in model_state.items()},
         strict=True,
     )
+    del model_state, checkpoint_data
     print("Checkpoint loaded. Building inference dataset...", flush=True)
     dataset = InferenceDataset(
         source=source,
@@ -181,6 +213,8 @@ def main() -> int:
     )
 
     model.eval()
+    if args.optimized:
+        model.requires_grad_(False)
     prediction_path = args.predictions.resolve()
     if prediction_path.name != "predictions.zarr":
         raise ValueError("--predictions path must end with predictions.zarr")
@@ -197,6 +231,13 @@ def main() -> int:
     prognostic_read_start = time.perf_counter()
     prognostic = dataset.initial_prognostic
     prognostic_read_seconds = time.perf_counter() - prognostic_read_start
+    boundary_preload_start = time.perf_counter()
+    boundaries = (
+        tuple(dataset.get_boundary(step) for step in range(run_steps))
+        if args.preload_boundaries
+        else None
+    )
+    boundary_preload_seconds = time.perf_counter() - boundary_preload_start
     boundary_read_seconds = 0.0
     zarr_write_seconds = 0.0
     written_model_steps = 0
@@ -205,14 +246,22 @@ def main() -> int:
     with torch.inference_mode():
         for step in range(run_steps):
             read_start = time.perf_counter()
-            boundary = dataset.get_boundary(step).to(device=prognostic.device)
+            boundary = (
+                boundaries[step]
+                if boundaries is not None
+                else dataset.get_boundary(step)
+            ).to(device=prognostic.device)
             boundary_read_seconds += time.perf_counter() - read_start
 
             forward_start = time.perf_counter()
             decoded = model.forward_once(prognostic, boundary, dataset.ctx)
             prediction = model._assemble_prediction(prognostic, decoded)
             forward_times_ms.append((time.perf_counter() - forward_start) * 1000)
-            prognostic = model._advance_prognostic_history(prognostic, prediction)
+            prognostic = (
+                prediction
+                if args.optimized and input_steps == output_steps
+                else model._advance_prognostic_history(prognostic, prediction)
+            )
             writer.record_batch(
                 SimpleNamespace(
                     prediction=prediction,
@@ -220,10 +269,7 @@ def main() -> int:
                 )
             )
             progress_interval = max(1, run_steps // 10)
-            if (
-                (step + 1) % 5 == 0
-                or step + 1 == run_steps
-            ):
+            if (step + 1) % 5 == 0 or step + 1 == run_steps:
                 write_start = time.perf_counter()
                 writer.write()
                 zarr_write_seconds += time.perf_counter() - write_start
@@ -252,8 +298,15 @@ def main() -> int:
         "checkpoint": str(checkpoint),
         "checkpoint_sha256": sha256(checkpoint),
         "samudra_commit": git_commit(samudra_root),
-        "data_source": f"{OSN_ENDPOINT}/m2lines-pubs/{DATASET_PREFIX}/OM4.zarr",
+        "data_source": str(args.data_root.resolve() / "OM4.zarr")
+        if args.data_root
+        else f"{OSN_ENDPOINT}/m2lines-pubs/{DATASET_PREFIX}/OM4.zarr",
         "device": "cpu",
+        "optimized": args.optimized,
+        "cpu_threads": torch.get_num_threads(),
+        "torch_version": torch.__version__,
+        "preload_boundaries": args.preload_boundaries,
+        "boundary_preload_seconds": boundary_preload_seconds,
         "output_saved": True,
         "prediction_store": str(prediction_path),
         "forecast_time_records_written": run_steps * output_steps,
