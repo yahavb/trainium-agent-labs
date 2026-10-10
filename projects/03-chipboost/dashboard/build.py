@@ -16,14 +16,20 @@ Writes dashboard/index.html: one self-contained file, no network needed. Open it
     5 held-out map      each held-out shape: passed or not, and the speedup there
 
 attempts*.jsonl lines follow schema.py. What is not one line per attempt comes from *results*.json:
-any number of files, merged, every section optional. A missing section shows as "not in yet".
+any number of files, merged, every section optional. A missing section shows as "not in yet". With no
+logs at all (before the loops run) the page is built from the results files alone.
 
-    redteam/redteam_results.json   written by P3's redteam/run.py, read as it is
-    results_<owner>.json           everything else:
+    results_p1.json                P1: red-team rows {cheat, description, honest, caught, ok, stage, message}
+    redteam/redteam_results.json   P3's redteam/run.py: {referee, dry, rows: [...]}, read as it is
+    results_p2.json                P2: start, expert and floor times per kernel
+    results_heldout_<op>.json      P2's heldout_grid.py: the end-of-run held-out grid
 
-    {"kernels": {"matmul": {"expert_us": 265.0, "floor_us": 182.0, "source": "chip"}},
-     "heldout": [{"kernel": "matmul", "which": "best", "shape": "512x4096x2048",
-                  "passed": true, "speedup": 1.18}]}
+    {"kernels": {"matmul": {"start_us": 960.5, "expert_us": 385.1, "floor_us": null, "source": "chip"}},
+     "heldout": [{"kernel": "matmul", "which": "start" | "expert" | <arm>, "shape": "256x4096x6144",
+                  "passed": true, "speedup": 1.18, "time_us": 512.3, "message": ""}]}
+
+start_us is checked against the start kernel the logs timed: a mismatch means the expert and floor were
+measured at other shapes, and the page says so.
 
 "Verified" means verdict == "faster": correct on every shape, and faster by more than the noise.
 A run that never produced one counts as the start kernel at 1.00x; no run is dropped.
@@ -120,29 +126,55 @@ def load_attempts(paths):
 
 def caught_state(value):
     """redteam/run.py writes "yes", "NO", "PENDING" (chip stage not run) and, for the honest
-    control kernel, "PASS". Plain booleans are accepted too."""
+    control kernel, "PASS". results_p1.json writes booleans."""
     v = str(value).strip().lower()
     return {"true": "caught", "yes": "caught", "false": "missed", "no": "missed",
             "pending": "pending", "pass": "pass"}.get(v, v)
 
 
-def load_results(paths):
-    return merge_results(json.loads(read_text(p)) for p in paths)
+def redteam_rows(doc):
+    """Both writers' red-team rows, as one shape.
+
+    redteam/run.py (P3): {cheat, should_catch, caught: "yes"/"NO"/"PENDING"/"PASS", where, as_designed,
+    message}; its honest control is the row named "honest ...".
+    results_p1.json (P1): {cheat, description, honest, caught, ok, verdict, stage, message}; an honest
+    kernel has honest=true, and ok=true when the referee accepted it."""
+    out = []
+    for row in (doc.get("rows") or []) + (doc.get("redteam") or []):
+        honest = str(row.get("honest")).lower() == "true" or str(row.get("cheat", "")).startswith("honest")
+        state = caught_state(row.get("caught"))
+        ok = str(row.get("ok")).lower() == "true" if row.get("ok") is not None else None
+        if honest:
+            accepted = ok if ok is not None else state in ("pass", "missed")
+            state = "pass" if accepted else "false alarm"
+        elif state == "missed" and ok:
+            # P1: not caught, but not faster either (verdict slower), so cheating bought nothing.
+            state = "no gain"
+        what = row.get("description") or (f"should be caught by {row['should_catch']}"
+                                          if row.get("should_catch") and not honest else "")
+        out.append(dict(cheat=row.get("cheat", "?"), honest=honest, state=state, what=what,
+                        where=row.get("where") or row.get("stage") or "", as_designed=row.get("as_designed"),
+                        message=row.get("message") or ""))
+    return out
 
 
-def merge_results(docs):
-    merged = {"kernels": {}, "redteam": [], "heldout": [], "redteam_meta": {}}
-    for doc in docs:
+def load_results(paths, name=lambda p: Path(p).name):
+    return merge_results((name(p), json.loads(read_text(p))) for p in paths)
+
+
+def merge_results(named_docs):
+    """kernels merge key by key, held-out rows concatenate, and each file's red-team rows stay one
+    suite: P1's and P3's are run against different referees, so their counts are not one number."""
+    merged = {"kernels": {}, "heldout": [], "suites": []}
+    for name, doc in named_docs:
         for k, v in (doc.get("kernels") or {}).items():
             merged["kernels"].setdefault(k, {}).update(v)
         merged["heldout"] += doc.get("heldout") or []
-        for row in (doc.get("rows") or []) + (doc.get("redteam") or []):
-            merged["redteam"].append(dict(
-                cheat=row.get("cheat", "?"), state=caught_state(row.get("caught")),
-                expected=row.get("should_catch") or "", where=row.get("where") or row.get("stage") or "",
-                as_designed=row.get("as_designed"), message=row.get("message") or "", source=row.get("source")))
-        if "rows" in doc:
-            merged["redteam_meta"] = dict(referee=doc.get("referee"), dry=doc.get("dry"))
+        rows = redteam_rows(doc)
+        if rows:
+            merged["suites"].append(dict(name=name, rows=rows, dry=doc.get("dry"),
+                                         referee=doc.get("referee") or doc.get("referee_version")))
+    merged["redteam"] = [r for s in merged["suites"] for r in s["rows"]]
     return merged
 
 
@@ -224,6 +256,12 @@ def summarize(records):
             arms[arm] = rs
         out[k] = dict(start_us=start_us, arms=arms, sources={r["source"] for r in recs if r["source"]})
     return out
+
+
+def kernels_of(summary, results):
+    """Every op with logs or with numbers in a results file, in schema order: before the loops run, the
+    page still shows P2's start, expert and floor times."""
+    return [op for op in schema.OPS if op in summary or op in results["kernels"]]
 
 
 def source_label(sources):
@@ -327,11 +365,27 @@ def empty(msg):
 
 # ---------------------------------------------------------------- panel 1: speed bars
 
+def start_mismatch(k, s, info):
+    """results_*.json's start_us against the start kernel the logs timed. Expert and floor times are only
+    comparable to the logs if they were measured at the same shapes, and the start time is the one number
+    both sides have. A shape change in shapes.py after the results were written shows up here."""
+    logged, written = s["start_us"] if s else None, info.get("start_us")
+    if not logged or not written or 0.8 <= logged / written <= 1.25:
+        return ""
+    return warn(f"<strong>Different shapes?</strong> The logs timed the start kernel at {fmt_us(logged)}, "
+                f"the results file says {fmt_us(written)}. Its expert and floor numbers are probably from other "
+                f"shapes: re-measure them before comparing.")
+
+
 def panel_speed(summary, results):
     blocks, rows_t = [], []
-    for k, s in summary.items():
+    for k in kernels_of(summary, results):
         info = results["kernels"].get(k, {})
-        start, expert, floor = s["start_us"], info.get("expert_us"), info.get("floor_us")
+        s = summary.get(k) or dict(start_us=None, arms={a: [] for a in schema.ARMS},
+                                   sources={info["source"]} if info.get("source") else set())
+        mismatch = start_mismatch(k, summary.get(k), info)
+        start = s["start_us"] or info.get("start_us")   # the logs' own, else the results file's
+        expert, floor = info.get("expert_us"), info.get("floor_us")
         rows = [("Start kernel", "var(--neutral-bar)", start, None, None, None, None, "the baseline every speedup is against")]
         for arm in schema.ARMS:
             rs = [r for r in s["arms"][arm] if r["best_us"] is not None]
@@ -387,14 +441,15 @@ def panel_speed(summary, results):
                      f'physics floor {esc(fmt_us(floor))}</text>')
             rows_t.append([esc(k), "Physics floor", fmt_us(floor), "", "", "", "", "no kernel can beat it"])
         below = [r for rs in s["arms"].values() for r in rs if floor and r["n_verified"] and r["best_us"] < floor]
-        warn = (f'<p class="warn"><span class="icon" aria-hidden="true">!</span><strong>Below the floor:</strong> '
-                f'{len(below)} run{"s" if len(below) != 1 else ""} reported a verified time under the floor '
-                f'({fmt_us(min(r["best_us"] for r in below))} &lt; {fmt_us(floor)}). Either the timer is wrong, or '
-                f'the floor kernel is not the fastest copy of these bytes: re-measure it before reporting.</p>'
-                if below else "")
+        below_floor = warn(
+            f'<strong>Below the floor:</strong> {len(below)} run{"s" if len(below) != 1 else ""} reported a verified '
+            f'time under the floor ({fmt_us(min(r["best_us"] for r in below))} &lt; {fmt_us(floor)}). Either the timer '
+            f'is wrong, or the floor kernel is not the fastest copy of these bytes: re-measure it before reporting.'
+        ) if below else ""
         blocks.append(f'<h3>{esc(k)} <span class="src">{esc(source_label(s["sources"]))}</span></h3>'
                       f'<div class="scroll"><svg class="wide" viewBox="0 0 {W} {H}" role="img" '
-                      f'aria-label="{esc(k)}: start, best per arm, expert and floor times">{"".join(g)}</svg></div>{warn}')
+                      f'aria-label="{esc(k)}: start, best per arm, expert and floor times">{"".join(g)}</svg></div>'
+                      f'{below_floor}{mismatch}')
     body = "".join(blocks) or empty("No attempts logged yet.")
     return card("1", "Speed per kernel",
                 "Bar = median over runs of each run's best verified time; whisker = the spread across runs. "
@@ -507,43 +562,67 @@ def status(ok, yes, no):
 
 
 def redteam_split(rt):
-    """The honest control kernel, which must pass, and the cheats, which must not."""
-    control = [c for c in rt if c["state"] == "pass" or c["cheat"].startswith("honest")]
-    cheats = [c for c in rt if c not in control]
+    """The honest control kernels, which must pass, and the cheats, which must not."""
+    control = [c for c in rt if c["honest"]]
+    cheats = [c for c in rt if not c["honest"]]
     return control, cheats, sum(c["state"] == "caught" for c in cheats), sum(c["state"] == "pending" for c in cheats)
 
 
+def redteam_tail(cheats, pending):
+    """What the 'caught N of M' count leaves out, so a reader never takes a gap for a miss or the reverse."""
+    no_gain = sum(c["state"] == "no gain" for c in cheats)
+    missed = sum(c["state"] == "missed" for c in cheats)
+    return "".join(f", {n} {what}" for n, what in ((no_gain, "not caught but gained nothing"),
+                                                    (missed, "missed"), (pending, "pending")) if n)
+
+
+def warn(html_text):
+    return f'<p class="warn"><span class="icon" aria-hidden="true">!</span>{html_text}</p>'
+
+
 def panel_redteam(results):
-    rt, meta = results["redteam"], results["redteam_meta"]
-    if not rt:
+    suites = results["suites"]
+    if not suites:
         return card("3", "Red team: planted cheats", "Each row is a cheating kernel the referee must reject.",
-                    empty("Not in yet: P3's <code>redteam/run.py</code> writes <code>redteam/redteam_results.json</code>."))
-    control, cheats, caught, pending = redteam_split(rt)
-    warns = []
-    if any(c["state"] != "pass" for c in control):
-        warns.append("<strong>The honest kernel was rejected.</strong> The referee raises false alarms, so no "
-                     "\"caught\" below means anything until that is fixed.")
-    if meta.get("dry"):
-        warns.append("<strong>Dry run:</strong> rules stage only. It proves the table prints, nothing about the cheats.")
-    if "fallback" in str(meta.get("referee") or "").lower():
-        warns.append(f"<strong>Referee:</strong> {esc(meta['referee'])}. Cheats that need chip timing stay pending.")
-    rows = []
-    for c in control + cheats:
-        if c in control:
-            cell = badge("good", "✓", "Passed (control)") if c["state"] == "pass" else badge("critical", "✗", "False alarm")
-        else:
-            cell = {"caught": badge("good", "✓", "Caught"), "missed": badge("critical", "✗", "Missed"),
-                    "pending": badge("neutral", "…", "Pending")}.get(c["state"], badge("neutral", "?", c["state"]))
-        where = c["where"] if c["where"] not in ("", "-") else ""
-        if where and c["as_designed"] in ("yes", "no"):
-            where += " · as designed" if c["as_designed"] == "yes" else " · not where designed"
-        rows.append([esc(c["cheat"]), cell, esc(c["expected"]), esc(where), esc(str(c["message"])[:TEXT_CHARS])])
-    title = f"Red team: caught {caught} of {len(cheats)} planted cheats" + (f", {pending} pending" if pending else "")
+                    empty("Not in yet: <code>results_p1.json</code> (P1) and <code>redteam/redteam_results.json</code> "
+                          "(P3) hold the red-team rows."))
+    blocks = []
+    for s in suites:
+        control, cheats, caught, pending = redteam_split(s["rows"])
+        warns = []
+        if any(c["state"] != "pass" for c in control):
+            warns.append("<strong>An honest kernel was rejected.</strong> This referee raises false alarms, so no "
+                         "\"caught\" in this table means anything until that is fixed.")
+        if s["dry"]:
+            warns.append("<strong>Dry run:</strong> rules stage only. It proves the table prints, nothing about the "
+                         "cheats.")
+        if "fallback" in str(s["referee"] or "").lower():
+            warns.append("<strong>Fallback referee:</strong> cheats that need chip timing stay pending.")
+        rows = []
+        for c in control + cheats:
+            if c["honest"]:
+                cell = (badge("good", "✓", "Accepted (honest)") if c["state"] == "pass"
+                        else badge("critical", "✗", "False alarm"))
+            else:
+                cell = {"caught": badge("good", "✓", "Caught"), "missed": badge("critical", "✗", "Missed"),
+                        "no gain": badge("neutral", "–", "Not caught, gained nothing"),
+                        "pending": badge("neutral", "…", "Pending")}.get(c["state"], badge("neutral", "?", c["state"]))
+            where = c["where"] if c["where"] not in ("", "-") else ""
+            if where and c["as_designed"] in ("yes", "no"):
+                where += " · as designed" if c["as_designed"] == "yes" else " · not where designed"
+            rows.append([esc(c["cheat"]), cell, esc(c["what"]), esc(where), esc(str(c["message"])[:TEXT_CHARS])])
+        head = (f"{esc(s['name'])} <span class=\"src\">caught {caught} of {len(cheats)}"
+                + redteam_tail(cheats, pending)
+                + (f" · {len(control)} honest kernel{'s' if len(control) != 1 else ''}" if control else "")
+                + (f" · referee: {esc(s['referee'])}" if s["referee"] else "") + "</span>")
+        blocks.append(f"<h3>{head}</h3>" + "".join(warn(w) for w in warns) +
+                      table(["Kernel", "Result", "What it does", "Stopped at", "Referee's message"], rows))
+    _, cheats, caught, pending = redteam_split(results["redteam"])
+    title = f"Red team: caught {caught} of {len(cheats)} planted cheats" + redteam_tail(cheats, pending)
     return card("3", title,
-                "Each row is a kernel written to fool the referee, plus one honest kernel that must pass. "
-                "A miss is reported, not hidden. Pending = needs the chip-timing stage.",
-                "".join(f'<p class="warn"><span class="icon" aria-hidden="true">!</span>{w}</p>' for w in warns) +
-                table(["Kernel", "Result", "Should be caught by", "Caught at", "Referee's message"], rows))
+                "Each row is a kernel written to fool the referee, plus honest kernels that must be accepted. "
+                "A miss is reported, not hidden. One table per suite: each ran against its own referee version.",
+                "".join(blocks))
 
 
 # ---------------------------------------------------------------- panel 4: attempt timeline
@@ -601,6 +680,9 @@ def panel_timeline(summary):
             for i, rec in enumerate(run["attempts"]):
                 counts[rec["verdict"]] += 1
                 label, color, kind = VERDICT.get(rec["verdict"], (rec["verdict"], "var(--muted)", "circle"))
+                if rec["verdict"] == "slower" and rec["speedup"] and rec["speedup"] >= 1.0:
+                    # A referee without no_gain calls a 1.03x kernel "slower": say why, keep its verdict.
+                    label += " (faster, but inside the noise threshold)"
                 base_name, diff = diff_for(rec, run["attempts"], i, start_code)
                 an = rec["attempt_no"] if rec["attempt_no"] is not None else i
                 did = len(details)
@@ -651,17 +733,19 @@ def heldout_from_logs(summary):
                 continue
             fails = [a for a in atts if a["verdict"] == "heldout_fail"]
             correct = [a for a in atts if a["verdict"] in ("heldout_fail", "slower", "no_gain", "faster")]
+            checked = [a for a in atts if a["verdict"] in ("heldout_fail", "faster")]
             last = max(fails, key=lambda a: a["timestamp"] or 0) if fails else None
             msg = (last["referee_message"] or "").strip().splitlines()[0][:160] if last and last["referee_message"] else ""
-            rows.append([esc(k), ARM_LABEL[arm], str(len(atts)), str(len(correct)),
+            rows.append([esc(k), ARM_LABEL[arm], str(len(atts)), str(len(correct)), str(len(checked)),
                          status(not fails, "0", str(len(fails))), esc(msg)])
     if not rows:
         return ""
     return ('<h3>During the runs <span class="src">from attempts.jsonl</span></h3>' +
-            table(["Kernel", "Arm", "Attempts", "Correct on dev shapes", "Rejected at held-out", "Latest rejection"],
-                  rows, numeric=(2, 3)) +
-            '<p class="how">Zero rejections means none were caught, not that every kernel passes: if the loops '
-            'skip held-out shapes to save compiles, only the end-of-run check on each best kernel tests them.</p>')
+            table(["Kernel", "Arm", "Attempts", "Correct on dev shapes", "Checked on held-out", "Rejected there",
+                   "Latest rejection"], rows, numeric=(2, 3, 4)) +
+            '<p class="how">The referee draws 3 random held-out shapes only for a kernel that would otherwise be '
+            'faster, so "checked" = faster + rejected. A kernel that was not faster was never tested there; the '
+            'end-of-run check on each arm\'s best kernel covers every held-out shape.</p>')
 
 
 def panel_heldout(results, summary):
@@ -684,15 +768,19 @@ def panel_heldout(results, summary):
         cell = {(h.get("which"), h.get("shape")): h for h in hs}
         rows = []
         for w in whiches:
-            row = [f'<strong>{esc(w)} kernel</strong>']
+            name = {"start": "Start kernel", "expert": "Expert kernel"}.get(w) or (
+                f"{ARM_LABEL[w]}: best" if w in ARM_LABEL else f"{w} kernel")
+            row = [f'<strong>{esc(name)}</strong>']
             for sh in shapes:
                 h = cell.get((w, sh))
                 if h is None:
                     row.append('<span class="note">–</span>')
-                elif h.get("passed"):
-                    row.append(status(True, f"pass · {fmt_x(h.get('speedup'))}" if h.get("speedup") else "pass", ""))
-                else:
-                    row.append(status(False, "", "fail"))
+                    continue
+                text = (f"pass · {fmt_x(h.get('speedup'))}" if h.get("speedup") else "pass") if h.get("passed") else "fail"
+                c = status(bool(h.get("passed")), text, text)
+                extra = [fmt_us(h["time_us"]) if h.get("time_us") else "", str(h.get("message") or "")[:300]]
+                row.append(f'<span tabindex="0" data-tip="{tip(text, f"{name} at {sh}", *extra)}">{c}</span>'
+                           if any(extra) else c)
             rows.append(row)
         fails = sum(1 for h in hs if not h.get("passed"))
         blocks.append(f'<h3>{esc(k)}: end-of-run check <span class="src">{fails} failing cell'
@@ -709,20 +797,25 @@ def card(n, title, how, body):
 
 def kpis(summary, results, records):
     tiles = []
-    for k, s in summary.items():
-        rs = s["arms"]["referee"]
+    for k in kernels_of(summary, results):
+        s, info = summary.get(k), results["kernels"].get(k, {})
+        rs = s["arms"]["referee"] if s else []
         v = fmt_x(median(r["best_x"] for r in rs)) if rs else "–"
         sub = (f"model + referee · median of {len(rs)} run{'s' if len(rs) != 1 else ''} · {source_label(s['sources'])}"
                if rs else "no model + referee runs yet")
+        start = (s and s["start_us"]) or info.get("start_us")
+        if start and info.get("expert_us"):
+            sub += f" · expert reaches {fmt_x(start / info['expert_us'])}"
         tiles.append((f"{k}: best verified speedup", v, sub))
     rt = results["redteam"]
     if rt:
         control, cheats, caught, pending = redteam_split(rt)
-        sub = "planted cheats caught" + (f" · {pending} pending" if pending else "")
+        sub = "planted cheats caught" + redteam_tail(cheats, pending).replace(", ", " · ")
+        sub += f" · {len(results['suites'])} suite{'s' if len(results['suites']) != 1 else ''}"
         if any(c["state"] != "pass" for c in control):
-            sub += " · honest kernel rejected: not trustworthy"
-        if results["redteam_meta"].get("dry"):
-            sub += " · dry run"
+            sub += " · an honest kernel was rejected"
+        if any(s["dry"] for s in results["suites"]):
+            sub += " · includes a dry run"
         tiles.append(("Red team", f"{caught} of {len(cheats)}", sub))
     else:
         tiles.append(("Red team", "–", "not in yet"))
@@ -987,6 +1080,7 @@ def build(records, results, notes, fake, inputs):
     timeline, details = panel_timeline(summary)
     banner = stamp(records, fake)
     sources = set().union(*(s["sources"] for s in summary.values())) if summary else set()
+    sources |= {v["source"] for v in results["kernels"].values() if v.get("source")}
     built = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     meta = (f"Built {built} from {len(inputs)} file{'s' if len(inputs) != 1 else ''} · "
             f"{len(records):,} attempts · times: {source_label(sources)}")
@@ -1054,10 +1148,20 @@ def main():
                 rec.setdefault(k, None)
             rec["_file"] = "schema.fake_attempts()"
             records.append(rec)
+    res_paths = a.results if a.results is not None else found("*results*.json")
+    if a.fake:
+        records, notes, inputs = [], [], ["schema.fake_attempts()"]
+        for rec in schema.fake_attempts():
+            for k in schema.ATTEMPT_FIELDS:
+                rec.setdefault(k, None)
+            rec["_file"] = "schema.fake_attempts()"
+            records.append(rec)
     else:
         paths = a.logs or found("attempts*.jsonl")
-        if not paths:
-            sys.exit(f"no attempts*.jsonl under {PROJECT}. Pass log files, or --fake for the layout.")
+        if not paths and not res_paths:
+            sys.exit(f"no attempts*.jsonl or *results*.json under {PROJECT}. Pass files, or --fake for the layout.")
+        if not paths:   # before the loops run: P1's and P2's results alone are still real numbers
+            print("no attempts*.jsonl yet: building from the results files only")
         records, notes = load_attempts(paths)
         for r in records:
             r["_file"] = rel(r["_file"])
@@ -1065,10 +1169,9 @@ def main():
     fake = a.fake or any(marked(r) for r in records) or any("fake" in Path(p).name.lower() for p in inputs)
     # Fake panels 3 and 5 only for a page that is fake through and through, never mixed into real logs.
     all_fake = a.fake or (bool(records) and all(marked(r) for r in records))
-    res_paths = a.results if a.results is not None else found("*results*.json")
-    results = load_results(res_paths)
+    results = load_results(res_paths, name=rel)
     if all_fake and not res_paths:
-        results = merge_results([fake_results()])
+        results = merge_results([("fake_results()", fake_results())])
         inputs.append("fake_results()")
     else:
         inputs += [rel(p) for p in res_paths]
