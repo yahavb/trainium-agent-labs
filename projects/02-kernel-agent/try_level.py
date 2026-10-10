@@ -19,11 +19,22 @@ ROOT = Path(__file__).resolve().parent
 
 def contract(level):
     s = kb.LEVELS[level]
+    guidance = (
+        "Use explicit for loops over tiles at most 128 rows by 512 columns. "
+        "Derive all bounds from input shapes, handle partial final tiles, and return a new output. "
+        "Do not convert inputs with np.asarray/np.array; use the input dtype and values as provided. "
+        "Do not solve the entire operation with one whole-array NumPy expression.\n"
+    )
+    if level == 1:
+        guidance += (
+            "For level 1, allocate out = np.empty_like(x), iterate over row and column tiles, "
+            "compute each tile as y = a * x_tile + b, then store the ReLU result for that tile. "
+            "The common wrong shortcut is return np.maximum(a * x + b, 0.0); do not use that.\n"
+        )
     return (f"Implement def kernel{inspect.signature(s['ref'])}: using NumPy.\n"
             f"Operation: {s['name']}. Match this specification:\n"
             f"{inspect.getsource(s['ref'])}\n"
-            "Use explicit loops over tiles at most 128 rows by 512 columns; "
-            "scalar or slice arithmetic, including partial final tiles. Return a new output.\n")
+            + guidance)
 
 
 def instruction(feedback):
