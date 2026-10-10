@@ -7,6 +7,16 @@ Team submission, NYU × Annapurna Labs Trainium hackathon, 2026-10-10. Team 24, 
 spread, and how to reproduce it. The sections after it are the evidence. Unless a line says *on chip*,
 every number comes from the NKI 0.6.0 CPU simulator (`nki.simulate`), graded by our checker.
 
+**In one paragraph.** We built a checker-driven agent that writes NKI kernels with a model that sees 8,192
+tokens (Qwen3-8B, served on the seat's Trainium2). The organizers' agent solved only level 2 (3 runs of 5).
+Ours solved levels 3 and 4 in every run and level 1 for the first time today, and every solve passed a
+fresh-process re-audit and a held-out set of new shapes and hostile values [[TBD: final-run numbers]]. The
+model never changed; what it was shown did. One worked example in the first prompt solves level 3; the code
+in the repair messages solves level 4 (hollowed out, level 4 stopped solving); a compiler gate turns level
+1's simulator-only solutions into kernels that build for trn2. Along the way we found that the seat's model
+server is deterministic, so "5 runs" were often one run five times. We report distinct runs next to every
+rate and changed the agent so its samples actually differ.
+
 **Where each required item is.**
 
 | asked for | where |
@@ -332,7 +342,31 @@ The solving kernel is correct, not fast: 36.6 Flops/Byte, memory-bound.
 - **Levels 9–14 are liuyq's own held-out operations**, not the official ladder, and are reported apart from it.
 - **The SBUF limit is conservative**: 192 KiB per partition, below trn2's 224 KiB.
 
-## 10. Files
+## 10. Who did what, and where each number comes from
+
+| part | by | where |
+|---|---|---|
+| the agent loop, the original checker, the reference kernels and the API card for levels 1–8 | the organizers | `agent.py`, `nkibench.py`, `reference_level*.py` |
+| feedback layers v2–v7, the compiler gate with its level-1 rule, the verdict, levels 9–14 | liuyq | `feedback_v2.py` … `feedback_v7.py`, `gate_nki.py`, `verdict_nki.py`, `ops07.py`, `ops08.py`, [V7.md](projects/02-kernel-agent/V7.md) |
+| checker additions: allocation audit, a fresh file per candidate, the held-out set and its mutants, confidence and calibration, token accounting, taxonomy and reports | teoguo | `nkibench.py`, `agent.py`, `scripts/`, [EVAL.md](projects/02-kernel-agent/EVAL.md), [CHECKER.md](projects/02-kernel-agent/CHECKER.md) |
+| experiments A, E-F, E-div, v8 and v8.1, the ablation, this write-up | teoguo | `feedback_v8.py`, [V8.md](projects/02-kernel-agent/V8.md), [PLAN.md](PLAN.md), [NOTES.md](NOTES.md) |
+| seats 115–119, runs, re-audits | the team | [analysis/logs/](analysis/logs/README.md) |
+
+Most code, analysis and text on teoguo's side was produced with Claude Code sessions that the team directed
+and checked; each commit names its author. Every number in this document is computed by a script in this
+repository from a logged run.
+
+**Where a number comes from.**
+
+- *Simulator* (`nki.simulate`, trn2 target): every score, solve rate and held-out result.
+- *trn2 compiler*: v7's verdict lowers each solve for trn2; the level-1 solve lowered.
+  [[TBD: full builds of the final solves, if run]]
+- *On a NeuronCore*: liuyq ran solved kernels for levels 2, 3, 4, 9 and 11 on the chip (183b384).
+  [[TBD: final hand-in kernels, if run]]
+- *Measured or inferred.* Rates, counts and timings are measured. Explanations (why the skeleton failed, why
+  level 2 repairs never succeed) are our reading of the logs, and each one points to the log it rests on.
+
+## 11. Files
 
 | what | where |
 |---|---|
