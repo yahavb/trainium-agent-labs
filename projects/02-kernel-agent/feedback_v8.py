@@ -51,7 +51,10 @@ of the error ("worst error 4.21 of the output's RMS") for seven rounds. When a l
 numbers are wrong, it is simulated once more on x = arange (32, 12) as 3x4, so every output value names
 its source element; one or two sentences then say what the kernel computed and what the level requires
 (position j*A+i <- x[i*B+j]). No code. Levels 1, 3 and 4 never reach this path, so their requests are
-unchanged.
+unchanged. v8.5: when a level-2 kernel returns nothing ("WRONG SHAPE: returned ()"), the checker's hint
+points at the output-size arithmetic; L2CAT now adds one sentence saying the kernel returns nothing and
+should return the tensor it allocated (analysis/l2_l3_misses.md: 119's v8.3 run 2 stalled on this for
+rounds 4-7).
 
 WARM=1 (levels 5-7 only). Levels 5-7 are level 4's matmul with an HBM traffic bar (1.6x / 1.25x / 1.05x
 the byte floor). Round 0 does not send the first prompt: it sends the repair prompt for the agent's own
@@ -81,6 +84,8 @@ MIX = os.environ.get("MIX", "0") == "1"
 L2CAT = os.environ.get("L2CAT", "0") == "1"
 WARM = os.environ.get("WARM", "0") == "1"
 WARM_KERNEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "warm_l4_8339bbd6.py")
+L2_NORETURN = (" Your kernel returns nothing (the checker received an empty tuple). The output size is not "
+               "the problem: end the kernel by returning the output tensor you allocated, e.g. `return out`.")
 L2_NOTE = (" This level keeps every row where it is: row p of x holds an F1-by-F2 matrix stored row-major "
            "(F1, F2 = shape2D), and row p of the output holds the same F1*F2 values of that small matrix "
            "transposed, i.e. stored column-major. Nothing moves between rows, so the first (partition) "
@@ -321,6 +326,8 @@ if L2CAT:
             what = l2_what(source, feedback)
             if what:
                 feedback = feedback.rstrip() + what
+        elif level == 2 and reward < 1 and feedback and "returned ()" in feedback:
+            feedback = feedback.rstrip() + L2_NORETURN
         return reward, parts, feedback
 
     agent.grade = grade_cat
