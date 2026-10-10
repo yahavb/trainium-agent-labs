@@ -1,0 +1,256 @@
+{
+  "experiment": "first-live-matched-B-C",
+  "upstream_revision": "8f1ca418827a3b4adc88a766262d065b639b7d46",
+  "model": "Qwen/Qwen3-8B",
+  "sdk_version": "0.6.0+31049202112.g85070674",
+  "model_host": "AWS Trainium2",
+  "kernel_validation": "Original NKI CPU simulator and agent.grade",
+  "settings": {
+    "rounds": 8,
+    "samples": 4,
+    "repeat": 1,
+    "give_up_after": 4,
+    "context": 8192,
+    "max_tokens": 2500,
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "enable_thinking": false
+  },
+  "arms": {
+    "B": {
+      "best_reward": 0.625,
+      "best_shape_passes": [
+        true,
+        false,
+        false,
+        false
+      ],
+      "best_code_sha256": "c588189c1527a4970afb950cad52f88b45ab96654730ffa9294d1e2af27885b0",
+      "reached_1": false,
+      "rounds": 8,
+      "candidates": 32,
+      "model_calls": 32,
+      "tokens": {
+        "prompt_tokens": 21672,
+        "completion_tokens": 13741,
+        "total_tokens": 35413
+      },
+      "wall_seconds": 646.714335,
+      "stop_reason": "round cap",
+      "guidance_counts": {},
+      "guidance_deliveries_to_model": 0,
+      "first_solved": null
+    },
+    "C": {
+      "best_reward": 1.0,
+      "best_shape_passes": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "best_code_sha256": "1e4cd332c859bb7a86ccae434254a2abf240df4d4ad579c1e340c034f8a2fc29",
+      "reached_1": true,
+      "rounds": 5,
+      "candidates": 20,
+      "model_calls": 20,
+      "tokens": {
+        "prompt_tokens": 15732,
+        "completion_tokens": 10506,
+        "total_tokens": 26238
+      },
+      "wall_seconds": 484.836888,
+      "stop_reason": "solved",
+      "guidance_counts": {
+        "stationary": 4
+      },
+      "guidance_deliveries_to_model": 1,
+      "first_solved": {
+        "round": 4,
+        "sample": 1,
+        "calls_consumed_through_round": 20
+      }
+    }
+  },
+  "equal_call_budgets": [
+    {
+      "calls": 4,
+      "B_reward": 0.625,
+      "C_reward": 0.625
+    },
+    {
+      "calls": 8,
+      "B_reward": 0.625,
+      "C_reward": 0.625
+    },
+    {
+      "calls": 12,
+      "B_reward": 0.625,
+      "C_reward": 0.625
+    },
+    {
+      "calls": 16,
+      "B_reward": 0.625,
+      "C_reward": 0.75
+    },
+    {
+      "calls": 20,
+      "B_reward": 0.625,
+      "C_reward": 1.0
+    }
+  ],
+  "historical_baseline": {
+    "repeats": 5,
+    "level4_rewards": [
+      0.625,
+      0.625,
+      0.625,
+      0.625,
+      0.625
+    ],
+    "regraded_candidates": 404,
+    "exact_reward_parts_feedback_parity": 404
+  },
+  "offline_arm_c_validation": {
+    "candidates": 448,
+    "reward_and_parts_parity": 448,
+    "disabled_B_feedback_parity": 448,
+    "non_target_feedback_unchanged": 433,
+    "targeted_stationary_changes": 15,
+    "moving_handler": "SDK-backed isolated test"
+  },
+  "independent_validation": {
+    "original_checker_called_directly": true,
+    "checker_function_and_code_unchanged": true,
+    "candidate_io_only_redirected": true,
+    "reward": 1.0,
+    "parts": {
+      "parses": true,
+      "rules": true,
+      "runs": true,
+      "correct": true
+    },
+    "shapes": [
+      {
+        "case": {
+          "K": 128,
+          "M": 128,
+          "N": 512
+        },
+        "passed": true,
+        "checks": {
+          "mutation": {
+            "evaluated": true,
+            "passed": true,
+            "message": null
+          },
+          "numerical": {
+            "evaluated": true,
+            "passed": true,
+            "message": null
+          },
+          "traffic": {
+            "evaluated": true,
+            "passed": true,
+            "message": null
+          }
+        }
+      },
+      {
+        "case": {
+          "K": 256,
+          "M": 256,
+          "N": 1024
+        },
+        "passed": true,
+        "checks": {
+          "mutation": {
+            "evaluated": true,
+            "passed": true,
+            "message": null
+          },
+          "numerical": {
+            "evaluated": true,
+            "passed": true,
+            "message": null
+          },
+          "traffic": {
+            "evaluated": true,
+            "passed": true,
+            "message": null
+          }
+        }
+      },
+      {
+        "case": {
+          "K": 512,
+          "M": 128,
+          "N": 512
+        },
+        "passed": true,
+        "checks": {
+          "mutation": {
+            "evaluated": true,
+            "passed": true,
+            "message": null
+          },
+          "numerical": {
+            "evaluated": true,
+            "passed": true,
+            "message": null
+          },
+          "traffic": {
+            "evaluated": true,
+            "passed": true,
+            "message": null
+          }
+        }
+      },
+      {
+        "case": {
+          "K": 256,
+          "M": 512,
+          "N": 1024
+        },
+        "passed": true,
+        "checks": {
+          "mutation": {
+            "evaluated": true,
+            "passed": true,
+            "message": null
+          },
+          "numerical": {
+            "evaluated": true,
+            "passed": true,
+            "message": null
+          },
+          "traffic": {
+            "evaluated": true,
+            "passed": true,
+            "message": null
+          }
+        }
+      }
+    ]
+  },
+  "limitations": [
+    "One matched pair, not repeated-run averages.",
+    "C reached 0.750 before targeted guidance was delivered.",
+    "Full-K SBUF allocations remain a hardware-legality concern.",
+    "No device compilation or kernel latency measured."
+  ],
+  "submission_verification": {
+    "sdk_host_tests": {
+      "passed": 17,
+      "skipped": 0
+    },
+    "local_windows_tests": {
+      "passed": 15,
+      "skipped": 2
+    },
+    "original_benchmark_selftest": "passed",
+    "direct_original_checker_reward": 1.0,
+    "new_live_inference_calls": 0,
+    "core_logic_AST_matches_frozen_experiments": true
+  }
+}
