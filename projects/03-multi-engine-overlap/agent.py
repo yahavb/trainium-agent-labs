@@ -58,39 +58,78 @@ def build_recalibration_prompt(candidate_code: str, hazard_type: str, hint: str,
     extra_pattern = ""
     if "SYNC" in hazard_type or "PIPELINE" in hazard_type or "UNCOMPUTED" in hazard_type:
         extra_pattern = """
-RECOMMENDED PIPELINE BUFFER ROTATION & PROLOGUE/EPILOGUE:
-Do not use conditional skips like `if r_start > 0` that leave Block 0 uncomputed! Every block must be computed and stored into `out`.
-Structure the kernel cleanly:
-- Single-block case (`if num_blocks == 1:`):
-    buf_dma = x[:H, :].copy()
-    buf_vec = alpha * buf_dma + beta
-    out[:H, :] = buf_vec.astype(np.float64) @ weight.astype(np.float64)
+RECOMMENDED 3-STAGE PIPELINE ARCHITECTURE:
+Structure the kernel with explicit Prologue, Steady-state Loop, and Epilogue Drain:
+```python
+def pipeline_kernel(x: np.ndarray, weight: np.ndarray, alpha: float, beta: float) -> np.ndarray:
+    H, W = x.shape
+    _, K = weight.shape
+    TILE_H = 128
+    num_blocks = (H + TILE_H - 1) // TILE_H
+    out = np.zeros((H, K), dtype=np.float32)
+
+    def get_valid(b_idx: int) -> int:
+        r_start = b_idx * TILE_H
+        return min(TILE_H, H - r_start)
+
+    # Sub-tile or single-block input
+    if num_blocks == 1:
+        v0 = get_valid(0)
+        buf_dma = x[0:v0, :].copy()
+        buf_vec = alpha * buf_dma + beta
+        out[0:v0, :] = (buf_vec[:v0, :].astype(np.float64) @ weight.astype(np.float64)).astype(np.float32)
+        return out
+
+    # SBUF Triple Buffers
+    buf_dma = np.zeros((TILE_H, W), dtype=np.float32)
+    buf_vec = np.zeros((TILE_H, W), dtype=np.float32)
+    buf_tensor = np.zeros((TILE_H, W), dtype=np.float32)
+    buf_out = np.zeros((TILE_H, K), dtype=np.float32)
+
+    # 1. Prologue: Prefetch Block 0 and Block 1
+    v0 = get_valid(0)
+    buf_dma[:v0, :] = x[0:v0, :]
+    buf_vec, buf_dma = buf_dma, buf_vec
+    v1 = get_valid(1)
+    buf_dma[:v1, :] = x[TILE_H:TILE_H + v1, :]
+    buf_vec[:v0, :] = alpha * buf_vec[:v0, :] + beta
+
+    # 2. Main Loop: Overlap DMA(b) || Vector(b-1) || Tensor(b-2)
+    for b in range(2, num_blocks):
+        buf_tensor, buf_vec, buf_dma = buf_vec, buf_dma, buf_tensor
+        vb = get_valid(b)
+        r_st = b * TILE_H
+        buf_dma[:vb, :] = x[r_st:r_st + vb, :]
+
+        vb_prev = get_valid(b - 1)
+        buf_vec[:vb_prev, :] = alpha * buf_vec[:vb_prev, :] + beta
+
+        vb_prev2 = get_valid(b - 2)
+        buf_out[:vb_prev2, :] = (buf_tensor[:vb_prev2, :].astype(np.float64) @ weight.astype(np.float64)).astype(np.float32)
+        r_out_st = (b - 2) * TILE_H
+        out[r_out_st:r_out_st + vb_prev2, :] = buf_out[:vb_prev2, :]
+
+    # 3. Epilogue: Drain remaining Block num_blocks-2 and num_blocks-1
+    buf_tensor, buf_vec = buf_vec, buf_tensor
+    v_penult = get_valid(num_blocks - 2)
+    buf_out[:v_penult, :] = (buf_tensor[:v_penult, :].astype(np.float64) @ weight.astype(np.float64)).astype(np.float32)
+    out[(num_blocks - 2) * TILE_H:(num_blocks - 2) * TILE_H + v_penult, :] = buf_out[:v_penult, :]
+
+    v_last = get_valid(num_blocks - 1)
+    buf_dma[:v_last, :] = alpha * buf_dma[:v_last, :] + beta
+    buf_out[:v_last, :] = (buf_dma[:v_last, :].astype(np.float64) @ weight.astype(np.float64)).astype(np.float32)
+    out[(num_blocks - 1) * TILE_H:(num_blocks - 1) * TILE_H + v_last, :] = buf_out[:v_last, :]
+
     return out
-- Multi-block 3-Stage Pipeline:
-    Prologue:
-      DMA loads Block 0 into buf_dma
-      buf_vec, buf_dma = buf_dma, buf_vec
-      DMA loads Block 1 into buf_dma
-      Vector computes Block 0 in buf_vec
-    Steady-state loop (b = 2 to num_blocks):
-      buf_tensor, buf_vec, buf_dma = buf_vec, buf_dma, buf_tensor
-      DMA loads Block b into buf_dma
-      Vector transforms Block b-1 in buf_vec
-      Tensor multiplies Block b-2 in buf_tensor and writes to out[(b-2)*128:(b-2)*128+valid, :]
-    Epilogue:
-      Drain Block num_blocks-2 and Block num_blocks-1 into out!
+```
 """
-    elif "RAGGED" in hazard_type:
+    elif "ALGORITHMIC" in hazard_type or "PRECISION" in hazard_type:
         extra_pattern = """
-RECOMMENDED BOUNDARY CLAMP:
-`valid = min(128, H - r_start)`
-`buf_dma[:valid, :] = x[r_start:r_start + valid, :]`
-`out[r_start:r_start + valid, :] = buf_out[:valid, :]`
-"""
-    elif "PRECISION" in hazard_type:
-        extra_pattern = """
-RECOMMENDED ACCUMULATOR PRECISION:
-`buf_tensor[:valid, :] = (buf_vec[:valid, :].astype(np.float64) @ weight.astype(np.float64)).astype(np.float32)`
+RECOMMENDED ACCUMULATOR PRECISION & BUFFER FLOW:
+`buf_dma[:valid, :] = x[r_start:r_end, :]`
+`buf_vec[:valid, :] = alpha * buf_dma[:valid, :] + beta`
+`buf_out[:valid, :] = (buf_vec[:valid, :].astype(np.float64) @ weight.astype(np.float64)).astype(np.float32)`
+`out[r_start:r_end, :] = buf_out[:valid, :]`
 """
 
     prompt = f"""
@@ -122,7 +161,7 @@ def extract_python_code(text: str) -> str:
 
 
 # ---------------------------------------------------------------- Model Client & Token Instrumentation
-def call_model(prompt: str, max_tokens: int = 1000) -> tuple[str, dict]:
+def call_model(prompt: str, max_tokens: int = 1200) -> tuple[str, dict]:
     """Calls OpenAI-compatible vLLM endpoint running on Trainium or shared cluster."""
     usage = {
         "prompt_tokens": len(prompt) // 4,

@@ -306,6 +306,23 @@ def diagnose_block_failure(
                     "Fix: Handle single blocks (`num_blocks == 1`), compute Block 0 in prologue, and drain all remaining blocks in epilogue.",
                     b
                 )
+            elif not isolated_pass:
+                max_err = float(np.max(np.abs(expected_slice - candidate_slice)))
+                if max_err > 1e-1:
+                    return (
+                        "ALGORITHMIC_HAZARD",
+                        f"Block {b} failed even in single-block isolated micro-test (Max error: {max_err:.4e}). "
+                        "The vector or tensor engine is operating on uninitialized or swapped-out buffer memory. "
+                        "Fix: Check buffer variables! Vector scaling must read `buf_dma`, Tensor matmul must multiply `buf_vec @ weight`.",
+                        b
+                    )
+                else:
+                    return (
+                        "NUMERICAL_PRECISION_HAZARD",
+                        f"Block {b} diverged slightly in micro-test (Max error: {max_err:.4e}). "
+                        "Fix: Accumulate intermediate results in float32 precision before converting to bfloat16.",
+                        b
+                    )
             else:
                 max_err = float(np.max(np.abs(expected_slice - candidate_slice)))
                 return (
