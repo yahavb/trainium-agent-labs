@@ -29,15 +29,14 @@ Precision bar: at most **4 bf16 ulps** against an fp32 reference (honest bf16 ou
 | `rules` | Not a kernel file (bad import, top-level code, file/process call), or it modified the referee's files | n/a | no |
 | `wrong` | Failed import, simulation, compile, chip check or a verified timed run; also a check that timed out | no | no |
 | `heldout_fail` | Fast and correct on the timing shapes, but wrong (or would not compile) on a shape it never saw | no | yes |
-| `slower` | Correct, and the speedup <= 1/threshold | yes | yes |
-| `no_gain` **(landing shortly)** | Correct, but the difference is inside the timing noise | yes | yes |
+| `slower` | Correct, and the speedup <= 1/threshold (or more than 3x slower on a shape: "STOPPED EARLY") | yes | yes |
+| `no_gain` | Correct, but the difference is inside the timing noise (or the total gains while a shape regresses) | yes | yes |
 | `faster` | Correct everywhere, held-out included, and speedup >= threshold **and** no timing shape regressed | yes | yes |
 
-**The contract** (TEAM.md, landing in another change right now):
-`threshold = 1 + max(1%, 2 x relative IQR)`. `faster` iff total speedup >= threshold and no shape is below
-1/threshold. `slower` iff speedup <= 1/threshold. Everything else is `no_gain`.
-**The code you read today** uses `1 + max(5%, 2 x IQR)` and has no `no_gain` yet: any correct kernel that is
-not `faster` comes back as `slower`. Build the dashboard and the loop to handle `no_gain` now.
+`threshold = 1 + max(1%, 2 x relative IQR)` (`timing.noise_threshold`; measured A/A noise is ~0.01%, so in
+practice 1%). `faster` iff total speedup >= threshold and no shape is below 1/threshold. `slower` iff speedup
+<= 1/threshold. Everything else is `no_gain`. Measured: the start kernel against itself gives `no_gain` (1.000x).
+Exit codes: 0 for faster / no_gain / slower, 1 for rules / wrong / heldout_fail, 3 for a referee error.
 
 **Speedup is always measured against the baseline (the start kernel), not your previous best.** If
 `speedup` is 1.5, the kernel is 1.5x faster than the start kernel. If the loop wants "better than my best", it
@@ -57,7 +56,7 @@ python speedcheck.py --op matmul --check k.py --baseline kernels/matmul_start.py
 
 | Exit code | Meaning |
 |---|---|
-| 0 | The kernel is correct and was timed: `faster`, `slower` (and `no_gain` once it lands) |
+| 0 | The kernel is correct and was timed: `faster`, `no_gain` or `slower` |
 | 1 | Rejected: `rules`, `wrong` or `heldout_fail`. **Also** an uncaught referee crash (Python's default exit code), so with `--json`, trust the JSON line and not the exit code alone. |
 | 3 | `REFEREE ERROR (not a verdict on the kernel)` on stderr. Examples: no free core, or the baseline would not compile. |
 
@@ -262,6 +261,4 @@ The final run in `results_p1.json` (33 kernels, seat 100, core 2):
 **Where the code and the docs disagree** (the code wins):
 - STATUS.md lists held-out **before** timing; the code times first and runs held-out only for a would-be
   `faster`.
-- TEAM.md's `no_gain` and its threshold of max(5%, 2xIQR) are not in the code yet. The new contract is
-  max(1%, 2xIQR) and is landing shortly.
 - REVIEW.md's `heldout=False` and `--no-heldout` do not exist.
