@@ -26,50 +26,50 @@ This table defines **who can work in parallel** and **where you must wait or hel
 *Goal: Harden each component independently without waiting on anyone.*
 
 #### Shashwat (`shashwat/grader`):
-- [ ] Add hostile test dimensions to `overlap_bench.py`:
-  - [ ] Matrix with prime rows: `317 × 128` (last tile has only 61 rows).
-  - [ ] Small matrix: `64 × 128` (smaller than a full 128 tile).
-  - [ ] Large matrix: `1024 × 128` (stress test).
-- [ ] Implement Hostile Value Generator:
-  - [ ] Extreme floating-point values ($10^4$) to test accumulator overflow.
-  - [ ] Zero matrices and negative matrices.
-- [ ] Harden the 3-engine AST inspector to catch illegal hidden whole-array operations.
-- [ ] Run `python overlap_bench.py --selftest` and verify 100% pass.
-- [ ] `git commit -am "Harden hostile test suite and AST grader"` and push to `shashwat/grader`.
+- [x] Add hostile test dimensions to `overlap_bench.py`:
+  - [x] Matrix with prime rows: `317 × 128` (last tile has only 61 rows).
+  - [x] Small matrix: `64 × 128` (smaller than a full 128 tile).
+  - [x] Large matrix: `1024 × 128` (stress test).
+- [x] Implement Hostile Value Generator:
+  - [x] Extreme floating-point values ($10^4$) to test accumulator overflow.
+  - [x] Zero matrices and negative matrices.
+- [x] Harden the 3-engine AST inspector to catch illegal hidden whole-array operations.
+- [x] Run `python overlap_bench.py --selftest` and verify 100% pass.
+- [x] `git commit -am "Harden hostile test suite and AST grader"` and push to `shashwat/grader`.
 
 #### Heet (`heet/agent`):
-- [ ] Connect `agent.py` to live model endpoint:
-  - [ ] Test connection to local pod (`http://localhost:8000/v1` on `seat-140`) or shared `GPTOSS_BASE_URL`.
-  - [ ] Verify `--live` flag receives responses within timeout.
-- [ ] Instrument token usage tracker:
-  - [ ] Track `prompt_tokens` and `completion_tokens` per round.
-  - [ ] Ensure generation stays strictly below the 8,192 token limit.
-- [ ] Finalize the SBUF 3-buffer cache geometry prompt (ensuring prompt is concise to prevent model loops).
-- [ ] `git commit -am "Implement live model endpoint and token instrumentation"` and push to `heet/agent`.
+- [x] Connect `agent.py` to live model endpoint:
+  - [x] Test connection to local pod (`http://localhost:8000/v1` on `seat-140`) or shared `GPTOSS_BASE_URL`.
+  - [x] Verify `--live` flag receives responses within timeout.
+- [x] Instrument token usage tracker:
+  - [x] Track `prompt_tokens` and `completion_tokens` per round.
+  - [x] Ensure generation stays strictly below the 8,192 token limit.
+- [x] Finalize the SBUF 3-buffer cache geometry prompt (ensuring prompt is concise to prevent model loops).
+- [x] `git commit -am "Implement live model endpoint and token instrumentation"` and push to `heet/agent`.
 
 #### Tanay (`tanay/benchmark`):
-- [ ] Run scaling benchmarks in `visualize_pipeline.py`:
-  - [ ] Test $512 \times 128$ (4 blocks), $1024 \times 128$ (8 blocks), and $2048 \times 128$ (16 blocks).
-  - [ ] Record the exact latency numbers and hardware speedup factors ($1.76\times \rightarrow 2.07\times \rightarrow 2.35\times$).
-- [ ] Polish the Gantt chart visualization:
-  - [ ] Ensure clear labels ("DMA Engine", "Vector Engine", "Tensor Engine").
-  - [ ] Highlight the 66.7% idle stalls in sequential vs. 0% in overlapped steady-state.
-  - [ ] Export `pipeline_gantt_1024.png` (high DPI).
-- [ ] Start setting up the Google Slides structure based on the Master Plan.
-- [ ] `git commit -am "Generate multi-block Gantt charts and benchmark metrics"` and push to `tanay/benchmark`.
+- [x] Run scaling benchmarks in `visualize_pipeline.py`:
+  - [x] Test $512 \times 128$ (4 blocks), $1024 \times 128$ (8 blocks), and $2048 \times 128$ (16 blocks).
+  - [x] Record the exact latency numbers and hardware speedup factors ($1.76\times \rightarrow 2.07\times \rightarrow 2.35\times$).
+- [x] Polish the Gantt chart visualization:
+  - [x] Ensure clear labels ("DMA Engine", "Vector Engine", "Tensor Engine").
+  - [x] Highlight the 66.7% idle stalls in sequential vs. 0% in overlapped steady-state.
+  - [x] Export `pipeline_gantt_1024.png` (high DPI).
+- [x] Start setting up the Google Slides structure based on the Master Plan.
+- [x] `git commit -am "Generate multi-block Gantt charts and benchmark metrics"` and push to `tanay/benchmark`.
 
 ---
 
 ### Phase 2: Live Loop Handshake & Integration (2:00 PM – 2:30 PM)
 *Goal: First live integration test where the live model writes code graded by the verifier.*
 
-- [ ] **DEPENDENCY CHECK:** Heet pulls latest from `shashwat/grader` (or Shashwat pushes updates to master/shared branch).
-- [ ] **TEAM TEST:** Heet runs `python agent.py --live --rounds 3`.
-- [ ] Observe Model Behavior:
-  - [ ] Did the model output valid Python code block?
-  - [ ] Did Shashwat's AST checker catch any rule violations?
-  - [ ] Did the Block-$n$ diagnostic trigger accurately?
-- [ ] **Troubleshooting Rule:** If the model hallucinates or outputs empty content, shorten the initial prompt immediately.
+- [x] **DEPENDENCY CHECK:** Heet pulls latest from `shashwat/grader` (or Shashwat pushes updates to master/shared branch).
+- [x] **TEAM TEST:** Heet runs `python agent.py --live --rounds 3`.
+- [x] Observe Model Behavior:
+  - [x] Did the model output valid Python code block?
+  - [x] Did Shashwat's AST checker catch any rule violations?
+  - [x] Did the Block-$n$ diagnostic trigger accurately?
+- [x] **Troubleshooting Rule:** If the model hallucinates or outputs empty content, shorten the initial prompt immediately.
 
 ---
 
