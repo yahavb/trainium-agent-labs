@@ -28,11 +28,12 @@ Best score per run. Each number is one run of up to 8 rounds.
 | level | `enriched` (repo) | `located` | `directed3` | `directed4` | `directed5` |
 |---|---|---|---|---|---|
 | 2 transpose | 0.30 | 1.00, 0.30, 1.00, 0.30, 0.30 | 0.50 | 0.50 | not run |
-| 3 matmul, one tile | 0.30 | 0.30 ×5 | 0.30 | 0.30 | 0.30, 0.30 |
+| 3 matmul, one tile | 0.30 | 0.30 ×5 | 0.30 | 0.30 | 0.30, 0.30 (third run cut off) |
 | 4 matmul, tiled | 0.62 | 0.75, 0.30, 0.62, 0.75, 0.75 | 0.62 | **1.00**, 0.75 | stopped from outside after one round |
 
 Level 1 stayed at 0.30 in seven of seven runs (`located` ×6, `directed` ×1) and was not run again.
-One further `located` run of level 2 was cut off after three rounds at 0.30.
+One further `located` run of level 2 was cut off after three rounds at 0.30. One early `directed` run,
+the first mode we wrote, scored 1.00, 0.30 and 0.75 on levels 2, 3 and 4.
 
 **Level 4 was solved once**, correct on all four shapes with K, M and N all tiled, in one of two
 complete `directed4` runs. The repo records 0.62 on five of five runs, and its checker reached 0.62 in
@@ -45,7 +46,7 @@ each `directed5` run, 1 of 5 under `enriched`. The score is 0.30 either way, bec
 nothing more until it runs to the end.
 
 Per-run detail: [`RESULTS.md`](RESULTS.md). Every attempt with its kernel, feedback and score:
-[`logs/`](logs/) (904 attempts).
+[`logs/`](logs/) (916 attempts).
 
 ## How level 4 was solved
 
@@ -103,11 +104,11 @@ Both `directed4` runs took the same path for four rounds: 0.62, 0.62, 0.50, 0.75
   detail of the repo's own message for K. None contains kernel code. The line between naming a
   fault and giving the answer is a judgement, and ours is in `agent.py` to be checked.
 - **The pre-check is untested on the chip.** It passes its offline tests, against a small imitation
-  of the NKI library. In the `directed5` runs here it never fired (0 of 72 attempts), because none of those
+  of the NKI library. In the `directed5` runs here it never fired (0 of 84 attempts), because none of those
   kernels had a fault of the kind it looks for. The progress in those runs comes from the other
   `directed5` messages.
 - **Runs were interrupted.** The seat was shared. One `directed5` run was stopped from outside one
-  round into level 4, a second-seat run after one round, and the five-run `located` log was deleted
+  round into level 4, a second-seat run after one round, a third level 3 run after four rounds, and the five-run `located` log was deleted
   under the running process and recovered through its open file handle; its last rounds may be
   missing. Rounds took 47 to 110 s alone and up to 265 s when another job shared the chip.
 - **Simulator only.** Scores come from `nki.simulate` on the CPU.

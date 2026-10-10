@@ -36,7 +36,7 @@ Each row is one run of one level. A repair step is a round that answers a checke
 | 3 | directed4 | 0.30 | no | 5 | 4 | 1 | 0 | 3 | 2 |
 | 3 | directed5 | 0.30 | no | 8 | 7 | 5 | 0 | 2 | 6 |
 | 3 | directed5 | 0.30 | no | 8 | 7 | 5 | 0 | 2 | 6 |
-| 3 | directed5 | 0.30 | no | 1 | 0 | 0 | 0 | 0 | 1 |
+| 3 | directed5 | 0.30 | no | 4 | 3 | 2 | 0 | 1 | 3 |
 | 4 | enriched | 0.62 | no | 4 | 3 | 0 | 0 | 3 | 1 |
 | 4 | located | 0.75 | no | 6 | 5 | 2 | 0 | 3 | 3 |
 | 4 | located | 0.30 | no | 5 | 4 | 1 | 0 | 3 | 2 |
@@ -68,4 +68,4 @@ Each row is one run of one level. A repair step is a round that answers a checke
 | directed4 | 20261010-204429 | 1 | 0 | 0 | 0 | 0 | 0 | n/a |
 | directed5 | 20261010-202354 | 2 | 0 | 7 | 5 | 0 | 2 | 71% |
 | directed5 | 20261010-205002 | 1 | 0 | 7 | 5 | 0 | 2 | 71% |
-| directed5 | 20261010-205823 | 1 | 0 | 0 | 0 | 0 | 0 | n/a |
+| directed5 | 20261010-205823 | 1 | 0 | 3 | 2 | 0 | 1 | 67% |
