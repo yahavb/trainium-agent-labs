@@ -1687,6 +1687,15 @@ projections, if any, are labelled as such.</footer>
 """
 
 
+def d3_dashboard(records, results, inputs, sweep):
+    import d3page
+    summary = summarize(records)
+    tune = tuning(summary, list(sweep))
+    meta = (f"Built {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')} · {len(records):,} attempts · "
+            f"{len(inputs)} files · measured on the chip")
+    return d3page.page(d3page.data(sys.modules[__name__], summary, results, tune, list(sweep), records, meta))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("logs", nargs="*", help="attempts*.jsonl files (default: every one under 03-chipboost/)")
@@ -1751,7 +1760,7 @@ def main():
 
     out = Path(a.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(build(records, results, notes, fake, inputs, sweep, results_only=True), encoding="utf-8")   # the dashboard is the results
+    out.write_text(d3_dashboard(records, results, inputs, sweep), encoding="utf-8")   # the D3 dashboard
     # The results alone, beside it: what the README's screenshots are taken from.
     (out.parent / "results.html").write_text(build(records, results, notes, fake, inputs, sweep, results_only=True),
                                              encoding="utf-8")
