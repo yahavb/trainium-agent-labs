@@ -110,6 +110,14 @@ def grade(source, level):
                 f"`import nki`, `import nki.language as nl`, and `import nki.isa as nisa`. "
                 f"Use exactly those three.")
     except Exception as e:
+        if level == 4 and isinstance(e, NameError) and "nki" in str(e):
+            return (sum(WEIGHTS[k] for k, v in parts.items() if v), parts,
+                "The replacement file is missing the required NKI imports. A complete "
+                "file must begin with these exact lines, before @nki.jit:\n"
+                "import nki\n"
+                "import nki.language as nl\n"
+                "import nki.isa as nisa\n"
+                "Then define the decorated kernel. Return the imports and function together.")
         return (sum(WEIGHTS[k] for k, v in parts.items() if v), parts,
                 f"The file imports but {spec['entry']} could not be loaded: "
                 f"{type(e).__name__}: {e}")
@@ -508,10 +516,16 @@ def repair_prompt(level, source, feedback, scaffold=False):
             f"Repair this tiled NKI matmul:\n\n```python\n{source}\n```\n\n"
             f"A checker reports:\n{feedback}\n\n"
             f"{TILED_MATMUL_METHOD}\n{TILED_MATMUL_API_CARD}\n"
+            f"Return a COMPLETE REPLACEMENT FILE, not a function fragment. It MUST begin "
+            f"with these exact imports, in this order, before any decorator or function:\n"
+            f"import nki\n"
+            f"import nki.language as nl\n"
+            f"import nki.isa as nisa\n\n"
+            f"Then include @nki.jit followed by the complete {nkibench.LEVELS[level]['entry']} function.\n"
             f"{TILED_MATMUL_SKELETON if scaffold else ''}\n"
             f"Fix the reported failure, buffer allocations and missing or zero-iteration tile loops. "
             f"Preserve the entry point, arguments and required output dtype. "
-            f"Reply with ONE complete python code block.")
+            f"Reply with ONE python code block containing the whole replacement file.")
     return (
         f"This NKI kernel for {nkibench.LEVELS[level]['op']} is not right yet.\n\n"
         f"```python\n{source}\n```\n\n"
