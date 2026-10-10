@@ -42,3 +42,7 @@ projects/*/attempts.jsonl
 
 # agent runs started with nohup ... > run.log (README pattern for surviving a dropped kubectl exec)
 run*.log
+
+# chipboost: kernels materialised from logs or templates (the logs keep the code)
+heldout_runs/
+search_runs/

@@ -16,12 +16,10 @@
 > 5. `check_kernels.py`: also check `kernels/matmul_expert_aws.py` (op `matmul`).
 > 6. vLLM holds NeuronCores **0-1** on the seat pods (P1 measured), not 2-3: anything on the device uses 2.
 > 8. **From REVIEW.md (on master, merged into this branch):** loops call the referee with
->    `heldout=False` (about half the compiles, and held-out shapes never leak into messages); at the end,
->    run `check_isolated(best, heldout=True)` once on the best kernel and write the result to
->    `logs/seat-<N>/search_results.json` as `{"heldout": [{"kernel": "matmul", "which": "random_search best",
->    "shape": "all held-out", "passed": <bool>, "speedup": <the best's speedup>}]}` (the dashboard reads every
->    `*results*.json`). `--budget` counts referee calls, the same budget as `agent.py`. The SBUF filter leaves
->    62 of the 72 triples; REVIEW counted 62 independently.
+>    `heldout=False` (about half the compiles, and held-out shapes never leak into messages). `search.py`
+>    does **not** run its own end-of-run held-out check: P2's `heldout_grid.py` does it for every arm's best
+>    kernel at once, from the logs, and writes the dashboard's panel 5. `--budget` counts referee calls, the
+>    same budget as `agent.py`. The SBUF filter leaves 62 of the 72 triples; REVIEW counted 62 independently.
 > 7. **Logs (P4's dashboard):** each seat writes `logs/seat-<N>/attempts.jsonl`, so merges never
 >    conflict. `search.py`'s `--out` defaults to `logs/seat-<seat>/attempts.jsonl` (create the folder).
 >    `check_kernels.py --json` is P2 data for the dashboard: not attempts.
