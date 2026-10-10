@@ -173,8 +173,15 @@ class SamudraNet(nn.Module):
                                  upscale_factor, norm)
         self.decoder = nn.Conv2d(self.unet.out_channels, out_channels, last_kernel_size)
 
-    def forward(self, prognostic, boundary, mask, cut=None):
+    def forward(self, prognostic, boundary, mask, cut=None, input_cut=None):
         fts = torch.cat((prognostic, boundary), dim=1)
+        input_cut = input_cut or cut
+        if input_cut is not None:
+            # Give the first convolution one ready 162-channel tensor. With the concat in
+            # the same graph, neuronx-cc convolves the two inputs separately in small,
+            # ragged matmuls; the first block then takes 47.9 ms instead of 15.8 ms
+            # (probe_block0.py, 1 degree fp32). The math is unchanged.
+            input_cut()
         if self.use_bfloat16:  # CPU reference path, like the original
             with torch.autocast("cpu", dtype=torch.bfloat16):
                 fts = self.unet(fts, cut)

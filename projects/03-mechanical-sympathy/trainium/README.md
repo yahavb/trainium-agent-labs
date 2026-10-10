@@ -125,6 +125,11 @@ PYTHONPATH=/workspace/xla_plugin python bench.py --device neuron --grid 1deg --c
 
 ## Things to know
 
+- **Input cut.** With `--segments 1` (or `--input-cut 1`), `SamudraNet.forward` puts a
+  `torch_xla.sync()` right after joining the prognostic and boundary inputs. With the join in the
+  same graph, neuronx-cc runs the first block in small, ragged matmuls (47.9 ms); with the cut it
+  takes 15.8 ms. Segmented 1 degree pass: 138.2 to 107.3 ms. See
+  `../results/input-cut-2026-10-10/README.md` and `probe_block0.py`.
 - **Circular padding.** torch-xla lowers `F.pad(mode="circular")` with a boolean mask constant
   the size of the tensor. neuronx-cc 2.27 cannot parse it once the tensor is large enough
   (`NCC_EMOD021`, "Failed to parse StableHLO"). `samudra_core.wrap_lon` does the same longitude

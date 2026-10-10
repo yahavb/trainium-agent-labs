@@ -102,6 +102,9 @@ def main():
     ap.add_argument("--segments", type=int, default=0,
                     help="neuron only: 1 = compile each UNet layer as its own graph (cuts device "
                          "memory; needed for 0.5deg fp32 and 0.25deg on a 24 GB logical core)")
+    ap.add_argument("--input-cut", type=int, default=0,
+                    help="neuron only: 1 = graph boundary after joining prognostic and boundary "
+                         "inputs (implied by --segments 1)")
     ap.add_argument("--tile-rows", type=int, default=0,
                     help="0 = off. Run large UNet blocks in latitude bands of this many rows "
                          "(samudra_tiled.py); the CPU reference stays untiled")
@@ -182,7 +185,8 @@ def main():
                 blk.band_cut = torch_xla.sync
 
         def step():
-            y = m_dev(p_d, b_d, k_d, cut=cut)
+            y = m_dev(p_d, b_d, k_d, cut=cut,
+                      input_cut=torch_xla.sync if args.input_cut else None)
             torch_xla.sync()          # cut the graph and launch it on the chip
             xm.wait_device_ops()      # wait until the chip has finished
             return y
@@ -199,6 +203,7 @@ def main():
             rec.update(timeit(step, args.iters, args.warmup))
         rec["dtype"] = args.dtype
         rec["segments"] = bool(args.segments)
+        rec["input_cut"] = bool(args.input_cut or args.segments)
         rec["cc_flags"] = os.environ.get("NEURON_CC_FLAGS", "")
         if ref_path.exists():
             rec.update(compare(torch, out, torch.load(ref_path)["out"], mask))
