@@ -36,6 +36,11 @@ SOURCES = {
 }
 # run_comparison.py names its per-arm logs <arm>-r<repeat>.jsonl: attempt logs, though not named attempts*.
 COMPARISON_LOG = re.compile(r"^(referee|model_alone|random_search)-r\d+\.jsonl$")
+# Single log files, by glob, copied one by one: P1's referee-v2 runs each write pilot.jsonl into their own
+# /tmp folder, beside full repo snapshots whose results files must not be collected twice.
+POD_FILES = {
+    100: "/tmp/p1-qwen-v2-*/pilot.jsonl",
+}
 
 
 def run(cmd, cwd, text=True):
@@ -97,6 +102,20 @@ def from_pods(seats, pod_dirs):
         copied.add(seat)
         got += files
         print(f"  pod  seat-{seat:<11} {', '.join(f.name for f in files)}")
+    for seat, pattern in POD_FILES.items():
+        if seat not in seats:
+            continue
+        ls = run(["kubectl", "exec", f"seat-{seat}", "-c", "app", "--", "sh", "-c", f"ls -1 {pattern} 2>/dev/null"], OUT)
+        for src in ls.stdout.split():
+            # /tmp/p1-qwen-v2-20261010-1/pilot.jsonl -> pods/seat-100/extra/attempts-p1-qwen-v2-20261010-1.jsonl
+            rel = Path("pods") / f"seat-{seat}" / "extra" / f"attempts-{src.rstrip('/').split('/')[-2]}.jsonl"
+            (OUT / rel).parent.mkdir(parents=True, exist_ok=True)
+            p = run(["kubectl", "cp", f"seat-{seat}:{src}", rel.as_posix()], OUT)
+            if p.returncode or not (OUT / rel).exists():
+                print(f"  pod  seat-{seat:<11} {src}: not copied")
+                continue
+            got.append(OUT / rel)
+            print(f"  pod  seat-{seat:<11} {src} -> {rel.name}")
     return got, copied
 
 
