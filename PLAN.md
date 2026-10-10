@@ -1,6 +1,6 @@
 # PLAN：项目 2（NKI kernel agent）
 
-> **v1.11，15:18。teoguo 已确认 Q1/Q4/Q5/Q6（见 §8）。** 这个文件只有总规划写。实验数字写在 NOTES §0，只由执行 1 写；这里只放任务、负责人、验收标准和决策。
+> **v1.12，15:21。teoguo 已确认 Q1/Q4/Q5/Q6（见 §8）。** 这个文件只有总规划写。实验数字写在 NOTES §0，只由执行 1 写；这里只放任务、负责人、验收标准和决策。
 > 时间锚点：16:30 开始写文档 · **17:00 冻结代码** · 17:00–17:45 最终跑 · **18:15 提交（teoguo 提 PR）** · 18:30 截止。
 
 ## 0. 目标
@@ -67,7 +67,7 @@ baseline 回溯校准（b39989f）：3 次解出置信度 0.90，保留集 16/16
 | 15:10–15:25 | 分析侧：从 USAGE_LOG 把 finish 带回 attempts，taxonomy 单独记 `truncated`，summary 加截断次数和耗时 | 执行 2 | v7 L1 run 1 的 12 次截断被正确归类 |
 | ✅ 15:11 | v8 三个开关都已推送：SKELETON、L1FIX（b318e20）、TRUNCFIX（90b8c0a），默认关；E-div 在 feedback_v8.py 里常开 | 执行 1 | |
 | ⚠ 15:10 | liuyq 推了 89417dd：改了 v7 自己的 gate_nki.py，加一条 L1 规则——「每个 channel 单独 reduce」的写法模拟器放行、trn2 完整编译会拒，记 0.95 并回传改写代码。她那边 L1 4/10 对 0/10（完整编译验证），L2 5/10 对 8/10。HEAD 部署的 v7/v8 都会带上它；执行 2 离线核验会不会误伤（15:30） | liuyq / 执行 2 | analysis/gate_l1_check.md |
-| 15:15–15:45 | **D3a 快速测**，代码 = HEAD（含 89417dd），export 照 V7.md。**v8-A** = feedback_v8 + TRUNCFIX + L1FIX（E-div 常开）；**v8-B** = v8-A + SKELETON。117：v8-A L1 ×1（停掉 E-div L1）；118：v8-B L4 ×1；119：v8-B L1 ×1（L4 消融跑完后）；116：v7 L2 继续跑，相邻两个 run 轨迹完全相同就停（后面都是复制品），然后跑 v8-A L2 ×2 | 执行 1 | 配置 × level：分数、第几轮解出、分钟数、截断次数、gate 记 0.95 的次数 |
+| 15:15–15:45 | **D3a 快速测：只测我们的 v8**（teoguo 15:20：重点是做出我们自己的 v8 并测它）。**v8 = feedback_v8 + SKELETON + TRUNCFIX + L1FIX**（E-div 常开），代码 = HEAD（含 liuyq 的 89417dd，已核验不误伤，7bc96df），export 照 V7.md。117：v8 L1 ×1；118：v8 L4 ×2（关键）；119：v8 L3 ×1，再跑 v8 L1 ×1；116：v7 L2 相邻两个 run 轨迹相同就停，然后跑 v8 L2 ×2。v8 不行就退回 v7 | 执行 1 | level × 分数、第几轮解出、分钟数、截断次数、模型补对骨架几次 |
 | **15:40** | **D3a** E-div、SKELETON、L1FIX 各自采用还是不用。E-div：L3、L4 各 ≥4/5 且 L2 ≥2/5。SKELETON：L4 仍解出，并且没有任何一级变差。L1FIX：L1 有进展（分数升高或解出），其他级不变 | 总规划 + teoguo | |
 | 15:45–16:10 | v8（采用的开关全开）在 L1、L4 上各跑 5 次，L1 和 L4 各拆到 2 个座位（开了 E-div 样本才真正不同，拆分才有意义） | 执行 1 | 按 §4 格式回报，带不同轨迹数 |
 | 15:05–15:50 | **v7 逐项消融**：greedy 下每个变体跑 1 次就是那条轨迹。A1 PROMPT1=theirs、A2 CARD=theirs、A3 MESSAGES=v4、A4 REPAIR_PROMPT=theirs、A5 SAMPLING=theirs，各跑 L3 和 L4。回答「v7 里哪一项让 L3/L4 解出来」，方法分靠它；别的队在 L4 上做了 6 种反馈形式的对照 | 执行 1 | 一张表：变体 × L3/L4 的分数、第几轮解出、从第几轮和 v7 分叉 |
