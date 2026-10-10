@@ -42,6 +42,80 @@ MIN_ANSWER_TOKENS = 2500
 
 REASONING_KEYS = ("reasoning", "reasoning_content")
 
+CORE_CARD = (
+    "Tiny NKI card: import nki, nki.language as nl, nki.isa as nisa. Decorate the entry point "
+    "with @nki.jit. Allocate with nl.ndarray(..., buffer=nl.sbuf/nl.psum/nl.shared_hbm). "
+    "Use nisa.dma_copy for HBM<->SBUF and return the shared_hbm output."
+)
+
+CONTEXT_CARDS = {
+    "api_core": (
+        "Core NKI API: decorate the entry point with @nki.jit. Allocate tiles with "
+        "nl.ndarray(shape, dtype=..., buffer=nl.sbuf/nl.psum/nl.shared_hbm). Loop with "
+        "nl.affine_range(n). Move HBM<->SBUF with nisa.dma_copy. Copy PSUM<->SBUF with "
+        "nisa.tensor_copy. Scale tensors with nisa.tensor_scalar."
+    ),
+    "dma_copy_shape": (
+        "DMA shape rule: nisa.dma_copy does not reshape, slice, pad, or broadcast. The dst tile "
+        "and src slice must have exactly the same number of elements and compatible shape. Allocate "
+        "tiles to match the slice being moved, not the full operation unless the full tensor is the "
+        "slice."
+    ),
+    "tile_limits": (
+        "Tile limits are maximums, not target sizes. The partition axis is at most 128 rows. If a "
+        "dimension is larger, loop over chunks. If the final chunk is smaller, allocate/copy the "
+        "smaller final slice rather than padding or reading past the tensor."
+    ),
+    "tile_rank": (
+        "SBUF and PSUM tiles must be at least 2D: partition dimension first, free dimension second. "
+        "Do not allocate a 1D on-chip tile. Represent vectors as (1, N) or (N, 1), whichever matches "
+        "the operation and copy slice."
+    ),
+    "reductions": (
+        "Reduction pattern: nl.sum returns a tile; it is called as nl.sum(view, axis=[...]) with no "
+        "dst argument. To divide by a constant, write the sum into another tile with "
+        "nisa.tensor_scalar(dst=..., data=sum_tile, op0=nl.multiply, operand0=scale)."
+    ),
+    "access_patterns": (
+        "Access-pattern views use strides and counts over an existing SBUF tile. The first stride "
+        "for the partition axis must match the size of the free dimensions behind one partition "
+        "row. Do not invent zero strides; derive strides from the tensor layout."
+    ),
+    "matmul_psum": (
+        "Matmul buffer rule: nisa.nc_matmul(dst=..., stationary=..., moving=...) writes into a "
+        "PSUM dst tile. Both operands must be SBUF tiles. After matmul, tensor_copy PSUM to SBUF, "
+        "then dma_copy SBUF to the returned shared_hbm output."
+    ),
+    "matmul_tiling": (
+        "Tiled matmul: produce output blocks by looping over M and N chunks, and loop over K chunks "
+        "for the contraction. Allocate one PSUM tile for an output block outside the K loop and "
+        "accumulate all K chunks into it before copying the final block out."
+    ),
+    "signatures": (
+        "Use real signatures only. nl.sum(x, axis, dtype=None, keepdims=False). "
+        "nisa.nc_matmul(dst=, stationary=, moving=, ...). Do not add guessed keyword arguments."
+    ),
+}
+
+REPAIR_CARD_NAMES = {
+    "scale": ["reductions", "signatures"],
+    "nonfinite": ["dma_copy_shape", "matmul_psum"],
+    "rule": ["api_core", "signatures"],
+    "dma_shape": ["dma_copy_shape", "tile_limits"],
+    "tile_rank": ["tile_rank", "dma_copy_shape"],
+    "ragged": ["tile_limits", "dma_copy_shape"],
+    "traffic": ["matmul_psum", "matmul_tiling"],
+    "signature": ["signatures"],
+    "generic": ["api_core"],
+}
+
+LEVEL_BASE_CARDS = {
+    1: ["api_core", "dma_copy_shape", "tile_rank", "reductions"],
+    2: ["api_core", "dma_copy_shape", "tile_limits"],
+    3: ["api_core", "dma_copy_shape", "matmul_psum", "signatures"],
+    4: ["api_core", "dma_copy_shape", "tile_limits", "matmul_psum", "matmul_tiling"],
+}
+
 
 # ---------------------------------------------------------------- reward
 #
@@ -337,6 +411,12 @@ def enrich(error_text):
     if "cannot reshape array of size" in error_text:
         return (error_text + " Do not reshape. Work with the shapes you were given and slice "
                 "them into tiles, e.g. src=a[0:128, 0:64].")
+    if "ap() pattern has invalid partition stride" in error_text:
+        return (error_text + " For level 1 avgpool, use the tutorial access pattern exactly: "
+                "pool_view = input_tile.ap([[sz_hin*sz_win, sz_cin], "
+                "[pool_size*sz_win, sz_hin//pool_size], "
+                "[pool_size, sz_win//pool_size], [sz_win, pool_size], [1, pool_size]]). "
+                "The first partition stride must be H*W, not 0 or 1.")
     m = re.search(r"module '([\w.]+)' has no attribute '(\w+)'", error_text)
     if m:
         return error_text + available_names(f"{m.group(1)}.{m.group(2)}")
@@ -345,6 +425,136 @@ def enrich(error_text):
         return (error_text + f" A {m.group(1)} is not a numpy array, so it has no "
                 f"`{m.group(2)}`. Use the nl/nisa functions instead.")
     return error_text
+
+
+def select_context_cards(level, feedback="", source="", max_cards=4):
+    """Pick general context cards by failure category, not by visible test shape."""
+    text = f"{feedback}\n{source}".lower()
+    chosen = []
+
+    def add(name):
+        if name in CONTEXT_CARDS and name not in chosen:
+            chosen.append(name)
+
+    for name in LEVEL_BASE_CARDS.get(level, ["api_core", "dma_copy_shape"]):
+        add(name)
+
+    triggers = [
+        ("dma_copy", "dma_copy_shape"),
+        ("same number of elements", "dma_copy_shape"),
+        ("partition dimension", "tile_limits"),
+        ("exceeds maximum", "tile_limits"),
+        ("out-of-bound", "tile_limits"),
+        ("ragged", "tile_limits"),
+        ("at least 2 dimensions", "tile_rank"),
+        ("1-d tile", "tile_rank"),
+        ("nl.sum", "reductions"),
+        ("sum()", "reductions"),
+        ("unexpected keyword argument 'dst'", "reductions"),
+        ("ap() pattern", "access_patterns"),
+        ("access pattern", "access_patterns"),
+        ("nc_matmul", "matmul_psum"),
+        ("psum", "matmul_psum"),
+        ("stationary", "matmul_psum"),
+        ("moving", "matmul_psum"),
+        ("contraction", "matmul_tiling"),
+        ("k loop", "matmul_tiling"),
+        ("unexpected keyword argument", "signatures"),
+        ("no attribute", "signatures"),
+    ]
+    for needle, card in triggers:
+        if needle in text:
+            add(card)
+
+    return chosen[:max_cards]
+
+
+def render_context_cards(names):
+    if not names:
+        return ""
+    lines = ["Relevant context cards:"]
+    for name in names:
+        lines.append(f"- {name}: {CONTEXT_CARDS[name]}")
+    return "\n".join(lines)
+
+
+def compact_ledger(failures, limit=4):
+    seen = []
+    for failure in failures:
+        short = re.sub(r"\s+", " ", failure).strip()[:180]
+        if short and short not in seen:
+            seen.append(short)
+    return "\n".join(f"- {x}" for x in seen[-limit:])
+
+
+def compact_feedback(feedback):
+    fn = getattr(nkibench, "compact_message", None)
+    return fn(feedback) if fn else " ".join(str(feedback).split())[:360]
+
+
+def distill_failure(feedback):
+    text = compact_feedback(feedback)
+    low = text.lower()
+    if "scale:" in low or "consistent scale" in low:
+        return ("scale",
+                "Fix only the scalar scaling after the reduction. Divide by the full reduction "
+                "count/area and keep the tiling/copy structure unchanged.")
+    if "nonfinite:" in low or "nan" in low or "shared_hbm output" in low:
+        return ("nonfinite",
+                "Fix only the final output path. Ensure every computed tile is written into the "
+                "returned shared_hbm output with nisa.dma_copy to the exact output slice.")
+    if "fail rules" in low or "rule violations" in low or "calls `np." in low:
+        return ("rule",
+                "Fix only the rule violation. Replace framework/host operations with explicit NKI "
+                "tile operations; keep the entry point and operation unchanged.")
+    if "has no `mean`" in low or "object has no attribute 'mean'" in low:
+        return ("scale",
+                "Fix only the reduction. NKI tensors do not have .mean(); use nl.sum over the "
+                "reduction axes, then nisa.tensor_scalar to divide by the full reduction area.")
+    if "same number of elements" in low or "dma_copy requires" in low:
+        return ("dma_shape",
+                "Fix only the dma_copy shape mismatch. Allocate the destination tile to exactly "
+                "match the source slice being copied; do not pad, reshape, or copy a whole tensor "
+                "into a smaller/larger tile.")
+    if "at least 2 dimensions" in low or "1d" in low or "1-d" in low:
+        return ("tile_rank",
+                "Fix only the tile rank. SBUF/PSUM tiles must be 2D, with partition dimension "
+                "first and free dimension second.")
+    if "ragged edge" in low or "final partial" in low:
+        return ("ragged",
+                "Fix only the final partial tile bounds. Use the remaining size for the last "
+                "chunk and copy/write only the valid output slice.")
+    if "byte floor" in low or "hbm" in low or "traffic" in low:
+        return ("traffic",
+                "Fix only HBM traffic. Reuse tiles, keep one PSUM tile across the K loop, and copy "
+                "the final block out once.")
+    if "missing 1 required positional argument" in low and "dtype" in low:
+        return ("signature",
+                "Fix only the nl.ndarray allocation calls. Every nl.ndarray needs an explicit "
+                "dtype argument, usually dtype=input_tensor.dtype, plus the intended buffer.")
+    if "unexpected keyword argument" in low or "no attribute" in low:
+        return ("signature",
+                "Fix only the invalid API call. Use the real NKI signature named by the checker; "
+                "do not invent keyword arguments or helper functions.")
+    return ("generic", "Fix exactly the checker-reported issue and keep unrelated code unchanged.")
+
+
+def estimate_tokens(text):
+    return max(1, len(text) // 4)
+
+
+def prompt_accounting(reference="", code="", feedback="", cards="", ledger="", instruction="", core=""):
+    sections = {
+        "core": estimate_tokens(core),
+        "reference": estimate_tokens(reference),
+        "code": estimate_tokens(code),
+        "feedback": estimate_tokens(feedback),
+        "cards": estimate_tokens(cards),
+        "ledger": estimate_tokens(ledger),
+        "instruction": estimate_tokens(instruction),
+    }
+    sections["total"] = sum(sections.values())
+    return sections
 
 def first_prompt(level, terse=0):
     """Deliberately short, and it does NOT list the rules.
@@ -356,13 +566,14 @@ def first_prompt(level, terse=0):
     """
     s = nkibench.LEVELS[level]
     import inspect
+    ref = inspect.getsource(s['ref'])
     if terse >= 2:
         # Last resort. Measured on this endpoint: one-sentence prompts answered in 300-700
         # tokens while every structured, rule-carrying prompt spiralled.
         return (f"Write a Python function `{s['entry']}` decorated with @nki.jit that computes "
                 f"the same thing as this, using nki.language as nl and nki.isa as nisa:\n\n"
-                f"{inspect.getsource(s['ref'])}\n"
-                f"Reply with one python code block.")
+                f"{ref}\n"
+                f"{CORE_CARD}\nReply with one python code block.")
     if terse >= 1:
         # The matmul memory rules are the substance of levels 3 and 4, and the short prompt has to
         # carry them: measured, the agent cycled between "dst must be in ['psum']" and "moving must
@@ -374,35 +585,39 @@ def first_prompt(level, terse=0):
               if level >= 3 else "")
         return (f"Write an AWS Neuron NKI kernel: a function `{s['entry']}` decorated with "
                 f"@nki.jit that computes what this reference computes.\n\n"
-                f"{inspect.getsource(s['ref'])}\n"
-                f"Allocate with nl.ndarray(shape, dtype=..., buffer=nl.sbuf), move data with "
-                f"nisa.dma_copy(dst=, src=), loop with nl.affine_range(n). A tile's partition "
-                f"dimension is at most {nkibench.PMAX}.\n{mm}\n"
+                f"{ref}\n"
+                f"{CORE_CARD}\n{mm}\n"
                 f"Reply with one python code block.")
     return (
         f"Write an AWS Neuron NKI kernel.\n\n"
         f"Operation: {s['op']}\n"
         f"Entry point: a function named `{s['entry']}`, decorated with `@nki.jit`.\n"
         f"It must compute exactly what this NumPy reference computes:\n\n"
-        f"{inspect.getsource(s['ref'])}\n"
-        f"Hardware limits: a tile's partition dimension is at most {nkibench.PMAX}. For matmul, "
-        f"the stationary free dimension is at most {nkibench.GEMM_STATIONARY_FMAX} and the "
-        f"moving free dimension at most {nkibench.GEMM_MOVING_FMAX}.\n\n"
-        f"Import nki, nki.language as nl, and nki.isa as nisa.\n\n{API_CARD}\n\n"
+        f"{ref}\n\n"
+        f"{CORE_CARD}\n\n"
         f"Reply with ONE python code block containing the imports and the function. No prose.")
 
 
-def repair_prompt(level, source, feedback):
+def repair_prompt(level, source, feedback, tried=None):
     """One named change, and the previous code. No rules list, no reference re-sent.
 
     The lesson this whole repo keeps re-learning: feeding a verifier's report back verbatim
     reproduces the same mistake, because a report says what is wrong and never what to do.
     """
+    compact = compact_feedback(feedback)
+    category, instruction = distill_failure(compact)
+    card_names = REPAIR_CARD_NAMES.get(category, ["api_core"])
+    cards = render_context_cards(card_names)
+    ledger = compact_ledger(tried or [])
+    ledger_text = f"\n\nAlready tried; avoid repeating these failures:\n{ledger}" if ledger else ""
     return (
         f"This NKI kernel for {nkibench.LEVELS[level]['op']} is not right yet.\n\n"
+        f"Repair instruction: {instruction}\n\n"
         f"```python\n{source}\n```\n\n"
-        f"A checker reports:\n{feedback}\n\n"
-        f"Change exactly what the checker names and keep everything else identical. Reply with "
+        f"{cards}\n\n"
+        f"Compact checker report:\n{compact}\n\n"
+        f"Make only the repair instruction above. Keep everything else identical.{ledger_text} "
+        f"Reply with "
         f"ONE python code block.")
 
 
@@ -491,6 +706,10 @@ def solve(a, level, log):
     print(f"\n=========== level {level}: {nkibench.LEVELS[level]['op']} ===========")
     terse = a.terse
     prompt = first_prompt(level, terse)
+    prompt_cards = ["core_minimal"]
+    prompt_budget = prompt_accounting(
+        reference=__import__("inspect").getsource(nkibench.LEVELS[level]["ref"]),
+        core=CORE_CARD)
     best = (0.0, None, "")
     tried, streak, seen = [], 0, {}
     latest = ("", "")
@@ -502,9 +721,15 @@ def solve(a, level, log):
         for reply in replies:
             src = extract_code(reply)
             reward, parts, feedback = grade(src, level)
+            failure_category, repair_instruction = distill_failure(feedback)
             graded.append((reward, src, feedback, parts))
             log.write(json.dumps(dict(level=level, round=rnd, reward=reward, parts=parts,
                                       prompt_chars=len(prompt), reply_chars=len(reply),
+                                      context_cards=prompt_cards,
+                                      prompt_budget=prompt_budget,
+                                      failure_category=failure_category,
+                                      repair_instruction=repair_instruction,
+                                      compact_feedback=compact_feedback(feedback),
                                       code=src, feedback=feedback)) + "\n")
         log.flush()
         graded.sort(key=lambda g: g[0], reverse=True)
@@ -524,7 +749,10 @@ def solve(a, level, log):
         else:
             print(f"round {rnd}: this round {top[0]:.2f}  best so far {best[0]:.2f}  "
                   f"({time.perf_counter() - t0:.1f}s)")
-            print(f"  {top[2][:400]}")
+            print(f"  context cards: {', '.join(prompt_cards) if prompt_cards else 'none'}")
+            cat, inst = distill_failure(top[2])
+            print(f"  failure: {cat}; {inst[:260]}")
+            print(f"  checker: {compact_feedback(top[2])[:300]}")
         if top[0] >= sum(WEIGHTS.values()) - 1e-9:
             print(f"  SOLVED on round {rnd}. {top[2]}")
             print("  ---------------- the kernel ----------------")
@@ -549,9 +777,15 @@ def solve(a, level, log):
             # answer. Measured: the same TypeError 19 rounds running. Changing the prompt is the
             # only thing that can change the answer, so say what has already been tried.
             ledger = "\n".join(f"- {t[:160]}" for t in dict.fromkeys(tried))
-            prompt = (repair_prompt(level, latest[0], latest[1])
+            prompt = (repair_prompt(level, latest[0], latest[1], tried)
                       + f"\n\nThese approaches have already failed, so do something different:\n"
                         f"{ledger}")
+            cat, inst = distill_failure(latest[1])
+            prompt_cards = REPAIR_CARD_NAMES.get(cat, ["api_core"])
+            prompt_budget = prompt_accounting(
+                code=latest[0], feedback=compact_feedback(latest[1]),
+                cards=render_context_cards(prompt_cards), ledger=compact_ledger(tried),
+                instruction=inst)
             print(f"  same failure {repeats}x — adding a ledger of {len(set(tried))} failed "
                   f"attempts to break the repeat")
             continue
@@ -561,9 +795,19 @@ def solve(a, level, log):
             # rounds running. Shorten and re-ask instead.
             terse = min(terse + 1, 2)
             prompt = first_prompt(level, terse)
+            prompt_cards = ["core_minimal"]
+            prompt_budget = prompt_accounting(
+                reference=__import__("inspect").getsource(nkibench.LEVELS[level]["ref"]),
+                core=CORE_CARD)
             print(f"  no code yet, so re-asking with a shorter prompt (terseness {terse})")
         else:
-            prompt = repair_prompt(level, latest[0], latest[1])
+            prompt = repair_prompt(level, latest[0], latest[1], tried)
+            cat, inst = distill_failure(latest[1])
+            prompt_cards = REPAIR_CARD_NAMES.get(cat, ["api_core"])
+            prompt_budget = prompt_accounting(
+                code=latest[0], feedback=compact_feedback(latest[1]),
+                cards=render_context_cards(prompt_cards), ledger=compact_ledger(tried),
+                instruction=inst)
     print(f"  not solved in {a.rounds} rounds; best reward {best[0]:.2f}")
     return best[0], a.rounds
 

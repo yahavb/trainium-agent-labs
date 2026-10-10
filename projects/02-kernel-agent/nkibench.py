@@ -430,7 +430,9 @@ def describe_mismatch(got, want, tol=2e-2):
         where = np.argwhere(~np.isfinite(got))[0]
         return (f"NON-FINITE OUTPUT: {n_nan} NaN and {n_inf} Inf, first at "
                 f"{tuple(int(i) for i in where)}. Usually an uninitialised PSUM or SBUF "
-                f"tile being read before anything wrote to it.")
+                f"tile being read before anything wrote to it, or a returned shared_hbm output "
+                f"that was allocated but never filled. Check the final copy path: computed tile "
+                f"to SBUF if needed, then nisa.dma_copy into the exact returned output slice.")
     scale = float(np.sqrt((want ** 2).mean())) or 1.0
     err = np.abs(got - want)
     worst = float(err.max()) / scale
@@ -457,6 +459,18 @@ def describe_mismatch(got, want, tol=2e-2):
                 f"has no zeros there. Some tiles were computed and written and others were not, "
                 f"so the loop is covering only part of the output. Check the loop bounds and the "
                 f"destination indices for every tile.")
+    nz = np.abs(want) > max(1e-12, scale * 1e-6)
+    wrong_frac = float((err / scale > tol).mean())
+    if wrong_frac > 0.5 and float(nz.mean()) > 0.5:
+        ratios = got[nz] / want[nz]
+        ratio = float(np.median(ratios))
+        spread = float(np.median(np.abs(ratios - ratio)))
+        if (np.isfinite(ratio) and abs(ratio) > 1e-12 and abs(ratio - 1.0) > 0.05
+                and spread <= 0.02 * max(abs(ratio), 1.0)):
+            return (f"CONSISTENT SCALE ERROR: output is about {ratio:.4g}x the reference across "
+                    f"most nonzero elements. This is usually not a tiling or ragged-edge bug. "
+                    f"Check scalar scaling after the reduction: divide by the full reduction "
+                    f"count/area, and make sure nisa.tensor_scalar uses the intended operand0.")
     i = int(np.argmax(err))
     idx = np.unravel_index(i, got.shape)
     msg = [f"NUMERICAL MISMATCH: worst error {worst:.3g} of the output's RMS ({scale:.4g}), "
@@ -673,16 +687,39 @@ def load_kernel(path, entry):
 
 # ---------------------------------------------------------------- verify
 
-def verify(path, level_n, tol=2e-2, seed=0):
+def compact_message(msg):
+    msg = " ".join(str(msg).split())
+    replacements = [
+        ("CONSISTENT SCALE ERROR:", "SCALE:"),
+        ("NON-FINITE OUTPUT:", "NONFINITE:"),
+        ("RULE VIOLATIONS -- this scores zero regardless of speed or correctness:", "RULES:"),
+        ("This is usually not a tiling or ragged-edge bug. ", ""),
+        ("Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it, or ", ""),
+        ("Check scalar scaling after the reduction: ", "Fix: "),
+        ("Check the final copy path: ", "Fix: "),
+        ("nisa.tensor_scalar uses the intended operand0", "tensor_scalar operand0 is correct"),
+        ("computed tile to SBUF if needed, then ", ""),
+    ]
+    for old, new in replacements:
+        msg = msg.replace(old, new)
+    if len(msg) > 360:
+        msg = msg[:357].rstrip() + "..."
+    return msg
+
+
+def verify(path, level_n, tol=2e-2, seed=0, compact=False):
     spec = LEVELS[level_n]
     src = open(path).read()
 
     violations = check_rules(src, level_n)
     print(f"level {level_n}: {spec['op']}")
     if violations:
-        print("\nRULE VIOLATIONS -- this scores zero regardless of speed or correctness:")
-        for v in violations:
-            print(f"  {v}")
+        if compact:
+            print("  FAIL rules: " + compact_message("; ".join(violations)))
+        else:
+            print("\nRULE VIOLATIONS -- this scores zero regardless of speed or correctness:")
+            for v in violations:
+                print(f"  {v}")
         return 2
     print("  rules      clean")
 
@@ -712,31 +749,48 @@ def verify(path, level_n, tol=2e-2, seed=0):
         passed += 1
         elements = int(np.prod(np.shape(want)))
         if counted["transfers"] > max(8, elements // 64):
-            print(f"\n  case {label(case, level_n)}: CORRECT BUT ISSUE-BOUND -- "
-                  f"{counted['transfers']:,} transfers for {elements:,} output elements, "
-                  f"{counted['bytes'] / max(counted['transfers'], 1):.0f} bytes each. The cost here "
-                  f"is the NUMBER of transfers, not the bytes. Move whole tiles, not elements.")
+                msg = (f"CORRECT BUT ISSUE-BOUND: {counted['transfers']:,} transfers for "
+                       f"{elements:,} output elements. Move whole tiles, not elements.")
+                if compact:
+                    print(f"  issue-bound {label(case, level_n)}: {compact_message(msg)}")
+                else:
+                    print(f"\n  case {label(case, level_n)}: {msg} The cost here is the NUMBER "
+                          f"of transfers, not the bytes.")
         if counted.get("bytes"):
             rep = reuse_report(counted, args, want)
             if rep:
-                print(f"\n  case {label(case, level_n)}:")
-                print(rep)
+                if compact:
+                    waste = counted["bytes"] / max(minimum_hbm_bytes(args, want), 1)
+                    if waste > 1.15:
+                        print(f"  traffic {label(case, level_n)}: {waste:.1f}x byte floor. "
+                              "Fix: reuse tiles; keep one PSUM across K loop; copy final block once.")
+                else:
+                    print(f"\n  case {label(case, level_n)}:")
+                    print(rep)
         if level_n >= 3 and counted["bytes"]:
             f = matmul_flops(case["M"], case["K"], case["N"])
             intensities.append((label(case, level_n), roofline(f, counted["bytes"]),
                                 counted, f, minimum_hbm_bytes(args, want)))
 
     print(f"  numerics   {passed}/{len(spec['shapes'])} shapes passed")
-    for lbl, m in failures[:3]:
+    limit = 1 if compact else 3
+    for lbl, m in failures[:limit]:
         print(f"\n  case {lbl}:")
-        print(textwrap.indent(m, "    "))
+        print(textwrap.indent(compact_message(m) if compact else m, "    "))
+    if compact and len(failures) > 1:
+        print(f"  ... {len(failures) - 1} more failing case(s) omitted")
     if failures:
-        print("\n  ^ feed this text back to the model. If it is not enough to locate the bug,")
-        print("    improve THIS message before you touch the prompt.")
+        if not compact:
+            print("\n  ^ feed this text back to the model. If it is not enough to locate the bug,")
+            print("    improve THIS message before you touch the prompt.")
         return 1
 
     for lbl, r, counted, flops, floor in intensities:
         dts = ",".join(sorted(counted["dtypes"])) or "?"
+        if compact:
+            print(f"\n  {lbl}: {counted['bytes']:,} HBM bytes, {counted['transfers']} transfers, "
+                  f"AI {r['arithmetic_intensity']:.1f}, {r['bound']}")
+            continue
         print(f"\n  {lbl}: {counted['bytes']:,} HBM bytes in {counted['transfers']} transfers "
               f"(via {counted['api']}, dtype {dts})")
         if counted.get("unmeasured"):
@@ -793,6 +847,15 @@ def selftest():
     rhs = np.random.default_rng(2).standard_normal((4, 5)).astype(np.float32)
     ok = np.allclose(ref_matmul(lhsT, rhs), lhsT.T @ rhs, atol=1e-5)
     print(f"  ref_matmul (transposed left)       -> {'ok' if ok else 'FAIL'}")
+    rc |= 0 if ok else 1
+    q = np.array([[1000, -1000, 0], [1000, -1000, 0],
+                  [-1000, 1000, 0], [0, 0, 0]], np.float32)
+    k = np.array([[1000, -1000, 0], [-1000, 1000, 0],
+                  [0, 0, 0], [1000, -1000, 0]], np.float32)
+    v = np.array([[1, -1], [0, 0], [5, 5], [1, -1]], np.float32)
+    out = ref_attention(q, k, v)
+    ok = out.shape == (4, 2) and np.all(np.isfinite(out))
+    print(f"  ref_attention hostile values       -> {'ok' if ok else 'FAIL'}")
     rc |= 0 if ok else 1
 
     # The rule checker has to catch the cheats and accept a plausible kernel.
@@ -871,6 +934,15 @@ def selftest():
     ok = m2 and "ragged edge" in m2
     print(f"  mismatch spots the ragged edge     -> {'ok' if ok else 'FAIL'}")
     rc |= 0 if ok else 1
+    m_zero = describe_mismatch(np.zeros((64, 64), np.float32), np.ones((64, 64), np.float32))
+    ok = m_zero and "results never reached the output tensor" in m_zero
+    print(f"  mismatch spots missing output      -> {'ok' if ok else 'FAIL'}")
+    rc |= 0 if ok else 1
+    scale_want = np.arange(1, 101, dtype=np.float32).reshape(10, 10)
+    m_scale = describe_mismatch(scale_want * 3, scale_want)
+    ok = m_scale and "CONSISTENT SCALE ERROR" in m_scale
+    print(f"  mismatch spots scale error         -> {'ok' if ok else 'FAIL'}")
+    rc |= 0 if ok else 1
     ok = describe_mismatch(want, want) is None
     print(f"  a correct result passes            -> {'ok' if ok else 'FAIL'}")
     rc |= 0 if ok else 1
@@ -910,6 +982,8 @@ def main():
                     choices=sorted(RIDGE_FLOPS_PER_BYTE))
     ap.add_argument("--tol", type=float, default=2e-2)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--compact", action="store_true",
+                    help="print short agent-facing verifier messages")
     ap.add_argument("--selftest", action="store_true")
     a = ap.parse_args()
 
@@ -940,7 +1014,7 @@ def main():
         return
 
     if a.level and a.check:
-        sys.exit(verify(a.check, a.level, a.tol, a.seed))
+        sys.exit(verify(a.check, a.level, a.tol, a.seed, a.compact))
 
     print("THE LEVELS — difficulty and optimization headroom rise together.\n")
     for n, s in LEVELS.items():
