@@ -24,8 +24,8 @@ levels = ["1\npooling", "2\ntranspose", "3\nmatmul\n1 tile", "4\nmatmul\ntiled",
           "6\nless\ntraffic", "7\nleast\ntraffic", "8\nattention", "9\ntranspose\n(new)", "10\nsoftmax\n(new)",
           "11\nscores\n(new)"]
 before = [0, 3 / 5, 0, 0, 0, 0, 0, 0, 0, 0, 0]   # level 2: the repo measured 2/5 to 4/5 with the original agent
-after = [2 / 2, 5 / 6, 2 / 2, 5 / 6, 2 / 2, 2 / 2, 2 / 2, 0, 2 / 2, 2 / 2, 4 / 4]
-after_lbl = ["2/2", "5/6", "2/2", "5/6", "2/2", "2/2", "2/2", "0", "2/2", "2/2", "4/4"]
+after = [2 / 2, 5 / 6, 2 / 2, 5 / 6, 2 / 2, 2 / 2, 2 / 2, 2 / 2, 2 / 2, 2 / 2, 4 / 4]
+after_lbl = ["2/2", "5/6", "2/2", "5/6", "2/2", "2/2", "2/2", "2/2*", "2/2", "2/2", "4/4"]
 fig, ax = plt.subplots(figsize=(13, 5))
 x = range(len(levels))
 ax.bar([i - 0.2 for i in x], before, 0.4, color=GREY, label="before our changes")
@@ -41,12 +41,12 @@ for i in range(len(levels)):
         ax.text(i - 0.2, 0.02, "0", ha="center", fontsize=10, color="#555")
 ax.set_xticks(list(x)); ax.set_xticklabels(levels, fontsize=10)
 ax.set_ylim(0, 1.35); ax.set_ylabel("share of runs solved")
-ax.set_title("Before vs after: the same model now solves 10 of 11 levels")
+ax.set_title("Before vs after: the same model now solves all 11 levels  (* level 8 with an explicit stage plan)")
 ax.legend(loc="upper center", ncol=2, frameon=False)
 save(fig, "chart_1_before_after.png")
 
 # 2. How fast: round of the first solve, per solved run ---------------------------------------
-solves = {"1": [4, 4], "2": [0, 2, 0, 0, 1], "3": [1, 2], "4": [1, 1], "5": [0, 0], "6": [0, 1], "7": [1, 1],
+solves = {"1": [4, 4], "2": [0, 2, 0, 0, 1], "3": [1, 2], "4": [1, 1], "5": [0, 0], "6": [0, 1], "7": [1, 1], "8": [0, 0],
           "9": [0, 0], "10": [0, 0], "11": [1, 1, 1, 1]}
 fig, ax = plt.subplots(figsize=(10, 4.5))
 for i, (lv, rounds) in enumerate(solves.items()):

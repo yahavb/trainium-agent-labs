@@ -1,8 +1,9 @@
 # Project 2 — teaching a small model to write chip code (team 20)
 
 **In one line:** the same small model (Qwen3-8B on one Trainium2 chip) went from solving almost nothing to
-solving **10 of 11 levels**: we changed **what the checker tells it after a failed try**, let it **reuse code
-it had already got right**, and made the loop **7× faster**. Level 8 (full attention) is still open.
+solving **all 11 levels**: we changed **what the checker tells it after a failed try**, let it **reuse code
+it had already got right**, and made the loop **7× faster**. Level 8 (full attention) needed an explicit
+stage-by-stage plan in the prompt.
 
 ![How the loop works](assets/agent_loop.png)
 
@@ -25,7 +26,7 @@ it had already got right**, and made the loop **7× faster**. Level 8 (full atte
 | 3 | matrix multiply, one tile | never | **2 of 2** |
 | 4 | matrix multiply, tiled | never | **5 of 6** |
 | 5–7 | the same, moving less data | never reached | **2 of 2 each** |
-| 8 | full attention | never | **not solved** |
+| 8 | full attention | never | **2 of 2** with `--attention-plan`; never without it |
 | 9–10 *(added)* | transpose, softmax — stepping stones to 8 | stuck | **2 of 2 each** |
 | 11 *(added)* | attention scores q·kᵀ/√d | stuck | **4 of 4** with building blocks, 2 of 4 without |
 
@@ -51,7 +52,12 @@ level 3, 4, 7, 9 and 10 programs gave **15 of 15 correct**.
    usual wrong versions (scale inverted, Pᵀ·V, softmax on the wrong axis…) and names the one it matches.
 5. **Fix the task text.** Level 2's description said the transpose crosses partitions; the reference keeps
    them. Corrected, level 2 went from about 2 in 3 to 5 of 6.
-6. **Make the loop fast.** The model server used half the chip. On the whole chip: **5.6 → 39 tokens/s per
+6. **Spell out the stages for attention.** Lighter guidance never solved level 8. Team 20's seat-97
+   work added the attention contract and a 13-stage buffer plan (`--attention-plan`): **2 of 2 runs on round
+   0, all 4 samples correct**. The kernel also passes 24 extra simulator cases (zero-Q, constant-V,
+   permuted K/V, large logits, odd shapes) and the official shapes on the real chip
+   ([results/seat97-repair/](results/seat97-repair/)).
+7. **Make the loop fast.** The model server used half the chip. On the whole chip: **5.6 → 39 tokens/s per
    request**, a round went from **~120 s to 18–30 s**.
 
 ## What we measured about the loop itself (866 logged attempts)
@@ -69,7 +75,9 @@ level 3, 4, 7, 9 and 10 programs gave **15 of 15 correct**.
 
 * Few runs per level (2–6), one model. "2 of 2" means two tries, not a guarantee.
 * The feedback describes the solution's structure in detail: this is the checker teaching the method.
-* `reference_level8.py` is **hand-written by us**, never shown to the agent: it only proves level 8 is solvable.
+* **Level 8 was solved only with `--attention-plan`**, which names every buffer and all 13 stages — close to
+  dictating the kernel. Without it, no run solved it (seat 97, and every run on seats 95–99). Two runs is a
+  smoke test, not a rate.
 * We checked correctness on the chip, **not kernel speed**; levels 6 and 11 were not run on the chip.
   Level 6 zeroes PSUM before accumulating, which AWS documents as a hazard on older chips — unverified here.
 * Level 11's kernel is correct but writes its output twice: 1.2–1.6× the minimum traffic (level 11 has no
@@ -97,7 +105,8 @@ COMMON="--rounds 8 --samples 4 --context 8192 --model Qwen/Qwen3-8B --level-hint
 python agent.py --level 2 $COMMON --repeat 6 --echo-check
 python agent.py --level 7 $COMMON --repeat 2 --seed-from solved/level04_matmul_tiled.py
 python agent.py --level 11 $COMMON --repeat 4 --blocks solved/level09_transpose_tensor_engine.py
-python holdout_check.py; python device_check.py; python analysis/trace_analysis.py attempts.jsonl
+python agent.py --level 8 $COMMON --repeat 2 --attention-plan
+python mutation_check.py; python holdout_check.py; python device_check.py; python analysis/trace_analysis.py attempts.jsonl
 ```
 
 ## Files
@@ -108,7 +117,8 @@ python holdout_check.py; python device_check.py; python analysis/trace_analysis.
 | `nkibench.py` | the checker (bug fixes, stricter re-checks, levels 9–11) |
 | `lint.py` | the static check: every memory, shape and API mistake at once, with AWS doc excerpts |
 | `solved/` | every program the agent wrote that passed, with its re-check printout |
-| `reference_level8.py` | our hand-written attention kernel (proof of solvability, not an agent result) |
 | `holdout_check.py`, `device_check.py` | the two "is it real?" checks |
 | `ab.py`, `analysis/` | fair A/B runner, attempt-log analysis, chart script |
+| `mutation_check.py` | seeds 13 observed attention bugs into the level-8 kernel; the checker must name each |
+| `tests/`, `results/seat97-repair/` | level-8 independent checks (CPU and device) and the seat-97 evidence |
 | `logs/attempts.tar.gz` | the attempt log: every attempt (2,106) with its code, score and the feedback it got |
