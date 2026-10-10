@@ -930,6 +930,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--level", type=int, choices=sorted(nkibench.LEVELS))
     ap.add_argument("--all", action="store_true", help="levels 1 to 4")
+    ap.add_argument("--levels", help="several levels, comma-separated, e.g. 3,4. Chip time is the "
+                                     "scarce thing; this spends it where the question is.")
     ap.add_argument("--rounds", type=int, default=4)
     ap.add_argument("--samples", type=int, default=2)
     ap.add_argument("--max-tokens", type=int, default=MIN_ANSWER_TOKENS)
@@ -1001,7 +1003,16 @@ def main():
     else:
         print("*** OFFLINE: replaying the reference kernel. Numbers are meaningless. ***")
 
-    levels = sorted(nkibench.LEVELS)[:4] if a.all else [a.level or 1]
+    if a.levels:
+        try:
+            levels = [int(x) for x in a.levels.split(",") if x.strip()]
+        except ValueError:
+            sys.exit(f"--levels wants numbers separated by commas, e.g. 3,4 -- got {a.levels!r}")
+        unknown = [lv for lv in levels if lv not in nkibench.LEVELS]
+        if unknown or not levels:
+            sys.exit(f"--levels: no such level(s) {unknown}. Known: {sorted(nkibench.LEVELS)}")
+    else:
+        levels = sorted(nkibench.LEVELS)[:4] if a.all else [a.level or 1]
     full = sum(WEIGHTS.values())
     history = {lv: [] for lv in levels}
 

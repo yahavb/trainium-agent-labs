@@ -8,6 +8,12 @@
 #   bash after_directed.sh status    one view of all three result folders
 #   bash after_directed.sh refresh   after a `git pull` that changed the checker: restart directed2
 #                                    with the new code if it has already started
+#   bash after_directed.sh replan    leave the running directed2 job alone and re-queue what follows:
+#                                      baseline   enriched, all levels, 12 rounds -> results-baselines/
+#                                      repeat 1   enriched then directed2, levels 3-4 -> results-repeat1/
+#                                      repeat 2   the same again                     -> results-repeat2/
+#                                    The logs showed first-round answers DO vary between runs on levels
+#                                    2-4, so one run per mode is not enough on the levels that matter.
 #
 # directed2 goes first because it is the best chance of solving a level; the two baselines follow.
 # One job at a time: two runs sharing the model were measured at 4 minutes a round instead of 1.
@@ -15,7 +21,8 @@ set -uo pipefail
 cd "$(dirname "$0")"
 D2_ARGS=${D2_ARGS:-"--all --rounds 12 --samples 4 --context 8192"}
 BASE_ARGS=${BASE_ARGS:-"--all --rounds 8 --samples 4 --context 8192"}
-FOLDERS="results results-directed2 results-baselines"
+REP_ARGS=${REP_ARGS:-"--levels 3,4 --rounds 12 --samples 4 --context 8192"}
+FOLDERS="results results-directed2 results-baselines results-repeat1 results-repeat2"
 
 if [ "${1:-}" = "status" ]; then
   for d in $FOLDERS; do
@@ -51,6 +58,18 @@ if [ "${1:-}" = "_wait" ]; then
   bash go.sh stop
   start_d2_then_baselines
   echo "hand-over done at $(date +%H:%M:%S)"
+  exit 0
+fi
+
+if [ "${1:-}" = "replan" ]; then
+  for d in results-baselines results-repeat1 results-repeat2; do
+    [ -d "$d" ] && OUT=$d bash go.sh stop >/dev/null
+  done
+  q() { GO_WAIT_FOR=$1 OUT=$2 MODES="$3" REPEAT=1 AGENT_ARGS="$4" bash go.sh | grep "Started in the background"; }
+  q results-directed2 results-baselines "enriched" "$D2_ARGS"
+  q results-baselines results-repeat1 "enriched directed2" "$REP_ARGS"
+  q results-repeat1 results-repeat2 "enriched directed2" "$REP_ARGS"
+  echo "Queued behind directed2: baseline, then two repeats of levels 3-4. One job runs at a time."
   exit 0
 fi
 
