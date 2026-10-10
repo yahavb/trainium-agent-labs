@@ -16,7 +16,11 @@
 | Original 72-evaluation comparison | Complete, strict report passed: neither Qwen arm found a speedup; template-control median best 3.125919x |
 | Recovery pilot v3 | Complete: 8 attempts, all `wrong`; no verified improvement |
 | Canceled treatments | Reasoning run: zero graded attempts; queued DMA-only v2 superseded, no comparison results |
-| Consolidated Qwen-only v2 | Running on core 2, budget 8; attempt 3 reported approximately 1.517x `faster`, provisional pending final results/replay |
+| Consolidated Qwen-only v2 | Complete: 7 `wrong`, 1 `faster` in 8 attempts; winner 1.517123964x; two unchanged-source replays `faster` at 1.516961251x and 1.516817767x |
+
+The v2 winner and both replay records are preserved under `experiments/qwen-v2-feedback/` and
+`experiments/qwen-winner-replication/`. The 80-attempt dashboard separates v1 from v2 and excludes
+replays from the optimization budget. V2 is one exploratory multi-change run, not a controlled feedback ablation.
 
 See [RESULTS-SUMMARY.md](RESULTS-SUMMARY.md) for exact measurements, provenance, and cohort limitations.
 Original v1: referee 22 `wrong` + 2 `no_gain`; model alone 2 `wrong` + 22 `no_gain`;
@@ -60,8 +64,8 @@ The queued DMA-only v2 comparison was canceled as superseded and produced no com
 The separate full-feedback/repair-controller v3 pilot completed eight evaluations, all `wrong`.
 The reasoning experiment was canceled for the deadline with zero graded evaluations. Cancellations
 are operational events, not kernel failures and not part of the original comparison's attempt count.
-The consolidated Qwen-only v2 run is a separate launched treatment, not the canceled DMA-only queue:
-PID `884773`, core 2, output `/tmp/p1-qwen-v2-20261010-1`, eight planned evaluations.
+The consolidated Qwen-only v2 run is a separate completed treatment, not the canceled DMA-only queue:
+PID `884773`, core 2, output `/tmp/p1-qwen-v2-20261010-1`, eight completed evaluations: seven wrong and one faster; two unchanged-source replays confirmed the winner.
 The real failing candidate was replayed through the sandboxed referee on seat-100/core 2:
 it remained `wrong` and returned the named instruction. This is a simulator rejection before
 device timing, not a speed measurement. Evidence and the isolated source diff are in
