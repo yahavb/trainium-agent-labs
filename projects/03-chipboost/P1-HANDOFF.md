@@ -28,7 +28,11 @@ Consolidated Qwen v2 completed all eight attempts: 7 `wrong`, 1 `faster`. Attemp
 1.517123964x; two unchanged-source core-3 checks both returned `faster`, at 1.516961251x and
 1.516817767x. Evidence is in `experiments/qwen-v2-feedback/` and `experiments/qwen-winner-replication/`.
 This single exploratory multi-change run is separate from v1; replay checks do not consume model budget.
-The dashboard contains exactly 80 attempts (72 v1 + 8 v2), excluding replay and archived side trials.
+Two later P1-fix runs completed 16 evaluations: 14 `wrong`, 2 `faster`; both successes were in r0.
+A separate four-attempt continuation from the frozen Qwen winner produced four `wrong` candidates.
+Its startup check confirmed the existing approximately 1.517x seed, which remains preserved.
+The dashboard contains exactly 100 attempts (72 v1 + 8 v2 + 16 P1-fix + 4 continuation),
+with separate groups and excluding startup, replay and archived side trials.
 
 ## Original throughput acceptance
 

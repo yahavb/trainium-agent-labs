@@ -68,6 +68,10 @@ def _load_module(name, path):
 # 02's agent.py, under another name: `import agent` here would import this file.
 agent02 = _load_module("agent02", os.path.join(AGENT02_DIR, "agent.py"))
 
+# Copied from integrated agent.py before redteam e471033 merge; normalized SHA256:
+# 12946680e4130172b259fca5828e0d57f51b93e13542deb070db49c316fbb98c
+# Deliberately retains integrated says(): trusted P1 instruction only, no raw exception parsing.
+EXPERIMENT = "redteam_recovery_qwen"
 OP = "matmul"
 ENTRY = nkibench.LEVELS[stage12.LEVEL]["entry"]   # nki_matmul_tiled_
 P2_START = os.path.join(HERE, "kernels", "matmul_start.py")
@@ -239,15 +243,26 @@ def strip_module_docstring(src):
     return src
 
 
-def first_prompt(src, status):
-    return (f"{TASK} Make it run faster on the Trainium chip.\n\n```python\n{src}\n```\n\n"
-            f"The referee's report on this kernel: {status}\n\n{agent02.API_CARD}\n{KEEP}")
+PRESERVE = """Preserve these correctness constraints while applying one local edit:
+- lhsT is [K,M]: slice lhsT[k*128:(k+1)*128,m*128:(m+1)*128].
+- rhs is [K,N]: slice rhs[k*128:(k+1)*128,n*512:(n+1)*512].
+- K is the first partition axis of both operands. Every dma_copy source and destination must match shape.
+- Allocate RHS slots in one ndarray with partition axis first, e.g. (128, slots, 512), indexed [:,slot,:]; no Python list comprehension of tiles.
+- nc_matmul must remain inside the full K // TILE_K contraction loop; do not use a stale k after a preload loop or compute only one K piece. If staging LHS, use partition-first (TILE_K, Mblock, Kslots, TILE_M) with small bounded Mblock/Kslots and views [TILE_K,TILE_M].
+- Keep a fresh fp32 PSUM accumulator inside both output-tile loops, immediately before the K contraction; preserve accumulation over every K tile.
+- Keep all output-tile stores and return the complete output tensor after all loops, not from inside a loop.
+Preserve already-correct imports, function signature, tiling, contraction, output stores and return placement. Do not rewrite unrelated blocks.
+"""
 
 
 def repair_prompt(src, instruction):
-    """The code plus ONE instruction from the referee. Never a corrected kernel."""
-    return (f"{TASK}\n\n```python\n{src}\n```\n\nThe referee says: {instruction}\n\n"
-            f"Make exactly that change and keep everything else identical. {KEEP}")
+    return (f"EXPERIMENT: {EXPERIMENT}.\n{TASK}\n\n```python\n{src}\n```\n\n"
+            f"Trusted referee instruction: {instruction}\nApply one local edit addressing this instruction.\n\n"
+            f"{PRESERVE}\n{agent02.API_CARD}\n{KEEP}")
+
+
+def first_prompt(src, status):
+    return repair_prompt(src, status)
 
 
 def alone_prompt(src, time_us, first):
@@ -282,7 +297,8 @@ def better(rec, waste, best):
 def run_once(a, referee, start_path, rep, log, workdir):
     tag = "offline-" if (a.offline or a.dry) else ""
     run_id = f"{OP}-{a.arm}-{a.tag + '-' if a.tag else ''}{tag}{time.strftime('%H%M%S')}-{rep}"
-    start_src = open(start_path).read()
+    with open(start_path) as start_file:
+        start_src = start_file.read()
     start, start_waste = grade(start_src, referee, a.dry, os.path.join(workdir, f"{run_id}_start.py"))
     if start is None:
         sys.exit("the referee failed 3 times on the START kernel (no free core? see REFEREE.md section 7). "
@@ -300,11 +316,11 @@ def run_once(a, referee, start_path, rep, log, workdir):
 
     shown = strip_module_docstring(start_src)
     # The best CORRECT kernel so far: model_alone always builds on it (it gets no other signal).
-    best = dict(src=shown, time=start.get("time_us_median"), speedup=start.get("speedup"), waste=start_waste)
+    best = dict(src=shown, time=start.get("time_us_median"), speedup=start.get("speedup"), waste=start_waste, instruction=status)
     prompt = (first_prompt(shown, status) if a.arm == "referee"
               else alone_prompt(shown, best["time"], first=True))
     latest = (shown, status)
-    tried, seen, streak = [], {}, 0
+    failures, failed_repairs = [], 0
     rounds = a.rounds or -(-a.budget // a.samples)
     rnd = -1
     # Referee failures are not counted, so allow a few extra rounds to still spend the whole budget.
@@ -345,7 +361,7 @@ def run_once(a, referee, start_path, rep, log, workdir):
                 out["correct"] += 1
                 if better(rec, waste, best):
                     best.update(src=src, time=rec.get("time_us_median"), speedup=rec.get("speedup"),
-                                waste=waste)
+                                waste=waste, instruction=referee_says)
                     if waste is not None:
                         out["improved"], out["best_waste"] = True, waste
                 if rec["verdict"] == "faster":   # beyond the noise threshold, held-out passed (chip)
@@ -368,23 +384,20 @@ def run_once(a, referee, start_path, rep, log, workdir):
             prompt = alone_prompt(best["src"], best["time"], first=False)
             continue
 
-        # Arm (a): repair the latest attempt with the referee's one instruction; 02's anti-cycling.
-        if src.strip():
-            latest = (src, referee_says)
-        same = referee_says == (tried[-1] if tried else None)
-        if not same:
-            print(f"  {referee_says[:300]}")
-        seen[referee_says] = seen.get(referee_says, 0) + 1
-        streak = streak + 1 if same else 1
-        if a.give_up_after and seen[referee_says] >= a.give_up_after:
-            print(f"  STOPPING: the same instruction {seen[referee_says]} times; more rounds will not help.")
-            break
-        tried.append(referee_says)
-        prompt = repair_prompt(*latest)
-        if streak >= 2:
-            ledger = "\n".join(f"- {t[:160]}" for t in dict.fromkeys(tried))
-            prompt += f"\n\nThese have already been tried and did not work, so do something different:\n{ledger}"
-            print(f"  same instruction {streak}x -- adding a ledger of {len(set(tried))} earlier ones")
+        if rec["verdict"] in REJECTED:
+            failed_repairs += 1
+            failures.append(referee_says)
+        else:
+            failed_repairs = 0
+        if failed_repairs >= 2:
+            prompt = repair_prompt(best["src"], best["instruction"])
+            prompt += ("\nTwo rejected candidates: restored the best correct kernel above. "
+                       "Preserve its working structure and try a smaller local optimization. "
+                       "These trusted constraints remain unresolved in the rejected attempts, "
+                       "not disproven:\n" + "\n".join(f"- {hint}" for hint in failures[-2:]))
+            failed_repairs = 0
+        else:
+            prompt = repair_prompt(src if src.strip() else best["src"], referee_says)
     return out
 
 
@@ -420,6 +433,9 @@ def main():
     ap.add_argument("--offline", action="store_true", help="no model; the simulator grades (needs nki)")
     ap.add_argument("--dry", action="store_true", help="no model, rules stage only (no nki needed)")
     a = ap.parse_args()
+    if a.arm != "referee" or a.model != "Qwen/Qwen3-8B":
+        sys.exit("redteam_recovery_qwen is a separately labelled Qwen3-8B referee treatment")
+    a.tag = f"{EXPERIMENT}-{a.tag}" if a.tag else EXPERIMENT
     if a.arm == "random_search":
         sys.exit("arm random_search runs from P2's search.py, which logs arm=random_search to the same seat "
                  "log:\n    python search.py --budget <same budget> --seed <rep>\nagent.py runs the two model "
