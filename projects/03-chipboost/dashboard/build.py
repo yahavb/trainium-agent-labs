@@ -57,17 +57,19 @@ sys.path.insert(0, str(PROJECT))
 import schema  # noqa: E402
 
 # Presentation groups only: raw records retain schema.ARMS and their original run_id.
-DISPLAY_ARMS = ("referee", "referee_v2", "model_alone", "model_alone_v2", "random_search")
-ARM_LABEL = {"referee": "Referee v1", "referee_v2": "Referee v2",
+DISPLAY_ARMS = ("referee", "referee_v2", "referee_v2_p1fix", "model_alone", "model_alone_v2", "random_search")
+ARM_LABEL = {"referee": "Referee v1", "referee_v2": "Referee v2", "referee_v2_p1fix": "Qwen + P1 fixes",
              "model_alone": "Model alone v1", "model_alone_v2": "Model alone v2",
              "random_search": "Template search"}
 
 
 def display_arm(record):
     arm = record["arm"]
+    if arm == "referee" and "-v2-p1fix-" in record["run_id"]:
+        return "referee_v2_p1fix"
     return arm + "_v2" if arm in ("referee", "model_alone") and "-v2-" in record["run_id"] else arm
 
-ARM_COLOR = {"referee": "var(--s1)", "referee_v2": "#8365cc", "model_alone": "var(--s2)",
+ARM_COLOR = {"referee": "var(--s1)", "referee_v2": "#8365cc", "referee_v2_p1fix": "#257e73", "model_alone": "var(--s2)",
              "model_alone_v2": "#a87519", "random_search": "var(--s3)"}
 
 # In pipeline order: how far the kernel got. Status colours, each with its own shape, so a
@@ -550,7 +552,7 @@ def step_points(xs, ys):
     return pts
 
 
-MODEL_ARMS = ("referee", "referee_v2", "model_alone", "model_alone_v2")   # both start from the start kernel; random search starts from the expert
+MODEL_ARMS = ("referee", "referee_v2", "referee_v2_p1fix", "model_alone", "model_alone_v2")   # both start from the start kernel; random search starts from the expert
 
 
 def panel_progress(summary, results, tune):
@@ -628,7 +630,7 @@ def panel_progress(summary, results, tune):
         for a in MODEL_ARMS) + "</div>")
     return card("Progress: the model improves the start kernel",
                 "Best verified speedup so far, from the start kernel (1×). Line: median over runs; band: fastest to "
-                "slowest run within each version. Same x = same budget; v1 and v2 are never pooled.",
+                "slowest run within each version. Same x = same budget; v1, v2 and P1-fix trials are never pooled.",
                 legend + body + tuning_block(tune) + table_view(table(
                     ["Kernel", "Arm", "Runs", "Attempts", "After 25%", "After 50%", "After 75%", "At the end",
                      "Spread at the end"], rows_t, numeric=(2, 3, 4, 5, 6, 7))))
@@ -1322,7 +1324,7 @@ def build(records, results, notes, fake, inputs, sweep=()):
 <main>
 <header class="top">
 <div><h1>CHIPBOOST</h1><p class="lede">Qwen3-8B kernel optimization on Trainium: model alone and referee-guided runs.
-V1 and consolidated v2 are shown separately; template random search uses an expert prior.
+V1, consolidated v2 and Qwen + P1 fixes are shown separately; template random search uses an expert prior.
 A speedup counts only if the referee verifies it: correct on the chip and on unseen shapes, and faster than the noise.</p></div>
 <p class="meta">{esc(meta)}</p>
 </header>
