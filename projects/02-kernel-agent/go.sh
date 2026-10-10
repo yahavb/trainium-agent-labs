@@ -19,7 +19,10 @@
 #
 # Settings can be overridden:  MODES="located" REPEAT=5 bash go.sh
 set -uo pipefail
+# Resolve this script's own path BEFORE changing directory: it re-runs itself for the background
+# job, and a relative path such as projects/02-kernel-agent/go.sh stops resolving after the cd.
 cd "$(dirname "$0")"
+SELF="$(pwd)/$(basename "$0")"
 
 OUT=results
 MODES=${MODES:-"located enriched"}
@@ -174,7 +177,7 @@ if ls "$OUT"/*.jsonl >/dev/null 2>&1; then
 fi
 
 SETSID=$(command -v setsid || true)
-nohup $SETSID bash "$0" _run > "$OUT/ablation.log" 2>&1 < /dev/null &
+nohup $SETSID bash "$SELF" _run > "$OUT/ablation.log" 2>&1 < /dev/null &
 echo $! > "$PIDFILE"
 echo "[3/3] Started in the background: modes '$MODES', $REPEAT runs each."
 echo
