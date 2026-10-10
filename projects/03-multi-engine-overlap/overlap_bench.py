@@ -187,14 +187,17 @@ def check_rules(source: str) -> list[str]:
     # 5. Check for 3 Hardware Engine Primitives
     has_dma = any(k in source_lower for k in ["dma", "load_tile", "nl.load", "dma_copy"])
     has_vector = any(k in source_lower for k in ["vector", "tensor_scalar", "bilinear", "scale", "nl.add", "nl.multiply"])
-    has_tensor = any(k in source_lower for k in ["nc_matmul", "tensor_matmul", "matmul_tile"]) or ("tensor" in source_lower and "matmul" in source_lower)
+    has_tensor = (
+        any(k in source_lower for k in ["nc_matmul", "tensor_matmul", "matmul_tile", "matmul", "matrix multiply", "matrix multiplication"])
+        or ("tensor" in source_lower and any(m in source_lower for m in ["matmul", "multiply", "multiplication", "dot"]))
+    )
 
     if not has_dma:
         violations.append("DMA Engine missing: code must explicitly manage DMA transfers between HBM and SBUF.")
     if not has_vector:
         violations.append("Vector Engine missing: code must perform vector scaling/interpolation in SBUF.")
     if not has_tensor:
-        violations.append("Tensor Engine missing: code must issue tile matrix multiplication on the Tensor Engine.")
+        violations.append("Tensor Engine missing: code must issue tile matrix multiplication on the Tensor Engine (e.g. `buf_tensor[:valid, :] = buf_vec[:valid, :].astype(np.float64) @ weight.astype(np.float64)`).")
 
     # 6. Check for Multi-Buffering Strategy (buffer allocation / pointer swapping)
     has_buffers = any(k in source_lower for k in ["buf", "buffer", "active", "next", "ping", "pong"])
