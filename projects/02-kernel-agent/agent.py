@@ -472,6 +472,25 @@ def enrich(error_text, level=None, shape=None):
             "[C, H//pool_size, W//pool_size, pool_size, pool_size]; reduce axes [3,4] and "
             "scale by 1/(pool_size*pool_size). Keep the full input tile shape for DMA."
         )
+        if shape:
+            dims = shape.get("shape")
+            pool_size = shape.get("pool_size")
+            if dims and pool_size:
+                channels, height, width = dims
+                p = pool_size
+                exact = [
+                    [height * width, channels],
+                    [p * width, height // p],
+                    [p, width // p],
+                    [width, p],
+                    [1, p],
+                ]
+                detail += (
+                    f" For this failing case C,H,W={dims}, pool_size={p}, the exact "
+                    f"numeric pattern is `{exact}`. In the general kernel, spell those "
+                    "five pairs with the input shape variables as shown above; do not "
+                    "copy the numeric test values as hard-coded constants."
+                )
         return error_text + detail
     if level == 4 and (
             "module 'nki.isa' has no attribute 'fill'" in error_text
@@ -864,6 +883,24 @@ def repair_prompt(level, source, feedback, a=None, ledger="", scaffold=False):
             f"Preserve the entry point, arguments and required output dtype. "
             f"Reply with ONE complete python code block.")
     if level == 1:
+        if "ap() pattern has invalid partition stride" in feedback.lower():
+            return (
+                f"Repair this NKI average-pooling kernel; preserve its entry point and arguments.\n\n"
+                f"```python\n{source}\n```\n\n"
+                f"The checker reports:\n{feedback}\n\n"
+                "Change the access pattern on the EXISTING full-input SBUF tile only. "
+                "Replace its current `.ap(...)` pattern with exactly:\n"
+                "```python\n"
+                "view = in_tile.ap([[H*W, C], [pool_size*W, H//pool_size], "
+                "[pool_size, W//pool_size], [W, pool_size], [1, pool_size]])\n"
+                "```\n"
+                "Use the names that your kernel already uses for C, H, W, and the full-input "
+                "tile. For the reported case C=32,H=32,W=32,pool_size=2, the concrete pairs "
+                "are [[1024,32],[64,16],[2,16],[32,2],[1,2]]. Every pair is "
+                "[element_stride,count]. The leading stride is H*W, never 0 or 1. Call `.ap()` "
+                "once on the original (C,H,W) tile. Do not rewrite other parts of the kernel. "
+                "Reply with one complete Python code block."
+            )
         # A local API repair cannot rescue an algorithm that multiplies a window
         # by itself. Let the model replace that computation while preserving the
         # entry point and the original operation's shape contract.
