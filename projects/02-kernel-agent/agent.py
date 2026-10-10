@@ -126,7 +126,7 @@ def grade(source, level):
                     f"CANNOT SIMULATE: {e}")
         except Exception as e:
             failures.append((nkibench.label(case, level),
-                             enrich(f"raised {type(e).__name__}: {e}")))
+                             enrich(f"raised {type(e).__name__}: {e}", level)))
             continue
         parts["runs"] = True
         m = (nkibench.check_inputs_untouched(before, args)
@@ -270,8 +270,12 @@ def real_signature(func_name):
     return ""
 
 
-def enrich(error_text):
-    """Add the real names when the failure is an invented API call."""
+def enrich(error_text, level=None):
+    """Add the real names when the failure is an invented API call.
+
+    `level` is optional so existing callers keep working; it lets a level-specific message fire
+    (used for the level-1 pooling load/reduce idiom below).
+    """
     if "'MemoryRegion' object is not callable" in error_text:
         return (error_text + " nl.sbuf, nl.psum and nl.shared_hbm are memory regions, not "
                 "functions. Do not call them. Allocate with "
@@ -292,6 +296,21 @@ def enrich(error_text):
                   r"got src=(\d+), dst=(\d+)", error_text)
     if m:
         src, dst = int(m.group(1)), int(m.group(2))
+        if level == 1 and src > dst:
+            # Measured on level 1: the model sized the SBUF tile to the OUTPUT (pooled) shape and
+            # then copied the whole INPUT into it (src=32768 into dst=16384). Pooling does not shrink
+            # on load -- it loads everything and reduces afterwards. Name that idiom.
+            return (error_text + f" You copied {src} input elements into a tile that holds only "
+                    f"{dst}, which is the OUTPUT (pooled) size. Average pooling does not shrink the "
+                    f"data when it loads it -- it loads the FULL input, then reduces. So: allocate "
+                    f"the SBUF tile with the INPUT's own shape, "
+                    f"in_tile = nl.ndarray(in_tensor.shape, dtype=in_tensor.dtype, buffer=nl.sbuf), "
+                    f"and nisa.dma_copy(dst=in_tile, src=in_tensor). The averaging happens AFTER the "
+                    f"load: build a strided view of the pool windows with in_tile.ap([...]) that "
+                    f"groups each pool_size x pool_size window onto the last axes, then "
+                    f"nl.sum(view, axis=[...]) over those axes and scale by 1/(pool_size*pool_size). "
+                    f"The separate, smaller OUTPUT tile is what you write the reduced result into "
+                    f"before dma_copy'ing it out.")
         return (error_text + f" The tile you allocated holds {dst} elements but you copied {src} "
                 f"into it. nisa.dma_copy does not slice or broadcast: allocate the destination with "
                 f"EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a "
