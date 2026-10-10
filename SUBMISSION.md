@@ -9,11 +9,11 @@ every number comes from the NKI 0.6.0 CPU simulator (`nki.simulate`), graded by 
 
 **In one paragraph.** We built a checker-driven agent that writes NKI kernels with a model that sees 8,192
 tokens (Qwen3-8B, served on the seat's Trainium2). The organizers' agent solved only level 2 (3 runs of 5).
-Ours solved levels 3 and 4 in every run and level 1 for the first time today, and every solve passed a
+Ours solved levels 3 and 4 in every run and, once, level 1 (the only level-1 solve in our logs), and every solve passed a
 fresh-process re-audit and a held-out set of new shapes and hostile values [[TBD: final-run numbers]]. The
 model never changed; what it was shown did. One worked example in the first prompt solves level 3; the code
-in the repair messages solves level 4 (hollowed out, level 4 stopped solving); a compiler gate turns level
-1's simulator-only solutions into kernels that build for trn2. Along the way we found that the seat's model
+in the repair messages solves level 4 (hollowed out, level 4 stopped solving); and level 1 fell to a one-line
+instruction, "Add keepdims=True to this call", sent in place of a raw simulator error. Along the way we found that the seat's model
 server is deterministic, so "5 runs" were often one run five times. We report distinct runs next to every
 rate and changed the agent so its samples actually differ.
 
@@ -225,7 +225,7 @@ written down before the results came in ([PLAN.md](PLAN.md) §4).
 | E-F | wrong argument list: failing line + real signature + one instruction | L1 | 0/5, all 0.30, one trajectory; wrong-signature errors 8 → 3 per run, the run then stalls on copy sizes | not carried into v7: v7's level-1 failures are different, and with a deterministic server any message change can move v7's solved trajectories |
 | E-v7 | feedback_v7 as a whole | L1, L3, L4, L2 | L3 5/5 (round 1), L4 4/4 (round 3, one trajectory), L1 [[TBD]], L2 [[TBD]]; all solves VERIFIED [[TBD: final after re-audit]] | adopted |
 | E-div | v7, plus a one-line `(attempt k of n, run r)` tag on samples 2–4 so a deterministic server returns different samples | L3, L4 | L3 5/5 (3 distinct runs, was 1 under v7's L4), L4 4/4 | kept (in v8) |
-| v8 | E-div + skeleton feedback + cut-off answers not graded + level-1 call fixes; liuyq's level-1 compiler gate in the base | L1–L4 | **L1: first solve of the day**, in its first repair round; VERIFIED by both verdicts, held-out 20/20, lowers for trn2, re-audit PASS (1 of 3 runs). L4: 0.62 twice (v7: 5/5). L3: solved, two rounds later than v7. L2, round 0 only: 0/20 | skeleton dropped (see below); the rest kept |
+| v8 | E-div + skeleton feedback + cut-off answers not graded + level-1 call fixes; liuyq's level-1 compiler gate in the base | L1–L4 | **L1: the only level-1 solve in our logs**, in its first repair round; VERIFIED by both verdicts, held-out 20/20, lowers for trn2, re-audit PASS (1 of 3 runs). L4: 0.62 twice (v7: 5/5). L3: solved, two rounds later than v7. L2, round 0 only: 0/20 | skeleton dropped (see below); the rest kept |
 | L2 sampling | v8 with the first prompt and the sampling settings back to the organizers' | L2, round 0, 20 samples | 2/20, the same as the organizers' agent re-run today (2/20); with v7's sampling settings 0/20 | the level-2 regression was v7's sampling settings |
 | v8.1 | v8 without the skeleton, plus samples 1 and 3 on the original sampling and 2 and 4 on v7's, plus one sentence restating the level-2 task when the model transposes the whole input | L2 | the first level-2 solve in a repair round today (round 2), through the existing numeric-mismatch message; stopped after one run for v8.2 | folded into v8.2 |
 | **v8.2** (final candidate, 96a9fc9) | v8.1 plus **E-mix**: in every repair round, sample 1 repairs the best kernel as before and samples 2–4 start over from the first prompt, each tagged differently. Level 2 had only ever been solved in round 0, so its repair rounds now also buy fresh first attempts | L1–L4 | [[TBD]] | [[TBD]] |
@@ -326,6 +326,23 @@ brought in the ledger, and the next answer rewrote the allocations as (128, 128)
 solved, after 21 attempts. Then, before seeing anything new, the agent stated a confidence of 0.90; the
 held-out set (4 new shapes × 4 kinds of values) passed 16/16. Verdict: VERIFIED, and the claim was right.
 The solving kernel is correct, not fast: 36.6 Flops/Byte, memory-bound.
+
+### A second one, shorter: the level-1 solve
+
+v8 on level 1, the only level-1 solve in our logs. Full transcript, rebuilt prompts and re-checks:
+[analysis/recovery_v8_L1.md](analysis/recovery_v8_L1.md).
+
+| round | best of 4 | what the checker said | what went back to the model |
+|---|---|---|---|
+| 0 | 0.30 | `SBUF and PSUM tensors must have at least 2 dimensions`: `nl.sum` without `keepdims` makes a 1-D tile. Two other samples ran into the 2,500-token limit and were not graded | "Add keepdims=True to this call"; for the two cut-off samples, "Your previous answer was cut off at the token limit…" |
+| 1 | **1.00** | correct on every shape | |
+
+This is the translation the challenge asks for, in its smallest form: the simulator's sentence says what is
+wrong, the agent's sentence says what to change, and all four samples changed exactly that line. The
+solving kernel reduces all channels at once, so the compiler gate had nothing to say. Before the held-out
+set ran, the agent stated 0.90; held-out 20/20, re-audit PASS, VERIFIED by both verdicts. It also lowers for
+trn2 (a lowering, not a full build). Round 0 took 247 s, almost all of it the two cut-off answers; round 1
+took 81 s.
 
 ## 9. Limits
 
