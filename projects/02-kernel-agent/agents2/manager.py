@@ -10,7 +10,8 @@ One thread follows one approach:
 
 A thread ends when:
   - the same failure (kind, line, message) comes back same_error_limit times in a row ("cycling");
-  - the coder hands back the kernel it was given, twice ("echo");
+  - the coder hands back the kernel it was given, after the debugger has already named a second,
+    different change for that same failure ("echo");
   - max_no_gain checks pass without progress ("no_gain"), or max_attempts checks in all. Progress
     is the check stage reached as well as the reward (see progress()): the reward is coarse, and a
     kernel moving from an invented name to a shape error to wrong values is getting somewhere at the
@@ -165,7 +166,8 @@ class Manager:
         code, meta = self.coder.write(level, plan, led, **ids)
         mode = "write"
         history, review_tries = [], []
-        last_sig, same, best, no_gain, empties, rescued = None, 0, None, 0, 0, False
+        last_sig, same, best, no_gain, empties = None, 0, None, 0, 0
+        rescued = set()                  # failures whose echo the debugger has already answered
         while True:
             if stop.is_set():
                 return led.end(approach, "stopped")
@@ -225,12 +227,14 @@ class Manager:
                     return self._end(led, approach, "approach_wrong", tag, change["approach_wrong"])
                 history.append((sig, change))
                 self.log(f"{tag}    debugger ({change['path']}): {change['change'][:110]}")
-                new, mode = self._next(level, plan, code, check, led, ids, change=change)
-                if new is None and not rescued:
-                    # The change left the kernel as it was; measured on seat-35, a model-path change
-                    # can be a no-op ("X should be X"). Ask the debugger once more, told so, before
-                    # giving up a thread that may hold the best kernel so far.
-                    rescued = True
+                new, mode = self._next(level, plan, code, check, led, ids, change=change, tries=1)
+                if new is None and sig not in rescued:
+                    # The coder returned the kernel unchanged. Re-sending the same change, hotter, did
+                    # not help: on seat-35 (agent2-v3-l1-1010-2153) all 6 such retries echoed again,
+                    # each after a change that only described the failure. So the debugger, told the
+                    # change was tried, names a different one on a specific line; once per failure, so
+                    # a thread holding the best kernel is not given up on the first echo.
+                    rescued.add(sig)
                     change = self.debugger.debug(level, plan, code, check, history, led,
                                                  approach.attempts, **ids)
                     self.events.write("change", level=level, rescue=True, **ids, **_slim(change))
@@ -239,25 +243,29 @@ class Manager:
                     history.append((sig, change))
                     self.log(f"{tag}    debugger ({change['path']}, after an echo): "
                              f"{change['change'][:100]}")
-                    new, mode = self._next(level, plan, code, check, led, ids, change=change)
+                    new, mode = self._next(level, plan, code, check, led, ids, change=change, tries=1,
+                                           echo=True)
             if new is None:
                 return self._end(led, approach, "echo", tag)
             code = new
 
-    def _next(self, level, plan, code, check, led, ids, change=None, improve=None):
-        """The coder's next kernel. An unchanged kernel gets one retry, hotter and told so; a second
-        echo ends the thread (returns None). An empty answer is passed on, so the check records it."""
-        for echo in (False, True):
+    def _next(self, level, plan, code, check, led, ids, change=None, improve=None, tries=2, echo=False):
+        """The coder's next kernel, or None when every try returned it unchanged. Each try after the first
+        is hotter and told the last answer was unchanged (`echo` makes the first one so too). The
+        debugger path uses one try and asks the debugger for a different change instead; the reviewer
+        path has no debugger, so it keeps two. An empty answer is passed on, so the check records it."""
+        for i in range(tries):
+            hot = echo or i > 0
             if improve:
                 new, meta = self.coder.improve(level, plan, code, improve["profile"], improve["change"],
-                                               led, echo=echo, **ids)
+                                               led, echo=hot, **ids)
                 mode = "improve"
             else:
-                new, meta = self.coder.apply(level, plan, code, check, change, led, echo=echo, **ids)
+                new, meta = self.coder.apply(level, plan, code, check, change, led, echo=hot, **ids)
                 mode = "apply"
             if not new.strip() or new.strip() != code.strip():
                 return new, mode
-            self.events.write("echo", level=level, **ids, retry=not echo)
+            self.events.write("echo", level=level, **ids, retry=i + 1 < tries, told=hot)
         return None, mode
 
     def _end(self, led, approach, reason, tag, detail=""):

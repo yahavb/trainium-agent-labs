@@ -6,7 +6,7 @@ that plan. Numbers marked *measured* come from runs on the seat pods today.
 
 The roles: **manager**, **planner**, **retriever**, **coder**, **debugger**, **reviewer**.
 
-## Implementation status (2026-10-10 ~21:55 UTC)
+## Implementation status (2026-10-10 ~22:15 UTC)
 
 `agent.py` is unchanged and stays the baseline.
 
@@ -21,7 +21,7 @@ The roles: **manager**, **planner**, **retriever**, **coder**, **debugger**, **r
 | `events.jsonl` (every call from every role, with prompt and reply), `attempts.jsonl` in agent.py's schema | built |
 | zero-byte traffic bypass closed (levels 5–7) | built, in `agents2/checks.py` |
 | thread ends judged by stage reached as well as reward | built, `manager.progress()` |
-| `--classify`, `--dry-run`, `--no-lookup`, `--no-skeleton`, `--cards introspect`, `--hint` | built |
+| `--classify`, `--dry-run`, `--no-lookup`, `--no-skeleton`, `--no-docs-request`, `--cards introspect`, `--hint` | built |
 | profiler layer 2 (bytes per operand), profiling as a tool, edit mode, LLM manager, device profiling | not built |
 
 **Pull, not push.** A first prompt is the problem statement as `agent.py` gives it (operation, entry
@@ -45,6 +45,25 @@ really test pulling. After the last round the format says "answer now"; a lookup
 its documentation and one more call, and a reply that is still a lookup counts as no answer (the
 debugger falls back, the planner re-plans).
 
+Offered that way, the lookup was still never taken: 0 lookups in 39 calls in the level-1 run of
+`5bbecbd`. So since ~22:15 UTC **the planner's first call only asks which documentation it needs**
+("Before you plan, choose the documentation you need… LOOKUP: …", 60 tokens out); it then plans with
+that documentation, with one optional lookup left. Nothing is suggested, so the model still chooses what
+to pull. `--no-docs-request` turns it off.
+
+**Echo handling** (since ~22:15 UTC). In the same run, 12 of 26 coder calls returned the kernel
+unchanged, ending 3 of 4 threads. Every one came after a change that described the failure rather than
+naming an edit (nkibench's WRONG SHAPE and NON-FINITE messages, a generic "call it with its real
+signature", a poor closest name), and the hot retry of the same change echoed 6 times out of 6. Now:
+- nkibench's mismatch messages (wrong shape, NaNs, zeros, partial output, hardware hazard) go to the
+  debugger's model, which names a line, instead of being passed on as the change; INPUT_MODIFIED,
+  whose message is an edit, keeps its rule;
+- the keyword rules name the edit for each of Python's messages (an argument given twice, missing
+  arguments, too many positional ones);
+- an unchanged kernel is not re-sent the same change: the debugger, told the change was tried, names a
+  different one, once per failure (it was once per thread). A second echo for that failure ends the
+  thread.
+
 What the planner pulled goes to the coder with the plan. A failed check pulls what the error names (the
 function's card, a checked fix example), as checker feedback does. Withheld cards are enforced in
 `Retriever.shown()` and `withhold.json` in `Retriever.allowed()`; the debugger's rules pass on no
@@ -57,14 +76,15 @@ API facts for every transpose route at level 2, or withhold patterns only (the K
 pooling view) and drop `withhold=2` from `agents2/cards.md`.
 
 Measured on seat-35:
-- 26/26 unit tests (laptop, ~21:55 UTC). The pod last ran 18/18, before the latest changes, none of
-  which has run on a seat yet.
+- 30/30 unit tests, on the laptop and on seat-35 (~22:15 UTC); the checks below were re-run then too.
 - Lint is clean on the reference kernels and the checked fragments.
 - `--offline --all` scores 4/4.
 - Our 4 cards are backed by 7 simulator checks, all holding. The cheat-sheet's 37 hold, and so do the 8
-  fix examples (checked before `nomatmul1` was trimmed).
+  fix examples, trimmed `nomatmul1` included.
 - `--classify` over 428 recorded agent.py failures:
-  - all 428 fall into an error kind, and a rule names the change for each;
+  - all 428 fall into an error kind, and a rule names the change for each. None of them is a
+    mismatch (agent.py's recorded failures are all errors before correct values), so sending the
+    mismatch kinds to the debugger's model (~22:15 UTC) left this at 428/428 (re-measured on seat-35);
   - lint flags 166 before the simulator, with 0 false positives;
   - 423 get a checked fix example.
 - Level 1, one run each:
@@ -74,6 +94,7 @@ Measured on seat-35:
   | first agent2 | **0.50** (kernel ran, wrong values) |
   | cards pushed into every prompt | 0.30 |
   | pull design | 0.30 (4 lookups) |
+  | `5bbecbd` (example kernel, lookup in the reply format) | 0.50 (wrong shape; 0 lookups, 12 echoes) |
 
   No level-1 run has solved it. The baseline is 0.30 on every run, a wall, so 0.50 is a real change, but
   the others are single runs.

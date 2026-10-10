@@ -43,6 +43,7 @@ class Config:
     retries: int = 3
     hint: bool = False               # nkibench's own level hint in the planner and coder prompts
     skeleton: bool = True            # the organisers' example kernel (end of agent.API_CARD) in write
+    docs_request: bool = True        # the planner's first call only asks which docs it needs
     aws_docs: bool = False           # excerpts of third_party/ docs (nki 0.4.0) in the coder prompt
     offline: bool = False
     # LOOKUP rounds per role: how many times a role may ask the retriever for documentation before it
@@ -73,7 +74,7 @@ def build(a):
     return Config(roles=roles, threads=a.threads, max_approaches=a.approaches,
                   max_attempts=a.attempts, max_no_gain=a.no_gain, max_calls=a.max_calls,
                   check_workers=a.check_workers, retries=a.retries, hint=a.hint,
-                  skeleton=not a.no_skeleton,
+                  skeleton=not a.no_skeleton, docs_request=not a.no_docs_request,
                   aws_docs=a.aws_docs, offline=a.offline,
                   lookup=(dict(planner=0, coder=0, debugger=0, reviewer=0) if a.no_lookup else
                           dict(planner=2, coder=1, debugger=1, reviewer=0)))

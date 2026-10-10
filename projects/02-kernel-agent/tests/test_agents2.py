@@ -198,6 +198,62 @@ def test_rules_never_restate_or_name_a_withheld_card():
     assert "tile.permute" in at1["names"] and "view" in at1["change"], at1
 
 
+def test_kwarg_rules_name_an_edit():
+    retr = Retriever()
+    rc = lambda err: errors.rule_change(dict(kind="KWARG", error=err), retr, 1, agent.enrich,
+                                        agent.fragment_note)["change"]
+    assert "`dtype` is given twice" in rc("TypeError: copy() got multiple values for argument 'dtype'")
+    assert "`dst=`" in rc("TypeError: tensor_scalar(): missing a required argument: 'dst'")
+    assert "`a=`, `b=`" in rc("TypeError: f() missing 2 required positional arguments: 'a' and 'b'")
+    assert "by name" in rc("TypeError: f() takes 2 positional arguments but 3 were given")
+    assert "Remove the `x=`" in rc("TypeError: nc_matmul() got an unexpected keyword argument 'x'")
+
+
+def test_mismatch_messages_go_to_the_model_except_input_modified():
+    retr = Retriever()
+    rc = lambda kind, err: errors.rule_change(dict(kind=kind, error=err), retr, 1, agent.enrich,
+                                              agent.fragment_note)
+    for kind, err in [("WRONG_SHAPE", "WRONG SHAPE: returned (32, 16, 2), reference is (32, 16, 16)."),
+                      ("NONFINITE", "NON-FINITE OUTPUT: 8192 NaN and 0 Inf, first at (0, 0, 0)."),
+                      ("ZEROS", "OUTPUT IS 98% ZEROS while the reference is not."),
+                      ("PARTIAL", "50% of the output is zero, in the block from (0, 0) to (4, 4)")]:
+        assert rc(kind, err) is None, kind
+    assert "Allocate a new output" in rc("INPUT_MODIFIED", "THE KERNEL MODIFIED ITS INPUT (argument 0). "
+                                         "Allocate a new output with nl.ndarray(...)")["change"]
+
+
+def test_planner_first_chooses_its_documentation():
+    from agents2.ledger import Ledger
+    from agents2.planner import Planner
+
+    def planner(replies, **cfg_kw):
+        replies, seen = iter(replies), []
+
+        class L:
+            def chat(self, role, sections, tags=None, **kw):
+                seen.append((pack(sections, 10 ** 6, len)[0], kw.get("max_tokens"), (tags or {}).get("step")))
+                text, meta = next(replies)
+                return text, dict(role=role, error=None, **meta)
+        plan, meta = Planner(L(), Retriever(), _cfg(**cfg_kw), NullEvents()).plan(1, Ledger(1, 0))
+        return plan, seen
+
+    plan, seen = planner([("LOOKUP: nl.sum, t.ap", {}), ("APPROACH: sum windows\nCALLS: nl.sum", {})])
+    assert seen[0][2] == "docs_request" and seen[0][1] == 60 and "Before you plan" in seen[0][0]
+    assert "APPROACH:" not in seen[0][0]                                 # no plan asked for yet
+    assert "Documentation you looked up" in seen[1][0] and "keepdims" in seen[1][0]
+    assert "Reply in one of two ways" in seen[1][0]                      # one optional round left
+    assert plan.approach == "sum windows" and plan.docs == ["nl.sum", "t.ap"]
+    # a whole plan in the request is used; one cut at the request's cap is asked for again
+    plan, seen = planner([("APPROACH: a\nCALLS: nl.sum", {})])
+    assert len(seen) == 1 and plan.approach == "a"
+    plan, seen = planner([("APPROACH: a", {"finish_reason": "length"}), ("APPROACH: b", {})])
+    assert len(seen) == 2 and plan.approach == "b"
+    # off, or no lookups at all: the first call is the plan itself
+    for kw in (dict(docs_request=False), dict(lookup=dict(planner=0, coder=0, debugger=0, reviewer=0))):
+        plan, seen = planner([("APPROACH: c", {})], **kw)
+        assert seen[0][2] is None and "APPROACH:" in seen[0][0] and plan.approach == "c"
+
+
 def test_alias_is_its_own_kind_with_a_rule():
     msg = ("dma_copy is imported by name, so the traffic check cannot count its bytes. Import the module "
            "(import nki.isa as nisa) and call nisa.dma_copy.")
@@ -466,11 +522,21 @@ def test_echo_ends_the_thread():
                         max_approaches=1)
     ends = [f["reason"] for e, f in ev.rows if e == "thread_end"]
     assert ends == ["echo"], ends
-    # two echoes, one rescue from the debugger, two more echoes, then the thread ends
-    assert sum(1 for e, f in ev.rows if e == "echo") == 4
+    # an echo, a different change from the debugger (not the same change re-sent), a second echo: end
+    assert sum(1 for e, f in ev.rows if e == "echo") == 2
     assert sum(1 for e, f in ev.rows if e == "change" and f.get("rescue")) == 1
-    echo_prompt = [c for c in llm.calls if c[0] == "coder"][-1][2]
-    assert "unchanged" in echo_prompt
+    coder = [c for c in llm.calls if c[0] == "coder"]
+    assert len(coder) == 3 and "unchanged" in coder[-1][2] and "unchanged" not in coder[1][2]
+
+
+def test_echo_rescue_is_once_per_failure_not_per_thread():
+    replies = iter(["# BADNAME", "# BADNAME", "# SHAPE 1", "# SHAPE 1", "# GOOD"])
+    code = lambda prompt, mode: f"```python\n{next(replies)}\n```"
+    res, llm, ev = _run(lambda cfg: FakeLLM(cfg, ["APPROACH: a\nCALLS: nl.sum"], code), threads=1,
+                        max_approaches=1)
+    assert res["solved"], res
+    assert sum(1 for e, f in ev.rows if e == "change" and f.get("rescue")) == 2   # one per failure
+    assert sum(1 for e, f in ev.rows if e == "echo") == 2
 
 
 def test_debugger_model_path_and_approach_wrong():

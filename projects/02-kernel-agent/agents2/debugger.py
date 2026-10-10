@@ -2,8 +2,9 @@
 
 Rules first. For the error kinds a rule understands (an invented name, a wrong keyword, a copy whose
 sizes disagree, more than 128 partitions...), the change is built from the real signature, the closest
-real names and a checked example, with no model call. The model is asked only for wrong values,
-unclassified errors, and a failure that came back after a rule's change.
+real names and a checked example, with no model call. The model is asked for wrong results (values,
+shape, NaNs, zeros: messages that say what is wrong but not which line to edit), unclassified errors,
+and a failure that came back, or a kernel returned unchanged, after a change.
 
 The old loop's feedback said what was wrong and never what to do, and it never questioned the
 algorithm: level 1 stayed at 0.30 for 168 attempts. Here the model may answer APPROACH WRONG, which ends
@@ -21,6 +22,10 @@ FORMAT = ("Reply with exactly three lines:\n"
           "CHANGE: <the one change to make, concretely>\n"
           "If the plan itself cannot produce the right result, reply with one line instead:\n"
           "APPROACH WRONG: <why>")
+
+
+# Wrong results, or a failure no rule knows: judged against what the reference computes.
+MISMATCH = ("VALUES", "PARTIAL", "ZEROS", "WRONG_SHAPE", "NONFINITE", "HW_HAZARD", "OTHER")
 
 
 def parse_change(text):
@@ -84,7 +89,7 @@ class Debugger:
                              "change. Do not rewrite the kernel.", required=True),
             # Wrong values can only be judged against what the right values are.
             Section("task", task_text(nkibench.LEVELS[level], level),
-                    priority=7 if check["kind"] in ("VALUES", "PARTIAL", "OTHER") else 1),
+                    priority=7 if check["kind"] in MISMATCH else 1),
             Section("plan", "The plan it follows:\n" + plan.text(), priority=3),
             Section("code", "The kernel, with line numbers:\n" + numbered(code), required=True),
             Section("error", f"The check reports{' on ' + check['shape'] if check.get('shape') else ''}:"

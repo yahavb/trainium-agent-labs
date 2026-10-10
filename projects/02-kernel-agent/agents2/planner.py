@@ -73,8 +73,9 @@ class Planner:
     def plan(self, level, ledger, note=""):
         """One plan, or None if the request failed. `note` carries a correction (unknown names, or an
         approach another thread already has). The prompt is the problem statement and an index of
-        names; the planner looks up what it wants (up to cfg.lookup["planner"] rounds), and what it
-        pulled travels with the plan to the coder."""
+        names. The first call only asks which documentation the planner needs (cfg.docs_request); then
+        it plans with that documentation, and may look up more within cfg.lookup["planner"] rounds in
+        all. What it pulled travels with the plan to the coder."""
         import nkibench
         from agents2 import lookup
         spec = nkibench.LEVELS[level]
@@ -101,9 +102,19 @@ class Planner:
                               "test shape>\n"
                               "STEPS: <3 to 6 short numbered steps>", required=True),
         ]
-        text, meta, pulled = lookup.ask(self.llm, "planner", sections, self.retriever, level,
-                                        self.cfg.lookup.get("planner", 0), ledger, self.events,
-                                        tags=dict(level=level))
+        rounds = self.cfg.lookup.get("planner", 0)
+        pulled, text = [], ""
+        if self.cfg.docs_request and rounds > 0:
+            # The first call only chooses documentation (lookup.REQUEST); it counts as one round.
+            pulled, text, meta = lookup.request(self.llm, "planner", sections, level, ledger, self.events,
+                                                tags=dict(level=level))
+            if meta.get("error"):
+                return None, meta
+            rounds -= 1
+        # Unless it already answered with a whole plan (one cut at the request's cap is asked for again).
+        if not (re.search(r"(?im)^\W*APPROACH\W*:", text) and meta.get("finish_reason") != "length"):
+            text, meta, pulled = lookup.ask(self.llm, "planner", sections, self.retriever, level, rounds,
+                                            ledger, self.events, pulled=pulled, tags=dict(level=level))
         if meta.get("error") or lookup.parse_lookup(text):     # still asking after "answer now"
             return None, meta
         plan = parse_plan(text)

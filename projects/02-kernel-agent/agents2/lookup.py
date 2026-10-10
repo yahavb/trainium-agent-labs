@@ -26,6 +26,14 @@ CHOICE = ("Reply in one of two ways.\n"
           "- Otherwise, give your answer. {answer}")
 ANSWER_NOW = "You have the documentation you asked for. No more lookups: answer now. {answer}"
 
+# Offered, the lookup was never taken: 0 lookups in 39 calls on seat-35 (agent2-v3-l1-1010-2153). So
+# the planner's first call only asks which documentation it needs. The model still picks the names
+# (nothing is suggested), so the system still pulls; it just has to decide what to pull.
+REQUEST = ("Before you plan, choose the documentation you need. Which NKI functions, tile methods or "
+           "topics will this kernel use? Reply with only this one line:\n"
+           "LOOKUP: <up to 6 names from the NKI names above, or the topic 'rules'>")
+REQUEST_MAX_TOKENS = 60
+
 
 def parse_lookup(text):
     """The names asked for, or [] when the reply is an answer rather than a lookup. A reply that
@@ -88,3 +96,20 @@ def ask(llm, role, sections, retriever, level, rounds, ledger, events, pulled=No
         r += 1
         final = final or not new or r >= rounds  # nothing new asked for: it has what it needs
     return text, meta, pulled
+
+
+def request(llm, role, sections, level, ledger, events, tags=None):
+    """The required first call: the caller's sections with the reply format replaced by REQUEST.
+    Returns (names, text, meta). A reply that is already an answer (it holds a plan or code) comes back
+    as text with no names, so the caller can use it as it is."""
+    secs = list(sections)
+    last = secs[-1]
+    secs[-1] = Section(last.name, REQUEST, last.priority, last.required)
+    text, meta = llm.chat(role, secs, tags=dict(tags or {}, step="docs_request"),
+                          max_tokens=REQUEST_MAX_TOKENS)
+    ledger.note_call(meta)
+    names = [] if meta.get("error") else parse_lookup(text)
+    if events:
+        events.write("lookup", role=role, level=level, round=-1, names=names, new=names, required=True,
+                     **{k: v for k, v in (tags or {}).items() if k in ("thread", "approach", "mode")})
+    return names, text, meta

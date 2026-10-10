@@ -156,10 +156,27 @@ def _rule_change(check, retriever, level, enrich, fragment_note):
         m = re.search(r"(?:(nl|nisa|language|isa|NkiTensor)\.)?(\w+)\(\)", err)
         fn = m.group(2) if m else None
         names = ([f"tile.{fn}"] if m and m.group(1) == "NkiTensor" else retriever.find(fn) if fn else [])
+        # Each of Python's messages gets an edit, not a description: on seat-35 the generic "call it with
+        # its real signature" came back as the same kernel (agent2-v3-l1-1010-2153).
         change = "Call it with exactly the arguments of its real signature, shown below, each one once."
         kw = re.search(r"unexpected keyword argument '(\w+)'", err)
+        twice = re.search(r"multiple values for (?:keyword )?argument '(\w+)'", err)
+        missing = re.search(r"missing (?:\d+ required (?:positional |keyword-only )?arguments?|a required "
+                            r"argument): (.+)", err)
+        extra = re.search(r"takes \d+ positional arguments? but \d+ (?:were|was) given|too many positional", err)
         if kw:
             change = f"Remove the `{kw.group(1)}=` argument; the real signature is below."
+        elif twice:
+            x = twice.group(1)
+            change = (f"`{x}` is given twice: once by position and once as `{x}=`. Pass it only once; the "
+                      f"real signature is below.")
+        elif missing:
+            args = re.findall(r"'(\w+)'", missing.group(1))
+            change = (f"Add the missing argument{'s' if len(args) > 1 else ''} "
+                      f"{', '.join(f'`{x}=`' for x in args)}; the real signature is below.")
+        elif extra:
+            change = ("It is given more positional arguments than it takes. Pass each argument by name "
+                      "(name=value), as in the real signature below.")
         if kw and kw.group(1) in ("dst", "src") and any(n.startswith("nl.") for n in names):
             # Measured on seat-35: nl.copy(dst=..., src=...) for nisa.tensor_copy, 5 checks running.
             # The nl functions return a new tile; the nisa ones write into dst=.
@@ -220,7 +237,11 @@ def _rule_change(check, retriever, level, enrich, fragment_note):
             return dict(cause=err, names=["nisa.nc_matmul"] if kind == "MATMUL_SHAPE" else [],
                         example=example, change=advice)
         return None
-    if kind in ("WRONG_SHAPE", "NONFINITE", "ZEROS", "PARTIAL", "INPUT_MODIFIED", "HW_HAZARD"):
-        # describe_mismatch already says what to do for these; it was written as an instruction.
+    if kind == "INPUT_MODIFIED":
+        # nkibench's message is an edit: allocate a new output and return that.
         return dict(cause=err.split(". ")[0], names=[], example="", change=err)
-    return None                             # VALUES, OTHER, LOAD: the model looks at the kernel
+    # WRONG_SHAPE, NONFINITE, ZEROS, PARTIAL, HW_HAZARD, VALUES, OTHER, LOAD: the model looks at the
+    # kernel. nkibench's messages for the first five say what is wrong, not which line to edit; passed on
+    # as the change, WRONG_SHAPE and NONFINITE came back as the same kernel (agent2-v3-l1-1010-2153).
+    # The debugger's model sees the message and names a line.
+    return None

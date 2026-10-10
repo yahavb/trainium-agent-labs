@@ -55,6 +55,9 @@ def parse_args(argv=None):
     ap.add_argument("--cards", choices=("checked", "introspect"), default="checked",
                     help="checked: the cheat-sheet and agents2/cards.md cards first (default); "
                          "introspect: signatures and docstrings only, as in the first runs")
+    ap.add_argument("--no-docs-request", action="store_true",
+                    help="the planner's first call plans straight away instead of first choosing the "
+                         "documentation it needs (offered, a lookup was never taken: 0 in 39 calls)")
     ap.add_argument("--no-lookup", action="store_true",
                     help="roles may not LOOKUP documentation: the problem statement and the index only")
     ap.add_argument("--aws-docs", action="store_true",
@@ -138,23 +141,26 @@ def dry_run(cfg, levels, a):
     from agents2.planner import Planner
     tokens = Tokens(cfg.roles["planner"].model)
     retr = Retriever(aws_docs=cfg.aws_docs, cards=a.cards == "checked")
-    shown = {}
+    shown = []
 
     class Capture:
+        """Records each prompt and answers with nothing, so every step of a role's first prompts runs."""
         context = {}
 
         def chat(self, role, sections, tags=None, temperature=None, max_tokens=None):
             text, report = pack(sections, cfg.roles[role].prompt_cap, tokens.count)
-            shown[role] = (text, report)
-            return "", dict(role=role, error="dry run")
+            step = (tags or {}).get("step")
+            shown.append((role + (f" ({step})" if step else ""), text, report))
+            return "", dict(role=role, error=None)
 
     for level in levels:
+        shown.clear()
         led = Ledger(level, 0)
         Planner(Capture(), retr, cfg).plan(level, led)
         plan = Plan(approach="(example plan)", calls=["nl.sum", "nisa.tensor_scalar", "tile.permute"])
         Coder(Capture(), retr, cfg, agent.extract_code).write(level, plan, led)
-        for role, (text, report) in shown.items():
-            print(f"\n======== level {level} {role}: ~{report['prompt_tokens_est']} tokens "
+        for label, text, report in shown:
+            print(f"\n======== level {level} {label}: ~{report['prompt_tokens_est']} tokens "
                   f"({tokens.how}); sections {report['sections']}; dropped {report['dropped']}")
             print(text)
     return 0
@@ -197,7 +203,7 @@ def main(argv=None):
                   f"T={r.temperature} top_p={r.top_p} max_out={r.max_tokens}")
     print(f"lookup rounds {cfg.lookup}")
     print(f"threads {cfg.threads}, approaches {cfg.max_approaches}, hint {cfg.hint}, "
-          f"skeleton {cfg.skeleton}, cards {a.cards} "
+          f"skeleton {cfg.skeleton}, docs request {cfg.docs_request}, cards {a.cards} "
           f"({len(retr.card_text)}), aws-docs {cfg.aws_docs}, tokens: {tokens.how}, nki {retr.version}"
           f"\nlog: {tag}/")
 
