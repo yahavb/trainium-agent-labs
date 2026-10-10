@@ -1,0 +1,241 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 3 ################
+
+=========== level 1: average pooling 2D ===========
+round 0: this round 0.30  best so far 0.30  (54.7s)
+  0 of 6 checks passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=4, dst=16384 The tile you allocated holds 16384 elements but you copied 4 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a bigger tensor,
+round 1: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+round 2: this round 0.30  best so far 0.30  (49.1s)
+  0 of 6 checks passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: nc_matmul() got an unexpected keyword argument 'transpose_moving' Remove the `transpose_moving=` argument. The real signature is isa.nc_matmul(dst: 'NkiTensor', stationary: 'NkiTensor', moving: 'NkiTensor', is_stationary_onezero=False, is_moving_onezero=False, is_transpose=False, accumulate=None, tile_position=(), tile_size=(), 
+round 3: this round 0.30  best so far 0.30  (49.2s)
+  0 of 6 checks passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: dst must be in ['psum'], got sbuf Allocate the `dst` tile with buffer=nl.psum instead of nl.sbuf. For nisa.nc_matmul: dst must be in nl.psum, and stationary and moving must both be in nl.sbuf. Copy between them with nisa.tensor_copy.
+round 4: this round 0.30  best so far 0.30  (51.7s)
+  0 of 6 checks passed. On C,H,W=(32, 32, 32) pool=2: raised AttributeError: module 'nki.isa' has no attribute 'multiply' `nki.isa` has no `multiply`, and nothing similar exists. Its real names include: NkiInstruction, NkiValidationError, VirtualRegister, activate2, activation, activation_reduce, affine_select, bn_aggr, bn_stats, core_barrier, dge_mode, dma_compute, dma_copy, dma_engine, dma_transpo
+round 5: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 4 failed attempts to break the repeat
+round 6: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 4 failed attempts to break the repeat
+round 7: same failure again (0.30, best so far 0.30)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 6 checks passed. On C,H,W=(32, 32, 32) pool=2: raised AttributeError: module 'nki.isa' has no attribute '
+    2x  0 of 6 checks passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: dma_copy requires src and dst to ha
+    1x  0 of 6 checks passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: nc_matmul() got an unexpected keyword ar
+    1x  0 of 6 checks passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: dst must be in ['psum'], got sbuf A
+
+=========== level 2: 2D transpose ===========
+round 0: this round 1.00  best so far 1.00  (62.7s)
+  Correct on every shape.
+  SOLVED on round 0. Correct on every shape.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def tensor_transpose2D_kernel_(x, shape2D):
+      P, F = x.shape
+      F1, F2 = shape2D
+      assert F1 * F2 == F, f"shape2D {shape2D} does not match the free size {F}"
+    
+      # Allocate output buffer in shared HBM
+      out = nl.ndarray((P, F), dtype=x.dtype, buffer=nl.shared_hbm)
+    
+      # Allocate SBUF for data
+      sbuf = nl.ndarray((P, F1, F2), dtype=x.dtype, buffer=nl.sbuf)
+    
+      # Copy input to SBUF
+      nisa.dma_copy(dst=sbuf, src=x)
+    
+      # Transpose in SBUF
+      for i in nl.affine_range(P):
+          for j in nl.affine_range(F1):
+              for k in nl.affine_range(F2):
+                  out[i, k * F1 + j] = sbuf[i, j, k]
+    
+      return out
+  -------------------------------------------
+
+=========== level 3: matmul, single tile ===========
+round 0: this round 0.30  best so far 0.30  (56.0s)
+  0 of 4 checks passed. On K=128 M=64 N=512: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=32768 The tile you allocated holds 32768 elements but you copied 8192 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a bigger tensor, wr
+round 1: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+round 2: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 1 failed attempts to break the repeat
+round 3: same failure again (0.30, best so far 0.30)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 4 checks passed. On K=128 M=64 N=512: raised AssertionError: dma_copy requires src and dst to have the sa
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.83  best so far 0.83  (82.1s)
+  8 of 12 checks passed. On K=256 M=256 N=1024: raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 A tile may have at most 128 rows, and you asked for 256. Do not allocate one tile for the whole tensor: loop over the partition dimension in chunks of at most 128 with nl.affine_range, allocate the tile inside the loop with the chunk's own size, and copy one chunk at a time
+round 1: same failure again (0.83, best so far 0.83)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+round 2: same failure again (0.83, best so far 0.83)
+  same failure 3x — adding a ledger of 1 failed attempts to break the repeat
+round 3: same failure again (0.83, best so far 0.83)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  8 of 12 checks passed. On K=256 M=256 N=1024: raised AssertionError: dma_copy dst partition dimension 256 exce
+
+=========== summary ===========
+  level 1  reward 0.30 after 8 round(s)
+  level 2  reward 1.00 after 1 round(s)  SOLVED
+  level 3  reward 0.30 after 4 round(s)
+  level 4  reward 0.83 after 4 round(s)
+  solved 1/4
+
+################ run 2 of 3 ################
+
+=========== level 1: average pooling 2D ===========
+round 0: this round 0.30  best so far 0.30  (53.5s)
+  0 of 6 checks passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=4, dst=16384 The tile you allocated holds 16384 elements but you copied 4 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a bigger tensor,
+round 1: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+round 2: this round 0.30  best so far 0.30  (49.2s)
+  0 of 6 checks passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: nc_matmul() got an unexpected keyword argument 'transpose_moving' Remove the `transpose_moving=` argument. The real signature is isa.nc_matmul(dst: 'NkiTensor', stationary: 'NkiTensor', moving: 'NkiTensor', is_stationary_onezero=False, is_moving_onezero=False, is_transpose=False, accumulate=None, tile_position=(), tile_size=(), 
+round 3: this round 0.30  best so far 0.30  (49.2s)
+  0 of 6 checks passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: dst must be in ['psum'], got sbuf Allocate the `dst` tile with buffer=nl.psum instead of nl.sbuf. For nisa.nc_matmul: dst must be in nl.psum, and stationary and moving must both be in nl.sbuf. Copy between them with nisa.tensor_copy.
+round 4: this round 0.30  best so far 0.30  (51.7s)
+  0 of 6 checks passed. On C,H,W=(32, 32, 32) pool=2: raised AttributeError: module 'nki.isa' has no attribute 'multiply' `nki.isa` has no `multiply`, and nothing similar exists. Its real names include: NkiInstruction, NkiValidationError, VirtualRegister, activate2, activation, activation_reduce, affine_select, bn_aggr, bn_stats, core_barrier, dge_mode, dma_compute, dma_copy, dma_engine, dma_transpo
+round 5: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 4 failed attempts to break the repeat
+round 6: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 4 failed attempts to break the repeat
+round 7: same failure again (0.30, best so far 0.30)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 6 checks passed. On C,H,W=(32, 32, 32) pool=2: raised AttributeError: module 'nki.isa' has no attribute '
+    2x  0 of 6 checks passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: dma_copy requires src and dst to ha
+    1x  0 of 6 checks passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: nc_matmul() got an unexpected keyword ar
+    1x  0 of 6 checks passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: dst must be in ['psum'], got sbuf A
+
+=========== level 2: 2D transpose ===========
+round 0: this round 0.30  best so far 0.30  (51.3s)
+  0 of 8 checks passed. On shape=(32, 12) as 3x4: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=512 The tile you allocated holds 512 elements but you copied 384 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a bigger tensor, wri
+round 1: this round 0.30  best so far 0.30  (46.9s)
+  0 of 8 checks passed. On shape=(32, 12) as 3x4: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=12 The tile you allocated holds 12 elements but you copied 384 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a bigger tensor, write
+round 2: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 2 failed attempts to break the repeat
+round 3: this round 0.30  best so far 0.30  (49.2s)
+  0 of 8 checks passed. On shape=(32, 12) as 3x4: raised AssertionError: Out-of-bound access for tensor `unnamed` on dimension 0: index 3 exceed dimension size of 3.
+round 4: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 3 failed attempts to break the repeat
+round 5: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 3 failed attempts to break the repeat
+round 6: same failure again (0.30, best so far 0.30)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 8 checks passed. On shape=(32, 12) as 3x4: raised AssertionError: Out-of-bound access for tensor `unnamed
+    2x  0 of 8 checks passed. On shape=(32, 12) as 3x4: raised AssertionError: dma_copy requires src and dst to have t
+    1x  0 of 8 checks passed. On shape=(32, 12) as 3x4: raised AssertionError: dma_copy requires src and dst to have t
+
+=========== level 3: matmul, single tile ===========
+round 0: this round 0.30  best so far 0.30  (57.7s)
+  0 of 4 checks passed. On K=128 M=64 N=512: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=65536 The tile you allocated holds 65536 elements but you copied 8192 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a bigger tensor, wr
+round 1: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+round 2: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 1 failed attempts to break the repeat
+round 3: same failure again (0.30, best so far 0.30)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 4 checks passed. On K=128 M=64 N=512: raised AssertionError: dma_copy requires src and dst to have the sa
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.83  best so far 0.83  (78.0s)
+  8 of 12 checks passed. On K=256 M=256 N=1024: raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 A tile may have at most 128 rows, and you asked for 256. Do not allocate one tile for the whole tensor: loop over the partition dimension in chunks of at most 128 with nl.affine_range, allocate the tile inside the loop with the chunk's own size, and copy one chunk at a time
+round 1: same failure again (0.83, best so far 0.83)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+round 2: same failure again (0.83, best so far 0.83)
+  same failure 3x — adding a ledger of 1 failed attempts to break the repeat
+round 3: same failure again (0.83, best so far 0.83)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  8 of 12 checks passed. On K=256 M=256 N=1024: raised AssertionError: dma_copy dst partition dimension 256 exce
+
+=========== summary ===========
+  level 1  reward 0.30 after 8 round(s)
+  level 2  reward 0.30 after 7 round(s)
+  level 3  reward 0.30 after 4 round(s)
+  level 4  reward 0.83 after 4 round(s)
+  solved 0/4
+
+################ run 3 of 3 ################
+
+=========== level 1: average pooling 2D ===========
+round 0: this round 0.30  best so far 0.30  (53.5s)
+  0 of 6 checks passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=4, dst=16384 The tile you allocated holds 16384 elements but you copied 4 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a bigger tensor,
+round 1: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+round 2: this round 0.30  best so far 0.30  (49.2s)
+  0 of 6 checks passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: nc_matmul() got an unexpected keyword argument 'transpose_moving' Remove the `transpose_moving=` argument. The real signature is isa.nc_matmul(dst: 'NkiTensor', stationary: 'NkiTensor', moving: 'NkiTensor', is_stationary_onezero=False, is_moving_onezero=False, is_transpose=False, accumulate=None, tile_position=(), tile_size=(), 
+round 3: this round 0.30  best so far 0.30  (49.2s)
+  0 of 6 checks passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: dst must be in ['psum'], got sbuf Allocate the `dst` tile with buffer=nl.psum instead of nl.sbuf. For nisa.nc_matmul: dst must be in nl.psum, and stationary and moving must both be in nl.sbuf. Copy between them with nisa.tensor_copy.
+round 4: this round 0.30  best so far 0.30  (51.7s)
+  0 of 6 checks passed. On C,H,W=(32, 32, 32) pool=2: raised AttributeError: module 'nki.isa' has no attribute 'multiply' `nki.isa` has no `multiply`, and nothing similar exists. Its real names include: NkiInstruction, NkiValidationError, VirtualRegister, activate2, activation, activation_reduce, affine_select, bn_aggr, bn_stats, core_barrier, dge_mode, dma_compute, dma_copy, dma_engine, dma_transpo
+round 5: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 4 failed attempts to break the repeat
+round 6: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 4 failed attempts to break the repeat
+round 7: same failure again (0.30, best so far 0.30)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 6 checks passed. On C,H,W=(32, 32, 32) pool=2: raised AttributeError: module 'nki.isa' has no attribute '
+    2x  0 of 6 checks passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: dma_copy requires src and dst to ha
+    1x  0 of 6 checks passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: nc_matmul() got an unexpected keyword ar
+    1x  0 of 6 checks passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: dst must be in ['psum'], got sbuf A
+
+=========== level 2: 2D transpose ===========
+round 0: this round 0.30  best so far 0.30  (53.5s)
+  0 of 8 checks passed. On shape=(32, 12) as 3x4: raised ValueError: shape mismatch: value array of shape (12,) could not be broadcast to indexing result of shape (1536,) You assigned 12 elements into a slice that holds 1536. Assignment does not reshape or broadcast either: the slice on the left and the value on the right must have the SAME shape. If the value is bigger, you are writing a whole tile
+round 1: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+round 2: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 1 failed attempts to break the repeat
+round 3: same failure again (0.30, best so far 0.30)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 8 checks passed. On shape=(32, 12) as 3x4: raised ValueError: shape mismatch: value array of shape (12,) 
+
+=========== level 3: matmul, single tile ===========
+round 0: this round 0.30  best so far 0.30  (57.6s)
+  0 of 4 checks passed. On K=128 M=64 N=512: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=65536 The tile you allocated holds 65536 elements but you copied 8192 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a bigger tensor, wr
+round 1: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+round 2: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 1 failed attempts to break the repeat
+round 3: same failure again (0.30, best so far 0.30)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 4 checks passed. On K=128 M=64 N=512: raised AssertionError: dma_copy requires src and dst to have the sa
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.30  best so far 0.30  (77.5s)
+  0 of 5 checks passed. On K=128 M=128 N=512: raised ValueError: shape mismatch: value array of shape (65536,) could not be broadcast to indexing result of shape (16384,) You assigned 65536 elements into a slice that holds 16384. Assignment does not reshape or broadcast either: the slice on the left and the value on the right must have the SAME shape. If the value is bigger, you are writing a whole 
+round 1: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+round 2: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 1 failed attempts to break the repeat
+round 3: this round 0.30  best so far 0.30  (58.2s)
+  0 of 5 checks passed. On K=128 M=128 N=512: raised AssertionError: tensor_copy dst must be in ['sbuf', 'psum'], got shared_hbm `nisa.tensor_copy` only moves data between on-chip buffers, sbuf and psum. To reach HBM -- the tensor you allocated with buffer=nl.shared_hbm and will return -- use nisa.dma_copy instead. The usual sequence is nc_matmul into psum, tensor_copy psum to sbuf, then dma_copy sb
+round 4: this round 0.83  best so far 0.83  (64.1s)
+  8 of 12 checks passed. On K=256 M=256 N=1024: raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 A tile may have at most 128 rows, and you asked for 256. Do not allocate one tile for the whole tensor: loop over the partition dimension in chunks of at most 128 with nl.affine_range, allocate the tile inside the loop with the chunk's own size, and copy one chunk at a time
+round 5: same failure again (0.83, best so far 0.83)
+  same failure 2x — adding a ledger of 3 failed attempts to break the repeat
+round 6: this round 0.30  best so far 0.83  (58.5s)
+  0 of 5 checks passed. On K=128 M=128 N=512: raised AssertionError: dma_copy requires HBM or SBUF tensors, got src=MemoryRegion.psum, dst=MemoryRegion.shared_hbm
+round 7: same failure again (0.30, best so far 0.83)
+  same failure 2x — adding a ledger of 4 failed attempts to break the repeat
+  not solved in 8 rounds; best reward 0.83
+
+=========== summary ===========
+  level 1  reward 0.30 after 8 round(s)
+  level 2  reward 0.30 after 4 round(s)
+  level 3  reward 0.30 after 4 round(s)
+  level 4  reward 0.83 after 8 round(s)
+  solved 0/4
+
+=========== over 3 runs ===========
+  level 1: solved 0/3  best 0.30  worst 0.30  mean 0.30  all=[0.3, 0.3, 0.3]
+  level 2: solved 1/3  best 1.00  worst 0.30  mean 0.53  all=[1.0, 0.3, 0.3]
+  level 3: solved 0/3  best 0.30  worst 0.30  mean 0.30  all=[0.3, 0.3, 0.3]
+  level 4: solved 0/3  best 0.83  worst 0.83  mean 0.83  all=[0.83, 0.83, 0.83]
+
+  Report the rate, not your best run. A level that solves 1 in 3 times is not solved.
+
+attempts logged to attempts.jsonl
