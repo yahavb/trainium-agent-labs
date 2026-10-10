@@ -13,8 +13,11 @@ by telling everyone.
 
 ## P1: `referee-timing` (critical path: the 13:30 gate)
 
-1. **Timing.** Get one `@nki.jit` kernel timed on cores 0-1 (`NEURON_RT_VISIBLE_CORES=0,1`) while vLLM runs on 2-3.
-   Try `CompiledKernel.benchmark()` (README section 1), then `neuron-profile`. Exclude compile time and host transfer.
+1. **Timing.** DONE in `timing.py`. Measured on seat-100: **vLLM holds logical cores 0-1, not 2-3**; kernels
+   time on core 2 (or 3). Device-side timing via `SpikeModel.benchmark(mode="device")`; compile ~2 s per kernel;
+   noise 0.0-0.2% at Qwen3 shapes; vLLM under load on 0-1 changes core-2 timings by 0.0%. Host-side timing reads
+   ~3x the true kernel time on small kernels, so never time from Python. Fixed launch cost ~17 us, so time at
+   Qwen3 sizes, not toy sizes.
 2. **Prove the timer.** A kernel doing 2x the work must take ~2x the time; an empty kernel gives the overhead floor.
 3. **Noise.** Time `reference_level4.py` 20x after 3 warm-ups. Record the median and the spread. Gate: under ~5%.
 4. **`speedcheck.py`.** Rules -> simulator correctness -> **chip correctness** -> timing interleaved with the baseline
