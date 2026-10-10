@@ -317,6 +317,10 @@ def lint_kernel(source):
         if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
             t = node.targets[0].id
             dims = shape.get(t) if where.get(t) in ("sbuf", "psum") else None
+            if dims and len(dims) == 1:
+                issues.append(f"{at(node)} -- {t} is 1-D; an sbuf/psum tile needs at least 2 dimensions "
+                              f"(partition, free). For one value per row use shape (rows, 1); for a plain "
+                              f"constant such as 1/sqrt(d), use a Python float (operand0=scale), not a tile.")
             if dims and size(dims[0]).isdigit() and int(size(dims[0])) > 128:
                 issues.append(f"{at(node)} -- {t} has {size(dims[0])} rows; an on-chip tile has at most 128 "
                               f"(the first axis is the partition axis). Split it into 128-row tiles in a loop.")
