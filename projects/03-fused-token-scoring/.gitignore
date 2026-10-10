@@ -1,0 +1,7 @@
+__pycache__/
+build/
+*.neff
+*.ntff
+*.log
+presentations/
+/presentation/

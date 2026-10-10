@@ -1,0 +1,3 @@
+# Host helpers only. NKI/nrtpy/nkilib come from the workshop Neuron image.
+numpy==2.4.6
+ml_dtypes==0.6.0

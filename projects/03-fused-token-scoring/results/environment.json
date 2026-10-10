@@ -1,0 +1,25 @@
+{
+  "timestamp_utc": "2026-10-10T19:36:32.398061+00:00",
+  "pod": "seat-256",
+  "python": "3.13.7",
+  "nki": "0.6.0+31049202112.g85070674",
+  "packages": {
+    "neuronx-cc": "2.27.5334.0+f702b353",
+    "numpy": "2.4.6",
+    "torch": "2.11.0",
+    "ml_dtypes": "0.6.0"
+  },
+  "visible_cores": "0,1",
+  "lnc": "2",
+  "neuron_ls": "instance-type: trn2.48xlarge\ninstance-id: i-0494ce29a8e0101d2\nlogical-neuroncore-config: 2\n+--------+--------+----------+--------+-------------+--------------+-------------+------+\n| NEURON | NEURON |  NEURON  | NEURON |  CONNECTED  |     PCI      |     CPU     | NUMA |\n| DEVICE | CORES  | CORE IDS | MEMORY |   DEVICES   |     BDF      |  AFFINITY   | NODE |\n+--------+--------+----------+--------+-------------+--------------+-------------+------+\n| 0      | 4      | 0-3      | 96 GB  | 6, 11, 3, 4 | 0000:6e:00.0 | 0-47,96-143 | 0    |\n+--------+--------+----------+--------+-------------+--------------+-------------+------+\n",
+  "aws_cross_entropy_sha256": "c1320cf468abc4809c4e5cf776218cb5e69714eb775b0c3d767bc468f7c10632",
+  "source_sha256": {
+    "kernel.py": "31cda61832d26283cb63650e8a56e90013e0ba27192e46e0b9b2f92b3f785b2f",
+    "benchmark.py": "d439e059de38ad54e42e0a1c370b1783eee3a6d1fd09d7a316fd54a7b888f6ed",
+    "baseline.py": "cda60dd74a3f303f46f57867f95133d6a7424714b779baaa76eda200ff794938",
+    "runtime.py": "ec1c6ec10bb4c34f843d0bbff3e258f6a8910919400347c9f25a478dbd365526",
+    "reference.py": "bd46b1230050f696b63a3ebd39f3fc8a8ba23df67ae06abff517c3b7c71d9269",
+    "audit_results.py": "446c94a094497a425aae29d1e6816498b34a9284b57fe5293a4c9208b01ca675",
+    "validate.py": "6ffdf4ed37887fda304696e4775ce1fe4ecf79ab91fc909713f6bb696ea83c67"
+  }
+}
