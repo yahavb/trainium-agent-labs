@@ -55,6 +55,31 @@ def first_failure(ev):
                 ev.get("feedback") or "")
 
 
+def enrich_feedback(text):
+    """Turn the two walls this simulator raised in the pilot into instructions.
+
+    Measured in the pilot: given the raw exception ("partition dimension 256 exceeds maximum
+    128"), the model abandoned the approach entirely and tried something else (PSUM straight to
+    HBM), which failed differently. The repo's recurring lesson applies: a verdict is not an
+    instruction. These translations name the one change, like agent.py's enrich() does for the
+    general agent.
+    """
+    m = re.search(r"dma_copy (\w+) partition dimension (\d+) exceeds maximum (\d+)", text)
+    if m:
+        which, got, mx = m.group(1), int(m.group(2)), int(m.group(3))
+        return (text + f" A tile's FIRST dimension is the partition dimension and holds at most "
+                f"{mx} rows, but this allocation asked for {got}. Do not allocate one cache "
+                f"shaped [K, ...] when K > {mx}. Keep all K rows resident by stacking k-chunks "
+                f"along the free (second) dimension: one cache shaped [128, k_tiles * M], loaded "
+                f"chunk by chunk with dma_copy(dst=cache[:, kk*M:(kk+1)*M], "
+                f"src=lhsT[kk*128:(kk+1)*128, :]), and sliced for the matmul as "
+                f"cache[:, kk*M + m0*128 : kk*M + (m0+1)*128].")
+    if "requires HBM or SBUF tensors" in text and "psum" in text:
+        return (text + " PSUM cannot be copied to HBM directly. Copy PSUM to SBUF with "
+                "nisa.tensor_copy, then SBUF to HBM with nisa.dma_copy.")
+    return text
+
+
 # ---------------------------------------------------------------- token accounting
 
 class TokenCounter:
@@ -467,7 +492,7 @@ def run_once(a, level, out_dir, rng, counter, opt_seeds):
                 promising.sort(key=lambda c: (c["ev"]["worst_waste"] is None,
                                               c["ev"]["worst_waste"] or 0.0))
                 best = promising[0]
-                fb = first_failure(best["ev"])
+                fb = enrich_feedback(first_failure(best["ev"]))
                 pending = dict(source=best["src"], feedback=fb, arm=arm,
                                remaining=2, worst_waste=best["ev"]["worst_waste"])
                 last_failure = compact(fb, 220)

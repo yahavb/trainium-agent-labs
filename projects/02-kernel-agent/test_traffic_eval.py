@@ -217,6 +217,17 @@ class PopulationTests(unittest.TestCase):
 class RewardTests(unittest.TestCase):
     """The loop's reward and stopping rule, exercised on synthetic evaluations."""
 
+    def test_feedback_enrichment_translates_the_partition_wall(self):
+        import traffic_agent
+        raw = "raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128"
+        msg = traffic_agent.enrich_feedback(raw)
+        self.assertIn("free (second) dimension", msg)
+        self.assertIn("[128, k_tiles * M]", msg)
+        psum = "raised AssertionError: dma_copy requires HBM or SBUF tensors, got " \
+               "src=MemoryRegion.psum, dst=MemoryRegion.shared_hbm"
+        msg2 = traffic_agent.enrich_feedback(psum)
+        self.assertIn("nisa.tensor_copy", msg2)
+
     @staticmethod
     def _ev(bytes_, floor, checks_ok=True, accepted=False, worst=1.0):
         checks = dict(inputs_ok=checks_ok, numerics_ok=checks_ok, hazard_ok=checks_ok,

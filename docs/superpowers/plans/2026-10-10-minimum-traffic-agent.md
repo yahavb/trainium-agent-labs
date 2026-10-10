@@ -224,14 +224,18 @@ For each independent run (fresh bandit table, empty memory, population = {seed})
 ## 9. Task 4 — drive down bytes (hour 3–4.5)
 
 - [x] Before round 1, write and run a clearly labelled probe kernel (human-authored, excluded from agent success counts) that allocates the largest resident layout and slices it as `nc_matmul` operands. If the simulator or compiler rejects it, move retain-one ahead of retain-both in the strategy menu before spending model rounds. **Result: PASSED — every shape exactly at the byte floor in simulation (see `probe_resident_layout_result.json`); retain_both stays first-class.**
-- [ ] Launch a short pilot using the supplied correct kernel. The following is the planned CLI after Task 3, not an existing command:
+- [x] Launch a short pilot using the supplied correct kernel. The following is the planned CLI after Task 3, not an existing command:
 
 ```bash
 python traffic_agent.py --seed-kernel reference_level4.py --rounds 6 --samples 2 --repeat 1 --context 8192 --max-tokens 3000 --cases traffic_cases.json --population-size 3 --memory-k 6 --learning on --output runs/traffic/pilot
 ```
 
-- [ ] Prefer retaining both inputs when the resource estimate permits; send actual failure feedback if the compiler/simulator rejects the layout. Next try retaining one complete input plus streaming blocks.
-- [ ] If the model repeatedly damages arithmetic, narrow the edit to allocations, input loads, and loop placement; preserve the original matmul and final store pattern. Log changes to prompts and restart independent evaluation after tuning.
+**Pilot result (Qwen3-8B, 6 rounds x 2 samples):** round 1 produced a "load both inputs once" kernel that measured **exactly 1.00x on the one shape where its [K, M] SBUF allocation is legal** and raised `partition dimension 256 exceeds maximum 128` on the rest. The raw exception caused the next attempt to abandon the approach (PSUM straight to HBM, a different failure). No valid improvement yet; seed fallback held. This is the repo's recurring lesson in the wild: the raw verdict is not an instruction, so `enrich_feedback()` now names the one change (partition wall and PSUM->HBM wall).
+
+- [x] Prefer retaining both inputs when the resource estimate permits; send actual failure feedback if the compiler/simulator rejects the layout. Next try retaining one complete input plus streaming blocks.
+- [x] If the model repeatedly damages arithmetic, narrow the edit to allocations, input loads, and loop placement; preserve the original matmul and final store pattern. Log changes to prompts and restart independent evaluation after tuning.
+
+**Tuning log:** `enrich_feedback()` added to `traffic_agent.py` — simulation exceptions are translated into one named change (partition-dimension wall; PSUM->HBM wall). Prompt layout otherwise unchanged; the recipe appears only in repair feedback, never in generation prompts.
 - [ ] Maintain a fallback with a measured improvement even if the floor remains unreached. Do not replace a verified result with an unverified lower byte estimate.
 - [ ] Freeze controller, prompts, checker, bandit parameters, memory cap, and population size by hour 4.5. The remaining time belongs to verification and evidence.
 
