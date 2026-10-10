@@ -339,7 +339,7 @@ stack five programmers tend to lose these.
 | # | project | status |
 |---|---|---|
 | **1** | [**The heat-rod agent**](projects/01-heat-rod-pde/) — a small model solves heat-equation problems under a checker that grades the physics, with a calculator it aims itself. | **solved 6/6** |
-| **2** | [**The kernel agent**](projects/02-kernel-agent/) — an agent writes NKI kernels that run on the chip and keeps verifying its own output. | runs; **unsolved** |
+| **2** | [**The kernel agent**](projects/02-kernel-agent/) — an agent writes NKI kernels that run on the chip and keeps verifying its own output. | **levels 5–7 cleared** at the 1.00x floor by the menu-guided agent (simulator-verified); see the project README |
 
 Both project READMEs open with a real transcript of what the loop prints, so you can judge a project — and
 tell progress from flailing — before starting.
