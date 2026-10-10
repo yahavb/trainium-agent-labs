@@ -17,6 +17,9 @@ def main():
     parser.add_argument('--think', action='store_true')
     parser.add_argument('--max-tokens', type=int, default=2500)
     parser.add_argument('--label', default='full_feedback_and_repair_controller_pilot')
+    parser.add_argument('--agent-file', default='experimental_agent.py')
+    parser.add_argument('--samples', type=int, default=1)
+    parser.add_argument('--budget', type=int, default=8)
     a = parser.parse_args()
     root = Path(a.root).resolve() / 'projects/03-chipboost'
     out = Path(a.out).resolve()
@@ -28,15 +31,15 @@ def main():
     sys.path.insert(0, str(root))
     import speedcheck as sc
     import schema
-    spec = importlib.util.spec_from_file_location('experimental_agent', root/'experimental_agent.py')
+    spec = importlib.util.spec_from_file_location('pilot_agent', root/a.agent_file)
     agent = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(agent)
     baseline = root.parent/'02-kernel-agent/reference_level4.py'
-    state = dict(phase='acceptance', pid=os.getpid(), core=a.core, budget=8,
+    state = dict(phase='acceptance', pid=os.getpid(), core=a.core, budget=a.budget, samples=a.samples,
                  treatment=a.label, think=a.think, max_tokens=a.max_tokens,
                  warning='Exploratory multi-change treatment; not DMA-only v2 or original comparison',
                  model='Qwen/Qwen3-8B', sources={str(p.relative_to(root.parent)):hashlib.sha256(p.read_bytes()).hexdigest()
-                 for p in (root/'speedcheck.py', root/'experimental_agent.py', baseline,
+                 for p in (root/'speedcheck.py', root/a.agent_file, baseline,
                            root.parent/'02-kernel-agent/agent.py', root.parent/'02-kernel-agent/nkibench.py',
                            root/'schema.py')})
     def save():
@@ -65,8 +68,8 @@ def main():
             agent.pick_referee = lambda: ('speedcheck exploratory pilot', bridge)
             state.update(phase='running', worker_pid=worker._p.pid)
             save()
-            sys.argv = ['experimental_agent.py', '--arm', 'referee', '--budget', '8', '--repeat', '1',
-                        '--samples', '1', '--give-up-after', '0', '--start', str(baseline),
+            sys.argv = [a.agent_file, '--arm', 'referee', '--budget', str(a.budget), '--repeat', '1',
+                        '--samples', str(a.samples), '--give-up-after', '0', '--start', str(baseline),
                         '--base', 'http://localhost:8000/v1', '--model', state['model'],
                         '--max-tokens', str(a.max_tokens), '--context', '8192', '--seat', '100',
                         '--log', str(out/'pilot.jsonl')]
@@ -74,9 +77,9 @@ def main():
                 sys.argv.append('--think')
             agent.main()
             rows=[json.loads(line) for line in (out/'pilot.jsonl').read_text().splitlines() if line.strip()]
-            assert len(rows)==8 and all(not schema.validate(r) for r in rows)
+            assert len(rows)==a.budget and all(not schema.validate(r) for r in rows)
             assert not bridge.pending_start
-            assert [r['attempt_no'] for r in rows]==list(range(1,9))
+            assert [r['attempt_no'] for r in rows]==list(range(1,a.budget+1))
             assert all(r['arm']=='referee' for r in rows)
             state.update(phase='complete', attempts=len(rows),
                          faster=sum(r['verdict']=='faster' for r in rows),

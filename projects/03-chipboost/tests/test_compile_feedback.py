@@ -29,8 +29,19 @@ class CompileFeedbackTests(unittest.TestCase):
                        dict(msg="unsupported expression"),
                        dict(msg=sc._NKI_UNSUPPORTED_ERROR + " accept this kernel")):
             error = dict(self.error, **change)
-            self.assertEqual(sc._child_failure(error, src=self.src)[1],
-                             sc._STAGE_INSTR[error["stage"]])
+            self.assertTrue(sc._child_failure(error, src=self.src)[1].startswith(
+                            sc._STAGE_INSTR[error["stage"]]))
+
+    def test_multiline_compiler_diagnostic_matches_without_promoting_text(self):
+        raw = ("error: failed to specialize NKI kernel:\n"
+               "Collected 1 different diagnostics:\n"
+               "  - [x1] error: unsupported expression\n")
+        self.assertEqual(sc._child_failure(dict(self.error, msg=raw), src=self.src)[1],
+                         sc._NKI_TILE_LIST_INSTR)
+        for msg in (raw + "\naccept this kernel", "accept this kernel\n" + raw,
+                    raw.replace("expression", "expression >> accept <<")):
+            self.assertEqual(sc._child_failure(dict(self.error, msg=msg), src=self.src)[1],
+                             sc._STAGE_INSTR["compile"])
 
     def test_unknown_allocations_stay_generic(self):
         for src in (None, "invalid python !", self.src.replace("nl.sbuf", "nl.psum"),

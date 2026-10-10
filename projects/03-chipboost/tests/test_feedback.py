@@ -58,6 +58,16 @@ class FeedbackTests(unittest.TestCase):
                 self.assertIn("distinct SBUF slots", text)
                 self.assertIn("Keep the k contraction loop", text)
                 self.assertNotIn("innermost loop", text)
+                self.assertNotIn("existing lhsT reuse", text)
+
+    def test_single_n_tile_is_not_evidence_of_hoisted_lhs(self):
+        args = [np.empty((256, 512), np.float16), np.empty((256, 512), np.float16)]
+        for key in ("h1", "h2"):
+            text = sc._outer_reuse(self.sources[key], args, "matmul")
+            self.assertIn("Make n the outer loop", text)
+            self.assertNotIn("existing lhsT reuse", text)
+        # Actual source evidence of an outside-n load still preserves the hoist.
+        self.assertIn("existing lhsT reuse", sc._outer_reuse(self.sources["h3"], args, "matmul"))
 
     def test_lhs_hoist_preserves_reuse_and_targets_rhs(self):
         text = self.instruction("h3", chip=dict(speedup=2, threshold=1.01))
