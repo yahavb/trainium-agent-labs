@@ -7,6 +7,27 @@ design against a reference on every test and sends feedback back; the model trie
 whether the **quality of that feedback** — A: only *pass/fail*, B: *how many tests fail*, C: *where it first
 goes wrong* — decides whether the loop succeeds.
 
+## What a run looks like (real output)
+
+A level the model fixes — the MAC cell, feedback C, seat 31:
+```
+=== 05_mac   feedback C   6 rounds x 4 attempts   run s31-05_mac-C-r1-182546
+round 0: scores [0.0, 0.0, 0.0, 0.0]  best so far 0.00  (30.1s)
+  feedback sent: FAIL: the design does not compile.
+                 - Port `b` is 9 bit(s) wide, but the spec says 8. Declare it as `[7:0] b`.
+round 1: scores [1.0, 1.0, 1.0, 1.0]  best so far 1.00  (32.1s)
+SOLVED -- verified by the checker on every test
+```
+A level it does not — the traffic light, feedback C, 12 rounds, seat 33:
+```
+round 0: scores [0.61, 0.68, 0.56, 0.61]  best so far 0.68  (100.6s)
+  feedback sent: FAIL: 117 of 256 tests give a wrong output, on `light`, `walk`.
+                   cycle 2: inputs reset=0 ped=0 -> light=RED (0) walk=1 (correct)
+                   cycle 3: inputs reset=0 ped=0 -> `light` = RED (0), expected GREEN (1) ...  <-- first wrong cycle
+...
+COULD NOT VERIFY -- best design passes 0.68 of the score; not solved
+```
+
 ![Solve rate and best score per level and feedback level](results/graph.png)
 
 ## The result in four lines
@@ -15,7 +36,8 @@ goes wrong* — decides whether the loop succeeds.
 - **Feedback did not turn hard failures into solves:** the traffic-light state machine and the FIFO were never
   solved, with any feedback — not even with 12 rounds (0/15). C's small edge at 6 rounds (0.69 vs 0.65)
   vanished at 12. The MAC cell was fixed on round 2 with A, B and C alike.
-- **The model's mistakes are systematic** — one wrong idea, repeated (`results/TAXONOMY.md`).
+- **The model's mistakes are systematic** — one wrong idea, repeated: on the traffic light, every phase one
+  cycle too long (a counting off-by-one). Feedback that says *where* did not make it see *why*.
 - **The model does not know when it is wrong** — designs it rated 80–100% confident were right only half the
   time, so only the checker may declare success (`results/calibration.txt`).
 

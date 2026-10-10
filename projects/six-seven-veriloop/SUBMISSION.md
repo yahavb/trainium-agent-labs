@@ -69,6 +69,24 @@ Each cell: solved / runs, mean best score (min–max). Graph: `results/graph.png
    it rated 80–100 were right only **52%** of the time, and its Brier score (0.334) is worse than always
    answering 50 (0.25). (`results/calibration.txt`, `results/calibration.csv`)
 
+## Why the hard levels fail — the checker is right, the model's idea is wrong
+
+We re-simulated the most common failing designs (`results/TAXONOMY.md`):
+
+- **Traffic light — a fencepost error.** The most common design (96 attempts) counts from 0 and compares the
+  counter to the full length, so **every phase is one cycle too long**: RED 4, GREEN 5, YELLOW 3 instead of
+  3, 4, 2. A second group gets the timing right except the first RED, because it does not count the reset
+  cycle as RED's first — a rule the spec states but that acts as a trap (~1 in 6 failures). Others mishandle
+  the pedestrian button.
+- **FIFO — three bugs at once.** The most common design shows `dout` only after a read (the spec: always the
+  oldest byte), computes `full`/`empty` from the old count (one cycle late), and loses one of the two count
+  updates when reading and writing in the same cycle.
+- **Why feedback C did not fix them:** C shows the *symptom* — `cycle 3: light = RED, expected GREEN`. The
+  model never connected it to the *cause* (its counter compares to 3 instead of 2), and on the FIFO three
+  independent bugs meet one symptom per round. The organisers' lesson — feedback must *name the change* —
+  holds here: *where* is not enough. The next experiment is a feedback level D that states the cause
+  ("every phase lasts one cycle too long").
+
 ## Honesty notes
 
 - **Spread:** every number is a rate over independent runs (n in each cell), never a best run.
