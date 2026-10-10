@@ -68,11 +68,12 @@ Order matters: `compute_at` before splitting `matmul.k`; `set_memory` before `re
 ## Optimising
 
 The checker also counts HBM bytes against the floor (each input and the output moved once).
-A load inside a loop that does not index it is re-read every iteration. To cut traffic: reorder the
-output-tile loops so the loop that does *not* index an operand is innermost, then `hoist` that
-operand's buffer to the loop outside it. Hoisting `to=None` keeps an operand fully resident in SBUF
-(capacity-limited). After a failure, the `s.show()` output in the report is the program as of the last
-successful call: read the loop and buffer names from it.
+Work out how many times each operand is loaded: a load inside a loop that does not index it is
+repeated on every iteration of that loop, and the cost grows with the operand's size. Loop order
+decides which loads get repeated, and `hoist` moves a load out past loops (`to=None` = out of all of
+them, SBUF capacity permitting). Use `s.show()` to see where each `dma_copy` ends up. After a failure,
+the `s.show()` output in the report is the program as of the last successful call: read the loop and
+buffer names from it.
 
 ## Errors
 
