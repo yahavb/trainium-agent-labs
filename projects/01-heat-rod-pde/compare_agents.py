@@ -13,7 +13,8 @@ import tempfile
 import time
 
 import agent
-import pdecheck
+from attempt_records import read_attempts, request_metrics
+from checker_runtime import grade_candidate
 
 PROJECT = Path(__file__).resolve().parent
 DEFAULT_CASES = [[0, sub, 0] for sub in (1, 2, 3)] + [[1, sub, 0] for sub in (1, 2, 3)] + [[1, 3, s] for s in (1, 2)]
@@ -21,26 +22,35 @@ DEFAULT_CASES = [[0, sub, 0] for sub in (1, 2, 3)] + [[1, sub, 0] for sub in (1,
 
 def summarize_attempts(paths, problem):
     """Use the same original checker for both variants and both answer layers."""
-    rows = [json.loads(line) for path in paths for line in path.read_text().splitlines() if line.strip()]
+    rows, log_errors = read_attempts(paths)
     original_solved = model_solved = False
-    model_requests = output_tokens = truncated = accepted_repairs = 0
-    for row in rows:
+    best_reward = None
+    accepted_repairs = 0
+    evaluation_errors = []
+    for index, row in enumerate(rows):
+        accepted_repairs += sum(turn.get('type') == 'decay_repair' and turn.get('accepted', False)
+                                for turn in row.get('trace', []))
+        if row.get('error'):
+            continue  # A failed model request is not a scored mathematical answer.
         executed = row.get('executed_answer', row['answer'])
-        grade = pdecheck.check(problem, executed)
-        model_grade = grade if executed == row['answer'] else pdecheck.check(problem, row['answer'])
+        grade = grade_candidate(problem, executed)
+        model_grade = grade if executed == row['answer'] else grade_candidate(problem, row['answer'])
+        layers = [('model_and_executed', grade)] if executed == row['answer'] else [
+            ('model', model_grade), ('executed', grade)]
+        for layer, result in layers:
+            if result['evaluation_error']:
+                evaluation_errors.append(dict(candidate=index, layer=layer,
+                                              **result['evaluation_error']))
         model_solved |= model_grade['reward'] == 1.0
         original_solved |= grade['reward'] == 1.0
-        for turn in row.get('trace', []):
-            if turn.get('type', 'model') == 'model':
-                model_requests += 1
-                count = (turn.get('usage') or {}).get('completion_tokens')
-                output_tokens = None if count is None or output_tokens is None else output_tokens + count
-                truncated += turn.get('finish_reason') == 'length'
-            accepted_repairs += turn.get('type') == 'decay_repair' and turn.get('accepted', False)
+        if grade['reward'] is not None:
+            best_reward = grade['reward'] if best_reward is None else max(best_reward, grade['reward'])
     return dict(candidates=len(rows), rounds=max((r['round'] for r in rows), default=-1)+1,
                 model_original_solved=model_solved, executed_original_solved=original_solved,
-                model_requests=model_requests, completion_tokens=output_tokens,
-                truncated_replies=truncated, accepted_repairs=accepted_repairs)
+                best_original_reward=best_reward,
+                **request_metrics(rows), accepted_repairs=accepted_repairs,
+                artifacts_complete=bool(rows) and not log_errors, log_errors=log_errors,
+                evaluation_failures=len(evaluation_errors), evaluation_errors=evaluation_errors)
 
 
 def main(argv=None):
@@ -81,10 +91,17 @@ def main(argv=None):
     settings = {key: str(value) if isinstance(value, Path) else value for key,value in settings.items()}
     results = []
     expected = len(cases)*a.repeats*len(a.variants)
+    def batch_complete():
+        return len(results) == expected and all(
+            r['status'] in ('complete', 'budget_timeout') and r.get('artifacts_complete', False)
+            for r in results)
+
     def save():
-        (root/'comparison.json').write_text(json.dumps(dict(settings=settings, expected_runs=expected,
-            batch_complete=len(results)==expected and all(r['status'] not in ('interrupted','process_error') for r in results),
+        temporary = root/'comparison.json.tmp'
+        temporary.write_text(json.dumps(dict(settings=settings, expected_runs=expected,
+            batch_complete=batch_complete(),
             results=results), indent=2)+'\n')
+        temporary.replace(root/'comparison.json')
     save()
     print(f'Results: {root}', flush=True)
     for repeat in range(a.repeats):
@@ -123,21 +140,34 @@ def main(argv=None):
                         interrupted=True
                 entry['process_wall_seconds']=time.perf_counter()-started
                 paths=list(case.rglob('attempts.jsonl'))
-                if paths:
-                    entry.update(summarize_attempts(paths,agent.LEVELS[level].make(sub,seed)))
+                entry.update(summarize_attempts(paths,agent.LEVELS[level].make(sub,seed)))
                 if variant!='baseline':
                     summaries=list(case.glob('*/summary.json'))
                     if summaries:
-                        result=json.loads(summaries[0].read_text())['results'][0]
-                        entry['agent_status']=result['status']
-                        if entry['status']=='complete' and result['status']=='infrastructure_error':
-                            entry['status']='infrastructure_error'
+                        try:
+                            result=json.loads(summaries[0].read_text())['results'][0]
+                            entry['agent_status']=result['status']
+                            if (entry['status'] in ('complete', 'process_error') and
+                                    result['status'] in ('infrastructure_error', 'evaluation_error')):
+                                entry['status']=result['status']
+                        except (OSError, ValueError, KeyError, IndexError, TypeError) as exc:
+                            entry['artifacts_complete']=False
+                            entry['log_errors'].append(dict(path=str(summaries[0]), line=None,
+                                                            error=f'{type(exc).__name__}: {exc}'))
+                    elif entry['status']=='complete':
+                        entry['artifacts_complete']=False
+                        entry['log_errors'].append(dict(path=None, line=None, error='Missing summary.json'))
+                if entry['status']=='complete' and not entry['artifacts_complete']:
+                    entry['status']='artifact_error'
                 entry['wall_seconds']=time.perf_counter()-started
                 results.append(entry);save()
                 print(f"DONE {case.name}: {entry['status']}, original_solved={entry.get('executed_original_solved')}, {entry['wall_seconds']:.1f}s",flush=True)
                 if interrupted: return 130
-    print(f'COMPLETE {root}',flush=True)
-    return 0
+                if entry['status'] in ('infrastructure_error', 'process_error', 'artifact_error', 'evaluation_error'):
+                    print(f"STOPPED {entry['status']}. Partial results: {root}", flush=True)
+                    return 1
+    print(f"{'COMPLETE' if batch_complete() else 'INCOMPLETE'} {root}",flush=True)
+    return 0 if batch_complete() else 1
 
 
 if __name__=='__main__':

@@ -1,0 +1,34 @@
+level 0: both ends held at zero, starting shape built from sine waves
+
+  exact, as a model writes it        reward 1.0 (want 1.0)  ok
+  wrong decay rate                   reward 0.6 (want 0.6)  ok
+      The equation u_t = 1*u_xx does not hold: at x=0.176, t=0.0179, u_t - 1*u_xx = +85.96 instead of 0. Term by term: the sin(3*pi*x) term decays too slowl
+  forgot the decay entirely          reward 0.6 (want 0.6)  ok
+      The equation u_t = 1*u_xx does not hold: at x=0.176, t=0.0179, u_t - 1*u_xx = +88.51 instead of 0. Term by term: the sin(3*pi*x) term decays too slowl
+  cosine instead of sine             reward 0.4 (want 0.4)  ok
+      At the left end x=0, u should be 0 but is +0.5488 at t=0.0068. At the right end x=1, u should be 0 but is -0.5488 at t=0.0068. At t=0 the answer diffe
+  no answer line                     reward 0.0 (want 0.0)  ok
+      Could not read the expression 'I think it decays exponentially.': SyntaxError. Write the answer as one arithmetic expression in x and t only, using ex
+  left a symbol in                   reward 0.0 (want 0.0)  ok
+      The answer still contains the unknown ['k']. Write the answer as one arithmetic expression in x and t only, using exp, sin, cos, pi and **.
+
+  exact answers score 1.0 on all 15 generated problems
+
+SELFTEST PASSED
+level 1: one insulated end, and starting shapes that are not sine waves
+
+  insulated: exact                   reward 1.0 (want 1.0)  ok
+  insulated: used sin(n*pi*x/L)      reward 0.6 (want 0.6)  ok
+      At the right end x=1, the slope u_x should be 0 but is -2.939 at t=0.0068. At t=0 the answer differs from the required starting shape by 54.99 percent
+  insulated: decay but no wave       reward 0.2 (want 0.2)  ok
+      The equation u_t = 1*u_xx does not hold: at x=0.544, t=0.0068, u_t - 1*u_xx = -2.427 instead of 0. Term by term: the sin(3*pi*x/2) term decays too slo
+
+  parabola with 1 term(s): reward 0.8, starting shape off by 3.80%  not solved  ok
+  parabola with 2 term(s): reward 0.8, starting shape off by 0.87%  not solved  ok
+  parabola with 3 term(s): reward 1.0, starting shape off by 0.34%  solved  ok
+  parabola with 5 term(s): reward 1.0, starting shape off by 0.10%  solved  ok
+  ^ the 0.5% bar is what forces 3 terms rather than 1.
+
+  parabola, coefficients doubled: reward 0.8  ok
+
+SELFTEST PASSED

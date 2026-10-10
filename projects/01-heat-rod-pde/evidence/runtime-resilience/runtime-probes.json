@@ -1,0 +1,143 @@
+{
+  "original_checker_parity": {
+    "answer": "exp(-9*pi**2*t)*sin(3*pi*x) + Rational(0,1)",
+    "direct_original": 1.0,
+    "wrapper": {
+      "reward": 1.0,
+      "parts": {
+        "equation": true,
+        "left_bc": true,
+        "right_bc": true,
+        "start_shape": true
+      },
+      "expr": "exp(-9*pi**2*t)*sin(3*pi*x) + Rational(0,1)",
+      "start_error": 0.0,
+      "feedback": "Solved.",
+      "original_reward": 1.0,
+      "original_parts": {
+        "equation": true,
+        "left_bc": true,
+        "right_bc": true,
+        "start_shape": true
+      },
+      "grading_policy": "original_checker",
+      "evaluation_error": null
+    },
+    "comparison": {
+      "candidates": 1,
+      "rounds": 1,
+      "model_original_solved": true,
+      "executed_original_solved": true,
+      "best_original_reward": 1.0,
+      "model_requests": 0,
+      "attempted_requests": 0,
+      "successful_responses": 0,
+      "failed_requests": 0,
+      "completion_tokens": 0,
+      "known_completion_tokens": 0,
+      "unknown_usage_requests": 0,
+      "truncated_replies": 0,
+      "accepted_repairs": 0,
+      "artifacts_complete": true,
+      "log_errors": [],
+      "evaluation_failures": 0,
+      "evaluation_errors": []
+    }
+  },
+  "partial_log": {
+    "result": {
+      "candidates": 1,
+      "rounds": 1,
+      "model_original_solved": true,
+      "executed_original_solved": true,
+      "best_original_reward": 1.0,
+      "model_requests": 0,
+      "attempted_requests": 0,
+      "successful_responses": 0,
+      "failed_requests": 0,
+      "completion_tokens": 0,
+      "known_completion_tokens": 0,
+      "unknown_usage_requests": 0,
+      "truncated_replies": 0,
+      "accepted_repairs": 0,
+      "artifacts_complete": false,
+      "log_errors": [
+        {
+          "path": "/tmp/tmpuhel61j2/attempts.jsonl",
+          "line": 2,
+          "error": "JSONDecodeError: Expecting value: line 1 column 11 (char 10)"
+        }
+      ],
+      "evaluation_failures": 0,
+      "evaluation_errors": []
+    }
+  },
+  "calculator:(1, 2)": {
+    "result": "unsupported expression: expected one scalar expression; put each calculation on its own COMPUTE: line"
+  },
+  "calculator:[Integral(x,(x,0,1)), Integral(x,(x,0,2))]": {
+    "result": "unsupported expression: expected one scalar expression; put each calculation on its own COMPUTE: line"
+  },
+  "service_failure_batch": {
+    "exit_code": 1,
+    "started_cases": 1,
+    "batch_complete": false,
+    "statuses": [
+      "infrastructure_error"
+    ]
+  },
+  "request_count_on_http_errors": {
+    "candidates": 1,
+    "rounds": 1,
+    "model_original_solved": false,
+    "executed_original_solved": false,
+    "best_original_reward": null,
+    "model_requests": 2,
+    "attempted_requests": 2,
+    "successful_responses": 0,
+    "failed_requests": 2,
+    "completion_tokens": null,
+    "known_completion_tokens": 0,
+    "unknown_usage_requests": 2,
+    "truncated_replies": 0,
+    "accepted_repairs": 0,
+    "artifacts_complete": true,
+    "log_errors": [],
+    "evaluation_failures": 0,
+    "evaluation_errors": []
+  },
+  "malformed_final:u(x,t) = [1,2]": {
+    "outcome": {
+      "problem": "level0.1",
+      "seed": 0,
+      "status": "evaluation_error",
+      "reward": null,
+      "original_reward": null,
+      "grading_policy": "original_checker",
+      "rounds": 2,
+      "requests": 0,
+      "errors": 0,
+      "evaluation_errors": 2,
+      "seconds": 0.0022112559963716194,
+      "answer": null
+    },
+    "logged": true
+  },
+  "malformed_final:u(x,t) = (1,2)": {
+    "outcome": {
+      "problem": "level0.1",
+      "seed": 0,
+      "status": "evaluation_error",
+      "reward": null,
+      "original_reward": null,
+      "grading_policy": "original_checker",
+      "rounds": 2,
+      "requests": 0,
+      "errors": 0,
+      "evaluation_errors": 2,
+      "seconds": 0.0008377280028071254,
+      "answer": null
+    },
+    "logged": true
+  }
+}

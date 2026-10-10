@@ -3,19 +3,20 @@ import argparse
 import datetime
 import json
 from pathlib import Path
-import re
 import subprocess
 import sys
 import time
 import agent
+from compare_agents import summarize_attempts
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('--concise', action='store_true', help='Measure experimental concise mode rather than the default agent')
     parser.add_argument('--timeout', type=int, default=180)
-    args = parser.parse_args()
-    root = Path('benchmark-results') / datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+    parser.add_argument('--output-root', type=Path, default=Path('benchmark-results'))
+    args = parser.parse_args(argv)
+    root = args.output_root / datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     root.mkdir(parents=True)
     results = []
     cases = ([(0, sub, 0) for sub in (1, 2, 3)] + [(1, sub, 0) for sub in (1, 2, 3)]
@@ -41,25 +42,50 @@ def main():
                 except subprocess.TimeoutExpired:
                     entry['status'] = 'budget_timeout'
             entry['seconds'] = time.perf_counter() - started
+            entry.update(summarize_attempts(list(case.rglob('attempts.jsonl')),
+                                           agent.LEVELS[level].make(sub, seed)))
             if variant == 'improved':
                 summaries = list(case.glob('*/summary.json'))
                 if summaries:
-                    entry.update(json.loads(summaries[0].read_text())['results'][0])
+                    try:
+                        summary = json.loads(summaries[0].read_text())['results'][0]
+                        entry['agent_status'] = summary['status']
+                        # A saved summary must not hide a later timeout/process failure.
+                        entry.update({key: value for key, value in summary.items() if key != 'status'})
+                        if (entry['status'] == 'unsolved' or
+                                (entry['status'] == 'infrastructure_error' and
+                                 summary['status'] in ('infrastructure_error', 'evaluation_error'))):
+                            entry['status'] = summary['status']
+                    except (OSError, ValueError, KeyError, IndexError, TypeError) as exc:
+                        entry['artifacts_complete'] = False
+                        entry['log_errors'].append(dict(path=str(summaries[0]), line=None,
+                                                       error=f'{type(exc).__name__}: {exc}'))
+                elif entry['status'] == 'unsolved':
+                    entry['artifacts_complete'] = False
+                    entry['log_errors'].append(dict(path=None, line=None, error='Missing summary.json'))
             elif entry['status'] == 'unsolved':
-                rows = [json.loads(line) for line in (case / 'attempts.jsonl').read_text().splitlines()]
-                entry['reward'] = max((r['reward'] for r in rows), default=0)
-                entry['rounds'] = max((r['round'] for r in rows), default=-1) + 1
-                solved = next((r for r in rows if r['reward'] == 1.0), None)
-                if solved:
+                entry['reward'] = entry['best_original_reward']
+                if entry['executed_original_solved']:
                     entry['status'] = 'solved'
+            if entry['status'] in ('solved', 'unsolved') and not entry['artifacts_complete']:
+                entry['status'] = 'artifact_error'
             results.append(entry)
             (root / 'comparison.json').write_text(json.dumps({'settings': {'model': 'Qwen/Qwen3-8B',
                 'seat': 85, 'samples': 2, 'rounds': 3, 'max_tokens': 512, 'tool_steps': 1,
                 'timeout_per_case_seconds': args.timeout, 'concise': args.concise,
-                'offline': False, 'grading_policy': 'original_checker'}, 'results': results}, indent=2))
+                'offline': False, 'grading_policy': 'original_checker'},
+                'expected_runs': len(cases)*2,
+                'batch_complete': len(results)==len(cases)*2 and all(
+                    r['status'] in ('solved', 'unsolved', 'budget_timeout') and r['artifacts_complete']
+                    for r in results), 'results': results}, indent=2))
             print(f"DONE {case.name}: {entry['status']} ({entry['seconds']:.1f}s)", flush=True)
-    print(f'COMPLETE {root}', flush=True)
+            if entry['status'] in ('infrastructure_error', 'evaluation_error', 'artifact_error'):
+                print(f"STOPPED {entry['status']}. Partial results: {root}", flush=True)
+                return 1
+    complete = all(r['artifacts_complete'] for r in results)
+    print(f"{'COMPLETE' if complete else 'INCOMPLETE'} {root}", flush=True)
+    return 0 if complete else 1
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
