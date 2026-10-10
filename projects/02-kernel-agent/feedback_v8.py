@@ -30,8 +30,16 @@ feedback is one instruction, TRUNC_NOTE below, and attempts.jsonl records finish
 completion_tokens from the server. (Wrappers on v5._post, agent.ask and agent.grade, installed only
 when the switch is on.)
 
-Run it exactly like feedback_v7.py, with the exports in V7.md (plus SKELETON / L1FIX / TRUNCFIX when
-testing them):
+MIXSAMP=1. The server answers a given request body with the same text every time, and other sampling
+settings give other text (measured: level-2 round 0 is 0/20 with v7's Qwen settings and 2/20 with
+agent.py's, prompts byte-identical). Odd samples use agent.py's settings, even samples v7's, so each round
+covers both. L2HINT=1. In v7's and the baseline's level-2 repair rounds, 81 of 134 failures were the model
+transposing x itself (an index past x.shape[1] on axis 1, or the partition size changed); the messages
+named the symptom only. On those errors at level 2 the feedback adds one sentence restating what the
+level asks (rows stay put; each row's F1-by-F2 matrix is transposed), with no code.
+
+Run it exactly like feedback_v7.py, with the exports in V7.md (plus SKELETON / L1FIX / TRUNCFIX / MIXSAMP /
+L2HINT when testing them):
 
     python3 feedback_v8.py --level 4 --rounds 8 --samples 4 --context 8192 --repeat 5 \\
         --log Ediv_L4.jsonl --verdicts verdicts_div_L4.jsonl
@@ -46,6 +54,16 @@ import re
 SKELETON = os.environ.get("SKELETON", "0") == "1"
 L1FIX = os.environ.get("L1FIX", "0") == "1"
 TRUNCFIX = os.environ.get("TRUNCFIX", "0") == "1"
+MIXSAMP = os.environ.get("MIXSAMP", "0") == "1"
+L2HINT = os.environ.get("L2HINT", "0") == "1"
+L2_NOTE = (" This level keeps every row where it is: row p of x holds an F1-by-F2 matrix stored row-major "
+           "(F1, F2 = shape2D), and row p of the output holds the same F1*F2 values of that small matrix "
+           "transposed, i.e. stored column-major. Nothing moves between rows, so the first (partition) "
+           "index of every read and write is the row's own index, and no tile is wider than x.shape[1]. "
+           "Rewrite the kernel around that, not as a transpose of x itself.")
+L2_TRIGGERS = (r"Out-of-bound access for tensor .* on dimension 1",
+               r"Partition dim size must be preserved",
+               r"dma_copy requires src and dst to have the same number of elements")
 TRUNC_NOTE = ("Your previous answer was cut off at the token limit before the code was complete. "
               "Reply with a shorter kernel: the code block only, no comments, no explanation.")
 
@@ -142,14 +160,50 @@ def variant(prompt, k, n, run):
     return prompt if k == 1 else f"{prompt}\n\n(attempt {k} of {n}, run {run + 1})"
 
 
+import threading  # noqa: E402
+
+_sample = threading.local()             # which sample (1..n) the current worker thread is asking for
+
+
+def _ask_k(a, prompt, k):
+    _sample.k = k
+    return agent.ask(a, prompt)
+
+
 def ask_parallel_div(a, prompt, n):
     run = getattr(a, "run", 0)
     prompts = [variant(prompt, k, n, run) for k in range(1, n + 1)]
     with cf.ThreadPoolExecutor(max_workers=n) as ex:
-        return [f.result() for f in [ex.submit(agent.ask, a, p) for p in prompts]]
+        return [f.result() for f in [ex.submit(_ask_k, a, p, k) for k, p in enumerate(prompts, 1)]]
 
 
 agent.ask_parallel = ask_parallel_div   # solve() looks it up at call time
+
+if MIXSAMP:
+    # The server is deterministic per request: same body, same text; other sampling settings, other text.
+    # So the sampling settings are a second axis of variation. Odd samples (1, 3) get their agent.py's
+    # (temperature 0.6, top_p 0.95: with PROMPT1=theirs sample 1 is byte-for-byte the baseline request),
+    # even samples (2, 4) Qwen3's thinking-off recipe that v7 ran with (0.7, 0.8, top_k 20).
+    _post_m = v7.v5._post
+
+    def post_mixed(a, body):
+        k = getattr(_sample, "k", 1)
+        body = {key: val for key, val in body.items() if key not in ("temperature", "top_p", "top_k")}
+        body.update(v7.v5.THEIRS if k % 2 == 1 else v7.v5.QWEN_NOTHINK)
+        return _post_m(a, body)
+
+    v7.v5._post = post_mixed            # ask5 looks _post up at call time
+
+if L2HINT:
+    _grade_l2 = agent.grade
+
+    def grade_l2(source, level):
+        reward, parts, feedback = _grade_l2(source, level)
+        if level == 2 and reward < 1 and feedback and any(re.search(t, feedback) for t in L2_TRIGGERS):
+            feedback = feedback.rstrip() + L2_NOTE
+        return reward, parts, feedback
+
+    agent.grade = grade_l2
 
 if L1FIX:
     _enrich = agent.enrich
@@ -217,5 +271,6 @@ if TRUNCFIX:
 if __name__ == "__main__":
     print(f"feedback v8: v7 (PROMPT1={v7.PROMPT1} MESSAGES={v7.v6.MESSAGES} CARD={v7.v5.CARD} "
           f"SAMPLING={v7.v5.SAMPLING} GATE={v7.GATE or 'off'}) + one prompt line per sample k>=2"
-          f" SKELETON={int(SKELETON)} L1FIX={int(L1FIX)} TRUNCFIX={int(TRUNCFIX)}")
+          f" SKELETON={int(SKELETON)} L1FIX={int(L1FIX)} TRUNCFIX={int(TRUNCFIX)} MIXSAMP={int(MIXSAMP)}"
+          f" L2HINT={int(L2HINT)}")
     agent.main()
