@@ -76,6 +76,12 @@ stage-by-stage plan in the prompt.
 
 ![Inference speed](assets/chart_6_inference.png)
 
+**Per level:** before, only levels 8 and 11 were timed, at 140 s and 109 s per round; now every level takes
+7–16 s a round (level 8 40 s, its prompts are the longest), and solved runs reach SOLVED in a median of 10–34 s.
+Level 4 is left out: its only timed runs hit a checker regression, since fixed.
+
+![Latency per level](assets/chart_7_latency_by_level.png)
+
 ## Kernels we optimized by hand (separate from the agent's)
 
 `optimized/` holds four of the agent's kernels improved by us — **not agent output**, and `solved/` is untouched.
@@ -99,20 +105,20 @@ with the stage plan **1,441**. The bloated level-8 prompt failed; the shorter, e
 Every chart below is computed from the log in this repo (`analysis/make_charts.py`): the shipped attempts plus
 the counts recorded for the failed level-8 attempts trimmed out (`logs/level8_failures_summary.json`). Seats
 repeated each other (identical sampling), so repeats are counted once: a run byte-identical to another seat's
-counts once in the rates (2,586 of 2,886 attempts), and the taxonomy counts distinct wrong kernels.
+counts once in the rates (2,734 of 3,034 attempts), and the taxonomy counts distinct wrong kernels.
 
 ![Where effort was wasted](assets/chart_3_waste.png)
 
-* **37%** of rounds had identical samples, and sampling is deterministic across servers: four seats ran
+* **40%** of rounds had identical samples, and sampling is deterministic across servers: four seats ran
   **byte-identical** level-8 traces. Per-request seeds crash this vLLM-Neuron build and per-server `--seed`
   did not change the samples, so parallel seats did not add independent tries. **Open problem.**
-* **28%** of retries returned the code unchanged — the loop now says "you changed nothing"; **54%** of rounds
+* **30%** of retries returned the code unchanged — the loop now says "you changed nothing"; **54%** of rounds
   failed exactly like the round before; **12%** of failures were invented API calls (now caught by lint
   against the installed NKI).
 
 ![Failure taxonomy](assets/chart_4_failures.png)
 
-**Failure taxonomy** (706 distinct wrong kernels behind 2,687 failed attempts, by the first problem found):
+**Failure taxonomy** (726 distinct wrong kernels behind 2,815 failed attempts, by the first problem found):
 wrong shape or layout dominates every matmul and attention level; invented APIs are the main failure on levels
 1 and 10; 221 of level 8's 323 distinct wrong kernels are shape/layout, mostly q passed to the matmul
 untransposed for q·kᵀ.
@@ -173,7 +179,7 @@ projects/20-kernel-agent/
 ├── solved/               every kernel the agent wrote that passed, with its re-check printout
 ├── optimized/            four of those kernels optimized by hand (team-written, labelled)
 ├── results/              device/ (real-chip results) · seat97-repair/ (level-8 evidence)
-├── logs/                 attempt log (1,790 of 2,886 attempts) + what the trimmed level-8 failures add
+├── logs/                 attempt log (1,938 of 3,034 attempts) + what the trimmed level-8 failures add
 ├── analysis/             trace_analysis (failure taxonomy), make_charts, ab (A/B runner)
 ├── assets/               the diagram and charts
 └── reference_level1-4.py, kernelbench.py, try_level.py, CHALLENGE-kernel-agent.md   (from the original repo)
@@ -210,6 +216,7 @@ projects/20-kernel-agent/
 | tolerance margins | `solved/*.check.txt`, `results/device/*.json` (`max_rel_err`), mutation suite output |
 | [R8] lint has no false alarm on correct kernels | lint returns nothing on all 11 `solved/` and 4 `optimized/` kernels |
 | [R9] 7× faster inference | `chart_6_inference.png`, computed from `prompt_tokens`/`completion_tokens`/`seconds` in the log |
+| latency per level | `chart_7_latency_by_level.png`, from the timed rounds (`latency_by_level` in `logs/level8_failures_summary.json`) |
 | failure taxonomy | `chart_4_failures.png` + `logs/level8_failures_summary.json`, computed by `analysis/make_charts.py` |
 
 ## Rubric checklist
