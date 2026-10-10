@@ -117,6 +117,22 @@ def legalize(source):
             call=node.value
             if not isinstance(call,ast.Call) or not isinstance(call.func,ast.Attribute) or not isinstance(call.func.value,ast.Name):return self.generic_visit(node)
             namespace=call.func.value.id
+            if call.func.attr=='nc_matmul' and namespace==instruction and not call.args and not any(k.arg is None for k in call.keywords):
+                # Installed nc_matmul requires SBUF stationary/moving operands. A provably PSUM
+                # operand is copied unchanged into a fresh SBUF tile first (same values and shape).
+                staged=[]
+                used={n.id for n in ast.walk(tree) if isinstance(n,ast.Name)}
+                for keyword in call.keywords:
+                    if keyword.arg in ('stationary','moving') and buffer_of(keyword.value)=='psum':
+                        name=f'_nki_sbuf_operand_{node.lineno}_{keyword.arg}'
+                        while name in used:name+='x'
+                        used.add(name)
+                        source=keyword.value
+                        staged.append(ast.copy_location(ast.Assign(targets=[ast.Name(name,ast.Store())],value=ast.Call(func=attr(language,'ndarray'),args=[ast.Attribute(source,'shape',ast.Load())],keywords=[ast.keyword('dtype',ast.Attribute(source,'dtype',ast.Load())),ast.keyword('buffer',attr(language,'sbuf'))])),node))
+                        staged.append(ast.copy_location(ast.Expr(ast.Call(func=attr(instruction,'tensor_copy'),args=[],keywords=[ast.keyword('dst',ast.Name(name,ast.Load())),ast.keyword('src',source)])),node))
+                        keyword.value=ast.Name(name,ast.Load())
+                        metadata['changes'].append({'line':node.lineno,'kind':'psum_operand_staging','operand':keyword.arg,'source':ast.unparse(source),'temporary':name})
+                return staged+[node] if staged else node
             if call.func.attr!='tensor_scalar' or namespace not in (language,instruction):return self.generic_visit(node)
             if any(k.arg is None for k in call.keywords) or len(call.args)>4:return node
             if any(k.arg in ('dst','data','op0','operand0')[:len(call.args)] for k in call.keywords):return node

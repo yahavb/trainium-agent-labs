@@ -168,3 +168,10 @@ User instruction: drive every unsolved level toward 1.00 as fast as possible, ru
 - **L4 cold-start solved** (round 0, raw Qwen, plan v3): controlled-20261010T205651-l9444j4q; locked verified-level4-locked-n1kmsi6q.
 - Status: 7/8 levels at 1.00 (6 cold start + L1 warm start). L8 has two parallel cold runs active. The cold L1 run l9444j4q was stopped to free the endpoint for L8.
 - Accelerator: one Trainium2 device (/dev/neuron0), fully used by the shared Qwen vLLM (TP=2). There is no GPU. Running LoRA on Trainium would need the shared server restarted with merged/LoRA-enabled weights. That is forbidden by project rules without explicit user approval, and would interrupt active runs.
+
+### 21:23 UTC: user-approved Neuron server swap to the LoRA model (Claude Code)
+- The user explicitly chose "Swap now": stop the shared Qwen vLLM and serve the fine-tuned model on Trainium. vllm_neuron 0.24 has no LoRA support (TODOs in neuron_model_runner.py), so the adapter was merged into bf16 weights: runs/lora-merged-20261010T210847 (merge 25 s; same 399 tensor names; only q_proj/v_proj changed. The bf16 merge approximates the adapter: on layer 10, the q_proj delta has relative error about 0.38 against B·A·alpha/r).
+- 21:10:49 stopped both base L8 runs (STOPPED.md). SIGTERM to vLLM PID 37 gave a clean "Application shutdown complete"; 37 remains an unreaped zombie and holds no port or device.
+- 21:14:29 started vLLM PID 69462 from /workspace with identical arguments, except the merged model path and served names `qwen3-8b-nki-lora-merged`, `Qwen/Qwen3-8B` (alias). Ready at 21:22:27; smoke test OK. Log: runs/lora-merged-20261010T210847/vllm-lora.log; restore command in server.json.
+- 21:22:50 launched LoRA cold-start L1–L8 with the same full-agent policies: runs/lora-merged-20261010T210847/controlled-20261010T211449-0xookiba.
+- TODO after the LoRA runs: restore the base server (`cd /workspace && vllm serve --model Qwen/Qwen3-8B ...`, logging to a new file, never overwriting /tmp/vllm.log), then resume base L8.

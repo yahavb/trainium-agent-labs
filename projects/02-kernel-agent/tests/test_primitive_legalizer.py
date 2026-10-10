@@ -67,3 +67,8 @@ class PrimitiveLegalizerTests(unittest.TestCase):
    self.assertEqual(ask.call_count,0);self.assertEqual(grade.call_count,1)
    self.assertIn('def tensor_avgpool_kernel',grade.call_args[0][0]);self.assertIn('nisa.tensor_scalar',grade.call_args[0][0])
   finally:os.unlink(f.name)
+ def test_psum_matmul_operand_staged_through_sbuf(self):
+  source='import nki\nimport nki.language as nl\nimport nki.isa as ni\ndef f(a,b):\n p=nl.ndarray((128,128),dtype=nl.float32,buffer=nl.psum)\n o=nl.ndarray((128,128),dtype=nl.float32,buffer=nl.psum)\n ni.nc_matmul(dst=o,stationary=a,moving=p)\n return o'
+  fixed,meta=legalize(source)
+  self.assertEqual([c['kind'] for c in meta['changes']],['psum_operand_staging'])
+  self.assertIn('tensor_copy(dst=_nki_sbuf_operand_7_moving, src=p)',fixed);self.assertIn('moving=_nki_sbuf_operand_7_moving',fixed);self.assertIn('stationary=a',fixed)
