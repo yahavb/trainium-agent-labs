@@ -114,7 +114,7 @@ def grade(source, level):
                 f"The file imports but {spec['entry']} could not be loaded: "
                 f"{type(e).__name__}: {e}")
 
-    failures, passed, intensity = [], 0, None
+    failures, passed, intensity, last_counted = [], 0, None, {}
     for case in spec["shapes"]:
         args, _ = nkibench.make_inputs(case, level)
         before = [x.copy() if isinstance(x, np.ndarray) else x for x in args]
@@ -144,6 +144,7 @@ def grade(source, level):
             failures.append((nkibench.label(case, level), m))
             continue
         passed += 1
+        last_counted = counted
         if level >= 3 and counted["bytes"]:
             intensity = nkibench.roofline(
                 nkibench.matmul_flops(case["M"], case["K"], case["N"]), counted["bytes"])
@@ -159,6 +160,14 @@ def grade(source, level):
     note = "Correct on every shape."
     if intensity:
         note += " " + nkibench.explain_roofline(intensity)
+    if level >= 3:
+        try:
+            import latency_hint
+            speed = latency_hint.hint(last_counted)
+            if speed:
+                note += " " + speed
+        except Exception:
+            pass  # the hint is advice; never let it break grading
     return reward, parts, note
 
 
