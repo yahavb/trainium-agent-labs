@@ -1,5 +1,23 @@
 # Numeric gotchas
 
+## "The last tile wins" -- assigning partial results in the inner loop
+
+A per-row result computed inside a column-tile loop must COMBINE tiles, not assign:
+
+```python
+for r0 in range(0, R, 128):
+    for c0 in range(0, C, 512):
+        result[r0:r0+128] = tile.sum(axis=1)   # WRONG: each tile overwrites the last;
+    return result                              # output == last column tile only
+```
+
+Every element is wrong and nothing crashes: the (129, 513) case returns column 512's
+lone value per row. Combine with the operation itself — sums `+=` from a zeros init,
+max `np.maximum(out, tile_max)` from a `-inf` init, min `np.minimum` from `+inf`.
+Same rule for normalisations: compute the whole-row statistic first, then apply it
+(row statistics that span column tiles, in the patterns card).
+
+
 ## Per-tile softmax returns 1.0 in a one-wide tile
 
 Softmax computed per COLUMN tile looks almost right and is wrong everywhere: the

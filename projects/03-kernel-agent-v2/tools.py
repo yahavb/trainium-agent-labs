@@ -267,8 +267,16 @@ def parse_reply(text):
     return code, scratch, docs, conf
 
 
+CONFIDENCE_LINE = re.compile(r"^\s*CONFIDENCE\s*:.*$", re.I | re.M)
+
+
 def extract_code(text):
     """The longest fenced block, else nothing -- never prose (project 02 measured a
-    numbered list reaching the compiler as 'invalid decimal literal')."""
+    numbered list reaching the compiler as 'invalid decimal literal'). Confidence lines
+    are stripped: the model sometimes writes `CONFIDENCE: high` INSIDE the fence, and
+    Python parses that as a variable annotation -- the import then dies with
+    NameError: name 'high' is not defined (measured, focus run on level 5)."""
     blocks = CODE_BLOCK.findall(text or "")
-    return max(blocks, key=len).strip() if blocks else ""
+    if not blocks:
+        return ""
+    return CONFIDENCE_LINE.sub("", max(blocks, key=len)).strip()

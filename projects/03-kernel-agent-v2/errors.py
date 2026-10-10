@@ -152,11 +152,11 @@ def instruction_from_failure(failure, case_label=""):
             "Wrap the work in explicit `for` loops that step across the array in tiles of "
             "at most 128 rows x 512 columns, and compute each tile's piece inside.",
         "wrong-shape":
-            "Your output shape is wrong. The usual cause (measured): you built the "
-            "output by CONCATENATING per-tile pieces, so a 129-row input yields "
-            "258 -- preallocate `out = np.zeros((R, C), ...)` before the loops and write "
-            "each tile into its own slice instead. For conv, check the output-size "
-            "formula.",
+            "Match the REFERENCE's return shape: a row-wise reduction returns ONE value "
+            "per row -- (R,); elementwise and normalisation return the input's own "
+            "shape; conv returns (C_out, L_out). The tiles organise the loops; the tile "
+            "grid (ceil(R/128), ceil(C/512)) must NEVER appear in the output shape. "
+            "(before answering, run: DOCS: output shapes)",
         "non-finite":
             "Apply the fix named above (usually: subtract the row max before exp, or "
             "initialise every output tile before reading it). Nothing else is wrong.",
@@ -168,9 +168,11 @@ def instruction_from_failure(failure, case_label=""):
             "clamp every slice to the array's real shape and do not assume the tile is "
             "full-size.",
         "partial-coverage":
-            "Every output tile must be written exactly once, at ITS OWN index "
-            "out[r0:r0+128, c0:c0+512]. You are writing some tiles to the wrong place or "
-            "not at all; check the loop bounds against the output shape.",
+            "Some output rows/elements were never written: you initialised the output "
+            "(np.zeros) and your loops skip them, or write past them. Walk EVERY write "
+            "index by hand on a small input with a SCRATCH: line (e.g. a (5, 3) array, "
+            "tile 2) and check each slice lands inside the OUTPUT's real shape, covering "
+            "every row exactly once. (before answering, run: DOCS: output shapes)",
         "core-arithmetic":
             "The formula itself is wrong in the interior. Recompute it for one tile BY "
             "HAND (a SCRATCH: line comparing your expression to the reference on a 3x3 "
@@ -212,8 +214,8 @@ def instruction_from_failure(failure, case_label=""):
         "ragged-edge": "DOCS: preallocate the output never concatenate tiles",
         "no-tile-loop": "DOCS: what a compliant kernel looks like",
         "banned-call": "DOCS: the five rules",
-        "partial-coverage": "DOCS: preallocate the output never concatenate tiles",
-        "wrong-shape": "DOCS: output-size formulas",
+        "partial-coverage": "DOCS: output shapes",
+        "wrong-shape": "DOCS: output shapes",
     }
     base = T.get(tax)
     if base is None:  # unknown mode -- degrade to the verdict, never to silence
