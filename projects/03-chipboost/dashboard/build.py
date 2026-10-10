@@ -56,22 +56,35 @@ PROJECT = HERE.parent
 sys.path.insert(0, str(PROJECT))
 import schema  # noqa: E402
 
-# The arms as shown. Raw records keep schema.ARMS and their run_id; the v2 arms are run_id tags
-# (agent.py --tag v2, and P1's -v2-p1fix- runs), split out so each is compared side by side instead of
-# averaged into its base arm. Optional arms are drawn only when they have runs.
-DISPLAY_ARMS = ("referee", "referee_v2", "referee_v2_p1fix", "model_alone", "model_alone_v2", "random_search")
+# The arms as shown. Raw records keep schema.ARMS and their run_id; the other groups are run_id tags,
+# split out so each treatment is compared side by side, never averaged into its base arm:
+#   -continuation-  P1's runs that start FROM the verified 1.517x winner (a different prior)
+#   -v2-p1fix-      P1's revised v2 treatment
+#   -v2-            seat 100: P1's consolidated v2 treatment; seat 101: P3's named-error rules (different treatments)
+#   -v3-            P3's seat running P1's failure instructions alone (agent.py --no-p3-rules --tag v3)
+# Optional groups are drawn only when they have runs.
+DISPLAY_ARMS = ("referee_continuation", "referee", "referee_v2", "referee_v2_p1fix", "referee_v2_p3", "referee_v3",
+                "model_alone", "model_alone_v2", "random_search")
 ARMS_SHOWN = DISPLAY_ARMS
-OPTIONAL_ARMS = {"referee_v2", "referee_v2_p1fix", "model_alone_v2"}
-ARM_LABEL = {"referee": "Referee v1", "referee_v2": "Referee v2", "referee_v2_p1fix": "Qwen + P1 fixes",
+OPTIONAL_ARMS = {"referee_continuation", "referee_v2", "referee_v2_p1fix", "referee_v2_p3", "referee_v3", "model_alone_v2"}
+ARM_LABEL = {"referee_continuation": "Qwen winner continuation", "referee": "Referee v1", "referee_v2": "Referee v2 (P1)",
+             "referee_v2_p1fix": "Qwen + P1 fixes", "referee_v2_p3": "P3 named-error rules (v2)", "referee_v3": "P1 instructions only (v3)",
              "model_alone": "Model alone v1", "model_alone_v2": "Model alone v2", "random_search": "Random search"}
-ARM_COLOR = {"referee": "var(--s1)", "referee_v2": "var(--s4)", "referee_v2_p1fix": "#257e73",
-             "model_alone": "var(--s2)", "model_alone_v2": "#a87519", "random_search": "var(--s3)"}
+ARM_COLOR = {"referee_continuation": "#ad4d7b", "referee": "var(--s1)", "referee_v2": "var(--s4)",
+             "referee_v2_p1fix": "#257e73", "referee_v2_p3": "#8365cc", "referee_v3": "#6b7d2a", "model_alone": "var(--s2)",
+             "model_alone_v2": "#a87519", "random_search": "var(--s3)"}
 
 
 def display_arm(record):
     arm, run_id = record["arm"], record["run_id"] or ""
+    if arm == "referee" and "-continuation-" in run_id:
+        return "referee_continuation"
     if arm == "referee" and "-v2-p1fix-" in run_id:
         return "referee_v2_p1fix"
+    if arm == "referee" and "-v3-" in run_id:
+        return "referee_v3"
+    if arm == "referee" and "-v2-" in run_id and record.get("seat") == 101:
+        return "referee_v2_p3"   # P3's agent-side rules: a different treatment from P1's v2 on seat 100
     return arm + "_v2" if arm in ("referee", "model_alone") and "-v2-" in run_id else arm
 
 
@@ -568,7 +581,7 @@ def step_points(xs, ys):
     return pts
 
 
-MODEL_ARMS = ("referee", "referee_v2", "referee_v2_p1fix", "model_alone", "model_alone_v2")   # both start from the start kernel; random search starts from the expert
+MODEL_ARMS = ("referee_continuation", "referee", "referee_v2", "referee_v2_p1fix", "referee_v2_p3", "referee_v3", "model_alone", "model_alone_v2")   # both start from the start kernel; random search starts from the expert
 
 
 def panel_progress(summary, results, tune):
@@ -648,7 +661,7 @@ def panel_progress(summary, results, tune):
         for a in MODEL_ARMS if a not in OPTIONAL_ARMS or any_runs(a)) + "</div>")
     return card("Progress: the model improves the start kernel",
                 "Best verified speedup so far, from the start kernel (1×). Line: median over runs; band: fastest to "
-                "slowest run within each version. Same x = same budget; v1, v2 and P1-fix trials are never pooled.",
+                "slowest run within each version. Same x = same budget; v1, v2, P1-fix trials, v3 and winner continuation are never pooled. Continuation starts from a verified winner, a different prior.",
                 legend + body + tuning_block(tune) + table_view(table(
                     ["Kernel", "Arm", "Runs", "Attempts", "After 25%", "After 50%", "After 75%", "At the end",
                      "Spread at the end"], rows_t, numeric=(2, 3, 4, 5, 6, 7))))
@@ -1364,7 +1377,7 @@ def build(records, results, notes, fake, inputs, sweep=()):
 <main>
 <header class="top">
 <div><h1>CHIPBOOST</h1><p class="lede">Qwen3-8B kernel optimization on Trainium: model alone and referee-guided runs.
-V1, consolidated v2 and Qwen + P1 fixes are shown separately; template random search uses an expert prior.
+V1, consolidated v2, Qwen + P1 fixes and P1 instructions only (v3) are shown separately; template random search uses an expert prior. Winner continuation starts from a verified 1.517x candidate, a different prior from start-kernel trials; speedups remain relative to the original baseline.
 A speedup counts only if the referee verifies it: correct on the chip and on unseen shapes, and faster than the noise.</p></div>
 <p class="meta">{esc(meta)}</p>
 </header>
