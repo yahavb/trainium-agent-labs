@@ -90,6 +90,12 @@ prompt). [[TBD: refresh from `scripts/final_auto.py` on analysis/logs/final/]]
 | 5–7 | matmul under a traffic bar | not run | not run | [[TBD]] | | |
 
 On level 2, v8.2 alone solved 5 of 9; adding error distillation (v8.3) made it 7 of 9 on the same seats.
+
+![runs solved per level, by agent version](analysis/figures/solved_by_version.png)
+
+![round of the first solve, final version](analysis/figures/attempts_to_solve.png)
+
+([analysis/figures/](analysis/figures/README.md): every plotted number, the files behind it and the runs left out.)
 We also ran the final version once end to end, one command for all four levels (`--all --repeat 1`): levels 1,
 2 and 4 solved, level 3 did not, and that run is counted above. Every solving kernel passed a fresh-process re-audit on trn2, and every one of v8.2's and v8.3's solves on
 levels 1–4 also builds in full for trn2 and matches in birsim, the compiler's instruction-level simulator
@@ -410,6 +416,8 @@ through runtime errors and the fresh samples kept redrawing the round-0 mistake;
 different first answer to the same prompt, then four rounds on the same copy-size error, and the run stopped
 early under the repeated-failure rule; we cannot rule out that a later fresh sample would have solved it.
 ([analysis/l2_l3_misses.md](analysis/l2_l3_misses.md))
+
+![failure modes by version](analysis/figures/failure_modes_by_version.png)
 
 Baseline, 424 attempts in 25 named modes: index and size
 arithmetic 52%, unfamiliar API 24%, tiling rules 18%, memory placement 5%. Four modes were never fixed by the
