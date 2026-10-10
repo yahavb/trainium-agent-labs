@@ -94,6 +94,7 @@ commit is proven to send byte-identical requests to the earlier one on that leve
 | 17:01 | v8.3 for level 2 | 7 of 9 against v8.2's 5 of 9 on the same seats |
 | 17:10 | push for levels 5–7 with WARM (start from the agent's own level-4 kernel) | another team solved them that way |
 | 17:30 | the repository must contain no Chinese | teoguo |
+| 17:42 | v8.5 = v8.4 + one level-2 sentence: when a kernel returns nothing, say so instead of "check the output-size arithmetic" | executor 2's analysis of the misses (analysis/l2_l3_misses.md); teoguo chose to try it with the runs left |
 
 ## 5. Constraints kept all day
 
