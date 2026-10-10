@@ -42,3 +42,14 @@ projects/*/attempts.jsonl
 
 # agent runs started with nohup ... > run.log (README pattern for surviving a dropped kubectl exec)
 run*.log
+
+# --- local workstation (participant) ---
+# Credentials live only in the shell (export AWS_...). Never in files, never in git.
+*.log
+.env
+.env.*
+*AWS_*
+*aws_*
+.aws/
+*credentials*
+*.pem
