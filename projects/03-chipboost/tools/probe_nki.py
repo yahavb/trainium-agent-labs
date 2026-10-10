@@ -32,7 +32,8 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "..", "02-kernel-agent"))
 
 KERNELS = [("matmul", "kernels/matmul_start.py"), ("matmul", "kernels/matmul_expert.py"),
-           ("matmul", "kernels/matmul_expert_aws.py"), ("copy", "kernels/copy_floor.py"),
+           ("matmul", "kernels/matmul_expert_aws.py"), ("copy", "kernels/copy_tiled.py"),
+           ("copy", "kernels/copy_floor.py"),
            ("rmsnorm", "kernels/rmsnorm_start.py"), ("swiglu", "kernels/swiglu_start.py")]
 
 

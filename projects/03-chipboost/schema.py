@@ -19,7 +19,7 @@ import time
 VERDICTS = ("rules", "wrong", "heldout_fail", "slower", "no_gain", "faster")
 SOURCES = ("chip", "sim")
 ARMS = ("referee", "model_alone", "random_search")
-OPS = ("matmul", "rmsnorm", "swiglu")
+OPS = ("matmul", "rmsnorm", "swiglu", "copy")   # copy: the bandwidth-floor probe
 
 # field -> type. None is allowed for every field the referee did not reach
 # (a kernel rejected by the rules scan has no timing).

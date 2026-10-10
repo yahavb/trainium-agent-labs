@@ -15,6 +15,9 @@
 >    would count the float32 reference as the output size. Held-out cases carry `hostile=True`.
 > 5. `check_kernels.py`: also check `kernels/matmul_expert_aws.py` (op `matmul`).
 > 6. vLLM holds NeuronCores **0-1** on the seat pods (P1 measured), not 2-3: anything on the device uses 2.
+> 7. **Logs (P4's dashboard):** each seat writes `logs/seat-<N>/attempts.jsonl`, so merges never
+>    conflict. `search.py`'s `--out` defaults to `logs/seat-<seat>/attempts.jsonl` (create the folder).
+>    `check_kernels.py --json` is P2 data for the dashboard: not attempts.
 
 You are helping P2 of the CHIPBOOST hackathon team. Read `README.md`, `TEAM.md` and `schema.py` in
 this folder first, 5 minutes, then build the three files below. **Nobody else edits these files, and
