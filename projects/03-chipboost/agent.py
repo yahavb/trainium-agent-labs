@@ -340,6 +340,52 @@ def count_first_buffer(src):
     return None
 
 
+def stale_operand(src):
+    """Rule D's static check: an nc_matmul operand X (stationary or moving) whose ONLY loads are dma_copy
+    calls OUTSIDE the matmul's innermost loop (variable k), from a source slice that never mentions k -- so
+    every pass of k multiplies by the same tile. Returns (X, k) or None. Parse only; never runs anything."""
+    try:
+        tree = ast.parse(src)
+    except (SyntaxError, ValueError):
+        return None
+    parent = {}
+    for node in ast.walk(tree):
+        for child in ast.iter_child_nodes(node):
+            parent[child] = node
+
+    def ancestors(node):
+        while node in parent:
+            node = parent[node]
+            yield node
+
+    def names_in(node):
+        return {n.id for n in ast.walk(node) if isinstance(n, ast.Name)}
+
+    copies = [n for n in ast.walk(tree) if isinstance(n, ast.Call) and _dotted(n.func).endswith("dma_copy")]
+    for mm in ast.walk(tree):
+        if not (isinstance(mm, ast.Call) and _dotted(mm.func).endswith("nc_matmul")):
+            continue
+        loop = next((a for a in ancestors(mm) if isinstance(a, ast.For)), None)
+        if loop is None or not isinstance(loop.target, ast.Name):
+            continue
+        k = loop.target.id
+        for kw in mm.keywords:
+            if kw.arg not in ("stationary", "moving") or not isinstance(kw.value, ast.Name):
+                continue
+            x = kw.value.id
+            loads = [c for c in copies
+                     if any(a.arg == "dst" and isinstance(a.value, ast.Name) and a.value.id == x for a in c.keywords)]
+            if not loads:
+                continue
+            stale = all(loop not in set(ancestors(c))
+                        and any(a.arg == "src" and isinstance(a.value, ast.Subscript)
+                                and k not in names_in(a.value.slice) for a in c.keywords)
+                        for c in loads)
+            if stale and SAFE_NAME.match(x) and SAFE_NAME.match(k):
+                return x, k
+    return None
+
+
 def says(r, referee, src="", rules=True):
     """What the model may be told. speedcheck: instruction_given, never referee_message -- it can quote the
     kernel's own exception text, which is attacker-controlled, and names held-out shapes (REFEREE.md
@@ -380,6 +426,15 @@ def says(r, referee, src="", rules=True):
                         f"nc_matmul keeps adding every output tile into the same sum. Allocate {x} inside the n "
                         f"loop, one fresh accumulator per (m, n) output tile, before the k loop. Keep everything "
                         f"else identical.")
+            s = stale_operand(src or "")
+            if s:
+                # Rule D (seat-101 v4, 6x): lhsT loaded once per m from rows 0:128, before the k loop.
+                x, k = s
+                return (f"Your {x} tile is loaded once, before the {k} loop, from a slice that does not depend on "
+                        f"{k}, so every pass of the {k} loop multiplies by the same 128 rows of K. Move that load "
+                        f"inside the {k} loop: allocate {x} there and dma_copy the {k}-th 128-row slice, "
+                        f"[{k} * TILE_K:({k} + 1) * TILE_K, ...], before each nc_matmul. Keep everything else "
+                        f"identical.")
     return r.get("instruction_given") or ""
 
 
