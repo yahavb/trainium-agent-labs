@@ -9,7 +9,7 @@ accumulates in float32. Not a search target: search.py only rewrites matmul_expe
 
 Copyright (C) 2024, Amazon.com. All Rights Reserved (the tutorial kernel this adapts).
 
-    python ../02-kernel-agent/nkibench.py --level 9 --check kernels/matmul_expert_aws.py
+    python nkibench.py --level 9 --check kernels/matmul_expert_aws.py
 """
 
 import nki

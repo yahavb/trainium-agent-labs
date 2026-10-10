@@ -15,7 +15,7 @@ independent chunks so one chunk's store overlaps the next one's load. Measured o
 
 Other row counts fall back to 128-row tiles with a partial last one.
 
-    python ../02-kernel-agent/nkibench.py --level 11 --check kernels/copy_floor.py
+    python nkibench.py --level 11 --check kernels/copy_floor.py
     python speedcheck.py --op copy --check kernels/copy_floor.py --baseline kernels/copy_tiled.py
 """
 

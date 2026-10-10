@@ -108,7 +108,7 @@ Files:
 
 **Benchmark.** Qwen3-8B's real per-core shapes, with timing shapes and held-out samplers in `shapes.py`. The
 matching benchmark levels (matmul, RMSNorm, copy, SwiGLU in bf16) are in
-`../02-kernel-agent/nkibench.py`. Also: the start kernel, and an RMSNorm start kernel with a measured
+[`nkibench.py`](nkibench.py). Also: the start kernel, and an RMSNorm start kernel with a measured
 bandwidth floor. RMSNorm has 3.68× of room; packing narrow rows makes the copy 6.7× faster.
 
 **Found a precision bug in AWS's official NKI matmul tutorial.** AWS's "fully optimised" kernel rounds its

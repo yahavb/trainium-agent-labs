@@ -28,7 +28,7 @@ import sys
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(os.path.dirname(HERE), "02-kernel-agent"))
+sys.path.append(os.path.join(os.path.dirname(HERE), "02-kernel-agent"))   # after our folder: our nkibench.py wins
 sys.path.insert(0, os.path.join(HERE, "redteam"))
 
 import nkibench  # noqa: E402

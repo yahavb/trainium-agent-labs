@@ -230,7 +230,7 @@ LEVELS = {}
 
 
 def level(n, op, entry, teaches, optimization, ref, shapes, banned, notes="", max_waste=None,
-          make_args=None, label=None):
+          make_args=None, label=None, tol=None):
     """max_waste: the most HBM traffic this level may move, as a multiple of the byte floor.
 
     Levels 5 to 7 are optimization levels, so correctness alone cannot tell them apart from level 4 --
@@ -239,11 +239,15 @@ def level(n, op, entry, teaches, optimization, ref, shapes, banned, notes="", ma
 
     The thresholds come from the shipped tiled kernel, which models at 2.00x the floor on the largest
     test shape: level 5 must beat that, level 6 must beat level 5, level 7 must be near the floor.
+
+    tol: this level's default numerical tolerance for --check, when its dtype needs one other than
+    2e-2. --tol on the command line still wins.
     """
     LEVELS[n] = dict(n=n, op=op, entry=entry, teaches=teaches, optimization=optimization,
                      ref=ref, shapes=shapes, banned=banned, notes=notes, max_waste=max_waste,
                      make_args=make_args or _args_matmul,
-                     label=label or (lambda sp: f"K={sp['K']} M={sp['M']} N={sp['N']}"))
+                     label=label or (lambda sp: f"K={sp['K']} M={sp['M']} N={sp['N']}"),
+                     tol=tol)
 
 
 level(1, "average pooling 2D", "tensor_avgpool_kernel",
@@ -343,6 +347,151 @@ level(8, "single-head attention", "nki_attention_",
       "or large scores overflow: a kernel that skips it looks correct on small test data.",
       make_args=_args_attention,
       label=lambda sp: f"seq={sp['seq']} dim={sp['dim']}")
+
+
+# ---------------------------------------------------------------- CHIPBOOST: Qwen3-8B's own ops
+#
+# Levels 9 to 12 are the operations Qwen3-8B is built from, in bfloat16, for projects/03-chipboost.
+# Each was added the level-8 way: a reference, an input builder, one level() call.
+#
+# The `shapes` here are the DEV shapes: small enough for nki.simulate on a CPU in seconds, and
+# multi-tile in every dimension so tiling bugs show. The real Qwen3-8B per-core sizes (where speed is
+# timed on the chip) and the held-out shapes live in projects/03-chipboost/shapes.py.
+
+QWEN3_RMS_EPS = 1e-6      # Qwen3-8B config.json: rms_norm_eps
+
+# Tolerances for bfloat16 outputs, relative to the output's RMS (describe_mismatch's measure).
+# bfloat16 keeps 8 significant bits, so one rounding step at |v| in [4, 8) RMS is 2**-5 = 3.1% of the
+# RMS, and these outputs have tails past 4 RMS. A correct matmul accumulates in float32 PSUM and rounds
+# once, so it can land one step from the reference: 0.04 admits that. RMSNorm and SwiGLU also go
+# through the engine's rsqrt / sigmoid, which may be approximate, so allow two steps: 0.07. The bugs
+# these levels exist to catch -- a dropped tile, a missing eps, a ragged row left unwritten -- are
+# 10% to 1000%. A copy must be exact.
+BF16_MATMUL_TOL = 0.04
+BF16_ACTIVATION_TOL = 0.07
+
+
+def _bf16():
+    """NumPy's bfloat16, from ml_dtypes (a Neuron SDK dependency). Imported only when a bf16 level
+    builds inputs, so the rest of this file and --selftest still run without it."""
+    try:
+        import ml_dtypes
+    except ImportError as e:
+        raise NkiMissing("bfloat16 inputs need the ml_dtypes package, which ships with the Neuron "
+                         "SDK. Run this level in the seat pod, or pip install ml_dtypes.") from e
+    return ml_dtypes.bfloat16
+
+
+def _randn(r, shape, scale=1.0):
+    return r.standard_normal(shape).astype(np.float32) * np.float32(scale)
+
+
+def ref_rmsnorm(x, w):
+    """Qwen3RMSNorm over the last axis: x * rsqrt(mean(x^2) + eps) * w.
+
+    x: [rows, D], w: [1, D]. Computed in float32 and rounded to x's dtype once, at the end. (Hugging
+    Face rounds to bf16 before multiplying by w; a kernel that stays in float32 until the end is at
+    most one bf16 step from either, which BF16_ACTIVATION_TOL covers.)
+
+    The trap is eps: on tiny inputs mean(x^2) is far below 1e-6, so a kernel that drops eps looks right
+    on ordinary data and is 10x off on quiet rows. The held-out shapes in chipboost include such rows.
+    """
+    x32 = x.astype(np.float32)
+    var = (x32 * x32).mean(axis=-1, keepdims=True)
+    y = x32 / np.sqrt(var + np.float32(QWEN3_RMS_EPS)) * w.astype(np.float32)
+    return y.astype(x.dtype)
+
+
+def ref_copy(x):
+    """The bandwidth probe: the output is the input, bit for bit."""
+    return x.copy()
+
+
+def ref_swiglu(gate, up):
+    """SiLU(gate) * up, as in Qwen3's MLP. Written as g / (1 + exp(-g)), which is safe at both ends:
+    a large negative gate sends exp(-g) to inf and the result to 0, a large positive one to g. The trap
+    is the other algebra, g * exp(g) / (1 + exp(g)), which returns inf/inf = NaN for a large gate."""
+    g = gate.astype(np.float32)
+    with np.errstate(over="ignore"):
+        silu = g / (np.float32(1.0) + np.exp(-g))
+    return (silu * up.astype(np.float32)).astype(gate.dtype)
+
+
+def _args_matmul_bf16(spec, r):
+    bf16 = _bf16()
+    s = spec.get("scale", 1.0)
+    return (_randn(r, (spec["K"], spec["M"]), s).astype(bf16),
+            _randn(r, (spec["K"], spec["N"]), s).astype(bf16))
+
+
+def _args_rmsnorm(spec, r):
+    bf16 = _bf16()
+    x = _randn(r, (spec["rows"], spec["dim"]), spec.get("scale", 1.0))
+    w = np.float32(1.0) + _randn(r, (1, spec["dim"]), 0.1)
+    return (x.astype(bf16), w.astype(bf16))
+
+
+def _args_copy(spec, r):
+    return (_randn(r, (spec["rows"], spec["dim"])).astype(_bf16()),)
+
+
+def _args_swiglu(spec, r):
+    bf16 = _bf16()
+    s = spec.get("scale", 1.0)
+    return (_randn(r, (spec["rows"], spec["dim"]), s).astype(bf16),
+            _randn(r, (spec["rows"], spec["dim"])).astype(bf16))
+
+
+def _label_rows(sp):
+    extra = f" scale={sp['scale']:g}" if sp.get("scale", 1.0) != 1.0 else ""
+    return f"rows={sp['rows']} dim={sp['dim']}{extra}"
+
+
+_MATMUL_BANNED = {"matmul", "dot", "einsum", "tensordot", "inner", "vdot"}
+
+level(9, "Qwen3-8B matmul, bf16", "nki_matmul_tiled_",
+      "the projections Qwen3-8B spends most of its time in, as the per-core shapes of tensor "
+      "parallelism 2, in bfloat16",
+      "the whole matmul ladder at real sizes: hoisting, blocking M and N, blocking K. The start "
+      "kernel is the level-4 tiled kernel; the expert ceiling is the tutorial's fully optimised one.",
+      ref_matmul,
+      # The last shape is 2048 deep, so blocked kernels split K into more than one block and the
+      # cross-block accumulation path is exercised in dev, not first met at the held-out shapes.
+      [dict(K=512, M=256, N=1024), dict(K=1024, M=128, N=2048), dict(K=256, M=512, N=512),
+       dict(K=2048, M=128, N=512)],
+      _MATMUL_BANNED,
+      "lhsT arrives transposed [K, M], like level 4, and the entry point has level 4's name, so "
+      "every matmul kernel and cheat in the team works at either level. K and M are multiples of 128 "
+      "and N of 512.",
+      make_args=_args_matmul_bf16, tol=BF16_MATMUL_TOL)
+
+level(10, "Qwen3-8B RMSNorm, bf16", "qwen3_rmsnorm",
+      "a row-wise reduction whose row count is the number of tokens, so it is ragged: rows are not a "
+      "multiple of 128",
+      "it is memory bound by nature, so the win is reading each byte once and keeping the "
+      "square-sum and the scaling on chip. Its floor is the copy kernel's time for the same bytes.",
+      ref_rmsnorm,
+      [dict(rows=128, dim=4096), dict(rows=300, dim=4096), dict(rows=256, dim=128)],
+      {"rms_norm", "rmsnorm", "norm", "layer_norm", "mean", "var", "std"},
+      "x is [rows, D], w is [1, D]; eps is 1e-6. Do not drop eps: quiet rows need it.",
+      make_args=_args_rmsnorm, label=_label_rows, tol=BF16_ACTIVATION_TOL)
+
+level(11, "copy, the bandwidth floor", "copy_floor",
+      "nothing to compute: it measures how fast bytes go HBM -> SBUF -> HBM on this chip",
+      "none. Its time for RMSNorm's byte count is the floor no RMSNorm kernel can beat.",
+      ref_copy,
+      [dict(rows=128, dim=4096), dict(rows=300, dim=4096)],
+      {"copy", "copyto", "clone"},
+      make_args=_args_copy, label=_label_rows, tol=0.0)
+
+level(12, "Qwen3-8B SwiGLU, bf16 (stretch)", "qwen3_swiglu",
+      "an elementwise activation on the MLP's widest tensor: SiLU(gate) * up",
+      "fusing the two reads and one write, and later folding it into the gate/up matmul.",
+      ref_swiglu,
+      [dict(rows=128, dim=6144), dict(rows=300, dim=1024)],
+      {"silu", "swiglu", "sigmoid", "gelu", "softplus"},
+      "gate and up are [rows, D]. A large positive gate must not produce NaN.",
+      make_args=_args_swiglu, label=_label_rows, tol=BF16_ACTIVATION_TOL)
 
 
 # ---------------------------------------------------------------- layer 1a: static rules
@@ -739,12 +888,22 @@ def simulate_and_count(kernel, args):
                 f"tile inside the loop.")
         return original_alloc(*a, **kw)
 
+    def tensor_bytes(t):
+        nbytes = getattr(t, "nbytes", None)
+        if not isinstance(nbytes, int) or nbytes <= 0:
+            nbytes = int(np.prod(t.shape)) * itemsize_of(t)
+        return int(nbytes)
+
     def counting_dma_copy(dst=None, src=None, **kw):
         try:
-            nbytes = getattr(src, "nbytes", None)
-            if not isinstance(nbytes, int) or nbytes <= 0:
-                nbytes = int(np.prod(src.shape)) * itemsize_of(src)
-            counter["bytes"] += int(nbytes)
+            # A DMA can convert dtypes. Counting only src overstated a float32 SBUF -> bf16 HBM store
+            # by 2x: measured on the chipboost expert matmul, which read "1.29x the floor" while
+            # moving exactly the floor. The HBM side of a converting copy is the narrower one here,
+            # since inputs and outputs are bf16.
+            nbytes = tensor_bytes(src)
+            if dst is not None:
+                nbytes = min(nbytes, tensor_bytes(dst))
+            counter["bytes"] += nbytes
             counter["dtypes"].add(str(getattr(src, "dtype", "?")))
             # Which HBM tensor each read came from (slices share their tensor's storage), so a
             # traffic verdict can say WHICH operand is re-read, not only that bytes are wasted.
@@ -856,7 +1015,7 @@ def verify(path, level_n, tol=2e-2, seed=0):
             if rep:
                 print(f"\n  case {label(case, level_n)}:")
                 print(rep)
-        if level_n >= 3 and counted["bytes"]:
+        if level_n >= 3 and counted["bytes"] and {"M", "K", "N"} <= set(case):
             f = matmul_flops(case["M"], case["K"], case["N"])
             intensities.append((label(case, level_n), roofline(f, counted["bytes"]),
                                 counted, f, minimum_hbm_bytes(args, want)))
@@ -1074,7 +1233,8 @@ def main():
                     help="what the tiled matmul's roofline says for this shape")
     ap.add_argument("--dtype", default="bfloat16",
                     choices=sorted(RIDGE_FLOPS_PER_BYTE))
-    ap.add_argument("--tol", type=float, default=2e-2)
+    ap.add_argument("--tol", type=float, default=None,
+                    help="numerical tolerance; default is the level's own, else 2e-2")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--selftest", action="store_true")
     a = ap.parse_args()
@@ -1106,12 +1266,14 @@ def main():
         return
 
     if a.level and a.check:
-        sys.exit(verify(a.check, a.level, a.tol, a.seed))
+        own = LEVELS[a.level].get("tol")
+        tol = a.tol if a.tol is not None else (own if own is not None else 2e-2)
+        sys.exit(verify(a.check, a.level, tol, a.seed))
 
     print("THE LEVELS — difficulty and optimization headroom rise together.\n")
     for n, s in LEVELS.items():
         tier = ("A correctness" if n <= 2 else "B roofline" if n <= 4
-                else "C search" if n <= 7 else "D your own")
+                else "C search" if n <= 7 else "D your own" if n == 8 else "E chipboost")
         bar = s.get("max_waste")
         print(f"  {n}. [{tier:<13}] {s['op']}"
               + (f"   (needs HBM traffic <= {bar:.2f}x the floor)" if bar else ""))
