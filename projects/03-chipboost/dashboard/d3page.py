@@ -1,4 +1,122 @@
-<!doctype html>
+"""
+dashboard/d3page.py -- the D3 dashboard (dashboard/index.html): the team's verified results, drawn in the
+browser from one JSON blob that build.py computes from the logs. Every number on the page comes from DATA.
+"""
+
+import json
+import re
+
+AGENT = {"referee_v2": "P1's agent", "referee_v2_p1fix": "P1's agent", "referee_v3": "P3's agent",
+         "referee_v4": "P3's agent", "referee_v5": "P3's agent", "referee_later": "P3's agent"}
+
+
+def data(b, summary, results, tune, sweep, records, meta):
+    """b is the build module: its helpers keep this page's numbers identical to the rest of the dashboard."""
+    s = summary.get("matmul") or {"arms": {}}
+    m = results["kernels"].get("matmul") or {}
+    lnc = (m.get("expert_derived") or {}).get("lnc2") or {}
+    bd = lnc.get("breakdown", "")
+    steps = [float(x) for x in re.findall(r"([\d.]+) us", bd)] + [float(x) for x in re.findall(r"-> ([\d.]+) \(", bd)]
+
+    wins = []
+    for arm in b.MODEL_ARMS:
+        for r in s["arms"].get(arm) or []:
+            if not (r["n_verified"] and r["best_x"] > 1.0):
+                continue
+            first = next(a for a in sorted(r["attempts"], key=b.order) if b.verified(a))
+            msg = first.get("referee_message") or ""
+            ho = re.search(r"including (\d+) undisclosed held-out", msg)
+            wins.append(dict(arm=arm, label=b.ARM_LABEL[arm], agent=AGENT.get(arm, "Qwen3-8B"), run=r["run_id"],
+                             seat=r["seat"], attempt=first["attempt_no"], us=round(first["time_us_median"], 1),
+                             base=round(first["baseline_us_same_session"], 1), x=round(r["best_x"], 4),
+                             heldout=int(ho.group(1)) if ho else None, code=first["code_hash"],
+                             curve=[round(v, 4) for v in r["curve"]], n=len(r["attempts"]),
+                             faster=sum(1 for a in r["attempts"] if b.verified(a) and a["speedup"] > 1.0)))
+    qx = max((w["x"] for w in wins), default=None)
+
+    ladder = []
+    if len(steps) >= 4:
+        start = steps[0]
+        ladder = [dict(name="Start kernel", desc="NKI tutorial matmul", us=start, kind="base"),
+                  dict(name="Qwen3-8B's kernel", desc="written by the model, verified", us=round(start / qx, 1) if qx else None, kind="qwen"),
+                  dict(name="AWS expert kernel", desc="AWS's design, fp32 fix", us=steps[1], kind="base"),
+                  dict(name="+ block tuning", desc="P2's best block sizes", us=steps[2], kind="tuned"),
+                  dict(name="+ both physical cores", desc="LNC=2 · not a referee verdict", us=steps[3], kind="tuned")]
+        ladder = [dict(l, x=round(start / l["us"], 3)) for l in ladder if l["us"]]
+
+    search = [dict(run=r["run_id"], seat=r["seat"], curve=[round(v, 4) for v in r["curve"]], best=round(r["best_x"], 3))
+              for r in s["arms"].get("random_search") or []]
+
+    timed = sorted((x for x in sweep if x["speedup"] and x["verdict"] in ("faster", "no_gain", "slower")),
+                   key=lambda x: -x["speedup"])
+    ref = next((x["speedup"] for x in timed if b.caps_of(x["code"]) == b.SHIPPED_CAPS), None)
+    found = {r["caps"] for r in (tune or {}).get("runs", []) if r["caps"]}
+    sw = [dict(rank=i + 1, caps="m{} n{} k{}".format(*b.caps_of(x["code"])), rel=round(x["speedup"] / ref, 4),
+               x=round(x["speedup"], 3), default=b.caps_of(x["code"]) == b.SHIPPED_CAPS, found=b.caps_of(x["code"]) in found)
+          for i, x in enumerate(timed)] if ref else []
+    tuned = b.median(r["best"] for r in tune["runs"]) if tune and tune["runs"] else None
+
+    ho = []
+    names = {"aws as published": "AWS as published", "expert": "AWS expert, fp32 fix",
+             "best random_search": "Random search best", "referee_v2": "Qwen3-8B's kernel"}
+    for h in results["heldout"]:
+        if h.get("which") in names:
+            u = re.search(r"([\d.]+) bf16 ulps", str(h.get("message") or ""))
+            ho.append(dict(row=names[h["which"]], shape=b.shape_text(h.get("shape")), ok=bool(h.get("passed")),
+                           x=h.get("speedup"), ulps=float(u.group(1)) if u else None))
+    q = [h for h in ho if h["row"] == "Qwen3-8B's kernel"]
+
+    rt = results["redteam"]
+    control, cheats, caught, _ = b.redteam_split(rt) if rt else ([], [], 0, 0)
+    wall = [dict(name=c["cheat"], what=c["what"], honest=c["honest"]) for c in cheats + control
+            if c["state"] in ("caught", "pass")]
+
+    evo = []
+    for arm, agent in (("referee", "Agent v1"), ("referee_v2_p3", "P3 v2"), ("referee_v3", "P3 v3"), ("referee_v4", "P3 v4"),
+                       ("referee_v5", "P3 v5"), ("referee_v2", "P1 v2"), ("referee_v2_p1fix", "P1 v2, fixed")):
+        att = [a for r in s["arms"].get(arm) or [] for a in r["attempts"]]
+        if not att:
+            continue
+        st = [stage(a, b) for a in att]
+        evo.append(dict(label=agent, arm=b.ARM_LABEL[arm], n=len(att),
+                        reach=[sum(1 for x in st if x >= k) for k in range(1, 5)]))
+    tries = [dict(run=i, t=j + 1, x=round(a["speedup"], 3)) for i, r in enumerate(s["arms"].get("random_search") or [])
+             for j, a in enumerate(sorted(r["attempts"], key=b.order)) if b.verified(a) and a["speedup"]]
+    grid = {}
+    for x in timed:
+        cm, cn, ck = b.caps_of(x["code"])
+        if ref:
+            grid[(cm, cn)] = max(grid.get((cm, cn), 0), x["speedup"] / ref)
+    grid = [dict(m=k[0], n=k[1], rel=round(v, 3)) for k, v in sorted(grid.items())]
+
+    return dict(meta=meta, qx=qx, evo=evo, tries=tries, grid=grid, wins=wins, ladder=ladder, search=search, sweep=sw, tuned=tuned,
+                expert_x=ladder[2]["x"] if len(ladder) > 2 else None, heldout=ho,
+                q_ok=sum(h["ok"] for h in q), q_n=len(q),
+                q_geo=round(b.math.exp(sum(b.math.log(h["x"]) for h in q if h["x"]) / max(1, sum(1 for h in q if h["x"]))), 2) if q else None,
+                caught=caught, cheats=len(cheats), honest_ok=sum(c["state"] == "pass" for c in control),
+                honest=len(control), wall=wall, attempts=len(records),
+                agents=sorted({w["agent"] for w in wins}))
+
+
+def stage(a, b):
+    """How far one attempt got through the referee: 0 did not compile, 1 compiled, 2 ran, 3 correct, 4 faster."""
+    m = a.get("referee_message") or ""
+    if b.verified(a) and a["speedup"] > 1.0:
+        return 4
+    if a["verdict"] in ("no_gain", "slower", "faster", "heldout_fail"):
+        return 3
+    if "failed during compile" in m or a["verdict"] == "rules":
+        return 0
+    if "failed during simulate" in m:
+        return 1
+    return 2
+
+
+def page(d):
+    return HTML.replace("__DATA__", json.dumps(d, ensure_ascii=False).replace("</", "<\\/"))
+
+
+HTML = r"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -104,7 +222,7 @@ sandboxed process, and timing is interleaved A/B on the device clock.</p><div cl
 expert across both physical cores (LNC=2): P2 engineering timed with P1's timer, not a referee verdict.</p>
 </main>
 <div id="tip"></div>
-<script id="data" type="application/json">{"meta": "Built 2026-10-10 18:05 · 264 attempts · 45 files · measured on the chip", "qx": 1.5175, "evo": [{"label": "Agent v1", "arm": "Referee v1", "n": 48, "reach": [48, 27, 3, 0]}, {"label": "P3 v2", "arm": "P3 named-error rules (v2)", "n": 24, "reach": [24, 3, 3, 0]}, {"label": "P3 v3", "arm": "P1 instructions only (v3)", "n": 8, "reach": [7, 0, 0, 0]}, {"label": "P3 v4", "arm": "P3 rules A-C + P1 (v4)", "n": 8, "reach": [7, 7, 0, 0]}, {"label": "P3 v5", "arm": "P3 rules A-D + P1 (v5)", "n": 8, "reach": [7, 2, 2, 2]}, {"label": "P1 v2", "arm": "Referee v2 (P1)", "n": 8, "reach": [6, 2, 1, 1]}, {"label": "P1 v2, fixed", "arm": "Qwen + P1 fixes", "n": 16, "reach": [14, 2, 2, 2]}], "tries": [{"run": 0, "t": 1, "x": 2.497}, {"run": 0, "t": 2, "x": 1.471}, {"run": 0, "t": 3, "x": 1.34}, {"run": 0, "t": 4, "x": 2.693}, {"run": 0, "t": 5, "x": 1.346}, {"run": 0, "t": 6, "x": 2.984}, {"run": 0, "t": 7, "x": 1.47}, {"run": 0, "t": 8, "x": 3.126}, {"run": 1, "t": 1, "x": 2.497}, {"run": 1, "t": 2, "x": 3.324}, {"run": 1, "t": 3, "x": 3.264}, {"run": 1, "t": 4, "x": 1.471}, {"run": 1, "t": 5, "x": 1.7}, {"run": 1, "t": 8, "x": 1.466}, {"run": 2, "t": 1, "x": 2.5}, {"run": 2, "t": 2, "x": 2.526}, {"run": 2, "t": 3, "x": 1.46}, {"run": 2, "t": 4, "x": 2.523}, {"run": 2, "t": 5, "x": 1.7}, {"run": 2, "t": 6, "x": 2.227}, {"run": 2, "t": 7, "x": 1.444}, {"run": 2, "t": 8, "x": 1.473}, {"run": 3, "t": 1, "x": 2.493}, {"run": 3, "t": 2, "x": 1.471}, {"run": 3, "t": 3, "x": 1.339}, {"run": 3, "t": 4, "x": 2.69}, {"run": 3, "t": 5, "x": 1.345}, {"run": 3, "t": 6, "x": 2.983}, {"run": 3, "t": 7, "x": 1.47}, {"run": 3, "t": 8, "x": 3.12}, {"run": 3, "t": 10, "x": 1.764}, {"run": 3, "t": 11, "x": 3.281}, {"run": 3, "t": 12, "x": 3.277}, {"run": 3, "t": 13, "x": 2.571}, {"run": 3, "t": 14, "x": 1.454}, {"run": 3, "t": 15, "x": 3.062}, {"run": 3, "t": 16, "x": 1.454}, {"run": 3, "t": 17, "x": 3.221}, {"run": 3, "t": 18, "x": 1.317}, {"run": 3, "t": 20, "x": 2.517}, {"run": 3, "t": 21, "x": 2.419}, {"run": 3, "t": 22, "x": 2.243}, {"run": 3, "t": 23, "x": 2.221}, {"run": 3, "t": 24, "x": 3.303}, {"run": 4, "t": 1, "x": 2.49}, {"run": 4, "t": 2, "x": 3.312}, {"run": 4, "t": 3, "x": 3.259}, {"run": 4, "t": 4, "x": 1.47}, {"run": 4, "t": 5, "x": 1.692}, {"run": 4, "t": 8, "x": 1.466}, {"run": 4, "t": 9, "x": 2.983}, {"run": 4, "t": 10, "x": 3.367}, {"run": 4, "t": 11, "x": 2.876}, {"run": 4, "t": 12, "x": 3.252}, {"run": 4, "t": 13, "x": 3.141}, {"run": 4, "t": 14, "x": 2.669}, {"run": 4, "t": 15, "x": 1.734}, {"run": 4, "t": 17, "x": 1.756}, {"run": 4, "t": 18, "x": 2.522}, {"run": 4, "t": 19, "x": 2.688}, {"run": 4, "t": 20, "x": 2.221}, {"run": 4, "t": 21, "x": 2.573}, {"run": 4, "t": 22, "x": 1.457}, {"run": 4, "t": 23, "x": 1.444}, {"run": 4, "t": 24, "x": 2.508}, {"run": 5, "t": 1, "x": 2.496}, {"run": 5, "t": 2, "x": 2.524}, {"run": 5, "t": 3, "x": 1.46}, {"run": 5, "t": 4, "x": 2.521}, {"run": 5, "t": 5, "x": 1.694}, {"run": 5, "t": 6, "x": 2.229}, {"run": 5, "t": 7, "x": 1.445}, {"run": 5, "t": 8, "x": 1.474}, {"run": 5, "t": 9, "x": 3.12}, {"run": 5, "t": 10, "x": 1.346}, {"run": 5, "t": 11, "x": 3.425}, {"run": 5, "t": 12, "x": 2.57}, {"run": 5, "t": 13, "x": 3.158}, {"run": 5, "t": 14, "x": 2.513}, {"run": 5, "t": 15, "x": 2.693}, {"run": 5, "t": 16, "x": 1.767}, {"run": 5, "t": 18, "x": 1.467}, {"run": 5, "t": 19, "x": 1.339}, {"run": 5, "t": 20, "x": 2.883}, {"run": 5, "t": 21, "x": 1.319}, {"run": 5, "t": 22, "x": 2.846}, {"run": 5, "t": 23, "x": 1.765}, {"run": 5, "t": 24, "x": 2.717}], "grid": [{"m": 1, "n": 1, "rel": 0.528}, {"m": 1, "n": 2, "rel": 0.709}, {"m": 1, "n": 3, "rel": 0.909}, {"m": 1, "n": 4, "rel": 1.252}, {"m": 1, "n": 6, "rel": 1.352}, {"m": 1, "n": 12, "rel": 1.375}, {"m": 2, "n": 1, "rel": 0.586}, {"m": 2, "n": 2, "rel": 1.011}, {"m": 2, "n": 3, "rel": 1.253}, {"m": 2, "n": 4, "rel": 1.328}, {"m": 2, "n": 6, "rel": 1.355}, {"m": 2, "n": 12, "rel": 1.308}, {"m": 16, "n": 2, "rel": 1.0}], "wins": [{"arm": "referee_v2", "label": "Referee v2 (P1)", "agent": "P1's agent", "run": "matmul-referee-v2-202334-0", "seat": 100, "attempt": 3, "us": 633.0, "base": 960.4, "x": 1.5171, "heldout": 5, "code": "57044ec26245", "curve": [1.0, 1.0, 1.5171, 1.5171, 1.5171, 1.5171, 1.5171, 1.5171], "n": 8, "faster": 1}, {"arm": "referee_v2_p1fix", "label": "Qwen + P1 fixes", "agent": "P1's agent", "run": "matmul-referee-v2-p1fix-203729-0", "seat": 100, "attempt": 2, "us": 632.9, "base": 960.1, "x": 1.5172, "heldout": 5, "code": "05be45c6c037", "curve": [1.0, 1.517, 1.5172, 1.5172, 1.5172, 1.5172, 1.5172, 1.5172], "n": 8, "faster": 2}, {"arm": "referee_v5", "label": "P3 rules A-D + P1 (v5)", "agent": "P3's agent", "run": "matmul-referee-v5-212632-0", "seat": 101, "attempt": 2, "us": 633.1, "base": 960.7, "x": 1.5175, "heldout": 3, "code": "05be45c6c037", "curve": [1.0, 1.5175, 1.5175, 1.5175, 1.5175, 1.5175, 1.5175, 1.5175], "n": 8, "faster": 2}], "ladder": [{"name": "Start kernel", "desc": "NKI tutorial matmul", "us": 960.5, "kind": "base", "x": 1.0}, {"name": "Qwen3-8B's kernel", "desc": "written by the model, verified", "us": 632.9, "kind": "qwen", "x": 1.518}, {"name": "AWS expert kernel", "desc": "AWS's design, fp32 fix", "us": 385.6, "kind": "base", "x": 2.491}, {"name": "+ block tuning", "desc": "P2's best block sizes", "us": 288.3, "kind": "tuned", "x": 3.332}, {"name": "+ both physical cores", "desc": "LNC=2 · not a referee verdict", "us": 192.2, "kind": "tuned", "x": 4.997}], "search": [{"run": "random_search-r0", "seat": 100, "curve": [2.497, 2.497, 2.497, 2.6934, 2.6934, 2.9839, 2.9839, 3.1259], "best": 3.126}, {"run": "random_search-r1", "seat": 100, "curve": [2.4965, 3.3235, 3.3235, 3.3235, 3.3235, 3.3235, 3.3235, 3.3235], "best": 3.324}, {"run": "random_search-r2", "seat": 100, "curve": [2.4998, 2.5258, 2.5258, 2.5258, 2.5258, 2.5258, 2.5258, 2.5258], "best": 2.526}, {"run": "matmul-random_search-s0-185117", "seat": 102, "curve": [2.4933, 2.4933, 2.4933, 2.6903, 2.6903, 2.9827, 2.9827, 3.1199, 3.1199, 3.1199, 3.2812, 3.2812, 3.2812, 3.2812, 3.2812, 3.2812, 3.2812, 3.2812, 3.2812, 3.2812, 3.2812, 3.2812, 3.2812, 3.3032], "best": 3.303}, {"run": "matmul-random_search-s1-185117", "seat": 102, "curve": [2.4897, 3.3115, 3.3115, 3.3115, 3.3115, 3.3115, 3.3115, 3.3115, 3.3115, 3.3666, 3.3666, 3.3666, 3.3666, 3.3666, 3.3666, 3.3666, 3.3666, 3.3666, 3.3666, 3.3666, 3.3666, 3.3666, 3.3666, 3.3666], "best": 3.367}, {"run": "matmul-random_search-s2-185117", "seat": 102, "curve": [2.4958, 2.5243, 2.5243, 2.5243, 2.5243, 2.5243, 2.5243, 2.5243, 3.1203, 3.1203, 3.4252, 3.4252, 3.4252, 3.4252, 3.4252, 3.4252, 3.4252, 3.4252, 3.4252, 3.4252, 3.4252, 3.4252, 3.4252, 3.4252], "best": 3.425}], "sweep": [{"rank": 1, "caps": "m1 n12 k4", "rel": 1.3747, "x": 3.426, "default": false, "found": true}, {"rank": 2, "caps": "m2 n6 k8", "rel": 1.355, "x": 3.377, "default": false, "found": false}, {"rank": 3, "caps": "m1 n6 k4", "rel": 1.3515, "x": 3.368, "default": false, "found": true}, {"rank": 4, "caps": "m2 n4 k16", "rel": 1.3282, "x": 3.31, "default": false, "found": true}, {"rank": 5, "caps": "m2 n4 k8", "rel": 1.321, "x": 3.292, "default": false, "found": false}, {"rank": 6, "caps": "m2 n6 k16", "rel": 1.3209, "x": 3.292, "default": false, "found": false}, {"rank": 7, "caps": "m2 n12 k4", "rel": 1.3078, "x": 3.259, "default": false, "found": false}, {"rank": 8, "caps": "m2 n6 k4", "rel": 1.303, "x": 3.247, "default": false, "found": false}, {"rank": 9, "caps": "m1 n6 k8", "rel": 1.268, "x": 3.16, "default": false, "found": false}, {"rank": 10, "caps": "m2 n3 k32", "rel": 1.2535, "x": 3.124, "default": false, "found": false}, {"rank": 11, "caps": "m2 n4 k4", "rel": 1.2527, "x": 3.122, "default": false, "found": false}, {"rank": 12, "caps": "m1 n4 k4", "rel": 1.2516, "x": 3.119, "default": false, "found": false}, {"rank": 13, "caps": "m2 n3 k16", "rel": 1.2454, "x": 3.104, "default": false, "found": false}, {"rank": 14, "caps": "m1 n6 k16", "rel": 1.2395, "x": 3.089, "default": false, "found": false}, {"rank": 15, "caps": "m2 n3 k8", "rel": 1.2161, "x": 3.031, "default": false, "found": false}, {"rank": 16, "caps": "m2 n3 k4", "rel": 1.1943, "x": 2.976, "default": false, "found": false}, {"rank": 17, "caps": "m1 n4 k16", "rel": 1.1563, "x": 2.882, "default": false, "found": false}, {"rank": 18, "caps": "m1 n4 k8", "rel": 1.1435, "x": 2.85, "default": false, "found": false}, {"rank": 19, "caps": "m1 n6 k2", "rel": 1.0864, "x": 2.707, "default": false, "found": false}, {"rank": 20, "caps": "m1 n12 k2", "rel": 1.0797, "x": 2.691, "default": false, "found": false}, {"rank": 21, "caps": "m1 n4 k2", "rel": 1.0714, "x": 2.67, "default": false, "found": false}, {"rank": 22, "caps": "m2 n6 k2", "rel": 1.038, "x": 2.587, "default": false, "found": false}, {"rank": 23, "caps": "m2 n12 k2", "rel": 1.0329, "x": 2.574, "default": false, "found": false}, {"rank": 24, "caps": "m2 n3 k2", "rel": 1.0294, "x": 2.565, "default": false, "found": false}, {"rank": 25, "caps": "m2 n4 k2", "rel": 1.0125, "x": 2.523, "default": false, "found": false}, {"rank": 26, "caps": "m2 n2 k32", "rel": 1.0115, "x": 2.521, "default": false, "found": false}, {"rank": 27, "caps": "m2 n2 k16", "rel": 1.0072, "x": 2.51, "default": false, "found": false}, {"rank": 28, "caps": "m2 n2 k4", "rel": 1.0071, "x": 2.51, "default": false, "found": false}, {"rank": 29, "caps": "m16 n2 k8", "rel": 1.0, "x": 2.492, "default": true, "found": false}, {"rank": 30, "caps": "m2 n2 k2", "rel": 0.9719, "x": 2.422, "default": false, "found": false}, {"rank": 31, "caps": "m1 n3 k32", "rel": 0.9094, "x": 2.266, "default": false, "found": false}, {"rank": 32, "caps": "m1 n3 k2", "rel": 0.9052, "x": 2.256, "default": false, "found": false}, {"rank": 33, "caps": "m1 n3 k4", "rel": 0.9026, "x": 2.249, "default": false, "found": false}, {"rank": 34, "caps": "m1 n3 k16", "rel": 0.8924, "x": 2.224, "default": false, "found": false}, {"rank": 35, "caps": "m1 n3 k8", "rel": 0.89, "x": 2.218, "default": false, "found": false}, {"rank": 36, "caps": "m1 n2 k4", "rel": 0.7088, "x": 1.766, "default": false, "found": false}, {"rank": 37, "caps": "m1 n2 k2", "rel": 0.7081, "x": 1.765, "default": false, "found": false}, {"rank": 38, "caps": "m1 n2 k32", "rel": 0.705, "x": 1.757, "default": false, "found": false}, {"rank": 39, "caps": "m1 n2 k16", "rel": 0.6967, "x": 1.736, "default": false, "found": false}, {"rank": 40, "caps": "m1 n2 k8", "rel": 0.6801, "x": 1.695, "default": false, "found": false}, {"rank": 41, "caps": "m1 n2 k1", "rel": 0.5914, "x": 1.474, "default": false, "found": false}, {"rank": 42, "caps": "m2 n2 k1", "rel": 0.5906, "x": 1.472, "default": false, "found": false}, {"rank": 43, "caps": "m1 n3 k1", "rel": 0.5904, "x": 1.471, "default": false, "found": false}, {"rank": 44, "caps": "m2 n3 k1", "rel": 0.59, "x": 1.47, "default": false, "found": false}, {"rank": 45, "caps": "m1 n4 k1", "rel": 0.5885, "x": 1.467, "default": false, "found": false}, {"rank": 46, "caps": "m2 n4 k1", "rel": 0.5883, "x": 1.466, "default": false, "found": false}, {"rank": 47, "caps": "m1 n6 k1", "rel": 0.5859, "x": 1.46, "default": false, "found": false}, {"rank": 48, "caps": "m2 n1 k1", "rel": 0.5856, "x": 1.459, "default": false, "found": false}, {"rank": 49, "caps": "m1 n12 k1", "rel": 0.5835, "x": 1.454, "default": false, "found": false}, {"rank": 50, "caps": "m2 n6 k1", "rel": 0.5831, "x": 1.453, "default": false, "found": false}, {"rank": 51, "caps": "m2 n12 k1", "rel": 0.5798, "x": 1.445, "default": false, "found": false}, {"rank": 52, "caps": "m2 n1 k32", "rel": 0.5395, "x": 1.345, "default": false, "found": false}, {"rank": 53, "caps": "m2 n1 k4", "rel": 0.5375, "x": 1.34, "default": false, "found": false}, {"rank": 54, "caps": "m2 n1 k2", "rel": 0.5374, "x": 1.339, "default": false, "found": false}, {"rank": 55, "caps": "m2 n1 k16", "rel": 0.5373, "x": 1.339, "default": false, "found": false}, {"rank": 56, "caps": "m2 n1 k8", "rel": 0.5368, "x": 1.338, "default": false, "found": false}, {"rank": 57, "caps": "m1 n1 k1", "rel": 0.5283, "x": 1.317, "default": false, "found": false}, {"rank": 58, "caps": "m1 n1 k16", "rel": 0.3697, "x": 0.921, "default": false, "found": false}, {"rank": 59, "caps": "m1 n1 k32", "rel": 0.3686, "x": 0.919, "default": false, "found": false}, {"rank": 60, "caps": "m1 n1 k8", "rel": 0.3678, "x": 0.917, "default": false, "found": false}, {"rank": 61, "caps": "m1 n1 k4", "rel": 0.3676, "x": 0.916, "default": false, "found": false}, {"rank": 62, "caps": "m1 n1 k2", "rel": 0.3676, "x": 0.916, "default": false, "found": false}], "tuned": 1.3522236267068548, "expert_x": 2.491, "heldout": [{"row": "AWS expert, fp32 fix", "shape": "256×6144×4096", "ok": true, "x": 2.824, "ulps": null}, {"row": "AWS expert, fp32 fix", "shape": "256×2048×4096", "ok": true, "x": 2.082, "ulps": null}, {"row": "AWS expert, fp32 fix", "shape": "512×4096×2048", "ok": true, "x": 3.797, "ulps": null}, {"row": "AWS expert, fp32 fix", "shape": "128×4096×6144", "ok": true, "x": 1.276, "ulps": null}, {"row": "AWS expert, fp32 fix", "shape": "640×1280×2560", "ok": true, "x": 1.566, "ulps": null}, {"row": "AWS expert, fp32 fix", "shape": "1024×4096×512", "ok": true, "x": 3.059, "ulps": null}, {"row": "AWS as published", "shape": "256×6144×4096", "ok": false, "x": null, "ulps": 4.9}, {"row": "AWS as published", "shape": "256×2048×4096", "ok": true, "x": 2.129, "ulps": null}, {"row": "AWS as published", "shape": "512×4096×2048", "ok": true, "x": 3.794, "ulps": null}, {"row": "AWS as published", "shape": "128×4096×6144", "ok": true, "x": 1.281, "ulps": null}, {"row": "AWS as published", "shape": "640×1280×2560", "ok": true, "x": 1.591, "ulps": null}, {"row": "AWS as published", "shape": "1024×4096×512", "ok": true, "x": 2.961, "ulps": null}, {"row": "Random search best", "shape": "256×6144×4096", "ok": true, "x": 3.987, "ulps": null}, {"row": "Random search best", "shape": "256×2048×4096", "ok": true, "x": 2.837, "ulps": null}, {"row": "Random search best", "shape": "512×4096×2048", "ok": true, "x": 3.797, "ulps": null}, {"row": "Random search best", "shape": "128×4096×6144", "ok": true, "x": 2.342, "ulps": null}, {"row": "Random search best", "shape": "640×1280×2560", "ok": true, "x": 1.463, "ulps": null}, {"row": "Random search best", "shape": "1024×4096×512", "ok": true, "x": 1.2, "ulps": null}, {"row": "Qwen3-8B's kernel", "shape": "256×6144×4096", "ok": true, "x": 1.909, "ulps": null}, {"row": "Qwen3-8B's kernel", "shape": "256×2048×4096", "ok": true, "x": 1.57, "ulps": null}, {"row": "Qwen3-8B's kernel", "shape": "512×4096×2048", "ok": true, "x": 1.877, "ulps": null}, {"row": "Qwen3-8B's kernel", "shape": "128×4096×6144", "ok": true, "x": 1.135, "ulps": null}, {"row": "Qwen3-8B's kernel", "shape": "640×1280×2560", "ok": true, "x": 1.632, "ulps": null}, {"row": "Qwen3-8B's kernel", "shape": "1024×4096×512", "ok": true, "x": 1.196, "ulps": null}], "q_ok": 6, "q_n": 6, "q_geo": 1.52, "caught": 34, "cheats": 36, "honest_ok": 9, "honest": 9, "wall": [{"name": "cheat_zeros", "what": "should be caught by simulator correctness (+ chip)", "honest": false}, {"name": "cheat_writes_input", "what": "should be caught by check_inputs_untouched", "honest": false}, {"name": "cheat_heldout_only", "what": "should be caught by held-out shapes", "honest": false}, {"name": "cheat_numpy", "what": "should be caught by rules scan", "honest": false}, {"name": "cheat_numpy_obfuscated", "what": "should be caught by simulator (passes rules by design)", "honest": false}, {"name": "cheat_unhooked_dma", "what": "should be caught by byte floor (un-hooked DMA)", "honest": false}, {"name": "cheat_cached", "what": "should be caught by correctness, second seed", "honest": false}, {"name": "cheat_special_inputs", "what": "should be caught by correctness, random K>128", "honest": false}, {"name": "cheat_noise", "what": "should be caught by chip timing: A/B noise -> no_gain", "honest": false}, {"name": "cheat_compile_time", "what": "should be caught by chip timing: compile excluded", "honest": false}, {"name": "a1_write", "what": "writes an arbitrary file with np.tofile", "honest": false}, {"name": "a2_defarg", "what": "runs code at import via a default argument", "honest": false}, {"name": "a3_inject", "what": "prompt injection through its exception text", "honest": false}, {"name": "a4_system", "what": "root shell via np._core..os.system + setsid survivor", "honest": false}, {"name": "c10a_monkeypatch", "what": "monkeypatches the referee at import", "honest": false}, {"name": "c10b_forge_stdout", "what": "forges a 'faster' record via atexit", "honest": false}, {"name": "c10c_stale_output", "what": "computes only when its output holds the poison, skips work when timed", "honest": false}, {"name": "c1a_zeros", "what": "writes zeros", "honest": false}, {"name": "c1b_nowrite", "what": "never writes its output", "honest": false}, {"name": "c2a_scribble_input", "what": "scribbles on its input", "honest": false}, {"name": "c2b_return_input", "what": "writes the result into rhs and returns it", "honest": false}, {"name": "c2c_return_rhs", "what": "returns rhs untouched", "honest": false}, {"name": "c3b_known_shapes", "what": "correct only on the 8 published shapes", "honest": false}, {"name": "c4a_npmatmul", "what": "np.matmul", "honest": false}, {"name": "c4b_atop", "what": "the @ operator", "honest": false}, {"name": "c4c_dotT", "what": ".T on an argument", "honest": false}, {"name": "c4d_multidot", "what": "np.linalg.multi_dot", "honest": false}, {"name": "c5d_alias_import", "what": "from nki.isa import dma_copy (hides DMAs from the counter)", "honest": false}, {"name": "c6a_bf16_accum", "what": "accumulates in a bf16 tile", "honest": false}, {"name": "c6b_bf16_halves", "what": "two fp32 halves each rounded to bf16", "honest": false}, {"name": "c6c_fp8_inputs", "what": "fp8 operands", "honest": false}, {"name": "c7_half_k", "what": "contracts only half of K", "honest": false}, {"name": "c8a_clamp", "what": "clamps the output to +-1000", "honest": false}, {"name": "c8b_clamp_devonly", "what": "clamps only at the timing shapes", "honest": false}, {"name": "honest reference_level4", "what": "", "honest": true}, {"name": "c5a_dma_compute", "what": "honest: dma_compute for loads", "honest": true}, {"name": "c5b_dma_compute_positional", "what": "honest: dma_compute, positional args", "honest": true}, {"name": "c5c_dma_transpose", "what": "honest: dma_transpose for lhsT", "honest": true}, {"name": "c5e_nl_load_store", "what": "honest: nl.load / nl.store", "honest": true}, {"name": "h1_ref", "what": "honest: the start kernel", "honest": true}, {"name": "h2_nm_order", "what": "honest: n-outer loop order", "honest": true}, {"name": "h3_hoist", "what": "honest: lhsT strip hoisted", "honest": true}, {"name": "h4_fp32_halves", "what": "honest: K split into two fp32 PSUM halves", "honest": true}], "attempts": 264, "agents": ["P1's agent", "P3's agent"]}</script>
+<script id="data" type="application/json">__DATA__</script>
 <script>
 const D = JSON.parse(document.getElementById("data").textContent);
 if (/Headless/.test(navigator.userAgent) || navigator.webdriver || matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -358,3 +476,4 @@ d3.select("#tiles").selectAll(".tile").data(tiles).join("div").attr("class", d =
 </script>
 </body>
 </html>
+"""
