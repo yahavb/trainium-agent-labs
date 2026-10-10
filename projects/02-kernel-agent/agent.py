@@ -52,7 +52,7 @@ REASONING_KEYS = ("reasoning", "reasoning_content")
 WEIGHTS = dict(parses=0.1, rules=0.2, runs=0.2, correct=0.5)
 
 
-def grade(source, level):
+def grade_run(source, level):
     """Returns (reward, parts, feedback). Feedback is an INSTRUCTION, never just a verdict."""
     parts = dict(parses=False, rules=False, runs=False, correct=False)
 
@@ -160,6 +160,184 @@ def grade(source, level):
     if intensity:
         note += " " + nkibench.explain_roofline(intensity)
     return reward, parts, note
+
+
+# ---------------------------------------------------------------- static check (before running)
+#
+# Two checks on the code itself, before it runs, so that every problem they find is reported in ONE
+# round instead of one per round -- a crash only ever reports the first error, and measured on
+# level 1 the model needed five rounds to meet four mistakes that were all in its round-0 code.
+#
+#  API          every nl.x / nisa.x / nki.x name is looked up in the REAL modules, and every call's
+#               keyword arguments in the REAL signature. No list of known-bad names: measured, the
+#               model invented a new one most runs (nisa.multiply, nisa.scalar_mul, nl.assign,
+#               transpose_moving=, nl.sum(dst=...)), so only the real API can be the reference.
+#  RETURN VALUE a call whose result is thrown away, when the function RETURNS its result instead of
+#               writing into a dst= argument. Measured in both --plan-merge runs: the model treated
+#               nl.sum and tile.ap as if they changed a tile in place. `nl.sum(x, axis=[3, 4])` alone
+#               on a line gave an all-NaN output; `tile.ap([...])` alone gave an unrelated-looking
+#               "invalid partition stride" five rounds running. Neither crash names the real cause.
+#
+# Findings are ADDED to the feedback; they never change the reward and never stop the code from
+# running, so a false positive costs a sentence, not a correct kernel.
+
+STATIC_CHECK = True
+NKI_ALIASES = {"nl": "nki.language", "nisa": "nki.isa", "nki": "nki"}
+VIEW_METHODS = ("ap", "reshape")
+
+
+def _dotted_name(node):
+    parts = []
+    while isinstance(node, ast_mod().Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if isinstance(node, ast_mod().Name):
+        parts.append(node.id)
+        return ".".join(reversed(parts))
+    return None
+
+
+def ast_mod():
+    import ast
+    return ast
+
+
+def _resolve(dotted, aliases):
+    """'nl.sum' -> ('nki.language', 'sum', <function or None>, found_module) using the kernel's imports."""
+    import importlib
+    parts = dotted.split(".")
+    if len(parts) < 2 or parts[0] not in aliases:
+        return None
+    mod_path = ".".join([aliases[parts[0]]] + parts[1:-1])
+    try:
+        mod = importlib.import_module(mod_path)
+    except Exception:
+        return None
+    return mod_path, parts[-1], getattr(mod, parts[-1], None), hasattr(mod, parts[-1])
+
+
+def _kernel_aliases(tree):
+    ast = ast_mod()
+    aliases = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for n in node.names:
+                if n.name in ("nki", "nki.language", "nki.isa"):
+                    if n.asname:
+                        aliases[n.asname] = n.name
+                    else:
+                        aliases["nki"] = "nki"
+        elif isinstance(node, ast.ImportFrom) and node.module == "nki":
+            for n in node.names:
+                if n.name in ("language", "isa"):
+                    aliases[n.asname or n.name] = f"nki.{n.name}"
+    return aliases or dict(NKI_ALIASES)
+
+
+def static_check(source):
+    """List of findings, each naming the line and the change to make. Empty if nothing found."""
+    import inspect
+    ast = ast_mod()
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return []
+    aliases = _kernel_aliases(tree)
+    short = {v: k for k, v in aliases.items()}
+    lines = source.splitlines()
+    show = lambda n: lines[n.lineno - 1].strip() if 0 < n.lineno <= len(lines) else ""
+    found, seen = [], set()
+
+    def add(key, text):
+        if key not in seen:
+            seen.add(key)
+            found.append(text)
+
+    # API, part 1: names. Only the outermost attribute of a chain (nl.sum, not nl).
+    inner = {id(n.value) for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Attribute) or id(node) in inner:
+            continue
+        dotted = _dotted_name(node)
+        r = dotted and _resolve(dotted, aliases)
+        if r and not r[3]:
+            mod_path, attr = r[0], r[1]
+            add(("name", dotted), f"line {node.lineno} (`{show(node)}`): `{dotted}` does not "
+                f"exist.{available_names(f'{mod_path}.{attr}')}")
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        dotted = _dotted_name(node.func)
+        r = dotted and _resolve(dotted, aliases)
+        fn = r[2] if r else None
+        sig = None
+        if fn is not None:
+            try:
+                sig = inspect.signature(fn)
+            except (TypeError, ValueError):
+                sig = None
+        # API, part 2: arguments, against the real signature.
+        if sig is not None and not any(isinstance(a, ast.Starred) for a in node.args) \
+                and all(k.arg is not None for k in node.keywords):
+            params = sig.parameters
+            plain = [p for p in params.values() if p.kind not in (p.VAR_POSITIONAL, p.VAR_KEYWORD)]
+            takes_any_kw = any(p.kind == p.VAR_KEYWORD for p in params.values())
+            call = f"{short.get(r[0], r[0])}.{r[1]}"
+            listing = ", ".join([p.name for p in plain if p.default is p.empty]
+                                + [f"{p.name}=..." for p in plain if p.default is not p.empty])
+            for k in node.keywords:
+                if k.arg not in params and not takes_any_kw:
+                    hint = ""
+                    if k.arg == "dst" and "dst" not in params:
+                        hint = (f" {call} does not write into a tile you pass it: it RETURNS the "
+                                f"result. Write `result = {call}(...)` and use `result`.")
+                    add(("kw", node.lineno, k.arg), f"line {node.lineno} (`{show(node)}`): "
+                        f"`{call}` has no argument `{k.arg}=`.{hint} Its arguments are: {listing}.")
+            given = {p.name for p in plain[:len(node.args)]} | {k.arg for k in node.keywords}
+            missing = [p.name for p in plain if p.default is p.empty and p.name not in given]
+            if missing:
+                add(("missing", node.lineno), f"line {node.lineno} (`{show(node)}`): `{call}` is "
+                    f"missing {', '.join(f'`{m}=`' for m in missing)}. Its arguments are: {listing}. "
+                    f"Check that each holds the right kind of value: a tile where it works on data, "
+                    f"a number where it takes a constant.")
+
+    # RETURN VALUE: a call on a line of its own, whose function returns its result.
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Expr) and isinstance(node.value, ast.Call)):
+            continue
+        call = node.value
+        dotted = _dotted_name(call.func)
+        r = dotted and _resolve(dotted, aliases)
+        if r and r[2] is not None:
+            try:
+                writes_dst = "dst" in inspect.signature(r[2]).parameters
+            except (TypeError, ValueError):
+                continue
+            if not writes_dst and ("kw", node.lineno, "dst") not in seen:   # dst= already explained
+                name = f"{short.get(r[0], r[0])}.{r[1]}"
+                add(("ret", node.lineno), f"line {node.lineno} (`{show(node)}`): the result of "
+                    f"`{name}(...)` is thrown away. `{name}` returns a new tile and does not change "
+                    f"its arguments, so write `result = {name}(...)` and use `result` afterwards.")
+        elif isinstance(call.func, ast.Attribute) and call.func.attr in VIEW_METHODS \
+                and not (r and r[3]):
+            m = call.func.attr
+            add(("ret", node.lineno), f"line {node.lineno} (`{show(node)}`): the view returned by "
+                f"`.{m}(...)` is thrown away. `.{m}()` does not change the tile it is called on; it "
+                f"returns a new view of it. Write `view = <tile>.{m}(...)` and use `view` afterwards.")
+    return found[:8]
+
+
+def grade(source, level):
+    """grade_run(), plus the static check's findings in front of the feedback when not correct."""
+    reward, parts, feedback = grade_run(source, level)
+    if STATIC_CHECK and parts.get("parses") and not parts.get("correct"):
+        findings = static_check(source)
+        if findings:
+            feedback = ("Before running, a static check of your code found: "
+                        + " ".join(f"({i + 1}) {f}" for i, f in enumerate(findings))
+                        + "\nWhen it ran: " + feedback)
+    return reward, parts, feedback
 
 
 # ---------------------------------------------------------------- prompting
@@ -948,6 +1126,10 @@ def main():
     ap.add_argument("--repair-card", type=int, default=1, choices=(0, 1),
                     help="1 (default) puts the API card in every repair prompt as well as the first "
                          "one; 0 is the original behaviour, for comparison")
+    ap.add_argument("--static-check", type=int, default=1, choices=(0, 1),
+                    help="1 (default): before running, check every NKI name and keyword argument "
+                         "against the real modules and flag results that are thrown away, and put "
+                         "what it finds in front of the feedback. 0: off, as in earlier runs")
     ap.add_argument("--spec", default="code", choices=("code", "words"),
                     help="how the first prompt defines the operation: code = the NumPy reference "
                          "(default, unchanged); words = the model first describes the reference in "
@@ -1002,6 +1184,8 @@ def main():
     full = sum(WEIGHTS.values())
     history = {lv: [] for lv in levels}
 
+    global STATIC_CHECK
+    STATIC_CHECK = bool(a.static_check)
     if a.transcript is None:
         a.transcript = os.path.splitext(a.log)[0] + ".txt"
     if a.think_temps is None:
