@@ -97,6 +97,10 @@ layer norm with a +5 shift, gated SiLU, row L2-normalize, row log-sum-exp with a
 every one has a shape over 128 rows. They are not the official ladder and we report them apart from it. v6
 and v7 were frozen before levels 9–11 and 12–14 were looked at, and every v8 change was aimed at levels 1–4:
 the final version first saw levels 9–14 at 18:05, with the same switches as everywhere else.
+How they are checked is weaker than levels 1–4, and we say how: our held-out set has no cases for them, so the
+agent's own verdict reads UNVERIFIED; v7's verdict runs liuyq's extra hostile cases and lowers each solve for
+trn2; and because `scripts/reaudit.py` only knows levels 1–8, each solve was re-graded in a fresh process with
+the agent's own grader instead.
 [[TBD: per level, solved / runs, round of the first solve, both verdicts; seat 115 ran at max-num-seqs 8]]
 
 ![runs solved per level, by agent version](analysis/figures/solved_by_version.png)
