@@ -60,7 +60,7 @@ Note the harness rejects kernels that call `matmul/dot/einsum` etc. and framewor
 * The tutorial-style kernels in this repo use a new-style API: `nl.ndarray` allocs, `nisa.dma_copy(dst=,src=)`, `nisa.nc_matmul(dst=,stationary=,moving=)`, `nisa.tensor_copy`.
 
 ### 3.2 Not verified — must be checked on device before M2 (probe script in M0, risks in §12)
-SBUF/PSUM capacities, PSUM bank count/size, DMA queue/engine selection kwargs, whether instrs accept an `engine=` selector, whether the compiler really overlaps across `affine_range` iterations with rotating buffers, NC-v3 (trn2) specifics. We encode all of these in a single `HardwareConfig` object (`nc_version`, caps, PSUM banks, SBUF bytes) filled from probes, so no number is hard-coded in primitives.
+SBUF/PSUM capacities, PSUM bank count/size, DMA queue/engine selection kwargs, whether the compiler really overlaps across `affine_range` iterations with rotating buffers, NC-v3 (trn2) specifics. We encode all of these in a single `HardwareConfig` object (`nc_version`, caps, PSUM banks, SBUF bytes) filled from probes, so no number is hard-coded in primitives.
 
 ### 3.3 Consequences for the language
 1. **Partition axis**: SBUF/PSUM buffers have axis 0 = partition ≤128. This is a *type-level legality rule* checked after every rewrite (`set_memory`, `stage_*`, `expand_dim`). Large logical extents on axis 0 must be folded (`[K,128] → [128,K/128,128]`; SYNTAX §4.2).
@@ -136,7 +136,8 @@ Instr   := name, semantic_body: Proc, emit: template, legal_mems: per-arg, shape
 Key properties:
 * **Immutable, persistent tree with stable node ids** (structural sharing). A rewrite returns `(new_proc, forward_fn)`; this is what makes cursors work (§6.3) and makes `history[i]` free.
 * **Explicit and executable**: the interpreter runs *any* version of the IR (including with `Call(instr)` nodes, by executing the instr's `semantic_body`). Correctness of intermediate states is therefore testable at every step, not only at the end.
-* **Instruction table as data** (Exo/TVM): `nc_matmul` is `Instr` with semantic body `for k,m,n: dst[m,n] += st[k,m]*mv[k,n]`, arg memories `(PSUM, SBUF, SBUF)`, caps `k≤128, m≤128, n≤512`, emit template `nisa.nc_matmul(dst=…, stationary=…, moving=…)`. Likewise `dma_copy`, `tensor_copy` (PSUM→SBUF + cast), later `nc_transpose`, `activation`, `tensor_reduce`, `exponential`.
+* **Two instruction spellings.** The ns-level IR names instructions `nc.<engine>.<inst>` (engine is part of the call: `nc.tensor.matmul`, `nc.vector.tensor_copy`, `nc.sync.dma_copy`, `nc.scalar.activation`…). The final NKI source uses real NKI names (`nisa.nc_matmul`, …). Lowering ns → NKI source is a table lookup in the `Instr` entry (see §8).
+* **Instruction table as data** (Exo/TVM): `nc.tensor.matmul` is an `Instr` with semantic body `for k,m,n: dst[m,n] += st[k,m]*mv[k,n]`, arg memories `(PSUM, SBUF, SBUF)`, caps `k≤128, m≤128, n≤512`, emit template `nisa.nc_matmul(dst=…, stationary=…, moving=…)`. Likewise `dma_copy`, `tensor_copy` (PSUM→SBUF + cast), later `nc_transpose`, `activation`, `tensor_reduce`, `exponential`.
 * **Stage structure is retained as metadata** (which loops belong to which Func) so that Halide-style `compute_at` and name-based references (`"acc.k"`) remain available after lowering.
 * Small affine simplifier (`expr.py`) to keep indices canonical so interval analysis and `replace` unification stay simple. Where affine isn't enough (tail guards), use explicit `If` + `cut`.
 
@@ -153,7 +154,7 @@ Key properties:
 An imperative-looking facade (`s.split(...)`) over an immutable-IR history (so `s.history[i]`, replay, diff). A schedule is a Python function `def sched(s, **knobs)`; knobs make it a template.
 
 ### 6.2 Primitive set
-Core (each independently checked): `split, reorder, fuse, unroll, fission, compute_at, store_at, stage_in, stage_out, set_memory, expand_dim, lift_alloc, sink_alloc, fold_init, replace, mark`. Derived (library code over core): `tile, hoist, multibuffer, pipeline, overlap, lower_copies, fold_partition, transpose_input, engine`. Table with legality rules in SYNTAX §3.
+Core (each independently checked): `split, reorder, fuse, unroll, fission, compute_at, store_at, stage_in, stage_out, set_memory, expand_dim, lift_alloc, sink_alloc, fold_init, replace, mark`. Derived (library code over core): `tile, hoist, multibuffer, pipeline, overlap, fold_partition, transpose_input, set_engine`. `stage_in`/`stage_out` emit the right ns copy instruction directly (no `lower_copies` step) and loop kinds are inferred at emission (`mark` only asserts). Table with legality rules in SYNTAX §3.
 
 ### 6.3 References and forwarding
 * **Kinds**: loops (`"stage.var"` names, returned handles), buffers/stages (`s.buf`, `s.stage`), statements/blocks/gaps via patterns (`s.find("for ki in _: _ #1")`, `s.find("acc[_] += _")`, `many=True`), plus navigation (`parent/body/next/before/after`) and inspection (`extent, window, footprint, is_reduction`).
@@ -183,16 +184,16 @@ Explicit caveat: numeric equivalence under reduction reordering is only up to fp
 Order of passes after scheduling:
 1. **Normalize/simplify** (index canonicalization, drop trivial loops/ifs, constant fold).
 2. **Hardware legality + footprint check** (final).
-3. **Loop-kind resolution** (`mark_defaults`): independent loops and PSUM-accumulate reduction loops → `nl.affine_range`; loops with carried deps → `nl.sequential_range`; `unroll`ed → `nl.static_range` (or python `range` expansion).
+3. **Loop-kind inference** (implicit; `mark` only asserts/overrides): independent loops and PSUM-accumulate reduction loops → `nl.affine_range`; loops with carried deps → `nl.sequential_range`; `unroll`ed → `nl.static_range` (or python `range` expansion).
 4. **Emission** (`emit/nki_py.py`), IR → Python source text via a small structured printer:
    | IR | NKI |
    |---|---|
    | `Alloc(mem=HBM, output)` | `nl.ndarray(shape, dtype=…, buffer=nl.shared_hbm)` |
    | `Alloc(mem=SBUF/PSUM)` | `nl.ndarray(shape, dtype=…, buffer=nl.sbuf / nl.psum)` |
    | `For(kind)` | `for i in nl.affine_range(n):` etc. |
-   | `Call(dma_copy, dst, src)` | `nisa.dma_copy(dst=…, src=…)` with window → slice syntax `x[a:b, c:d]` |
-   | `Call(nc_matmul)` | `nisa.nc_matmul(dst=…, stationary=…, moving=…)` (+ `accumulate=` when explicit) |
-   | `Call(tensor_copy)` | `nisa.tensor_copy(dst=…, src=…)` (cast implied by dst dtype) |
+   | `nc.sync.dma_copy(dst, src)` | `nisa.dma_copy(dst=…, src=…)` with window → slice syntax `x[a:b, c:d]` |
+   | `nc.tensor.matmul(dst, stationary, moving)` | `nisa.nc_matmul(dst=…, stationary=…, moving=…)` (+ `accumulate=` when explicit) |
+   | `nc.vector.tensor_copy(dst, src)` (or `nc.scalar/gpsimd`) | `nisa.tensor_copy(dst=…, src=…, engine=nisa.<engine>_engine)` (cast implied by dst dtype) |
    | Rotating buffer index `b[i % d]` | emitted as `b[i % d]` / or `d` separately named buffers via `static_range` unroll `[verify which form NKI accepts]` |
 5. **Self-check**: re-parse emitted source with `ast`, run nkibench `check_rules` (no banned calls/framework modules, correct `@nki.jit` entry name), assert no tile exceeds caps.
 
@@ -226,7 +227,7 @@ Sync: none emitted (none exists in 0.6.0). A reserved pass `inject_sync` (TVM-st
 
 ## 10. Torch frontend
 
-* **Spec = ordinary torch function** with example `ns.arg(shape, dtype)` inputs. Eager execution of the same function is the oracle for every verification step.
+* **Spec = ordinary torch function** with example `nks.arg(shape, dtype)` inputs. Eager execution of the same function is the oracle for every verification step.
 * **Tracing**: `torch.export.export(fn, example_inputs)` → ATen graph (fallback: `torch.fx.symbolic_trace` for the tiny op set). A registry maps ATen ops to Algorithm-IR constructors:
   * v0: `aten.t/permute` (fold into index remap), `aten.mm`/`matmul`, `aten._to_copy`/`to` (cast stage), elementwise add/mul/relu.
   * attention: `aten.softmax` expanded into `max`, `sub`, `exp`, `sum`, `div` stages (reductions with `max`/`+`), scale.
@@ -244,7 +245,7 @@ Sync: none emitted (none exists in 0.6.0). A reserved pass `inject_sync` (TVM-st
 | **M1** | Persistent IR + cursors/forwarding; core loop prims `split/reorder/fuse/unroll`; dependence & reduction rule; `check_each_step`; fuzz harness | fuzz passes; reorder-of-reduction accepted, reorder-over-init rejected with good message |
 | **M2** | `compute_at/store_at`, interval bounds, `stage_in/out`, `set_memory`, `fold_init`, instr table + `replace` (unification for the 3 instrs), hw legality pass, **NKI emitter**, `mark_defaults` | **A4**: emitted kernel passes `nkibench --level 4 --check`; traffic ≈ 2.0× |
 | **M3** | `hoist`, `fold_partition`, `split(tail="cut")`, capacity checks, traffic model | **A5, A6, A7** pass bars (1.6 / 1.25 / 1.05) |
-| **M4** | `multibuffer`, `pipeline`, `overlap`, `engine` (as far as NKI allows) | IR-level equivalence (interpreter); emitted kernels correct in simulator |
+| **M4** | `multibuffer`, `pipeline`, `overlap`, `set_engine` | IR-level equivalence (interpreter); emitted kernels correct in simulator |
 | **M5** | Device runs on `seat-270` (baremetal + profile); sweep knobs `BM,BN,BK,depth`; record which primitives actually yield overlap | **A8**: latency table; written finding on whether NKI 0.6.0 overlaps rotated buffers |
 | **M6** | Attention: multi-stage `compute_at` (scores → softmax → PV), Vector/Scalar-engine instrs (`tensor_reduce`, `exponential`, `activation`, `tensor_scalar`), `nc_transpose` for Pᵀ; nkibench level 8 | numerics + "intermediate never leaves chip" traffic |
 | **M7** (stretch) | Online-softmax / flash rewrite as a *verified algebraic rewrite* (it is not a pure loop transform — it changes the algorithm via rescaling), z3 for bounds, auto-tuner over knobs, text round-trip of IR / optional MLIR export | |
