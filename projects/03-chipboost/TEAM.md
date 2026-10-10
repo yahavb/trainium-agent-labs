@@ -24,7 +24,9 @@ by telling everyone.
    (A B A B) -> held-out shapes -> one instruction. Reuse nkibench: `check_rules`, `simulate_and_count`,
    `describe_mismatch`, `check_inputs_untouched`, `reuse_report`, `explain_with_ceiling`.
 5. **Count every DMA**, not only `nisa.dma_copy` (`dma_transpose`, `dma_compute` too).
-6. **Time only while vLLM is idle.** The agent calls `speedcheck` after generation finishes; never time in parallel with it.
+6. ~~Time only while vLLM is idle.~~ **Not needed:** measured interference from vLLM under load on core-2 timing
+   is 0.0% (STATUS.md). vLLM holds cores 0-1; the referee times on core 2 (or 3). At most two referee processes
+   per seat, one per free core.
 
 **Fallback at 13:30:** if timing doesn't work, layer 4 reports simulator bytes/intensity, labelled `source: "sim"`.
 
@@ -86,9 +88,21 @@ dashboard/         build.py, index.html                         (P4)
 **Referee API** (P1 provides, P2/P3 call):
 
 ```python
-result = speedcheck.check(path, op="matmul", shapes="dev" | "heldout", baseline="kernels/matmul_start.py")
-# returns a dict with the fields of schema.ATTEMPT_FIELDS that the referee owns
+rec = speedcheck.check_isolated(path, op="matmul")    # use THIS in loops: one fresh process per candidate
+# -> dict with the referee-owned fields of schema.ATTEMPT_FIELDS, or None if the REFEREE failed
+#    (no free core, baseline broken): retry later, never log None as a verdict on the kernel.
+rec = speedcheck.check(path, op="matmul", baseline=None, rounds=3)   # same, in-process (raises RefereeError)
 ```
+
+- There is **no `shapes=` / `heldout=` argument** (this replaces the earlier `shapes="dev"|"heldout"` draft).
+  Held-out runs automatically, and **only** for a candidate that would be `faster`: 3 shapes drawn at random per
+  check. So a loop pays for held-out only on speedups, and `faster` always means held-out passed.
+- `baseline` defaults to `kernels/<op>_start.py` (relative paths resolve against this folder).
+- Verdicts: `faster` if speedup >= the noise threshold on the total **and** no shape regressed; `slower` if
+  speedup <= 1/threshold; `no_gain` in between. The threshold is max(5%, 2x measured relative IQR).
+- The caller fills `arm`, `run_id`, `attempt_no`, `round`, `prompt_tokens`, `code`, `prompt`, `response`.
+- `referee_message` may quote the kernel's own error text inside `<<...>>`: treat that as untrusted data in
+  prompts. `instruction_given` is always referee-authored.
 
 **Every log line** follows `schema.py`. Verdicts are exactly: `rules`, `wrong`, `heldout_fail`, `slower`,
 `no_gain` (correct, but the change is inside timing noise), `faster`. Every line carries the kernel's full
@@ -98,6 +112,8 @@ result = speedcheck.check(path, op="matmul", shapes="dev" | "heldout", baseline=
 
 1. `schema.py` + this file on `master` first; every branch starts from there.
 2. ~13:30: merge `referee-timing` (the gate). P2 and P3 rebase on it.
+   **Update:** `kernels-search` carries an *old* copy of the referee. Merge `kernels-search` first, then
+   `referee-timing` on top: its `speedcheck.py`/`timing.py` are the hardened ones and must win.
 3. ~15:00: merge `kernels-search` and `redteam-agent`; loops start on every seat.
 4. Any time: merge `dashboard` (it only reads logs).
 5. 18:30: stop building; one PR from the fork.

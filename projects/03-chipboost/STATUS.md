@@ -83,6 +83,77 @@ python speedcheck.py --op matmul --check <kernel.py> --json --log attempts.jsonl
 
 From Python (the agent): `speedcheck.check_isolated(path, op="matmul")` returns one schema record.
 
+## Load and speed test (core 3, original referee, no code changes)
+
+**Verdict: the timer and the referee can be trusted, idle or under vLLM load.**
+
+| Test | n | Result |
+|---|---|---|
+| A/A (start kernel vs itself), idle + loaded, in-process + isolated | 45 | **all `slower`, never a false `faster`**; speedup 0.99971-1.00021 (sd 0.011%) |
+| vs slow baseline (TILE_N=128) | 18 | all `faster`, **2.9488-2.9501x** (sd 0.04%) |
+| Device time, idle vs vLLM under load (4 x 1520-token requests) | | medians moved <= 0.04%; IQR unchanged |
+| vLLM throughput, load only vs load + referee | 71 samples | 22.0 vs 21.9 tok/s: **< 1% impact**, 0 errors |
+| 20 in-process checks in a row | | device memory peaks 130 MB per check, back to 5 MB between; no leak, no slowdown |
+| Infinite loop / compile blow-up / near-hang on device | | `wrong` at the timeout; core usable immediately after |
+| SIGKILL mid-benchmark with a model loaded | 2 | core usable; `timing.py --selftest` passes afterwards |
+| Timer linearity (same NEFF repeated 1-32x) | | 10.56 us + 260.54 us/repeat, **R^2 = 0.9999998** |
+
+**Where a check's time goes** (in-process, 24.4 s): **compile 19.9 s (81%)**, input generation 2.2 s,
+simulator 0.7 s, reference + checks 0.8 s, **timing 0.7 s (3%)**. Each `check_isolated` adds a 6-13 s runtime
+start. About 109 candidates/hour today. Compiles parallelise: 8 compiles take 25.0 s serially, 8.5 s with 8 threads.
+
+**Threshold finding:** max(5%, 2xIQR) always resolves to 5%, about 170x the measured A/A noise. So a real
+2-4% speedup is reported `slower`. Use max(1%, 2xIQR) plus `no_gain` (master's schema already has it).
+
+**Speedups, ranked (estimated together: ~400-600 candidates/hour):**
+1. Held-out only for a would-be `faster`. **Done** in the hardened referee.
+2. Persistent referee worker with a watchdog, so the 6-13 s runtime start is paid once.
+3. Baseline NEFF, model and inputs cached per shape (the hardened referee caches the NEFF on disk).
+4. Compile in parallel threads.
+5. Fail fast on a candidate over 3x slower; cut the default timeout to ~180 s.
+
+## Hardening: what the verification agents found, and what changed
+
+Three independent checks attacked the first referee. Every hole below let a wrong or unfair kernel score.
+
+**Red-team round 1** (25 cheat kernels, 4 honest variants). The four honest variants were never rejected.
+
+| Hole | Cheat | Old result | Fix |
+|---|---|---|---|
+| C1 | computes only when its output still holds the NaN poison, then skips work in timed runs | **FASTER 26x** | every timed run starts from fresh random garbage and is verified |
+| C2 | module-level code monkeypatches the referee it is imported into | **FASTER 23x** | the referee never imports the candidate; a child process does |
+| C3 | `atexit` prints a forged "faster" record | **FASTER 9.6x** | the record comes back through a parent-named file and must match the exit code |
+| M1 | correct only on the 8 published shapes | accepted | held-out shapes are drawn at random from every tile multiple, per check |
+| M2 | `--no-heldout` gave an unmarked accept | accepted | the flag is removed; held-out always runs before a "faster" |
+| L1 | clamps its output only at the timing shapes | accepted | timing shapes are also checked with hostile inputs |
+| L2 | `dma_compute` (positional), aliased imports, `nl.load`/`store` | 0 bytes counted | every DMA entry point is hooked; aliased imports are a rule violation |
+
+**Red-team round 2** (against the child-process design, while the child ran as root):
+- `np._core._add_newdocs_scalars.os.system(...)` gave root shell from inside the kernel body, with no forbidden name in sight.
+- A `setsid` survivor outlived the process-group kill.
+- `np.tofile` wrote any file.
+- The baseline NEFF cache had a predictable name, so a slower baseline could be planted.
+- New files in the referee folder were never compared.
+- Exception text from the candidate reached the agent's instruction (prompt injection).
+
+**Lesson:** a source scan cannot contain Python. The boundary has to be the operating system.
+
+**Code review** (read-only):
+- Timed runs reused one input set, so a kernel could return a result cached from an earlier call.
+- Candidate errors could crash the referee instead of producing a verdict.
+- Infrastructure failures, such as a busy core, were graded "wrong".
+- An explicit baseline could be silently replaced.
+- Plus leaked temp directories, an exposed seed, and the byte floor computed at the wrong dtype.
+
+**The referee now:**
+- **Sandboxed child.** The child runs under a fresh unprivileged uid of its own, with memory, CPU, file-size and process-count limits and no NeuronCore. Every process of that uid is killed afterwards.
+- **Tamper checks.** The whole referee tree is snapshotted, so added, removed or changed files are caught. The baseline cache is root-only, and world-writable parent directories are locked down.
+- **Unpredictable inputs.** The seed never leaves the referee. Every timed run gets a different input set in an unpredictable order and is verified, and inputs are read back after timing.
+- **Stricter "faster".** It requires beating the noise on the total, no regression on any shape, and passing random held-out shapes.
+- **Clean failures.** Candidate error text is quoted as data, never turned into an instruction. Infrastructure failures raise `RefereeError`, which is never logged as a verdict.
+
+Final verification of this version, the full suite plus new sandbox attacks, is running. Results go here.
+
 ## Next
 
 - Verification agents: red-team cheats, false-reject tests, load and speed tests (results to be added here).
