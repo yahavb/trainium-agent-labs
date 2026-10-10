@@ -91,6 +91,14 @@ prompt). [[TBD: refresh from `scripts/final_auto.py` on analysis/logs/final/]]
 
 On level 2, v8.2 alone solved 5 of 9; adding error distillation (v8.3) made it 7 of 9 on the same seats.
 
+**Six operations the agent was never tuned on (levels 9–14).** liuyq added them through `nkibench.level()` the
+way the organizers added level 8: row softmax with a ×30 row (overflows unless the row max is subtracted),
+layer norm with a +5 shift, gated SiLU, row L2-normalize, row log-sum-exp with a ×30 row, and a clipped gate;
+every one has a shape over 128 rows. They are not the official ladder and we report them apart from it. v6
+and v7 were frozen before levels 9–11 and 12–14 were looked at, and every v8 change was aimed at levels 1–4:
+the final version first saw levels 9–14 at 18:05, with the same switches as everywhere else.
+[[TBD: per level, solved / runs, round of the first solve, both verdicts; seat 115 ran at max-num-seqs 8]]
+
 ![runs solved per level, by agent version](analysis/figures/solved_by_version.png)
 
 ![round of the first solve, final version](analysis/figures/attempts_to_solve.png)
