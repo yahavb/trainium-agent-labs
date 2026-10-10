@@ -236,8 +236,12 @@ python traffic_agent.py --seed-kernel reference_level4.py --rounds 6 --samples 2
 - [x] If the model repeatedly damages arithmetic, narrow the edit to allocations, input loads, and loop placement; preserve the original matmul and final store pattern. Log changes to prompts and restart independent evaluation after tuning.
 
 **Tuning log:** `enrich_feedback()` added to `traffic_agent.py` — simulation exceptions are translated into one named change (partition-dimension wall; PSUM->HBM wall). Prompt layout otherwise unchanged; the recipe appears only in repair feedback, never in generation prompts.
-- [ ] Maintain a fallback with a measured improvement even if the floor remains unreached. Do not replace a verified result with an unverified lower byte estimate.
-- [ ] Freeze controller, prompts, checker, bandit parameters, memory cap, and population size by hour 4.5. The remaining time belongs to verification and evidence.
+- [x] Maintain a fallback with a measured improvement even if the floor remains unreached. Do not replace a verified result with an unverified lower byte estimate.
+
+**Fallback status after three pilots:** no valid improvement was ever produced, so the fallback was the fully verified seed (2.0x) throughout; no below-floor candidate was ever allowed to replace it.
+- [x] Freeze controller, prompts, checker, bandit parameters, memory cap, and population size by hour 4.5. The remaining time belongs to verification and evidence.
+
+**Frozen for the five repeats:** rounds=8, samples=2, population=3, memory-k=6, exploration=1.0, second-parent-prob=0.15, rng seeds 0..4 (one per repeat), context 8192, max-tokens 3000; winners re-evaluated at the second optimization seed. The pilots used rounds=6 while tuning; the repeats are mutually comparable at rounds=8.
 
 ## 10. Task 5 — verify finalists and repeat (hour 4.5–7)
 
