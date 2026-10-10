@@ -1,0 +1,10 @@
+Module name: mac
+Ports: input clk, input reset, input clear, input en, input signed [7:0] a, input signed [7:0] b,
+       output reg signed [19:0] acc
+a and b are signed two's-complement numbers (-128 to 127). acc is a signed 20-bit running sum.
+Everything changes on the rising edge of clk, with this priority:
+- reset = 1: acc becomes 0 (synchronous reset).
+- otherwise clear = 1: acc becomes 0.
+- otherwise en = 1: acc becomes acc + a * b, where a * b is the signed product. The sum wraps around
+  on overflow (it is kept modulo 2^20, as a 20-bit signed number).
+- otherwise acc keeps its value.

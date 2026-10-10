@@ -1,0 +1,22 @@
+[
+  {
+    "label": "FP32 baseline",
+    "report": "neuron.json"
+  },
+  {
+    "label": "BF16 autocast",
+    "report": "neuron_bf16.json"
+  },
+  {
+    "label": "Fold BatchNorm",
+    "report": "neuron_bf16_folded.json"
+  },
+  {
+    "label": "30-row latitude tiling",
+    "report": "../tiling-forward-2026-10-10/neuron_bf16_folded_tiled30.json"
+  },
+  {
+    "label": "Also tile 90\u00d7180 blocks",
+    "report": "tiled30_lvl1.json"
+  }
+]

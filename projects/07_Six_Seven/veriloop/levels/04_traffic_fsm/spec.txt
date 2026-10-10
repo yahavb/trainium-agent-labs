@@ -1,0 +1,10 @@
+Module name: traffic_light
+Ports: input clk, input reset, input ped, output reg [1:0] light, output walk
+Encoding of light: 2'b00 = RED, 2'b01 = GREEN, 2'b10 = YELLOW.
+Everything changes on the rising edge of clk. reset is synchronous and has priority.
+- On a rising edge with reset = 1, light becomes RED. That cycle is the first of RED's cycles.
+- Without a pedestrian, the light repeats: RED for 3 cycles, then GREEN for 4 cycles, then YELLOW for
+  2 cycles, then RED again.
+- ped is a pedestrian button. On a rising edge where light is GREEN and ped = 1, light becomes YELLOW
+  (green ends early); YELLOW then lasts its full 2 cycles. ped is ignored while light is YELLOW or RED.
+- walk is 1 exactly when light is RED, otherwise 0.

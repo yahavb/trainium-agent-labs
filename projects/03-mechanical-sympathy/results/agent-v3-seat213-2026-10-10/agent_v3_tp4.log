@@ -1,0 +1,80 @@
+run 211154-r1: 8 rounds x 4 samples, feedback v2, prompt v2, model Qwen/Qwen3-8B at http://localhost:8000/v1
+  round 1 sample 0: reward 0.30  [x 128x512] raised TypeError: tensor_tensor() got an unexpected keyword argument 'data'. Did you mean 'data1'? Remove the `data=` argument. The real signature i
+  round 1 sample 1: reward 0.30  [x 128x512] raised TypeError: unsupported operand type(s) for /: 'NkiTensor' and 'int' A tile is not a number, so Python operators like += do not work on one. A
+  round 1 sample 2: reward 0.30  [x 128x512] raised TypeError: tensor_tensor() got an unexpected keyword argument 'data'. Did you mean 'data1'? Remove the `data=` argument. The real signature i
+  round 1 sample 3: reward 0.30  [x 128x512] raised TypeError: tensor_tensor() got an unexpected keyword argument 'data'. Did you mean 'data1'? Remove the `data=` argument. The real signature i
+  round 2 sample 0: reward 1.00  Correct on every shape.
+  round 2 sample 1: reward 1.00  Correct on every shape.
+  round 2 sample 2: reward 1.00  Correct on every shape.
+  round 2 sample 3: reward 1.00  Correct on every shape.
+CORRECT kernel in round 2: saved kernels/instnorm_gelu_211154-r1.py
+run 211237-r2: 8 rounds x 4 samples, feedback v2, prompt v2, model Qwen/Qwen3-8B at http://localhost:8000/v1
+  round 1 sample 0: reward 0.30  [x 128x512] raised TypeError: unsupported operand type(s) for /: 'NkiTensor' and 'int' A tile is not a number, so Python operators like += do not work on one. A
+  round 1 sample 1: reward 0.30  [x 128x512] raised TypeError: unsupported operand type(s) for /: 'NkiTensor' and 'int' A tile is not a number, so Python operators like += do not work on one. A
+  round 1 sample 2: reward 0.30  [x 128x512] raised TypeError: tensor_tensor() got an unexpected keyword argument 'data'. Did you mean 'data1'? Remove the `data=` argument. The real signature i
+  round 1 sample 3: reward 0.30  [x 128x512] raised TypeError: unsupported operand type(s) for /: 'NkiTensor' and 'int' A tile is not a number, so Python operators like += do not work on one. A
+  round 2 sample 0: reward 0.30  [x 128x512] raised AttributeError: module 'nki.language' has no attribute 'const' `nki.language` has no `const`. The closest real names are: cos, ones, shared_c
+  round 2 sample 1: reward 0.30  [x 128x512] raised AttributeError: module 'nki.language' has no attribute 'constant' `nki.language` has no `constant`. The closest real names are: shared_consta
+  round 2 sample 2: reward 0.30  [x 128x512] raised AttributeError: module 'nki.language' has no attribute 'constant' `nki.language` has no `constant`. The closest real names are: shared_consta
+  round 2 sample 3: reward 0.30  [x 128x512] raised AttributeError: module 'nki.language' has no attribute 'constant' `nki.language` has no `constant`. The closest real names are: shared_consta
+  round 3 sample 0: reward 0.30  [x 128x512] raised TypeError: float() argument must be a string or a real number, not 'NkiInstruction' The line of your kernel that failed is line 26: `nisa.ten
+  round 3 sample 1: reward 0.30  [x 128x512] raised TypeError: float() argument must be a string or a real number, not 'NkiInstruction' The line of your kernel that failed is line 26: `nisa.ten
+  round 3 sample 2: reward 0.30  [x 128x512] raised TypeError: float() argument must be a string or a real number, not 'NkiInstruction' The line of your kernel that failed is line 26: `nisa.ten
+  round 3 sample 3: reward 0.30  [x 128x512] raised TypeError: float() argument must be a string or a real number, not 'NkiInstruction' The line of your kernel that failed is line 26: `nisa.ten
+  round 4 sample 0: reward 0.30  [x 128x512] raised AttributeError: module 'nki.language' has no attribute 'tensor_scalar' `nki.language` has no `tensor_scalar`. The closest real names are: ten
+  round 4 sample 1: reward 0.30  [x 128x512] raised AttributeError: module 'nki.language' has no attribute 'tensor_scalar' `nki.language` has no `tensor_scalar`. The closest real names are: ten
+  round 4 sample 2: reward 0.30  [x 128x512] raised AttributeError: module 'nki.language' has no attribute 'tensor_scalar' `nki.language` has no `tensor_scalar`. The closest real names are: ten
+  round 4 sample 3: reward 0.30  [x 128x512] raised AttributeError: module 'nki.language' has no attribute 'tensor_scalar' `nki.language` has no `tensor_scalar`. The closest real names are: ten
+  round 5 sample 0: reward 0.30  [x 128x512] raised AttributeError: module 'nki.language' has no attribute 'tensor_scalar' `nki.language` has no `tensor_scalar`. The closest real names are: ten
+  round 5 sample 1: reward 0.30  [x 128x512] raised AttributeError: module 'nki.language' has no attribute 'tensor_scalar' `nki.language` has no `tensor_scalar`. The closest real names are: ten
+  round 5 sample 2: reward 0.30  [x 128x512] raised AttributeError: module 'nki.language' has no attribute 'tensor_scalar' `nki.language` has no `tensor_scalar`. The closest real names are: ten
+  round 5 sample 3: reward 0.30  [x 128x512] raised AttributeError: module 'nki.language' has no attribute 'tensor_scalar' `nki.language` has no `tensor_scalar`. The closest real names are: ten
+  round 6 sample 0: reward 0.30  [x 128x512] raised TypeError: gather_flattened() got multiple values for argument 'data' Pass every argument by keyword, e.g. nisa.nc_matmul(dst=..., stationary
+  round 6 sample 1: reward 0.30  [x 128x512] raised TypeError: gather_flattened() got multiple values for argument 'data' Pass every argument by keyword, e.g. nisa.nc_matmul(dst=..., stationary
+  round 6 sample 2: reward 0.30  [x 128x512] raised TypeError: gather_flattened() got multiple values for argument 'data' Pass every argument by keyword, e.g. nisa.nc_matmul(dst=..., stationary
+  round 6 sample 3: reward 0.30  [x 128x512] raised TypeError: gather_flattened() got multiple values for argument 'data' Pass every argument by keyword, e.g. nisa.nc_matmul(dst=..., stationary
+  round 7 sample 0: reward 0.30  [x 128x512] raised TypeError: gather_flattened() got multiple values for argument 'data' Pass every argument by keyword, e.g. nisa.nc_matmul(dst=..., stationary
+  round 7 sample 1: reward 0.30  [x 128x512] raised TypeError: gather_flattened() got multiple values for argument 'data' Pass every argument by keyword, e.g. nisa.nc_matmul(dst=..., stationary
+  round 7 sample 2: reward 0.30  [x 128x512] raised TypeError: gather_flattened() got multiple values for argument 'data' Pass every argument by keyword, e.g. nisa.nc_matmul(dst=..., stationary
+  round 7 sample 3: reward 0.30  [x 128x512] raised TypeError: gather_flattened() got multiple values for argument 'data' Pass every argument by keyword, e.g. nisa.nc_matmul(dst=..., stationary
+  round 8 sample 0: reward 0.30  [x 128x512] raised TypeError: gather_flattened() got multiple values for argument 'data' Pass every argument by keyword, e.g. nisa.nc_matmul(dst=..., stationary
+  round 8 sample 1: reward 0.30  [x 128x512] raised TypeError: gather_flattened() got multiple values for argument 'data' Pass every argument by keyword, e.g. nisa.nc_matmul(dst=..., stationary
+  round 8 sample 2: reward 0.30  [x 128x512] raised TypeError: gather_flattened() got multiple values for argument 'data' Pass every argument by keyword, e.g. nisa.nc_matmul(dst=..., stationary
+  round 8 sample 3: reward 0.30  [x 128x512] raised TypeError: gather_flattened() got multiple values for argument 'data' Pass every argument by keyword, e.g. nisa.nc_matmul(dst=..., stationary
+no correct kernel after 8 rounds; best reward 0.30: [x 128x512] raised TypeError: unsupported operand type(s) for /: 'NkiTensor' and 'int' A tile is not a number, so Python operators like += do not work on one. Accumulate by allocating a PSUM tile with nl.ndarray(shape, nl.float32, buffer=nl.psum) and letting nisa.nc_matmul add into it across the loo
+run 211450-r3: 8 rounds x 4 samples, feedback v2, prompt v2, model Qwen/Qwen3-8B at http://localhost:8000/v1
+  round 1 sample 0: reward 0.30  [x 128x512] raised TypeError: tensor_tensor() got an unexpected keyword argument 'data'. Did you mean 'data1'? Remove the `data=` argument. The real signature i
+  round 1 sample 1: reward 0.30  [x 128x512] raised TypeError: tensor_tensor() got an unexpected keyword argument 'data'. Did you mean 'data1'? Remove the `data=` argument. The real signature i
+  round 1 sample 2: reward 0.30  [x 128x512] raised TypeError: tensor_tensor() got an unexpected keyword argument 'data'. Did you mean 'data1'? Remove the `data=` argument. The real signature i
+  round 1 sample 3: reward 0.30  [x 128x512] raised TypeError: tensor_tensor() got an unexpected keyword argument 'data'. Did you mean 'data1'? Remove the `data=` argument. The real signature i
+  round 2 sample 0: reward 0.30  [x 128x512] raised TypeError: unsupported operand type(s) for /: 'NkiTensor' and 'int' A tile is not a number, so Python operators like += do not work on one. A
+  round 2 sample 1: reward 0.30  [x 128x512] raised TypeError: unsupported operand type(s) for /: 'NkiTensor' and 'int' A tile is not a number, so Python operators like += do not work on one. A
+  round 2 sample 2: reward 0.30  [x 128x512] raised TypeError: unsupported operand type(s) for /: 'NkiTensor' and 'int' A tile is not a number, so Python operators like += do not work on one. A
+  round 2 sample 3: reward 0.30  [x 128x512] raised TypeError: unsupported operand type(s) for /: 'NkiTensor' and 'int' A tile is not a number, so Python operators like += do not work on one. A
+  round 3 sample 0: reward 0.30  [x 128x512] raised TypeError: ndarray() got an unexpected keyword argument 'data' Remove the `data=` argument. The real signature is language.ndarray(shape, dty
+  round 3 sample 1: reward 0.30  [x 128x512] raised TypeError: ndarray() got an unexpected keyword argument 'data' Remove the `data=` argument. The real signature is language.ndarray(shape, dty
+  round 3 sample 2: reward 0.30  [x 128x512] raised TypeError: ndarray() got an unexpected keyword argument 'data' Remove the `data=` argument. The real signature is language.ndarray(shape, dty
+  round 3 sample 3: reward 0.30  [x 128x512] raised TypeError: ndarray() got an unexpected keyword argument 'data' Remove the `data=` argument. The real signature is language.ndarray(shape, dty
+  round 4 sample 0: reward 0.30  [x 128x512] raised TypeError: ndarray() got an unexpected keyword argument 'data' Remove the `data=` argument. The real signature is language.ndarray(shape, dty
+  round 4 sample 1: reward 0.30  [x 128x512] raised TypeError: ndarray() got an unexpected keyword argument 'data' Remove the `data=` argument. The real signature is language.ndarray(shape, dty
+  round 4 sample 2: reward 0.30  [x 128x512] raised TypeError: ndarray() got an unexpected keyword argument 'data' Remove the `data=` argument. The real signature is language.ndarray(shape, dty
+  round 4 sample 3: reward 0.30  [x 128x512] raised TypeError: ndarray() got an unexpected keyword argument 'data' Remove the `data=` argument. The real signature is language.ndarray(shape, dty
+  round 5 sample 0: reward 0.30  [x 128x512] raised TypeError: ndarray() got an unexpected keyword argument 'data' Remove the `data=` argument. The real signature is language.ndarray(shape, dty
+  round 5 sample 1: reward 0.30  [x 128x512] raised TypeError: ndarray() got an unexpected keyword argument 'data' Remove the `data=` argument. The real signature is language.ndarray(shape, dty
+  round 5 sample 2: reward 0.30  [x 128x512] raised TypeError: ndarray() got an unexpected keyword argument 'data' Remove the `data=` argument. The real signature is language.ndarray(shape, dty
+  round 5 sample 3: reward 0.30  [x 128x512] raised TypeError: ndarray() got an unexpected keyword argument 'data' Remove the `data=` argument. The real signature is language.ndarray(shape, dty
+  round 6 sample 0: reward 0.30  [x 128x512] raised TypeError: ndarray() got an unexpected keyword argument 'data' Remove the `data=` argument. The real signature is language.ndarray(shape, dty
+  round 6 sample 1: reward 0.30  [x 128x512] raised TypeError: ndarray() got an unexpected keyword argument 'data' Remove the `data=` argument. The real signature is language.ndarray(shape, dty
+  round 6 sample 2: reward 0.30  [x 128x512] raised TypeError: ndarray() got an unexpected keyword argument 'data' Remove the `data=` argument. The real signature is language.ndarray(shape, dty
+  round 6 sample 3: reward 0.30  [x 128x512] raised TypeError: ndarray() got an unexpected keyword argument 'data' Remove the `data=` argument. The real signature is language.ndarray(shape, dty
+  round 7 sample 0: reward 0.30  [x 128x512] raised TypeError: ndarray() got an unexpected keyword argument 'data' Remove the `data=` argument. The real signature is language.ndarray(shape, dty
+  round 7 sample 1: reward 0.30  [x 128x512] raised TypeError: ndarray() got an unexpected keyword argument 'data' Remove the `data=` argument. The real signature is language.ndarray(shape, dty
+  round 7 sample 2: reward 0.30  [x 128x512] raised TypeError: ndarray() got an unexpected keyword argument 'data' Remove the `data=` argument. The real signature is language.ndarray(shape, dty
+  round 7 sample 3: reward 0.30  [x 128x512] raised TypeError: ndarray() got an unexpected keyword argument 'data' Remove the `data=` argument. The real signature is language.ndarray(shape, dty
+  round 8 sample 0: reward 0.30  [x 128x512] raised TypeError: ndarray() got an unexpected keyword argument 'data' Remove the `data=` argument. The real signature is language.ndarray(shape, dty
+  round 8 sample 1: reward 0.30  [x 128x512] raised TypeError: ndarray() got an unexpected keyword argument 'data' Remove the `data=` argument. The real signature is language.ndarray(shape, dty
+  round 8 sample 2: reward 0.30  [x 128x512] raised TypeError: ndarray() got an unexpected keyword argument 'data' Remove the `data=` argument. The real signature is language.ndarray(shape, dty
+  round 8 sample 3: reward 0.30  [x 128x512] raised TypeError: ndarray() got an unexpected keyword argument 'data' Remove the `data=` argument. The real signature is language.ndarray(shape, dty
+no correct kernel after 8 rounds; best reward 0.30: [x 128x512] raised TypeError: tensor_tensor() got an unexpected keyword argument 'data'. Did you mean 'data1'? Remove the `data=` argument. The real signature is isa.tensor_tensor(dst: 'NkiTensor', data1: 'NkiTensor', data2: 'NkiTensor', op, engine=<engine.unknown: 0>, name=None). The line of your k
+
+SOLVE RATE: 1/3 runs (rounds to solve: [2])

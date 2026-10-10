@@ -29,8 +29,11 @@ marked NEEDS DEVICE VERIFICATION in the selftest output. Run --selftest on the i
 import argparse
 import ast
 import importlib.util
+import inspect
+import os
 import sys
 import textwrap
+import types
 
 import numpy as np
 
@@ -249,8 +252,12 @@ level(1, "average pooling 2D", "tensor_avgpool_kernel",
      "almost none -- a reduction has inherently low arithmetic intensity. This is the "
      "'can the agent emit legal NKI at all' checkpoint.",
      ref_avgpool2d,
+     # The last two keep a kernel honest about size. 200 channels do not fit the 128 partitions, and
+     # a 240x240 float32 image is 225 KB per partition against ~208 KB of SBUF: a kernel that loads
+     # each image whole passed every earlier shape and could not have run on the device at either.
      [dict(shape=(32, 32, 32), pool_size=2), dict(shape=(128, 16, 16), pool_size=4),
-      dict(shape=(8, 24, 24), pool_size=3), dict(shape=(64, 8, 8), pool_size=2)],
+      dict(shape=(8, 24, 24), pool_size=3), dict(shape=(64, 8, 8), pool_size=2),
+      dict(shape=(200, 16, 16), pool_size=2), dict(shape=(8, 240, 240), pool_size=2)],
      {"mean", "average", "avg_pool2d", "avg_pool", "adaptive_avg_pool2d"},
      "nl.sum and nl.mean over a strided access-pattern view are the intended NKI route; "
      "what is banned is handing the whole reduction to numpy or torch.",
@@ -590,7 +597,29 @@ def check_traffic_bar(level_n, counted, args, want):
                "nothing partial is written out."}.get(level_n, "")
     return (f"CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving {waste:.2f}x the byte floor, "
             f"and level {level_n} requires {bar:.2f}x or better. Correctness alone is level 4; this "
-            f"level is about the bytes. {hint}")
+            f"level is about the bytes. {read_breakdown(level_n, counted, args)}{hint}")
+
+
+def read_breakdown(level_n, counted, args):
+    """'lhsT (256, 512) was read 1.0 times and rhs (256, 1024) 4.0 times.' -- the total says bytes are
+    wasted; this says which loads to move. Inputs that share a shape cannot be told apart, so they
+    are left out rather than guessed."""
+    names = list(inspect.signature(LEVELS[level_n]["ref"]).parameters)
+    shapes = [tuple(a.shape) for a in args if isinstance(a, np.ndarray)]
+    reads = []
+    for name, a in zip(names, args):
+        if not isinstance(a, np.ndarray) or shapes.count(tuple(a.shape)) > 1:
+            continue
+        got = sum(b for b, shape in counted.get("hbm_reads", {}).values() if shape == tuple(a.shape))
+        reads.append(f"{name} {tuple(a.shape)} {got / a.nbytes:.1f} times")
+    return f"Each input should be read once; {' and '.join(reads)}. " if reads else ""
+
+
+def issue_bound(transfers, elements):
+    """True when a kernel pays per-transfer cost rather than per-byte: more DMAs than one per 64
+    output elements (and more than a handful in absolute terms). Moving whole tiles never gets
+    close; moving single elements always does."""
+    return transfers > max(8, elements // 64)
 
 
 def check_inputs_untouched(before, args):
@@ -608,6 +637,20 @@ def check_inputs_untouched(before, args):
     return None
 
 
+def _allocation_site(nki_dir):
+    """The kernel line that asked for an allocation: the innermost frame outside nki and this file.
+
+    nl.sum allocates its result internally, so its tile is charged to the line that called nl.sum.
+    """
+    frame = sys._getframe(2)
+    while frame is not None:
+        name = frame.f_code.co_filename
+        if not name.startswith(nki_dir) and name != __file__:
+            return (name, frame.f_lineno)
+        frame = frame.f_back
+    return ("?", 0)
+
+
 def simulate_and_count(kernel, args):
     """Run the kernel on the CPU and count the HBM traffic it asked for.
 
@@ -618,6 +661,7 @@ def simulate_and_count(kernel, args):
     try:
         import nki
         import nki.isa as nisa
+        import nki.language as nl
     except ImportError as e:
         raise NkiMissing(
             "the Neuron SDK is not installed here, so the kernel cannot be simulated. The "
@@ -626,8 +670,74 @@ def simulate_and_count(kernel, args):
         ) from e
 
     run, api = _simulator(nki, kernel)
-    counter = dict(bytes=0, transfers=0, api=api, dtypes=set())
+    counter = dict(bytes=0, transfers=0, api=api, dtypes=set(), psum_matmuls={}, psum_handles=[],
+                   sbuf_sites={}, hbm_reads={}, hbm_handles=[])
     original = nisa.dma_copy
+    original_matmul = nisa.nc_matmul
+
+    def strict_nc_matmul(*args, **kwargs):
+        """Enforce the documented [K, M] x [K, N] -> [M, N] contract on dst.
+
+        The simulator only checks that dst holds the right NUMBER of elements, then pours the result
+        in. Measured: a PSUM tile allocated (N, M) instead of (M, N) passed nc_matmul silently and
+        failed two lines later in tensor_copy, with an error that pointed at the copy rather than at
+        the tile. Fail here instead, where the mistake is. (Locals are named func/args/kwargs, like
+        nki's own call wrapper, so agent.py can read the operands back out of the traceback.)
+        """
+        func = original_matmul
+        try:
+            bound = inspect.signature(func).bind_partial(*args, **kwargs).arguments
+        except TypeError:
+            return func(*args, **kwargs)
+        dst, st, mv = bound.get("dst"), bound.get("stationary"), bound.get("moving")
+        plain = not bound.get("is_transpose") and not bound.get("tile_position")
+        shapes = [tuple(getattr(t, "shape", ())) for t in (dst, st, mv)]
+        if plain and all(len(s) == 2 for s in shapes) and shapes[1][0] == shapes[2][0]:
+            want = (shapes[1][1], shapes[2][1])
+            assert shapes[0] == want, (
+                f"nc_matmul dst has shape {shapes[0]}, but stationary {shapes[1]} = [K, M] and "
+                f"moving {shapes[2]} = [K, N] produce [M, N] = {want}")
+        out = func(*args, **kwargs)
+        # How many matmuls landed in each PSUM output tile: one allocation, or one region of a bigger
+        # one (a block of output tiles kept in a single (128, tiles, 512) PSUM tensor), told apart by
+        # the view's offset. A tiled matmul needs exactly K/128 per output tile: more means output
+        # tiles are adding into each other; one means the tile was allocated inside the K loop and
+        # the partial products never accumulate. Both run cleanly and return wrong numbers, so the
+        # count is what names them. The handles are kept so ids are never reused.
+        storage = getattr(dst, "_storage", None)
+        if storage is not None:
+            key = (id(storage), getattr(dst, "offset", 0))
+            if key not in counter["psum_matmuls"]:
+                counter["psum_handles"].append(storage)
+            counter["psum_matmuls"][key] = counter["psum_matmuls"].get(key, 0) + 1
+        return out
+
+    # SBUF capacity. The simulator keeps every buffer alive and never checks the total, so a kernel
+    # that holds a whole 64x224x224 image on chip -- 294 KB per partition against 208 KB -- was
+    # reported correct, and would not run on the device. Each SBUF allocation is charged to the
+    # kernel line that made it, at the largest size that line ever asked for: a tile allocated
+    # inside a loop is one buffer, reused, as the compiler treats it. The sum over lines is the
+    # footprint, compared with NKI's own usable bytes per partition.
+    sim_backend = sys.modules.get("nki._backends.simulator")
+    original_alloc = getattr(sim_backend, "alloc_tensor", None)
+    nki_dir = os.path.dirname(nki.__file__)
+
+    def capacity_checked_alloc(*a, **kw):
+        shape, buffer = tuple(kw.get("shape", a[0] if a else ())), kw.get("buffer")
+        if str(buffer).rsplit(".", 1)[-1] == "sbuf" and len(shape) >= 2:
+            per_partition = int(np.prod(shape[1:])) * itemsize_of(types.SimpleNamespace(
+                dtype=kw.get("dtype")))
+            site = _allocation_site(nki_dir)
+            sites = counter["sbuf_sites"]
+            sites[site] = max(sites.get(site, 0), per_partition)
+            total, capacity = sum(sites.values()), nl.tile_size.sbuf_fmax_bytes
+            assert total <= capacity, (
+                f"SBUF capacity exceeded: this {shape} tile needs {per_partition / 1024:.1f} KB per "
+                f"partition, which brings the kernel's on-chip tiles to {total / 1024:.1f} KB per "
+                f"partition, and a NeuronCore has {capacity / 1024:.1f} KB. Do not hold the whole "
+                f"input on chip at once: loop over it in pieces that fit, allocating each piece's "
+                f"tile inside the loop.")
+        return original_alloc(*a, **kw)
 
     def counting_dma_copy(dst=None, src=None, **kw):
         try:
@@ -636,6 +746,14 @@ def simulate_and_count(kernel, args):
                 nbytes = int(np.prod(src.shape)) * itemsize_of(src)
             counter["bytes"] += int(nbytes)
             counter["dtypes"].add(str(getattr(src, "dtype", "?")))
+            # Which HBM tensor each read came from (slices share their tensor's storage), so a
+            # traffic verdict can say WHICH operand is re-read, not only that bytes are wasted.
+            storage = getattr(src, "_storage", None)
+            if storage is not None and "hbm" in str(getattr(src, "buffer", "")):
+                if id(storage) not in counter["hbm_reads"]:
+                    counter["hbm_handles"].append(storage)
+                    counter["hbm_reads"][id(storage)] = [0, tuple(storage.data.shape)]
+                counter["hbm_reads"][id(storage)][0] += int(nbytes)
         except Exception:
             counter["unmeasured"] = counter.get("unmeasured", 0) + 1
         counter["transfers"] += 1
@@ -646,7 +764,19 @@ def simulate_and_count(kernel, args):
     # They are also not noise: one of them says the pattern produces INCORRECT RESULTS on hardware,
     # which the agent should be told rather than have scrolled past.
     import warnings
+    # Assigning into an HBM tensor -- out[p, k] = tile[p, j] -- is a dma_copy too, issued by
+    # NkiTensor.__setitem__ through the name nki.language.tensor imported for itself. Patching only
+    # nisa.dma_copy missed every one of them: an element-at-a-time level-2 kernel wrote its whole
+    # output that way and was reported at 0.50x the byte floor, "essentially optimal", with one
+    # transfer. Count both routes, so the transfer count is the number of DMAs actually issued.
+    tensor_mod = sys.modules.get("nki.language.tensor")
+    tensor_original = getattr(tensor_mod, "dma_copy", None)
     nisa.dma_copy = counting_dma_copy
+    nisa.nc_matmul = strict_nc_matmul
+    if tensor_original is not None:
+        tensor_mod.dma_copy = counting_dma_copy
+    if original_alloc is not None:
+        sim_backend.alloc_tensor = capacity_checked_alloc
     try:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
@@ -659,6 +789,11 @@ def simulate_and_count(kernel, args):
         counter["warnings"] = seen[:3]
     finally:
         nisa.dma_copy = original
+        nisa.nc_matmul = original_matmul
+        if tensor_original is not None:
+            tensor_mod.dma_copy = tensor_original
+        if original_alloc is not None:
+            sim_backend.alloc_tensor = original_alloc
     return out, counter
 
 
@@ -705,13 +840,13 @@ def verify(path, level_n, tol=2e-2, seed=0):
             failures.append((label(case, level_n),
                              f"RAISED during simulation: {type(e).__name__}: {e}"))
             continue
-        m = describe_mismatch(got, want, tol)
+        m = describe_mismatch(got, want, tol) or check_traffic_bar(level_n, counted, args, want)
         if m:
             failures.append((label(case, level_n), m))
             continue
         passed += 1
         elements = int(np.prod(np.shape(want)))
-        if counted["transfers"] > max(8, elements // 64):
+        if issue_bound(counted["transfers"], elements):
             print(f"\n  case {label(case, level_n)}: CORRECT BUT ISSUE-BOUND -- "
                   f"{counted['transfers']:,} transfers for {elements:,} output elements, "
                   f"{counted['bytes'] / max(counted['transfers'], 1):.0f} bytes each. The cost here "
@@ -751,6 +886,35 @@ def verify(path, level_n, tol=2e-2, seed=0):
 
 
 # ---------------------------------------------------------------- selftest
+
+def _selftest_sbuf_capacity():
+    """The simulator itself never checks SBUF capacity, so prove that this harness does: a pooling
+    kernel that loads a 240x240 image whole (225 KB per partition) must be refused, and the
+    shipped level-1 reference, which bands its rows, must pass the same shape."""
+    import tempfile
+    whole = ("import nki\nimport nki.isa as nisa\nimport nki.language as nl\n\n@nki.jit\n"
+             "def tensor_avgpool_kernel(x, pool_size):\n"
+             "    out = nl.ndarray((8, 120, 120), dtype=x.dtype, buffer=nl.shared_hbm)\n"
+             "    a = nl.ndarray(x.shape, dtype=x.dtype, buffer=nl.sbuf)\n"
+             "    nisa.dma_copy(dst=a, src=x)\n"
+             "    return out\n")
+    args = (np.random.default_rng(0).standard_normal((8, 240, 240)).astype(np.float32), 2)
+    with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as f:
+        f.write(whole)
+    try:
+        simulate_and_count(load_kernel(f.name, "tensor_avgpool_kernel"), args)
+        refused = False
+    except AssertionError as e:
+        refused = "SBUF capacity exceeded" in str(e)
+    finally:
+        os.unlink(f.name)
+    ref = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reference_level1.py")
+    got, _ = simulate_and_count(load_kernel(ref, "tensor_avgpool_kernel"), args)
+    banded_ok = describe_mismatch(got, ref_avgpool2d(*args)) is None
+    print(f"  SBUF capacity: whole 240x240 image   -> {'refused ok' if refused else 'ACCEPTED, FAIL'}")
+    print(f"  SBUF capacity: banded reference      -> {'passes ok' if banded_ok else 'FAIL'}")
+    return 0 if refused and banded_ok else 1
+
 
 def selftest():
     print("Proving the parts that need no device. Run this on the instance too, for the rest.\n")
@@ -887,6 +1051,8 @@ def selftest():
         print(f"  nki {getattr(nki, '__version__', '?')} is importable; simulation API: "
               f"{api or 'NEITHER — see _simulator()'}")
         rc |= 0 if api else 1
+        if api:
+            rc |= _selftest_sbuf_capacity()
     except ImportError:
         print("  NEEDS DEVICE VERIFICATION: simulate_and_count() imports nki and cannot run")
         print("    here. Its byte counting wraps nisa.dma_copy, which is unverified until")
