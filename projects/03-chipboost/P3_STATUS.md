@@ -106,6 +106,19 @@ Rule B never fired, because this path never produced the shared-accumulator kern
 **Closest of the day: one axis order away from a correct restructured kernel.** Same lesson as v2: a precise
 instruction changes the code, and a generic one does not.
 
+### v4: P1's improved feedback + P3 Rules A/B/C (chip, 1 run x 8)
+
+*speedcheck 7da33ee; `agent.py` 00cae3e; `logs/seat-101/attempts_referee_v4.jsonl`.* **8 wrong, 0 correct.**
+The model cleared **two bugs in a row**, each after a precise instruction:
+1. The Python tile list was fixed after P1's NKI_TILE_LIST instruction.
+2. The shared accumulator was fixed after P1's PSUM_OUTPUT_TILE_LIFETIME instruction.
+
+From attempt 3 on, the kernel ran but gave wrong numbers. Its structure is the right restructure: n outer,
+rhs staged once per n in `(TILE_K, K // TILE_K, TILE_N)` and reused across m, and the accumulator per (m, n).
+The one bug left is that lhsT is loaded once per m, from rows 0:128, **before** the k loop, so every k uses
+the first lhsT tile. That is one load away from correct. Under the generic mismatch instruction, attempts
+3 to 8 were variations of this one kernel.
+
 ## 4. Failure taxonomy (`redteam/taxonomy.py`, 73 attempts)
 
 | Mode | model_alone, chip | referee, chip | referee, sim |
