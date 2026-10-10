@@ -56,8 +56,18 @@ PROJECT = HERE.parent
 sys.path.insert(0, str(PROJECT))
 import schema  # noqa: E402
 
-ARM_LABEL = {"referee": "Model + referee", "model_alone": "Model alone", "random_search": "Random search"}
-ARM_COLOR = {"referee": "var(--s1)", "model_alone": "var(--s2)", "random_search": "var(--s3)"}
+ARM_LABEL = {"referee": "Model + referee", "model_alone": "Model alone", "random_search": "Random search",
+             "referee_v2": "Model + referee v2"}
+ARM_COLOR = {"referee": "var(--s1)", "model_alone": "var(--s2)", "random_search": "var(--s3)",
+             "referee_v2": "var(--s4)"}
+# The arms as shown. referee_v2 is not a schema arm: it is the referee arm's runs tagged v2 (agent.py --tag
+# v2: the two named-fix rules), split out so v1 and v2 are compared side by side instead of averaged.
+ARMS_SHOWN = ("referee", "referee_v2", "model_alone", "random_search")
+OPTIONAL_ARMS = {"referee_v2"}   # drawn only when they have runs
+
+
+def shown_arm(rec):
+    return "referee_v2" if rec["arm"] == "referee" and "-v2-" in (rec["run_id"] or "") else rec["arm"]
 
 # In pipeline order: how far the kernel got. Status colours, each with its own shape, so a
 # verdict never rests on colour alone.
@@ -123,6 +133,7 @@ def load_attempts(paths):
                 notes.append(f"{where}: no kernel or verdict; skipped")
                 continue
             rec["run_id"] = rec["run_id"] or f"{rec['kernel']}-{rec['arm']}"
+            rec["arm"] = shown_arm(rec)
             key = (rec["seat"], rec["run_id"], rec["attempt_no"])
             if rec["attempt_no"] is not None and key in seen:
                 dupes += 1
@@ -250,7 +261,7 @@ def summarize(records):
         recs = [r for r in records if r["kernel"] == k]
         start_us = median(r["baseline_us_same_session"] for r in recs)
         arms = {}
-        for arm in schema.ARMS:
+        for arm in ARMS_SHOWN:
             rs = []
             for key in sorted(kk for kk in runs if kk[0] == k and kk[1] == arm):
                 lst = sorted(runs[key], key=order)
@@ -384,10 +395,17 @@ def glyph(kind, x, y, s, color):
             f'L{x - a:.1f},{y + a:.1f}" stroke="{color}" stroke-width="2.2" stroke-linecap="round"/>')
 
 
+RUNS_BY_ARM = set()   # filled by build(): the shown arms that have at least one run
+
+
+def any_runs(arm):
+    return arm in RUNS_BY_ARM
+
+
 def legend_arms():
     return ('<div class="legend">' + "".join(
         f'<span class="key"><span class="line-key" style="background:{ARM_COLOR[a]}"></span>{ARM_LABEL[a]}</span>'
-        for a in schema.ARMS) + "</div>")
+        for a in ARMS_SHOWN if a not in OPTIONAL_ARMS or any_runs(a)) + "</div>")
 
 
 def legend_verdicts():
@@ -451,7 +469,7 @@ def start_mismatch(k, s, info):
 def kernel_view(k, summary, results):
     """One kernel's numbers from wherever they exist: the logs first, the results files otherwise."""
     info = results["kernels"].get(k, {})
-    s = summary.get(k) or dict(start_us=None, arms={a: [] for a in schema.ARMS},
+    s = summary.get(k) or dict(start_us=None, arms={a: [] for a in ARMS_SHOWN},
                                sources={info["source"]} if info.get("source") else set())
     start = s["start_us"] or info.get("start_us")
     expert, floor = info.get("expert_us"), info.get("floor_us")
@@ -464,7 +482,9 @@ def panel_speed(summary, results, tune):
     for k in kernels_of(summary, results):
         s, info, start, expert_x, limit_x = kernel_view(k, summary, results)
         rows = []
-        for arm in schema.ARMS:
+        for arm in ARMS_SHOWN:
+            if arm in OPTIONAL_ARMS and not s["arms"].get(arm):
+                continue
             rs = [r for r in s["arms"][arm] if r["best_us"] is not None]
             if rs:
                 xs = [r["best_x"] for r in rs]
@@ -539,7 +559,7 @@ def step_points(xs, ys):
     return pts
 
 
-MODEL_ARMS = ("referee", "model_alone")   # both start from the start kernel; random search starts from the expert
+MODEL_ARMS = ("referee", "referee_v2", "model_alone")   # both start from the start kernel; random search starts from the expert
 
 
 def panel_progress(summary, results, tune):
@@ -551,6 +571,8 @@ def panel_progress(summary, results, tune):
         xs = list(range(1, L_max + 1))
         series = []
         for arm in MODEL_ARMS:
+            if not s["arms"].get(arm):
+                continue
             rs = s["arms"][arm]
             if not rs:
                 continue
@@ -614,7 +636,7 @@ def panel_progress(summary, results, tune):
     body = "".join(blocks) or empty("No model-arm attempts logged yet: this fills in as the loops run.")
     legend = ('<div class="legend">' + "".join(
         f'<span class="key"><span class="line-key" style="background:{ARM_COLOR[a]}"></span>{ARM_LABEL[a]}</span>'
-        for a in MODEL_ARMS) + "</div>")
+        for a in MODEL_ARMS if a not in OPTIONAL_ARMS or any_runs(a)) + "</div>")
     return card("Progress: the model improves the start kernel",
                 "Best verified speedup so far, from the start kernel (1×). Line: median over runs; band: fastest to "
                 "slowest run. Same x = same budget.",
@@ -799,7 +821,7 @@ def heldout_from_logs(summary):
     held-out shapes, and how many those shapes rejected."""
     items = []
     for k, s in summary.items():
-        for arm in schema.ARMS:
+        for arm in ARMS_SHOWN:
             atts = [a for r in s["arms"][arm] for a in r["attempts"]]
             if not atts:
                 continue
@@ -897,7 +919,7 @@ def panel_timeline(summary):
     for k, s in summary.items():
         start_file = PROJECT / "kernels" / f"{k}_start.py"
         start_code = start_file.read_text(encoding="utf-8") if start_file.exists() else None
-        lanes = [(arm, j, r) for arm in schema.ARMS for j, r in enumerate(s["arms"][arm])]
+        lanes = [(arm, j, r) for arm in ARMS_SHOWN for j, r in enumerate(s["arms"][arm])]
         if not lanes:
             continue
         n_max = max(len(r["attempts"]) for _, _, r in lanes)
@@ -1019,19 +1041,19 @@ def kpis(summary, results, records, tune):
 
 CSS = """
 :root{color-scheme:light;--page:#f9f9f7;--surface:#fcfcfb;--ink-1:#0b0b0b;--ink-2:#52514e;--muted:#898781;
---grid:#e1e0d9;--axis:#c3c2b7;--border:rgba(11,11,11,.10);--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--track:#cde2fb;
+--grid:#e1e0d9;--axis:#c3c2b7;--border:rgba(11,11,11,.10);--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--s4:#eda100;--track:#cde2fb;
 --neutral-bar:#898781;--v-rules:#52514e;--good:#0ca30c;--warning:#fab219;--serious:#ec835a;--critical:#d03b3b;
 --good-text:#006300;--critical-text:#b02a2a;--add:rgba(12,163,12,.13);--del:rgba(208,59,59,.13);--wash:rgba(11,11,11,.04);
 --h0:#cde2fb;--h1:#9ec5f4;--h2:#6da7ec;--h3:#3987e5;--h4:#256abf;--h5:#184f95;--h6:#0d366b;
 --t0:#0b0b0b;--t1:#0b0b0b;--t2:#0b0b0b;--t3:#0b0b0b;--t4:#fff;--t5:#fff;--t6:#fff}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--page:#0d0d0d;--surface:#1a1a19;
 --ink-1:#fff;--ink-2:#c3c2b7;--grid:#2c2c2a;--axis:#383835;--border:rgba(255,255,255,.10);--s1:#3987e5;--s2:#d95926;
---s3:#199e70;--track:#184f95;--v-rules:#c3c2b7;--good-text:#0ca30c;--critical-text:#e66767;--add:rgba(12,163,12,.22);
+--s3:#199e70;--s4:#c98500;--track:#184f95;--v-rules:#c3c2b7;--good-text:#0ca30c;--critical-text:#e66767;--add:rgba(12,163,12,.22);
 --del:rgba(208,59,59,.25);--wash:rgba(255,255,255,.05);
 --h0:#104281;--h1:#184f95;--h2:#1c5cab;--h3:#2a78d6;--h4:#3987e5;--h5:#6da7ec;--h6:#9ec5f4;
 --t0:#fff;--t1:#fff;--t2:#fff;--t3:#0b0b0b;--t4:#0b0b0b;--t5:#0b0b0b;--t6:#0b0b0b}}
 :root[data-theme="dark"]{color-scheme:dark;--page:#0d0d0d;--surface:#1a1a19;--ink-1:#fff;--ink-2:#c3c2b7;--grid:#2c2c2a;
---axis:#383835;--border:rgba(255,255,255,.10);--s1:#3987e5;--s2:#d95926;--s3:#199e70;--track:#184f95;--v-rules:#c3c2b7;
+--axis:#383835;--border:rgba(255,255,255,.10);--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--track:#184f95;--v-rules:#c3c2b7;
 --good-text:#0ca30c;--critical-text:#e66767;--add:rgba(12,163,12,.22);--del:rgba(208,59,59,.25);--wash:rgba(255,255,255,.05);
 --h0:#104281;--h1:#184f95;--h2:#1c5cab;--h3:#2a78d6;--h4:#3987e5;--h5:#6da7ec;--h6:#9ec5f4;
 --t0:#fff;--t1:#fff;--t2:#fff;--t3:#0b0b0b;--t4:#0b0b0b;--t5:#0b0b0b;--t6:#0b0b0b}
@@ -1298,6 +1320,8 @@ def stamp(records, fake):
 
 def build(records, results, notes, fake, inputs, sweep=()):
     summary = summarize(records)
+    RUNS_BY_ARM.clear()
+    RUNS_BY_ARM.update(a for s in summary.values() for a, rs in s["arms"].items() if rs)
     tune = tuning(summary, list(sweep))
     timeline, details = panel_timeline(summary)
     sources = set().union(*(s["sources"] for s in summary.values())) if summary else set()
