@@ -9,8 +9,8 @@ every number comes from the NKI 0.6.0 CPU simulator (`nki.simulate`), graded by 
 
 **In one paragraph.** We built a checker-driven agent that writes NKI kernels with a model that sees 8,192
 tokens (Qwen3-8B, served on the seat's Trainium2). The organizers' agent solved only level 2 (3 runs of 5).
-Ours solved levels 3 and 4 in every run, and level 1 in every run of the final version so far, three different
-kernels [[TBD: final counts]]; every solve passed a
+The final version solves level 1 in 5 of 5 runs with five different kernels, levels 3 and 4 in 5 of 5, and
+level 2 in 3 of 5, the baseline's own rate [[TBD: final counts]]; every solve passed a
 fresh-process re-audit and a held-out set of new shapes and hostile values [[TBD: final-run numbers]]. The
 model never changed; what it was shown did. One worked example in the first prompt solves level 3; the code
 in the repair messages solves level 4 (hollowed out, level 4 stopped solving). Two of level 1's solves show how: once a
@@ -54,15 +54,20 @@ into one repair instruction, and tries again: at most 8 rounds of 4 samples per 
 | where | [[TBD: 5]] seat pods in parallel, one agent process per model server |
 | speed | about 50 s per round of 4 samples, bound by generation: 13.9 tok/s for one stream, 22.1 tok/s in total for four |
 
-**What came out.** Round 2 numbers below (v7, 14:07–14:50); the final run replaces them. Rounds count
-from 0: round 0 is the first prompt, round k the k-th repair. [[TBD: final-run table from `scripts/report.py`]]
+**What came out.** The final candidate is v8.2 (commit 96a9fc9; switches in §4). Five runs per level, rounds
+counted from 0 (round 0 is the first prompt). [[TBD: refresh from `scripts/report.py` on analysis/logs/final/; v8.3 if it
+replaces v8.2 on level 2]]
 
-| level | operation | baseline (organizers' agent): solved, scores | v7: solved, first 1.0 at round, distinct runs | held-out (v7) |
-|---|---|---|---|---|
-| 1 | average pool 2D | 0/5 · .30 .30 .30 .30 .30 · 1 distinct run | 0/1 · best 0.50; 3 of 8 rounds cut off at the token limit | not solved |
-| 2 | 2D transpose | 3/5 · 1 .30 1 .30 1 (replication: 2/5) | [[TBD]] | [[TBD]] |
-| 3 | matmul, one tile | 0/5 · .30 .30 .30 .30 .30 | **5/5** · round 0 · 3 distinct | 5/5 VERIFIED |
-| 4 | matmul, tiled | 0/5 · .62 .62 .50 .62 .62 | **5/5** · round 2 · 1 distinct (the five runs are identical) | 5/5 VERIFIED |
+| level | operation | baseline (organizers' agent) | v7 | **v8.2: solved, first 1.0 at round** | distinct | held-out |
+|---|---|---|---|---|---|---|
+| 1 | average pool 2D | 0/5 · .30 .30 .30 .30 .30 | 0/1 · best 0.50 | **5/5** · rounds 2, 2, 0, 4, 2 | 5 different solving kernels | all VERIFIED (20/20 each) |
+| 2 | 2D transpose | 3/5 · 1 .30 1 .30 1 (replication 2/5) | 0/3 | **3/5** · .50 1 .50 1 1 · rounds 4, 2, 1 | 5 trajectories, 3 solving kernels | 3 VERIFIED, 2 NOT SOLVED; both verdicts agree |
+| 3 | matmul, one tile | 0/5 · .30 .30 .30 .30 .30 | 5/5 · round 0 | **5/5** · rounds 0, 2, 0, 0, 0 | 3 solving kernels | [[TBD]] |
+| 4 | matmul, tiled | 0/5 · .62 .62 .50 .62 .62 | 5/5 · round 2 | **5/5** · round 2 every run | **1 trajectory**: five copies of one path, the same kernel v7 found | [[TBD]] |
+
+Every solving kernel passed a fresh-process re-audit on trn2. No verdict was confident (≥ 0.5) and wrong.
+Level 4's 5/5 is one path, not five: each run's first sample is the same request, so every run repairs the
+same kernel.
 
 **What we learned.**
 
