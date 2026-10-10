@@ -209,7 +209,7 @@ def grade(source, level):
     spec = nkibench.LEVELS[level]
     # Task 05: one file per process, so agents sharing a machine cannot overwrite each other's
     # candidate between writing and loading it. Their agent.py uses the fixed path above.
-    path = f"/tmp/_agent_{os.getpid()}_level{level}.py"
+    path = nkibench.candidate_path(f"_agent_level{level}")   # unique per candidate; see nkibench
     with open(path, "w") as f:
         f.write(source)
     try:

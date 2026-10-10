@@ -85,7 +85,9 @@ def grade(source, level):
     parts["rules"] = True
 
     spec = nkibench.LEVELS[level]
-    path = f"/tmp/_agent_level{level}.py"
+    # A fresh path per candidate: nki caches by file path, and a reused path made the allocation
+    # audit see the FIRST candidate's tiles for every later one (measured with nki 0.6.0).
+    path = nkibench.candidate_path(f"_agent_level{level}")
     with open(path, "w") as f:
         f.write(source)
     try:

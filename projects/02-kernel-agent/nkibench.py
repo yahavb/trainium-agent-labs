@@ -768,8 +768,25 @@ def simulate_and_count(kernel, args):
     return out, counter
 
 
+_LOADED_PATHS = set()
+_CANDIDATE_IDS = iter(range(1, 10 ** 9))
+
+
+def candidate_path(stem):
+    """A path no kernel in this process has been loaded from. nki 0.6.0 caches by file path:
+    loading a second candidate from the same path left the allocation audit seeing the first
+    candidate's tiles (a (256, 128) sbuf tile went unflagged), even though the numerics were
+    fresh. Unique per process and per call, so agents sharing a pod do not collide either."""
+    return f"/tmp/{stem}_{os.getpid()}_{next(_CANDIDATE_IDS)}.py"
+
+
 def load_kernel(path, entry):
     _install_alloc_audit()        # must precede the import; see layer 1d
+    if path in _LOADED_PATHS:
+        print(f"nkibench WARNING: {path} was already loaded in this process; nki caches by path, "
+              f"so the allocation audit may report the earlier kernel. Use candidate_path().",
+              file=sys.stderr)
+    _LOADED_PATHS.add(path)
     spec = importlib.util.spec_from_file_location("candidate", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)

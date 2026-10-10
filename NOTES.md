@@ -7,7 +7,7 @@
 
 ---
 
-## 0. 当前状态（2026-10-10 13:00，随时更新）
+## 0. 当前状态（2026-10-10 13:25，随时更新）
 
 **人员**：teoguo（seat-116）+ liuyq（有经验）两人主力；另外三位新手做辅助，不计入关键路径。
 **题目**：做项目 2（`projects/02-kernel-agent`，NKI kernel agent，在芯片上跑）。CHALLENGE（Stage A，`kernelbench.py`）有时间再做，同一套 agent 搬过去。评分按 30/25/25/20 那一套（CHALLENGE 第 239 行写着 "Same rubric as every problem"）。
@@ -52,7 +52,7 @@ level 4   0/5      [0.62, 0.62, 0.50, 0.62, 0.62]   0/5，全部 0.62
 1. [实验 A 已接进 `enrich()` 的 `KNOWN_FIXES`，commit 5ed7ec2，待在 seat-116 上验证 L1] 编造的名字只有 4 种（nisa.multiply 36、transpose_moving 13、nisa.scalar_mul 12、tile_size() 1）；0.6.0 里 `nl.multiply` 可直接调用，`nc_matmul` 的转置参数叫 `is_transpose`
 2. 精简 API 卡片（level 1–4 用到的十几个函数，约 300 token）放进 prompt
 3. liuyq 的 `feedback_v2.py` / `feedback_v3.py`（commit fc137e7）已经覆盖 L4「tile 超过 128 行」和「拷贝大小不一致」；她在 4090 上 L4 解出 5/10（原版 0/15），待在 pod 上确认
-4. [硬件合法性检查已加进 `nkibench.py`（layer 1d，分配审计），本机用假 nki 测过，**待在 pod 上用真 nki 验证**] 模拟器分配 tile 时不查上限（别的队实测 (256,256) SBUF tile 照跑），现在模拟时记录每个 `nl.ndarray/zeros/ones/full`，分区 >128、PSUM 每分区 >16 KiB、SBUF 每分区 >192 KiB 判「ILLEGAL ON HARDWARE」，优先于数值比较；`agent.py` 和 `feedback_v2.py` 的 `grade()` 都已接上（v3 走 v2）。跨多个 PSUM bank 是合法的，不判违规。pod 上验证：`python nkibench.py --selftest`，再对 `reference_level{1..4}.py` 跑 `--check`，每级都要 N/N 通过且「allocation audit K allocations」K>0；出现「saw NO allocations」= hook 没生效。出问题先设 `NKIBENCH_NO_ALLOC_AUDIT=1` 关掉。**4090 上的 L4 5/10 是在没有这个检查时测的，复现时要重新审。**
+4. [硬件合法性检查：**已用真 nki 0.6.0 验证通过**（本机 Docker，按 `SETUP_PYTHON.md`）] 模拟器分配 tile 时不查上限，现在模拟时记录每个 `nl.ndarray/zeros/ones/full`，分区 >128、PSUM 每分区 >16 KiB、SBUF 每分区 >192 KiB 判「ILLEGAL ON HARDWARE」，优先于数值比较；跨多个 PSUM bank 合法，不判。验证：selftest 通过；4 个参考 kernel 全过（审计到 12/12/5/90 次分配）；「分配 (256,128) SBUF 但每次 DMA 只搬 128 行」的 L4 kernel，关审计真模拟器给 4/4（漏洞属实），开审计判 ILLEGAL；跨 2 个 bank 的 PSUM 不误伤。**修了一个坑**：nki 按文件路径缓存，同一进程里重复用同一个候选文件路径时，审计会一直看到第一个 kernel 的分配（漏判 + 误判）。现在 `agent.py` / `feedback_v2.py` 每个候选写到唯一路径（`nkibench.candidate_path()`），v2 的 `locate()` 照常能指出出错行。**26c43ed 有这个坑，别用它跑实验**（或设 `NKIBENCH_NO_ALLOC_AUDIT=1`）。4090 上的 L4 5/10 是在没有审计时测的，复现时要重新审。
 5. agent 加 token 分段统计（prompt 里规则说明 / 上次代码 / 报错 / 失败记录各多少）和置信度输出
 6. 每个改动用 `--level X --repeat 5` 验证，变差就回滚；约 16:30 冻结，多座位并行跑最终对比，18:15 前提交
 
