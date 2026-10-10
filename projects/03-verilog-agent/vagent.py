@@ -1154,8 +1154,8 @@ def menu(a):
                 continue
             print("\n[prompt] the AI writes the circuit", flush=True)
             try:
-                d = P.generate(argparse.Namespace(request=[spec], code=None, spec=None, designs="designs",
-                                                  log=a.log, fix=None))
+                d = R.generate_and_show(argparse.Namespace(request=[spec], code=None, spec=None,
+                                                           designs="designs", log=a.log, fix=None))
             except SystemExit as e:
                 print(f"  prompt step stopped: {e}")
                 continue
