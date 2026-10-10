@@ -20,6 +20,7 @@ This module verifies:
 import argparse
 import ast
 import inspect
+import os
 import sys
 import textwrap
 import numpy as np
@@ -481,12 +482,15 @@ def run_selftest():
     print("  [PASS 9/10] Block-n Isolation Diagnostic accurately caught RAGGED_EDGE_HAZARD on prime tail (317 rows)")
 
     # Test 10: Golden Reference Kernel Evaluation
+    if os.path.dirname(os.path.abspath(__file__)) not in sys.path:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from reference_pipeline import overlapped_pipeline
     def golden_wrapper(x, w, a=1.25, b=0.5):
         y, _, _ = overlapped_pipeline(x, w, a, b)
         return y
 
-    with open("projects/03-multi-engine-overlap/reference_pipeline.py") as f:
+    ref_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reference_pipeline.py")
+    with open(ref_file) as f:
         ref_code = f.read()
 
     score, details, feedback = grade(ref_code)
