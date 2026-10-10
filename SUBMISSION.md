@@ -7,6 +7,21 @@ Team submission, NYU × Annapurna Labs Trainium hackathon, 2026-10-10. Team 24, 
 spread, and how to reproduce it. The sections after it are the evidence. Unless a line says *on chip*,
 every number comes from the NKI 0.6.0 CPU simulator (`nki.simulate`), graded by our checker.
 
+## At a glance
+
+| level | what it computes | organizers' agent | **ours, final version** | attempts to the first solve (median) |
+|---|---|---|---|---|
+| 1 | average pool 2D | 0/5 | **5/5**, five different kernels [[TBD: final]] | 9 (one run: the very first attempt) |
+| 2 | 2D transpose | 3/5 | **9/13** [[TBD: final]] | [[TBD]] |
+| 3 | matmul, one tile | 0/5 | **5/6** | 1: right at the first attempt in 4 of 5 solves |
+| 4 | matmul, tiled | 0/5 | **5/5** | 9 |
+| 5–7 | matmul under an HBM-traffic bar | not run | [[TBD]] | |
+| 9–14 | six operations held out while the agent was built | not run | [[TBD]] | |
+
+Same model throughout (Qwen3-8B on the seat's Trainium2, 8,192-token context). Every solve was re-audited in a
+fresh process, passed held-out shapes and hostile values it never saw, and was built in full for trn2 and
+matched in birsim; one level-1 solve also matched on a NeuronCore. An attempt is one sample; a round is four.
+
 **In one paragraph.** We built a checker-driven agent that writes NKI kernels with a model that sees 8,192
 tokens (Qwen3-8B, served on the seat's Trainium2). The organizers' agent solved only level 2 (3 runs of 5).
 The final version solves level 1 in 5 of 5 runs with five different kernels, levels 3 and 4 in 5 of 5, and
