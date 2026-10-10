@@ -241,7 +241,7 @@ sample was cut off before any code ([projects/02-kernel-agent/README.md](project
 ## 4. Experiments, one change at a time
 
 Each change was measured with `--repeat 5` against the current reference and kept or rolled back by rules
-written down before the results came in ([PLAN.md](PLAN.md) §4).
+written down before the results came in ([PLAN.md](PLAN.md) §3).
 
 | id | change | level | result (solved, scores) | decision |
 |---|---|---|---|---|
