@@ -1,0 +1,113 @@
+{
+ "what": "Plain lhsT.t() @ W traced with torch_neuronx (no hand-written kernel), float32, LNC=1, weight as a module parameter; on-chip time is the neuron-explorer median of 3 captures. Script: inference/layer_infer.py + inference/profile_neff.py.",
+ "layers": {
+  "K4096_M512_N4096": {
+   "seat": 170,
+   "run": {
+    "shape": "K4096_M512_N4096",
+    "variant": "compiler",
+    "calls": 20,
+    "compile_s": 5.8,
+    "correct": true,
+    "max_abs_err": 0.0001373291015625,
+    "wall_ms_median": 2.163,
+    "wall_ms_min": 2.158,
+    "wall_ms_p90": 2.176
+   },
+   "profile": {
+    "chip_us_median": 908.1,
+    "chip_us_runs": [
+     908.1,
+     909.2,
+     906.8
+    ],
+    "te_busy": 0.9739214995053064,
+    "dma_busy": 0.3551038879378819,
+    "bytes": 83886080,
+    "transfers": 160,
+    "mfu": 0.24090258352243943
+   }
+  },
+  "K4096_M512_N1024": {
+   "seat": 171,
+   "run": {
+    "shape": "K4096_M512_N1024",
+    "variant": "compiler",
+    "calls": 20,
+    "compile_s": 2.5,
+    "correct": true,
+    "max_abs_err": 0.0001678466796875,
+    "wall_ms_median": 1.057,
+    "wall_ms_min": 1.051,
+    "wall_ms_p90": 1.063
+   },
+   "profile": {
+    "chip_us_median": 248.0,
+    "chip_us_runs": [
+     248.0,
+     247.1,
+     248.4
+    ],
+    "te_busy": 0.9035669705872547,
+    "dma_busy": 0.3601959518963814,
+    "bytes": 27262976,
+    "transfers": 52,
+    "mfu": 0.21982833406280944
+   }
+  },
+  "K4096_M512_N12288": {
+   "seat": 172,
+   "run": {
+    "shape": "K4096_M512_N12288",
+    "variant": "compiler",
+    "calls": 20,
+    "compile_s": 13.7,
+    "correct": true,
+    "max_abs_err": 0.000152587890625,
+    "wall_ms_median": 5.113,
+    "wall_ms_min": 5.109,
+    "wall_ms_p90": 5.121
+   },
+   "profile": {
+    "chip_us_median": 2665.9,
+    "chip_us_runs": [
+     2665.9,
+     2666.9,
+     2665.8
+    ],
+    "te_busy": 0.9910606052398333,
+    "dma_busy": 0.34290674423777817,
+    "bytes": 234881024,
+    "transfers": 448,
+    "mfu": 0.24583828403638347
+   }
+  },
+  "K12288_M512_N4096": {
+   "seat": 173,
+   "run": {
+    "shape": "K12288_M512_N4096",
+    "variant": "compiler",
+    "calls": 20,
+    "compile_s": 13.7,
+    "correct": true,
+    "max_abs_err": 0.000244140625,
+    "wall_ms_median": 5.17,
+    "wall_ms_min": 5.164,
+    "wall_ms_p90": 5.336
+   },
+   "profile": {
+    "chip_us_median": 2706.3,
+    "chip_us_runs": [
+     2706.3,
+     2705.5,
+     2706.7
+    ],
+    "te_busy": 0.9814424280535939,
+    "dma_busy": 0.30533033334256143,
+    "bytes": 260046848,
+    "transfers": 508,
+    "mfu": 0.24212443171411732
+   }
+  }
+ }
+}

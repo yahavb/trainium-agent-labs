@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+*.neff
+*.ntff
+.DS_Store
+.claude/
