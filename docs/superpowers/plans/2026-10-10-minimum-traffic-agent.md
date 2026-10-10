@@ -242,7 +242,7 @@ python traffic_agent.py --seed-kernel reference_level4.py --rounds 6 --samples 2
 - [ ] For submission entry names, export the same winner by changing only the top-level function name to the required level-5/6/7 entry. Re-evaluate each export; do not infer a pass from the filename.
 - [ ] Run an inexpensive diagnostic sweep of all registered NKI levels with the existing agent and a fixed two-round/one-sample budget. Preserve counts for parsing/API/numerical/traffic/unsupported-shape/environment failures; include timeout/unattempted labels if the deadline intervenes. Keep these separate from five-run matmul results.
 - [ ] Optional, only if time remains: one control run with `--learning off` (uniform arm choice, population size 1), labelled preliminary. Do not claim a learning-layer effect from one pair of runs.
-- [ ] Compile and execute the seed plus best candidate on assigned free cores only, following the seat configuration. Verify outputs on the actual device. If profiling exposes actual HBM traffic or spills, record those separately from source-level transfer counts. A simulator count cannot establish absence of compiler-inserted spills.
+- [ ] Compile and execute the seed plus best candidate on assigned free cores only, following the seat configuration. Verify outputs on the actual device. Use the AWS debugging-skill recipe: `NEURON_CC_FLAGS="--target trn2 --lnc 1"`, `NEURON_PLATFORM_TARGET_OVERRIDE=trn2`, `NEURON_RT_VISIBLE_CORES` pinned to a free core; capture traces with `NEURON_RT_INSPECT_ENABLE=1` and `NEURON_RT_INSPECT_DEVICE_PROFILE=1`. If profiling exposes actual HBM traffic or spills, record those separately from source-level transfer counts. A simulator count cannot establish absence of compiler-inserted spills.
 - [ ] If hardware is available, time baseline and winner after warm-up under the same settings. Faster execution is secondary to bytes and must be measured independently.
 - [ ] If device validation fails, keep simulation results labelled `simulator_verified`; report compilation/runtime failure. Do not describe the candidate as hardware verified.
 
@@ -273,6 +273,9 @@ python traffic_agent.py --seed-kernel reference_level4.py --rounds 6 --samples 2
 - AWS NKI memory capacities: https://awsdocs-neuron.readthedocs-hosted.com/en/latest/nki/api/nki.language.tile_size.html
 - AWS simulator limitations: https://awsdocs-neuron.readthedocs-hosted.com/en/latest/nki/guides/nki_simulator.html
 - Public optimization recipes: https://awsdocs-neuron.readthedocs-hosted.com/en/v2.29.1/nki/guides/tutorials/matrix_multiplication.html
+- Neuron Agentic Development (AWS, Apache-2.0): official agents and skills for NKI writing, debugging, profiling — https://github.com/aws-neuron/neuron-agentic-development
+  - The writing skill's matmul rules match this harness and confirm the resident-layout approach: stationary `[K<=128, M<=128]`, moving `[K<=128, N<=512]`, K loop always `nl.affine_range`, `accumulate=(k>0)` instead of memset, never write PSUM to HBM mid-accumulation, and slicing a larger SBUF tensor as an `nc_matmul` operand is a documented pattern.
+  - The debugging skill gives the device recipe: `NEURON_CC_FLAGS="--target trn2 --lnc 1"`, `NEURON_PLATFORM_TARGET_OVERRIDE=trn2`, `NEURON_RT_VISIBLE_CORES` pinned to a free core, torch_xla execution, CPU-side reference, multiple numerical checks; traces via `NEURON_RT_INSPECT_ENABLE=1`, `NEURON_RT_INSPECT_DEVICE_PROFILE=1`, `NEURON_RT_INSPECT_OUTPUT_DIR`.
 - MemCon: tabular bandit over memory operations, zero extra model calls — https://arxiv.org/abs/2607.13591
 - AlphaEvolve: evolutionary population with an automated evaluator — https://arxiv.org/abs/2506.13131
 
