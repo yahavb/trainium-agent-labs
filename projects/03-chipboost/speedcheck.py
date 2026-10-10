@@ -117,18 +117,42 @@ try:                                            # P2's shapes.py extends or over
 except ImportError:
     pass
 
+def _out_from_ref(spec):
+    """P2's shapes.py has no `out`: derive it from the reference, once per shape."""
+    cache = {}
+
+    def out(shape):
+        shape = tuple(shape)
+        if shape not in cache:
+            inp = spec["make_inputs"](shape, 0)
+            cache[shape] = (tuple(np.shape(spec["ref"](inp))), next(iter(inp.values())).dtype)
+        return cache[shape]
+    return out
+
+
 _REQUIRED = {"level", "entry", "make_inputs", "ref", "out", "flops", "sim_shapes", "time_shapes", "heldout", "tol"}
-for _k, _sp in OPS.items():
-    _missing = _REQUIRED - set(_sp)
-    assert not _missing, f"op {_k} is missing {sorted(_missing)}"
-    assert _k in schema.OPS, f"op {_k} is not in schema.OPS"
-    assert _sp["level"] in nkibench.LEVELS, f"op {_k}: level {_sp['level']} is not registered in nkibench"
+for _k in list(OPS):
+    _sp = OPS[_k]
+    if "heldout" not in _sp and "heldout_shapes" in _sp:     # P2's format: a fixed list
+        _sp["heldout"] = _sp["heldout_shapes"]
+    if "out" not in _sp and "make_inputs" in _sp and "ref" in _sp:
+        _sp["out"] = _out_from_ref(_sp)
+    _problem = (f"is missing {sorted(_REQUIRED - set(_sp))}" if _REQUIRED - set(_sp) else
+                "is not in schema.OPS" if _k not in schema.OPS else
+                f"has level {_sp['level']}, not registered in nkibench" if _sp["level"] not in nkibench.LEVELS else None)
+    if _problem:                                             # skip it, never take the other ops down with it
+        print(f"speedcheck: WARNING: op {_k} {_problem}; skipping it", file=sys.stderr)
+        del OPS[_k]
+        continue
     _sp["sim_shapes"] = [tuple(x) for x in _sp["sim_shapes"]]
     _sp["time_shapes"] = [tuple(x) for x in _sp["time_shapes"]]
-    _sp.setdefault("vary", next(iter(_sp["make_inputs"](_sp["sim_shapes"][0], 0))))
-    if not callable(_sp["heldout"]):                     # a fixed list: draw from it at random
+    _sp.setdefault("vary", (_sp.get("names") or list(_sp["make_inputs"](_sp["sim_shapes"][0], 0)))[0])
+    if not callable(_sp["heldout"]):                     # a fixed list: all of it if small, else a random draw
         _fixed = [tuple(x) for x in _sp["heldout"]]
-        _sp["heldout"] = lambda r, n, ex, f=_fixed: [f[i] for i in r.permutation(len(f))[:n]]
+        _sp["heldout"] = lambda r, n, ex, f=_fixed: (list(f) if len(f) <= 5 else
+                                                     [f[i] for i in r.permutation(len(f))[:n]])
+    if _k == "matmul":                                   # a fixed public list was learnable (red-team 3b)
+        _sp["heldout"] = _matmul_heldout
 
 # ---------------------------------------------------------------- stage 1: rules (defence in depth only)
 
