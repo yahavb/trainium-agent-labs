@@ -1,4 +1,4 @@
-"""Best kernel from the v2 agent on level 6 (matmul, M and N blocked), 2026-10-10 (best so far; the level was still running).
+"""Best kernel from the v2 agent on level 6 (matmul, M and N blocked), 2026-10-10 (the run was stopped by request at ~23:07 UTC; this is its best).
 
 Score 0.62 of 1.0. The checker's message on its first failing shape:
     AssertionError: Matmul stationary free dimension 256 exceeds gemm_stationary_fmax=128

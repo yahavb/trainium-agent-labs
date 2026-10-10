@@ -9,13 +9,14 @@ splits the work into six roles.
   operation): [README-task.md](README-task.md).
 - **Why agent2 is built this way**, and its implementation status: [DESIGN.md](DESIGN.md).
 
-## Status (2026-10-10 ~23:00 UTC)
+## Status (2026-10-10 ~23:10 UTC)
 
-- **agent2 solved levels 1 and 3 on Qwen3-8B, and level 1 on Qwen3-32B.** `agent.py` solved none of
+- **agent2 solved levels 1 and 3, on Qwen3-8B and on Qwen3-32B.** `agent.py` solved none of
   levels 1–4 in any of its 3 runs on the 8B server.
 - Each agent2 result is **one run**: a signal, not a solve rate. Report rates over `--repeat N`, with
   the spread.
-- The 32B runs of levels 1–4 and of level 6 were still going when this was written.
+- The 32B runs were stopped by request at ~23:07 UTC. Levels 1, 2, 3 and 5 finished, levels 4 and 6 were
+  stopped partway, and levels 7 and 8 never ran.
 
 ## Results
 
@@ -50,11 +51,11 @@ are the agent's output, not reference kernels.
 | Level | Operation | agent2 (1 run) | Planner-only test: names-only index → described index |
 |---|---|---|---|
 | 1 | average pooling 2D | **solved**: 5 checks, 171 s | right names 48% → **100%**; plans with a wrong name 6/8 → **0/8**; wrong-axis reduce 5/8 → **1/8** |
-| 2 | 2D transpose | running at ~23:00 UTC | not tested |
-| 3 | matmul, single tile | not reached yet | not tested |
-| 4 | matmul, tiled | not reached yet | right names 55% → **91%**; plans with a wrong name 8/8 → **2/8**; wrong-axis reduce 4/8 → **0/8** |
+| 2 | 2D transpose | 0.50 (it runs, the values are wrong): 27 checks, 891 s, all 4 approaches used up | not tested |
+| 3 | matmul, single tile | **solved**: 1 check, 103 s | not tested |
+| 4 | matmul, tiled | 0.62 after 2 checks, then stopped by request | right names 55% → **91%**; plans with a wrong name 8/8 → **2/8**; wrong-axis reduce 4/8 → **0/8** |
 | 5 | matmul, loads hoisted | 0.62 (1 of 4 shapes): 28 checks, 52 calls, 14 min | not tested |
-| 6 | matmul, M and N blocked | running; 0.62 so far | not tested |
+| 6 | matmul, M and N blocked | 0.62: 31 checks, 54 calls, then stopped by request | not tested |
 | 7 | matmul, M, N and K blocked | not run | not tested |
 | 8 | single-head attention | not run | not tested |
 
@@ -65,10 +66,13 @@ are the agent's output, not reference kernels.
   - Level 1: every described plan reshapes the tile, most also permute, then `nl.mean` or `nl.sum`, the
     route that solved level 1 on both models.
   - Level 4: 7 of 8 described plans added `t.reshape` / `t.permute`, which a tiled matmul doesn't need.
+- **Levels 1 and 3 on the 32B:** level 1 is the same reshape → permute → `nl.mean` route, and it writes
+  its result to an HBM output with `dma_copy`. Level 3 is clean but hard-codes the one test shape
+  (`K, M = 128, 64`), like the 8B's.
 - **Level 5 hit `agent.py`'s level-4 wall:** every approach ran one `nc_matmul` on whole-input tiles. That
   passes the one test shape that fits a single tile and fails once a dimension passes 128 (`dma_copy dst
   partition dimension 256 exceeds maximum 128`). No plan tiled M, N and K.
-- **Level 6 so far:** it loops over K and accumulates in PSUM, so the values are right on 2 of 4 shapes. But
+- **Level 6 (stopped partway):** it loops over K and accumulates in PSUM, so the values are right on 2 of 4 shapes. But
   one of those moves 1.5× the minimum bytes (the limit is 1.25×), and it never tiles M.
 
 ## The ladder
