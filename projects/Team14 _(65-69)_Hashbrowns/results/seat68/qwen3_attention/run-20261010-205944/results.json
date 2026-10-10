@@ -1,0 +1,122 @@
+{
+ "heads": 16,
+ "head_dim": 128,
+ "core": "2",
+ "warmup": 10,
+ "iterations": 100,
+ "results": [
+  {
+   "variant": "nkilib original",
+   "seqlen": 512,
+   "mean_us": 117.335335,
+   "min_us": 115.702,
+   "std_us": 0.6797785542182101,
+   "max_err_vs_ref": 0.007651090621948242,
+   "rel_rms_vs_ref": 0.0019875650759786367,
+   "profile": {
+    "tensor_engine_active_time": 7.7069047e-05,
+    "vector_engine_active_time": 9.3515059e-05,
+    "scalar_engine_active_time": 5.9368238e-05,
+    "gpsimd_engine_active_time": 9.8369011e-05,
+    "dma_active_time": 0.000100139845,
+    "software_dynamic_dma_packet_count": 12732,
+    "hardware_dynamic_dma_packet_count": 0,
+    "total_exec_time": 0.000110535598
+   }
+  },
+  {
+   "variant": "hwdge patched",
+   "seqlen": 512,
+   "mean_us": 114.14950499999999,
+   "min_us": 113.238,
+   "std_us": 0.43010437102521965,
+   "max_err_vs_ref": 0.007651090621948242,
+   "rel_rms_vs_ref": 0.0019875650759786367,
+   "identical_to_original": true,
+   "profile": {
+    "tensor_engine_active_time": 7.4359879e-05,
+    "vector_engine_active_time": 9.2367767e-05,
+    "scalar_engine_active_time": 5.263908e-05,
+    "gpsimd_engine_active_time": 6.6536565e-05,
+    "dma_active_time": 9.4598677e-05,
+    "software_dynamic_dma_packet_count": 9216,
+    "hardware_dynamic_dma_packet_count": 13824,
+    "total_exec_time": 0.000113417862
+   }
+  },
+  {
+   "variant": "nkilib original",
+   "seqlen": 2048,
+   "mean_us": 482.623015,
+   "min_us": 475.894,
+   "std_us": 2.4812601022010976,
+   "max_err_vs_ref": 0.007439851760864258,
+   "rel_rms_vs_ref": 0.002035272540524602,
+   "profile": {
+    "tensor_engine_active_time": 0.000408411868,
+    "vector_engine_active_time": 0.00042909557,
+    "scalar_engine_active_time": 0.000381517726,
+    "gpsimd_engine_active_time": 0.000394020221,
+    "dma_active_time": 0.000462541633,
+    "software_dynamic_dma_packet_count": 50688,
+    "hardware_dynamic_dma_packet_count": 0,
+    "total_exec_time": 0.00048089252
+   }
+  },
+  {
+   "variant": "hwdge patched",
+   "seqlen": 2048,
+   "mean_us": 475.811015,
+   "min_us": 469.63,
+   "std_us": 2.4667794033465986,
+   "max_err_vs_ref": 0.007439851760864258,
+   "rel_rms_vs_ref": 0.002035272540524602,
+   "identical_to_original": true,
+   "profile": {
+    "tensor_engine_active_time": 0.000402423542,
+    "vector_engine_active_time": 0.000423488299,
+    "scalar_engine_active_time": 0.00038985605,
+    "gpsimd_engine_active_time": 0.000273612905,
+    "dma_active_time": 0.000464806333,
+    "software_dynamic_dma_packet_count": 36864,
+    "hardware_dynamic_dma_packet_count": 50688,
+    "total_exec_time": 0.000478872389
+   }
+  },
+  {
+   "variant": "nkilib original",
+   "seqlen": 8192,
+   "mean_us": 4333.667325,
+   "min_us": 4324.986,
+   "std_us": 3.6725873249488576,
+   "profile": {
+    "tensor_engine_active_time": 0.003787140737,
+    "vector_engine_active_time": 0.004129208726,
+    "scalar_engine_active_time": 0.004226993401,
+    "gpsimd_engine_active_time": 0.001888242907,
+    "dma_active_time": 0.004298489742,
+    "software_dynamic_dma_packet_count": 202752,
+    "hardware_dynamic_dma_packet_count": 0,
+    "total_exec_time": 0.004337407021
+   }
+  },
+  {
+   "variant": "hwdge patched",
+   "seqlen": 8192,
+   "mean_us": 4389.851675,
+   "min_us": 4366.47,
+   "std_us": 17.462881202406884,
+   "identical_to_original": true,
+   "profile": {
+    "tensor_engine_active_time": 0.003839412333,
+    "vector_engine_active_time": 0.004135755392,
+    "scalar_engine_active_time": 0.004235587551,
+    "gpsimd_engine_active_time": 0.001282585488,
+    "dma_active_time": 0.004340575577,
+    "software_dynamic_dma_packet_count": 147456,
+    "hardware_dynamic_dma_packet_count": 202752,
+    "total_exec_time": 0.004398390873
+   }
+  }
+ ]
+}

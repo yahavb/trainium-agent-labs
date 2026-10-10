@@ -1,0 +1,141 @@
+{
+ "suite": "attention",
+ "core": "2",
+ "lnc": 1,
+ "warmup": 20,
+ "iterations": 2000,
+ "results": [
+  {
+   "version": "V1",
+   "shape": "seq=128 dim=64",
+   "case": 0,
+   "mean_us": 17.686736000000003,
+   "min_us": 17.34,
+   "max_us": 18.38,
+   "std_us": 0.0941881378093866,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/attention/V1_case0/build/kernel.neff",
+   "profile": {
+    "tensor_engine_active_time_percent": 0.21131198526739328,
+    "vector_engine_active_time_percent": 0.1666097889006756,
+    "scalar_engine_active_time_percent": 0.2201007252426586,
+    "gpsimd_engine_active_time_percent": 0.2443081055021567,
+    "dma_active_time_percent": 0.2670892305090609,
+    "total_time_us": 21.997465000000002,
+    "hbm_read": 98304,
+    "hbm_write": 32768
+   }
+  },
+  {
+   "version": "V2 bf16",
+   "shape": "seq=128 dim=64",
+   "case": 0,
+   "mean_us": 17.038884,
+   "min_us": 16.745,
+   "max_us": 17.442999999999998,
+   "std_us": 0.0949535809961899,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/attention/V2_bf16_case0/build/kernel.neff",
+   "profile": {
+    "tensor_engine_active_time_percent": 0.18306158550525053,
+    "vector_engine_active_time_percent": 0.1816842210082532,
+    "scalar_engine_active_time_percent": 0.24351233463669794,
+    "gpsimd_engine_active_time_percent": 0.25631673155221124,
+    "dma_active_time_percent": 0.23462359408194225,
+    "total_time_us": 21.932466,
+    "hbm_read": 98304,
+    "hbm_write": 32768
+   }
+  },
+  {
+   "version": "V1",
+   "shape": "seq=64 dim=128",
+   "case": 1,
+   "mean_us": 17.192157000000005,
+   "min_us": 16.794,
+   "max_us": 17.762,
+   "std_us": 0.10763796890967427,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/attention/V1_case1/build/kernel.neff",
+   "profile": {
+    "tensor_engine_active_time_percent": 0.18498155851684298,
+    "vector_engine_active_time_percent": 0.16770587076169305,
+    "scalar_engine_active_time_percent": 0.21557175875763485,
+    "gpsimd_engine_active_time_percent": 0.24388759128629686,
+    "dma_active_time_percent": 0.25547799658408166,
+    "total_time_us": 21.984132,
+    "hbm_read": 98304,
+    "hbm_write": 32768
+   }
+  },
+  {
+   "version": "V2 bf16",
+   "shape": "seq=64 dim=128",
+   "case": 1,
+   "mean_us": 16.8279515,
+   "min_us": 16.495,
+   "max_us": 17.334,
+   "std_us": 0.09297369599919107,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/attention/V2_bf16_case1/build/kernel.neff",
+   "profile": {
+    "tensor_engine_active_time_percent": 0.16784490904142207,
+    "vector_engine_active_time_percent": 0.18029182866462054,
+    "scalar_engine_active_time_percent": 0.2192854368910555,
+    "gpsimd_engine_active_time_percent": 0.25843242223545004,
+    "dma_active_time_percent": 0.26429233171575106,
+    "total_time_us": 21.691632,
+    "hbm_read": 98304,
+    "hbm_write": 32768
+   }
+  },
+  {
+   "version": "V1",
+   "shape": "seq=96 dim=32",
+   "case": 2,
+   "mean_us": 16.8500935,
+   "min_us": 16.607,
+   "max_us": 17.287,
+   "std_us": 0.10421546793902527,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/attention/V1_case2/build/kernel.neff",
+   "profile": {
+    "tensor_engine_active_time_percent": 0.19166367013533706,
+    "vector_engine_active_time_percent": 0.17247202266941908,
+    "scalar_engine_active_time_percent": 0.21539235795996584,
+    "gpsimd_engine_active_time_percent": 0.24727776173487412,
+    "dma_active_time_percent": 0.2487654587531014,
+    "total_time_us": 21.352466,
+    "hbm_read": 36864,
+    "hbm_write": 12288
+   }
+  },
+  {
+   "version": "V2 bf16",
+   "shape": "seq=96 dim=32",
+   "case": 2,
+   "mean_us": 16.525992,
+   "min_us": 16.275999999999996,
+   "max_us": 17.114,
+   "std_us": 0.10700201370067763,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/attention/V2_bf16_case2/build/kernel.neff",
+   "profile": {
+    "tensor_engine_active_time_percent": 0.17798065886525014,
+    "vector_engine_active_time_percent": 0.1832375958258737,
+    "scalar_engine_active_time_percent": 0.22573335436332836,
+    "gpsimd_engine_active_time_percent": 0.25870002514517,
+    "dma_active_time_percent": 0.23479849009130024,
+    "total_time_us": 21.359966999999997,
+    "hbm_read": 36864,
+    "hbm_write": 12288
+   }
+  }
+ ]
+}

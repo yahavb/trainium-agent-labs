@@ -1,0 +1,105 @@
+{
+ "suite": "matmul",
+ "core": "2",
+ "lnc": 1,
+ "warmup": 20,
+ "iterations": 2000,
+ "results": [
+  {
+   "version": "level-4 reference",
+   "shape": "K=128 M=128 N=512",
+   "case": 0,
+   "mean_us": 16.768634,
+   "min_us": 16.47,
+   "max_us": 17.406000000000002,
+   "std_us": 0.10044001714456245,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/matmul/level-4_reference_case0/build/kernel.neff"
+  },
+  {
+   "version": "parallel",
+   "shape": "K=128 M=128 N=512",
+   "case": 0,
+   "mean_us": 16.7216265,
+   "min_us": 16.369000000000003,
+   "max_us": 17.149,
+   "std_us": 0.10908871617976812,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/matmul/parallel_case0/build/kernel.neff"
+  },
+  {
+   "version": "level-4 reference",
+   "shape": "K=256 M=256 N=1024",
+   "case": 1,
+   "mean_us": 24.790775499999995,
+   "min_us": 23.425,
+   "max_us": 26.252000000000002,
+   "std_us": 0.5613046321737867,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/matmul/level-4_reference_case1/build/kernel.neff"
+  },
+  {
+   "version": "parallel",
+   "shape": "K=256 M=256 N=1024",
+   "case": 1,
+   "mean_us": 25.43467,
+   "min_us": 24.178,
+   "max_us": 27.511000000000003,
+   "std_us": 0.5850852143918868,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/matmul/parallel_case1/build/kernel.neff"
+  },
+  {
+   "version": "level-4 reference",
+   "shape": "K=512 M=128 N=512",
+   "case": 2,
+   "mean_us": 20.8566995,
+   "min_us": 20.024,
+   "max_us": 22.580000000000002,
+   "std_us": 0.4501748351471348,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/matmul/level-4_reference_case2/build/kernel.neff"
+  },
+  {
+   "version": "parallel",
+   "shape": "K=512 M=128 N=512",
+   "case": 2,
+   "mean_us": 20.745556000000004,
+   "min_us": 19.836,
+   "max_us": 23.177,
+   "std_us": 0.44751625988783916,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/matmul/parallel_case2/build/kernel.neff"
+  },
+  {
+   "version": "level-4 reference",
+   "shape": "K=256 M=512 N=1024",
+   "case": 3,
+   "mean_us": 31.588922,
+   "min_us": 30.072999999999997,
+   "max_us": 33.823,
+   "std_us": 0.5814635774629395,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/matmul/level-4_reference_case3/build/kernel.neff"
+  },
+  {
+   "version": "parallel",
+   "shape": "K=256 M=512 N=1024",
+   "case": 3,
+   "mean_us": 33.32462799999999,
+   "min_us": 31.886,
+   "max_us": 35.141999999999996,
+   "std_us": 0.6509324040297886,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/matmul/parallel_case3/build/kernel.neff"
+  }
+ ]
+}

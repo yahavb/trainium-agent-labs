@@ -1,0 +1,249 @@
+{
+ "suite": "mha",
+ "core": "2",
+ "lnc": 1,
+ "warmup": 20,
+ "iterations": 2000,
+ "results": [
+  {
+   "version": "M0 V0 per head",
+   "shape": "seq=128 heads=16 dim=64",
+   "case": 0,
+   "mean_us": 74.583165,
+   "min_us": 74.26199999999999,
+   "max_us": 76.667,
+   "std_us": 0.11959353567396526,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213503/M0_V0_per_head_case0/build/kernel.neff"
+  },
+  {
+   "version": "M4 V4 per head",
+   "shape": "seq=128 heads=16 dim=64",
+   "case": 0,
+   "mean_us": 61.59849400000001,
+   "min_us": 61.29699999999999,
+   "max_us": 62.998999999999995,
+   "std_us": 0.17026567464994236,
+   "correct": false,
+   "mismatch": "NUMERICAL MISMATCH: worst error 0.0245 of the output's RMS (0.1425), tolerance 0.02.\n  at index (92, 8, 34): expected +1.54337, got +1.54686\n  0.0% of elements are outside tolerance\n  inside a full tile, so look at the accumulation rather than the edges",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213503/M4_V4_per_head_case0/build/kernel.neff"
+  },
+  {
+   "version": "fast, 1 core",
+   "shape": "seq=128 heads=16 dim=64",
+   "case": 0,
+   "mean_us": 51.50320249999999,
+   "min_us": 51.022,
+   "max_us": 52.209999999999994,
+   "std_us": 0.15712413720924615,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213503/fast,_1_core_case0/build/kernel.neff"
+  },
+  {
+   "version": "fast, 2 cores",
+   "shape": "seq=128 heads=16 dim=64",
+   "case": 0,
+   "mean_us": 33.84402625,
+   "min_us": 33.217999999999996,
+   "max_us": 46.538000000000004,
+   "std_us": 0.2969165077272355,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213503/fast,_2_cores_case0/build/kernel.neff"
+  },
+  {
+   "version": "fast tf32 PV, 2 cores",
+   "shape": "seq=128 heads=16 dim=64",
+   "case": 0,
+   "error": "RuntimeError: Generated MLIR failed verification; see diagnostics above"
+  },
+  {
+   "version": "fast tf32 all, 2 cores",
+   "shape": "seq=128 heads=16 dim=64",
+   "case": 0,
+   "error": "RuntimeError: Generated MLIR failed verification; see diagnostics above"
+  },
+  {
+   "version": "M0 V0 per head",
+   "shape": "seq=128 heads=16 dim=128",
+   "case": 1,
+   "mean_us": 76.194178,
+   "min_us": 75.86500000000001,
+   "max_us": 76.81300000000002,
+   "std_us": 0.09992873118377922,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213503/M0_V0_per_head_case1/build/kernel.neff"
+  },
+  {
+   "version": "M4 V4 per head",
+   "shape": "seq=128 heads=16 dim=128",
+   "case": 1,
+   "mean_us": 68.8735145,
+   "min_us": 68.51100000000001,
+   "max_us": 69.59,
+   "std_us": 0.10445208848917302,
+   "correct": false,
+   "mismatch": "NUMERICAL MISMATCH: worst error 0.025 of the output's RMS (0.1406), tolerance 0.02.\n  at index (24, 5, 120): expected +0.887531, got +0.884019\n  0.0% of elements are outside tolerance\n  inside a full tile, so look at the accumulation rather than the edges",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213503/M4_V4_per_head_case1/build/kernel.neff"
+  },
+  {
+   "version": "fast, 1 core",
+   "shape": "seq=128 heads=16 dim=128",
+   "case": 1,
+   "mean_us": 50.7546065,
+   "min_us": 47.912000000000006,
+   "max_us": 54.513,
+   "std_us": 1.6762515108592,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213503/fast,_1_core_case1/build/kernel.neff"
+  },
+  {
+   "version": "fast, 2 cores",
+   "shape": "seq=128 heads=16 dim=128",
+   "case": 1,
+   "mean_us": 34.532840750000005,
+   "min_us": 33.296,
+   "max_us": 40.344,
+   "std_us": 0.5514704515107202,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213503/fast,_2_cores_case1/build/kernel.neff"
+  },
+  {
+   "version": "fast tf32 PV, 2 cores",
+   "shape": "seq=128 heads=16 dim=128",
+   "case": 1,
+   "error": "RuntimeError: Generated MLIR failed verification; see diagnostics above"
+  },
+  {
+   "version": "fast tf32 all, 2 cores",
+   "shape": "seq=128 heads=16 dim=128",
+   "case": 1,
+   "error": "RuntimeError: Generated MLIR failed verification; see diagnostics above"
+  },
+  {
+   "version": "M0 V0 per head",
+   "shape": "seq=96 heads=8 dim=32",
+   "case": 2,
+   "mean_us": 38.459713,
+   "min_us": 38.147,
+   "max_us": 40.196,
+   "std_us": 0.10579790466261595,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213503/M0_V0_per_head_case2/build/kernel.neff"
+  },
+  {
+   "version": "M4 V4 per head",
+   "shape": "seq=96 heads=8 dim=32",
+   "case": 2,
+   "mean_us": 33.968041,
+   "min_us": 33.679,
+   "max_us": 34.452999999999996,
+   "std_us": 0.10736859093328924,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213503/M4_V4_per_head_case2/build/kernel.neff"
+  },
+  {
+   "version": "fast, 1 core",
+   "shape": "seq=96 heads=8 dim=32",
+   "case": 2,
+   "mean_us": 27.615627,
+   "min_us": 27.324,
+   "max_us": 29.868,
+   "std_us": 0.11818278161813589,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213503/fast,_1_core_case2/build/kernel.neff"
+  },
+  {
+   "version": "fast, 2 cores",
+   "shape": "seq=96 heads=8 dim=32",
+   "case": 2,
+   "mean_us": 21.740242249999998,
+   "min_us": 21.295999999999996,
+   "max_us": 25.819000000000003,
+   "std_us": 0.21809416788382377,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213503/fast,_2_cores_case2/build/kernel.neff"
+  },
+  {
+   "version": "fast tf32 PV, 2 cores",
+   "shape": "seq=96 heads=8 dim=32",
+   "case": 2,
+   "error": "RuntimeError: Generated MLIR failed verification; see diagnostics above"
+  },
+  {
+   "version": "fast tf32 all, 2 cores",
+   "shape": "seq=96 heads=8 dim=32",
+   "case": 2,
+   "error": "RuntimeError: Generated MLIR failed verification; see diagnostics above"
+  },
+  {
+   "version": "M0 V0 per head",
+   "shape": "seq=128 heads=32 dim=128",
+   "case": 3,
+   "mean_us": 125.42389949999998,
+   "min_us": 125.16799999999999,
+   "max_us": 126.23500000000001,
+   "std_us": 0.10893368808477094,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213503/M0_V0_per_head_case3/build/kernel.neff"
+  },
+  {
+   "version": "M4 V4 per head",
+   "shape": "seq=128 heads=32 dim=128",
+   "case": 3,
+   "mean_us": 128.406944,
+   "min_us": 128.09400000000002,
+   "max_us": 129.699,
+   "std_us": 0.13768289604740244,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213503/M4_V4_per_head_case3/build/kernel.neff"
+  },
+  {
+   "version": "fast, 1 core",
+   "shape": "seq=128 heads=32 dim=128",
+   "case": 3,
+   "mean_us": 76.675721,
+   "min_us": 72.911,
+   "max_us": 81.11999999999999,
+   "std_us": 1.6265343473652807,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213503/fast,_1_core_case3/build/kernel.neff"
+  },
+  {
+   "version": "fast, 2 cores",
+   "shape": "seq=128 heads=32 dim=128",
+   "case": 3,
+   "mean_us": 47.1182465,
+   "min_us": 44.458999999999996,
+   "max_us": 51.847,
+   "std_us": 1.009338566209451,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213503/fast,_2_cores_case3/build/kernel.neff"
+  },
+  {
+   "version": "fast tf32 PV, 2 cores",
+   "shape": "seq=128 heads=32 dim=128",
+   "case": 3,
+   "error": "RuntimeError: Generated MLIR failed verification; see diagnostics above"
+  },
+  {
+   "version": "fast tf32 all, 2 cores",
+   "shape": "seq=128 heads=32 dim=128",
+   "case": 3,
+   "error": "RuntimeError: Generated MLIR failed verification; see diagnostics above"
+  }
+ ]
+}

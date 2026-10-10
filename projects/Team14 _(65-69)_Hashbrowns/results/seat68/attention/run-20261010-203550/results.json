@@ -1,0 +1,153 @@
+{
+ "suite": "attention",
+ "core": "2",
+ "lnc": 1,
+ "warmup": 20,
+ "iterations": 500,
+ "results": [
+  {
+   "version": "V1",
+   "shape": "seq=128 dim=64",
+   "case": 0,
+   "mean_us": 17.677514,
+   "min_us": 17.314999999999998,
+   "max_us": 23.471,
+   "std_us": 0.27584522798845,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/attention/V1_case0/build/kernel.neff"
+  },
+  {
+   "version": "V2 bf16",
+   "shape": "seq=128 dim=64",
+   "case": 0,
+   "mean_us": 17.137134,
+   "min_us": 16.807,
+   "max_us": 18.107000000000003,
+   "std_us": 0.10319416671498449,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/attention/V2_bf16_case0/build/kernel.neff"
+  },
+  {
+   "version": "V3 hwdge",
+   "shape": "seq=128 dim=64",
+   "case": 0,
+   "mean_us": 16.064869999999996,
+   "min_us": 15.83,
+   "max_us": 20.881,
+   "std_us": 0.2715738593826733,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/attention/V3_hwdge_case0/build/kernel.neff"
+  },
+  {
+   "version": "V4 hwdge+bf16",
+   "shape": "seq=128 dim=64",
+   "case": 0,
+   "mean_us": 15.627464,
+   "min_us": 15.354,
+   "max_us": 17.962,
+   "std_us": 0.15688828096451307,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/attention/V4_hwdge+bf16_case0/build/kernel.neff"
+  },
+  {
+   "version": "V1",
+   "shape": "seq=64 dim=128",
+   "case": 1,
+   "mean_us": 17.067792,
+   "min_us": 16.781000000000002,
+   "max_us": 17.669,
+   "std_us": 0.09840354026151697,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/attention/V1_case1/build/kernel.neff"
+  },
+  {
+   "version": "V2 bf16",
+   "shape": "seq=64 dim=128",
+   "case": 1,
+   "mean_us": 16.93835,
+   "min_us": 16.657000000000004,
+   "max_us": 17.283,
+   "std_us": 0.09132631329469067,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/attention/V2_bf16_case1/build/kernel.neff"
+  },
+  {
+   "version": "V3 hwdge",
+   "shape": "seq=64 dim=128",
+   "case": 1,
+   "mean_us": 15.31624,
+   "min_us": 15.096,
+   "max_us": 15.781,
+   "std_us": 0.10262628513202648,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/attention/V3_hwdge_case1/build/kernel.neff"
+  },
+  {
+   "version": "V4 hwdge+bf16",
+   "shape": "seq=64 dim=128",
+   "case": 1,
+   "mean_us": 14.918276000000002,
+   "min_us": 14.735000000000001,
+   "max_us": 15.378,
+   "std_us": 0.09814929354814535,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/attention/V4_hwdge+bf16_case1/build/kernel.neff"
+  },
+  {
+   "version": "V1",
+   "shape": "seq=96 dim=32",
+   "case": 2,
+   "mean_us": 16.828902,
+   "min_us": 16.624,
+   "max_us": 17.298,
+   "std_us": 0.10928727462975737,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/attention/V1_case2/build/kernel.neff"
+  },
+  {
+   "version": "V2 bf16",
+   "shape": "seq=96 dim=32",
+   "case": 2,
+   "mean_us": 16.501154,
+   "min_us": 16.204,
+   "max_us": 16.973,
+   "std_us": 0.10078199384810761,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/attention/V2_bf16_case2/build/kernel.neff"
+  },
+  {
+   "version": "V3 hwdge",
+   "shape": "seq=96 dim=32",
+   "case": 2,
+   "mean_us": 15.186874,
+   "min_us": 14.884,
+   "max_us": 16.864,
+   "std_us": 0.12657973820481697,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/attention/V3_hwdge_case2/build/kernel.neff"
+  },
+  {
+   "version": "V4 hwdge+bf16",
+   "shape": "seq=96 dim=32",
+   "case": 2,
+   "mean_us": 15.139542,
+   "min_us": 14.847,
+   "max_us": 18.751,
+   "std_us": 0.18754654951771305,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/attention/V4_hwdge+bf16_case2/build/kernel.neff"
+  }
+ ]
+}

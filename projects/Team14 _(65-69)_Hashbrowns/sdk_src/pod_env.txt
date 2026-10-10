@@ -1,0 +1,15 @@
+NEURON_LOGICAL_NC_CONFIG=2
+NEURON_SKIP_EFA_AFFINITY=1
+LD_LIBRARY_PATH=/opt/aws/neuron/lib:/opt/amazon/efa/lib:/opt/amazon/efa/lib64:/lib/x86_64-linux-gnu:/opt/conda/lib/
+PATH=/opt/conda/bin:/opt/aws/neuron/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/amazon/efa/bin
+---
+instance-type: trn2.48xlarge
+instance-id: i-00c91beaca05be7a2
+logical-neuroncore-config: 2
++--------+--------+----------+--------+------------+--------------+---------+-------------+------+---------+
+| NEURON | NEURON |  NEURON  | NEURON | CONNECTED  |     PCI      |   PID   |     CPU     | NUMA | RUNTIME |
+| DEVICE | CORES  | CORE IDS | MEMORY |  DEVICES   |     BDF      |         |  AFFINITY   | NODE | VERSION |
++--------+--------+----------+--------+------------+--------------+---------+-------------+------+---------+
+| 0      | 4      | 0-3      | 96 GB  | 4, 9, 1, 6 | 0000:58:00.0 | 1728787 | 0-47,96-143 | 0    | 2.34.10 |
+|        |        |          |        |            |              | 1728788 |             |      | 2.34.10 |
++--------+--------+----------+--------+------------+--------------+---------+-------------+------+---------+
