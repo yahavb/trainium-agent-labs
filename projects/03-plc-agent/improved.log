@@ -1,0 +1,66 @@
+Probing compiler...
+Model Qwen/Qwen3-8B at http://localhost:8000/v1, mode=critic, logging to runs/improved_critic/
+
+=== run 1/2 ===
+  sample 0 [L4]: PID Loop | FOR Loop | Emergency Stop, High Pressure, Power Loss | Secure
+    round 0: best 0.30 of 4  [compiler: P0002 found 'END_FOR']
+    round 1: best 0.30 of 4  [compiler: P0002 found 'END_FOR']  (worse than 0.30; repairing that one)
+    round 2: best 1.00 of 4  [PASS]
+  -> SOLVED in 3 round(s)  best 1.00  196.6s
+  sample 1 [L4]: Sequential Control | Function Block | SIL Logic, Low Pressure, High Pressure | Insecure
+    round 0: best 0.30 of 4  [compiler: P2008 identifier]
+    round 1: best 1.00 of 4  [PASS]
+  -> SOLVED in 2 round(s)  best 1.00  222.7s
+
+=== run 2/2 ===
+  sample 0 [L4]: PID Loop | FOR Loop | Emergency Stop, High Pressure, Power Loss | Secure
+    round 0: best 0.30 of 4  [compiler: P0002 found 'END_FOR']
+    round 1: best 0.30 of 4  [compiler: P0002 found 'END_FOR']  (worse than 0.30; repairing that one)
+    round 2: best 1.00 of 4  [PASS]
+  -> SOLVED in 3 round(s)  best 1.00  196.7s
+  sample 1 [L4]: Sequential Control | Function Block | SIL Logic, Low Pressure, High Pressure | Insecure
+    round 0: best 0.30 of 4  [compiler: P0002 found 'TYPE']
+    round 1: best 0.30 of 4  [compiler: P0002 found 'STRUCT']  (worse than 0.30; repairing that one)
+    round 2: best 0.30 of 4  [compiler: P0002 found 'STRUCT']  (worse than 0.30; repairing that one)
+    round 3: best 0.30 of 4  [compiler: P0002 found 'STRUCT']  (worse than 0.30; repairing that one)
+  -> NOT SOLVED  best 0.30  339.9s
+
+=== summary ===
+mode critic: solved per run [2, 1]  rate 75% (min 50%, max 100%)
+solved on round 1: 0%   mean rounds when solved: 2.67   generator calls per solve: 16.0
+first half vs second half of the sequence: round-1 rate 0.0 -> 0.0, mean rounds 3 -> 3
+per spec across runs: #0:2/2  #1:1/2
+wrote runs/improved_critic/summary.json and learning_curve.csv
+Probing compiler...
+Model Qwen/Qwen3-8B at http://localhost:8000/v1, mode=critic-bootstrap, logging to runs/improved_bootstrap/
+
+=== run 1/2 ===
+  sample 0 [L4]: PID Loop | FOR Loop | Emergency Stop, High Pressure, Power Loss | Secure
+    round 0: best 0.30 of 4  [compiler: P0002 found 'END_FOR']
+    round 1: best 0.30 of 4  [compiler: P0002 found 'END_FOR']  (worse than 0.30; repairing that one)
+    round 2: best 1.00 of 4  [PASS]
+  -> SOLVED in 3 round(s)  best 1.00  196.5s  memory {'exemplars': 1, 'known_fixes': 1, 'errors_seen': 1}
+  sample 1 [L4]: Sequential Control | Function Block | SIL Logic, Low Pressure, High Pressure | Insecure
+    round 0: best 0.30 of 4  [compiler: P2008 identifier]
+    round 1: best 1.00 of 4  [PASS]
+  -> SOLVED in 2 round(s)  best 1.00  241.3s  memory {'exemplars': 2, 'known_fixes': 2, 'errors_seen': 2}
+
+=== run 2/2 ===
+  sample 0 [L4]: PID Loop | FOR Loop | Emergency Stop, High Pressure, Power Loss | Secure
+    round 0: best 0.30 of 4  [compiler: P0002 found 'END_FOR']
+    round 1: best 0.30 of 4  [compiler: P0002 found 'END_FOR']  (worse than 0.30; repairing that one)
+    round 2: best 1.00 of 4  [PASS]
+  -> SOLVED in 3 round(s)  best 1.00  196.7s  memory {'exemplars': 1, 'known_fixes': 1, 'errors_seen': 1}
+  sample 1 [L4]: Sequential Control | Function Block | SIL Logic, Low Pressure, High Pressure | Insecure
+    round 0: best 0.30 of 4  [compiler: P2008 identifier]
+    round 1: best 0.30 of 4  [compiler: P0002 found 'VAR_OUTPUT']  (worse than 0.30; repairing that one)
+    round 2: best 0.30 of 4  [compiler: P0002 found 'VAR_OUTPUT']  (worse than 0.30; repairing that one)
+    round 3: best 0.30 of 4  [compiler: P0002 found 'VAR_OUTPUT']  (worse than 0.30; repairing that one)
+  -> NOT SOLVED  best 0.30  465.8s  memory {'exemplars': 1, 'known_fixes': 2, 'errors_seen': 3}
+
+=== summary ===
+mode critic-bootstrap: solved per run [2, 1]  rate 75% (min 50%, max 100%)
+solved on round 1: 0%   mean rounds when solved: 2.67   generator calls per solve: 16.0
+first half vs second half of the sequence: round-1 rate 0.0 -> 0.0, mean rounds 3 -> 3
+per spec across runs: #0:2/2  #1:1/2
+wrote runs/improved_bootstrap/summary.json and learning_curve.csv

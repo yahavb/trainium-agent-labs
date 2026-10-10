@@ -1,0 +1,67 @@
+{
+ "exemplars": [
+  {
+   "reqs": [
+    "emergency_stop",
+    "for_loop",
+    "high_pressure",
+    "mode_manual",
+    "pid_loop",
+    "power_loss",
+    "secure_inputs",
+    "structure"
+   ],
+   "code": "PROGRAM Main\nVAR\n    Setpoint : REAL := 100.0;\n    ProcessValue : REAL := 50.0;\n    Kp : REAL := 1.0;\n    Ki : REAL := 0.1;\n    Kd : REAL := 0.01;\n    Error : REAL;\n    PrevError : REAL := 0.0;\n    Integral : REAL := 0.0;\n    ControlOutput : REAL;\n    EStop : BOOL := FALSE;\n    Pressure : REAL := 50.0;\n    HighPressureLimit : REAL := 80.0;\n    HighPressureAlarm : BOOL;\n    PowerOK : BOOL := TRUE;\n    ManualMode : BOOL := TRUE;\n    ManualCommand : BOOL := FALSE;\n    ActuatorOutput : BOOL := FALSE;\n    i : INT;\nEND_VAR\n    Error := Setpoint - ProcessValue;\n    Integral := Integral + Ki * Error;\n    ControlOutput := Kp * Error + Kd * (Error - PrevError) + Integral;\n    ControlOutput := LIMIT(0.0, ControlOutput, 100.0);\n    PrevError := Error;\n    FOR i := 1 TO 10 DO\n        (* Loop for demonstration *);\n    END_FOR;\n    HighPressureAlarm := Pressure > HighPressureLimit;\n    IF EStop THEN\n        ActuatorOutput := FALSE;\n    END_IF;\n    IF NOT PowerOK THEN\n        ActuatorOutput := FALSE;\n    END_IF;\n    IF ManualMode THEN\n        ActuatorOutput := ManualCommand;\n    END_IF;\n    IF HighPressureAlarm THEN\n        (* Safety override for high pressure *);\n        ActuatorOutput := FALSE;\n    END_IF;\nEND_PROGRAM",
+   "origin": {
+    "run": 0,
+    "sample": 0,
+    "round": 2
+   }
+  },
+  {
+   "reqs": [
+    "function_block",
+    "high_pressure",
+    "low_pressure",
+    "mode_maintenance",
+    "sequential_control",
+    "sil_voting",
+    "structure",
+    "vuln_marker"
+   ],
+   "code": "FUNCTION_BLOCK MyBlock\nVAR_INPUT\n    In1 : BOOL;\n    In2 : BOOL;\n    In3 : BOOL;\n    In4 : REAL;\n    In5 : REAL;\n    In6 : REAL;\n    In7 : BOOL;\n    In8 : BOOL;\nEND_VAR\nVAR_OUTPUT\n    Out1 : BOOL;\n    Out2 : BOOL;\n    Out3 : BOOL;\nEND_VAR\nOut1 := FALSE;\nOut2 := FALSE;\nOut3 := FALSE;\nEND_FUNCTION_BLOCK\n\nPROGRAM Main\nVAR\n    SeqStep : INT := 0;\n    TripA : BOOL := FALSE;\n    TripB : BOOL := FALSE;\n    TripC : BOOL := FALSE;\n    VoteTrip : BOOL;\n    Pressure : REAL := 0.0;\n    LowPressureLimit : REAL := 10.0;\n    LowPressureAlarm : BOOL;\n    HighPressureLimit : REAL := 100.0;\n    HighPressureAlarm : BOOL;\n    MaintenanceMode : BOOL := FALSE;\n    Actuator1 : BOOL := FALSE;\n    Actuator2 : BOOL := FALSE;\n    Actuator3 : BOOL := FALSE;\n    JogCommand : BOOL := FALSE;\n    Ctl1 : MyBlock;\nEND_VAR\n(* VULN: Maintenance bypass skips pressure check *)\nCtl1(In1 := TripA, In2 := TripB, In3 := TripC, In4 := Pressure, In5 := LowPressureLimit, In6 := HighPressureLimit, In7 := MaintenanceMode, In8 := JogCommand);\nVoteTrip := (TripA AND TripB) OR (TripA AND TripC) OR (TripB AND TripC);\nLowPressureAlarm := Pressure < LowPressureLimit;\nHighPressureAlarm := Pressure > HighPressureLimit;\nCASE SeqStep OF\n    0: IF NOT VoteTrip AND NOT LowPressureAlarm AND NOT HighPressureAlarm THEN\n        Actuator1 := TRUE;\n        Actuator2 := TRUE;\n        Actuator3 := TRUE;\n        SeqStep := 1;\n    END_IF;\n    1: IF NOT VoteTrip AND NOT LowPressureAlarm AND NOT HighPressureAlarm THEN\n        Actuator1 := FALSE;\n        Actuator2 := FALSE;\n        Actuator3 := FALSE;\n        SeqStep := 2;\n    END_IF;\n    2: IF NOT VoteTrip AND NOT LowPressureAlarm AND NOT HighPressureAlarm THEN\n        SeqStep := 0;\n    END_IF;\nEND_CASE;\nIF MaintenanceMode THEN\n    Actuator1 := FALSE;\n    Actuator2 := FALSE;\n    Actuator3 := FALSE;\n    IF JogCommand THEN\n        Actuator1 := TRUE;\n        Actuator2 := TRUE;\n        Actuator3 := TRUE;\n    END_IF;\nEND_IF;\nIF VoteTrip THEN\n    Actuator1 := FALSE;\n    Actuator2 := FALSE;\n    Actuator3 := FALSE;\nEND_IF;\nIF LowPressureAlarm OR HighPressureAlarm THEN\n    Actuator1 := FALSE;\n    Actuator2 := FALSE;\n    Actuator3 := FALSE;\nEND_IF;\nEND_PROGRAM",
+   "origin": {
+    "run": 0,
+    "sample": 1,
+    "round": 1
+   }
+  }
+ ],
+ "fixes": {
+  "P0002 found 'END_FOR'": "1. L29: Add semicolon before END_FOR; 2. L27: Add FOR keyword before i := 1 TO 10 DO 3. L28: Add semicolon after (* Loop for demonstration *) Your latest version scored 0.30, worse than this one (0.30), and was discarded. Apply the fixes to the program shown above.",
+  "P2008 identifier": "1. L18: Add FUNCTION_BLOCK MyBlock before PROGRAM Main in the file. 2. L18: Change 'MyBlock' to 'Ctl1' in the FUNCTION_BLOCK declaration. 3. L18: Add END_FUNCTION_BLOCK after the FUNCTION_BLOCK definition. 4. L12: Add 'VAR_OUTPUT' block to FUNCTION_BLOCK MyBlock with required outputs. 5. L18: Add 'V"
+ },
+ "errors": {
+  "P0002 found 'END_FOR'": 2,
+  "P2008 identifier": 1
+ },
+ "missed": {
+  "function_block": 1
+ },
+ "seen": {
+  "structure": 2,
+  "pid_loop": 1,
+  "for_loop": 1,
+  "emergency_stop": 1,
+  "high_pressure": 2,
+  "power_loss": 1,
+  "mode_manual": 1,
+  "secure_inputs": 1,
+  "sequential_control": 1,
+  "function_block": 1,
+  "sil_voting": 1,
+  "low_pressure": 1,
+  "mode_maintenance": 1,
+  "vuln_marker": 1
+ }
+}
