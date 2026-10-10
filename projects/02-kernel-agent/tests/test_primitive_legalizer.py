@@ -1,0 +1,74 @@
+import contextlib,io,json
+from types import SimpleNamespace
+import unittest
+from unittest.mock import patch
+from primitive_legalizer import legalize
+from synthetic_nki.primitives import specs
+from synthetic_nki.verify import validate
+import agent
+
+class PrimitiveLegalizerTests(unittest.TestCase):
+ def test_missing_namespace_repaired_without_math_change(self):
+  s=specs()[0];broken=s['source'].replace('nisa.tensor_scalar','nl.tensor_scalar').replace('op0=nl.multiply','op0=nisa.multiply')
+  fixed,meta=legalize(broken)
+  self.assertTrue(meta['applied']);self.assertTrue(validate(fixed,s)['passed'])
+  self.assertIn('instruction_namespace',{c['kind'] for c in meta['changes']})
+  self.assertIn('opcode_namespace',{c['kind'] for c in meta['changes']})
+ def test_known_hbm_dst_staged(self):
+  s=specs()[0]
+  broken=s['source'].replace('    z=nl.ndarray(y.shape,a.dtype,buffer=nl.sbuf)\n','    out=nl.ndarray((2,3),a.dtype,buffer=nl.shared_hbm)\n').replace('dst=z,data=y','dst=out,data=y').replace('    out=nl.ndarray((2,3),a.dtype,buffer=nl.shared_hbm)\n    nisa.dma_copy(dst=out,src=z)','')
+  self.assertFalse(validate(broken,s)['passed'])
+  fixed,meta=legalize(broken);self.assertTrue(validate(fixed,s)['passed']);self.assertIn('hbm_scalar_staging',{c['kind'] for c in meta['changes']})
+ def test_clean_bytes_unchanged(self):
+  s=specs()[0];fixed,meta=legalize(s['source']);self.assertEqual(fixed,s['source']);self.assertFalse(meta['applied'])
+ def test_unknown_buffer_not_rewritten(self):
+  source='import nki.language as nl\nimport nki.isa as ni\ndef f(a):\n ni.tensor_scalar(dst=a,data=unknown,op0=nl.multiply,operand0=.5)'
+  self.assertEqual(legalize(source)[0],source)
+ def test_does_not_add_algorithm(self):
+  source='import nki.language as nl\nimport nki.isa as ni\ndef f(a):\n return a'
+  self.assertEqual(legalize(source)[0],source)
+ def test_alias_shadowing_not_rewritten(self):
+  source='import nki.language as nl\nimport nki.isa as ni\ndef f(a,nl):\n nl.tensor_scalar(dst=a,data=a,op0=nl.multiply,operand0=.5)'
+  self.assertEqual(legalize(source)[0],source)
+ def test_opt_in_source_provenance_and_call_budget(self):
+  s=specs()[0]['source'].replace('nisa.tensor_scalar','nl.tensor_scalar');opts=SimpleNamespace(rounds=1,samples=4,offline=False,terse=0,give_up_after=4,primitive_policy='legalize')
+  log=io.StringIO()
+  with patch.object(agent,'ask',return_value=s) as ask,patch.object(agent,'grade',return_value=(.3,{},'unknown')),contextlib.redirect_stdout(io.StringIO()):agent.solve(opts,1,log)
+  rows=[json.loads(x) for x in log.getvalue().splitlines()];self.assertEqual(ask.call_count,4)
+  self.assertEqual(rows[0]['generated_source'],s.strip());self.assertTrue(rows[0]['primitive_changes']['applied']);self.assertIn('nisa.tensor_scalar',rows[0]['code'])
+ def test_dst_style_result_bound_to_destination(self):
+  s=specs()[0]
+  self.assertIn('    z=nl.ndarray(y.shape,a.dtype,buffer=nl.sbuf)\n    nisa.tensor_scalar(dst=z,data=y',s['source'])
+  broken=s['source'].replace('    z=nl.ndarray(y.shape,a.dtype,buffer=nl.sbuf)\n    nisa.tensor_scalar(dst=z,data=y','    z=nisa.tensor_scalar(dst=nl.ndarray(y.shape,a.dtype,buffer=nl.sbuf),data=y')
+  self.assertFalse(validate(broken,s)['passed'])
+  fixed,meta=legalize(broken)
+  self.assertIn('dst_result_binding',{c['kind'] for c in meta['changes']});self.assertTrue(validate(fixed,s)['passed'])
+ def test_dst_binding_skips_self_reference_and_non_dst_calls(self):
+  source='import nki.language as nl\nimport nki.isa as ni\ndef f(a):\n a=ni.tensor_scalar(dst=a,data=a,op0=nl.multiply,operand0=.5)\n b=nl.sum(a,axis=1)\n return b'
+  self.assertEqual(legalize(source)[0],source)
+ def test_anonymous_write_then_identical_anonymous_read_bound(self):
+  s=specs()[0]
+  self.assertIn('    z=nl.ndarray(y.shape,a.dtype,buffer=nl.sbuf)\n    nisa.tensor_scalar(dst=z,data=y',s['source'])
+  broken=s['source'].replace('    z=nl.ndarray(y.shape,a.dtype,buffer=nl.sbuf)\n    nisa.tensor_scalar(dst=z,data=y','    nisa.tensor_scalar(dst=nl.ndarray(y.shape,a.dtype,buffer=nl.sbuf),data=y').replace('src=z','src=nl.ndarray(y.shape,a.dtype,buffer=nl.sbuf)')
+  self.assertFalse(validate(broken,s)['passed'])
+  fixed,meta=legalize(broken)
+  self.assertIn('anonymous_tile_dataflow',{c['kind'] for c in meta['changes']});self.assertTrue(validate(fixed,s)['passed'])
+ def test_unmatched_anonymous_read_untouched(self):
+  source='import nki.language as nl\nimport nki.isa as ni\ndef f(a):\n ni.dma_copy(dst=a,src=nl.ndarray((1,1),a.dtype,buffer=nl.sbuf))\n return a'
+  self.assertEqual(legalize(source)[0],source)
+ def test_warm_start_round_zero_uses_seed_without_model_call(self):
+  import tempfile,os
+  s=specs()[0]['source'].replace('nisa.tensor_scalar','nl.tensor_scalar')
+  with tempfile.NamedTemporaryFile('w',suffix='.py',delete=False) as f:f.write(s.replace('def ','def renamed_seed_',1) if 'def ' in s else s)
+  try:
+   opts=SimpleNamespace(rounds=1,samples=4,offline=False,terse=0,give_up_after=4,primitive_policy='legalize',warm_start=f.name)
+   log=io.StringIO()
+   with patch.object(agent,'ask') as ask,patch.object(agent,'grade',return_value=(1.0,{},'Correct on every shape.')) as grade,contextlib.redirect_stdout(io.StringIO()):agent.solve(opts,1,log)
+   self.assertEqual(ask.call_count,0);self.assertEqual(grade.call_count,1)
+   self.assertIn('def tensor_avgpool_kernel',grade.call_args[0][0]);self.assertIn('nisa.tensor_scalar',grade.call_args[0][0])
+  finally:os.unlink(f.name)
+ def test_psum_matmul_operand_staged_through_sbuf(self):
+  source='import nki\nimport nki.language as nl\nimport nki.isa as ni\ndef f(a,b):\n p=nl.ndarray((128,128),dtype=nl.float32,buffer=nl.psum)\n o=nl.ndarray((128,128),dtype=nl.float32,buffer=nl.psum)\n ni.nc_matmul(dst=o,stationary=a,moving=p)\n return o'
+  fixed,meta=legalize(source)
+  self.assertEqual([c['kind'] for c in meta['changes']],['psum_operand_staging'])
+  self.assertIn('tensor_copy(dst=_nki_sbuf_operand_7_moving, src=p)',fixed);self.assertIn('moving=_nki_sbuf_operand_7_moving',fixed);self.assertIn('stationary=a',fixed)

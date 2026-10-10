@@ -1,0 +1,56 @@
+{
+  "added_verified_pairs": 3,
+  "rejected": [
+    {
+      "kind": "ragged_k_offset",
+      "clean": {
+        "status": "SIMULATOR_VERIFIED",
+        "passed": true,
+        "cases": [
+          {
+            "seed": 9100,
+            "passed": true,
+            "numerically_correct": true,
+            "inputs_untouched": true
+          },
+          {
+            "seed": 9101,
+            "passed": true,
+            "numerically_correct": true,
+            "inputs_untouched": true
+          },
+          {
+            "seed": 9102,
+            "passed": true,
+            "numerically_correct": true,
+            "inputs_untouched": true
+          }
+        ],
+        "sdk_version": "0.6.0+31049202112.g85070674",
+        "hardware_target": "trn2",
+        "error": null,
+        "failure_category": "UNKNOWN"
+      },
+      "broken": {
+        "status": "STATIC_VERIFIED",
+        "passed": false,
+        "cases": [
+          {
+            "seed": 9100,
+            "passed": false,
+            "error": "AssertionError: Out-of-bound access for tensor `unnamed` on dimension 0: index range [6, 8] exceed dimension size of 7."
+          }
+        ],
+        "sdk_version": "0.6.0+31049202112.g85070674",
+        "hardware_target": "trn2",
+        "error": "AssertionError: Out-of-bound access for tensor `unnamed` on dimension 0: index range [6, 8] exceed dimension size of 7.",
+        "failure_category": "OUT_OF_BOUNDS"
+      }
+    }
+  ],
+  "verified_pairs": 27,
+  "independent_clean_kernels": 15,
+  "train_records": 25,
+  "heldout_records": 2,
+  "device_verified": 0
+}

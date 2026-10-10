@@ -1,0 +1,10 @@
+{
+  "verified_pairs": 32,
+  "independent_clean_kernels": 17,
+  "added_verified_pairs": 4,
+  "rejected": [],
+  "train_records": 30,
+  "heldout_records": 2,
+  "device_verified": 0,
+  "active_training_uses_previous_frozen_corpus": true
+}

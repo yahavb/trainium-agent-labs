@@ -1,0 +1,5394 @@
+{
+  "sympy_version": "1.14.0",
+  "accepted_mutations": 38,
+  "legacy_correct": 21,
+  "targeted_correct": 30,
+  "combined_correct": 30,
+  "symbolic_causes_detected": 10,
+  "unknown_count": 4,
+  "valid_source_location_records": 38,
+  "total_analysis_seconds": 0.05945450798753882,
+  "clean_kernels": 21,
+  "clean_false_positive_kernels": 0,
+  "rows": [
+    {
+      "example_id": "pair-06ed46bd72ba01a1",
+      "cause": "matching_dma_extents",
+      "category": "DMA_SHAPE_MISMATCH",
+      "legacy_correct": true,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": true,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "PROVEN_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "tile",
+            "shape": [
+              "2",
+              "4"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 9,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 8,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "4"
+            ],
+            "src_elements": "6",
+            "dst_elements": "8",
+            "status": "PROVEN_MISMATCH"
+          },
+          {
+            "line": 10,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "4"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "8",
+            "dst_elements": "6",
+            "status": "PROVEN_MISMATCH"
+          }
+        ],
+        "violations": [
+          {
+            "line": 8,
+            "kind": "dma_elements",
+            "status": "PROVEN_VIOLATION",
+            "message": "DMA source has 6 elements, destination 8. Match actual slices and allocations; coordinate consumers. Equal counts alone do not establish legal layout."
+          },
+          {
+            "line": 10,
+            "kind": "dma_elements",
+            "status": "PROVEN_VIOLATION",
+            "message": "DMA source has 8 elements, destination 6. Match actual slices and allocations; coordinate consumers. Equal counts alone do not establish legal layout."
+          }
+        ],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0009503449982730672
+    },
+    {
+      "example_id": "pair-9b8fcab47988a2db",
+      "cause": "unsupported_dma_api",
+      "category": "INVALID_API_FUNCTION",
+      "legacy_correct": true,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 9,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 10,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.00034189600046374835
+    },
+    {
+      "example_id": "pair-b239be23766653e0",
+      "cause": "explicit_onchip_rank",
+      "category": "INVALID_TENSOR_DIMENSIONS",
+      "legacy_correct": false,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": true,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "PROVEN_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "tile",
+            "shape": [
+              "6"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 9,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 8,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "6"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 10,
+            "api": "dma_copy",
+            "src_shape": [
+              "6"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [
+          {
+            "line": 7,
+            "kind": "onchip_rank",
+            "status": "PROVEN_VIOLATION",
+            "message": "tile has rank 1 in nl.sbuf; on-chip tiles require at least 2 dimensions."
+          }
+        ],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0013224829999671783
+    },
+    {
+      "example_id": "pair-ba79a33c15f883f6",
+      "cause": "unsupported_dma_api",
+      "category": "INVALID_API_FUNCTION",
+      "legacy_correct": true,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 9,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 10,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0003480359991954174
+    },
+    {
+      "example_id": "pair-3faf944f5fd6d0f3",
+      "cause": "supported_scalar_api",
+      "category": "INVALID_API_FUNCTION",
+      "legacy_correct": true,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 10,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 8,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0004297160012356471
+    },
+    {
+      "example_id": "pair-3c723407df089ac7",
+      "cause": "unsupported_dma_api",
+      "category": "INVALID_API_FUNCTION",
+      "legacy_correct": true,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 10,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0003517010009090882
+    },
+    {
+      "example_id": "pair-451664251d46e3a3",
+      "cause": "valid_scalar_keyword",
+      "category": "INVALID_API_ARGUMENT",
+      "legacy_correct": true,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 10,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 8,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0004103719984414056
+    },
+    {
+      "example_id": "pair-cd8d1734a94a84b6",
+      "cause": "unsupported_dma_api",
+      "category": "INVALID_API_FUNCTION",
+      "legacy_correct": true,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 10,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0003615580026234966
+    },
+    {
+      "example_id": "pair-b4a9d52f2960e9d8",
+      "cause": "reduction_rank",
+      "category": "INVALID_TENSOR_DIMENSIONS",
+      "legacy_correct": false,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": true,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "PROVEN_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 10,
+            "name": "out",
+            "shape": [
+              "2",
+              "1"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 8,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 9,
+            "api": "sum",
+            "input_shape": [
+              "2",
+              "3"
+            ],
+            "output_shape": [
+              "2"
+            ],
+            "keepdims": false
+          },
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "2"
+            ],
+            "dst_shape": [
+              "2",
+              "1"
+            ],
+            "src_elements": "2",
+            "dst_elements": "2",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [
+          {
+            "line": 9,
+            "kind": "reduction_rank",
+            "status": "PROVEN_VIOLATION",
+            "message": "sum reduces (2, 3) on axes (1,) to rank 1. Preserve a free axis with keepdims=True only if required by the actual consumer."
+          }
+        ],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0004914060009468812
+    },
+    {
+      "example_id": "pair-010fb4a2ded71c23",
+      "cause": "unsupported_dma_api",
+      "category": "INVALID_API_FUNCTION",
+      "legacy_correct": true,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 10,
+            "name": "out",
+            "shape": [
+              "2",
+              "1"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 9,
+            "api": "sum",
+            "input_shape": [
+              "2",
+              "3"
+            ],
+            "output_shape": [
+              "2",
+              "1"
+            ],
+            "keepdims": true
+          },
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "1"
+            ],
+            "dst_shape": [
+              "2",
+              "1"
+            ],
+            "src_elements": "2",
+            "dst_elements": "2",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0003943619994970504
+    },
+    {
+      "example_id": "pair-eaedddb1e0a80859",
+      "cause": "reduction_rank",
+      "category": "INVALID_TENSOR_DIMENSIONS",
+      "legacy_correct": false,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": true,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "PROVEN_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 10,
+            "name": "out",
+            "shape": [
+              "2",
+              "1"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 8,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 9,
+            "api": "max",
+            "input_shape": [
+              "2",
+              "3"
+            ],
+            "output_shape": [
+              "2"
+            ],
+            "keepdims": false
+          },
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "2"
+            ],
+            "dst_shape": [
+              "2",
+              "1"
+            ],
+            "src_elements": "2",
+            "dst_elements": "2",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [
+          {
+            "line": 9,
+            "kind": "reduction_rank",
+            "status": "PROVEN_VIOLATION",
+            "message": "max reduces (2, 3) on axes (1,) to rank 1. Preserve a free axis with keepdims=True only if required by the actual consumer."
+          }
+        ],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.00047155199717963114
+    },
+    {
+      "example_id": "pair-ec4d69d60f69f28e",
+      "cause": "unsupported_dma_api",
+      "category": "INVALID_API_FUNCTION",
+      "legacy_correct": true,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 10,
+            "name": "out",
+            "shape": [
+              "2",
+              "1"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 9,
+            "api": "max",
+            "input_shape": [
+              "2",
+              "3"
+            ],
+            "output_shape": [
+              "2",
+              "1"
+            ],
+            "keepdims": true
+          },
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "1"
+            ],
+            "dst_shape": [
+              "2",
+              "1"
+            ],
+            "src_elements": "2",
+            "dst_elements": "2",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0003977509986725636
+    },
+    {
+      "example_id": "pair-b4924302e0e91319",
+      "cause": "matmul_destination",
+      "category": "INVALID_TENSOR_DIMENSIONS",
+      "legacy_correct": false,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": true,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "PROVEN_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "left",
+            "shape": [
+              "4",
+              "2"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 8,
+            "name": "right",
+            "shape": [
+              "4",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 9,
+            "name": "psum",
+            "shape": [
+              "1",
+              "2"
+            ],
+            "buffer": "nl.psum"
+          },
+          {
+            "line": 13,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 16,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 10,
+            "api": "dma_copy",
+            "src_shape": [
+              "4",
+              "2"
+            ],
+            "dst_shape": [
+              "4",
+              "2"
+            ],
+            "src_elements": "8",
+            "dst_elements": "8",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "4",
+              "3"
+            ],
+            "dst_shape": [
+              "4",
+              "3"
+            ],
+            "src_elements": "12",
+            "dst_elements": "12",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 12,
+            "api": "nc_matmul",
+            "stationary": [
+              "4",
+              "2"
+            ],
+            "moving": [
+              "4",
+              "3"
+            ],
+            "dst": [
+              "1",
+              "2"
+            ],
+            "axis_equalities": [
+              "PROVEN_EQUAL",
+              "PROVEN_MISMATCH",
+              "PROVEN_MISMATCH"
+            ],
+            "status": "PROVEN_MISMATCH"
+          },
+          {
+            "line": 17,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [
+          {
+            "line": 12,
+            "kind": "matmul_dimensions",
+            "status": "PROVEN_VIOLATION",
+            "message": "nc_matmul stationary (4, 2), moving (4, 3) require dst (2, 3); actual dst (1, 2). Check K equality and each result axis, not just element count. Coordinate result copies and stores."
+          }
+        ],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0013471800011757296
+    },
+    {
+      "example_id": "pair-56e9625e86368114",
+      "cause": "unsupported_dma_api",
+      "category": "INVALID_API_FUNCTION",
+      "legacy_correct": true,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "left",
+            "shape": [
+              "4",
+              "2"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 8,
+            "name": "right",
+            "shape": [
+              "4",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 9,
+            "name": "psum",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.psum"
+          },
+          {
+            "line": 13,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 16,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "4",
+              "3"
+            ],
+            "dst_shape": [
+              "4",
+              "3"
+            ],
+            "src_elements": "12",
+            "dst_elements": "12",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 12,
+            "api": "nc_matmul",
+            "stationary": [
+              "4",
+              "2"
+            ],
+            "moving": [
+              "4",
+              "3"
+            ],
+            "dst": [
+              "2",
+              "3"
+            ],
+            "axis_equalities": [
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL"
+            ],
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 17,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0008824209980957676
+    },
+    {
+      "example_id": "pair-c5bcbc185a85f5dc",
+      "cause": "contraction_accumulation",
+      "category": "NUMERICAL_MISMATCH",
+      "legacy_correct": false,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "left",
+            "shape": [
+              "4",
+              "2"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 8,
+            "name": "right",
+            "shape": [
+              "4",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 9,
+            "name": "psum",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.psum"
+          },
+          {
+            "line": 14,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 17,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "4",
+              "2"
+            ],
+            "dst_shape": [
+              "4",
+              "2"
+            ],
+            "src_elements": "8",
+            "dst_elements": "8",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 12,
+            "api": "dma_copy",
+            "src_shape": [
+              "4",
+              "3"
+            ],
+            "dst_shape": [
+              "4",
+              "3"
+            ],
+            "src_elements": "12",
+            "dst_elements": "12",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 13,
+            "api": "nc_matmul",
+            "stationary": [
+              "4",
+              "2"
+            ],
+            "moving": [
+              "4",
+              "3"
+            ],
+            "dst": [
+              "2",
+              "3"
+            ],
+            "axis_equalities": [
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL"
+            ],
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 18,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [
+          {
+            "line": 10,
+            "index": "i",
+            "lower": "0",
+            "upper_exclusive": "2",
+            "coverage": "UNKNOWN"
+          }
+        ],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.019588301998737734
+    },
+    {
+      "example_id": "pair-bc6e24da9f5983cd",
+      "cause": "unsupported_dma_api",
+      "category": "INVALID_API_FUNCTION",
+      "legacy_correct": true,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "left",
+            "shape": [
+              "4",
+              "2"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 8,
+            "name": "right",
+            "shape": [
+              "4",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 9,
+            "name": "psum",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.psum"
+          },
+          {
+            "line": 14,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 17,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 12,
+            "api": "dma_copy",
+            "src_shape": [
+              "4",
+              "3"
+            ],
+            "dst_shape": [
+              "4",
+              "3"
+            ],
+            "src_elements": "12",
+            "dst_elements": "12",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 13,
+            "api": "nc_matmul",
+            "stationary": [
+              "4",
+              "2"
+            ],
+            "moving": [
+              "4",
+              "3"
+            ],
+            "dst": [
+              "2",
+              "3"
+            ],
+            "axis_equalities": [
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL"
+            ],
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 18,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [
+          {
+            "line": 10,
+            "index": "i",
+            "lower": "0",
+            "upper_exclusive": "2",
+            "coverage": "UNKNOWN"
+          }
+        ],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.001707149000139907
+    },
+    {
+      "example_id": "pair-3ebb8b8e4a8a85c4",
+      "cause": "partition_limit",
+      "category": "INVALID_TENSOR_DIMENSIONS",
+      "legacy_correct": true,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": true,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "PROVEN_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "out",
+            "shape": [
+              "256",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          },
+          {
+            "line": 9,
+            "name": "tile",
+            "shape": [
+              "256",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          }
+        ],
+        "operations": [
+          {
+            "line": 10,
+            "api": "dma_copy",
+            "src_shape": [
+              "128",
+              "3"
+            ],
+            "dst_shape": [
+              "256",
+              "3"
+            ],
+            "src_elements": "384",
+            "dst_elements": "768",
+            "status": "PROVEN_MISMATCH"
+          },
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "256",
+              "3"
+            ],
+            "dst_shape": [
+              "128",
+              "3"
+            ],
+            "src_elements": "768",
+            "dst_elements": "384",
+            "status": "PROVEN_MISMATCH"
+          }
+        ],
+        "violations": [
+          {
+            "line": 9,
+            "kind": "partition_limit",
+            "status": "PROVEN_VIOLATION",
+            "message": "tile partition 256 exceeds 128. Coordinate tile slices and consumers."
+          },
+          {
+            "line": 10,
+            "kind": "dma_elements",
+            "status": "PROVEN_VIOLATION",
+            "message": "DMA source has 384 elements, destination 768. Match actual slices and allocations; coordinate consumers. Equal counts alone do not establish legal layout."
+          },
+          {
+            "line": 11,
+            "kind": "dma_elements",
+            "status": "PROVEN_VIOLATION",
+            "message": "DMA source has 768 elements, destination 384. Match actual slices and allocations; coordinate consumers. Equal counts alone do not establish legal layout."
+          }
+        ],
+        "unknowns": [],
+        "loops": [
+          {
+            "line": 8,
+            "index": "i",
+            "lower": "0",
+            "upper_exclusive": "2",
+            "coverage": "UNKNOWN"
+          }
+        ],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0029590169979201164
+    },
+    {
+      "example_id": "pair-2c826e6cd1a3e1bb",
+      "cause": "unsupported_dma_api",
+      "category": "INVALID_API_FUNCTION",
+      "legacy_correct": true,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "out",
+            "shape": [
+              "256",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          },
+          {
+            "line": 9,
+            "name": "tile",
+            "shape": [
+              "128",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          }
+        ],
+        "operations": [
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "128",
+              "3"
+            ],
+            "dst_shape": [
+              "128",
+              "3"
+            ],
+            "src_elements": "384",
+            "dst_elements": "384",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [
+          {
+            "line": 8,
+            "index": "i",
+            "lower": "0",
+            "upper_exclusive": "2",
+            "coverage": "UNKNOWN"
+          }
+        ],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0009904830003506504
+    },
+    {
+      "example_id": "pair-ca8ea6879462abfb",
+      "cause": "output_coverage",
+      "category": "NUMERICAL_MISMATCH",
+      "legacy_correct": false,
+      "targeted_correct": false,
+      "combined_correct": false,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "out",
+            "shape": [
+              "2",
+              "6"
+            ],
+            "buffer": "nl.shared_hbm"
+          },
+          {
+            "line": 9,
+            "name": "left",
+            "shape": [
+              "4",
+              "2"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 10,
+            "name": "right",
+            "shape": [
+              "4",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 11,
+            "name": "psum",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.psum"
+          },
+          {
+            "line": 15,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          }
+        ],
+        "operations": [
+          {
+            "line": 12,
+            "api": "dma_copy",
+            "src_shape": [
+              "4",
+              "2"
+            ],
+            "dst_shape": [
+              "4",
+              "2"
+            ],
+            "src_elements": "8",
+            "dst_elements": "8",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 13,
+            "api": "dma_copy",
+            "src_shape": [
+              "4",
+              "3"
+            ],
+            "dst_shape": [
+              "4",
+              "3"
+            ],
+            "src_elements": "12",
+            "dst_elements": "12",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 14,
+            "api": "nc_matmul",
+            "stationary": [
+              "4",
+              "2"
+            ],
+            "moving": [
+              "4",
+              "3"
+            ],
+            "dst": [
+              "2",
+              "3"
+            ],
+            "axis_equalities": [
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL"
+            ],
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 18,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [
+          {
+            "line": 8,
+            "index": "i",
+            "lower": "0",
+            "upper_exclusive": "1",
+            "coverage": "UNKNOWN"
+          }
+        ],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.003966235999541823
+    },
+    {
+      "example_id": "pair-501d2eaf75106097",
+      "cause": "unsupported_dma_api",
+      "category": "INVALID_API_FUNCTION",
+      "legacy_correct": true,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "out",
+            "shape": [
+              "2",
+              "6"
+            ],
+            "buffer": "nl.shared_hbm"
+          },
+          {
+            "line": 9,
+            "name": "left",
+            "shape": [
+              "4",
+              "2"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 10,
+            "name": "right",
+            "shape": [
+              "4",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 11,
+            "name": "psum",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.psum"
+          },
+          {
+            "line": 15,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          }
+        ],
+        "operations": [
+          {
+            "line": 13,
+            "api": "dma_copy",
+            "src_shape": [
+              "4",
+              "3"
+            ],
+            "dst_shape": [
+              "4",
+              "3"
+            ],
+            "src_elements": "12",
+            "dst_elements": "12",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 14,
+            "api": "nc_matmul",
+            "stationary": [
+              "4",
+              "2"
+            ],
+            "moving": [
+              "4",
+              "3"
+            ],
+            "dst": [
+              "2",
+              "3"
+            ],
+            "axis_equalities": [
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL"
+            ],
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 18,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [
+          {
+            "line": 8,
+            "index": "i",
+            "lower": "0",
+            "upper_exclusive": "2",
+            "coverage": "UNKNOWN"
+          }
+        ],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0021921039988228586
+    },
+    {
+      "example_id": "pair-b34632108b7da537",
+      "cause": "onchip_copy_regions",
+      "category": "INVALID_BUFFER_PLACEMENT",
+      "legacy_correct": true,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 9,
+            "name": "acc",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          },
+          {
+            "line": 12,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 8,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 13,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0005182979984965641
+    },
+    {
+      "example_id": "pair-097820936e32f781",
+      "cause": "unsupported_dma_api",
+      "category": "INVALID_API_FUNCTION",
+      "legacy_correct": true,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 9,
+            "name": "acc",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.psum"
+          },
+          {
+            "line": 12,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 13,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.00045878699893364683
+    },
+    {
+      "example_id": "curr-e1775fb0ffca84f9",
+      "cause": "transpose_regions",
+      "category": "INVALID_BUFFER_PLACEMENT",
+      "legacy_correct": true,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": true,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "PROVEN_VIOLATION",
+        "allocations": [
+          {
+            "line": 6,
+            "name": "t",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 8,
+            "name": "y",
+            "shape": [
+              "3",
+              "2"
+            ],
+            "buffer": "nl.shared_hbm"
+          },
+          {
+            "line": 11,
+            "name": "out",
+            "shape": [
+              "3",
+              "2"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 7,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 9,
+            "api": "nc_transpose",
+            "data_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "3",
+              "2"
+            ],
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 12,
+            "api": "dma_copy",
+            "src_shape": [
+              "3",
+              "2"
+            ],
+            "dst_shape": [
+              "3",
+              "2"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [
+          {
+            "line": 9,
+            "kind": "transpose_buffer",
+            "status": "PROVEN_VIOLATION",
+            "message": "nc_transpose dst must be on-chip, not nl.shared_hbm. Use legal SBUF/PSUM then matching HBM DMA."
+          }
+        ],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.000755967997974949
+    },
+    {
+      "example_id": "curr-f588ea88fae67fbd",
+      "cause": "reduction_rank",
+      "category": "INVALID_TENSOR_DIMENSIONS",
+      "legacy_correct": false,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": true,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "PROVEN_VIOLATION",
+        "allocations": [
+          {
+            "line": 6,
+            "name": "t",
+            "shape": [
+              "2",
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 10,
+            "name": "out",
+            "shape": [
+              "2",
+              "2"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 7,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "6"
+            ],
+            "dst_shape": [
+              "2",
+              "2",
+              "3"
+            ],
+            "src_elements": "12",
+            "dst_elements": "12",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 8,
+            "api": "sum",
+            "input_shape": [
+              "2",
+              "2",
+              "3"
+            ],
+            "output_shape": [
+              "2"
+            ],
+            "keepdims": false
+          },
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "2"
+            ],
+            "dst_shape": [
+              "2",
+              "2"
+            ],
+            "src_elements": "2",
+            "dst_elements": "4",
+            "status": "PROVEN_MISMATCH"
+          }
+        ],
+        "violations": [
+          {
+            "line": 8,
+            "kind": "reduction_rank",
+            "status": "PROVEN_VIOLATION",
+            "message": "sum reduces (2, 2, 3) on axes (1, 2) to rank 1. Preserve a free axis with keepdims=True only if required by the actual consumer."
+          },
+          {
+            "line": 11,
+            "kind": "dma_elements",
+            "status": "PROVEN_VIOLATION",
+            "message": "DMA source has 2 elements, destination 4. Match actual slices and allocations; coordinate consumers. Equal counts alone do not establish legal layout."
+          }
+        ],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0005550770001718774
+    },
+    {
+      "example_id": "curr-54a411f033c7642f",
+      "cause": "output_coverage",
+      "category": "NUMERICAL_MISMATCH",
+      "legacy_correct": false,
+      "targeted_correct": false,
+      "combined_correct": false,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 6,
+            "name": "out",
+            "shape": [
+              "4",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          },
+          {
+            "line": 8,
+            "name": "left",
+            "shape": [
+              "4",
+              "2"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 9,
+            "name": "right",
+            "shape": [
+              "4",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 12,
+            "name": "p",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.psum"
+          },
+          {
+            "line": 14,
+            "name": "y",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          }
+        ],
+        "operations": [
+          {
+            "line": 10,
+            "api": "dma_copy",
+            "src_shape": [
+              "4",
+              "2"
+            ],
+            "dst_shape": [
+              "4",
+              "2"
+            ],
+            "src_elements": "8",
+            "dst_elements": "8",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "4",
+              "3"
+            ],
+            "dst_shape": [
+              "4",
+              "3"
+            ],
+            "src_elements": "12",
+            "dst_elements": "12",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 13,
+            "api": "nc_matmul",
+            "stationary": [
+              "4",
+              "2"
+            ],
+            "moving": [
+              "4",
+              "3"
+            ],
+            "dst": [
+              "2",
+              "3"
+            ],
+            "axis_equalities": [
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL"
+            ],
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 17,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [
+          {
+            "line": 7,
+            "index": "i",
+            "lower": "0",
+            "upper_exclusive": "1",
+            "coverage": "UNKNOWN"
+          }
+        ],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0033950599972740747
+    },
+    {
+      "example_id": "curr-f018cbf7bfff5140",
+      "cause": "boundary_slice_tail",
+      "category": "OUT_OF_BOUNDS",
+      "legacy_correct": true,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": true,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "PROVEN_VIOLATION",
+        "allocations": [
+          {
+            "line": 6,
+            "name": "p",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.psum"
+          },
+          {
+            "line": 11,
+            "name": "left",
+            "shape": [
+              "3",
+              "2"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 12,
+            "name": "right",
+            "shape": [
+              "3",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 16,
+            "name": "y",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 19,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 13,
+            "api": "dma_copy",
+            "src_shape": null,
+            "dst_shape": [
+              "3",
+              "2"
+            ],
+            "src_elements": null,
+            "dst_elements": "6",
+            "status": "UNKNOWN"
+          },
+          {
+            "line": 14,
+            "api": "dma_copy",
+            "src_shape": null,
+            "dst_shape": [
+              "3",
+              "3"
+            ],
+            "src_elements": null,
+            "dst_elements": "9",
+            "status": "UNKNOWN"
+          },
+          {
+            "line": 15,
+            "api": "nc_matmul",
+            "stationary": [
+              "3",
+              "2"
+            ],
+            "moving": [
+              "3",
+              "3"
+            ],
+            "dst": [
+              "2",
+              "3"
+            ],
+            "axis_equalities": [
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL"
+            ],
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 20,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [
+          {
+            "line": 13,
+            "kind": "slice_bounds",
+            "status": "PROVEN_VIOLATION",
+            "message": "Slice start 3*i, stop 3*i + 3 exceeds dimension 7 in at least one established loop instance. Clip the boundary explicitly and coordinate the allocation and consumers."
+          },
+          {
+            "line": 14,
+            "kind": "slice_bounds",
+            "status": "PROVEN_VIOLATION",
+            "message": "Slice start 3*i, stop 3*i + 3 exceeds dimension 7 in at least one established loop instance. Clip the boundary explicitly and coordinate the allocation and consumers."
+          }
+        ],
+        "unknowns": [],
+        "loops": [
+          {
+            "line": 7,
+            "index": "i",
+            "lower": "0",
+            "upper_exclusive": "3",
+            "coverage": "UNKNOWN"
+          }
+        ],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.003636640998593066
+    },
+    {
+      "example_id": "semantic-8c25735fd6eaf398",
+      "cause": "python_tensor_division",
+      "category": "UNKNOWN",
+      "legacy_correct": false,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "UNKNOWN",
+        "allocations": [
+          {
+            "line": 6,
+            "name": "t",
+            "shape": [
+              "3",
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 11,
+            "name": "out",
+            "shape": [
+              "3",
+              "2"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 7,
+            "api": "dma_copy",
+            "src_shape": [
+              "3",
+              "6"
+            ],
+            "dst_shape": [
+              "3",
+              "2",
+              "3"
+            ],
+            "src_elements": "18",
+            "dst_elements": "18",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 8,
+            "api": "sum",
+            "input_shape": [
+              "3",
+              "2",
+              "3"
+            ],
+            "output_shape": [
+              "3",
+              "2"
+            ],
+            "keepdims": false
+          },
+          {
+            "line": 12,
+            "api": "dma_copy",
+            "src_shape": null,
+            "dst_shape": [
+              "3",
+              "2"
+            ],
+            "src_elements": null,
+            "dst_elements": "6",
+            "status": "UNKNOWN"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0005646720019285567
+    },
+    {
+      "example_id": "semantic-bbf92bb2930e9aab",
+      "cause": "group_axis_element_conservation",
+      "category": "DMA_SHAPE_MISMATCH",
+      "legacy_correct": true,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": true,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "PROVEN_VIOLATION",
+        "allocations": [
+          {
+            "line": 6,
+            "name": "t",
+            "shape": [
+              "3",
+              "2",
+              "3",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 11,
+            "name": "out",
+            "shape": [
+              "3",
+              "2"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 7,
+            "api": "dma_copy",
+            "src_shape": [
+              "3",
+              "6"
+            ],
+            "dst_shape": [
+              "3",
+              "2",
+              "3",
+              "3"
+            ],
+            "src_elements": "18",
+            "dst_elements": "54",
+            "status": "PROVEN_MISMATCH"
+          },
+          {
+            "line": 8,
+            "api": "sum",
+            "input_shape": [
+              "3",
+              "2",
+              "3",
+              "3"
+            ],
+            "output_shape": [
+              "3",
+              "2",
+              "3"
+            ],
+            "keepdims": false
+          },
+          {
+            "line": 12,
+            "api": "dma_copy",
+            "src_shape": [
+              "3",
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "3",
+              "2"
+            ],
+            "src_elements": "18",
+            "dst_elements": "6",
+            "status": "PROVEN_MISMATCH"
+          }
+        ],
+        "violations": [
+          {
+            "line": 7,
+            "kind": "dma_elements",
+            "status": "PROVEN_VIOLATION",
+            "message": "DMA source has 18 elements, destination 54. Match actual slices and allocations; coordinate consumers. Equal counts alone do not establish legal layout."
+          },
+          {
+            "line": 12,
+            "kind": "dma_elements",
+            "status": "PROVEN_VIOLATION",
+            "message": "DMA source has 18 elements, destination 6. Match actual slices and allocations; coordinate consumers. Equal counts alone do not establish legal layout."
+          }
+        ],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0006340340005408507
+    },
+    {
+      "example_id": "semantic-c324e535be56a067",
+      "cause": "incorrect_normalization",
+      "category": "NUMERICAL_MISMATCH",
+      "legacy_correct": false,
+      "targeted_correct": false,
+      "combined_correct": false,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 6,
+            "name": "t",
+            "shape": [
+              "3",
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 11,
+            "name": "out",
+            "shape": [
+              "3",
+              "2"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 7,
+            "api": "dma_copy",
+            "src_shape": [
+              "3",
+              "6"
+            ],
+            "dst_shape": [
+              "3",
+              "2",
+              "3"
+            ],
+            "src_elements": "18",
+            "dst_elements": "18",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 8,
+            "api": "sum",
+            "input_shape": [
+              "3",
+              "2",
+              "3"
+            ],
+            "output_shape": [
+              "3",
+              "2"
+            ],
+            "keepdims": false
+          },
+          {
+            "line": 12,
+            "api": "dma_copy",
+            "src_shape": [
+              "3",
+              "2"
+            ],
+            "dst_shape": [
+              "3",
+              "2"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0005200369996600784
+    },
+    {
+      "example_id": "semantic-d954340ef32f8b34",
+      "cause": "incorrect_reduction_operation",
+      "category": "NUMERICAL_MISMATCH",
+      "legacy_correct": false,
+      "targeted_correct": false,
+      "combined_correct": false,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 6,
+            "name": "t",
+            "shape": [
+              "3",
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 11,
+            "name": "out",
+            "shape": [
+              "3",
+              "2"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 7,
+            "api": "dma_copy",
+            "src_shape": [
+              "3",
+              "6"
+            ],
+            "dst_shape": [
+              "3",
+              "2",
+              "3"
+            ],
+            "src_elements": "18",
+            "dst_elements": "18",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 8,
+            "api": "max",
+            "input_shape": [
+              "3",
+              "2",
+              "3"
+            ],
+            "output_shape": [
+              "3",
+              "2"
+            ],
+            "keepdims": false
+          },
+          {
+            "line": 12,
+            "api": "dma_copy",
+            "src_shape": [
+              "3",
+              "2"
+            ],
+            "dst_shape": [
+              "3",
+              "2"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0005252490009297617
+    },
+    {
+      "example_id": "primitive-85fc09b9662d5481",
+      "cause": "scalar_instruction_namespace",
+      "category": "INVALID_API_FUNCTION",
+      "legacy_correct": false,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "UNKNOWN",
+        "allocations": [
+          {
+            "line": 6,
+            "name": "t",
+            "shape": [
+              "2",
+              "12"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 12,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 7,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "12"
+            ],
+            "dst_shape": [
+              "2",
+              "12"
+            ],
+            "src_elements": "24",
+            "dst_elements": "24",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 13,
+            "api": "dma_copy",
+            "src_shape": null,
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": null,
+            "dst_elements": "6",
+            "status": "UNKNOWN"
+          }
+        ],
+        "violations": [],
+        "unknowns": [
+          "line 10: allocation shape unresolved"
+        ],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.000547466999705648
+    },
+    {
+      "example_id": "primitive-1e85a38eee5edb6e",
+      "cause": "access_pattern_bounds",
+      "category": "OUT_OF_BOUNDS",
+      "legacy_correct": false,
+      "targeted_correct": false,
+      "combined_correct": false,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "UNKNOWN",
+        "allocations": [
+          {
+            "line": 6,
+            "name": "t",
+            "shape": [
+              "2",
+              "12"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 12,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 7,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "12"
+            ],
+            "dst_shape": [
+              "2",
+              "12"
+            ],
+            "src_elements": "24",
+            "dst_elements": "24",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 13,
+            "api": "dma_copy",
+            "src_shape": null,
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": null,
+            "dst_elements": "6",
+            "status": "UNKNOWN"
+          }
+        ],
+        "violations": [],
+        "unknowns": [
+          "line 10: allocation shape unresolved"
+        ],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0005300830016494729
+    },
+    {
+      "example_id": "primitive-9f0959af3e3af8d8",
+      "cause": "incorrect_normalization",
+      "category": "NUMERICAL_MISMATCH",
+      "legacy_correct": false,
+      "targeted_correct": false,
+      "combined_correct": false,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "UNKNOWN",
+        "allocations": [
+          {
+            "line": 6,
+            "name": "t",
+            "shape": [
+              "2",
+              "12"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 12,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 7,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "12"
+            ],
+            "dst_shape": [
+              "2",
+              "12"
+            ],
+            "src_elements": "24",
+            "dst_elements": "24",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 13,
+            "api": "dma_copy",
+            "src_shape": null,
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": null,
+            "dst_elements": "6",
+            "status": "UNKNOWN"
+          }
+        ],
+        "violations": [],
+        "unknowns": [
+          "line 10: allocation shape unresolved"
+        ],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0005523760009964462
+    },
+    {
+      "example_id": "primitive-0f5a63a2077c68dd",
+      "cause": "missing_free_permutation",
+      "category": "NUMERICAL_MISMATCH",
+      "legacy_correct": false,
+      "targeted_correct": false,
+      "combined_correct": false,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 6,
+            "name": "t",
+            "shape": [
+              "3",
+              "8"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 7,
+            "name": "u",
+            "shape": [
+              "3",
+              "8"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 13,
+            "name": "out",
+            "shape": [
+              "3",
+              "8"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 8,
+            "api": "dma_copy",
+            "src_shape": [
+              "3",
+              "8"
+            ],
+            "dst_shape": [
+              "3",
+              "8"
+            ],
+            "src_elements": "24",
+            "dst_elements": "24",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 14,
+            "api": "dma_copy",
+            "src_shape": [
+              "3",
+              "8"
+            ],
+            "dst_shape": [
+              "3",
+              "8"
+            ],
+            "src_elements": "24",
+            "dst_elements": "24",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0006373540018103085
+    },
+    {
+      "example_id": "primitive-34c70c6c71c5bcaa",
+      "cause": "transpose_output_buffer",
+      "category": "INVALID_BUFFER_PLACEMENT",
+      "legacy_correct": false,
+      "targeted_correct": false,
+      "combined_correct": false,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 6,
+            "name": "t",
+            "shape": [
+              "5",
+              "7"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 8,
+            "name": "p",
+            "shape": [
+              "7",
+              "5"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 10,
+            "name": "u",
+            "shape": [
+              "7",
+              "5"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 13,
+            "name": "out",
+            "shape": [
+              "7",
+              "5"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 7,
+            "api": "dma_copy",
+            "src_shape": [
+              "5",
+              "7"
+            ],
+            "dst_shape": [
+              "5",
+              "7"
+            ],
+            "src_elements": "35",
+            "dst_elements": "35",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 9,
+            "api": "nc_transpose",
+            "data_shape": [
+              "5",
+              "7"
+            ],
+            "dst_shape": [
+              "7",
+              "5"
+            ],
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 14,
+            "api": "dma_copy",
+            "src_shape": [
+              "7",
+              "5"
+            ],
+            "dst_shape": [
+              "7",
+              "5"
+            ],
+            "src_elements": "35",
+            "dst_elements": "35",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0008614549988124054
+    },
+    {
+      "example_id": "primitive-45b755cf31245aae",
+      "cause": "missing_contraction_accumulation",
+      "category": "NUMERICAL_MISMATCH",
+      "legacy_correct": false,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 6,
+            "name": "p",
+            "shape": [
+              "5",
+              "7"
+            ],
+            "buffer": "nl.psum"
+          },
+          {
+            "line": 8,
+            "name": "left",
+            "shape": [
+              "4",
+              "5"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 9,
+            "name": "right",
+            "shape": [
+              "4",
+              "7"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 13,
+            "name": "u",
+            "shape": [
+              "5",
+              "7"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 16,
+            "name": "out",
+            "shape": [
+              "5",
+              "7"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 10,
+            "api": "dma_copy",
+            "src_shape": [
+              "4",
+              "5"
+            ],
+            "dst_shape": [
+              "4",
+              "5"
+            ],
+            "src_elements": "20",
+            "dst_elements": "20",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "4",
+              "7"
+            ],
+            "dst_shape": [
+              "4",
+              "7"
+            ],
+            "src_elements": "28",
+            "dst_elements": "28",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 12,
+            "api": "nc_matmul",
+            "stationary": [
+              "4",
+              "5"
+            ],
+            "moving": [
+              "4",
+              "7"
+            ],
+            "dst": [
+              "5",
+              "7"
+            ],
+            "axis_equalities": [
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL"
+            ],
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 17,
+            "api": "dma_copy",
+            "src_shape": [
+              "5",
+              "7"
+            ],
+            "dst_shape": [
+              "5",
+              "7"
+            ],
+            "src_elements": "35",
+            "dst_elements": "35",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [
+          {
+            "line": 7,
+            "index": "step",
+            "lower": "0",
+            "upper_exclusive": "3",
+            "coverage": "UNKNOWN"
+          }
+        ],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.00371137099864427
+    },
+    {
+      "example_id": "pair-38cc5aaa24a47217",
+      "cause": "supported_binary_api",
+      "category": "INVALID_API_FUNCTION",
+      "legacy_correct": true,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 9,
+            "name": "other",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 12,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 8,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 10,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 13,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0006008189993735868
+    },
+    {
+      "example_id": "pair-c7f1edd8594cbf88",
+      "cause": "unsupported_dma_api",
+      "category": "INVALID_API_FUNCTION",
+      "legacy_correct": true,
+      "targeted_correct": true,
+      "combined_correct": true,
+      "symbolic_detected_cause": false,
+      "valid_source_locations": true,
+      "symbolic": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 9,
+            "name": "other",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 12,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 10,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 11,
+            "api": "tensor_tensor",
+            "broadcast_status": "PROVEN_EQUAL",
+            "nki_legality": "UNKNOWN: generic broadcast is necessary but not sufficient"
+          },
+          {
+            "line": 13,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      },
+      "analysis_seconds": 0.0005456899998534936
+    }
+  ],
+  "clean_results": [
+    {
+      "example_id": "pair-06ed46bd72ba01a1",
+      "result": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 9,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 8,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 10,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      }
+    },
+    {
+      "example_id": "pair-b239be23766653e0",
+      "result": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 9,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 8,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 10,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      }
+    },
+    {
+      "example_id": "pair-3faf944f5fd6d0f3",
+      "result": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 10,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 8,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      }
+    },
+    {
+      "example_id": "pair-451664251d46e3a3",
+      "result": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 10,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 8,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      }
+    },
+    {
+      "example_id": "pair-b4a9d52f2960e9d8",
+      "result": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 10,
+            "name": "out",
+            "shape": [
+              "2",
+              "1"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 8,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 9,
+            "api": "sum",
+            "input_shape": [
+              "2",
+              "3"
+            ],
+            "output_shape": [
+              "2",
+              "1"
+            ],
+            "keepdims": true
+          },
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "1"
+            ],
+            "dst_shape": [
+              "2",
+              "1"
+            ],
+            "src_elements": "2",
+            "dst_elements": "2",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      }
+    },
+    {
+      "example_id": "pair-eaedddb1e0a80859",
+      "result": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 10,
+            "name": "out",
+            "shape": [
+              "2",
+              "1"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 8,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 9,
+            "api": "max",
+            "input_shape": [
+              "2",
+              "3"
+            ],
+            "output_shape": [
+              "2",
+              "1"
+            ],
+            "keepdims": true
+          },
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "1"
+            ],
+            "dst_shape": [
+              "2",
+              "1"
+            ],
+            "src_elements": "2",
+            "dst_elements": "2",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      }
+    },
+    {
+      "example_id": "pair-b4924302e0e91319",
+      "result": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "left",
+            "shape": [
+              "4",
+              "2"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 8,
+            "name": "right",
+            "shape": [
+              "4",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 9,
+            "name": "psum",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.psum"
+          },
+          {
+            "line": 13,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 16,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 10,
+            "api": "dma_copy",
+            "src_shape": [
+              "4",
+              "2"
+            ],
+            "dst_shape": [
+              "4",
+              "2"
+            ],
+            "src_elements": "8",
+            "dst_elements": "8",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "4",
+              "3"
+            ],
+            "dst_shape": [
+              "4",
+              "3"
+            ],
+            "src_elements": "12",
+            "dst_elements": "12",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 12,
+            "api": "nc_matmul",
+            "stationary": [
+              "4",
+              "2"
+            ],
+            "moving": [
+              "4",
+              "3"
+            ],
+            "dst": [
+              "2",
+              "3"
+            ],
+            "axis_equalities": [
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL"
+            ],
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 17,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      }
+    },
+    {
+      "example_id": "pair-c5bcbc185a85f5dc",
+      "result": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "left",
+            "shape": [
+              "4",
+              "2"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 8,
+            "name": "right",
+            "shape": [
+              "4",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 9,
+            "name": "psum",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.psum"
+          },
+          {
+            "line": 14,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 17,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "4",
+              "2"
+            ],
+            "dst_shape": [
+              "4",
+              "2"
+            ],
+            "src_elements": "8",
+            "dst_elements": "8",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 12,
+            "api": "dma_copy",
+            "src_shape": [
+              "4",
+              "3"
+            ],
+            "dst_shape": [
+              "4",
+              "3"
+            ],
+            "src_elements": "12",
+            "dst_elements": "12",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 13,
+            "api": "nc_matmul",
+            "stationary": [
+              "4",
+              "2"
+            ],
+            "moving": [
+              "4",
+              "3"
+            ],
+            "dst": [
+              "2",
+              "3"
+            ],
+            "axis_equalities": [
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL"
+            ],
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 18,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [
+          {
+            "line": 10,
+            "index": "i",
+            "lower": "0",
+            "upper_exclusive": "2",
+            "coverage": "UNKNOWN"
+          }
+        ],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      }
+    },
+    {
+      "example_id": "pair-3ebb8b8e4a8a85c4",
+      "result": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "out",
+            "shape": [
+              "256",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          },
+          {
+            "line": 9,
+            "name": "tile",
+            "shape": [
+              "128",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          }
+        ],
+        "operations": [
+          {
+            "line": 10,
+            "api": "dma_copy",
+            "src_shape": [
+              "128",
+              "3"
+            ],
+            "dst_shape": [
+              "128",
+              "3"
+            ],
+            "src_elements": "384",
+            "dst_elements": "384",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "128",
+              "3"
+            ],
+            "dst_shape": [
+              "128",
+              "3"
+            ],
+            "src_elements": "384",
+            "dst_elements": "384",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [
+          {
+            "line": 8,
+            "index": "i",
+            "lower": "0",
+            "upper_exclusive": "2",
+            "coverage": "UNKNOWN"
+          }
+        ],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      }
+    },
+    {
+      "example_id": "pair-ca8ea6879462abfb",
+      "result": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "out",
+            "shape": [
+              "2",
+              "6"
+            ],
+            "buffer": "nl.shared_hbm"
+          },
+          {
+            "line": 9,
+            "name": "left",
+            "shape": [
+              "4",
+              "2"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 10,
+            "name": "right",
+            "shape": [
+              "4",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 11,
+            "name": "psum",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.psum"
+          },
+          {
+            "line": 15,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          }
+        ],
+        "operations": [
+          {
+            "line": 12,
+            "api": "dma_copy",
+            "src_shape": [
+              "4",
+              "2"
+            ],
+            "dst_shape": [
+              "4",
+              "2"
+            ],
+            "src_elements": "8",
+            "dst_elements": "8",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 13,
+            "api": "dma_copy",
+            "src_shape": [
+              "4",
+              "3"
+            ],
+            "dst_shape": [
+              "4",
+              "3"
+            ],
+            "src_elements": "12",
+            "dst_elements": "12",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 14,
+            "api": "nc_matmul",
+            "stationary": [
+              "4",
+              "2"
+            ],
+            "moving": [
+              "4",
+              "3"
+            ],
+            "dst": [
+              "2",
+              "3"
+            ],
+            "axis_equalities": [
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL"
+            ],
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 18,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [
+          {
+            "line": 8,
+            "index": "i",
+            "lower": "0",
+            "upper_exclusive": "2",
+            "coverage": "UNKNOWN"
+          }
+        ],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      }
+    },
+    {
+      "example_id": "pair-b34632108b7da537",
+      "result": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 9,
+            "name": "acc",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.psum"
+          },
+          {
+            "line": 12,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 8,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 13,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      }
+    },
+    {
+      "example_id": "curr-e1775fb0ffca84f9",
+      "result": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 6,
+            "name": "t",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 8,
+            "name": "y",
+            "shape": [
+              "3",
+              "2"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 11,
+            "name": "out",
+            "shape": [
+              "3",
+              "2"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 7,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 9,
+            "api": "nc_transpose",
+            "data_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "3",
+              "2"
+            ],
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 12,
+            "api": "dma_copy",
+            "src_shape": [
+              "3",
+              "2"
+            ],
+            "dst_shape": [
+              "3",
+              "2"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      }
+    },
+    {
+      "example_id": "curr-f588ea88fae67fbd",
+      "result": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 6,
+            "name": "t",
+            "shape": [
+              "2",
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 10,
+            "name": "out",
+            "shape": [
+              "2",
+              "2"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 7,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "6"
+            ],
+            "dst_shape": [
+              "2",
+              "2",
+              "3"
+            ],
+            "src_elements": "12",
+            "dst_elements": "12",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 8,
+            "api": "sum",
+            "input_shape": [
+              "2",
+              "2",
+              "3"
+            ],
+            "output_shape": [
+              "2",
+              "2"
+            ],
+            "keepdims": false
+          },
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "2"
+            ],
+            "dst_shape": [
+              "2",
+              "2"
+            ],
+            "src_elements": "4",
+            "dst_elements": "4",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      }
+    },
+    {
+      "example_id": "curr-54a411f033c7642f",
+      "result": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 6,
+            "name": "out",
+            "shape": [
+              "4",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          },
+          {
+            "line": 8,
+            "name": "left",
+            "shape": [
+              "4",
+              "2"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 9,
+            "name": "right",
+            "shape": [
+              "4",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 12,
+            "name": "p",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.psum"
+          },
+          {
+            "line": 14,
+            "name": "y",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          }
+        ],
+        "operations": [
+          {
+            "line": 10,
+            "api": "dma_copy",
+            "src_shape": [
+              "4",
+              "2"
+            ],
+            "dst_shape": [
+              "4",
+              "2"
+            ],
+            "src_elements": "8",
+            "dst_elements": "8",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "4",
+              "3"
+            ],
+            "dst_shape": [
+              "4",
+              "3"
+            ],
+            "src_elements": "12",
+            "dst_elements": "12",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 13,
+            "api": "nc_matmul",
+            "stationary": [
+              "4",
+              "2"
+            ],
+            "moving": [
+              "4",
+              "3"
+            ],
+            "dst": [
+              "2",
+              "3"
+            ],
+            "axis_equalities": [
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL"
+            ],
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 17,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [
+          {
+            "line": 7,
+            "index": "i",
+            "lower": "0",
+            "upper_exclusive": "2",
+            "coverage": "UNKNOWN"
+          }
+        ],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      }
+    },
+    {
+      "example_id": "curr-f018cbf7bfff5140",
+      "result": {
+        "status": "UNKNOWN",
+        "allocations": [
+          {
+            "line": 6,
+            "name": "p",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.psum"
+          },
+          {
+            "line": 11,
+            "name": "left",
+            "shape": [
+              "-3*i + Min(7, 3*i + 3)",
+              "2"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 12,
+            "name": "right",
+            "shape": [
+              "-3*i + Min(7, 3*i + 3)",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 16,
+            "name": "y",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 19,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 13,
+            "api": "dma_copy",
+            "src_shape": [
+              "-3*i + Min(7, 3*i + 3)",
+              "2"
+            ],
+            "dst_shape": [
+              "-3*i + Min(7, 3*i + 3)",
+              "2"
+            ],
+            "src_elements": "-6*i + 2*Min(7, 3*i + 3)",
+            "dst_elements": "-6*i + 2*Min(7, 3*i + 3)",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 14,
+            "api": "dma_copy",
+            "src_shape": [
+              "-3*i + Min(7, 3*i + 3)",
+              "3"
+            ],
+            "dst_shape": [
+              "-3*i + Min(7, 3*i + 3)",
+              "3"
+            ],
+            "src_elements": "-9*i + 3*Min(7, 3*i + 3)",
+            "dst_elements": "-9*i + 3*Min(7, 3*i + 3)",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 15,
+            "api": "nc_matmul",
+            "stationary": [
+              "-3*i + Min(7, 3*i + 3)",
+              "2"
+            ],
+            "moving": [
+              "-3*i + Min(7, 3*i + 3)",
+              "3"
+            ],
+            "dst": [
+              "2",
+              "3"
+            ],
+            "axis_equalities": [
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL"
+            ],
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 20,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [
+          {
+            "line": 7,
+            "index": "i",
+            "lower": "0",
+            "upper_exclusive": "3",
+            "coverage": "UNKNOWN"
+          }
+        ],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      }
+    },
+    {
+      "example_id": "semantic-8c25735fd6eaf398",
+      "result": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 6,
+            "name": "t",
+            "shape": [
+              "3",
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 11,
+            "name": "out",
+            "shape": [
+              "3",
+              "2"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 7,
+            "api": "dma_copy",
+            "src_shape": [
+              "3",
+              "6"
+            ],
+            "dst_shape": [
+              "3",
+              "2",
+              "3"
+            ],
+            "src_elements": "18",
+            "dst_elements": "18",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 8,
+            "api": "sum",
+            "input_shape": [
+              "3",
+              "2",
+              "3"
+            ],
+            "output_shape": [
+              "3",
+              "2"
+            ],
+            "keepdims": false
+          },
+          {
+            "line": 12,
+            "api": "dma_copy",
+            "src_shape": [
+              "3",
+              "2"
+            ],
+            "dst_shape": [
+              "3",
+              "2"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      }
+    },
+    {
+      "example_id": "primitive-85fc09b9662d5481",
+      "result": {
+        "status": "UNKNOWN",
+        "allocations": [
+          {
+            "line": 6,
+            "name": "t",
+            "shape": [
+              "2",
+              "12"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 12,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 7,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "12"
+            ],
+            "dst_shape": [
+              "2",
+              "12"
+            ],
+            "src_elements": "24",
+            "dst_elements": "24",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 13,
+            "api": "dma_copy",
+            "src_shape": null,
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": null,
+            "dst_elements": "6",
+            "status": "UNKNOWN"
+          }
+        ],
+        "violations": [],
+        "unknowns": [
+          "line 10: allocation shape unresolved"
+        ],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      }
+    },
+    {
+      "example_id": "primitive-0f5a63a2077c68dd",
+      "result": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 6,
+            "name": "t",
+            "shape": [
+              "3",
+              "8"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 7,
+            "name": "u",
+            "shape": [
+              "3",
+              "8"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 13,
+            "name": "out",
+            "shape": [
+              "3",
+              "8"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 8,
+            "api": "dma_copy",
+            "src_shape": [
+              "3",
+              "8"
+            ],
+            "dst_shape": [
+              "3",
+              "8"
+            ],
+            "src_elements": "24",
+            "dst_elements": "24",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 14,
+            "api": "dma_copy",
+            "src_shape": [
+              "3",
+              "8"
+            ],
+            "dst_shape": [
+              "3",
+              "8"
+            ],
+            "src_elements": "24",
+            "dst_elements": "24",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      }
+    },
+    {
+      "example_id": "primitive-34c70c6c71c5bcaa",
+      "result": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 6,
+            "name": "t",
+            "shape": [
+              "5",
+              "7"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 8,
+            "name": "p",
+            "shape": [
+              "7",
+              "5"
+            ],
+            "buffer": "nl.psum"
+          },
+          {
+            "line": 10,
+            "name": "u",
+            "shape": [
+              "7",
+              "5"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 13,
+            "name": "out",
+            "shape": [
+              "7",
+              "5"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 7,
+            "api": "dma_copy",
+            "src_shape": [
+              "5",
+              "7"
+            ],
+            "dst_shape": [
+              "5",
+              "7"
+            ],
+            "src_elements": "35",
+            "dst_elements": "35",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 9,
+            "api": "nc_transpose",
+            "data_shape": [
+              "5",
+              "7"
+            ],
+            "dst_shape": [
+              "7",
+              "5"
+            ],
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 14,
+            "api": "dma_copy",
+            "src_shape": [
+              "7",
+              "5"
+            ],
+            "dst_shape": [
+              "7",
+              "5"
+            ],
+            "src_elements": "35",
+            "dst_elements": "35",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      }
+    },
+    {
+      "example_id": "primitive-45b755cf31245aae",
+      "result": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 6,
+            "name": "p",
+            "shape": [
+              "5",
+              "7"
+            ],
+            "buffer": "nl.psum"
+          },
+          {
+            "line": 8,
+            "name": "left",
+            "shape": [
+              "4",
+              "5"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 9,
+            "name": "right",
+            "shape": [
+              "4",
+              "7"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 13,
+            "name": "u",
+            "shape": [
+              "5",
+              "7"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 16,
+            "name": "out",
+            "shape": [
+              "5",
+              "7"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 10,
+            "api": "dma_copy",
+            "src_shape": [
+              "4",
+              "5"
+            ],
+            "dst_shape": [
+              "4",
+              "5"
+            ],
+            "src_elements": "20",
+            "dst_elements": "20",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 11,
+            "api": "dma_copy",
+            "src_shape": [
+              "4",
+              "7"
+            ],
+            "dst_shape": [
+              "4",
+              "7"
+            ],
+            "src_elements": "28",
+            "dst_elements": "28",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 12,
+            "api": "nc_matmul",
+            "stationary": [
+              "4",
+              "5"
+            ],
+            "moving": [
+              "4",
+              "7"
+            ],
+            "dst": [
+              "5",
+              "7"
+            ],
+            "axis_equalities": [
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL",
+              "PROVEN_EQUAL"
+            ],
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 17,
+            "api": "dma_copy",
+            "src_shape": [
+              "5",
+              "7"
+            ],
+            "dst_shape": [
+              "5",
+              "7"
+            ],
+            "src_elements": "35",
+            "dst_elements": "35",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [
+          {
+            "line": 7,
+            "index": "step",
+            "lower": "0",
+            "upper_exclusive": "3",
+            "coverage": "UNKNOWN"
+          }
+        ],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      }
+    },
+    {
+      "example_id": "pair-38cc5aaa24a47217",
+      "result": {
+        "status": "NO_STATIC_VIOLATION",
+        "allocations": [
+          {
+            "line": 7,
+            "name": "tile",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 9,
+            "name": "other",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.sbuf"
+          },
+          {
+            "line": 12,
+            "name": "out",
+            "shape": [
+              "2",
+              "3"
+            ],
+            "buffer": "nl.shared_hbm"
+          }
+        ],
+        "operations": [
+          {
+            "line": 8,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 10,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          },
+          {
+            "line": 11,
+            "api": "tensor_tensor",
+            "broadcast_status": "PROVEN_EQUAL",
+            "nki_legality": "UNKNOWN: generic broadcast is necessary but not sufficient"
+          },
+          {
+            "line": 13,
+            "api": "dma_copy",
+            "src_shape": [
+              "2",
+              "3"
+            ],
+            "dst_shape": [
+              "2",
+              "3"
+            ],
+            "src_elements": "6",
+            "dst_elements": "6",
+            "status": "PROVEN_EQUAL"
+          }
+        ],
+        "violations": [],
+        "unknowns": [],
+        "loops": [],
+        "verification": "Symbolic shape evidence only; simulator remains authoritative."
+      }
+    }
+  ],
+  "limits": "Only directly supported shape constraints are scored. An API/numerical error can coexist with no static shape violation. Valid source locations are syntactic evidence, not proof of runtime causality. UNKNOWN is conservative; no physical device tested."
+}

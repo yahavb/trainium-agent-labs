@@ -1,0 +1,9 @@
+{
+  "added_verified_pairs": 4,
+  "rejected": [],
+  "verified_pairs": 28,
+  "independent_clean_kernels": 16,
+  "train_records": 26,
+  "heldout_records": 2,
+  "device_verified": 0
+}

@@ -1,0 +1,305 @@
+{
+  "example_id": "sympy-matmul-offset-3x2x4",
+  "symbolic_constraints": [
+    "stationary=(K,M)",
+    "moving=(K,N)",
+    "dst=(M,N)",
+    "K<=128",
+    "M<=128",
+    "N<=512"
+  ],
+  "instantiated_dimensions": {
+    "K": 3,
+    "M": 2,
+    "N": 4
+  },
+  "intended_mutation": "Wrong PSUM result shape (1,2)",
+  "correct_kernel": "import nki\nimport nki.language as nl\nimport nki.isa as nisa\n\n@nki.jit\ndef kernel(a,b):\n    left=nl.ndarray((3,2),a.dtype,buffer=nl.sbuf)\n    right=nl.ndarray((3,4),b.dtype,buffer=nl.sbuf)\n    psum=nl.ndarray((2,4),nl.float32,buffer=nl.psum)\n    nisa.dma_copy(dst=left,src=a)\n    nisa.dma_copy(dst=right,src=b)\n    nisa.nc_matmul(dst=psum,stationary=left,moving=right,accumulate=False)\n    tile=nl.ndarray((2,4),nl.float32,buffer=nl.sbuf)\n    nisa.tensor_copy(dst=tile,src=psum)\n    nisa.tensor_scalar(dst=tile,data=tile,op0=nl.add,operand0=.25)\n    out=nl.ndarray((2,4),a.dtype,buffer=nl.shared_hbm)\n    nisa.dma_copy(dst=out,src=tile)\n    return out\n",
+  "broken_kernel": "import nki\nimport nki.language as nl\nimport nki.isa as nisa\n\n@nki.jit\ndef kernel(a,b):\n    left=nl.ndarray((3,2),a.dtype,buffer=nl.sbuf)\n    right=nl.ndarray((3,4),b.dtype,buffer=nl.sbuf)\n    psum=nl.ndarray((1,2),nl.float32,buffer=nl.psum)\n    nisa.dma_copy(dst=left,src=a)\n    nisa.dma_copy(dst=right,src=b)\n    nisa.nc_matmul(dst=psum,stationary=left,moving=right,accumulate=False)\n    tile=nl.ndarray((2,4),nl.float32,buffer=nl.sbuf)\n    nisa.tensor_copy(dst=tile,src=psum)\n    nisa.tensor_scalar(dst=tile,data=tile,op0=nl.add,operand0=.25)\n    out=nl.ndarray((2,4),a.dtype,buffer=nl.shared_hbm)\n    nisa.dma_copy(dst=out,src=tile)\n    return out\n",
+  "actual_simulator_feedback": "ValueError: cannot reshape array of size 8 into shape (1,2)",
+  "symbolic_diagnostic": {
+    "status": "PROVEN_VIOLATION",
+    "allocations": [
+      {
+        "line": 7,
+        "name": "left",
+        "shape": [
+          "3",
+          "2"
+        ],
+        "buffer": "nl.sbuf"
+      },
+      {
+        "line": 8,
+        "name": "right",
+        "shape": [
+          "3",
+          "4"
+        ],
+        "buffer": "nl.sbuf"
+      },
+      {
+        "line": 9,
+        "name": "psum",
+        "shape": [
+          "1",
+          "2"
+        ],
+        "buffer": "nl.psum"
+      },
+      {
+        "line": 13,
+        "name": "tile",
+        "shape": [
+          "2",
+          "4"
+        ],
+        "buffer": "nl.sbuf"
+      },
+      {
+        "line": 16,
+        "name": "out",
+        "shape": [
+          "2",
+          "4"
+        ],
+        "buffer": "nl.shared_hbm"
+      }
+    ],
+    "operations": [
+      {
+        "line": 10,
+        "api": "dma_copy",
+        "src_shape": [
+          "3",
+          "2"
+        ],
+        "dst_shape": [
+          "3",
+          "2"
+        ],
+        "src_elements": "6",
+        "dst_elements": "6",
+        "status": "PROVEN_EQUAL"
+      },
+      {
+        "line": 11,
+        "api": "dma_copy",
+        "src_shape": [
+          "3",
+          "4"
+        ],
+        "dst_shape": [
+          "3",
+          "4"
+        ],
+        "src_elements": "12",
+        "dst_elements": "12",
+        "status": "PROVEN_EQUAL"
+      },
+      {
+        "line": 12,
+        "api": "nc_matmul",
+        "stationary": [
+          "3",
+          "2"
+        ],
+        "moving": [
+          "3",
+          "4"
+        ],
+        "dst": [
+          "1",
+          "2"
+        ],
+        "axis_equalities": [
+          "PROVEN_EQUAL",
+          "PROVEN_MISMATCH",
+          "PROVEN_MISMATCH"
+        ],
+        "status": "PROVEN_MISMATCH"
+      },
+      {
+        "line": 17,
+        "api": "dma_copy",
+        "src_shape": [
+          "2",
+          "4"
+        ],
+        "dst_shape": [
+          "2",
+          "4"
+        ],
+        "src_elements": "8",
+        "dst_elements": "8",
+        "status": "PROVEN_EQUAL"
+      }
+    ],
+    "violations": [
+      {
+        "line": 12,
+        "kind": "matmul_dimensions",
+        "status": "PROVEN_VIOLATION",
+        "message": "nc_matmul stationary (3, 2), moving (3, 4) require dst (2, 4); actual dst (1, 2). Check K equality and each result axis, not just element count. Coordinate result copies and stores."
+      }
+    ],
+    "unknowns": [],
+    "loops": [],
+    "verification": "Symbolic shape evidence only; simulator remains authoritative."
+  },
+  "verified_correction": {
+    "status": "SIMULATOR_VERIFIED",
+    "passed": true,
+    "cases": [
+      {
+        "seed": 2145,
+        "passed": true,
+        "numerically_correct": true,
+        "inputs_untouched": true
+      },
+      {
+        "seed": 2146,
+        "passed": true,
+        "numerically_correct": true,
+        "inputs_untouched": true
+      },
+      {
+        "seed": 2147,
+        "passed": true,
+        "numerically_correct": true,
+        "inputs_untouched": true
+      }
+    ],
+    "sdk_version": "0.6.0+31049202112.g85070674",
+    "hardware_target": "trn2",
+    "error": null,
+    "failure_category": "UNKNOWN"
+  },
+  "clean_symbolic": {
+    "status": "NO_STATIC_VIOLATION",
+    "allocations": [
+      {
+        "line": 7,
+        "name": "left",
+        "shape": [
+          "3",
+          "2"
+        ],
+        "buffer": "nl.sbuf"
+      },
+      {
+        "line": 8,
+        "name": "right",
+        "shape": [
+          "3",
+          "4"
+        ],
+        "buffer": "nl.sbuf"
+      },
+      {
+        "line": 9,
+        "name": "psum",
+        "shape": [
+          "2",
+          "4"
+        ],
+        "buffer": "nl.psum"
+      },
+      {
+        "line": 13,
+        "name": "tile",
+        "shape": [
+          "2",
+          "4"
+        ],
+        "buffer": "nl.sbuf"
+      },
+      {
+        "line": 16,
+        "name": "out",
+        "shape": [
+          "2",
+          "4"
+        ],
+        "buffer": "nl.shared_hbm"
+      }
+    ],
+    "operations": [
+      {
+        "line": 10,
+        "api": "dma_copy",
+        "src_shape": [
+          "3",
+          "2"
+        ],
+        "dst_shape": [
+          "3",
+          "2"
+        ],
+        "src_elements": "6",
+        "dst_elements": "6",
+        "status": "PROVEN_EQUAL"
+      },
+      {
+        "line": 11,
+        "api": "dma_copy",
+        "src_shape": [
+          "3",
+          "4"
+        ],
+        "dst_shape": [
+          "3",
+          "4"
+        ],
+        "src_elements": "12",
+        "dst_elements": "12",
+        "status": "PROVEN_EQUAL"
+      },
+      {
+        "line": 12,
+        "api": "nc_matmul",
+        "stationary": [
+          "3",
+          "2"
+        ],
+        "moving": [
+          "3",
+          "4"
+        ],
+        "dst": [
+          "2",
+          "4"
+        ],
+        "axis_equalities": [
+          "PROVEN_EQUAL",
+          "PROVEN_EQUAL",
+          "PROVEN_EQUAL"
+        ],
+        "status": "PROVEN_EQUAL"
+      },
+      {
+        "line": 17,
+        "api": "dma_copy",
+        "src_shape": [
+          "2",
+          "4"
+        ],
+        "dst_shape": [
+          "2",
+          "4"
+        ],
+        "src_elements": "8",
+        "dst_elements": "8",
+        "status": "PROVEN_EQUAL"
+      }
+    ],
+    "violations": [],
+    "unknowns": [],
+    "loops": [],
+    "verification": "Symbolic shape evidence only; simulator remains authoritative."
+  },
+  "accepted": true,
+  "verification_status": "SIMULATOR_VERIFIED",
+  "device_verified": false,
+  "source_provenance": "Project-authored tiny offset matmul; general AWS invariants only; no benchmark reference source"
+}
