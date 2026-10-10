@@ -517,64 +517,179 @@ def extract_code(text):
 
 # ---------------------------------------------------------------- the model
 
-def ask(a, prompt):
+THINK_TAGS = re.compile(r"<think>(.*?)(?:</think>|$)", re.S)
+
+
+def split_thinking(msg, think):
+    """Return (thinking, answer) from one chat message.
+
+    Where the reasoning lands depends on how vLLM was started. With a reasoning parser it arrives in
+    its own field; without one (serve.sh passes none) it is inline in `content`, as
+    <think>...</think> -- and Qwen3's template may already have opened the tag in the prompt, so the
+    reply can hold only a closing </think>, or no tag at all if the budget ran out mid-thought.
+    """
+    content = msg.get("content") or ""
+    thinking = next((msg[k] for k in REASONING_KEYS if msg.get(k)), "")
+    if "<think>" in content:
+        thinking += "".join(THINK_TAGS.findall(content))
+        content = THINK_TAGS.sub("", content)
+    elif "</think>" in content:
+        before, _, content = content.partition("</think>")
+        thinking += before
+    elif think and not thinking:
+        # Thinking was on, the budget ran out before </think>: everything we got is thinking.
+        thinking, content = content, ""
+    return thinking.strip(), content.strip()
+
+
+def chat(a, prompt, think, max_tokens):
+    """One request. Returns dict(thinking, content, finish, seconds)."""
     import httpx
-    # enable_thinking=False matters. Qwen3 reasons before answering, and with thinking on it
-    # spent the whole budget there: the first cluster run returned "No code came back" at 54.7s
-    # over and over, plus truncated fragments (invalid decimal literal, unterminated string).
     # Keep prompt + answer inside the server's context, or the answer is silently cut off and
     # every parse error below is really a budget error. Repair prompts grow with the kernel.
     est_prompt = len(prompt) // 4
-    budget = min(a.max_tokens, max(256, a.context - est_prompt - 64))
-    if budget < a.max_tokens:
-        print(f"    (prompt is ~{est_prompt} tokens, so the answer budget is capped at {budget} "
+    budget = min(max_tokens, max(256, a.context - est_prompt - 64))
+    if budget < max_tokens:
+        print(f"    (prompt is ~{est_prompt} tokens, so the budget is capped at {budget} "
               f"to stay inside the {a.context}-token context)")
     body = dict(model=a.model, messages=[{"role": "user", "content": prompt}],
                 max_tokens=budget, temperature=0.6, top_p=0.95,
-                chat_template_kwargs={"enable_thinking": a.think})
+                chat_template_kwargs={"enable_thinking": think})
+    t0 = time.perf_counter()
     r = httpx.post(f"{a.base.rstrip('/')}/chat/completions", json=body,
-                   timeout=900, verify=False)
+                   timeout=1800, verify=False)
     if r.status_code != 200:
         raise SystemExit(f"the endpoint returned HTTP {r.status_code}:\n{r.text[:600]}")
-    payload = r.json()
-    ch = payload["choices"][0]
-    msg = ch.get("message", {})
-    reasoning = next((msg[k] for k in REASONING_KEYS if msg.get(k)), "")
-    content = msg.get("content") or ""
-    finish = ch.get("finish_reason")
-    if finish == "length":
+    ch = r.json()["choices"][0]
+    thinking, content = split_thinking(ch.get("message", {}), think)
+    return dict(thinking=thinking, content=content, finish=ch.get("finish_reason"),
+                seconds=round(time.perf_counter() - t0, 1))
+
+
+def ask(a, prompt):
+    """The original single request. Returns the same dict shape as ask_planned()."""
+    # enable_thinking=False matters. Qwen3 reasons before answering, and with thinking on it
+    # spent the whole budget there: the first cluster run returned "No code came back" at 54.7s
+    # over and over, plus truncated fragments (invalid decimal literal, unterminated string).
+    r = chat(a, prompt, a.think, a.max_tokens)
+    if r["finish"] == "length":
         # Do not let a budget problem look like a model failure.
-        print(f"    (TRUNCATED: finish_reason=length after {len(content)} chars. The answer was "
-              f"cut off, so any parse error below is the budget, not the model. Prompt is "
-              f"{len(prompt)} chars; server context is the ceiling.)")
-    if not content.strip() and reasoning:
-        # The single most common surprise on this endpoint, so name it rather than reporting
-        # an empty answer as a model failure.
-        print(f"    (empty answer, {len(reasoning)} chars of hidden reasoning, "
-              f"finish={ch.get('finish_reason')} — shorten the prompt rather than raising the "
-              f"budget)")
-    return content
+        print(f"    (TRUNCATED: finish_reason=length after {len(r['content'])} chars. The answer "
+              f"was cut off, so any parse error below is the budget, not the model.)")
+    if not r["content"] and r["thinking"]:
+        print(f"    (empty answer, {len(r['thinking'])} chars of thinking, finish={r['finish']} "
+              f"-- shorten the prompt rather than raising the budget)")
+    return dict(reply=r["content"], thinking=r["thinking"], summary="",
+                stages=[dict(stage="answer", think=a.think, finish=r["finish"],
+                             seconds=r["seconds"])])
+
+
+SUMMARY_PROMPT = """You were asked to do the task below, and you thought about it first. Your notes are
+below the task. They may stop mid-sentence.
+
+=== TASK ===
+{task}
+
+=== YOUR NOTES ===
+{thinking}
+
+=== NOW ===
+Summarize your notes into a short, concrete plan of at most 10 bullet points:
+- what the kernel must compute, and the approach that computes it
+- if there is existing code: what is wrong with it, and every change it needs
+- the exact NKI calls to use, with their arguments
+Do not write the full kernel. Reply with the bullet points only."""
+
+CODE_PROMPT = """{task}
+
+A plan worked out for this task:
+{summary}
+
+Follow the plan. Reply with ONE python code block."""
+
+
+def ask_planned(a, prompt):
+    """--plan: think with a fixed budget, summarize the thinking, then write code without thinking.
+
+    1. thinking ON, at most --think-tokens. Only the thinking is kept; a truncated thought is fine.
+    2. thinking OFF: the model condenses its own thinking into a short plan.
+    3. thinking OFF: the original prompt plus that plan, answered with code.
+
+    Why this shape. Measured with plain --think: every sample ran out of budget mid-thought and
+    returned no code, at 446 s a round. Capping the thought and then asking for the answer in a
+    separate request with thinking off guarantees an answer, and the summary keeps the third prompt
+    short -- long prompts are what pushed both models in this repo into reasoning instead of answering.
+    """
+    t = chat(a, prompt, True, a.think_tokens)
+    s = chat(a, SUMMARY_PROMPT.format(task=prompt, thinking=t["thinking"] or "(no notes)"),
+             False, a.summary_tokens)
+    summary = s["content"]
+    c = chat(a, CODE_PROMPT.format(task=prompt, summary=summary or "(no plan)"),
+             False, a.max_tokens)
+    if c["finish"] == "length":
+        print(f"    (TRUNCATED code answer after {len(c['content'])} chars)")
+    return dict(reply=c["content"], thinking=t["thinking"], summary=summary,
+                stages=[dict(stage=name, think=(name == "think"), finish=r["finish"],
+                             seconds=r["seconds"], chars=len(r["thinking"] or r["content"]))
+                        for name, r in (("think", t), ("summary", s), ("code", c))])
 
 
 def ask_parallel(a, prompt, n):
     import concurrent.futures as cf
+    fn = ask_planned if a.plan else ask
     with cf.ThreadPoolExecutor(max_workers=n) as ex:
-        return [f.result() for f in [ex.submit(ask, a, prompt) for _ in range(n)]]
+        return [f.result() for f in [ex.submit(fn, a, prompt) for _ in range(n)]]
 
 
 def offline_answers(level, n, rnd):
     """No model. Replays the shipped reference, preceded by a deliberately broken version, so the
     loop and the feedback path can be exercised with no endpoint. Never report a number."""
     ref = open(f"reference_level{level}.py").read()
-    if rnd == 0:
-        broken = ref.replace("@nki.jit", "", 1)
-        return [f"```python\n{broken}\n```"] * n
-    return [f"```python\n{ref}\n```"] * n
+    code = ref.replace("@nki.jit", "", 1) if rnd == 0 else ref
+    return [dict(reply=f"```python\n{code}\n```", thinking="", summary="", stages=[])] * n
+
+
+# ---------------------------------------------------------------- the transcript
+
+def write_transcript(out, run, level, rnd, prompt, records):
+    """Append one round to the human-readable transcript: the prompt once, then every DISTINCT
+    sample with its thinking, summary, reply and feedback. Identical samples are printed once."""
+    if out is None:
+        return
+    w = lambda s="": print(s, file=out)
+    rewards = [round(r["reward"], 2) for r in records]
+    keys = [(r["thinking"], r["summary"], r["reply"]) for r in records]
+    w("=" * 80)
+    w(f"run {run}  level {level}  round {rnd}  rewards {rewards}  "
+      f"({len(set(keys))} distinct of {len(records)} samples)")
+    w("-" * 30 + " PROMPT " + "-" * 30)
+    w(prompt)
+    shown = set()
+    for i, (r, k) in enumerate(zip(records, keys)):
+        if k in shown:
+            continue
+        shown.add(k)
+        same = [j for j, x in enumerate(keys) if x == k and j != i]
+        w("#" * 30 + f" SAMPLE {i}" + (f" (same as {same})" if same else "") + " " + "#" * 20)
+        if r["stages"]:
+            w("stages: " + ", ".join(f"{s['stage']} {s['seconds']}s finish={s['finish']}"
+                                     for s in r["stages"]))
+        if r["thinking"]:
+            w("-" * 30 + " THINKING " + "-" * 28)
+            w(r["thinking"])
+        if r["summary"]:
+            w("-" * 30 + " SUMMARY " + "-" * 29)
+            w(r["summary"])
+        w("-" * 30 + " REPLY " + "-" * 31)
+        w(r["reply"])
+        w("-" * 30 + f" FEEDBACK (reward {round(r['reward'], 2)}) " + "-" * 15)
+        w(r["feedback"])
+    out.flush()
 
 
 # ---------------------------------------------------------------- the loop
 
-def solve(a, level, log):
+def solve(a, level, log, transcript=None, run=0):
     print(f"\n=========== level {level}: {nkibench.LEVELS[level]['op']} ===========")
     terse = a.terse
     prompt = first_prompt(level, terse)
@@ -585,16 +700,20 @@ def solve(a, level, log):
         t0 = time.perf_counter()
         replies = (offline_answers(level, a.samples, rnd) if a.offline
                    else ask_parallel(a, prompt, a.samples))
-        graded = []
-        for reply in replies:
+        graded, records = [], []
+        for r in replies:
+            reply = r["reply"]
             src = extract_code(reply)
             reward, parts, feedback = grade(src, level)
             graded.append((reward, src, feedback, parts))
-            log.write(json.dumps(dict(level=level, round=rnd, reward=reward, parts=parts,
-                                      prompt_chars=len(prompt), reply_chars=len(reply),
-                                      prompt=prompt, reply=reply,
-                                      code=src, feedback=feedback)) + "\n")
+            rec = dict(run=run, level=level, round=rnd, reward=reward, parts=parts,
+                       prompt_chars=len(prompt), reply_chars=len(reply),
+                       prompt=prompt, thinking=r["thinking"], summary=r["summary"],
+                       reply=reply, stages=r["stages"], code=src, feedback=feedback)
+            records.append(rec)
+            log.write(json.dumps(rec) + "\n")
         log.flush()
+        write_transcript(transcript, run, level, rnd, prompt, records)
         graded.sort(key=lambda g: g[0], reverse=True)
         top = graded[0]
         if top[0] > best[0]:
@@ -686,6 +805,17 @@ def main():
                          "one; 0 is the original behaviour, for comparison")
     ap.add_argument("--think", action="store_true",
                     help="let the model reason first; costs budget, and it ran out")
+    ap.add_argument("--plan", action="store_true",
+                    help="three requests per sample: think (capped at --think-tokens), summarize "
+                         "that thinking into a plan, then write the code with thinking OFF")
+    ap.add_argument("--think-tokens", type=int, default=2000,
+                    help="--plan: the thinking budget of step 1")
+    ap.add_argument("--summary-tokens", type=int, default=700,
+                    help="--plan: the budget for the summary of step 2")
+    ap.add_argument("--transcript", default=None,
+                    help="readable transcript of this run (prompt, thinking, summary, reply, "
+                         "feedback per round). Default: the --log name with .txt instead of "
+                         ".jsonl. Overwritten each time, unlike the .jsonl log, which appends.")
     ap.add_argument("--offline", action="store_true")
     a = ap.parse_args()
 
@@ -715,13 +845,21 @@ def main():
     full = sum(WEIGHTS.values())
     history = {lv: [] for lv in levels}
 
-    with open(a.log, "a") as log:
+    if a.transcript is None:
+        a.transcript = os.path.splitext(a.log)[0] + ".txt"
+    if a.plan:
+        print(f"plan mode: think {a.think_tokens} tokens -> summary {a.summary_tokens} -> code "
+              f"{a.max_tokens}, three requests per sample")
+
+    with open(a.log, "a") as log, open(a.transcript, "w", encoding="utf-8") as transcript:
+        print(f"command: {' '.join(sys.argv)}", file=transcript)
+        print(f"started: {time.strftime('%Y-%m-%d %H:%M:%S')}  model {a.model}", file=transcript)
         for rep in range(a.repeat):
             if a.repeat > 1:
                 print(f"\n################ run {rep + 1} of {a.repeat} ################")
             results = []
             for level in levels:
-                results.append((level,) + solve(a, level, log))
+                results.append((level,) + solve(a, level, log, transcript, rep))
                 history[level].append(results[-1][1])
 
             print("\n=========== summary ===========")
@@ -742,6 +880,7 @@ def main():
                   f"mean {sum(got) / len(got):.2f}  all={[round(r, 2) for r in got]}")
         print("\n  Report the rate, not your best run. A level that solves 1 in 3 times is not solved.")
     print(f"\nattempts logged to {a.log}")
+    print(f"readable transcript written to {a.transcript}")
 
 
 if __name__ == "__main__":
