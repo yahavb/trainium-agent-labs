@@ -1,0 +1,13 @@
+experiment,problem,seed,best_reward,solved,rounds,candidate_attempts,calculator_calls
+with-tools-seed7.jsonl,level1.3,7,0.8,False,4,16,77
+with-tools-seed42.jsonl,level1.3,42,1.0,True,3,12,72
+original-full-seed21.jsonl,level1.3,21,1.0,True,3,12,50
+original-level1-1-seed7.jsonl,level1.1,7,1.0,True,1,4,4
+original-level1-2-seed7.jsonl,level1.2,7,1.0,True,3,12,2
+verified-full-seed7.jsonl,level1.3,7,1.0,True,2,8,28
+verified-full-seed42.jsonl,level1.3,42,1.0,True,3,12,84
+verified-full-seed21.jsonl,level1.3,21,1.0,True,4,16,79
+verified-level1-1-seed7.jsonl,level1.1,7,1.0,True,1,4,5
+verified-level1-2-seed7.jsonl,level1.2,7,1.0,True,1,4,4
+independent-level1-3-seed7.jsonl,level1.3,7,1.0,True,3,12,57
+independent-level1-2-seed7.jsonl,level1.2,7,1.0,True,1,4,2
