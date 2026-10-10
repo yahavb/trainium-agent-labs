@@ -340,3 +340,17 @@ Repair prompts now use:
 - failure categories;
 - failure keys;
 - token split for docs/evidence/code per attempt.
+
+## Level 3 dtype failure
+
+A Level 3 docs-style run repeated:
+
+- `Unknown dtype: <class 'numpy.float32'>`
+
+This was previously classified as `generic`, so the repair prompt did not name the actual fix.
+
+Added:
+
+- failure key `signature.unknown_dtype`;
+- ledger line explaining to use `nl.float32` or `input.dtype`, not `np.float32`;
+- signatures card now mentions NKI dtype constants.

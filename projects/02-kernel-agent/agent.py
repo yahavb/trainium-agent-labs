@@ -118,7 +118,8 @@ CONTEXT_CARDS = {
         "Use real signatures only. nl.sum(x, axis, dtype=None, keepdims=False). "
         "nisa.nc_matmul(dst=, stationary=, moving=, ...). Do not add guessed keyword arguments. "
         "Memory regions are values, not functions: write buffer=nl.sbuf, buffer=nl.psum, or "
-        "buffer=nl.shared_hbm, never nl.sbuf() or nl.shared_hbm()."
+        "buffer=nl.shared_hbm, never nl.sbuf() or nl.shared_hbm(). Use NKI dtypes such as "
+        "nl.float32/nl.bfloat16 or an input tensor's dtype; do not pass np.float32."
     ),
 }
 
@@ -539,6 +540,8 @@ def failure_key(feedback):
         return "signature.memory_region_called"
     if "missing 1 required positional argument" in low and "dtype" in low:
         return "signature.ndarray_missing_dtype"
+    if "unknown dtype" in low:
+        return "signature.unknown_dtype"
     if "has no `mean`" in low or "attribute 'mean'" in low:
         return "reduction.mean_not_supported"
     if "nki.isa" in low and ("has no `sum`" in low or "has no attribute 'sum'" in low):
@@ -568,6 +571,7 @@ def ledger_line(feedback):
     summary = {
         "signature.memory_region_called": "memory regions called as functions; use buffer=nl.sbuf",
         "signature.ndarray_missing_dtype": "nl.ndarray missing dtype",
+        "signature.unknown_dtype": "used non-NKI dtype; use nl.float32 or input.dtype, not np.float32",
         "reduction.mean_not_supported": ".mean() used on NKI tensor",
         "signature.nisa_sum_not_found": "used nisa.sum; use nl.sum",
         "reduction.axes_not_trailing": "nl.sum axes not trailing contiguous",
@@ -607,6 +611,8 @@ def known_invalid_patterns(failures):
          "do not call nl.sbuf/nl.psum/nl.shared_hbm; pass them as buffer=nl.sbuf"),
         ("missing 1 required positional argument" in text and "dtype" in text,
          "add explicit dtype=... to every nl.ndarray allocation"),
+        ("unknown dtype" in text,
+         "use NKI dtype constants such as nl.float32 or input.dtype; do not use np.float32"),
         ("has no `mean`" in text or "attribute 'mean'" in text,
          "replace .mean() with nl.sum plus nisa.tensor_scalar"),
         ("reshape" in text,
@@ -668,6 +674,10 @@ def distill_failure(feedback):
                 "Fix only the memory-region allocation calls. nl.sbuf, nl.psum and nl.shared_hbm "
                 "are values, not functions: use buffer=nl.sbuf or buffer=nl.shared_hbm, without "
                 "parentheses.")
+    if "unknown dtype" in low:
+        return ("signature",
+                "Fix only the dtype arguments. Use NKI dtype constants like nl.float32 or reuse an "
+                "input tensor dtype; do not pass NumPy dtype objects such as np.float32.")
     if "same number of elements" in low or "dma_copy requires" in low:
         return ("dma_shape",
                 "Fix only the dma_copy shape mismatch. Allocate the destination tile to exactly "
