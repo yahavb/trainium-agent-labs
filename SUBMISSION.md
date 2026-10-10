@@ -42,8 +42,9 @@ rate and changed the agent so its samples actually differ.
 
 **What we ran.** An agent loop that asks a model for an NKI kernel, grades it, turns the checker's verdict
 into one repair instruction, and tries again: at most 8 rounds of 4 samples per level, inside an
-8,192-token context. The final agent is `feedback_v7.py`, which layers v2–v7 over the organizers'
-`agent.py` (configuration and every change: [V7.md](projects/02-kernel-agent/V7.md)). [[TBD: plus E-F if adopted]]
+8,192-token context. The final agent is `feedback_v8.py` at v8.2 (commit 96a9fc9, tag `v82`): liuyq's v2–v7
+layers over the organizers' `agent.py`, and our v8 layer on top ([V7.md](projects/02-kernel-agent/V7.md),
+[V8.md](projects/02-kernel-agent/V8.md)). [[TBD: v8.3 (5c3aba2) if it replaces v8.2 on level 2]]
 
 **On what.**
 
@@ -51,8 +52,8 @@ into one repair instruction, and tries again: at most 8 rounds of 4 samples per 
 |---|---|
 | model | Qwen3-8B, thinking off, served by vLLM on the seat pod's Trainium2 chip: one chip at LNC=2, tensor parallel 2, max-model-len 8192, max-num-seqs 4 |
 | checker | `nkibench.py` on NKI 0.6.0, simulating trn2 (on a seat pod NKI picks trn2 from the hardware, which we confirmed with a probe kernel; the v7 runs also set it explicitly; the baseline and experiment A re-graded under trn2 and trn3 give identical scores, [analysis/sim_target_check.md](analysis/sim_target_check.md)), with an on-chip allocation audit and a held-out set: [CHECKER.md](projects/02-kernel-agent/CHECKER.md), [EVAL.md](projects/02-kernel-agent/EVAL.md) |
-| where | [[TBD: 5]] seat pods in parallel, one agent process per model server |
-| speed | about 50 s per round of 4 samples, bound by generation: 13.9 tok/s for one stream, 22.1 tok/s in total for four |
+| where | seat pods 116–119 in parallel for the final version (seat 115 for liuyq's chip runs), one agent process per model server |
+| speed | 50–80 s per round of 4 samples, up to 4 minutes when answers run to the 2,500-token limit; bound by generation: 13.9 tok/s for one stream, 22.1 tok/s in total for four. A level takes 1–12 minutes per run |
 
 **What came out.** The final candidate is v8.2 (commit 96a9fc9; switches in §4). At least five runs per level, every one of them reported, rounds
 counted from 0 (round 0 is the first prompt). [[TBD: refresh from `scripts/report.py` on analysis/logs/final/; v8.3 if it
@@ -65,7 +66,8 @@ replaces v8.2 on level 2]]
 | 3 | matmul, one tile | 0/5 · .30 .30 .30 .30 .30 | 5/5 · round 0 | **5/5** · rounds 0, 2, 0, 0, 0 | 3 solving kernels | [[TBD]] |
 | 4 | matmul, tiled | 0/5 · .62 .62 .50 .62 .62 | 5/5 · round 2 | **5/5** · round 2 every run | **1 trajectory**: five copies of one path, the same kernel v7 found | [[TBD]] |
 
-Every solving kernel passed a fresh-process re-audit on trn2. No verdict was confident (≥ 0.5) and wrong.
+Every solving kernel passed a fresh-process re-audit on trn2. Against our held-out set, no verdict was
+confident (≥ 0.5) and wrong; against a full trn2 build, one was (§5). [[TBD: full builds of the level-2 to 4 solves]]
 Level 4's 5/5 is one path, not five: each run's first sample is the same request, so every run repairs the
 same kernel.
 
@@ -83,11 +85,13 @@ same kernel.
    tokens, repairs near 750, far below 8,192 (§6). But one layer dropped the `finish_reason` check, and a
    level-1 run lost 22 minutes to cut-off answers graded as syntax errors (§9).
 
-**How many runs, and the spread.** Every cell is 5 runs of one configuration. We report the rate, never the
+**How many runs, and the spread.** Every cell is at least 5 runs of one configuration. We report the rate, never the
 best run, and next to it the number of **distinct trajectories**: the seat's model server is deterministic
 (4 concurrent identical requests at temperature 0.7 come back byte-identical, and so does `n=4`; only a
 different request, or different sampling settings, gives different text), so 5 runs are often the same run
-5 times. [[TBD: E-div result: whether per-sample prompt variation made the runs distinct]] [[TBD: one sentence on the spread of the final run.]] The baseline was run twice,
+5 times. Tagging samples 2–4 (E-div) and restarting them from the first prompt (E-mix) made v8.2's runs
+differ where it matters: five level-1 runs, five different kernels. Level 4's runs still repeat one path.
+[[TBD: one sentence on the spread of the final run.]] The baseline was run twice,
 on two seats with the organizers' agent: L1 0/5, L2 3/5 and 2/5, L3 0/5, L4 0/5 both times, with identical
 scores on L1, L3 and L4. Both logs were re-graded from scratch with the current checker under trn2, and
 every attempt matched ([analysis/calibration_baseline_seat116.md](analysis/calibration_baseline_seat116.md),
@@ -101,6 +105,7 @@ is the organizers' repository; put ours next to it:
 ```bash
 git config --global --add safe.directory '*'
 git clone https://github.com/liuyq123/trainium-agent-labs.git /workspace/team
+git -C /workspace/team checkout v82     # the final version [[TBD: tag final]]
 cd /workspace && MAX_MODEL_LEN=8192 ./serve.sh      # the model server: about 4 minutes, keeps this shell
 ```
 
@@ -110,16 +115,15 @@ In a second shell on the same pod:
 cd /workspace/team/projects/02-kernel-agent
 python nkibench.py --selftest                                                        # SELFTEST PASSED
 for l in 1 2 3 4; do python nkibench.py --level $l --eval reference_level$l.py | head -1; done   # 20/20 16/16 4/4 16/16
-# the exports in V7.md "Run it", with per-level file names, then for each level N:
-export NKI_VERDICTS=nki_verdicts_LN.jsonl USAGE_LOG=usage_LN.jsonl
-nohup python3 feedback_v7.py --level N --rounds 8 --samples 4 --context 8192 --repeat 5 \
-    --log attempts_LN.jsonl --verdicts verdicts_LN.jsonl > run_LN.log 2>&1 < /dev/null &
+# the three exports in V8.md "Run it" (v8.2's switches), then for each level N:
+nohup python3 feedback_v8.py --level N --rounds 8 --samples 4 --context 8192 --repeat 5 \
+    --log v82_LN.jsonl --verdicts verdicts_v82_LN.jsonl > run_LN.log 2>&1 < /dev/null &
 ```
 
 Without a seat, the checker and the agent's loop still run (no model: `--offline` replays the reference
 kernels). Set up NKI 0.6.0 per [SETUP_PYTHON.md](SETUP_PYTHON.md) (on a Mac, its Docker step), then, with
 `~/venvs/nki/bin` on your PATH and `export NEURON_PLATFORM_TARGET_OVERRIDE=trn2`, the same `--selftest` and
-`--eval` lines, and V7.md's exports with `python3 feedback_v7.py --offline --all`. Offline runs make no model
+`--eval` lines, and V8.md's exports with `python3 feedback_v8.py --offline --all`. Offline runs make no model
 calls, so they write no `USAGE_LOG`.
 
 The tables, from the logs (on a laptop; `python3` with matplotlib for the token chart):
@@ -182,11 +186,11 @@ final agent stacks these layers (full list and sources: [V7.md](projects/02-kern
 | invented-name map (our experiment A) | known invented calls (`nisa.multiply`, `transpose_moving`, …) mapped to the real 0.6.0 call | invented APIs |
 | grading fixes, compiler gate | a fixed `grade()` with a 120 s timeout; a full-score kernel using a form the trn2 compiler rejects is held at 0.95 and given the rewrite | compiler-only failures |
 | verdict | after each level: a confidence, then extra hostile cases and lowering for trn2 | see §5 |
-| sampling (`SAMPLING=qwen`) | Qwen3's thinking-off sampling settings | none on levels 3 and 4 (ablation below); [[TBD: level 2]] |
+| sampling (`SAMPLING=qwen`) | Qwen3's thinking-off sampling settings | none on levels 3 and 4 (ablation below); on level 2 it cost the round-0 solves (2/20 → 0/20), so v8.2 alternates it with the original settings |
 
 **Which layer did it: leave-one-out ablation.** Each row switches one v7 layer back to the organizers'
 original and keeps the rest. Because the server is deterministic, one run is the trajectory, so each cell is one run.
-Rounds count from 0. [[TBD: compare.py table and log paths]]
+Rounds count from 0.
 
 | switched back | level 3 | level 4 |
 |---|---|---|
@@ -198,7 +202,7 @@ Rounds count from 0. [[TBD: compare.py table and log paths]]
 | sampling settings (`SAMPLING=theirs`) | 1.0, round 0 | 1.0, round 2; rounds 0–1 identical to v7 |
 
 Level 3 needs exactly one layer, the worked example in the first prompt; without it, level 3 stays
-unsolved at 0.30. [[TBD: its failure modes]] Level 4 needs no single layer: the example and the all-dims tiling
+unsolved at 0.30. Level 4 needs no single layer: the example and the all-dims tiling
 message each save two rounds, and v7's longer first prompt costs one. On level 4, switching the sampling
 settings back did not move the trajectory (rounds 0–1 identical).
 
@@ -231,13 +235,13 @@ written down before the results came in ([PLAN.md](PLAN.md) §4).
 | E-A | invented NKI names mapped to the real 0.6.0 calls | L1 | 0/5, all 0.30; invented names 80 → 20, the failures moved one layer deeper | kept as groundwork |
 | E-v3 | feedback_v3 | L4 | 1/2 before the seat went to v7: solved on round 6, then a 0.75 | superseded by v7 |
 | E-F | wrong argument list: failing line + real signature + one instruction | L1 | 0/5, all 0.30, one trajectory; wrong-signature errors 8 → 3 per run, the run then stalls on copy sizes | not carried into v7: v7's level-1 failures are different, and with a deterministic server any message change can move v7's solved trajectories |
-| E-v7 | feedback_v7 as a whole | L1, L3, L4, L2 | L3 5/5 (round 1), L4 4/4 (round 3, one trajectory), L1 [[TBD]], L2 [[TBD]]; all solves VERIFIED [[TBD: final after re-audit]] | adopted |
+| E-v7 | feedback_v7 as a whole | L1, L3, L4, L2 | L3 5/5 (round 0), L4 5/5 (round 2, one trajectory), L1 0/1 (best 0.50), L2 0/3; every solve re-audited and VERIFIED | adopted, then built on |
 | E-div | v7, plus a one-line `(attempt k of n, run r)` tag on samples 2–4 so a deterministic server returns different samples | L3, L4 | L3 5/5 (3 distinct runs, was 1 under v7's L4), L4 4/4 | kept (in v8) |
 | v8 | E-div + skeleton feedback + cut-off answers not graded + level-1 call fixes; liuyq's level-1 compiler gate in the base | L1–L4 | **L1: our first level-1 solve**, in its first repair round; VERIFIED by both verdicts, held-out 20/20, lowers for trn2, re-audit PASS (1 of 3 runs). L4: 0.62 twice (v7: 5/5). L3: solved, two rounds later than v7. L2, round 0 only: 0/20 | skeleton dropped (see below); the rest kept |
 | L2 sampling | v8 with the first prompt and the sampling settings back to the organizers' | L2, round 0, 20 samples | 2/20, the same as the organizers' agent re-run today (2/20); with v7's sampling settings 0/20 | the level-2 regression was v7's sampling settings |
 | v8.1 | v8 without the skeleton, plus samples 1 and 3 on the original sampling and 2 and 4 on v7's, plus one sentence restating the level-2 task when the model transposes the whole input | L2 | the first level-2 solve in a repair round today (round 2), through the existing numeric-mismatch message; stopped after one run for v8.2 | folded into v8.2 |
 | v8.3 (5c3aba2) | v8.2 plus **error distillation on level 2**: when a level-2 kernel runs but its numbers are wrong, the checker runs it once more on `arange` input, reads off where each output element came from, and says what the kernel actually did ("your output at row position i*B+j holds x[i]: the source index uses only i") and what the task needs, without code. Only level 2's mismatch path changes: on the other levels v8.3 sends byte-identical requests to v8.2 | L2 | [[TBD]] | [[TBD]] |
-| **v8.2** (final candidate, 96a9fc9) | v8.1 plus **E-mix**: in every repair round, sample 1 repairs the best kernel as before and samples 2–4 start over from the first prompt, each tagged differently. Level 2 had only ever been solved in round 0, so its repair rounds now also buy fresh first attempts | L1–L4 | so far (16:23): **L1 3/3**, three different kernels (rounds 2, 2 and 0), all re-audited and VERIFIED, held-out 20/20, lowering for trn2; the first was a fresh first attempt (E-mix) held by the compiler gate at 0.95 and repaired with its rewrite. **L2 2/3**. L4 2/2. [[TBD: final counts]] | final candidate |
+| **v8.2** (final candidate, 96a9fc9) | v8.1 plus **E-mix**: in every repair round, sample 1 repairs the best kernel as before and samples 2–4 start over from the first prompt, each tagged differently. Level 2 had only ever been solved in round 0, so its repair rounds now also buy fresh first attempts | L1–L4 | **L1 5/5** (rounds 2, 2, 0, 4, 2; five different kernels, all built in full for trn2 and matching in birsim), **L2 3/6**, **L3 5/5**, **L4 5/5** (one trajectory); every solve re-audited, VERIFIED on the held-out set. Two level-1 solves are told in §8 | final candidate |
 
 **The skeleton gamble, and why it lost.** v8 hollowed out the code in the repair messages (`t[<…>]`) so that the
 model would have to work out slices and shapes itself. On level 4 it could not. With and without the
@@ -277,7 +281,8 @@ held-out set, which neither has seen.
 | v7, round 2 | 4 | 5/5 VERIFIED | 0.90, 0.010 | 0.88, 0.014 | 0 and 0 |
 | [[TBD: final run, every level]] | | | | | |
 
-Neither verdict ever claimed a kernel that then failed. Ours is too cautious on level 3 (§9). The first
+Against our held-out set, neither verdict ever claimed a kernel that then failed; ours is too cautious on
+level 3 (§9). Against a full trn2 build, v7's verdict did once (below). The first
 level-1 solve (v8) was claimed VERIFIED by both verdicts, and it holds: held-out 20/20, 35 extra hostile
 cases, lowered for trn2, re-audit PASS.
 ([analysis/round2_v7/](analysis/round2_v7/README.md))
@@ -325,7 +330,7 @@ docs. [[TBD: final-run chart and numbers]]
 
 ## 7. Failure taxonomy
 
-Under v7 (round 2), level 3's walls are gone: the baseline's reshape (48), copy size (26), 1-D tile (22) and
+Under v7 (round 2), level 3's walls are gone: the seat-116 baseline's reshape (48), copy size (26), 1-D tile (22) and
 out-of-bounds (16) failures do not occur, the 7 failures left are all a tile in the wrong memory, and every
 run solves in round 0. Level 4 still meets the baseline's wall first (partition over 128, 20 attempts in round
 0; the baseline never got past it), then a broadcast shape mismatch (20 in round 1), and solves in round 2.
@@ -353,7 +358,7 @@ raw counts):
    repair, never prevented. Level 1 stays the hardest: no solve before v8. [[TBD: final level-1 count]]
 
 Until v8.1, level 2's repair rounds had never once succeeded, in the baseline or under v7: every level-2
-solve came from a first attempt. [[TBD: v8.2's level-2 solves, by round]]
+solve came from a first attempt. v8.2's three level-2 solves came in rounds 4, 2 and 1. [[TBD: repair sample or a fresh one]]
 
 Baseline, 424 attempts in 25 named modes: index and size
 arithmetic 52%, unfamiliar API 24%, tiling rules 18%, memory placement 5%. Four modes were never fixed by the
