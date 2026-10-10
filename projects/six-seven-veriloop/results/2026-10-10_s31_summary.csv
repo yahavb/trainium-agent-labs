@@ -1,0 +1,16 @@
+date,tag,seat,model,level,feedback,run,solved,rounds_used,best_score,attempts,distinct_designs,prompt_tokens,completion_tokens,seconds,offline,run_id
+2026-10-10,s31,seat-31,Qwen/Qwen3-8B,01_mux,A,1,True,1,1.0,4,1,503,156,7.8,False,s31-01_mux-A-r1-175236
+2026-10-10,s31,seat-31,Qwen/Qwen3-8B,01_mux,B,1,True,1,1.0,4,1,503,156,7.9,False,s31-01_mux-B-r1-175243
+2026-10-10,s31,seat-31,Qwen/Qwen3-8B,01_mux,C,1,True,1,1.0,4,1,503,156,7.9,False,s31-01_mux-C-r1-175251
+2026-10-10,s31,seat-31,Qwen/Qwen3-8B,02_adder,A,1,True,1,1.0,4,1,479,204,10.1,False,s31-02_adder-A-r1-175259
+2026-10-10,s31,seat-31,Qwen/Qwen3-8B,02_adder,B,1,True,1,1.0,4,1,479,204,10.0,False,s31-02_adder-B-r1-175309
+2026-10-10,s31,seat-31,Qwen/Qwen3-8B,02_adder,C,1,True,1,1.0,4,1,479,204,10.0,False,s31-02_adder-C-r1-175320
+2026-10-10,s31,seat-31,Qwen/Qwen3-8B,03_counter,A,1,True,1,1.0,4,2,499,357,17.2,False,s31-03_counter-A-r1-175330
+2026-10-10,s31,seat-31,Qwen/Qwen3-8B,03_counter,B,1,True,1,1.0,4,2,499,350,16.6,False,s31-03_counter-B-r1-175347
+2026-10-10,s31,seat-31,Qwen/Qwen3-8B,03_counter,C,1,True,1,1.0,4,2,499,350,16.6,False,s31-03_counter-C-r1-175404
+2026-10-10,s31,seat-31,Qwen/Qwen3-8B,04_traffic_fsm,A,1,False,6,0.683,24,5,14964,10243,464.8,False,s31-04_traffic_fsm-A-r1-175924
+2026-10-10,s31,seat-31,Qwen/Qwen3-8B,04_traffic_fsm,B,1,False,6,0.653,24,11,14776,11506,529.3,False,s31-04_traffic_fsm-B-r1-180709
+2026-10-10,s31,seat-31,Qwen/Qwen3-8B,04_traffic_fsm,C,1,False,6,0.779,24,4,16472,9574,444.2,False,s31-04_traffic_fsm-C-r1-181559
+2026-10-10,s31,seat-31,Qwen/Qwen3-8B,05_mac,A,1,True,2,1.0,8,5,2596,1402,66.2,False,s31-05_mac-A-r1-182333
+2026-10-10,s31,seat-31,Qwen/Qwen3-8B,05_mac,B,1,True,2,1.0,8,4,2620,1449,66.6,False,s31-05_mac-B-r1-182439
+2026-10-10,s31,seat-31,Qwen/Qwen3-8B,05_mac,C,1,True,2,1.0,8,3,2728,1326,62.2,False,s31-05_mac-C-r1-182546

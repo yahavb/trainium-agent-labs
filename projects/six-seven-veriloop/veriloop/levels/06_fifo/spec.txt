@@ -1,0 +1,13 @@
+Module name: fifo4
+Ports: input clk, input reset, input wr_en, input rd_en, input [7:0] din,
+       output [7:0] dout, output full, output empty, output [2:0] count
+A first-in first-out queue that holds up to 4 bytes. Everything changes on the rising edge of clk.
+- reset = 1 (synchronous, highest priority): the queue becomes empty.
+- Otherwise, on each rising edge:
+  - a write happens if wr_en = 1 and the queue is not full: din is added at the back.
+  - a read happens if rd_en = 1 and the queue is not empty: the byte at the front is removed.
+  - "full" and "empty" here mean the state just BEFORE the edge. Both can happen in the same cycle:
+    when the queue is full and both are 1, only the read happens; when it is empty, only the write.
+- count is the number of bytes stored (0 to 4). full is 1 exactly when count = 4; empty is 1 exactly
+  when count = 0.
+- dout always shows the byte at the front (the oldest one stored), or 0 when the queue is empty.

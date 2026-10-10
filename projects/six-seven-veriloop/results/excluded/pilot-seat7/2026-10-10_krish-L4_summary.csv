@@ -1,0 +1,4 @@
+date,tag,seat,model,level,feedback,run,solved,rounds_used,best_score,attempts,distinct_designs,prompt_tokens,completion_tokens,seconds,offline,run_id
+2026-10-10,krish-L4,seat-7,Qwen/Qwen3-8B,04_traffic_fsm,A,1,False,6,0.614,24,8,19252,15027,686.9,False,krish-L4-04_traffic_fsm-A-r1-172215
+2026-10-10,krish-L4,seat-7,Qwen/Qwen3-8B,04_traffic_fsm,B,1,False,6,0.669,24,3,16040,12005,543.0,False,krish-L4-04_traffic_fsm-B-r1-173342
+2026-10-10,krish-L4,seat-7,Qwen/Qwen3-8B,04_traffic_fsm,C,1,False,6,0.653,24,2,15368,9180,414.7,False,krish-L4-04_traffic_fsm-C-r1-174246
