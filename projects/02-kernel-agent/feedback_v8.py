@@ -45,8 +45,16 @@ get the FIRST prompt again plus "(fresh attempt k, round t, run r)": about 27 fr
 instead of 4. The best of the round is repaired next, ties to sample 1. attempts.jsonl's prompt_chars /
 prompt_split describe sample 1's prompt.
 
+L2CAT=1 (v8.3, level 2 only). analysis/l2_deep.md: the level-2 kernels stuck at 0.50 mostly drop a loop
+variable (out[i*B+j] = x[i], or x[k mod A]) or return x unchanged, and the checker only reported the size
+of the error ("worst error 4.21 of the output's RMS") for seven rounds. When a level-2 kernel runs but its
+numbers are wrong, it is simulated once more on x = arange (32, 12) as 3x4, so every output value names
+its source element; one or two sentences then say what the kernel computed and what the level requires
+(position j*A+i <- x[i*B+j]). No code. Levels 1, 3 and 4 never reach this path, so their requests are
+unchanged.
+
 Run it exactly like feedback_v7.py, with the exports in V7.md (plus SKELETON / L1FIX / TRUNCFIX / MIXSAMP /
-L2HINT / MIX when testing them):
+L2HINT / MIX / L2CAT when testing them):
 
     python3 feedback_v8.py --level 4 --rounds 8 --samples 4 --context 8192 --repeat 5 \\
         --log Ediv_L4.jsonl --verdicts verdicts_div_L4.jsonl
@@ -64,6 +72,7 @@ TRUNCFIX = os.environ.get("TRUNCFIX", "0") == "1"
 MIXSAMP = os.environ.get("MIXSAMP", "0") == "1"
 L2HINT = os.environ.get("L2HINT", "0") == "1"
 MIX = os.environ.get("MIX", "0") == "1"
+L2CAT = os.environ.get("L2CAT", "0") == "1"
 L2_NOTE = (" This level keeps every row where it is: row p of x holds an F1-by-F2 matrix stored row-major "
            "(F1, F2 = shape2D), and row p of the output holds the same F1*F2 values of that small matrix "
            "transposed, i.e. stored column-major. Nothing moves between rows, so the first (partition) "
@@ -156,6 +165,46 @@ def l1_fix(error_text):
     return None
 
 
+def l2_describe(got, P, F, A, B):
+    """What a level-2 kernel computed, from its output on x = arange(P*F).reshape(P, F) (A, B = shape2D).
+
+    Each output value is the flat index of the input element it came from, so the transform can be read
+    off. Returns one or two sentences, or None when nothing useful can be said. (analysis/l2_deep.md:
+    29 of 34 v8.1/v8.2 attempts scoring 0.50 were one of the named cases below.)
+    """
+    import numpy as np
+    want = ("Each row's A-by-B block must become B-by-A: output position j*A+i of a row should hold "
+            "x[i*B+j] of the same row (i < A, j < B), with A, B = shape2D.")
+    got = np.asarray(got, dtype=np.float64)
+    x = np.arange(P * F, dtype=np.float64).reshape(P, F)
+    if got.shape != x.shape:
+        return None
+    if np.array_equal(got, x):
+        return " Your output is x unchanged: no element moved. " + want
+    ok = np.isfinite(got) & (np.abs(got) < 1e6)
+    if not ok.all():
+        return (" Only part of your output is written: some positions of each row are never filled. "
+                "Every one of the A*B positions in a row must be written. " + want)
+    src = got - np.arange(P)[:, None] * F            # source index within the row
+    k = np.arange(F)
+    if np.all(src == k // B):
+        return (" Your output at row position i*B+j holds x[i]: the source index uses only i, so each "
+                "element is repeated B times. " + want)
+    if np.all(src == k % A):
+        return (" Your output at row position k holds x[k mod A]: the source index ignores the other "
+                "loop variable. " + want)
+    i, j = np.meshgrid(np.arange(A), np.arange(B), indexing="ij")
+    right = np.empty(F)
+    right[(j * A + i).ravel()] = (i * B + j).ravel()
+    if np.all(src == right):
+        return None                                   # this case is right; say nothing
+    if np.all((src >= 0) & (src < F) & (src == np.round(src))):
+        row0 = ", ".join(str(int(v)) for v in src[0])
+        return (f" On this case (A, B = {A}, {B}), row 0 of your output takes x's elements [{row0}] of that "
+                f"row, in that order. " + want)
+    return None
+
+
 # ------------------------------------------------------------------ v7 wiring
 
 import feedback_v7 as v7  # noqa: E402  (after the pure helpers, so they can be tested without nki)
@@ -232,6 +281,42 @@ if L2HINT:
 
     agent.grade = grade_l2
 
+if L2CAT:
+    _grade_cat = agent.grade
+
+    def l2_what(source, feedback):
+        """Run a level-2 kernel once on x = arange, on the shape that failed; return l2_describe's sentence."""
+        import io
+        from contextlib import redirect_stderr, redirect_stdout
+        import numpy as np
+        nkibench = v7.nkibench
+        m = re.search(r"On shape=\((\d+), (\d+)\) as (\d+)x(\d+)", feedback)
+        P, F, A, B = map(int, m.groups()) if m else (32, 12, 3, 4)
+        if A * B != F:
+            return None
+        try:
+            path = nkibench.candidate_path("_l2cat")
+            with open(path, "w") as f:
+                f.write(source)
+            with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                kernel = nkibench.load_kernel(path, nkibench.LEVELS[2]["entry"])
+                x = np.arange(P * F, dtype=np.float32).reshape(P, F)
+                got, _ = nkibench.simulate_and_count(kernel, (x, (A, B)))
+        except Exception:
+            return None
+        return l2_describe(got, P, F, A, B)
+
+    def grade_cat(source, level):
+        reward, parts, feedback = _grade_cat(source, level)
+        if level == 2 and reward < 1 and feedback and (
+                "NUMERICAL MISMATCH" in feedback or "NON-FINITE OUTPUT" in feedback):
+            what = l2_what(source, feedback)
+            if what:
+                feedback = feedback.rstrip() + what
+        return reward, parts, feedback
+
+    agent.grade = grade_cat
+
 if L1FIX:
     _enrich = agent.enrich
 
@@ -299,5 +384,5 @@ if __name__ == "__main__":
     print(f"feedback v8: v7 (PROMPT1={v7.PROMPT1} MESSAGES={v7.v6.MESSAGES} CARD={v7.v5.CARD} "
           f"SAMPLING={v7.v5.SAMPLING} GATE={v7.GATE or 'off'}) + one prompt line per sample k>=2"
           f" SKELETON={int(SKELETON)} L1FIX={int(L1FIX)} TRUNCFIX={int(TRUNCFIX)} MIXSAMP={int(MIXSAMP)}"
-          f" L2HINT={int(L2HINT)} MIX={int(MIX)}")
+          f" L2HINT={int(L2HINT)} MIX={int(MIX)} L2CAT={int(L2CAT)}")
     agent.main()
