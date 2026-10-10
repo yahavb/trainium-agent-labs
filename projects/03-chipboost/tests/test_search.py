@@ -83,7 +83,8 @@ def test_stub_run_writes_valid_fenced_records():
         p = subprocess.run([sys.executable, os.path.join(ROOT, "search.py"), "--stub", "--budget", "5",
                             "--seed", "3", "--run-id", run_id, "--out", out],
                            capture_output=True, text=True)
-        shutil.rmtree(os.path.join(ROOT, "search_runs", run_id), ignore_errors=True)
+        shutil.rmtree(os.path.join(search.RUNS_ROOT, run_id), ignore_errors=True)
+        assert not os.path.exists(os.path.join(ROOT, "search_runs", run_id)), "candidates inside the referee tree"
         assert p.returncode == 0, p.stdout + p.stderr
         assert "STUB REFEREE" in p.stdout, "stub output must be fenced"
         lines = open(out).read().splitlines()

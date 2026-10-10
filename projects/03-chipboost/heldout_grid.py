@@ -28,6 +28,7 @@ import glob
 import json
 import os
 import sys
+import tempfile
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -76,7 +77,9 @@ def kernel_rows(op, extra):
                      "AWS's tutorial kernel, fp32 accumulation"))
         rows.append(("aws as published", os.path.join(HERE, "kernels", "matmul_expert_aws.py"),
                      "AWS's tutorial kernel, bf16 accumulation"))
-    out_dir = os.path.join(HERE, "heldout_runs")
+    # Outside the referee's folder: a .py appearing under it during someone else's check reads as tampering.
+    out_dir = os.path.join(os.environ.get("CHIPBOOST_RUNS", os.path.join(tempfile.gettempdir(), "chipboost_runs")),
+                           "heldout")
     for arm, rec in sorted(best_per_arm(op).items()):
         os.makedirs(out_dir, exist_ok=True)
         path = os.path.join(out_dir, f"{op}_best_{arm}.py")
@@ -100,7 +103,7 @@ def run_grid(op, rows, rounds):
     cells = []
     start_loaded = {}
     for which, path, note in rows:
-        print(f"\n{which}: {os.path.relpath(path, HERE)}  ({note})")
+        print(f"\n{which}: {path if path.startswith(tempfile.gettempdir()) else os.path.relpath(path, HERE)}  ({note})")
         try:
             kernel = nkibench.load_kernel(path, spec["entry"])
         except Exception as e:
@@ -160,7 +163,8 @@ def main():
     print(f"{a.op}: {len(rows)} kernels x {len(cols)} held-out shapes, hostile inputs, seed {SEED}")
     print(f"  shapes: {', '.join(cols)}")
     for which, path, note in rows:
-        print(f"  row {which:<18} {os.path.relpath(path, HERE)}  ({note})")
+        print(f"  row {which:<18} {path if path.startswith(tempfile.gettempdir()) else os.path.relpath(path, HERE)}"
+              f"  ({note})")
     if a.dry_run:
         return 0
     try:

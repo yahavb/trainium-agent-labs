@@ -38,6 +38,7 @@ import os
 import random
 import re
 import sys
+import tempfile
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -70,6 +71,11 @@ def sbuf_bytes_per_partition(tm, tn, tk, M, itemsize=2, acc_bytes=4):
 
 
 SBUF_LIMIT = int(0.75 * 192 * 1024)   # 192 KiB per partition, 25% headroom for the compiler
+
+# Candidate files live OUTSIDE the referee's folder. The hardened referee hashes every .py under it before
+# and after a check and calls any change tampering: with several searches running at once, one search's
+# fresh candidate file turned every other check into `rules` (measured on seat-102, 4 cores).
+RUNS_ROOT = os.environ.get("CHIPBOOST_RUNS", os.path.join(tempfile.gettempdir(), "chipboost_runs"))
 
 
 # ---------------------------------------------------------------- the space
@@ -355,7 +361,7 @@ def main():
     seat, seat_from = resolve_seat(a.seat, required=not stub)
     run_id = a.run_id or (f"matmul-sweep-{shard_i}of{shard_n}-{time.strftime('%H%M%S')}" if a.exhaustive
                           else f"matmul-random_search-s{a.seed}-{time.strftime('%H%M%S')}")
-    run_dir = os.path.join("search_runs", run_id)
+    run_dir = os.path.join(RUNS_ROOT, run_id)
     # The sweep is not an equal-budget arm run, so it never goes where the dashboard reads attempts.
     out = out or os.path.join(HERE, "logs", f"seat-{seat}",
                               f"sweep-{shard_i}of{shard_n}.jsonl" if a.exhaustive else "attempts.jsonl")
@@ -363,7 +369,7 @@ def main():
     os.makedirs(os.path.dirname(out), exist_ok=True)
     referee = "FAKE stub" if stub else "speedcheck.check_isolated, one fresh process per candidate"
     print(f"{mark}run {run_id}: seat {seat} ({seat_from}), referee {referee}")
-    print(f"{mark}candidates in {os.path.join(HERE, run_dir)}, records appended to {out}")
+    print(f"{mark}candidates in {run_dir} (outside the referee's folder), records appended to {out}")
 
     best, best_caps = None, None          # best verified: verdict "faster", the dashboard's definition
     timed, timed_caps = None, None        # best correct and timed, any verdict
