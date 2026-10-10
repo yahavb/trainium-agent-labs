@@ -9,10 +9,18 @@ ROOT = sys.argv[1]
 
 
 def runs_of(path):
-    """Split an attempts file into runs. Rows of one round are consecutive; a new run starts when
+    """Split an attempts file into runs, by (session, run) id when the log has them. Older logs: rows
+    of one round are consecutive; a new run starts when
     the round number drops, or when round 0 already holds a full round's worth of samples (a run
     solved on round 0 is followed directly by the next run's round 0)."""
     rows = [json.loads(l) for l in open(path) if l.strip()]
+    if rows and all("session" in r for r in rows):
+        # Logs with provenance carry their own ids: group by them instead of guessing boundaries
+        # (review finding: the guess merges runs when a log is appended to by two processes).
+        by = {}
+        for r in rows:
+            by.setdefault((r["session"], r.get("run", 0)), []).append(r)
+        return [sorted(v, key=lambda r: (r["round"], r.get("sample", 0))) for v in by.values()]
     sizes, k = collections.Counter(), 0
     for a, b in zip(rows, rows[1:] + [None]):
         k += 1
