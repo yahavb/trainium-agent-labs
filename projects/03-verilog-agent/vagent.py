@@ -263,13 +263,59 @@ def header(code):
     m = re.search(r"module\s+\w+\s*(?:#\s*\([^;]*?\)\s*)?\([^)]*\)", code, re.S)
     return (m[0] + ";") if m else ""
 
+def ports(hdr):
+    """[(direction, width, name)] from an ANSI header, or None if it can't be parsed."""
+    try:
+        inner = hdr[hdr.index("(") + 1: hdr.rindex(")")]
+    except ValueError:
+        return None
+    out, d, w = [], None, 1
+    for part in inner.split(","):
+        p = part.strip()
+        m = re.match(r"(input|output|inout)\b\s*(?:wire|reg|logic)?\s*(?:signed\s*)?"
+                     r"(\[\s*(\d+)\s*:\s*(\d+)\s*\])?\s*(\w+)$", p)
+        if m:
+            d, w, name = m[1], (abs(int(m[3]) - int(m[4])) + 1 if m[2] else 1), m[5]
+        elif re.match(r"\w+$", p) and d:
+            name = p
+        else:
+            return None
+        out.append((d, w, name))
+    return out
+
+def coverage_stub(hdr):
+    """Empty design that records every value each input bit was driven to."""
+    ps = ports(hdr)
+    if not ps:
+        return None
+    L = [hdr]
+    for d, w, n in ps:
+        if d != "input":
+            continue
+        L.append(f"  reg [{w-1}:0] cv0_{n} = 0, cv1_{n} = 0;")
+        L.append(f"  always @({n}) if (^{n} !== 1'bx) begin cv1_{n} = cv1_{n} | {n}; cv0_{n} = cv0_{n} | ~{n}; end")
+        L.append(f'  final $display("COVER {n} %0d %b %b", {w}, cv0_{n}, cv1_{n});')
+    return "\n".join(L) + "\nendmodule\n"
+
+def uncovered(out):
+    """From COVER lines: which input bits never became 0 or never became 1."""
+    miss = []
+    for n, w, s0, s1 in re.findall(r"COVER (\w+) (\d+) ([01xz]+) ([01xz]+)", out):
+        w = int(w)
+        for val, seen in (("1", s1), ("0", s0)):
+            bits = [w - 1 - i for i, c in enumerate(seen) if c != "1"]
+            if bits:
+                miss.append(f"{n} to {val}" if w == 1 else f"bit(s) {sorted(bits)} of {n} to {val}")
+    return miss
+
 def validate_tb(tb, stub):
     """A testbench is only trusted if it compiles, finishes, reports a result,
     and FAILS an empty dummy design (proves it really checks the outputs)."""
     if not re.search(r"module\s+tb\b", tb):
         return False, "the testbench module must be named tb"
     d = tempfile.mkdtemp()
-    open(f"{d}/stub.v", "w").write(stub)
+    cov = coverage_stub(header(stub) or "")
+    open(f"{d}/stub.v", "w").write(cov or stub)
     open(f"{d}/tb.v", "w").write(tb)
     c = subprocess.run(["iverilog", "-g2012", "-o", f"{d}/sim", f"{d}/stub.v", f"{d}/tb.v"],
                        capture_output=True, text=True, timeout=30)
@@ -278,7 +324,8 @@ def validate_tb(tb, stub):
         src = tb.splitlines()
         bad = sorted({int(x) for x in re.findall(r"tb\.v:(\d+)", " ".join(errs))})[:3]
         shown = "; ".join(f"line {n}: `{src[n-1].strip()}`" for n in bad if 0 < n <= len(src))
-        return False, ("it does not compile: " + " | ".join(errs[:3])[:300] + (f"  -> broken code: {shown}" if shown else ""))
+        return False, ("it does not compile: " + " | ".join(errs[:3])[:300]
+                       + (f"  -> broken code: {shown}" if shown else ""))
     try:
         s = subprocess.run(["vvp", f"{d}/sim"], capture_output=True, text=True, timeout=10)
     except subprocess.TimeoutExpired:
@@ -292,6 +339,10 @@ def validate_tb(tb, stub):
     if e == 0:
         return False, ("it PASSES an empty design whose outputs are never driven, so it is not really "
                        "checking outputs. Compare every output with !== against an expected value")
+    miss = uncovered(s.stdout)
+    if miss:
+        return False, ("it never drives " + ", ".join(miss[:6]) + ". Every input must be tested at every "
+                       "value (loop over ALL values of small inputs, e.g. cin = 0 and cin = 1)")
     return True, ""
 
 def auto_tb(spec, code, log, tag, tries=3):
@@ -456,9 +507,11 @@ def finish(r, code, tb, n):
         print(f"\n✗ Not solved. Last attempt saved to {path}")
         if tb:
             print(f"  The testbench could be wrong too - check result_{n}_tb.v")
+    elif not tb:
+        print(f"\n⚠ It compiles, but its behaviour was NOT tested (no valid testbench). Saved to {path}")
     else:
         print(f"\n✓ Passed {'(no fix needed)' if r == 0 else f'after {r} round(s)'}. Saved to {path}"
-              + (f" (testbench: result_{n}_tb.v)" if tb else ""))
+              f" (testbench: result_{n}_tb.v)")
     print("-" * 40 + "\n" + code.strip() + "\n" + "-" * 40)
 
 def menu(a):
