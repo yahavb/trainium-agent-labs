@@ -1,4 +1,4 @@
-# REFEREE: Qwen3 speeds up its own kernels, and we prove every speedup is real
+# CHIPBOOST: Qwen3 speeds up its own kernels, and we prove every speedup is real
 
 *Hack the Chip, NYU x Annapurna Labs, Oct 10 2026*
 
@@ -18,7 +18,7 @@
 | FORGE v1 (end-to-end Qwen +10%) | Integration into served Qwen unlikely today; 10% target risky | Amdahl estimate, "correctness before speed" |
 | FORGE v2 (performance cliffs) | Best original idea; full scope too big | Held-out and tile-edge shapes; speedups must survive them |
 | FORGE-lite (on-chip timing) | The missing piece in the repo | On-chip timing as referee layer 2 |
-| **REFEREE** | Best structured, most complete | The backbone of this plan |
+| **CHIPBOOST** | Best structured, most complete | The backbone of this plan |
 
 **What we checked before deciding (facts, with sources):**
 
@@ -40,7 +40,7 @@
 - **The repo's byte counter only sees `nisa.dma_copy`** (`simulate_and_count`, `nkibench.py:611`). NKI also
   has `dma_transpose` and `dma_compute`; a kernel moving data another way would look like it moves fewer bytes
   than it does.
-- **Every repo helper REFEREE relies on exists:** `check_rules` (l.358), `describe_mismatch` (l.421),
+- **Every repo helper CHIPBOOST relies on exists:** `check_rules` (l.358), `describe_mismatch` (l.421),
   `reuse_report` (l.548), `check_traffic_bar` (l.570), `check_inputs_untouched` (l.596),
   `simulate_and_count` (l.611), `explain_with_ceiling` (l.72), `level(...)` (l.229), level 8 example
   (~l.326). The repo's own `STATE.md` lists "layer 2: real latency" and `NEURON_RT_VISIBLE_CORES=0,1` as the
