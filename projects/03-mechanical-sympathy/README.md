@@ -192,6 +192,33 @@ Do not report CPU speed as the Trainium baseline.
 - Environment files and credentials
 - `pod-remote/`
 
+## Eight-year baseline evaluation
+
+These animations compare the saved NVIDIA Samudra v2 baseline rollout
+(epoch 70, raw checkpoint) with OM4 from **20 October 2014 to 24 December 2022**.
+The columns show **surface (2.5 m), shallow (105 m), and mid-depth (550 m)**.
+The rows show the OM4 reference, Samudra v2, and the model minus the reference,
+with an area-weighted RMSE for each depth.
+
+### Temperature
+
+![Eight-year ocean temperature evaluation at 2.5 m, 105 m, and 550 m: OM4, Samudra v2, and their difference](results/eight-year-evaluation-2026-10-10/samudra_v2_temperature_three_depths.gif)
+
+### Current speed
+
+![Eight-year current-speed evaluation at 2.5 m, 105 m, and 550 m: OM4, Samudra v2, and their difference](results/eight-year-evaluation-2026-10-10/samudra_v2_speed_three_depths.gif)
+
+Temperature is in °C; current speed is `sqrt(uo² + vo²)` in m/s. Colors stay
+fixed through time. Current speed uses square-root colors to make weak currents
+visible; both difference maps use linear colors, with blue meaning lower and
+red meaning higher. Land and below-seafloor cells are masked.
+
+The GIFs sample approximately every 60 days, include the final state, and loop
+through the evaluation in about 14 seconds. See the [animation metadata](results/eight-year-evaluation-2026-10-10/manifest.json)
+for the checkpoint hash, exact displayed dates, color limits, and file hashes.
+The Trainium trials below measured forward-pass speed only; these animations
+show the separate NVIDIA baseline evaluation.
+
 ## Forward-only speed experiment report
 
 See the [three-trial report and hill-climb graph](results/forward-only-2026-10-10/README.md)
