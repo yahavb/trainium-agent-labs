@@ -1,6 +1,7 @@
 # Hack the Chip — NYU × Annapurna Labs
 
 > **Team 24 ("Saturday team") hand-in, project 2 (NKI kernel agent): start at [SUBMISSION.md](SUBMISSION.md).**
+> What each change did, in one page: [RESULTS.md](RESULTS.md).
 
 
 **Annapurna Labs** is the Amazon team that designs **AWS Trainium**, the custom silicon behind a large
