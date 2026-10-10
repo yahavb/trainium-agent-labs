@@ -26,7 +26,7 @@ stage-by-stage plan in the prompt.
 | 3 | matrix multiply, one tile | never | **2 of 2** |
 | 4 | matrix multiply, tiled | never | **5 of 6** |
 | 5–7 | the same, moving less data | never reached | **2 of 2 each** |
-| 8 | full attention | never | **2 of 2** with `--attention-plan`; never without it |
+| 8 | full attention | never | **2 of 2** with `--attention-plan`; |
 | 9–10 *(added)* | transpose, softmax — stepping stones to 8 | stuck | **2 of 2 each** |
 | 11 *(added)* | attention scores q·kᵀ/√d | stuck | **3 of 3** under a traffic bar (earlier: 4 of 4 with building blocks, 2 of 4 without) |
 
@@ -96,22 +96,26 @@ with the stage plan **1,441**. The bloated level-8 prompt failed; the shorter, e
 
 ## What we measured about the loop itself
 
-Every chart below is computed from the attempt log in this repo (`analysis/make_charts.py`).
+Every chart below is computed from the log in this repo (`analysis/make_charts.py`): the shipped attempts plus
+the counts recorded for the failed level-8 attempts trimmed out (`logs/level8_failures_summary.json`). Seats
+repeated each other (identical sampling), so repeats are counted once: a run byte-identical to another seat's
+counts once in the rates (2,586 of 2,886 attempts), and the taxonomy counts distinct wrong kernels.
 
 ![Where effort was wasted](assets/chart_3_waste.png)
 
-* **40%** of rounds had identical samples, and sampling is deterministic across servers: four seats ran
+* **37%** of rounds had identical samples, and sampling is deterministic across servers: four seats ran
   **byte-identical** level-8 traces. Per-request seeds crash this vLLM-Neuron build and per-server `--seed`
   did not change the samples, so parallel seats did not add independent tries. **Open problem.**
-* **17%** of retries returned the code unchanged — the loop now says "you changed nothing"; **30%** of rounds
-  failed exactly like the round before; **18%** of failures were invented API calls (now caught by lint
+* **28%** of retries returned the code unchanged — the loop now says "you changed nothing"; **54%** of rounds
+  failed exactly like the round before; **12%** of failures were invented API calls (now caught by lint
   against the installed NKI).
 
 ![Failure taxonomy](assets/chart_4_failures.png)
 
-**Failure taxonomy** (2,372 failed attempts, by the first problem reported): wrong shape or layout dominates
-every matmul and attention level; invented APIs dominate level 1 and 10; level 8's 1,096 failures are mostly
-the q·kᵀ layout (476, `logs/level8_failures_summary.json`).
+**Failure taxonomy** (706 distinct wrong kernels behind 2,687 failed attempts, by the first problem found):
+wrong shape or layout dominates every matmul and attention level; invented APIs are the main failure on levels
+1 and 10; 221 of level 8's 323 distinct wrong kernels are shape/layout, mostly q passed to the matmul
+untransposed for q·kᵀ.
 * A cut-off reply that looped on one comment line "ran", returned nothing and **outscored honest attempts**.
   Fixed: returning nothing is not running, and cut-off replies rank last.
 
@@ -169,7 +173,7 @@ projects/20-kernel-agent/
 ├── solved/               every kernel the agent wrote that passed, with its re-check printout
 ├── optimized/            four of those kernels optimized by hand (team-written, labelled)
 ├── results/              device/ (real-chip results) · seat97-repair/ (level-8 evidence)
-├── logs/                 attempt log (1,418 attempts) + summary of the 1,096 failed level-8 attempts
+├── logs/                 attempt log (1,790 of 2,886 attempts) + what the trimmed level-8 failures add
 ├── analysis/             trace_analysis (failure taxonomy), make_charts, ab (A/B runner)
 ├── assets/               the diagram and charts
 └── reference_level1-4.py, kernelbench.py, try_level.py, CHALLENGE-kernel-agent.md   (from the original repo)
