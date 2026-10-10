@@ -24,6 +24,9 @@ Three inference-time levers for the label-free agent, each off by default so you
     --challenge-abstain  when the agent is about to accept NOT_IN_CONTEXT, make it list every
                          sentence about the subject first. selfcheck cannot see a lazy abstention;
                          this is one way to look for one without the answer key.
+    --workers N          answer N questions at the same time. The server runs MAX_NUM_SEQS (4 in
+                         serve.sh) requests at once, and --samples 1 alone uses one of them.
+                         Keep workers x samples <= 4, or the extra requests just queue.
     --examples FILE      prepend K worked examples (--k) from a bank built by build_examples.py.
                          The loop's successes, reused as in-context examples on unseen items.
     --verify [basic|checklist]
@@ -348,6 +351,41 @@ def solve(item, a, log, run, rng, bank):
                 reward=final["reward"], rounds=rnd + 1, claimed=claimed)
 
 
+class LockedLog:
+    """One log shared by worker threads. Every write is a whole JSON line, so a lock per write
+    keeps lines from interleaving."""
+    def __init__(self, f):
+        import threading
+        self.f, self.lock = f, threading.Lock()
+
+    def write(self, s):
+        with self.lock:
+            self.f.write(s)
+            self.f.flush()
+
+    def flush(self):
+        pass
+
+
+def run_items(items, a, log, run, bank):
+    """Every item once. With --workers > 1 they run concurrently; results keep item order."""
+    if a.workers <= 1:
+        rng = random.Random(run)
+        return [solve(it, a, log, run, rng, bank) for it in items]
+    import threading
+    done, lock = [0], threading.Lock()
+
+    def one(it):
+        res = solve(it, a, log, run, random.Random(f"{run}-{it['id']}"), bank)
+        with lock:
+            done[0] += 1
+            print(f"  [{done[0]}/{len(items)}] {it['id']:<18} -> {res['final']:<22} "
+                  f"({res['rounds']} round{'s' if res['rounds'] > 1 else ''})", flush=True)
+        return res
+    with cf.ThreadPoolExecutor(max_workers=a.workers) as ex:
+        return list(ex.map(one, items))
+
+
 def rate(labels, which):
     return sum(l in which for l in labels) / max(1, len(labels))
 
@@ -399,6 +437,8 @@ def build_parser():
                     help="label-free: a fresh call checks the quote states every detail before "
                          "accepting. --verify alone = basic; --verify checklist = itemised")
     ap.add_argument("--selftest", action="store_true", help="test the verdict parser; no model")
+    ap.add_argument("--workers", type=int, default=1,
+                    help="questions answered at the same time (server slots: workers x samples <= 4)")
     ap.add_argument("--examples", help="example bank from build_examples.py")
     ap.add_argument("--k", type=int, default=3, help="worked examples per prompt")
     ap.add_argument("--model", default=os.environ.get("HALLU_MODEL",
@@ -471,11 +511,18 @@ def main():
         print("*** --offline with --data: the fake model answers from the gold label ***")
     levels = list(dict.fromkeys(it["level"] for it in items))
 
+    slots = int(os.environ.get("HALLU_SERVER_SLOTS", 4))
+    if a.workers > 1:
+        a.verbose = False   # per-question traces would interleave; one line per question instead
+        if a.workers * a.samples > slots:
+            print(f"*** {a.workers} workers x {a.samples} samples = {a.workers * a.samples} requests "
+                  f"at once, but the server runs {slots}; the rest will queue ***")
+        print(f"answering {len(items)} questions, {a.workers} at a time")
     per_run = []
-    with open(a.log, "a") as log:
+    with open(a.log, "a") as raw:
+        log = LockedLog(raw)
         for run in range(a.repeat):
-            rng = random.Random(run)
-            results = [solve(it, a, log, run, rng, bank) for it in items]
+            results = run_items(items, a, log, run, bank)
             if a.repeat > 1:
                 print(f"\n##### run {run + 1}/{a.repeat}")
             report(results, a)
