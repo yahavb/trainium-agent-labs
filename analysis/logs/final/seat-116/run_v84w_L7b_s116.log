@@ -1,0 +1,42 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1 L2CAT=1 WARM=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 7: matmul, M, N and K blocked ===========
+  tokens: prompt 600 = instructions 72 + prev_code 425 + feedback 103  [tokenizer] | answers 464, 480, 486, 463
+round 0: this round 0.75  best so far 0.75  (91.1s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: NUMERICAL MISMATCH: worst error 7.71 of the output's RMS (15.96), tolerance 0.02.
+  at index (161, 796): expected -6.98733, got +115.989
+  74.1% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+  tokens: prompt 659 = instructions 72 + prev_code 463 + feedback 124  [tokenizer] | answers 464, 463, 498, 494
+round 1: same failure again (0.75, best so far 0.75)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+  tokens: prompt 745 = instructions 72 + prev_code 463 + feedback 124 + ledger 86  [tokenizer] | answers 509, 463, 463, 463
+round 2: this round 0.75  best so far 0.75  (89.3s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.56x the byte floor, and level 7 requires 1.05x or better. Correctness alone is level 4; this level is about the bytes. Block K as well, and accumulate in one PSUM tile across the whole contraction so nothing partial is written out.
+  tokens: prompt 683 = instructions 72 + prev_code 508 + feedback 103  [tokenizer] | answers 509, 463, 465, 498
+round 3: same failure again (0.75, best so far 0.75)
+  same failure 2x — adding a ledger of 2 failed attempts to break the repeat
+  tokens: prompt 835 = instructions 72 + prev_code 508 + feedback 103 + ledger 152  [tokenizer] | answers 525, 463, 463, 463
+round 4: same failure again (0.75, best so far 0.75)
+  same failure 3x — adding a ledger of 2 failed attempts to break the repeat
+  tokens: prompt 851 = instructions 72 + prev_code 524 + feedback 103 + ledger 152  [tokenizer] | answers 549, 480, 460, 463
+round 5: same failure again (0.75, best so far 0.75)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  2 of 4 shapes passed. On K=256 M=256 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.56x th
+    2x  2 of 4 shapes passed. On K=256 M=256 N=1024: NUMERICAL MISMATCH: worst error 7.71 of the output's RMS (15.96),
+  VERDICT level 7: FAILED, confidence 0.00: not solved: best score 0.75 after 6 rounds
+
+  CONFIDENCE level 7: 0.00 (it still fails shapes the loop tested) -- stated before the held-out check
+  VERDICT level 7: NOT SOLVED (best reward 0.75; held-out 0/16)
+    tokens spent: 17,492 prompt + 11,511 answer over 6 round(s)
+
+=========== summary ===========
+  level 7  reward 0.75 after 6 round(s)  tokens 17,492 prompt + 11,511 answer  confidence 0.00  NOT SOLVED (best reward 0.75; held-out 0/16)
+  solved 0/1
+
+=========== calibration, 1 verdict(s) ===========
+  said 0.00-0.01:   1 verdicts, mean confidence 0.00, actually passed held-out 0/1
+  Brier score 0.000.  Confident (>=0.5) but wrong: 0
+
+attempts logged to v84w_L7b_s116.jsonl, verdicts to v84w_L7b_s116_verdicts.jsonl

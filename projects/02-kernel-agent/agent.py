@@ -85,7 +85,9 @@ def grade(source, level):
     parts["rules"] = True
 
     spec = nkibench.LEVELS[level]
-    path = f"/tmp/_agent_level{level}.py"
+    # A fresh path per candidate: nki caches by file path, and a same-size candidate written to a
+    # reused path was simulated as the FIRST one, numerics included (measured with nki 0.6.0).
+    path = nkibench.candidate_path(f"_agent_level{level}")
     with open(path, "w") as f:
         f.write(source)
     try:
@@ -130,6 +132,7 @@ def grade(source, level):
             continue
         parts["runs"] = True
         m = (nkibench.check_inputs_untouched(before, args)
+             or nkibench.describe_illegal(counted)
              or nkibench.describe_mismatch(got, want)
              or nkibench.check_traffic_bar(level, counted, args, want))
         # A simulator warning about a hardware-correctness hazard counts as a failure even when the
@@ -245,8 +248,31 @@ def real_signature(func_name):
     return ""
 
 
+# Invented names the model actually wrote, mapped to the real 0.6.0 spelling (each checked with
+# inspect.signature in a seat pod). Measured on seat-116: 48 of 96 level-1 attempts called
+# nisa.multiply or nisa.scalar_mul, and the difflib fallback suggested scalar_engine, which did
+# not help. These run before the generic branches so the specific fix wins.
+KNOWN_FIXES = [
+    (r"module 'nki\.isa' has no attribute 'multiply'",
+     " `multiply` is not a nki.isa function; it is the op nl.multiply, which you pass to a nisa "
+     "instruction. To scale a tile by a constant write "
+     "nisa.tensor_scalar(dst=out, data=t, op0=nl.multiply, operand0=c); to multiply two tiles "
+     "write nisa.tensor_tensor(dst=out, data1=a, data2=b, op=nl.multiply). Note it is `nl.`, "
+     "not `nisa.`, in front of multiply."),
+    (r"module 'nki\.isa' has no attribute 'scalar_mul'",
+     " There is no scalar_mul. To multiply a tile by a constant write "
+     "nisa.tensor_scalar(dst=out, data=t, op0=nl.multiply, operand0=c)."),
+    (r"'_TileSize' object is not callable",
+     " nl.tile_size is a set of constants, not a function. Read the attribute instead of calling "
+     "it: nl.tile_size.pmax is the partition-dimension limit (128)."),
+]
+
+
 def enrich(error_text):
     """Add the real names when the failure is an invented API call."""
+    for pattern, fix in KNOWN_FIXES:
+        if re.search(pattern, error_text):
+            return error_text + fix
     if "'MemoryRegion' object is not callable" in error_text:
         return (error_text + " nl.sbuf, nl.psum and nl.shared_hbm are memory regions, not "
                 "functions. Do not call them. Allocate with "
@@ -428,6 +454,79 @@ def extract_code(text):
     return ""
 
 
+# ---------------------------------------------------------------- token accounting
+#
+# The challenge is deciding which 8192 tokens the model sees, so every attempt records what its
+# prompt was spent on. The split is read off the prompt TEXT rather than off how it was built, so it
+# holds for feedback_v2/v3's repair prompts as well as ours.
+
+LEDGER_MARK = "\n\nThese approaches have already failed"
+FEEDBACK_MARK = "A checker reports:\n"
+SEGMENTS = ("instructions", "reference", "api_card", "prev_code", "feedback", "ledger")
+
+
+def prompt_segments(prompt, level):
+    """The prompt cut into named pieces: {segment: text}. The pieces add up to the whole prompt."""
+    import inspect
+    seg = dict.fromkeys(SEGMENTS, "")
+    rest = prompt
+    i = rest.find(LEDGER_MARK)
+    if i >= 0:
+        seg["ledger"], rest = rest[i:], rest[:i]
+    m = re.search(r"```python\n.*?```", rest, re.S)
+    if m:
+        seg["prev_code"], rest = m.group(0), rest[:m.start()] + rest[m.end():]
+    for name, text in (("reference", inspect.getsource(nkibench.LEVELS[level]["ref"])),
+                       ("api_card", API_CARD)):
+        if text in rest:
+            seg[name], rest = text, rest.replace(text, "", 1)
+    j = rest.find(FEEDBACK_MARK)
+    if j >= 0:
+        # The repair instruction is the last paragraph; everything between the marker and it is
+        # the checker's message, however many paragraphs that is.
+        k = rest.rfind("\n\n")
+        k = k if k > j else len(rest)
+        seg["feedback"], rest = rest[j + len(FEEDBACK_MARK):k], rest[:j + len(FEEDBACK_MARK)] + rest[k:]
+    seg["instructions"] = rest
+    return seg
+
+
+_TOKENIZER = {}
+
+
+def tokenizer(model):
+    """The served model's own tokenizer, if it is on this machine (in a seat pod vLLM downloaded
+    it). Otherwise None, and the split is proportional to characters."""
+    if model not in _TOKENIZER:
+        _TOKENIZER[model] = None
+        if os.environ.get("KERNEL_AGENT_TOKENIZER", "1") != "0":
+            try:
+                from transformers import AutoTokenizer
+                _TOKENIZER[model] = AutoTokenizer.from_pretrained(model, local_files_only=True)
+            except Exception:
+                pass
+    return _TOKENIZER[model]
+
+
+def token_split(a, prompt, level, prompt_tokens):
+    """{segment: tokens} and how they were counted. prompt_tokens is the endpoint's own count."""
+    seg = prompt_segments(prompt, level)
+    tok = None if a.offline else tokenizer(a.model)
+    if tok is not None:
+        out = {k: len(tok.encode(v, add_special_tokens=False)) if v else 0 for k, v in seg.items()}
+        if prompt_tokens:
+            out["chat_template"] = max(0, prompt_tokens - sum(out.values()))
+        return out, "tokenizer"
+    chars = sum(len(v) for v in seg.values()) or 1
+    total, how = (prompt_tokens, "proportional") if prompt_tokens else (len(prompt) // 4, "chars/4")
+    return {k: round(total * len(v) / chars) for k, v in seg.items()}, how
+
+
+class Reply(str):
+    """The answer text, plus what the endpoint said about it in .meta."""
+    meta = {}
+
+
 # ---------------------------------------------------------------- the model
 
 def ask(a, prompt):
@@ -466,7 +565,12 @@ def ask(a, prompt):
         print(f"    (empty answer, {len(reasoning)} chars of hidden reasoning, "
               f"finish={ch.get('finish_reason')} — shorten the prompt rather than raising the "
               f"budget)")
-    return content
+    usage = payload.get("usage") or {}
+    reply = Reply(content)
+    reply.meta = dict(prompt_tokens=usage.get("prompt_tokens"),
+                      completion_tokens=usage.get("completion_tokens"),
+                      max_tokens=budget, finish=finish, reasoning_chars=len(reasoning))
+    return reply
 
 
 def ask_parallel(a, prompt, n):
@@ -494,19 +598,37 @@ def solve(a, level, log):
     best = (0.0, None, "")
     tried, streak, seen = [], 0, {}
     latest = ("", "")
+    spent = dict(prompt=0, completion=0, rounds=0)
     for rnd in range(a.rounds):
         t0 = time.perf_counter()
         replies = (offline_answers(level, a.samples, rnd) if a.offline
                    else ask_parallel(a, prompt, a.samples))
+        metas = [getattr(r, "meta", {}) for r in replies]
+        prompt_tokens = next((m["prompt_tokens"] for m in metas if m.get("prompt_tokens")), None)
+        split, how = token_split(a, prompt, level, prompt_tokens)
+        prompt_tokens = prompt_tokens or sum(split.values())
         graded = []
-        for reply in replies:
+        for reply, meta in zip(replies, metas):
             src = extract_code(reply)
             reward, parts, feedback = grade(src, level)
             graded.append((reward, src, feedback, parts))
+            out_tokens = meta.get("completion_tokens") or len(reply) // 4
+            spent["prompt"] += prompt_tokens
+            spent["completion"] += out_tokens
             log.write(json.dumps(dict(level=level, round=rnd, reward=reward, parts=parts,
                                       prompt_chars=len(prompt), reply_chars=len(reply),
-                                      code=src, feedback=feedback)) + "\n")
+                                      code=src, feedback=feedback,
+                                      run=getattr(a, "run", 0), prompt_tokens=prompt_tokens,
+                                      completion_tokens=out_tokens, prompt_split=split,
+                                      count_method=how, finish=meta.get("finish"),
+                                      max_tokens=meta.get("max_tokens"),
+                                      reasoning_chars=meta.get("reasoning_chars", 0))) + "\n")
         log.flush()
+        spent["rounds"] += 1
+        print(f"  tokens: prompt {prompt_tokens:,} = "
+              + " + ".join(f"{k} {v:,}" for k, v in split.items() if v)
+              + f"  [{how}] | answers "
+              + ", ".join(str(m.get("completion_tokens") or "?") for m in metas))
         graded.sort(key=lambda g: g[0], reverse=True)
         top = graded[0]
         if top[0] > best[0]:
@@ -530,7 +652,7 @@ def solve(a, level, log):
             print("  ---------------- the kernel ----------------")
             print(textwrap.indent(top[1], "  "))
             print("  -------------------------------------------")
-            return top[0], rnd + 1
+            return top[0], rnd + 1, top[1], spent
         seen[top[2]] = seen.get(top[2], 0) + 1
         streak = streak + 1 if same else 1
         if seen[top[2]] >= a.give_up_after:
@@ -541,7 +663,7 @@ def solve(a, level, log):
                   f"mistakes rather than converging, so more rounds will not help. Failures seen:")
             for f, n in sorted(seen.items(), key=lambda kv: -kv[1]):
                 print(f"    {n}x  {f[:110]}")
-            return best[0], rnd + 1
+            return best[0], rnd + 1, best[1], spent
         tried.append(top[2])
         repeats = streak
         if repeats >= 2 and (best[1] or "").strip():
@@ -565,7 +687,124 @@ def solve(a, level, log):
         else:
             prompt = repair_prompt(level, latest[0], latest[1])
     print(f"  not solved in {a.rounds} rounds; best reward {best[0]:.2f}")
-    return best[0], a.rounds
+    return best[0], a.rounds, best[1], spent
+
+
+# ---------------------------------------------------------------- knowing when it failed
+#
+# Passing the loop's shapes is evidence, not proof: the judges grade on shapes and values the loop
+# never saw. So each level ends with a confidence, stated from what the loop saw, and only THEN is
+# the kernel run on nkibench's held-out set. The held-out result is never fed back to the model;
+# it is what the confidence is scored against.
+
+def confidence(level, source, solved):
+    """(probability this kernel passes unseen shapes and values, [reasons]) -- before held-out."""
+    import ast
+    spec = nkibench.LEVELS[level]
+    if not solved:
+        return 0.0, ["it still fails shapes the loop tested"]
+    p, why = 0.9, []
+    if len(spec["shapes"]) == 1:
+        p *= 0.7
+        why.append("the loop tested a single shape")
+    dims = set()
+    for case in spec["shapes"]:
+        for v in case.values():
+            dims.update(x for x in (v if isinstance(v, tuple) else (v,)) if isinstance(x, int))
+    literals = {n.value for n in ast.walk(ast.parse(source))
+                if isinstance(n, ast.Constant) and type(n.value) is int}
+    tile_limits = {nkibench.PMAX, nkibench.GEMM_STATIONARY_FMAX, nkibench.GEMM_MOVING_FMAX}
+    hard = sorted(x for x in literals & dims if x > 4 and x not in tile_limits)
+    if hard:
+        p *= 0.5
+        why.append(f"hard-codes {hard}, sizes taken from the test shapes")
+    if re.search(r"nl\.ndarray\(.*nl\.(?:float32|float16|bfloat16).*shared_hbm", source):
+        p *= 0.6
+        why.append("hard-codes the output dtype instead of following the input's")
+    if not why:
+        why.append("passed every loop shape and nothing in the code is shape-specific")
+    return round(p, 2), why
+
+
+def verdict(a, level, reward, rounds, source, spent):
+    """What the agent claims about this level, and whether the held-out set agrees.
+
+    The confidence is computed and printed FIRST, from the loop's evidence only; the held-out set
+    runs after it. Nothing here is ever passed to first_prompt / repair_prompt / solve. Any error in
+    the held-out check makes the claim UNVERIFIED; it never ends the run."""
+    full = sum(WEIGHTS.values())
+    solved = reward >= full - 1e-9
+    conf, why = confidence(level, source, solved) if (source or "").strip() else (0.0, ["no code"])
+    v = dict(type="verdict", level=level, run=getattr(a, "run", 0), solved=solved,
+             reward=round(reward, 3), rounds=rounds, claim=None, confidence=conf, reasons=why,
+             confidence_time=time.time(), heldout_time=None,
+             heldout_passed=None, heldout_total=None, first_failure=None, heldout_failures=[],
+             error=None, prompt_tokens=spent["prompt"], completion_tokens=spent["completion"],
+             tokens_total=spent["prompt"] + spent["completion"])
+    print(f"\n  CONFIDENCE level {level}: {conf:.2f} ({'; '.join(why)}) -- stated before the "
+          f"held-out check")
+    res = None
+    if a.no_eval or not (source or "").strip() or level not in nkibench.EVAL_SHAPES:
+        v["error"] = "no held-out check ran"
+    else:
+        v["heldout_time"] = time.time()
+        try:
+            violations = nkibench.check_rules(source, level)
+            if violations:
+                # A rule violation scores zero whatever the numbers say, so it fails held-out too.
+                res = [dict(case="rules", kind="-", ok=False, why=" ".join(violations)[:300])]
+            else:
+                path = nkibench.candidate_path(f"_heldout_level{level}")
+                with open(path, "w") as f:
+                    f.write(source)
+                res = nkibench.evaluate(
+                    nkibench.load_kernel(path, nkibench.LEVELS[level]["entry"]), level)
+        except nkibench.NkiMissing:
+            v["error"] = "no simulator here"
+        except Exception as e:
+            v["error"] = f"held-out check failed: {type(e).__name__}: {e}"[:300]
+    if res is None:
+        v["claim"], status = "UNVERIFIED", f"UNVERIFIED ({v['error']})"
+    else:
+        ok = sum(r["ok"] for r in res)
+        bad = [r for r in res if not r["ok"]]
+        v.update(heldout_passed=ok, heldout_total=len(res), heldout_failures=bad[:8],
+                 first_failure=(f"{bad[0]['case']} {bad[0]['kind']}: {bad[0]['why']}"[:300]
+                                if bad else None))
+        if solved and not bad:
+            v["claim"] = "VERIFIED"
+            status = f"VERIFIED: loop shapes and {ok}/{len(res)} held-out cases"
+        elif solved:
+            v["claim"] = "PASSES THE LOOP'S SHAPES ONLY"
+            status = f"{v['claim']}: held-out {ok}/{len(res)}, e.g. {v['first_failure'][:110]}"
+        else:
+            v["claim"] = "NOT SOLVED"
+            status = f"NOT SOLVED (best reward {reward:.2f}; held-out {ok}/{len(res)})"
+    v["status"] = status
+    print(f"  VERDICT level {level}: {status}")
+    print(f"    tokens spent: {spent['prompt']:,} prompt + {spent['completion']:,} answer over "
+          f"{spent['rounds']} round(s)")
+    return v
+
+
+def calibration_report(verdicts):
+    """Did the stated confidence predict the held-out result? Brier score: 0 is perfect, 0.25 is
+    what always saying 0.5 earns."""
+    scored = [v for v in verdicts if v["heldout_total"]]
+    if not scored:
+        print("\n  calibration: nothing to score (no held-out check ran)")
+        return
+    outcome = lambda v: 1.0 if v["heldout_passed"] == v["heldout_total"] else 0.0
+    brier = sum((v["confidence"] - outcome(v)) ** 2 for v in scored) / len(scored)
+    print(f"\n=========== calibration, {len(scored)} verdict(s) ===========")
+    for lo, hi in ((0.0, 0.01), (0.01, 0.5), (0.5, 0.8), (0.8, 1.01)):
+        b = [v for v in scored if lo <= v["confidence"] < hi]
+        if b:
+            print(f"  said {lo:.2f}-{min(hi, 1):.2f}: {len(b):3d} verdicts, mean confidence "
+                  f"{sum(v['confidence'] for v in b) / len(b):.2f}, actually passed held-out "
+                  f"{sum(outcome(v) for v in b):.0f}/{len(b)}")
+    over = [v for v in scored if v["confidence"] >= 0.5 and not outcome(v)]
+    print(f"  Brier score {brier:.3f}.  Confident (>=0.5) but wrong: {len(over)}")
 
 
 def main():
@@ -596,6 +835,10 @@ def main():
     ap.add_argument("--think", action="store_true",
                     help="let the model reason first; costs budget, and it ran out")
     ap.add_argument("--offline", action="store_true")
+    ap.add_argument("--verdicts", default="verdicts.jsonl",
+                    help="one line per level per run: claim, confidence, held-out result, tokens")
+    ap.add_argument("--no-eval", action="store_true",
+                    help="skip the held-out check after each level")
     a = ap.parse_args()
 
     if not a.offline:
@@ -624,20 +867,40 @@ def main():
     full = sum(WEIGHTS.values())
     history = {lv: [] for lv in levels}
 
-    with open(a.log, "a") as log:
+    verdicts = []
+    with open(a.log, "a") as log, open(a.verdicts, "a") as vlog:
         for rep in range(a.repeat):
+            a.run = rep
             if a.repeat > 1:
                 print(f"\n################ run {rep + 1} of {a.repeat} ################")
             results = []
             for level in levels:
-                results.append((level,) + solve(a, level, log))
-                history[level].append(results[-1][1])
+                reward, rounds, source, spent = solve(a, level, log)
+                results.append((level, reward, rounds, spent))
+                history[level].append(reward)
+                try:
+                    verdicts.append(verdict(a, level, reward, rounds, source, spent))
+                except Exception as e:   # bookkeeping must never end a long run
+                    print(f"  (verdict failed: {type(e).__name__}: {e})")
+                    verdicts.append(dict(
+                        type="verdict", level=level, run=rep, solved=None, reward=round(reward, 3),
+                        rounds=rounds, claim="UNVERIFIED", confidence=0.0,
+                        reasons=["the verdict itself failed"], heldout_passed=None,
+                        heldout_total=None, first_failure=None, heldout_failures=[],
+                        error=f"verdict failed: {type(e).__name__}: {e}"[:300],
+                        prompt_tokens=spent["prompt"], completion_tokens=spent["completion"],
+                        tokens_total=spent["prompt"] + spent["completion"],
+                        status=f"UNVERIFIED (verdict error: {e})"[:120]))
+                vlog.write(json.dumps(verdicts[-1]) + "\n")
+                vlog.flush()
 
             print("\n=========== summary ===========")
-            for level, reward, rounds in results:
+            for (level, reward, rounds, spent), v in zip(results, verdicts[-len(results):]):
                 print(f"  level {level}  reward {reward:.2f} after {rounds} round(s)"
-                      + ("  SOLVED" if reward >= full - 1e-9 else ""))
-            print(f"  solved {sum(1 for _, r, _ in results if r >= full - 1e-9)}/{len(results)}")
+                      + ("  SOLVED" if reward >= full - 1e-9 else "")
+                      + f"  tokens {spent['prompt']:,} prompt + {spent['completion']:,} answer"
+                      + f"  confidence {v['confidence']:.2f}  {v['status'][:60]}")
+            print(f"  solved {sum(1 for _, r, _, _ in results if r >= full - 1e-9)}/{len(results)}")
 
     if a.repeat > 1:
         # The number that actually means something. A solve rate over N runs survives the variance
@@ -650,7 +913,8 @@ def main():
                   f"best {max(got):.2f}  worst {min(got):.2f}  "
                   f"mean {sum(got) / len(got):.2f}  all={[round(r, 2) for r in got]}")
         print("\n  Report the rate, not your best run. A level that solves 1 in 3 times is not solved.")
-    print(f"\nattempts logged to {a.log}")
+    calibration_report(verdicts)
+    print(f"\nattempts logged to {a.log}, verdicts to {a.verdicts}")
 
 
 if __name__ == "__main__":

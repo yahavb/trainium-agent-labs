@@ -1,0 +1,67 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 2: 2D transpose ===========
+  tokens: prompt 1,066 = instructions 158 + reference 180 + api_card 728  [tokenizer] | answers 248, 302, 340, 302
+round 0: this round 0.30  best so far 0.30  (61.8s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 18: `nisa.dma_copy(dst=tile, src=x)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=16384 `tile` holds 16384 elements but `x` holds 384. Replace line 18 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile = nl.n
+  tokens: prompt 582 = instructions 67 + prev_code 247 + feedback 268  [tokenizer] | answers 247, 257, 294, 302
+round 1: this round 0.50  best so far 0.50  (51.4s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: NUMERICAL MISMATCH: worst error 4.21 of the output's RMS (1.01), tolerance 0.02.
+  at index (4, 2): expected +2.37489, got -1.87253
+  90.9% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+  tokens: prompt 430 = instructions 67 + prev_code 246 + feedback 117  [tokenizer] | answers 247, 369, 302, 339
+round 2: this round 0.50  best so far 0.50  (60.9s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: NUMERICAL MISMATCH: worst error 3.54 of the output's RMS (1.01), tolerance 0.02.
+  at index (24, 9): expected +2.62617, got -0.948358
+  91.4% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+  tokens: prompt 432 = instructions 67 + prev_code 246 + feedback 119  [tokenizer] | answers 247, 302, 477, 412
+round 3: this round 0.50  best so far 0.50  (69.1s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: NUMERICAL MISMATCH: worst error 4.21 of the output's RMS (1.01), tolerance 0.02.
+  at index (4, 2): expected +2.37489, got -1.87253
+  90.9% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+  tokens: prompt 430 = instructions 67 + prev_code 246 + feedback 117  [tokenizer] | answers 247, 355, 411, 257
+round 4: this round 0.50  best so far 0.50  (59.5s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: NUMERICAL MISMATCH: worst error 3.54 of the output's RMS (1.01), tolerance 0.02.
+  at index (24, 9): expected +2.62617, got -0.948358
+  91.4% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+  tokens: prompt 432 = instructions 67 + prev_code 246 + feedback 119  [tokenizer] | answers 247, 276, 261, 261
+round 5: this round 0.50  best so far 0.50  (49.7s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: NUMERICAL MISMATCH: worst error 4.21 of the output's RMS (1.01), tolerance 0.02.
+  at index (4, 2): expected +2.37489, got -1.87253
+  90.9% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+  tokens: prompt 430 = instructions 67 + prev_code 246 + feedback 117  [tokenizer] | answers 247, 261, 442, 302
+round 6: this round 0.50  best so far 0.50  (61.8s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: NUMERICAL MISMATCH: worst error 3.54 of the output's RMS (1.01), tolerance 0.02.
+  at index (24, 9): expected +2.62617, got -0.948358
+  91.4% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+  tokens: prompt 432 = instructions 67 + prev_code 246 + feedback 119  [tokenizer] | answers 247, 276, 280, 402
+round 7: this round 0.50  best so far 0.50  (61.4s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: NUMERICAL MISMATCH: worst error 4.21 of the output's RMS (1.01), tolerance 0.02.
+  at index (4, 2): expected +2.37489, got -1.87253
+  65.9% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+  not solved in 8 rounds; best reward 0.50
+  VERDICT level 2: FAILED, confidence 0.00: not solved: best score 0.50 after 8 rounds
+
+  CONFIDENCE level 2: 0.00 (it still fails shapes the loop tested) -- stated before the held-out check
+  VERDICT level 2: NOT SOLVED (best reward 0.50; held-out 0/16)
+    tokens spent: 16,936 prompt + 9,759 answer over 8 round(s)
+
+=========== summary ===========
+  level 2  reward 0.50 after 8 round(s)  tokens 16,936 prompt + 9,759 answer  confidence 0.00  NOT SOLVED (best reward 0.50; held-out 0/16)
+  solved 0/1
+
+=========== calibration, 1 verdict(s) ===========
+  said 0.00-0.01:   1 verdicts, mean confidence 0.00, actually passed held-out 0/1
+  Brier score 0.000.  Confident (>=0.5) but wrong: 0
+
+attempts logged to v82x_L2_s117.jsonl, verdicts to v82x_L2_s117_verdicts.jsonl

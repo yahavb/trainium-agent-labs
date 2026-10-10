@@ -1,0 +1,111 @@
+########## level 2
+feedback v7: PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen REPAIR_PROMPT=restructure GRADE_TIMEOUT=120 GATE=static USAGE_LOG=/workspace/out/s115/usage_nki_d11.jsonl
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 5 ################
+
+=========== level 2: 2D transpose ===========
+round 0: this round 0.30  best so far 0.30  (163.0s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 18: `nisa.dma_copy(dst=tile, src=x)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=16384 `tile` holds 16384 elements but `x` holds 384. Replace line 18 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile = nl.n
+round 1: this round 0.50  best so far 0.50  (152.3s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: NUMERICAL MISMATCH: worst error 4.49 of the output's RMS (1.01), tolerance 0.02.
+  at index (24, 9): expected +2.62617, got -1.9109
+  81.8% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+round 2: this round 0.30  best so far 0.50  (95.5s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 21: `tile = tile.reshape((F1, F2))` raised AssertionError: Partition dim size must be preserved, got 32 -> 3
+round 3: this round 0.30  best so far 0.50  (101.9s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 24: `tile = tile.transpose((0, 2, 1))` raised AttributeError: 'NkiTensor' object has no attribute 'transpose' A NkiTensor is not a numpy array, so it has no `transpose`. Use the nl/nisa functions instead.
+round 4: this round 1.00  best so far 1.00  (140.6s)
+  Correct on every shape.
+  SOLVED on round 4. Correct on every shape.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def tensor_transpose2D_kernel_(x, shape2D):
+      P, F = x.shape
+      F1, F2 = shape2D
+      assert F1 * F2 == F, f"shape2D {shape2D} does not match the free size {F}"
+    
+      # Allocate output buffer in shared HBM
+      out = nl.ndarray((P, F), dtype=x.dtype, buffer=nl.shared_hbm)
+    
+      # Allocate a tile with the same shape as x
+      tile = nl.ndarray(x.shape, dtype=x.dtype, buffer=nl.sbuf)
+    
+      # Copy data from HBM to SBUF tile
+      nisa.dma_copy(dst=tile, src=x)
+    
+      # Reshape the tile to (P, F1, F2)
+      tile = tile.reshape((P, F1, F2))
+    
+      # Transpose the tile along the last two dimensions using nisa functions
+      # Create a new tile for the transposed data
+      transposed_tile = nl.ndarray((P, F2, F1), dtype=x.dtype, buffer=nl.sbuf)
+    
+      # Copy data from the reshaped tile to the transposed tile
+      for p in range(P):
+          for f1 in range(F1):
+              for f2 in range(F2):
+                  transposed_tile[p, f2, f1] = tile[p, f1, f2]
+    
+      # Reshape back to (P, F)
+      transposed_tile = transposed_tile.reshape((P, F))
+    
+      # Copy the transposed data back to HBM
+      nisa.dma_copy(dst=out, src=transposed_tile)
+    
+      return out
+  -------------------------------------------
+  VERDICT level 2: VERIFIED, confidence 0.90: solved, and passes all 35 extra cases it was never graded on, and lowers for trn2
+
+=========== summary ===========
+  level 2  reward 1.00 after 5 round(s)  SOLVED
+  solved 1/1
+
+################ run 2 of 5 ################
+
+=========== level 2: 2D transpose ===========
+round 0: this round 0.30  best so far 0.30  (146.6s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 18: `nisa.dma_copy(dst=tile, src=x)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=16384 `tile` holds 16384 elements but `x` holds 384. Replace line 18 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile = nl.n
+round 1: this round 0.30  best so far 0.30  (114.8s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 24: `tile_p = tile[p, 0:128]` raised AssertionError: Out-of-bound access for tensor `unnamed` on dimension 1: index range [0, 127] exceed dimension size of 12. You indexed up to 127 on dimension 1, which is only 12 long. Tile limits are a MAXIMUM, not a target. Derive every bound from the tensor's own shape -- use min(limit, size) and let the fi
+round 2: this round 0.30  best so far 0.30  (120.5s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 25: `tile_p = tile[p, 0:nl.min(128, F)]` raised AttributeError: 'int' object has no attribute 'dtype' A int is not a numpy array, so it has no `dtype`. Use the nl/nisa functions instead.
+round 3: this round 0.30  best so far 0.30  (123.1s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 25: `tile_p = tile[p, 0:nl.min(nl.literal(128), F)]` raised AttributeError: module 'nki.language' has no attribute 'literal' `nki.language` has no `literal`. The closest real names are: not_equal, greater_equal, equal, logical_or, less_equal, bitwise_or. Pick one of those or use a different approach.
+round 4: this round 0.30  best so far 0.30  (129.8s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 26: `max_size = nl.constant(128)` raised AttributeError: module 'nki.language' has no attribute 'constant' `nki.language` has no `constant`. The closest real names are: shared_constant, arctan, tan, cos, tanh, subtract. Pick one of those or use a different approach.
+round 5: this round 0.30  best so far 0.30  (128.6s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 26: `max_size = nl.min(nl.constant(128), F)` raised AttributeError: module 'nki.language' has no attribute 'constant' `nki.language` has no `constant`. The closest real names are: shared_constant, arctan, tan, cos, tanh, subtract. Pick one of those or use a different approach.
+round 6: this round 0.30  best so far 0.30  (128.9s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 26: `max_size = nl.min(nl.shared_constant(128), F)` raised ValueError: Unsupported dtype: int64. NKI supports: ['bool', 'int8', 'int16', 'int32', 'uint8', 'uint16', 'uint32', 'float16', 'float32', 'bfloat16', 'float8_e4m3', 'float8_e4m3fn', 'float8_e5m2', 'float8_e5m2_x4', 'float8_e4m3fn_x4', 'float8_e8m0fnu', 'float4_e2m1fn_x4']
+round 7: this round 0.30  best so far 0.30  (130.9s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 26: `max_size = nl.min(nl.constant(128), nl.cast(F, nl.int32))` raised AttributeError: module 'nki.language' has no attribute 'constant' `nki.language` has no `constant`. The closest real names are: shared_constant, arctan, tan, cos, tanh, subtract. Pick one of those or use a different approach.
+  not solved in 8 rounds; best reward 0.30
+  VERDICT level 2: FAILED, confidence 0.00: not solved: best score 0.30 after 8 rounds
+
+=========== summary ===========
+  level 2  reward 0.30 after 8 round(s)
+  solved 0/1
+
+################ run 3 of 5 ################
+
+=========== level 2: 2D transpose ===========
+round 0: this round 0.30  best so far 0.30  (136.3s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 18: `nisa.dma_copy(dst=tile, src=x)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=16384 `tile` holds 16384 elements but `x` holds 384. Replace line 18 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile = nl.n
+round 1: this round 0.30  best so far 0.30  (136.8s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 27: `nisa.dma_copy(dst=tile, src=x[p:p+1, :])` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=12, dst=384 `tile` holds 384 elements but `x[p:p+1, :]` holds 12. Replace line 27 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+ 
+round 2: this round 0.30  best so far 0.30  (111.0s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 23: `tile_view = tile.reshape((F1, F2))` raised AssertionError: Partition dim size must be preserved, got 1 -> 3

@@ -1,0 +1,143 @@
+== l1_nki_l1fix_7a2ef959.py
+   C,H,W=(4, 8, 8) pool=2           predicted      29.4 us; birsim MATCHES: worst error 1.37e-07 of RMS
+   C,H,W=(8, 12, 12) pool=3         predicted      29.4 us; birsim MATCHES: worst error 1.86e-07 of RMS
+== l1_nki_l1fix_8f3f8ac7.py
+   C,H,W=(4, 8, 8) pool=2           predicted      29.0 us; birsim MATCHES: worst error 1.37e-07 of RMS
+   C,H,W=(8, 12, 12) pool=3         predicted      29.0 us; birsim MATCHES: worst error 1.86e-07 of RMS
+== l1_nki_l1fix_bb8217cc.py
+   C,H,W=(4, 8, 8) pool=2           predicted      29.0 us; birsim MATCHES: worst error 1.37e-07 of RMS
+   C,H,W=(8, 12, 12) pool=3         predicted      29.0 us; birsim MATCHES: worst error 1.86e-07 of RMS
+== l1_nki_l1fix_911e2ad4.py
+   C,H,W=(4, 8, 8) pool=2           predicted      29.0 us; birsim MATCHES: worst error 1.37e-07 of RMS
+   C,H,W=(8, 12, 12) pool=3         predicted      29.0 us; birsim MATCHES: worst error 1.86e-07 of RMS
+== l2_nki_l1fix_799e3b20.py
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: cannot align DMA operands: source has 12 elements but destination has 4; ensure source and destination tile shapes have matching element counts
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_solves/l2_nki_l1fix_799e3b20.py:25:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_solves/l2_nki_l1fix_799e3b20.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: failed to lower dma_copy
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_solves/l2_nki_l1fix_799e3b20.py:25:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_solves/l2_nki_l1fix_799e3b20.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/workspace/l1fix/live/out_l1fix_solves/l2_nki_l1fix_799e3b20.py:25:9: note: called from here
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_solves/l2_nki_l1fix_799e3b20.py:6:1: note: when tracing NKI kernel
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+   shape=(32, 12) as 3x4            FAILS: RuntimeError: error: failed to compile NKI kernel: Collected 2 different diagnostics: - [x1] error: cannot align DMA operands: source has 12 elements but destination has 4; e
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: cannot align DMA operands: source has 64 elements but destination has 8; ensure source and destination tile shapes have matching element counts
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_solves/l2_nki_l1fix_799e3b20.py:25:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_solves/l2_nki_l1fix_799e3b20.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: failed to lower dma_copy
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_solves/l2_nki_l1fix_799e3b20.py:25:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_solves/l2_nki_l1fix_799e3b20.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/workspace/l1fix/live/out_l1fix_solves/l2_nki_l1fix_799e3b20.py:25:9: note: called from here
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_solves/l2_nki_l1fix_799e3b20.py:6:1: note: when tracing NKI kernel
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+   shape=(128, 64) as 8x8           FAILS: RuntimeError: error: failed to compile NKI kernel: Collected 2 different diagnostics: - [x1] error: cannot align DMA operands: source has 64 elements but destination has 8; e
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: cannot align DMA operands: source has 128 elements but destination has 32; ensure source and destination tile shapes have matching element counts
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_solves/l2_nki_l1fix_799e3b20.py:25:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_solves/l2_nki_l1fix_799e3b20.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: failed to lower dma_copy
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_solves/l2_nki_l1fix_799e3b20.py:25:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_solves/l2_nki_l1fix_799e3b20.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/workspace/l1fix/live/out_l1fix_solves/l2_nki_l1fix_799e3b20.py:25:9: note: called from here
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_solves/l2_nki_l1fix_799e3b20.py:6:1: note: when tracing NKI kernel
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+   shape=(64, 128) as 4x32          FAILS: RuntimeError: error: failed to compile NKI kernel: Collected 2 different diagnostics: - [x1] error: cannot align DMA operands: source has 128 elements but destination has 32;
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: cannot align DMA operands: source has 35 elements but destination has 7; ensure source and destination tile shapes have matching element counts
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_solves/l2_nki_l1fix_799e3b20.py:25:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_solves/l2_nki_l1fix_799e3b20.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: failed to lower dma_copy
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_solves/l2_nki_l1fix_799e3b20.py:25:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_solves/l2_nki_l1fix_799e3b20.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/workspace/l1fix/live/out_l1fix_solves/l2_nki_l1fix_799e3b20.py:25:9: note: called from here
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_solves/l2_nki_l1fix_799e3b20.py:6:1: note: when tracing NKI kernel
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+   shape=(8, 35) as 5x7             FAILS: RuntimeError: error: failed to compile NKI kernel: Collected 2 different diagnostics: - [x1] error: cannot align DMA operands: source has 35 elements but destination has 7; e
+== l2_nki_l1fix_37140435.py
+   shape=(32, 12) as 3x4            predicted       2.6 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(128, 64) as 8x8           predicted       2.7 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(64, 128) as 4x32          predicted       2.7 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(8, 35) as 5x7             predicted       2.6 us; birsim MATCHES: worst error 0.00e+00 of RMS
+== l2_nki_l1fix_a9443650.py
+   shape=(32, 12) as 3x4            predicted       2.6 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(128, 64) as 8x8           predicted       2.7 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(64, 128) as 4x32          predicted       2.7 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(8, 35) as 5x7             predicted       2.6 us; birsim MATCHES: worst error 0.00e+00 of RMS
+== l2_nki_l1fix_0802e4ae.py
+   shape=(32, 12) as 3x4            predicted       2.6 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(128, 64) as 8x8           predicted       2.7 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(64, 128) as 4x32          predicted       2.7 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(8, 35) as 5x7             predicted       2.6 us; birsim MATCHES: worst error 0.00e+00 of RMS
+== l2_nki_l1fix_dbdc8ca6.py
+   shape=(32, 12) as 3x4            predicted      44.2 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(128, 64) as 8x8           predicted     169.1 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(64, 128) as 4x32          predicted      85.9 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(8, 35) as 5x7             predicted      13.0 us; birsim MATCHES: worst error 0.00e+00 of RMS
+== l2_nki_l1fix_558632f1.py
+   shape=(32, 12) as 3x4            predicted       2.6 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(128, 64) as 8x8           predicted       2.7 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(64, 128) as 4x32          predicted       2.7 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(8, 35) as 5x7             predicted       2.6 us; birsim MATCHES: worst error 0.00e+00 of RMS
+
+=== summary: distinct simulator-solved kernels, by what the compiler and birsim say
+level 1: {'match': 4}
+level 2: {'does not lower': 1, 'match': 5}
+    4 x error: failed to compile NKI kernel: Collected 2 different diagnostics: - [x1] error: cannot align D

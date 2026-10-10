@@ -1,0 +1,63 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 1: average pooling 2D ===========
+    (TRUNCATED: finish_reason=length after 9438 chars; prompt is 4185 chars)
+  tokens: prompt 1,193 = instructions 152 + reference 98 + api_card 943  [tokenizer] | answers 280, 331, 444, 2500
+round 0: this round 0.50  best so far 0.50  (219.9s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 20: `nisa.tensor_scalar(dst=m, data=s, op0=nl.multiply, operand0=1.0 / (p * p))` raised ValueError: input operand has more dimensions than allowed by the axis remapping
+  tokens: prompt 424 = instructions 68 + prev_code 279 + feedback 77  [tokenizer] | answers 391, 360, 349, 374
+round 1: this round 0.95  best so far 0.95  (70.9s)
+  Correct in the simulator on every shape, but the trn2 compiler rejects it: the chip has no such instruction, so this kernel cannot run on the device. Fix exactly these lines:
+
+Lines 19-29 (`t[c, ...]` gives an instruction one partition starting at partition `c`; on the chip every compute instruction must start at partition 0. Do all C rows at once with `c` gone: `t[:, ...]`, and (1, ...) tiles bec
+  tokens: prompt 897 = instructions 68 + prev_code 373 + feedback 456  [tokenizer] | answers 384, 468, 241, 467
+round 2: this round 1.00  best so far 1.00  (84.3s)
+  Correct on every shape.
+  SOLVED on round 2. Correct on every shape.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def tensor_avgpool_kernel(x, pool_size):
+      C, H, W = x.shape
+      p = pool_size
+      out_shape = (C, H // p, W // p)
+      out = nl.ndarray(out_shape, dtype=x.dtype, buffer=nl.shared_hbm)
+      t = nl.ndarray((C, H, W), dtype=x.dtype, buffer=nl.sbuf)
+      nisa.dma_copy(dst=t, src=x)
+    
+      # Compute the average over the pooling window
+      # Reshape to (C, H//p, p, W//p, p)
+      # Then take mean over the last two dimensions
+      # Use tile-based reduction
+      tile = nl.ndarray((C, p, p), dtype=x.dtype, buffer=nl.sbuf)
+      for h in nl.affine_range(H // p):
+          for w in nl.affine_range(W // p):
+              # Load the pooling window
+              window = t[:, h * p:(h + 1) * p, w * p:(w + 1) * p]
+              # Compute mean
+              sum_val = nl.sum(window, axis=[1, 2], keepdims=True)
+              mean_val = nl.ndarray((C, 1, 1), dtype=x.dtype, buffer=nl.sbuf)
+              nisa.tensor_scalar(dst=mean_val, data=sum_val, op0=nl.multiply, operand0=1.0 / (p * p))
+              # Store result
+              nisa.dma_copy(dst=out[:, h:h + 1, w:w + 1], src=mean_val[:, 0:1, 0:1])
+      return out
+  -------------------------------------------
+  VERDICT level 1: VERIFIED, confidence 0.90: solved, and passes all 35 extra cases it was never graded on, and lowers for trn2
+
+  CONFIDENCE level 1: 0.90 (passed every loop shape and nothing in the code is shape-specific) -- stated before the held-out check
+  VERDICT level 1: VERIFIED: loop shapes and 20/20 held-out cases
+    tokens spent: 10,056 prompt + 6,589 answer over 3 round(s)
+
+=========== summary ===========
+  level 1  reward 1.00 after 3 round(s)  SOLVED  tokens 10,056 prompt + 6,589 answer  confidence 0.90  VERIFIED: loop shapes and 20/20 held-out cases
+  solved 1/1
+
+=========== calibration, 1 verdict(s) ===========
+  said 0.80-1.00:   1 verdicts, mean confidence 0.90, actually passed held-out 1/1
+  Brier score 0.010.  Confident (>=0.5) but wrong: 0
+
+attempts logged to v82_L1c_s117.jsonl, verdicts to v82_L1c_s117_verdicts.jsonl

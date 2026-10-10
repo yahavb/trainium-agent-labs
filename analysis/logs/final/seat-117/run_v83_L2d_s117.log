@@ -1,0 +1,57 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1 L2CAT=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 2: 2D transpose ===========
+  tokens: prompt 1,066 = instructions 158 + reference 180 + api_card 728  [tokenizer] | answers 249, 442, 257, 302
+round 0: this round 0.50  best so far 0.50  (65.8s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: NUMERICAL MISMATCH: worst error 4.49 of the output's RMS (1.01), tolerance 0.02.
+  at index (24, 9): expected +2.62617, got -1.9109
+  81.8% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case Your output is x unchanged: no element moved. Each row's A-by-B block must becom
+  tokens: prompt 492 = instructions 67 + prev_code 248 + feedback 177  [tokenizer] | answers 249, 257, 257, 261
+round 1: this round 1.00  best so far 1.00  (48.2s)
+  Correct on every shape.
+  SOLVED on round 1. Correct on every shape.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def tensor_transpose2D_kernel_(x, shape2D):
+      P, F = x.shape
+      F1, F2 = shape2D
+      assert F1 * F2 == F, f"shape2D {shape2D} does not match the free size {F}"
+
+      # Allocate output buffer in shared HBM
+      out = nl.ndarray((P, F), dtype=x.dtype, buffer=nl.shared_hbm)
+
+      # Allocate a tile to hold the reshaped data
+      tile = nl.ndarray((P, F1, F2), dtype=x.dtype, buffer=nl.sbuf)
+
+      # Copy input data into the tile
+      nisa.dma_copy(dst=tile, src=x)
+
+      # Reshape and transpose the data
+      for p in nl.affine_range(P):
+          for i in nl.affine_range(F1):
+              for j in nl.affine_range(F2):
+                  out[p, j * F1 + i] = tile[p, i, j]
+
+      return out
+  -------------------------------------------
+  VERDICT level 2: VERIFIED, confidence 0.90: solved, and passes all 35 extra cases it was never graded on, and lowers for trn2
+
+  CONFIDENCE level 2: 0.90 (passed every loop shape and nothing in the code is shape-specific) -- stated before the held-out check
+  VERDICT level 2: VERIFIED: loop shapes and 16/16 held-out cases
+    tokens spent: 6,232 prompt + 2,274 answer over 2 round(s)
+
+=========== summary ===========
+  level 2  reward 1.00 after 2 round(s)  SOLVED  tokens 6,232 prompt + 2,274 answer  confidence 0.90  VERIFIED: loop shapes and 16/16 held-out cases
+  solved 1/1
+
+=========== calibration, 1 verdict(s) ===========
+  said 0.80-1.00:   1 verdicts, mean confidence 0.90, actually passed held-out 1/1
+  Brier score 0.010.  Confident (>=0.5) but wrong: 0
+
+attempts logged to v83_L2d_s117.jsonl, verdicts to v83_L2d_s117_verdicts.jsonl

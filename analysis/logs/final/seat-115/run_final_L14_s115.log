@@ -1,0 +1,53 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1 L2CAT=1 WARM=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 14: clipped gate ===========
+  tokens: prompt 951 = instructions 150 + reference 73 + api_card 728  [tokenizer] | answers 305, 295, 241, 295
+round 0: this round 0.30  best so far 0.30  (58.6s)
+  0 of 3 shapes passed. On R=128 C=64: Line 14: `nisa.dma_copy(dst=tile_x, src=x)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=65536 `tile_x` holds 65536 elements but `x` holds 8192. Replace line 14 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile_x = nl.ndar
+    (TRUNCATED: finish_reason=length after 7500 chars; prompt is 3512 chars)
+  tokens: prompt 525 = instructions 65 + prev_code 304 + feedback 156  [tokenizer] | answers 295, 262, 363, 2500
+round 1: this round 0.30  best so far 0.30  (211.3s)
+  0 of 3 shapes passed. On R=128 C=64: Line 16: `nisa.dma_copy(dst=tile_y, src=y)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=65536 `tile_y` holds 65536 elements but `y` holds 8192. Replace line 16 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile_y = nl.ndar
+  tokens: prompt 515 = instructions 65 + prev_code 294 + feedback 156  [tokenizer] | answers 285, 363, 380, 268
+round 2: this round 0.50  best so far 0.50  (59.0s)
+  0 of 3 shapes passed. On R=128 C=64: NON-FINITE OUTPUT: 8192 NaN and 0 Inf, first at (0, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.
+  tokens: prompt 506 = instructions 65 + prev_code 379 + feedback 62  [tokenizer] | answers 410, 395, 363, 446
+round 3: same failure again (0.50, best so far 0.50)
+  same failure 2x — adding a ledger of 3 failed attempts to break the repeat
+  tokens: prompt 705 = instructions 65 + prev_code 394 + feedback 62 + ledger 184  [tokenizer] | answers 507, 334, 241, 380
+round 4: same failure again (0.50, best so far 0.50)
+  same failure 3x — adding a ledger of 3 failed attempts to break the repeat
+    (TRUNCATED: finish_reason=length after 7500 chars; prompt is 3512 chars)
+  tokens: prompt 690 = instructions 65 + prev_code 379 + feedback 62 + ledger 184  [tokenizer] | answers 450, 2500, 390, 363
+round 5: this round 0.30  best so far 0.50  (221.5s)
+  0 of 3 shapes passed. On R=128 C=64: Line 23: `lower_bound.fill(-1.0)` raised AttributeError: 'NkiTensor' object has no attribute 'fill' A NkiTensor is not a numpy array, so it has no `fill`. Use the nl/nisa functions instead.
+  tokens: prompt 586 = instructions 65 + prev_code 449 + feedback 72  [tokenizer] | answers 468, 268, 381, 367
+round 6: this round 0.30  best so far 0.50  (73.8s)
+  0 of 3 shapes passed. On R=128 C=64: Line 24: `nisa.fill(lower_bound, -1.0)` raised AttributeError: module 'nki.isa' has no attribute 'fill' `nki.isa` has no `fill`, and nothing similar exists. Its real names include: NkiInstruction, NkiValidationError, VirtualRegister, activate2, activation, activation_reduce, affine_select, bn_aggr, bn_stats, core_barrier, dge_mode, dma_compute, dma_copy, dma_en
+  tokens: prompt 686 = instructions 65 + prev_code 467 + feedback 154  [tokenizer] | answers 471, 380, 272, 363
+round 7: this round 0.50  best so far 0.50  (73.5s)
+  0 of 3 shapes passed. On R=128 C=64: NON-FINITE OUTPUT: 8192 NaN and 0 Inf, first at (0, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.
+  STOPPING this level: this failure for the 4th time, alternating with 4 other(s). The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 3 shapes passed. On R=128 C=64: NON-FINITE OUTPUT: 8192 NaN and 0 Inf, first at (0, 0). Usually an uninit
+    1x  0 of 3 shapes passed. On R=128 C=64: Line 14: `nisa.dma_copy(dst=tile_x, src=x)` raised AssertionError: dma_co
+    1x  0 of 3 shapes passed. On R=128 C=64: Line 16: `nisa.dma_copy(dst=tile_y, src=y)` raised AssertionError: dma_co
+    1x  0 of 3 shapes passed. On R=128 C=64: Line 23: `lower_bound.fill(-1.0)` raised AttributeError: 'NkiTensor' obje
+    1x  0 of 3 shapes passed. On R=128 C=64: Line 24: `nisa.fill(lower_bound, -1.0)` raised AttributeError: module 'nk
+  VERDICT level 14: FAILED, confidence 0.00: not solved: best score 0.50 after 8 rounds
+
+  CONFIDENCE level 14: 0.00 (it still fails shapes the loop tested) -- stated before the held-out check
+  VERDICT level 14: UNVERIFIED (no held-out check ran)
+    tokens spent: 20,656 prompt + 15,601 answer over 8 round(s)
+
+=========== summary ===========
+  level 14  reward 0.50 after 8 round(s)  tokens 20,656 prompt + 15,601 answer  confidence 0.00  UNVERIFIED (no held-out check ran)
+  solved 0/1
+
+  calibration: nothing to score (no held-out check ran)
+
+attempts logged to final_L14_s115.jsonl, verdicts to final_L14_s115_verdicts.jsonl

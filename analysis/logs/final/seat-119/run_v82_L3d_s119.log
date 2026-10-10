@@ -1,0 +1,53 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 3: matmul, single tile ===========
+  tokens: prompt 1,135 = instructions 156 + reference 110 + api_card 869  [tokenizer] | answers 331, 268, 323, 308
+round 0: this round 1.00  best so far 1.00  (62.2s)
+  Correct on every shape. MEMORY BOUND: 19.7 Flops/Byte against a ridge of 222, so 9% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 11.3x more reuse needed.
+  SOLVED on round 0. Correct on every shape. MEMORY BOUND: 19.7 Flops/Byte against a ridge of 222, so 9% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 11.3x more reuse needed.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_matmul_basic_(lhsT, rhs):
+      # Allocate SBUF tiles for lhsT and rhs
+      lhs_tile = nl.ndarray(lhsT.shape, dtype=lhsT.dtype, buffer=nl.sbuf)
+      rhs_tile = nl.ndarray(rhs.shape, dtype=rhs.dtype, buffer=nl.sbuf)
+      # Allocate PSUM tile for result
+      psum_tile = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=nl.float32, buffer=nl.psum)
+    
+      # Copy lhsT and rhs into SBUF tiles
+      nisa.dma_copy(dst=lhs_tile, src=lhsT)
+      nisa.dma_copy(dst=rhs_tile, src=rhs)
+    
+      # Perform matrix multiplication using nc_matmul
+      nisa.nc_matmul(dst=psum_tile, stationary=lhs_tile, moving=rhs_tile)
+    
+      # Copy result from PSUM to SBUF
+      result_tile = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=lhsT.dtype, buffer=nl.sbuf)
+      nisa.tensor_copy(dst=result_tile, src=psum_tile)
+    
+      # Copy result from SBUF to shared HBM
+      out = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+      nisa.dma_copy(dst=out, src=result_tile)
+    
+      return out
+  -------------------------------------------
+  VERDICT level 3: VERIFIED, confidence 0.74: solved, and passes all 11 extra cases it was never graded on, and lowers for trn2
+
+  CONFIDENCE level 3: 0.63 (the loop tested a single shape) -- stated before the held-out check
+  VERDICT level 3: VERIFIED: loop shapes and 4/4 held-out cases
+    tokens spent: 4,540 prompt + 1,230 answer over 1 round(s)
+
+=========== summary ===========
+  level 3  reward 1.00 after 1 round(s)  SOLVED  tokens 4,540 prompt + 1,230 answer  confidence 0.63  VERIFIED: loop shapes and 4/4 held-out cases
+  solved 1/1
+
+=========== calibration, 1 verdict(s) ===========
+  said 0.50-0.80:   1 verdicts, mean confidence 0.63, actually passed held-out 1/1
+  Brier score 0.137.  Confident (>=0.5) but wrong: 0
+
+attempts logged to v82_L3d_s119.jsonl, verdicts to v82_L3d_s119_verdicts.jsonl

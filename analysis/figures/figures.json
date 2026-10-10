@@ -1,0 +1,298 @@
+{
+ "note": "final logs (analysis/logs/final, 67bf16b); final version: v8.2 runs on L1/L3/L4, v8.3 + v8.5 on L2",
+ "solved": {
+  "baseline": {
+   "1": [
+    0,
+    10
+   ],
+   "2": [
+    5,
+    10
+   ],
+   "3": [
+    0,
+    10
+   ],
+   "4": [
+    0,
+    10
+   ]
+  },
+  "v7": {
+   "1": [
+    0,
+    1
+   ],
+   "2": [
+    0,
+    3
+   ],
+   "3": [
+    5,
+    5
+   ],
+   "4": [
+    5,
+    5
+   ]
+  },
+  "v8.2": {
+   "1": [
+    7,
+    7
+   ],
+   "2": [
+    5,
+    9
+   ],
+   "3": [
+    5,
+    5
+   ],
+   "4": [
+    5,
+    5
+   ]
+  },
+  "final version": {
+   "1": [
+    7,
+    7
+   ],
+   "2": [
+    13,
+    17
+   ],
+   "3": [
+    5,
+    5
+   ],
+   "4": [
+    5,
+    5
+   ]
+  }
+ },
+ "first_solve": {
+  "1": {
+   "rounds": [
+    0,
+    2,
+    2,
+    2,
+    2,
+    4,
+    7
+   ],
+   "attempts": [
+    3,
+    9,
+    9,
+    9,
+    9,
+    17,
+    29
+   ],
+   "runs": 7
+  },
+  "2": {
+   "rounds": [
+    0,
+    1,
+    1,
+    1,
+    1,
+    1,
+    2,
+    2,
+    2,
+    2,
+    3,
+    4,
+    4
+   ],
+   "attempts": [
+    3,
+    5,
+    5,
+    5,
+    5,
+    5,
+    9,
+    9,
+    11,
+    11,
+    15,
+    17,
+    19
+   ],
+   "runs": 17
+  },
+  "3": {
+   "rounds": [
+    0,
+    0,
+    0,
+    0,
+    2
+   ],
+   "attempts": [
+    1,
+    1,
+    1,
+    1,
+    9
+   ],
+   "runs": 5
+  },
+  "4": {
+   "rounds": [
+    2,
+    2,
+    2,
+    2,
+    2
+   ],
+   "attempts": [
+    9,
+    9,
+    9,
+    9,
+    9
+   ],
+   "runs": 5
+  }
+ },
+ "modes": {
+  "baseline": {
+   "copy_size_mismatch": 196,
+   "invented_name": 162,
+   "broadcast": 18,
+   "partition_over_128": 110,
+   "out_of_bounds": 96,
+   "reshape": 98,
+   "numeric_mismatch": 14,
+   "tile_1d": 55,
+   "failed attempts": 837
+  },
+  "v7": {
+   "copy_size_mismatch": 12,
+   "invented_name": 34,
+   "broadcast": 20,
+   "partition_over_128": 20,
+   "out_of_bounds": 20,
+   "reshape": 0,
+   "numeric_mismatch": 0,
+   "tile_1d": 0,
+   "failed attempts": 167
+  },
+  "v8.2": {
+   "copy_size_mismatch": 140,
+   "invented_name": 7,
+   "broadcast": 74,
+   "partition_over_128": 5,
+   "out_of_bounds": 4,
+   "reshape": 1,
+   "numeric_mismatch": 35,
+   "tile_1d": 7,
+   "failed attempts": 360
+  },
+  "final version": {
+   "copy_size_mismatch": 178,
+   "invented_name": 13,
+   "broadcast": 76,
+   "partition_over_128": 5,
+   "out_of_bounds": 10,
+   "reshape": 1,
+   "numeric_mismatch": 28,
+   "tile_1d": 8,
+   "failed attempts": 423
+  }
+ },
+ "files": {
+  "baseline": [
+   "analysis/logs/baseline/attempts.jsonl",
+   "analysis/logs/replica_seat119/attempts.jsonl"
+  ],
+  "v7": [
+   "../trainium-agent-labs/runs/seat-116/Ev7_L2/Ev7_L2.jsonl",
+   "../trainium-agent-labs/runs/seat-117/Ev7_L3/Ev7_L3.jsonl",
+   "../trainium-agent-labs/runs/seat-118/Ev7_L4/Ev7_L4.jsonl",
+   "../trainium-agent-labs/runs/seat-119/Ev7_L1/Ev7_L1.jsonl"
+  ],
+  "v8.2": [
+   "analysis/logs/final/seat-116/v82_L2_s116.jsonl",
+   "analysis/logs/final/seat-116/v82_L3_s116.jsonl",
+   "analysis/logs/final/seat-117/v82_L1_s117.jsonl",
+   "analysis/logs/final/seat-117/v82_L1b_s117.jsonl",
+   "analysis/logs/final/seat-117/v82_L1c_s117.jsonl",
+   "analysis/logs/final/seat-117/v82x_L1_s117.jsonl",
+   "analysis/logs/final/seat-117/v82x_L2_s117.jsonl",
+   "analysis/logs/final/seat-118/v82_L1_s118.jsonl",
+   "analysis/logs/final/seat-118/v82_L1b_s118.jsonl",
+   "analysis/logs/final/seat-118/v82_L2_s118.jsonl",
+   "analysis/logs/final/seat-118/v82_L3_s118.jsonl",
+   "analysis/logs/final/seat-118/v82x_L1_s118.jsonl",
+   "analysis/logs/final/seat-118/v82x_L1b_s118.jsonl",
+   "analysis/logs/final/seat-118/v82x_L2_s118.jsonl",
+   "analysis/logs/final/seat-119/v82_L2_s119.jsonl",
+   "analysis/logs/final/seat-119/v82_L3d_s119.jsonl",
+   "analysis/logs/final/seat-119/v82_L4_s119.jsonl",
+   "analysis/logs/final/seat-119/v82_L4b_s119.jsonl",
+   "analysis/logs/final/seat-119/v82_L4c_s119.jsonl",
+   "analysis/logs/final/seat-119/v82x_L1_s119.jsonl"
+  ],
+  "final version": [
+   "analysis/logs/final/seat-116/v82_L3_s116.jsonl",
+   "analysis/logs/final/seat-117/v82_L1_s117.jsonl",
+   "analysis/logs/final/seat-117/v82_L1b_s117.jsonl",
+   "analysis/logs/final/seat-117/v82_L1c_s117.jsonl",
+   "analysis/logs/final/seat-117/v82x_L1_s117.jsonl",
+   "analysis/logs/final/seat-117/v83_L2_s117.jsonl",
+   "analysis/logs/final/seat-117/v83_L2b_s117.jsonl",
+   "analysis/logs/final/seat-117/v83_L2c_s117.jsonl",
+   "analysis/logs/final/seat-117/v83_L2d_s117.jsonl",
+   "analysis/logs/final/seat-117/v85_L2_s117.jsonl",
+   "analysis/logs/final/seat-117/v85_L2b_s117.jsonl",
+   "analysis/logs/final/seat-117/v85_L2c_s117.jsonl",
+   "analysis/logs/final/seat-117/v85_L2d_s117.jsonl",
+   "analysis/logs/final/seat-118/v82_L1_s118.jsonl",
+   "analysis/logs/final/seat-118/v82_L1b_s118.jsonl",
+   "analysis/logs/final/seat-118/v82_L3_s118.jsonl",
+   "analysis/logs/final/seat-118/v82x_L1_s118.jsonl",
+   "analysis/logs/final/seat-118/v82x_L1b_s118.jsonl",
+   "analysis/logs/final/seat-118/v85_L2_s118.jsonl",
+   "analysis/logs/final/seat-118/v85_L2b_s118.jsonl",
+   "analysis/logs/final/seat-118/v85_L2c_s118.jsonl",
+   "analysis/logs/final/seat-118/v85_L2d_s118.jsonl",
+   "analysis/logs/final/seat-119/v82_L3d_s119.jsonl",
+   "analysis/logs/final/seat-119/v82_L4_s119.jsonl",
+   "analysis/logs/final/seat-119/v82_L4b_s119.jsonl",
+   "analysis/logs/final/seat-119/v82_L4c_s119.jsonl",
+   "analysis/logs/final/seat-119/v82x_L1_s119.jsonl",
+   "analysis/logs/final/seat-119/v83_L2_s119.jsonl",
+   "analysis/logs/final/seat-119/v83_L2b_s119.jsonl",
+   "analysis/logs/final/seat-119/v83_L2c_s119.jsonl",
+   "analysis/logs/final/seat-119/v83_L2d_s119.jsonl"
+  ]
+ },
+ "left_out": {
+  "baseline": [],
+  "v7": [
+   "Ev7_L2.jsonl run 3 L2",
+   "Ev7_L1.jsonl run 1 L1"
+  ],
+  "v8.2": [
+   "v82x_L1_s117.jsonl run 0 L1",
+   "v82x_L1_s119.jsonl run 0 L1"
+  ],
+  "final version": [
+   "v82x_L1_s117.jsonl run 0 L1",
+   "v85_L2d_s117.jsonl run 0 L2",
+   "v85_L2d_s118.jsonl run 0 L2",
+   "v82x_L1_s119.jsonl run 0 L1",
+   "v83_L2d_s119.jsonl run 0 L2"
+  ]
+ }
+}

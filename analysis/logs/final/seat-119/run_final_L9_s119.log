@@ -1,0 +1,81 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1 L2CAT=1 WARM=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 9: row softmax ===========
+  tokens: prompt 1,173 = instructions 146 + reference 84 + api_card 943  [tokenizer] | answers 411, 506, 443, 443
+round 0: this round 0.83  best so far 0.83  (88.7s)
+  2 of 3 shapes passed. On R=256 C=128 scale=30.0: Line 13: `nisa.dma_copy(dst=tile, src=x)` raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 A tile may have at most 128 rows, and you asked for 256. Do not allocate one tile for the whole tensor: loop over the partition dimension in chunks of at most 128 with nl.affine_range, allocate the tile inside the loop with the c
+  tokens: prompt 677 = instructions 65 + prev_code 410 + feedback 202  [tokenizer] | answers 499, 443, 471, 443
+round 1: this round 0.95  best so far 0.95  (84.1s)
+  Correct in the simulator on every shape, but the trn2 compiler rejects it: the chip has no such instruction, so this kernel cannot run on the device. Fix exactly these lines:
+
+Line 38 (nl.divide as an operation: compute the reciprocal with nisa.reciprocal, then multiply). Replace:
+        nisa.tensor_scalar(dst=div_tile, data=exp_tile, op0=nl.divide, operand0=sum_vals)
+with:
+        inv = nl.ndarr
+  tokens: prompt 722 = instructions 65 + prev_code 498 + feedback 159  [tokenizer] | answers 546, 443, 495, 471
+round 2: this round 1.00  best so far 1.00  (90.5s)
+  Correct on every shape.
+  SOLVED on round 2. Correct on every shape.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_softmax_(x):
+      R, C = x.shape
+      # Allocate output in shared HBM
+      out = nl.ndarray((R, C), dtype=x.dtype, buffer=nl.shared_hbm)
+    
+      # Loop over the rows in chunks of 128
+      for i in nl.affine_range(0, R, 128):
+          # Compute the chunk size
+          chunk_size = min(128, R - i)
+          # Allocate tile in SBUF for the current chunk
+          tile = nl.ndarray((chunk_size, C), dtype=x.dtype, buffer=nl.sbuf)
+          # Copy input chunk to SBUF tile
+          nisa.dma_copy(dst=tile, src=x[i:i+chunk_size, :])
+        
+          # Compute max along axis 1 (rows) for the chunk
+          max_vals = nl.ndarray((chunk_size, 1), dtype=x.dtype, buffer=nl.sbuf)
+          max_vals = nl.max(tile, axis=[1], keepdims=True)
+        
+          # Subtract max from tile
+          sub_tile = nl.ndarray((chunk_size, C), dtype=x.dtype, buffer=nl.sbuf)
+          nisa.tensor_scalar(dst=sub_tile, data=tile, op0=nl.subtract, operand0=max_vals)
+        
+          # Compute exp of sub_tile
+          exp_tile = nl.ndarray((chunk_size, C), dtype=x.dtype, buffer=nl.sbuf)
+          nisa.activation(dst=exp_tile, op=nl.exp, data=sub_tile)
+        
+          # Compute sum along axis 1 (rows) for the chunk
+          sum_vals = nl.ndarray((chunk_size, 1), dtype=x.dtype, buffer=nl.sbuf)
+          sum_vals = nl.sum(exp_tile, axis=[1], keepdims=True)
+        
+          # Compute reciprocal of sum_vals
+          inv = nl.ndarray(sum_vals.shape, dtype=nl.float32, buffer=nl.sbuf)
+          nisa.reciprocal(dst=inv, data=sum_vals)
+        
+          # Multiply exp_tile by reciprocal of sum_vals
+          div_tile = nl.ndarray((chunk_size, C), dtype=x.dtype, buffer=nl.sbuf)
+          nisa.tensor_scalar(dst=div_tile, data=exp_tile, op0=nl.multiply, operand0=inv)
+        
+          # Copy result to output
+          nisa.dma_copy(dst=out[i:i+chunk_size, :], src=div_tile)
+    
+      return out
+  -------------------------------------------
+  VERDICT level 9: VERIFIED, confidence 0.80: solved, and passes all 15 extra cases it was never graded on, and lowers for trn2
+
+  CONFIDENCE level 9: 0.90 (passed every loop shape and nothing in the code is shape-specific) -- stated before the held-out check
+  VERDICT level 9: UNVERIFIED (no held-out check ran)
+    tokens spent: 10,288 prompt + 5,614 answer over 3 round(s)
+
+=========== summary ===========
+  level 9  reward 1.00 after 3 round(s)  SOLVED  tokens 10,288 prompt + 5,614 answer  confidence 0.90  UNVERIFIED (no held-out check ran)
+  solved 1/1
+
+  calibration: nothing to score (no held-out check ran)
+
+attempts logged to final_L9_s119.jsonl, verdicts to final_L9_s119_verdicts.jsonl

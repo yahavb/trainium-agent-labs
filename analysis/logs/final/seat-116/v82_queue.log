@@ -1,0 +1,21 @@
+20:09:24 start v82_L2_s116 L2 rounds=8 repeat=3 
+20:33:25 done  v82_L2_s116:   level 2  reward 0.50 after 8 round(s)  ;  level 2  reward 1.00 after 5 round(s)  SOLVED  ;  level 2  reward 0.50 after 8 round(s)  ;
+20:33:25 start v82_L3_s116 L3 rounds=8 repeat=1 
+20:34:30 done  v82_L3_s116:   level 3  reward 1.00 after 1 round(s)  SOLVED  ;
+20:34:30 v82 queue finished
+20:34:33 start final_all --all --repeat 1
+21:20:15 start v84w_L7_s116 L7 rounds=8 repeat=1 L2CAT=1 WARM=1
+21:26:12 done  v84w_L7_s116:   level 7  reward 0.75 after 4 round(s)  ;
+21:26:12 start v84w_L7b_s116 L7 rounds=8 repeat=1 L2CAT=1 WARM=1
+21:35:19 done  v84w_L7b_s116:   level 7  reward 0.75 after 6 round(s)  ;
+21:35:19 extra queue finished
+21:42:27 start warm_L5_s116 L5 rounds=8 repeat=1 L2CAT=1 WARM=1
+21:53:46 done  warm_L5_s116:   level 5  reward 0.88 after 7 round(s)  ;
+21:53:46 start warm_L6_s116 L6 rounds=8 repeat=1 L2CAT=1 WARM=1
+22:01:50 done  warm_L6_s116:   level 6  reward 0.75 after 5 round(s)  ;
+22:01:50 start warm_L5b_s116 L5 rounds=8 repeat=1 L2CAT=1 WARM=1
+22:09:36 done  warm_L5b_s116:   level 5  reward 0.88 after 5 round(s)  ;
+22:09:36 extra queue finished
+22:09:42 start warm_L6b_s116 L6 rounds=8 repeat=1 L2CAT=1 WARM=1
+22:18:18 done  warm_L6b_s116:   level 6  reward 0.75 after 5 round(s)  ;
+22:18:18 start warm_L5c_s116 L5 rounds=8 repeat=1 L2CAT=1 WARM=1

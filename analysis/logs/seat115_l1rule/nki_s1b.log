@@ -1,0 +1,35 @@
+########## level 1
+feedback v7: PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen REPAIR_PROMPT=restructure GRADE_TIMEOUT=120 GATE=static USAGE_LOG=/workspace/out/s115/usage_nki_s1b.jsonl
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 3 ################
+
+=========== level 1: average pooling 2D ===========
+round 0: this round 0.50  best so far 0.50  (119.3s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 22: `nisa.tensor_scalar(dst=m, data=s, op0=nl.multiply, operand0=1.0 / (p * p))` raised ValueError: input operand has more dimensions than allowed by the axis remapping
+round 1: this round 0.30  best so far 0.50  (133.0s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 21: `s_flat = s.reshape((C * (H // p) * (W // p)))` raised TypeError: 'int' object is not iterable
+round 2: same failure again (0.30, best so far 0.50)
+  same failure 2x — adding a ledger of 2 failed attempts to break the repeat
+round 3: same failure again (0.30, best so far 0.50)
+  same failure 3x — adding a ledger of 2 failed attempts to break the repeat
+round 4: this round 0.50  best so far 0.50  (113.0s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 21: `s_flat = s.reshape((C, H // p, W // p))` raised AssertionError: cannot reshape tensor of size 1024 (shape (32, 16, 2, 1, 1)) into shape (32, 16, 16) (size 8192)
+round 5: this round 0.50  best so far 0.50  (115.1s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 21: `s_flat = s.reshape((C, H // p, W // p, 1, 1))` raised AssertionError: cannot reshape tensor of size 1024 (shape (32, 16, 2, 1, 1)) into shape (32, 16, 16, 1, 1) (size 8192)
+round 6: this round 0.50  best so far 0.50  (113.0s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 21: `s_flat = s.reshape((C, H // p, W // p))` raised AssertionError: cannot reshape tensor of size 1024 (shape (32, 16, 2, 1, 1)) into shape (32, 16, 16) (size 8192)
+round 7: this round 0.50  best so far 0.50  (115.1s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 21: `s_flat = s.reshape((C, H // p, W // p, 1, 1))` raised AssertionError: cannot reshape tensor of size 1024 (shape (32, 16, 2, 1, 1)) into shape (32, 16, 16, 1, 1) (size 8192)
+  not solved in 8 rounds; best reward 0.50
+  VERDICT level 1: FAILED, confidence 0.00: not solved: best score 0.50 after 8 rounds
+
+=========== summary ===========
+  level 1  reward 0.50 after 8 round(s)
+  solved 0/1
+
+################ run 2 of 3 ################
+
+=========== level 1: average pooling 2D ===========
+round 0: this round 0.50  best so far 0.50  (96.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 20: `nisa.tensor_scalar(dst=m, data=s, op0=nl.multiply, operand0=1.0 / (p * p))` raised ValueError: input operand has more dimensions than allowed by the axis remapping

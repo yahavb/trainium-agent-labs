@@ -1,0 +1,4 @@
+﻿level,rounds,mean instructions,mean reference,mean api_card,mean prev_code,mean feedback,mean ledger,mean chat_template,mean prompt,mean answer,share: prev_code+feedback+ledger
+5,6,86,18,146,351,168,73,0,842,335,70%
+6,8,83,14,110,371,228,0,0,805,355,74%
+7,7,87,16,125,361,168,42,0,799,355,71%

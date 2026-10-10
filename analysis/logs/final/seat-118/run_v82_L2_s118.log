@@ -1,0 +1,117 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 2 ################
+
+=========== level 2: 2D transpose ===========
+  tokens: prompt 1,066 = instructions 158 + reference 180 + api_card 728  [tokenizer] | answers 376, 256, 302, 302
+round 0: this round 0.30  best so far 0.30  (64.6s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 18: `nisa.dma_copy(dst=tile, src=x)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=16384 `tile` holds 16384 elements but `x` holds 384. Replace line 18 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile = nl.n
+  tokens: prompt 710 = instructions 67 + prev_code 375 + feedback 268  [tokenizer] | answers 339, 302, 302, 302
+round 1: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+  tokens: prompt 742 = instructions 67 + prev_code 338 + feedback 268 + ledger 69  [tokenizer] | answers 280, 413, 261, 338
+round 2: this round 0.50  best so far 0.50  (61.9s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: NUMERICAL MISMATCH: worst error 4.49 of the output's RMS (1.01), tolerance 0.02.
+  at index (24, 9): expected +2.62617, got -1.9109
+  81.8% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+  tokens: prompt 444 = instructions 67 + prev_code 260 + feedback 117  [tokenizer] | answers 261, 276, 300, 524
+round 3: this round 1.00  best so far 1.00  (69.2s)
+  Correct on every shape.
+  SOLVED on round 3. Correct on every shape.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def tensor_transpose2D_kernel_(x, shape2D):
+      P, F = x.shape
+      F1, F2 = shape2D
+      assert F1 * F2 == F, f"shape2D {shape2D} does not match the free size {F}"
+    
+      # Allocate output buffer in shared HBM
+      out = nl.ndarray((P, F), dtype=x.dtype, buffer=nl.shared_hbm)
+    
+      # Allocate a tile to hold the data in sbuf
+      tile = nl.ndarray((P, F1, F2), dtype=x.dtype, buffer=nl.sbuf)
+    
+      # Copy data from HBM to sbuf tile
+      nisa.dma_copy(dst=tile, src=x)
+    
+      # Reshape and transpose the data in the tile
+      for p in nl.affine_range(P):
+          for i in nl.affine_range(F1):
+              for j in nl.affine_range(F2):
+                  out[p, j * F1 + i] = tile[p, i, j]
+    
+      return out
+  -------------------------------------------
+  VERDICT level 2: VERIFIED, confidence 0.90: solved, and passes all 35 extra cases it was never graded on, and lowers for trn2
+
+  CONFIDENCE level 2: 0.90 (passed every loop shape and nothing in the code is shape-specific) -- stated before the held-out check
+  VERDICT level 2: VERIFIED: loop shapes and 16/16 held-out cases
+    tokens spent: 11,848 prompt + 5,134 answer over 4 round(s)
+
+=========== summary ===========
+  level 2  reward 1.00 after 4 round(s)  SOLVED  tokens 11,848 prompt + 5,134 answer  confidence 0.90  VERIFIED: loop shapes and 16/16 held-out cases
+  solved 1/1
+
+################ run 2 of 2 ################
+
+=========== level 2: 2D transpose ===========
+  tokens: prompt 1,066 = instructions 158 + reference 180 + api_card 728  [tokenizer] | answers 326, 332, 302, 340
+round 0: this round 0.30  best so far 0.30  (60.1s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 28: `transposed_view = view.tile.ap([[0, F2], [0, F1]])` raised AttributeError: 'NkiTensor' object has no attribute 'tile' A NkiTensor is not a numpy array, so it has no `tile`. Use the nl/nisa functions instead.
+  tokens: prompt 481 = instructions 67 + prev_code 325 + feedback 89  [tokenizer] | answers 297, 302, 302, 261
+round 1: this round 0.30  best so far 0.30  (54.3s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 27: `transposed_view = nisa.transpose(view, axes=(1, 0))` raised AttributeError: module 'nki.isa' has no attribute 'transpose' Only the token `nisa.transpose` is wrong: `transpose` is in nki.language. Change that one token and nothing else on the line, so it reads:
+
+    transposed_view = nl.transpose(view, axes=(1, 0))
+
+  tokens: prompt 476 = instructions 67 + prev_code 296 + feedback 113  [tokenizer] | answers 295, 249, 279, 261
+round 2: this round 0.30  best so far 0.30  (50.1s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 27: `transposed_view = nl.transpose(view, axes=(1, 0))` raised TypeError: transpose() got an unexpected keyword argument 'axes' Remove the `axes=` argument. The real signature is language.transpose(x, dtype=None).
+  tokens: prompt 437 = instructions 67 + prev_code 294 + feedback 76  [tokenizer] | answers 288, 339, 292, 257
+round 3: this round 0.30  best so far 0.30  (56.0s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 27: `transposed_view = nl.transpose(view)` raised ValueError: cannot reshape array of size 12 into shape (3,1) Do not reshape. Work with the shapes you were given and slice them into tiles, e.g. src=a[0:128, 0:64].
+  tokens: prompt 444 = instructions 67 + prev_code 287 + feedback 90  [tokenizer] | answers 317, 533, 302, 257
+round 4: this round 0.30  best so far 0.30  (71.4s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 29: `transposed_data[j, i] = view[i, j]` raised ValueError: shape mismatch: value array of shape (4,) could not be broadcast to indexing result of shape (1,) You assigned 4 elements into a slice that holds 1. Assignment does not reshape or broadcast either: the slice on the left and the value on the right must have the SAME shape. If the value i
+  tokens: prompt 547 = instructions 67 + prev_code 316 + feedback 164  [tokenizer] | answers 329, 363, 352, 268
+round 5: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 5 failed attempts to break the repeat
+  tokens: prompt 868 = instructions 67 + prev_code 328 + feedback 164 + ledger 309  [tokenizer] | answers 278, 302, 302, 302
+round 6: this round 0.30  best so far 0.30  (54.7s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 28: `out[p, j, i] = view[i, j]` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=4, dst=1 The tile you allocated holds 1 elements but you copied 4 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you want a 128x512 
+  tokens: prompt 655 = instructions 67 + prev_code 277 + feedback 311  [tokenizer] | answers 278, 302, 250, 447
+round 7: this round 0.50  best so far 0.50  (64.0s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: NUMERICAL MISMATCH: worst error 4.49 of the output's RMS (1.01), tolerance 0.02.
+  at index (24, 9): expected +2.62617, got -1.9109
+  81.8% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+  not solved in 8 rounds; best reward 0.50
+  VERDICT level 2: FAILED, confidence 0.00: not solved: best score 0.50 after 8 rounds
+
+  CONFIDENCE level 2: 0.00 (it still fails shapes the loop tested) -- stated before the held-out check
+  VERDICT level 2: NOT SOLVED (best reward 0.50; held-out 0/16)
+    tokens spent: 19,896 prompt + 9,904 answer over 8 round(s)
+
+=========== summary ===========
+  level 2  reward 0.50 after 8 round(s)  tokens 19,896 prompt + 9,904 answer  confidence 0.00  NOT SOLVED (best reward 0.50; held-out 0/16)
+  solved 0/1
+
+=========== over 2 runs ===========
+  level 2: solved 1/2  best 1.00  worst 0.50  mean 0.75  all=[1.0, 0.5]
+
+  Report the rate, not your best run. A level that solves 1 in 3 times is not solved.
+
+=========== calibration, 2 verdict(s) ===========
+  said 0.00-0.01:   1 verdicts, mean confidence 0.00, actually passed held-out 0/1
+  said 0.80-1.00:   1 verdicts, mean confidence 0.90, actually passed held-out 1/1
+  Brier score 0.005.  Confident (>=0.5) but wrong: 0
+
+attempts logged to v82_L2_s118.jsonl, verdicts to v82_L2_s118_verdicts.jsonl

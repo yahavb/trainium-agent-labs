@@ -1,0 +1,5 @@
+﻿level,runs,solved,scores,mean,min,max,solves,tokens,truncation,run_minutes,verdicts,claims,confidence,brier,confident_but_wrong,nki_claims,nki_confidence,nki_brier,nki_confident_but_wrong,baseline
+1,1,1,1.00,1.00,1.00,1.00,"run 1: attempt 25, round 6","30,704+17,375","3 in 2 round(s), 7.8 min",13.9,1,VERIFIED 1,0.90,0.010,0,VERIFIED 1,0.90,0.010,0,"0/5, mean 0.30"
+2,1,1,1.00,1.00,1.00,1.00,"run 1: attempt 29, round 7","31,631+11,567","1 in 1 round(s), 3.5 min",10.0,1,VERIFIED 1,0.90,0.010,0,VERIFIED 1,0.90,0.010,0,"3/5, mean 0.72"
+3,1,0,0.30,0.30,0.30,0.30,-,"16,994+4,906",0,3.7,1,NOT SOLVED 1,0.00,0.000,0,FAILED 1,0.00,0.000,0,"0/5, mean 0.30"
+4,1,1,1.00,1.00,1.00,1.00,"run 1: attempt 9, round 2","13,110+3,986",0,3.1,1,VERIFIED 1,0.90,0.010,0,VERIFIED 1,0.88,0.014,0,"0/5, mean 0.60"

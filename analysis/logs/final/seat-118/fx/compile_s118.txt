@@ -1,0 +1,18 @@
+== l2_18_e80f726c.py
+   shape=(32, 12) as 3x4            predicted       2.6 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(128, 64) as 8x8           predicted       2.7 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(64, 128) as 4x32          predicted       2.7 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(8, 35) as 5x7             predicted       2.6 us; birsim MATCHES: worst error 0.00e+00 of RMS
+== l2_118_4ef980f0.py
+   shape=(32, 12) as 3x4            predicted      44.2 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(128, 64) as 8x8           predicted     169.1 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(64, 128) as 4x32          predicted      85.9 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(8, 35) as 5x7             predicted      13.0 us; birsim MATCHES: worst error 0.00e+00 of RMS
+== l3_18_a680640e.py
+   K=128 M=64 N=512                 predicted       5.2 us; birsim MATCHES: worst error 1.17e-06 of RMS
+== l3_18_c67e59e8.py
+   K=128 M=64 N=512                 predicted       5.2 us; birsim MATCHES: worst error 1.17e-06 of RMS
+
+=== summary: distinct simulator-solved kernels, by what the compiler and birsim say
+level 2: {'match': 2}
+level 3: {'match': 2}

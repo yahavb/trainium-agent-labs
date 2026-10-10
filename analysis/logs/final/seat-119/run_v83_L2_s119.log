@@ -1,0 +1,160 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1 L2CAT=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 3 ################
+
+=========== level 2: 2D transpose ===========
+  tokens: prompt 1,066 = instructions 158 + reference 180 + api_card 728  [tokenizer] | answers 328, 256, 404, 257
+round 0: this round 0.30  best so far 0.30  (62.1s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 24: `nisa.tensor_tensor(dst=transposed, data1=in_tile, data2=in_tile, op=nl.transpose)` raised AssertionError: Expected binary operator, got <function transpose at 0x7f293d706340>
+  tokens: prompt 475 = instructions 67 + prev_code 327 + feedback 81  [tokenizer] | answers 318, 302, 276, 273
+round 1: this round 0.62  best so far 0.62  (56.4s)
+  1 of 4 shapes passed. On shape=(32, 12) as 3x4: NON-FINITE OUTPUT: 96 NaN and 0 Inf, first at (0, 3). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it. Only part of your output is written: some positions of each row are never filled. Every one of the A*B positions in a row must be written. Each row's A-by-B block must become B-by-A: output position j*A+i of a row s
+  tokens: prompt 485 = instructions 67 + prev_code 272 + feedback 146  [tokenizer] | answers 273, 341, 319, 386
+round 2: this round 1.00  best so far 1.00  (67.0s)
+  Correct on every shape.
+  SOLVED on round 2. Correct on every shape.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def tensor_transpose2D_kernel_(x, shape2D):
+      P, F = x.shape
+      F1, F2 = shape2D
+      assert F1 * F2 == F, f"shape2D {shape2D} does not match the free size {F}"
+    
+      # Allocate output tile in shared HBM
+      out = nl.ndarray((P, F), dtype=x.dtype, buffer=nl.shared_hbm)
+    
+      # Allocate a tile for the intermediate data in SBUF
+      tile = nl.ndarray((P, F1, F2), dtype=x.dtype, buffer=nl.sbuf)
+    
+      # Copy input data to SBUF tile
+      nisa.dma_copy(dst=tile, src=x)
+    
+      # Reshape and transpose in the tile
+      for p in nl.affine_range(P):
+          for i in nl.affine_range(F1):
+              for j in nl.affine_range(F2):
+                  tile[p, i, j] = x[p, i * F2 + j]
+    
+      # Transpose the tile
+      for p in nl.affine_range(P):
+          for i in nl.affine_range(F2):
+              for j in nl.affine_range(F1):
+                  out[p, i * F1 + j] = tile[p, j, i]
+    
+      return out
+  -------------------------------------------
+  VERDICT level 2: VERIFIED, confidence 0.90: solved, and passes all 35 extra cases it was never graded on, and lowers for trn2
+
+  CONFIDENCE level 2: 0.90 (passed every loop shape and nothing in the code is shape-specific) -- stated before the held-out check
+  VERDICT level 2: VERIFIED: loop shapes and 16/16 held-out cases
+    tokens spent: 8,104 prompt + 3,733 answer over 3 round(s)
+
+=========== summary ===========
+  level 2  reward 1.00 after 3 round(s)  SOLVED  tokens 8,104 prompt + 3,733 answer  confidence 0.90  VERIFIED: loop shapes and 16/16 held-out cases
+  solved 1/1
+
+################ run 2 of 3 ################
+
+=========== level 2: 2D transpose ===========
+  tokens: prompt 1,066 = instructions 158 + reference 180 + api_card 728  [tokenizer] | answers 388, 302, 254, 249
+round 0: this round 1.00  best so far 1.00  (57.3s)
+  Correct on every shape.
+  SOLVED on round 0. Correct on every shape.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def tensor_transpose2D_kernel_(x, shape2D):
+      P, F = x.shape
+      F1, F2 = shape2D
+      assert F1 * F2 == F, f"shape2D {shape2D} does not match the free size {F}"
+    
+      # Allocate output tile in shared HBM
+      out = nl.ndarray((P, F), dtype=x.dtype, buffer=nl.shared_hbm)
+    
+      # Allocate input tile in SBUF
+      in_tile = nl.ndarray((P, F1, F2), dtype=x.dtype, buffer=nl.sbuf)
+    
+      # DMA copy input to SBUF
+      nisa.dma_copy(dst=in_tile, src=x)
+    
+      # Transpose the 2D part
+      for p in nl.affine_range(P):
+          for i in nl.affine_range(F2):
+              for j in nl.affine_range(F1):
+                  out[p, i * F1 + j] = in_tile[p, j, i]
+    
+      return out
+  -------------------------------------------
+  VERDICT level 2: VERIFIED, confidence 0.90: solved, and passes all 35 extra cases it was never graded on, and lowers for trn2
+
+  CONFIDENCE level 2: 0.90 (passed every loop shape and nothing in the code is shape-specific) -- stated before the held-out check
+  VERDICT level 2: VERIFIED: loop shapes and 16/16 held-out cases
+    tokens spent: 4,264 prompt + 1,193 answer over 1 round(s)
+
+=========== summary ===========
+  level 2  reward 1.00 after 1 round(s)  SOLVED  tokens 4,264 prompt + 1,193 answer  confidence 0.90  VERIFIED: loop shapes and 16/16 held-out cases
+  solved 1/1
+
+################ run 3 of 3 ################
+
+=========== level 2: 2D transpose ===========
+  tokens: prompt 1,066 = instructions 158 + reference 180 + api_card 728  [tokenizer] | answers 565, 302, 259, 302
+round 0: this round 0.30  best so far 0.30  (73.6s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 18: `nisa.dma_copy(dst=tile, src=x)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=16384 `tile` holds 16384 elements but `x` holds 384. Replace line 18 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile = nl.n
+  tokens: prompt 899 = instructions 67 + prev_code 564 + feedback 268  [tokenizer] | answers 387, 257, 302, 361
+round 1: this round 0.30  best so far 0.30  (61.3s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 34: `out[p, 0:F2*F1] = transposed_tile.reshape(F2*F1)` raised TypeError: 'int' object is not iterable
+  tokens: prompt 514 = instructions 67 + prev_code 386 + feedback 61  [tokenizer] | answers 374, 257, 302, 257
+round 2: this round 0.30  best so far 0.30  (55.4s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 33: `out[p, 0:F2*F1] = transposed_tile.reshape((F2, F1)).flatten()` raised AttributeError: 'NkiTensor' object has no attribute 'flatten' A NkiTensor is not a numpy array, so it has no `flatten`. Use the nl/nisa functions instead.
+  tokens: prompt 534 = instructions 67 + prev_code 373 + feedback 94  [tokenizer] | answers 391, 341, 261, 264
+round 3: this round 0.30  best so far 0.30  (57.6s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 34: `transposed_flat = nisa.reshape(transposed_tile, (F2 * F1,))` raised AttributeError: module 'nki.isa' has no attribute 'reshape' `nki.isa` has no `reshape`. The closest real names are: memset, nc_transpose, core_barrier, nc_stream_shuffle, register_move, register_load. Pick one of those or use a different approach.
+  tokens: prompt 568 = instructions 67 + prev_code 390 + feedback 111  [tokenizer] | answers 409, 257, 280, 336
+round 4: this round 0.50  best so far 0.50  (64.0s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: WRONG SHAPE: returned (), reference is (32, 12). Check the output-size arithmetic, not the values.
+  tokens: prompt 524 = instructions 67 + prev_code 408 + feedback 49  [tokenizer] | answers 409, 292, 280, 300
+round 5: same failure again (0.50, best so far 0.50)
+  same failure 2x — adding a ledger of 5 failed attempts to break the repeat
+  tokens: prompt 838 = instructions 67 + prev_code 408 + feedback 49 + ledger 314  [tokenizer] | answers 399, 302, 261, 302
+round 6: same failure again (0.50, best so far 0.50)
+  same failure 3x — adding a ledger of 5 failed attempts to break the repeat
+  tokens: prompt 828 = instructions 67 + prev_code 398 + feedback 49 + ledger 314  [tokenizer] | answers 399, 418, 267, 302
+round 7: same failure again (0.50, best so far 0.50)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 4 shapes passed. On shape=(32, 12) as 3x4: WRONG SHAPE: returned (), reference is (32, 12). Check the out
+    1x  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 18: `nisa.dma_copy(dst=tile, src=x)` raised AssertionErro
+    1x  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 34: `out[p, 0:F2*F1] = transposed_tile.reshape(F2*F1)` ra
+    1x  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 33: `out[p, 0:F2*F1] = transposed_tile.reshape((F2, F1)).
+    1x  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 34: `transposed_flat = nisa.reshape(transposed_tile, (F2 
+  VERDICT level 2: FAILED, confidence 0.00: not solved: best score 0.50 after 8 rounds
+
+  CONFIDENCE level 2: 0.00 (it still fails shapes the loop tested) -- stated before the held-out check
+  VERDICT level 2: NOT SOLVED (best reward 0.50; held-out 0/16)
+    tokens spent: 23,084 prompt + 10,395 answer over 8 round(s)
+
+=========== summary ===========
+  level 2  reward 0.50 after 8 round(s)  tokens 23,084 prompt + 10,395 answer  confidence 0.00  NOT SOLVED (best reward 0.50; held-out 0/16)
+  solved 0/1
+
+=========== over 3 runs ===========
+  level 2: solved 2/3  best 1.00  worst 0.50  mean 0.83  all=[1.0, 1.0, 0.5]
+
+  Report the rate, not your best run. A level that solves 1 in 3 times is not solved.
+
+=========== calibration, 3 verdict(s) ===========
+  said 0.00-0.01:   1 verdicts, mean confidence 0.00, actually passed held-out 0/1
+  said 0.80-1.00:   2 verdicts, mean confidence 0.90, actually passed held-out 2/2
+  Brier score 0.007.  Confident (>=0.5) but wrong: 0
+
+attempts logged to v83_L2_s119.jsonl, verdicts to v83_L2_s119_verdicts.jsonl

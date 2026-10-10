@@ -1,5 +1,8 @@
 # Hack the Chip — NYU × Annapurna Labs
 
+> **Team 24 ("Saturday team") hand-in, project 2 (NKI kernel agent): start at [SUBMISSION.md](SUBMISSION.md).**
+
+
 **Annapurna Labs** is the Amazon team that designs **AWS Trainium**, the custom silicon behind a large
 share of AI training and inference on AWS. For one day we are handing you that hardware, a language model
 already running on it, and a question we care about.
@@ -126,6 +129,14 @@ kubectl exec -it seat-42 -- bash
 > **Wait for the new prompt (`root@seat-42:/workspace#`) before typing anything else.** Anything typed
 > before it appears goes to your laptop's shell. Want a second terminal? Open one, paste the credentials
 > again (step 2), and run the same `kubectl exec` — both land in the same pod.
+
+> **No `kubectl port-forward` — run the agent inside the pod.** The participant role in
+> [`k8s/workshop-rbac.yaml`](k8s/workshop-rbac.yaml) grants `pods` get/list/watch, `pods/log` and
+> `pods/exec` only; there is no `pods/portforward`, so `kubectl port-forward pod/seat-42 8000:8000` is
+> refused (verified: `cannot create resource "pods/portforward"`) and the model at `localhost:8000` is reachable only from inside the pod. Edit locally if you
+> like and move files with `kubectl cp` (it runs over exec, which *is* allowed) — `scripts/sync.sh` does
+> that — but start agent runs from a `kubectl exec` shell. Check your own access with
+> `kubectl auth can-i create pods/portforward`.
 
 ## Inside your pod
 

@@ -1,0 +1,10 @@
+{"t": 1791653257, "level": 9, "rounds": 3, "extra_cases": 15, "extra_failed": 0, "compiler_risks": [], "lowered": true, "status": "VERIFIED", "confidence": 0.796, "claim": "solved, and passes all 15 extra cases it was never graded on, and lowers for trn2"}
+{"t": 1791653825, "level": 9, "rounds": 3, "extra_cases": 15, "extra_failed": 0, "compiler_risks": [], "lowered": true, "status": "VERIFIED", "confidence": 0.796, "claim": "solved, and passes all 15 extra cases it was never graded on, and lowers for trn2"}
+{"t": 1791654384, "level": 9, "rounds": 3, "extra_cases": 15, "extra_failed": 0, "compiler_risks": [], "lowered": true, "status": "VERIFIED", "confidence": 0.796, "claim": "solved, and passes all 15 extra cases it was never graded on, and lowers for trn2"}
+{"t": 1791654949, "level": 9, "rounds": 3, "extra_cases": 15, "extra_failed": 0, "compiler_risks": [], "lowered": true, "status": "VERIFIED", "confidence": 0.796, "claim": "solved, and passes all 15 extra cases it was never graded on, and lowers for trn2"}
+{"t": 1791655517, "level": 9, "rounds": 3, "extra_cases": 15, "extra_failed": 0, "compiler_risks": [], "lowered": true, "status": "VERIFIED", "confidence": 0.796, "claim": "solved, and passes all 15 extra cases it was never graded on, and lowers for trn2"}
+{"t": 1791656449, "level": 11, "status": "FAILED", "confidence": 0.0, "best": 0.667, "rounds": 8, "claim": "not solved: best score 0.67 after 8 rounds"}
+{"t": 1791657380, "level": 11, "status": "FAILED", "confidence": 0.0, "best": 0.667, "rounds": 8, "claim": "not solved: best score 0.67 after 8 rounds"}
+{"t": 1791658341, "level": 11, "status": "FAILED", "confidence": 0.0, "best": 0.667, "rounds": 8, "claim": "not solved: best score 0.67 after 8 rounds"}
+{"t": 1791659243, "level": 11, "status": "FAILED", "confidence": 0.0, "best": 0.667, "rounds": 8, "claim": "not solved: best score 0.67 after 8 rounds"}
+{"t": 1791660171, "level": 11, "status": "FAILED", "confidence": 0.0, "best": 0.667, "rounds": 8, "claim": "not solved: best score 0.67 after 8 rounds"}

@@ -1,0 +1,58 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 4: matmul, tiled ===========
+  tokens: prompt 1,136 = instructions 157 + reference 110 + api_card 869  [tokenizer] | answers 310, 310, 323, 323
+round 0: this round 0.30  best so far 0.30  (62.4s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: Line 25: `nisa.tensor_copy(dst=lhs_tile, src=psum_tile)` raised ValueError: shape mismatch: value array of shape (65536,) could not be broadcast to indexing result of shape (16384,) `lhs_tile` holds 16384 elements, but the result written into it holds 65536. A destination must have exactly the shape of what goes into it, so do not reuse a tile you alloca
+  tokens: prompt 549 = instructions 67 + prev_code 309 + feedback 173  [tokenizer] | answers 339, 323, 323, 323
+round 1: this round 0.62  best so far 0.62  (60.7s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: Line 17: `nisa.dma_copy(dst=lhs_tile, src=lhsT)` raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 `lhs_tile` and `rhs_tile` are bigger than one nc_matmul takes: at most 128 rows of K, at most 128 columns of the stationary operand, and at most 512 columns of the moving operand. Tile all three dimensions at once. Replace eve
+  tokens: prompt 914 = instructions 67 + prev_code 338 + feedback 509  [tokenizer] | answers 424, 323, 323, 323
+round 2: this round 1.00  best so far 1.00  (67.0s)
+  Correct on every shape. MEMORY BOUND: 36.6 Flops/Byte against a ridge of 222, so 16% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 6.1x more reuse needed.
+  SOLVED on round 2. Correct on every shape. MEMORY BOUND: 36.6 Flops/Byte against a ridge of 222, so 16% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 6.1x more reuse needed.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_matmul_tiled_(lhsT, rhs):
+      # Allocate output buffer in shared HBM
+      out = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+    
+      TK = min(128, lhsT.shape[0])
+      TM = min(128, lhsT.shape[1])
+      TN = min(512, rhs.shape[1])
+    
+      for m in nl.affine_range(lhsT.shape[1] // TM):
+          for n in nl.affine_range(rhs.shape[1] // TN):
+              psum_tile = nl.ndarray((TM, TN), dtype=nl.float32, buffer=nl.psum)
+              for k in nl.affine_range(lhsT.shape[0] // TK):
+                  lhs_tile = nl.ndarray((TK, TM), dtype=lhsT.dtype, buffer=nl.sbuf)
+                  rhs_tile = nl.ndarray((TK, TN), dtype=rhs.dtype, buffer=nl.sbuf)
+                  nisa.dma_copy(dst=lhs_tile, src=lhsT[k * TK:(k + 1) * TK, m * TM:(m + 1) * TM])
+                  nisa.dma_copy(dst=rhs_tile, src=rhs[k * TK:(k + 1) * TK, n * TN:(n + 1) * TN])
+                  nisa.nc_matmul(dst=psum_tile, stationary=lhs_tile, moving=rhs_tile)
+              res = nl.ndarray((TM, TN), dtype=out.dtype, buffer=nl.sbuf)
+              nisa.tensor_copy(dst=res, src=psum_tile)
+              nisa.dma_copy(dst=out[m * TM:(m + 1) * TM, n * TN:(n + 1) * TN], src=res)
+    
+      return out
+  -------------------------------------------
+  VERDICT level 4: VERIFIED, confidence 0.88: solved, and passes all 29 extra cases it was never graded on, and lowers for trn2
+
+  CONFIDENCE level 4: 0.90 (passed every loop shape and nothing in the code is shape-specific) -- stated before the held-out check
+  VERDICT level 4: VERIFIED: loop shapes and 16/16 held-out cases
+    tokens spent: 10,396 prompt + 3,967 answer over 3 round(s)
+
+=========== summary ===========
+  level 4  reward 1.00 after 3 round(s)  SOLVED  tokens 10,396 prompt + 3,967 answer  confidence 0.90  VERIFIED: loop shapes and 16/16 held-out cases
+  solved 1/1
+
+=========== calibration, 1 verdict(s) ===========
+  said 0.80-1.00:   1 verdicts, mean confidence 0.90, actually passed held-out 1/1
+  Brier score 0.010.  Confident (>=0.5) but wrong: 0
+
+attempts logged to v82_L4_s119.jsonl, verdicts to v82_L4_s119_verdicts.jsonl

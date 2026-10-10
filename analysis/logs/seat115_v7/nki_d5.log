@@ -1,0 +1,23 @@
+########## level 2
+feedback v7: PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen REPAIR_PROMPT=restructure GRADE_TIMEOUT=120 GATE=static USAGE_LOG=/workspace/out/s115/usage_nki_d5.jsonl
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 5 ################
+
+=========== level 2: 2D transpose ===========
+round 0: this round 0.30  best so far 0.30  (157.4s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 18: `nisa.dma_copy(dst=tile, src=x)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=16384 `tile` holds 16384 elements but `x` holds 384. Replace line 18 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile = nl.n
+round 1: this round 0.50  best so far 0.50  (109.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: NON-FINITE OUTPUT: 372 NaN and 0 Inf, first at (0, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.
+round 2: this round 0.50  best so far 0.50  (119.6s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: NUMERICAL MISMATCH: worst error 4.17 of the output's RMS (1.01), tolerance 0.02.
+  at index (18, 1): expected +2.3015, got -1.90436
+  99.7% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+round 3: this round 0.50  best so far 0.50  (118.7s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: NUMERICAL MISMATCH: worst error 4.09 of the output's RMS (1.01), tolerance 0.02.
+  at index (23, 10): expected -2.6856, got +1.44849
+  82.6% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case

@@ -1,0 +1,125 @@
+# Held-out eval set, tolerance, confidence, and token accounting
+
+Everything here runs in the NKI 0.6.0 CPU simulator (`nki.simulate`), on a seat pod or in the
+`python:3.12-slim` container from `SETUP_PYTHON.md`. No number below comes from the device.
+
+## Two sets of cases, kept apart
+
+| | shapes | values | who sees the result |
+|---|---|---|---|
+| **loop set** (`LEVELS[n]["shapes"]`) | 4 per level (1 for level 3) | standard normal, seed 0 | the model, as feedback every round |
+| **held-out set** (`EVAL_SHAPES`, `VALUE_KINDS`) | 4–5 new shapes per level (level 3: the same one) | 4 kinds, seed 1000 | **nobody during the loop**; run once per level after the loop (`agent.py`), or by hand with `--eval` |
+
+The held-out result is never put in a prompt. If it were, it would turn into part of the loop set
+and stop telling us anything. The loop's grading does not touch it.
+
+```bash
+python nkibench.py --level 4 --eval my_kernel.py      # 16 cases: 4 shapes x 4 value kinds
+```
+
+### Held-out shapes
+
+All of them are inside each level's contract: the shipped reference kernel passes every case
+(`--eval reference_levelN.py`: 20/20, 16/16, 4/4, 16/16).
+
+| level | shapes | what is new compared with the loop set |
+|---|---|---|
+| 1 avgpool | (128,32,32)/2, (16,30,30)/5, (1,64,64)/8, (96,20,12)/4, (7,10,11)/3 | full 128 partitions, one partition, H ≠ W, H and W not divisible by the pool size, pool sizes 5 and 8 |
+| 2 transpose | (128,128) as 16×8, (1,24) as 4×6, (100,60) as 6×10, (17,77) as 7×11 | 128 rows, 1 row, rows not a power of 2 |
+| 3 matmul | K=128 M=64 N=512 | none: the reference asserts this exact shape, so only the values change |
+| 4–7 matmul | K384 M256 N512, K128 M384 N1536, K640 M128 N1024, K128 M128 N2048 | K of 5 tiles, M of 3 tiles, N of 4 tiles; the loop set never goes past K=512 |
+
+Not tested: shapes the reference itself rejects (on level 4, M not a multiple of 128, for example).
+A failure there would tell us nothing about the agent.
+
+### Value kinds
+
+| kind | what it catches |
+|---|---|
+| `normal` | a different random draw from a seed the loop never used |
+| `ramp` | `linspace(-1, 1)`: every element is distinct and ordered, so an element read from or written to the wrong place cannot cancel out |
+| `large` | normal × 1e4: a kernel that computes or stores in float16 overflows to Inf |
+| `float16` | the inputs arrive as float16. The simulator's `dma_copy` casts silently, so only the eval's **dtype check** (output dtype must equal the reference's) catches a kernel that hard-codes float32 |
+
+NaN and Inf inputs are left out. The reference returns non-finite values for them, and the
+checker counts any non-finite output as a failure.
+
+### Proof that it catches things: mutants
+
+These are deliberately wrong kernels in `mutants/`. Each one passes **every** loop shape.
+
+| mutant | loop set | held-out | caught by |
+|---|---|---|---|
+| `l1_square.py`: assumes H == W | 4/4 | **12/20** | the H ≠ W shapes |
+| `l4_k512.py`: stops after 4 K tiles | 4/4 | **12/16** | K=640 (error 0.39–1.96 of the output RMS) |
+| `l4_fp16out.py`: writes float16 | 4/4 | **4/16** | `large` (Inf) and the dtype check |
+| `l4_fp32.py`: hard-codes float32 | 4/4 | **12/16** | `float16` (dtype check only) |
+
+## Tolerance: max |error| ≤ 2e-2 × RMS(reference output)
+
+The check is relative to the output's RMS, not to each element. A relative per-element test blows
+up near zero, and matmul and avgpool outputs cross zero all the time.
+
+**Why 2e-2. Measured:** we rounded the inputs to bf16 and ran the NumPy reference, over every loop
+and held-out shape and every value kind. The worst error was **0.0134** of the RMS (fp16: 0.0016).
+The smallest error any mutant bug produced was **0.393**. So 2e-2 lets through a kernel that
+legitimately uses bf16 (1.5× margin) and rejects real bugs by a factor of 20 or more. The margin
+above bf16 is thin: a kernel that also *accumulates* in bf16 instead of float32 PSUM would land
+close to the limit.
+
+## Confidence and calibration
+
+When a level ends, `agent.py` states a confidence **before** the held-out check runs: the
+probability that the kernel passes shapes and values it has not seen. The confidence comes only
+from what the loop saw:
+
+- not solved on the loop set → 0.0
+- solved → start at 0.9, then
+  - × 0.7 if the loop tested a single shape (level 3)
+  - × 0.5 if the code contains a literal size taken from the test shapes (64, 32, ...; 128 and 512
+    are hardware limits and don't count)
+  - × 0.6 if the output allocation hard-codes a dtype
+
+It is printed (`CONFIDENCE level N: ...`) and timestamped (`confidence_time`) before the held-out
+check starts (`heldout_time`). Then the held-out set runs, on by default (`--no-eval` turns it off),
+and the claim is one of:
+
+- `VERIFIED`: passes the loop set and every held-out case
+- `PASSES THE LOOP'S SHAPES ONLY`: solved, but some held-out case fails; the first failure is named
+- `NOT SOLVED` (a kernel that breaks a rule fails held-out outright, since a rule violation scores
+  zero)
+- `UNVERIFIED`: the check did not run or raised (`--no-eval`, no simulator, or any exception). The
+  error is recorded and the run goes on to the next level or repeat.
+
+**The held-out result never reaches the model.** `verdict()` is called only from `main()`, after
+`solve()` has returned, and each level's `solve()` starts again from `first_prompt()`. Checked with
+an AST scan: `first_prompt`, `repair_prompt`, `solve`, `grade`, `enrich`, `ask` read none of
+`verdict`, `evaluate`, `EVAL_SHAPES`, `confidence`. Checked byte for byte: the agent before this
+change (4350038) and after it, run against the same deterministic mock endpoint
+(`--all --rounds 6 --samples 3 --repeat 2`), sent the same 54 requests: identical prompts and
+`max_tokens`, and identical attempt sequences (level, round, reward, feedback, code).
+
+`verdicts.jsonl`, one line per level per run: `level`, `run`, `claim`, `confidence`, `reasons`,
+`heldout_passed` / `heldout_total`, `first_failure`, `heldout_failures` (first 8), `error`,
+`tokens_total` (= `prompt_tokens` + `completion_tokens` for the level), `reward`, `rounds`. At the
+end of a run, `calibration_report` prints confidence buckets against the held-out outcome, a Brier
+score, and the number of "confident (≥ 0.5) but wrong" cases. The heuristic weights are stated,
+not fitted. Whether they are calibrated is what the report measures.
+
+Verified in nki 0.6.0 through the whole agent, not just `--eval`: the 4 reference kernels
+(offline, `--all --repeat 2`) are `VERIFIED` 8/8; each of the 4 mutants, served as the model's
+answer, solves the loop and is judged `PASSES THE LOOP'S SHAPES ONLY` (confidence 0.90, 0.90, 0.54,
+0.54: the dtype heuristic catches two of them, and only the held-out set catches the other two).
+
+## Token accounting
+
+`attempts.jsonl` now records for every attempt: the endpoint's `prompt_tokens` and
+`completion_tokens`, and `prompt_split`, which is the prompt cut into `instructions`, `reference`,
+`api_card`, `prev_code`, `feedback`, `ledger` (and `chat_template`). The split is read off the
+prompt text, so it also holds for the repair prompts in `feedback_v2.py` and `feedback_v3.py`. If
+the served model's tokenizer is installed locally, it counts each piece; otherwise the endpoint's
+exact total is shared out in proportion to characters (`count_method` says which).
+
+```bash
+python scripts/token_budget.py attempts.jsonl -o analysis/token_budget   # .png + .csv
+```

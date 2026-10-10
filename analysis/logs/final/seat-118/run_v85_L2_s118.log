@@ -1,0 +1,47 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1 L2CAT=1 WARM=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 2: 2D transpose ===========
+  tokens: prompt 1,066 = instructions 158 + reference 180 + api_card 728  [tokenizer] | answers 339, 256, 302, 302
+round 0: this round 0.30  best so far 0.30  (61.9s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 18: `nisa.dma_copy(dst=tile, src=x)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=16384 `tile` holds 16384 elements but `x` holds 384. Replace line 18 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile = nl.n
+    (TRUNCATED: finish_reason=length after 7596 chars; prompt is 3946 chars)
+  tokens: prompt 673 = instructions 67 + prev_code 338 + feedback 268  [tokenizer] | answers 323, 257, 2500, 257
+round 1: this round 0.30  best so far 0.30  (207.3s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 23: `tile[0:128, 0:128] = x[p, 0:128, 0:128]` raised AssertionError: Out-of-bound access for tensor `unnamed` on dimension 1: index range [0, 127] exceed dimension size of 12. You indexed up to 127 on dimension 1, which is only 12 long. Tile limits are a MAXIMUM, not a target. Derive every bound from the tensor's own shape -- use min(limit, size
+  tokens: prompt 691 = instructions 67 + prev_code 322 + feedback 302  [tokenizer] | answers 329, 366, 292, 339
+round 2: this round 0.30  best so far 0.30  (62.3s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 24: `tile[0:F1, 0:F2] = x[p, 0:F1, 0:F2]` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=3, dst=12 The tile you allocated holds 12 elements but you copied 3 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you wan
+  tokens: prompt 720 = instructions 67 + prev_code 328 + feedback 325  [tokenizer] | answers 288, 302, 302, 341
+round 3: this round 0.30  best so far 0.30  (57.6s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 20: `nisa.dma_copy(dst=tile, src=x[p, 0:F1, 0:F2])` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=3, dst=12 `tile` holds 12 elements but `x[p, 0:F1, 0:F2]` holds 3. Replace line 20 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is fill
+  tokens: prompt 659 = instructions 67 + prev_code 287 + feedback 305  [tokenizer] | answers 293, 372, 379, 302
+round 4: this round 0.30  best so far 0.30  (61.9s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 20: `tile = nl.ndarray(row.shape, dtype=x.dtype, buffer=nl.sbuf)` raised AssertionError: SBUF and PSUM tensors must have at least 2 dimensions (partition-dim and free-dim) The shape on this line has fewer than 2 dimensions. Every sbuf and psum tile is (partition, free): write the shape as a 2-element tuple, for example (n, 1) for a column of n <
+  tokens: prompt 494 = instructions 67 + prev_code 292 + feedback 135  [tokenizer] | answers 308, 257, 257, 257
+round 5: this round 0.30  best so far 0.30  (50.4s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 23: `nisa.dma_copy(dst=tile, src=row)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=3, dst=12 The tile you allocated holds 12 elements but you copied 3 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you want a
+  tokens: prompt 685 = instructions 67 + prev_code 307 + feedback 311  [tokenizer] | answers 308, 257, 292, 261
+round 6: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 6 failed attempts to break the repeat
+  tokens: prompt 1,082 = instructions 67 + prev_code 307 + feedback 311 + ledger 397  [tokenizer] | answers 294, 302, 261, 366
+round 7: this round 0.30  best so far 0.30  (58.6s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 20: `nisa.dma_copy(dst=tile, src=x[p, 0:F1, 0:F2])` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=3, dst=12 `tile` holds 12 elements but `x[p, 0:F1, 0:F2]` holds 3. Replace line 20 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is fill
+  not solved in 8 rounds; best reward 0.30
+  VERDICT level 2: FAILED, confidence 0.00: not solved: best score 0.30 after 8 rounds
+
+  CONFIDENCE level 2: 0.00 (it still fails shapes the loop tested) -- stated before the held-out check
+  VERDICT level 2: NOT SOLVED (best reward 0.30; held-out 0/16)
+    tokens spent: 24,280 prompt + 11,861 answer over 8 round(s)
+
+=========== summary ===========
+  level 2  reward 0.30 after 8 round(s)  tokens 24,280 prompt + 11,861 answer  confidence 0.00  NOT SOLVED (best reward 0.30; held-out 0/16)
+  solved 0/1
+
+=========== calibration, 1 verdict(s) ===========
+  said 0.00-0.01:   1 verdicts, mean confidence 0.00, actually passed held-out 0/1
+  Brier score 0.000.  Confident (>=0.5) but wrong: 0
+
+attempts logged to v85_L2_s118.jsonl, verdicts to v85_L2_s118_verdicts.jsonl

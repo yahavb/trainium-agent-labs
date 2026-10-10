@@ -29,6 +29,7 @@ marked NEEDS DEVICE VERIFICATION in the selftest output. Run --selftest on the i
 import argparse
 import ast
 import importlib.util
+import os
 import sys
 import textwrap
 
@@ -42,6 +43,11 @@ import numpy as np
 PMAX = 128                    # nl.tile_size.pmax -- partition axis maximum
 GEMM_STATIONARY_FMAX = 128    # nl.tile_size.gemm_stationary_fmax
 GEMM_MOVING_FMAX = 512        # nl.tile_size.gemm_moving_fmax
+# On-chip capacity per partition. PSUM is 8 banks of 2 KiB; SBUF is 24 MiB over 128 partitions
+# (trn2). A tile spanning several PSUM banks is legal -- the NKI docs allocate all eight at
+# once -- so the PSUM limit is the whole of PSUM, not one bank.
+PSUM_PARTITION_BYTES = 16 * 1024
+SBUF_PARTITION_BYTES = 192 * 1024
 
 # The roofline ridge point: the arithmetic intensity at which the memory ceiling and the
 # compute ceiling meet. Below it a kernel is memory bound, above it compute bound. The
@@ -608,6 +614,122 @@ def check_inputs_untouched(before, args):
     return None
 
 
+# ---------------------------------------------------------------- layer 1d: allocation audit
+#
+# The simulator enforces the 128-partition limit on dma_copy and tensor_copy, not on allocation.
+# Observed on another seat (Yahtze/trainium-agent-labs, branch kernel-feedback): a kernel
+# allocated a (256, 256) sbuf tile and a (512, 1024) psum tile, sliced them for nc_matmul, and
+# ran -- a kernel the chip cannot execute, which would have scored 1.0 had it been numerically
+# right. So every on-chip allocation is recorded during simulation and judged against the limits.
+#
+# The hook is installed only for the length of one simulation (simulate_and_count) and removed in its
+# finally. Left installed, it made neuronx-cc fail on every kernel in the process ("failed to resolve
+# name 'nkibench._install_alloc_audit...'", seat-115), so in-process compiles and on-chip runs broke.
+# Installing it after the kernel is imported still sees every allocation: the references give
+# 12/12/5/90, as before. NKIBENCH_NO_ALLOC_AUDIT=1 turns it off.
+
+_ALLOC_LOG = []
+_AUDIT = {"installed": False}
+# where dtype and buffer sit positionally: ndarray/zeros/ones(shape, dtype, buffer),
+# full(shape, fill_value, dtype, buffer). All default to sbuf. *_like is not audited: its buffer
+# defaults to its argument's, which the wrapper cannot see reliably.
+_ALLOCATORS = {"ndarray": (1, 2), "zeros": (1, 2), "ones": (1, 2), "full": (2, 3)}
+
+
+def _buffer_name(buf, nl):
+    for name in ("sbuf", "psum", "shared_hbm", "private_hbm", "hbm"):
+        if buf is getattr(nl, name, object()):
+            return "hbm" if "hbm" in name else name
+    s = str(getattr(buf, "name", buf)).lower()
+    return next((n for n in ("sbuf", "psum", "hbm") if n in s), "")
+
+
+def _install_alloc_audit():
+    if _AUDIT["installed"] or os.environ.get("NKIBENCH_NO_ALLOC_AUDIT"):
+        return
+    try:
+        import nki.language as nl
+    except ImportError:
+        return
+
+    def wrap(fn_name, original, dtype_at, buffer_at):
+        def auditing(*args, **kw):
+            try:
+                shape = kw.get("shape", args[0] if args else None)
+                dtype = kw.get("dtype", args[dtype_at] if len(args) > dtype_at else None)
+                buf = kw.get("buffer", args[buffer_at] if len(args) > buffer_at else nl.sbuf)
+                _ALLOC_LOG.append(dict(fn=fn_name, shape=tuple(int(s) for s in shape),
+                                       itemsize=itemsize_of(type("_D", (), {"dtype": dtype})()),
+                                       buffer=_buffer_name(buf, nl)))
+            except Exception:
+                _ALLOC_LOG.append(dict(fn=fn_name, shape=None, itemsize=0, buffer="?"))
+            return original(*args, **kw)
+        auditing.__wrapped__ = original
+        return auditing
+
+    for fn_name, (dtype_at, buffer_at) in _ALLOCATORS.items():
+        original = getattr(nl, fn_name, None)
+        if original is None:
+            continue
+        audited = wrap(fn_name, original, dtype_at, buffer_at)
+        setattr(nl, fn_name, audited)
+        # also where it is defined, in case the decorator resolves names there
+        home = sys.modules.get(getattr(original, "__module__", "") or "")
+        if home is not None and getattr(home, fn_name, None) is original:
+            setattr(home, fn_name, audited)
+    _AUDIT["installed"] = True
+
+
+def _uninstall_alloc_audit():
+    """Put the real allocators back. The compiler resolves them by name, and a wrapper left installed
+    makes every kernel fail to lower ("failed to resolve name 'nkibench._install_alloc_audit...'")."""
+    if not _AUDIT["installed"]:
+        return
+    import nki.language as nl
+    for fn_name in _ALLOCATORS:
+        cur = getattr(nl, fn_name, None)
+        orig = getattr(cur, "__wrapped__", None)
+        if orig is None:
+            continue
+        setattr(nl, fn_name, orig)
+        home = sys.modules.get(getattr(orig, "__module__", "") or "")
+        if home is not None and getattr(home, fn_name, None) is cur:
+            setattr(home, fn_name, orig)
+    _AUDIT["installed"] = False
+
+
+def illegal_allocations(log):
+    """Distinct allocations the chip would refuse, as sentences. A tile allocated inside a loop is
+    logged once per iteration, so each distinct one is reported once."""
+    bad = []
+    for a in log:
+        shape, buf = a.get("shape"), a.get("buffer")
+        if not shape or buf not in ("sbuf", "psum"):
+            continue
+        if shape[0] > PMAX:
+            bad.append(f"a {buf} tile of shape {shape}, whose partition dimension (the first) is "
+                       f"{shape[0]} where the maximum is {PMAX}")
+            continue
+        per_partition = int(np.prod(shape[1:], dtype=np.int64)) * (a.get("itemsize") or 4)
+        cap = PSUM_PARTITION_BYTES if buf == "psum" else SBUF_PARTITION_BYTES
+        if per_partition > cap:
+            bad.append(f"a {buf} tile of shape {shape}, which needs {per_partition:,} bytes per "
+                       f"partition where {buf} holds {cap:,}")
+    return list(dict.fromkeys(bad))
+
+
+def describe_illegal(counted):
+    """The simulator ran it and the chip would refuse it. None when every allocation fits."""
+    bad = counted.get("illegal") or []
+    if not bad:
+        return None
+    return ("ILLEGAL ON HARDWARE: the CPU simulator ran this kernel, but it does not check tile "
+            "limits when a tile is allocated and the chip does. The kernel allocated "
+            + "; and ".join(bad[:3]) + ". Do not allocate one on-chip tile for a whole operand or "
+            "the whole result: loop over the rows in chunks of at most 128 and allocate each tile "
+            "inside the loop with the chunk's own shape.")
+
+
 def simulate_and_count(kernel, args):
     """Run the kernel on the CPU and count the HBM traffic it asked for.
 
@@ -626,8 +748,10 @@ def simulate_and_count(kernel, args):
         ) from e
 
     run, api = _simulator(nki, kernel)
-    counter = dict(bytes=0, transfers=0, api=api, dtypes=set())
+    counter = dict(bytes=0, transfers=0, api=api, dtypes=set(), illegal=[], allocations=0)
     original = nisa.dma_copy
+    _install_alloc_audit()
+    del _ALLOC_LOG[:]
 
     def counting_dma_copy(dst=None, src=None, **kw):
         try:
@@ -659,10 +783,33 @@ def simulate_and_count(kernel, args):
         counter["warnings"] = seen[:3]
     finally:
         nisa.dma_copy = original
+        counter["allocations"] = len(_ALLOC_LOG)
+        counter["illegal"] = illegal_allocations(_ALLOC_LOG)
+        _uninstall_alloc_audit()
     return out, counter
 
 
+_LOADED_PATHS = set()
+_CANDIDATE_IDS = iter(range(1, 10 ** 9))
+
+
+def candidate_path(stem):
+    """A path no kernel in this process has been loaded from. nki 0.6.0 caches by file path: a
+    second candidate of the SAME BYTE SIZE written to the same path is simulated as the FIRST one
+    -- numerics and allocations both. Measured: the level-4 reference with its nc_matmul operands
+    swapped (same length, raises when run alone) scored 4/4 when loaded from the path the reference
+    had just used. Pure Python's import cache does not do this; nki does. Unique per process and
+    per call, so agents sharing a pod do not collide either. Any 1.0 from a run on older code must
+    be re-graded in a fresh process: scripts/reaudit.py."""
+    return f"/tmp/{stem}_{os.getpid()}_{next(_CANDIDATE_IDS)}.py"
+
+
 def load_kernel(path, entry):
+    if path in _LOADED_PATHS:
+        print(f"nkibench WARNING: {path} was already loaded in this process; nki caches by path, "
+              f"so the allocation audit may report the earlier kernel. Use candidate_path().",
+              file=sys.stderr)
+    _LOADED_PATHS.add(path)
     spec = importlib.util.spec_from_file_location("candidate", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -692,7 +839,7 @@ def verify(path, level_n, tol=2e-2, seed=0):
         print(f"  FAILED to import: {type(e).__name__}: {e}")
         return 2
 
-    passed, failures, intensities = 0, [], []
+    passed, failures, intensities, audited = 0, [], [], []
     for case in spec["shapes"]:
         args, _ = make_inputs(case, level_n, seed)
         want = spec["ref"](*args)
@@ -705,7 +852,11 @@ def verify(path, level_n, tol=2e-2, seed=0):
             failures.append((label(case, level_n),
                              f"RAISED during simulation: {type(e).__name__}: {e}"))
             continue
-        m = describe_mismatch(got, want, tol)
+        audited.append(counted.get("allocations", 0))
+        # Levels 5-7 are graded on bytes too (agent.grade applies the same bar); without it --check, and
+        # scripts/reaudit.py which calls it, would pass a level-5 kernel that moves level 4's traffic.
+        m = (describe_illegal(counted) or describe_mismatch(got, want, tol)
+             or check_traffic_bar(level_n, counted, args, want))
         if m:
             failures.append((label(case, level_n), m))
             continue
@@ -727,6 +878,14 @@ def verify(path, level_n, tol=2e-2, seed=0):
                                 counted, f, minimum_hbm_bytes(args, want)))
 
     print(f"  numerics   {passed}/{len(spec['shapes'])} shapes passed")
+    if os.environ.get("NKIBENCH_NO_ALLOC_AUDIT") or not audited:
+        print("  allocation audit OFF (NKIBENCH_NO_ALLOC_AUDIT set, or nki missing)")
+    elif audited and not any(audited):
+        # every kernel allocates at least its result, so silence means the hook saw nothing
+        print("  allocation audit saw NO allocations -- the hook is not seeing nl.ndarray, so tile "
+              "limits are UNCHECKED here")
+    elif audited:
+        print(f"  allocation audit {sum(audited):,} allocations across {len(audited)} shapes")
     for lbl, m in failures[:3]:
         print(f"\n  case {lbl}:")
         print(textwrap.indent(m, "    "))
@@ -748,6 +907,116 @@ def verify(path, level_n, tol=2e-2, seed=0):
                   f"indicative and re-measure in bfloat16 before quoting a number.")
         print(explain_with_ceiling(flops, counted["bytes"], floor))
     return 0
+
+
+# ---------------------------------------------------------------- held-out eval set
+#
+# The loop only ever sees LEVELS[n]["shapes"] filled with standard-normal data from seed 0. The
+# judges grade on shapes and values the agent never saw, so passing the loop's shapes is evidence,
+# not proof. This set is what the agent checks its own claim against, ONCE, after the loop. Nothing
+# here is ever fed back to the model, or it would stop being held out.
+#
+# Shapes: new ones, inside each level's contract -- the shipped reference kernel passes every one
+# (python nkibench.py --level N --eval reference_levelN.py). Level 3's reference asserts
+# K=128 M=64 N=512, so its contract is that one shape and only the values change. Shapes outside a
+# reference's contract (M not a multiple of 128 on level 4, say) are left out: the reference itself
+# rejects them, so failing them would say nothing about the agent.
+
+EVAL_SHAPES = {
+    1: [dict(shape=(128, 32, 32), pool_size=2), dict(shape=(16, 30, 30), pool_size=5),
+        dict(shape=(1, 64, 64), pool_size=8), dict(shape=(96, 20, 12), pool_size=4),
+        dict(shape=(7, 10, 11), pool_size=3)],
+    2: [dict(shape=(128, 128), shape2D=(16, 8)), dict(shape=(1, 24), shape2D=(4, 6)),
+        dict(shape=(100, 60), shape2D=(6, 10)), dict(shape=(17, 77), shape2D=(7, 11))],
+    3: [dict(K=128, M=64, N=512)],
+    4: [dict(K=384, M=256, N=512), dict(K=128, M=384, N=1536),
+        dict(K=640, M=128, N=1024), dict(K=128, M=128, N=2048)],
+}
+for _n in (5, 6, 7):
+    EVAL_SHAPES[_n] = EVAL_SHAPES[4]
+
+# Values, each chosen to expose a wrong kernel that standard-normal data lets through.
+VALUE_KINDS = {
+    "normal": "standard normal from a seed the loop never used",
+    "ramp": "every element distinct and ordered (linspace -1..1), so an element read from or "
+            "written to the wrong place cannot cancel out",
+    "large": "standard normal x 1e4: a kernel computing in float16 overflows (max 65504)",
+    "float16": "inputs arrive as float16: a kernel that hard-codes float32 returns the wrong dtype "
+               "(the simulator casts silently in dma_copy, so only the dtype check catches it)",
+}
+EVAL_SEED = 1000
+
+
+def make_eval_inputs(case, level_n, kind):
+    args, _ = make_inputs(case, level_n, EVAL_SEED)
+    out = []
+    for a in args:
+        if isinstance(a, np.ndarray) and a.dtype.kind == "f":
+            if kind == "ramp":
+                a = np.linspace(-1, 1, a.size, dtype=np.float32).reshape(a.shape)
+            elif kind == "large":
+                a = a * np.float32(1e4)
+            elif kind == "float16":
+                a = a.astype(np.float16)
+        out.append(a)
+    return tuple(out)
+
+
+def check_case(kernel, args, level_n, tol=2e-2):
+    """Run one case through every check the loop applies. Returns None if it passes, else why."""
+    want = LEVELS[level_n]["ref"](*args)
+    before = [x.copy() if isinstance(x, np.ndarray) else x for x in args]
+    try:
+        got, counted = simulate_and_count(kernel, args)
+    except NkiMissing:
+        raise
+    except Exception as e:
+        return f"raised {type(e).__name__}: {str(e)[:300]}"
+    # Eval only, so the loop's grading stays comparable with the baseline: every reference returns
+    # its input's dtype, and the simulator's dma_copy casts silently, so without this a kernel that
+    # hard-codes float32 passes float16 inputs.
+    wrong_dtype = (f"WRONG DTYPE: returned {np.asarray(got).dtype}, reference returns "
+                   f"{np.asarray(want).dtype}" if np.asarray(got).dtype != np.asarray(want).dtype
+                   else None)
+    m = (check_inputs_untouched(before, args) or describe_illegal(counted) or wrong_dtype
+         or describe_mismatch(got, want, tol) or check_traffic_bar(level_n, counted, args, want))
+    if not m and any("incorrect results on hardware" in w for w in counted.get("warnings", [])):
+        m = "CORRECT ON CPU BUT WRONG ON HARDWARE"
+    return m
+
+
+def evaluate(kernel, level_n, tol=2e-2):
+    """The held-out set: every EVAL_SHAPES case with every VALUE_KINDS fill.
+    Returns a list of dict(case, kind, ok, why)."""
+    results = []
+    for case in EVAL_SHAPES.get(level_n, []):
+        for kind in VALUE_KINDS:
+            why = check_case(kernel, make_eval_inputs(case, level_n, kind), level_n, tol)
+            results.append(dict(case=label(case, level_n), kind=kind, ok=why is None,
+                                why=(why or "")[:300]))
+    return results
+
+
+def run_eval(path, level_n, tol=2e-2):
+    spec = LEVELS[level_n]
+    if level_n not in EVAL_SHAPES:
+        print(f"level {level_n} has no held-out eval set")
+        return 3
+    violations = check_rules(open(path).read(), level_n)
+    if violations:
+        print("RULE VIOLATIONS: " + " ".join(violations))
+        return 2
+    kernel = load_kernel(path, spec["entry"])
+    try:
+        res = evaluate(kernel, level_n, tol)
+    except NkiMissing as e:
+        print(f"SKIPPED: {e}")
+        return 3
+    print(f"level {level_n} held-out eval: {sum(r['ok'] for r in res)}/{len(res)} cases passed "
+          f"({len(EVAL_SHAPES[level_n])} shapes x {len(VALUE_KINDS)} value kinds)")
+    for r in res:
+        print(f"  {'pass' if r['ok'] else 'FAIL'}  {r['case']:<28} {r['kind']:<8} {r['why'][:120]}")
+    return 0 if all(r["ok"] for r in res) else 1
 
 
 # ---------------------------------------------------------------- selftest
@@ -832,6 +1101,32 @@ def selftest():
     print(f"  accepts a plausible kernel         -> {'ok' if not v else 'FAIL: ' + str(v)}")
     rc |= 0 if not v else 1
 
+    # The allocation audit: the judgement is pure, so it is proven here; the hook that feeds it
+    # needs nki (see the end of this selftest).
+    print()
+    def alloc(shape, buffer, itemsize=4):
+        return dict(fn="ndarray", shape=shape, buffer=buffer, itemsize=itemsize)
+    reference_l4 = [alloc((256, 1024), "hbm"), alloc((128, 512), "psum"),
+                    alloc((128, 128), "sbuf"), alloc((128, 512), "sbuf")]
+    audit_cases = [
+        ("the level-4 reference's tiles", reference_l4, 0),
+        ("a (256, 256) sbuf tile", [alloc((256, 256), "sbuf")], 1),
+        ("a (512, 1024) psum tile", [alloc((512, 1024), "psum")], 1),
+        ("all 8 psum banks, (128, 4096) f32", [alloc((128, 4096), "psum")], 0),
+        ("more than all of psum", [alloc((128, 8192), "psum")], 1),
+        ("a huge hbm tensor", [alloc((4096, 4096), "hbm")], 0),
+        ("one bad tile in a loop, 4 times", [alloc((256, 256), "sbuf")] * 4, 1),
+    ]
+    for what, log, want_n in audit_cases:
+        got_n = len(illegal_allocations(log))
+        ok = got_n == want_n
+        rc |= 0 if ok else 1
+        print(f"  audit: {what:<34} -> {got_n} illegal {'ok' if ok else 'FAIL want ' + str(want_n)}")
+    m = describe_illegal(dict(illegal=illegal_allocations([alloc((256, 256), "sbuf")])))
+    ok = bool(m) and m.startswith("ILLEGAL ON HARDWARE") and "(256, 256)" in m
+    print(f"  audit message names the tile       -> {'ok' if ok else 'FAIL'}")
+    rc |= 0 if ok else 1
+
     # Byte sizing. A 2x error here silently doubles every arithmetic intensity and can turn a
     # memory-bound kernel into a plausible-looking compute-bound one -- which is exactly what
     # the first cluster run did before itemsize_of existed.
@@ -887,6 +1182,14 @@ def selftest():
         print(f"  nki {getattr(nki, '__version__', '?')} is importable; simulation API: "
               f"{api or 'NEITHER — see _simulator()'}")
         rc |= 0 if api else 1
+        _install_alloc_audit()
+        import nki.language as nl
+        hooked = [n for n in _ALLOCATORS if hasattr(getattr(nl, n, None), "__wrapped__")]
+        print(f"  allocation audit hooked onto       -> nl.{', nl.'.join(hooked) or 'NOTHING'}"
+              f"{'' if hooked else ' FAIL'}")
+        print("    whether nki.jit kernels go through that hook is proven only by --check on a "
+              "reference kernel: look for 'allocation audit N allocations'.")
+        rc |= 0 if hooked or os.environ.get("NKIBENCH_NO_ALLOC_AUDIT") else 1
     except ImportError:
         print("  NEEDS DEVICE VERIFICATION: simulate_and_count() imports nki and cannot run")
         print("    here. Its byte counting wraps nisa.dma_copy, which is unverified until")
@@ -904,6 +1207,8 @@ def main():
     ap.add_argument("--level", type=int)
     ap.add_argument("--show", action="store_true")
     ap.add_argument("--check", metavar="FILE.py")
+    ap.add_argument("--eval", metavar="FILE.py",
+                    help="run the held-out eval set (new shapes, hostile values) on a kernel")
     ap.add_argument("--roofline", nargs=3, type=int, metavar=("M", "K", "N"),
                     help="what the tiled matmul's roofline says for this shape")
     ap.add_argument("--dtype", default="bfloat16",
@@ -941,6 +1246,9 @@ def main():
 
     if a.level and a.check:
         sys.exit(verify(a.check, a.level, a.tol, a.seed))
+
+    if a.level and a.eval:
+        sys.exit(run_eval(a.eval, a.level, a.tol))
 
     print("THE LEVELS — difficulty and optimization headroom rise together.\n")
     for n, s in LEVELS.items():

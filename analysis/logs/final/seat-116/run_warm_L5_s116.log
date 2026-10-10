@@ -1,0 +1,53 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1 L2CAT=1 WARM=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 5: matmul, loads hoisted ===========
+  tokens: prompt 597 = instructions 69 + prev_code 425 + feedback 103  [tokenizer] | answers 446, 455, 484, 456
+round 0: this round 0.88  best so far 0.88  (89.5s)
+  3 of 4 shapes passed. On K=256 M=512 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 2.00x the byte floor, and level 5 requires 1.60x or better. Correctness alone is level 4; this level is about the bytes. Hoist the operand loads out of the innermost loop; the same tiles are being re-read on every pass.
+  tokens: prompt 627 = instructions 69 + prev_code 455 + feedback 103  [tokenizer] | answers 603, 437, 450, 455
+round 1: this round 0.62  best so far 0.88  (94.6s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: NUMERICAL MISMATCH: worst error 4.81 of the output's RMS (15.98), tolerance 0.02.
+  at index (124, 54): expected -6.445, got +70.3908
+  98.4% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+  tokens: prompt 792 = instructions 69 + prev_code 602 + feedback 121  [tokenizer] | answers 603, 437, 455, 456
+round 2: this round 0.88  best so far 0.88  (94.8s)
+  3 of 4 shapes passed. On K=256 M=512 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 2.00x the byte floor, and level 5 requires 1.60x or better. Correctness alone is level 4; this level is about the bytes. Hoist the operand loads out of the innermost loop; the same tiles are being re-read on every pass.
+  tokens: prompt 627 = instructions 69 + prev_code 455 + feedback 103  [tokenizer] | answers 599, 544, 463, 437
+round 3: this round 0.62  best so far 0.88  (95.9s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: NUMERICAL MISMATCH: worst error 4.81 of the output's RMS (15.98), tolerance 0.02.
+  at index (124, 54): expected -6.445, got +70.3908
+  98.4% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+  tokens: prompt 788 = instructions 69 + prev_code 598 + feedback 121  [tokenizer] | answers 615, 456, 456, 455
+round 4: this round 0.88  best so far 0.88  (95.9s)
+  3 of 4 shapes passed. On K=256 M=512 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 2.00x the byte floor, and level 5 requires 1.60x or better. Correctness alone is level 4; this level is about the bytes. Hoist the operand loads out of the innermost loop; the same tiles are being re-read on every pass.
+  tokens: prompt 627 = instructions 69 + prev_code 455 + feedback 103  [tokenizer] | answers 686, 455, 462, 455
+round 5: this round 0.62  best so far 0.88  (101.1s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: NUMERICAL MISMATCH: worst error 3.42 of the output's RMS (15.98), tolerance 0.02.
+  at index (107, 403): expected +52.2404, got +106.838
+  97.8% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+  tokens: prompt 878 = instructions 69 + prev_code 685 + feedback 124  [tokenizer] | answers 683, 456, 556, 455
+round 6: this round 0.88  best so far 0.88  (101.8s)
+  3 of 4 shapes passed. On K=256 M=512 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 2.00x the byte floor, and level 5 requires 1.60x or better. Correctness alone is level 4; this level is about the bytes. Hoist the operand loads out of the innermost loop; the same tiles are being re-read on every pass.
+  STOPPING this level: this failure for the 4th time, alternating with 2 other(s). The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  3 of 4 shapes passed. On K=256 M=512 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 2.00x th
+    2x  1 of 4 shapes passed. On K=256 M=256 N=1024: NUMERICAL MISMATCH: worst error 4.81 of the output's RMS (15.98),
+    1x  1 of 4 shapes passed. On K=256 M=256 N=1024: NUMERICAL MISMATCH: worst error 3.42 of the output's RMS (15.98),
+  VERDICT level 5: FAILED, confidence 0.00: not solved: best score 0.88 after 7 rounds
+
+  CONFIDENCE level 5: 0.00 (it still fails shapes the loop tested) -- stated before the held-out check
+  VERDICT level 5: NOT SOLVED (best reward 0.88; held-out 16/16)
+    tokens spent: 19,744 prompt + 13,970 answer over 7 round(s)
+
+=========== summary ===========
+  level 5  reward 0.88 after 7 round(s)  tokens 19,744 prompt + 13,970 answer  confidence 0.00  NOT SOLVED (best reward 0.88; held-out 16/16)
+  solved 0/1
+
+=========== calibration, 1 verdict(s) ===========
+  said 0.00-0.01:   1 verdicts, mean confidence 0.00, actually passed held-out 1/1
+  Brier score 1.000.  Confident (>=0.5) but wrong: 0
+
+attempts logged to warm_L5_s116.jsonl, verdicts to warm_L5_s116_verdicts.jsonl

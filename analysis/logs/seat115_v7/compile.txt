@@ -1,0 +1,48 @@
+== l2_nki_d11_87f0437d.py
+   shape=(32, 12) as 3x4            FAILS: NCCError: neuronx-cc compilation failed with exit code 70 stderr: [INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed === Reason:
+   shape=(128, 64) as 8x8           FAILS: NCCError: neuronx-cc compilation failed with exit code 70 stderr: [INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed === Reason:
+   shape=(64, 128) as 4x32          FAILS: NCCError: neuronx-cc compilation failed with exit code 70 stderr: [INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed === Reason:
+   shape=(8, 35) as 5x7             FAILS: NCCError: neuronx-cc compilation failed with exit code 70 stderr: [INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed === Reason:
+== l3_nki_d13_d709e31d.py
+   K=128 M=64 N=512                 predicted       5.2 us; birsim MATCHES: worst error 1.17e-06 of RMS
+== l3_nki_d13_ad559224.py
+   K=128 M=64 N=512                 predicted       5.2 us; birsim MATCHES: worst error 1.17e-06 of RMS
+== l3_nki_t1_a680640e.py
+   K=128 M=64 N=512                 predicted       5.2 us; birsim MATCHES: worst error 1.17e-06 of RMS
+== l4_nki_d13_8339bbd6.py
+   K=256 M=256 N=1024               predicted      33.0 us; birsim MATCHES: worst error 2.87e-06 of RMS
+== l9_nki_d12_81369910.py
+   R=128 C=64                       predicted       6.4 us; birsim MATCHES: worst error 2.36e-05 of RMS
+   R=64 C=512                       predicted       9.2 us; birsim MATCHES: worst error 4.82e-05 of RMS
+   R=256 C=128 scale=30.0           predicted      12.6 us; birsim MATCHES: worst error 2.77e-05 of RMS
+== l9_nki_d12_f8fbbf86.py
+   R=128 C=64                       predicted       6.4 us; birsim MATCHES: worst error 2.36e-05 of RMS
+   R=64 C=512                       predicted       9.2 us; birsim MATCHES: worst error 4.82e-05 of RMS
+   R=256 C=128 scale=30.0           predicted      12.6 us; birsim MATCHES: worst error 2.77e-05 of RMS
+== l9_nki_d12_31fc87a8.py
+   R=128 C=64                       predicted       6.4 us; birsim MATCHES: worst error 2.36e-05 of RMS
+   R=64 C=512                       predicted       9.2 us; birsim MATCHES: worst error 4.82e-05 of RMS
+   R=256 C=128 scale=30.0           predicted      12.6 us; birsim MATCHES: worst error 2.77e-05 of RMS
+== l9_nki_d14_a782238c.py
+   R=128 C=64                       predicted       6.4 us; birsim MATCHES: worst error 2.36e-05 of RMS
+   R=64 C=512                       predicted       9.2 us; birsim MATCHES: worst error 4.82e-05 of RMS
+   R=256 C=128 scale=30.0           predicted      12.6 us; birsim MATCHES: worst error 2.77e-05 of RMS
+== l9_nki_d14_304497f3.py
+   R=128 C=64                       predicted       6.4 us; birsim MATCHES: worst error 2.36e-05 of RMS
+   R=64 C=512                       predicted       9.2 us; birsim MATCHES: worst error 4.82e-05 of RMS
+   R=256 C=128 scale=30.0           predicted      12.6 us; birsim MATCHES: worst error 2.77e-05 of RMS
+== l9_nki_d2_e841e5e9.py
+   R=128 C=64                       predicted       6.4 us; birsim MATCHES: worst error 2.36e-05 of RMS
+   R=64 C=512                       predicted       9.2 us; birsim MATCHES: worst error 4.82e-05 of RMS
+   R=256 C=128 scale=30.0           predicted      12.6 us; birsim MATCHES: worst error 2.77e-05 of RMS
+== l9_nki_d2_8e925b2d.py
+   R=128 C=64                       predicted       6.4 us; birsim MATCHES: worst error 2.36e-05 of RMS
+   R=64 C=512                       predicted       9.2 us; birsim MATCHES: worst error 4.82e-05 of RMS
+   R=256 C=128 scale=30.0           predicted      12.6 us; birsim MATCHES: worst error 2.77e-05 of RMS
+
+=== summary: distinct simulator-solved kernels, by what the compiler and birsim say
+level 2: {'does not lower': 1}
+    4 x neuronx-cc compilation failed with exit code 70 stderr: [INTERNAL_ERROR] [NCC_INLA001] Unhandled exc
+level 3: {'match': 3}
+level 4: {'match': 1}
+level 9: {'match': 7}

@@ -1,0 +1,13 @@
+﻿category,level 1,level 2,level 3,level 4,total
+copy_size_mismatch,40,30,26,0,96
+invented_name,80,0,0,0,80
+out_of_bounds,0,32,16,16,64
+partition_over_128,0,0,0,55,55
+reshape,0,1,48,1,50
+tile_1d,0,0,22,0,22
+wrong_signature,20,1,0,1,22
+wrong_buffer,20,0,0,1,21
+broadcast,0,0,0,9,9
+correct,0,4,0,0,4
+numeric_mismatch,0,0,0,1,1
+total,160,68,112,84,424

@@ -1,0 +1,23 @@
+import nki
+import nki.isa as nisa
+import nki.language as nl
+
+@nki.jit
+def nki_matmul_tiled_(lhsT, rhs):
+    out = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+    TK = min(128, lhsT.shape[0])
+    TM = min(128, lhsT.shape[1])
+    TN = min(512, rhs.shape[1])
+    for m in nl.affine_range(lhsT.shape[1] // TM):
+        for n in nl.affine_range(rhs.shape[1] // TN):
+            psum = nl.ndarray((TM, TN), dtype=nl.float32, buffer=nl.psum)
+            for k in nl.affine_range(lhsT.shape[0] // TK):
+                sbuf_lhsT = nl.ndarray((TK, TM), dtype=lhsT.dtype, buffer=nl.sbuf)
+                sbuf_rhs = nl.ndarray((TK, TN), dtype=rhs.dtype, buffer=nl.sbuf)
+                nisa.dma_copy(dst=sbuf_lhsT, src=lhsT[k * TK:(k + 1) * TK, m * TM:(m + 1) * TM])
+                nisa.dma_copy(dst=sbuf_rhs, src=rhs[k * TK:(k + 1) * TK, n * TN:(n + 1) * TN])
+                nisa.nc_matmul(dst=psum, stationary=sbuf_lhsT, moving=sbuf_rhs)
+            res = nl.ndarray((TM, TN), dtype=out.dtype, buffer=nl.sbuf)
+            nisa.tensor_copy(dst=res, src=psum)
+            nisa.dma_copy(dst=out[m * TM:(m + 1) * TM, n * TN:(n + 1) * TN], src=res)
+    return out

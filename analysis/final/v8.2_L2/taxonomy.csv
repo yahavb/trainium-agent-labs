@@ -1,0 +1,13 @@
+﻿family,mode,description,level 2,total,share of failures,stuck rate
+index arithmetic,copy_size_mismatch,copies between tiles of different sizes,132,132,71.0%,11%
+silent wrong numbers,numeric_mismatch,"runs, numbers wrong",26,26,14.0%,78%
+rules / format,rule_violation,"banned call, missing @nki.jit or wrong entry name",8,8,4.3%,
+API,invented_name,calls an NKI function or attribute that does not exist,4,4,2.2%,33%
+silent wrong numbers,non_finite,NaN or Inf in the output,4,4,2.2%,67%
+index arithmetic,out_of_bounds,indexes past the end of a tensor,3,3,1.6%,
+index arithmetic,broadcast,assigns a value of the wrong shape,2,2,1.1%,50%
+memory model,wrong_buffer,a tile in the wrong memory (SBUF / PSUM / HBM),2,2,1.1%,50%
+API,wrong_signature,"right function, wrong arguments",2,2,1.1%,0%
+other,other,,1,1,0.5%,
+index arithmetic,reshape,reshapes instead of slicing (or changes the partition size),1,1,0.5%,0%
+rules / format,truncated,the answer hit max_tokens and was cut off (finish=length); the checker then sees broken code,1,1,0.5%,

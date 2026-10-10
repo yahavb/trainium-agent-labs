@@ -1,0 +1,95 @@
+nki target trn2, NEURON_LOGICAL_NC_CONFIG=1
+L1 reference_level1.py C,H,W=(32, 32, 32) pool=2: sim ok   2.44e-07 | device ok   2.44e-07 | 1209.023 ms/call (first 11.51 s)
+L1 reference_level1.py C,H,W=(128, 16, 16) pool=4: sim ok   2.41e-07 | device ok   4.82e-07 | 1190.040 ms/call (first 1.2 s)
+L1 reference_level1.py C,H,W=(8, 24, 24) pool=3: sim ok   1.73e-07 | device ok   3.46e-07 | 1201.256 ms/call (first 1.19 s)
+L1 reference_level1.py C,H,W=(64, 8, 8) pool=2: sim ok   2.41e-07 | device ok   2.41e-07 | 1209.091 ms/call (first 1.22 s)
+L3 reference_level3.py K=128 M=64 N=512: sim ok   0.00e+00 | device ok   2.01e-06 | 1196.199 ms/call (first 1.24 s)
+L4 reference_level4.py K=128 M=128 N=512: sim ok   0.00e+00 | device ok   2.36e-06 | 1218.659 ms/call (first 1.19 s)
+L4 reference_level4.py K=256 M=256 N=1024: sim ok   2.87e-06 | device ok   3.11e-06 | 1245.299 ms/call (first 1.24 s)
+L4 reference_level4.py K=512 M=128 N=512: sim ok   2.69e-06 | device ok   2.19e-06 | 1199.855 ms/call (first 1.2 s)
+L4 reference_level4.py K=256 M=512 N=1024: sim ok   3.10e-06 | device ok   2.86e-06 | 1297.835 ms/call (first 1.23 s)
+L2 l2.py shape=(32, 12) as 3x4: sim ok   0.00e+00 | device ok   0.00e+00 | 1401.504 ms/call (first 1.38 s)
+L2 l2.py shape=(128, 64) as 8x8: sim ok   0.00e+00 | device ok   0.00e+00 | 6819.420 ms/call (first 6.98 s)
+L2 l2.py shape=(64, 128) as 4x32: sim ok   0.00e+00 | device ok   0.00e+00 | 6754.291 ms/call (first 6.93 s)
+L2 l2.py shape=(8, 35) as 5x7: sim ok   0.00e+00 | device ok   0.00e+00 | 1302.153 ms/call (first 1.31 s)
+L3 l3.py K=128 M=64 N=512: sim ok   0.00e+00 | device ok   2.01e-06 | 1192.964 ms/call (first 1.17 s)
+L4 l4.py K=128 M=128 N=512: sim ok   0.00e+00 | device ok   2.36e-06 | 1195.581 ms/call (first 1.18 s)
+L4 l4.py K=256 M=256 N=1024: sim ok   2.87e-06 | device ok   3.11e-06 | 1248.446 ms/call (first 1.2 s)
+L4 l4.py K=512 M=128 N=512: sim ok   2.69e-06 | device ok   2.19e-06 | 1248.646 ms/call (first 1.27 s)
+L4 l4.py K=256 M=512 N=1024: sim ok   3.10e-06 | device ok   2.86e-06 | 1244.269 ms/call (first 1.26 s)
+L9 l9.py R=128 C=64: sim ok   5.91e-07 | device ok   2.36e-05 | 1199.465 ms/call (first 1.21 s)
+L9 l9.py R=64 C=512: sim ok   5.87e-07 | device ok   4.82e-05 | 1212.195 ms/call (first 1.21 s)
+L9 l9.py R=256 C=128 scale=30.0: sim ok   3.51e-07 | device ok   2.77e-05 | 1224.115 ms/call (first 1.23 s)
+L11 l11.py R=128 C=64: sim ok   7.79e-07 | device ok   2.14e-06 | 1227.451 ms/call (first 1.21 s)
+L11 l11.py R=64 C=512: sim ok   1.60e-06 | device ok   1.60e-06 | 1249.469 ms/call (first 1.2 s)
+L11 l11.py R=256 C=128: sim ok   1.60e-06 | device ok   1.60e-06 | 1296.759 ms/call (first 1.28 s)
+L1 l1.py C,H,W=(32, 32, 32) pool=2: sim ok   2.44e-07 | device FAIL (NCCError: neuronx-cc compilation failed with exit code 70
+stderr:
+[INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed ===
+Reason: Invalid access of 1 partitions starting at partition 1
+Instruction: I-769_inst__I-4-0
+Opcode: TensorReduce
+Instruction Source: (T |  - Please open a support ticket at https://github.com/aws-neuron/aws-neuron-sdk/issues/new. You may also be able to obtain more information using the 'XLA_IR_DEBUG' and 'XLA_HLO_DEBUG' environment var)
+L1 l1.py C,H,W=(128, 16, 16) pool=4: sim ok   2.41e-07 | device FAIL (NCCError: neuronx-cc compilation failed with exit code 70
+stderr:
+[INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed ===
+Reason: Invalid access of 1 partitions starting at partition 1
+Instruction: I-49_inst__I-4-0
+Opcode: TensorReduce
+Instruction Source: (Te |  - Please open a support ticket at https://github.com/aws-neuron/aws-neuron-sdk/issues/new. You may also be able to obtain more information using the 'XLA_IR_DEBUG' and 'XLA_HLO_DEBUG' environment var)
+L1 l1.py C,H,W=(8, 24, 24) pool=3: sim ok   1.73e-07 | device FAIL (NCCError: neuronx-cc compilation failed with exit code 70
+stderr:
+[INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed ===
+Reason: Invalid access of 1 partitions starting at partition 1
+Instruction: I-193_inst__I-4-0
+Opcode: TensorReduce
+Instruction Source: (T |  - Please open a support ticket at https://github.com/aws-neuron/aws-neuron-sdk/issues/new. You may also be able to obtain more information using the 'XLA_IR_DEBUG' and 'XLA_HLO_DEBUG' environment var)
+L1 l1.py C,H,W=(64, 8, 8) pool=2: sim ok   2.41e-07 | device FAIL (NCCError: neuronx-cc compilation failed with exit code 70
+stderr:
+[INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed ===
+Reason: Invalid access of 1 partitions starting at partition 1
+Instruction: I-49_inst__I-4-0
+Opcode: TensorReduce
+Instruction Source: (Te |  - Please open a support ticket at https://github.com/aws-neuron/aws-neuron-sdk/issues/new. You may also be able to obtain more information using the 'XLA_IR_DEBUG' and 'XLA_HLO_DEBUG' environment var)
+/opt/conda/lib/python3.13/site-packages/nki/isa/_tensor_ops.py:170:18: error: 'nisa.tensor_tensor_arith' op 'dst' free total elements 64 != 'rhs' free total elements 1
+        result = get_backend().tensor_tensor_arith(
+                 ^
+/workspace/devtest/rehearsal/nki_kernels/l10.py:29:9: note: called from
+        nisa.tensor_tensor(dst=chunk_diff, data1=sbuf_in[i:i + chunk_size, :], data2=mean[i:i + chunk_size, :], op=nl.subtract)
+        ^
+/workspace/devtest/rehearsal/nki_kernels/l10.py:6:1: note: called from
+def nki_layernorm_(x):
+^
+/opt/conda/lib/python3.13/site-packages/nki/isa/_tensor_ops.py:170:18: note: see current operation: %12 = "nisa.tensor_tensor_arith"(%11, %0, %3) <{dst_ap = #nisa.flat_affine_map<[#nisa.flat_affine_expr<0, [1, 0], 0>, #nisa.flat_affine_expr<0, [0, 1], 0>]>, dst_static_tile_shape = array<i64: 128, 64>, dst_ti_static_offsets = array<i64>, dst_tile_par_dims = 1 : i32, engine = [], lhs_ap = #nisa.flat_affine_map<[#nisa.flat_affine_expr<0, [1, 0], 0>, #nisa.flat_affine_expr<0, [0, 1], 0>]>, lhs_static_tile_shape = array<i64: 128, 64>, lhs_ti_static_offsets = array<i64>, lhs_tile_par_dims = 1 : i32, op = 3 : i32, operandSegmentSizes = array<i32: 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0>, operators = array<i32>, rhs_ap = #nisa.flat_affine_map<[#nisa.flat_affine_expr<0, [1, 0], 0>, #nisa.flat_affine_expr<0, [0, 1], 0>]>, rhs_static_tile_shape = array<i64: 128, 1>, rhs_tile_par_dims = 1 : i32, static_values = array<i64>}> : (memref<128x64xf32, #nisa.mem<sbuf>>, memref<128x64xf32, #nisa.mem<sbuf>>, memref<128x1xf32, #nisa.mem<sbuf>>) -> !nisa.semaphore
+        result = get_backend().tensor_tensor_arith(
+                 ^
+L10 l10.py R=128 C=64: sim ok   2.38e-07 | device FAIL (RuntimeError: Generated MLIR failed verification; see diagnostics above | RuntimeError: Generated MLIR failed verification; see diagnostics above)
+/opt/conda/lib/python3.13/site-packages/nki/isa/_tensor_ops.py:170:18: error: 'nisa.tensor_tensor_arith' op 'dst' free total elements 512 != 'rhs' free total elements 1
+        result = get_backend().tensor_tensor_arith(
+                 ^
+/workspace/devtest/rehearsal/nki_kernels/l10.py:29:9: note: called from
+        nisa.tensor_tensor(dst=chunk_diff, data1=sbuf_in[i:i + chunk_size, :], data2=mean[i:i + chunk_size, :], op=nl.subtract)
+        ^
+/workspace/devtest/rehearsal/nki_kernels/l10.py:6:1: note: called from
+def nki_layernorm_(x):
+^
+/opt/conda/lib/python3.13/site-packages/nki/isa/_tensor_ops.py:170:18: note: see current operation: %12 = "nisa.tensor_tensor_arith"(%11, %0, %3) <{dst_ap = #nisa.flat_affine_map<[#nisa.flat_affine_expr<0, [1, 0], 0>, #nisa.flat_affine_expr<0, [0, 1], 0>]>, dst_static_tile_shape = array<i64: 64, 512>, dst_ti_static_offsets = array<i64>, dst_tile_par_dims = 1 : i32, engine = [], lhs_ap = #nisa.flat_affine_map<[#nisa.flat_affine_expr<0, [1, 0], 0>, #nisa.flat_affine_expr<0, [0, 1], 0>]>, lhs_static_tile_shape = array<i64: 64, 512>, lhs_ti_static_offsets = array<i64>, lhs_tile_par_dims = 1 : i32, op = 3 : i32, operandSegmentSizes = array<i32: 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0>, operators = array<i32>, rhs_ap = #nisa.flat_affine_map<[#nisa.flat_affine_expr<0, [1, 0], 0>, #nisa.flat_affine_expr<0, [0, 1], 0>]>, rhs_static_tile_shape = array<i64: 64, 1>, rhs_tile_par_dims = 1 : i32, static_values = array<i64>}> : (memref<64x512xf32, #nisa.mem<sbuf>>, memref<64x512xf32, #nisa.mem<sbuf>>, memref<64x1xf32, #nisa.mem<sbuf>>) -> !nisa.semaphore
+        result = get_backend().tensor_tensor_arith(
+                 ^
+L10 l10.py R=64 C=512: sim ok   2.38e-07 | device FAIL (RuntimeError: Generated MLIR failed verification; see diagnostics above | RuntimeError: Generated MLIR failed verification; see diagnostics above)
+/opt/conda/lib/python3.13/site-packages/nki/isa/_tensor_ops.py:170:18: error: 'nisa.tensor_tensor_arith' op 'dst' free total elements 128 != 'rhs' free total elements 1
+        result = get_backend().tensor_tensor_arith(
+                 ^
+/workspace/devtest/rehearsal/nki_kernels/l10.py:29:9: note: called from
+        nisa.tensor_tensor(dst=chunk_diff, data1=sbuf_in[i:i + chunk_size, :], data2=mean[i:i + chunk_size, :], op=nl.subtract)
+        ^
+/workspace/devtest/rehearsal/nki_kernels/l10.py:6:1: note: called from
+def nki_layernorm_(x):
+^
+/opt/conda/lib/python3.13/site-packages/nki/isa/_tensor_ops.py:170:18: note: see current operation: %19 = "nisa.tensor_tensor_arith"(%18, %0, %4) <{dst_ap = #nisa.flat_affine_map<[#nisa.flat_affine_expr<0, [1, 0], 0>, #nisa.flat_affine_expr<0, [0, 1], 0>]>, dst_static_tile_shape = array<i64: 128, 128>, dst_ti_static_offsets = array<i64>, dst_tile_par_dims = 1 : i32, engine = [], lhs_ap = #nisa.flat_affine_map<[#nisa.flat_affine_expr<0, [1, 0], 0>, #nisa.flat_affine_expr<0, [0, 1], 0>]>, lhs_static_tile_shape = array<i64: 128, 128>, lhs_ti_static_offsets = array<i64>, lhs_tile_par_dims = 1 : i32, op = 3 : i32, operandSegmentSizes = array<i32: 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0>, operators = array<i32>, rhs_ap = #nisa.flat_affine_map<[#nisa.flat_affine_expr<0, [1, 0], 0>, #nisa.flat_affine_expr<0, [0, 1], 0>]>, rhs_static_tile_shape = array<i64: 128, 1>, rhs_tile_par_dims = 1 : i32, static_values = array<i64>}> : (memref<128x128xf32, #nisa.mem<sbuf>>, memref<256x128xf32, #nisa.mem<sbuf>>, memref<256x1xf32, #nisa.mem<sbuf>>) -> !nisa.semaphore
+        result = get_backend().tensor_tensor_arith(
+                 ^
+L10 l10.py R=256 C=128 scale=3.0 shift=5.0: sim ok   2.38e-07 | device FAIL (RuntimeError: Generated MLIR failed verification; see diagnostics above | RuntimeError: Generated MLIR failed verification; see diagnostics above)
+
+device: 24 of 31 kernel-shapes match the reference (simulator: 31). Written to /workspace/devtest/device.json
+=== DEVICE TEST DONE

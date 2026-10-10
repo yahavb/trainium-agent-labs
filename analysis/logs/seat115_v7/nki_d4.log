@@ -1,0 +1,9 @@
+########## level 9
+feedback v7: PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen REPAIR_PROMPT=restructure GRADE_TIMEOUT=120 GATE=static USAGE_LOG=/workspace/out/s115/usage_nki_d4.jsonl
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 5 ################
+
+=========== level 9: row softmax ===========
+round 0: this round 0.30  best so far 0.30  (153.8s)
+  0 of 3 shapes passed. On R=128 C=64: Line 39: `nisa.tensor_tensor(dst=scaled_exp, data=exp_tile, data2=inv_sum, op=nl.multiply)` raised TypeError: tensor_tensor() got an unexpected keyword argument 'data'. Did you mean 'data1'? Remove the `data=` argument. The real signature is isa.tensor_tensor(dst: 'NkiTensor', data1: 'NkiTensor', data2: 'NkiTensor', op, engine=<engine.unknown: 0>, name=None).

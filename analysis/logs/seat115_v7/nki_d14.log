@@ -1,0 +1,556 @@
+########## level 9
+feedback v7: PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen REPAIR_PROMPT=restructure GRADE_TIMEOUT=120 GATE=static USAGE_LOG=/workspace/out/s115/usage_nki_d14.jsonl
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 5 ################
+
+=========== level 9: row softmax ===========
+round 0: this round 0.83  best so far 0.83  (172.4s)
+  2 of 3 shapes passed. On R=256 C=128 scale=30.0: Line 13: `nisa.dma_copy(dst=tile, src=x)` raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 A tile may have at most 128 rows, and you asked for 256. Do not allocate one tile for the whole tensor: loop over the partition dimension in chunks of at most 128 with nl.affine_range, allocate the tile inside the loop with the c
+round 1: this round 0.95  best so far 0.95  (202.7s)
+  Correct in the simulator on every shape, but the trn2 compiler rejects it: the chip has no such instruction, so this kernel cannot run on the device. Fix exactly these lines:
+
+Line 45 (`inv_sum` is a (rows, 1) column; tensor_tensor with a broadcast column). Replace:
+        nisa.tensor_tensor(dst=res_tile, data1=exp_tile, data2=inv_sum, op=nl.multiply)
+with:
+        nisa.tensor_scalar(dst=res_tile
+round 2: this round 1.00  best so far 1.00  (202.1s)
+  Correct on every shape.
+  SOLVED on round 2. Correct on every shape.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_softmax_(x):
+      R, C = x.shape
+      # Allocate output in shared HBM
+      out = nl.ndarray((R, C), dtype=x.dtype, buffer=nl.shared_hbm)
+    
+      # Loop over the rows in chunks of 128
+      for i in nl.affine_range(0, R, 128):
+          # Define the current chunk size
+          chunk_size = min(128, R - i)
+        
+          # Allocate input tile in SBUF for the current chunk
+          tile = nl.ndarray((chunk_size, C), dtype=x.dtype, buffer=nl.sbuf)
+          # Copy input chunk to SBUF
+          nisa.dma_copy(dst=tile, src=x[i:i+chunk_size, :])
+        
+          # Compute max along axis 1 (rows) for the current chunk
+          max_vals = nl.ndarray((chunk_size, 1), dtype=x.dtype, buffer=nl.sbuf)
+          m = nl.max(tile, axis=[1], keepdims=True)
+          nisa.tensor_copy(dst=max_vals, src=m)
+        
+          # Subtract max from each row
+          sub_tile = nl.ndarray((chunk_size, C), dtype=x.dtype, buffer=nl.sbuf)
+          nisa.tensor_scalar(dst=sub_tile, data=tile, op0=nl.subtract, operand0=max_vals)
+        
+          # Compute exp of (x - max)
+          exp_tile = nl.ndarray((chunk_size, C), dtype=nl.float32, buffer=nl.sbuf)
+          nisa.activation(dst=exp_tile, op=nl.exp, data=sub_tile)
+        
+          # Sum exp along axis 1 (rows)
+          sum_vals = nl.ndarray((chunk_size, 1), dtype=nl.float32, buffer=nl.sbuf)
+          s = nl.sum(exp_tile, axis=[1], keepdims=True)
+          nisa.tensor_copy(dst=sum_vals, src=s)
+        
+          # Compute 1 / sum
+          inv_sum = nl.ndarray((chunk_size, 1), dtype=nl.float32, buffer=nl.sbuf)
+          nisa.reciprocal(dst=inv_sum, data=sum_vals)
+        
+          # Multiply exp by 1 / sum
+          res_tile = nl.ndarray((chunk_size, C), dtype=nl.float32, buffer=nl.sbuf)
+          nisa.tensor_scalar(dst=res_tile, data=exp_tile, op0=nl.multiply, operand0=inv_sum)
+        
+          # Copy result to output
+          nisa.dma_copy(dst=out[i:i+chunk_size, :], src=res_tile)
+    
+      return out
+  -------------------------------------------
+  VERDICT level 9: VERIFIED, confidence 0.80: solved, and passes all 15 extra cases it was never graded on, and lowers for trn2
+
+=========== summary ===========
+  level 9  reward 1.00 after 3 round(s)  SOLVED
+  solved 1/1
+
+################ run 2 of 5 ################
+
+=========== level 9: row softmax ===========
+round 0: this round 0.83  best so far 0.83  (172.0s)
+  2 of 3 shapes passed. On R=256 C=128 scale=30.0: Line 13: `nisa.dma_copy(dst=tile, src=x)` raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 A tile may have at most 128 rows, and you asked for 256. Do not allocate one tile for the whole tensor: loop over the partition dimension in chunks of at most 128 with nl.affine_range, allocate the tile inside the loop with the c
+round 1: this round 0.95  best so far 0.95  (190.4s)
+  Correct in the simulator on every shape, but the trn2 compiler rejects it: the chip has no such instruction, so this kernel cannot run on the device. Fix exactly these lines:
+
+Line 41 (nl.divide as an operation: compute the reciprocal with nisa.reciprocal, then multiply). Replace:
+        nisa.tensor_scalar(dst=div_tile, data=exp_tile, op0=nl.divide, operand0=sum_vals)
+with:
+        inv = nl.ndarr
+round 2: this round 1.00  best so far 1.00  (205.3s)
+  Correct on every shape.
+  SOLVED on round 2. Correct on every shape.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_softmax_(x):
+      R, C = x.shape
+      # Allocate output in shared HBM
+      out = nl.ndarray((R, C), dtype=x.dtype, buffer=nl.shared_hbm)
+    
+      # Loop over the rows in chunks of 128
+      for i in nl.affine_range(0, R, 128):
+          # Define the current chunk size
+          chunk_size = min(128, R - i)
+        
+          # Allocate input tile in SBUF for the current chunk
+          tile = nl.ndarray((chunk_size, C), dtype=x.dtype, buffer=nl.sbuf)
+          # Copy input chunk to SBUF
+          nisa.dma_copy(dst=tile, src=x[i:i+chunk_size, :])
+        
+          # Compute max along axis 1 (rows) for the current chunk
+          max_vals = nl.ndarray((chunk_size, 1), dtype=x.dtype, buffer=nl.sbuf)
+          m = nl.max(tile, axis=[1], keepdims=True)
+          nisa.tensor_copy(dst=max_vals, src=m)
+        
+          # Subtract max from each row in the current chunk
+          sub_tile = nl.ndarray((chunk_size, C), dtype=x.dtype, buffer=nl.sbuf)
+          nisa.tensor_scalar(dst=sub_tile, data=tile, op0=nl.subtract, operand0=max_vals)
+        
+          # Compute exp of (x - max) for the current chunk
+          exp_tile = nl.ndarray((chunk_size, C), dtype=nl.float32, buffer=nl.sbuf)
+          nisa.activation(dst=exp_tile, op=nl.exp, data=sub_tile)
+        
+          # Sum exp along axis 1 (rows) for the current chunk
+          sum_vals = nl.ndarray((chunk_size, 1), dtype=nl.float32, buffer=nl.sbuf)
+          s = nl.sum(exp_tile, axis=[1], keepdims=True)
+          nisa.tensor_copy(dst=sum_vals, src=s)
+        
+          # Compute reciprocal of sum_vals
+          inv = nl.ndarray(sum_vals.shape, dtype=nl.float32, buffer=nl.sbuf)
+          nisa.reciprocal(dst=inv, data=sum_vals)
+        
+          # Multiply exp_tile by reciprocal of sum_vals
+          div_tile = nl.ndarray((chunk_size, C), dtype=nl.float32, buffer=nl.sbuf)
+          nisa.tensor_scalar(dst=div_tile, data=exp_tile, op0=nl.multiply, operand0=inv)
+        
+          # Copy result to output
+          nisa.dma_copy(dst=out[i:i+chunk_size, :], src=div_tile)
+    
+      return out
+  -------------------------------------------
+  VERDICT level 9: VERIFIED, confidence 0.80: solved, and passes all 15 extra cases it was never graded on, and lowers for trn2
+
+=========== summary ===========
+  level 9  reward 1.00 after 3 round(s)  SOLVED
+  solved 1/1
+
+################ run 3 of 5 ################
+
+=========== level 9: row softmax ===========
+round 0: this round 0.83  best so far 0.83  (162.5s)
+  2 of 3 shapes passed. On R=256 C=128 scale=30.0: Line 13: `nisa.dma_copy(dst=tile, src=x)` raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 A tile may have at most 128 rows, and you asked for 256. Do not allocate one tile for the whole tensor: loop over the partition dimension in chunks of at most 128 with nl.affine_range, allocate the tile inside the loop with the c
+round 1: this round 0.95  best so far 0.95  (189.6s)
+  Correct in the simulator on every shape, but the trn2 compiler rejects it: the chip has no such instruction, so this kernel cannot run on the device. Fix exactly these lines:
+
+Line 41 (nl.divide as an operation: compute the reciprocal with nisa.reciprocal, then multiply). Replace:
+        nisa.tensor_scalar(dst=div_tile, data=exp_tile, op0=nl.divide, operand0=sum_vals)
+with:
+        inv = nl.ndarr
+round 2: this round 1.00  best so far 1.00  (206.8s)
+  Correct on every shape.
+  SOLVED on round 2. Correct on every shape.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_softmax_(x):
+      R, C = x.shape
+      # Allocate output in shared HBM
+      out = nl.ndarray((R, C), dtype=x.dtype, buffer=nl.shared_hbm)
+    
+      # Loop over the rows in chunks of 128
+      for i in nl.affine_range(0, R, 128):
+          # Define the current chunk size
+          chunk_size = min(128, R - i)
+        
+          # Allocate input tile in SBUF for the current chunk
+          tile = nl.ndarray((chunk_size, C), dtype=x.dtype, buffer=nl.sbuf)
+          # Copy input chunk to SBUF
+          nisa.dma_copy(dst=tile, src=x[i:i+chunk_size, :])
+        
+          # Compute max along axis 1 (rows) for the current chunk
+          max_vals = nl.ndarray((chunk_size, 1), dtype=x.dtype, buffer=nl.sbuf)
+          m = nl.max(tile, axis=[1], keepdims=True)
+          nisa.tensor_copy(dst=max_vals, src=m)
+        
+          # Subtract max from each row in the current chunk
+          sub_tile = nl.ndarray((chunk_size, C), dtype=x.dtype, buffer=nl.sbuf)
+          nisa.tensor_scalar(dst=sub_tile, data=tile, op0=nl.subtract, operand0=max_vals)
+        
+          # Compute exp of (x - max) for the current chunk
+          exp_tile = nl.ndarray((chunk_size, C), dtype=nl.float32, buffer=nl.sbuf)
+          nisa.activation(dst=exp_tile, op=nl.exp, data=sub_tile)
+        
+          # Sum exp along axis 1 (rows) for the current chunk
+          sum_vals = nl.ndarray((chunk_size, 1), dtype=nl.float32, buffer=nl.sbuf)
+          s = nl.sum(exp_tile, axis=[1], keepdims=True)
+          nisa.tensor_copy(dst=sum_vals, src=s)
+        
+          # Compute reciprocal of sum_vals
+          inv = nl.ndarray(sum_vals.shape, dtype=nl.float32, buffer=nl.sbuf)
+          nisa.reciprocal(dst=inv, data=sum_vals)
+        
+          # Multiply exp_tile by reciprocal of sum_vals
+          div_tile = nl.ndarray((chunk_size, C), dtype=nl.float32, buffer=nl.sbuf)
+          nisa.tensor_scalar(dst=div_tile, data=exp_tile, op0=nl.multiply, operand0=inv)
+        
+          # Copy result to output
+          nisa.dma_copy(dst=out[i:i+chunk_size, :], src=div_tile)
+    
+      return out
+  -------------------------------------------
+  VERDICT level 9: VERIFIED, confidence 0.80: solved, and passes all 15 extra cases it was never graded on, and lowers for trn2
+
+=========== summary ===========
+  level 9  reward 1.00 after 3 round(s)  SOLVED
+  solved 1/1
+
+################ run 4 of 5 ################
+
+=========== level 9: row softmax ===========
+round 0: this round 0.83  best so far 0.83  (171.0s)
+  2 of 3 shapes passed. On R=256 C=128 scale=30.0: Line 13: `nisa.dma_copy(dst=tile, src=x)` raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 A tile may have at most 128 rows, and you asked for 256. Do not allocate one tile for the whole tensor: loop over the partition dimension in chunks of at most 128 with nl.affine_range, allocate the tile inside the loop with the c
+round 1: this round 0.95  best so far 0.95  (189.4s)
+  Correct in the simulator on every shape, but the trn2 compiler rejects it: the chip has no such instruction, so this kernel cannot run on the device. Fix exactly these lines:
+
+Line 41 (nl.divide as an operation: compute the reciprocal with nisa.reciprocal, then multiply). Replace:
+        nisa.tensor_scalar(dst=div_tile, data=exp_tile, op0=nl.divide, operand0=sum_vals)
+with:
+        inv = nl.ndarr
+round 2: this round 1.00  best so far 1.00  (204.9s)
+  Correct on every shape.
+  SOLVED on round 2. Correct on every shape.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_softmax_(x):
+      R, C = x.shape
+      # Allocate output in shared HBM
+      out = nl.ndarray((R, C), dtype=x.dtype, buffer=nl.shared_hbm)
+    
+      # Loop over the rows in chunks of 128
+      for i in nl.affine_range(0, R, 128):
+          # Define the current chunk size
+          chunk_size = min(128, R - i)
+        
+          # Allocate input tile in SBUF for the current chunk
+          tile = nl.ndarray((chunk_size, C), dtype=x.dtype, buffer=nl.sbuf)
+          # Copy input chunk to SBUF
+          nisa.dma_copy(dst=tile, src=x[i:i+chunk_size, :])
+        
+          # Compute max along axis 1 (rows) for the current chunk
+          max_vals = nl.ndarray((chunk_size, 1), dtype=x.dtype, buffer=nl.sbuf)
+          m = nl.max(tile, axis=[1], keepdims=True)
+          nisa.tensor_copy(dst=max_vals, src=m)
+        
+          # Subtract max from each row in the current chunk
+          sub_tile = nl.ndarray((chunk_size, C), dtype=x.dtype, buffer=nl.sbuf)
+          nisa.tensor_scalar(dst=sub_tile, data=tile, op0=nl.subtract, operand0=max_vals)
+        
+          # Compute exp of (x - max) for the current chunk
+          exp_tile = nl.ndarray((chunk_size, C), dtype=nl.float32, buffer=nl.sbuf)
+          nisa.activation(dst=exp_tile, op=nl.exp, data=sub_tile)
+        
+          # Sum exp along axis 1 (rows) for the current chunk
+          sum_vals = nl.ndarray((chunk_size, 1), dtype=nl.float32, buffer=nl.sbuf)
+          s = nl.sum(exp_tile, axis=[1], keepdims=True)
+          nisa.tensor_copy(dst=sum_vals, src=s)
+        
+          # Compute reciprocal of sum_vals
+          inv = nl.ndarray(sum_vals.shape, dtype=nl.float32, buffer=nl.sbuf)
+          nisa.reciprocal(dst=inv, data=sum_vals)
+        
+          # Multiply exp_tile by reciprocal of sum_vals
+          div_tile = nl.ndarray((chunk_size, C), dtype=nl.float32, buffer=nl.sbuf)
+          nisa.tensor_scalar(dst=div_tile, data=exp_tile, op0=nl.multiply, operand0=inv)
+        
+          # Copy result to output
+          nisa.dma_copy(dst=out[i:i+chunk_size, :], src=div_tile)
+    
+      return out
+  -------------------------------------------
+  VERDICT level 9: VERIFIED, confidence 0.80: solved, and passes all 15 extra cases it was never graded on, and lowers for trn2
+
+=========== summary ===========
+  level 9  reward 1.00 after 3 round(s)  SOLVED
+  solved 1/1
+
+################ run 5 of 5 ################
+
+=========== level 9: row softmax ===========
+round 0: this round 0.83  best so far 0.83  (171.0s)
+  2 of 3 shapes passed. On R=256 C=128 scale=30.0: Line 13: `nisa.dma_copy(dst=tile, src=x)` raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 A tile may have at most 128 rows, and you asked for 256. Do not allocate one tile for the whole tensor: loop over the partition dimension in chunks of at most 128 with nl.affine_range, allocate the tile inside the loop with the c
+round 1: this round 0.95  best so far 0.95  (189.9s)
+  Correct in the simulator on every shape, but the trn2 compiler rejects it: the chip has no such instruction, so this kernel cannot run on the device. Fix exactly these lines:
+
+Line 41 (nl.divide as an operation: compute the reciprocal with nisa.reciprocal, then multiply). Replace:
+        nisa.tensor_scalar(dst=div_tile, data=exp_tile, op0=nl.divide, operand0=sum_vals)
+with:
+        inv = nl.ndarr
+round 2: this round 1.00  best so far 1.00  (206.7s)
+  Correct on every shape.
+  SOLVED on round 2. Correct on every shape.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_softmax_(x):
+      R, C = x.shape
+      # Allocate output in shared HBM
+      out = nl.ndarray((R, C), dtype=x.dtype, buffer=nl.shared_hbm)
+    
+      # Loop over the rows in chunks of 128
+      for i in nl.affine_range(0, R, 128):
+          # Determine the current chunk size
+          chunk_size = min(128, R - i)
+        
+          # Allocate input tile in SBUF for the current chunk
+          tile = nl.ndarray((chunk_size, C), dtype=x.dtype, buffer=nl.sbuf)
+          # Copy input chunk to SBUF
+          nisa.dma_copy(dst=tile, src=x[i:i+chunk_size, :])
+        
+          # Compute max along axis 1 (rows) for the current chunk
+          max_vals = nl.ndarray((chunk_size, 1), dtype=x.dtype, buffer=nl.sbuf)
+          m = nl.max(tile, axis=[1], keepdims=True)
+          nisa.tensor_copy(dst=max_vals, src=m)
+        
+          # Subtract max from each row in the current chunk
+          sub_tile = nl.ndarray((chunk_size, C), dtype=x.dtype, buffer=nl.sbuf)
+          nisa.tensor_scalar(dst=sub_tile, data=tile, op0=nl.subtract, operand0=max_vals)
+        
+          # Compute exp of (x - max) for the current chunk
+          exp_tile = nl.ndarray((chunk_size, C), dtype=nl.float32, buffer=nl.sbuf)
+          nisa.activation(dst=exp_tile, op=nl.exp, data=sub_tile)
+        
+          # Sum exp along axis 1 (rows) for the current chunk
+          sum_vals = nl.ndarray((chunk_size, 1), dtype=nl.float32, buffer=nl.sbuf)
+          s = nl.sum(exp_tile, axis=[1], keepdims=True)
+          nisa.tensor_copy(dst=sum_vals, src=s)
+        
+          # Compute reciprocal of sum_vals
+          inv = nl.ndarray(sum_vals.shape, dtype=nl.float32, buffer=nl.sbuf)
+          nisa.reciprocal(dst=inv, data=sum_vals)
+        
+          # Multiply exp_tile by reciprocal of sum_vals
+          div_tile = nl.ndarray((chunk_size, C), dtype=nl.float32, buffer=nl.sbuf)
+          nisa.tensor_scalar(dst=div_tile, data=exp_tile, op0=nl.multiply, operand0=inv)
+        
+          # Copy result to output
+          nisa.dma_copy(dst=out[i:i+chunk_size, :], src=div_tile)
+    
+      return out
+  -------------------------------------------
+  VERDICT level 9: VERIFIED, confidence 0.80: solved, and passes all 15 extra cases it was never graded on, and lowers for trn2
+
+=========== summary ===========
+  level 9  reward 1.00 after 3 round(s)  SOLVED
+  solved 1/1
+
+=========== over 5 runs ===========
+  level 9: solved 5/5  best 1.00  worst 1.00  mean 1.00  all=[1.0, 1.0, 1.0, 1.0, 1.0]
+
+  Report the rate, not your best run. A level that solves 1 in 3 times is not solved.
+
+attempts logged to /workspace/out/s115/attempts_nki_d14.jsonl
+########## level 11
+feedback v7: PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen REPAIR_PROMPT=restructure GRADE_TIMEOUT=120 GATE=static USAGE_LOG=/workspace/out/s115/usage_nki_d14.jsonl
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 5 ################
+
+=========== level 11: gated SiLU (SwiGLU) ===========
+round 0: this round 0.30  best so far 0.30  (137.1s)
+  0 of 3 shapes passed. On R=128 C=64: Line 16: `tile_a[r, c] = a[r, c].astype(nl.float32)` raised AttributeError: 'NkiTensor' object has no attribute 'astype' A NkiTensor is not a numpy array, so it has no `astype`. Use the nl/nisa functions instead.
+round 1: this round 0.30  best so far 0.30  (112.5s)
+  0 of 3 shapes passed. On R=128 C=64: Line 14: `nisa.dma_copy(dst=tile_a, src=a)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=65536 `tile_a` holds 65536 elements but `a` holds 8192. Replace line 14 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile_a = nl.ndar
+round 2: this round 0.30  best so far 0.30  (109.3s)
+  0 of 3 shapes passed. On R=128 C=64: Line 15: `nisa.dma_copy(dst=tile_b, src=b)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=65536 `tile_b` holds 65536 elements but `b` holds 8192. Replace line 15 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile_b = nl.ndar
+round 3: this round 0.30  best so far 0.30  (105.1s)
+  0 of 3 shapes passed. On R=128 C=64: Line 17: `nisa.activation(dst=out_tile, op=nl.sigmoid, data=tile_a)` raised ValueError: shape mismatch: value array of shape (8192,) could not be broadcast to indexing result of shape (65536,) `out_tile` holds 65536 elements, but the result written into it holds 8192. A destination must have exactly the shape of what goes into it, so do not reuse a tile you all
+round 4: this round 0.30  best so far 0.30  (114.5s)
+  0 of 3 shapes passed. On R=128 C=64: Line 19: `nisa.tensor_tensor(dst=out_tile, data1=sig_tile, data2=tile_a, op=nl.multiply)` raised ValueError: cannot reshape array of size 8192 into shape (128,512) Do not reshape. Work with the shapes you were given and slice them into tiles, e.g. src=a[0:128, 0:64].
+round 5: this round 0.67  best so far 0.67  (119.6s)
+  1 of 3 shapes passed. On R=64 C=512: Line 15: `nisa.dma_copy(dst=tile_a, src=a)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=32768, dst=8192 `tile_a` holds 8192 elements but `a` holds 32768. Replace line 15 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile_a = nl.ndar
+round 6: this round 0.67  best so far 0.67  (117.8s)
+  1 of 3 shapes passed. On R=64 C=512: Line 16: `nisa.dma_copy(dst=tile_b, src=b)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=32768, dst=8192 `tile_b` holds 8192 elements but `b` holds 32768. Replace line 16 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile_b = nl.ndar
+round 7: this round 0.67  best so far 0.67  (115.6s)
+  1 of 3 shapes passed. On R=64 C=512: Line 18: `nisa.activation(dst=sig_tile, op=nl.sigmoid, data=tile_a)` raised ValueError: shape mismatch: value array of shape (32768,) could not be broadcast to indexing result of shape (8192,) `sig_tile` holds 8192 elements, but the result written into it holds 32768. A destination must have exactly the shape of what goes into it, so do not reuse a tile you all
+  not solved in 8 rounds; best reward 0.67
+  VERDICT level 11: FAILED, confidence 0.00: not solved: best score 0.67 after 8 rounds
+
+=========== summary ===========
+  level 11  reward 0.67 after 8 round(s)
+  solved 0/1
+
+################ run 2 of 5 ################
+
+=========== level 11: gated SiLU (SwiGLU) ===========
+round 0: this round 0.30  best so far 0.30  (136.1s)
+  0 of 3 shapes passed. On R=128 C=64: Line 16: `tile_a[r, c] = a[r, c].astype(nl.float32)` raised AttributeError: 'NkiTensor' object has no attribute 'astype' A NkiTensor is not a numpy array, so it has no `astype`. Use the nl/nisa functions instead.
+round 1: this round 0.30  best so far 0.30  (113.1s)
+  0 of 3 shapes passed. On R=128 C=64: Line 14: `nisa.dma_copy(dst=tile_a, src=a)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=65536 `tile_a` holds 65536 elements but `a` holds 8192. Replace line 14 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile_a = nl.ndar
+round 2: this round 0.30  best so far 0.30  (109.4s)
+  0 of 3 shapes passed. On R=128 C=64: Line 15: `nisa.dma_copy(dst=tile_b, src=b)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=65536 `tile_b` holds 65536 elements but `b` holds 8192. Replace line 15 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile_b = nl.ndar
+round 3: this round 0.30  best so far 0.30  (105.0s)
+  0 of 3 shapes passed. On R=128 C=64: Line 17: `nisa.activation(dst=out_tile, op=nl.sigmoid, data=tile_a)` raised ValueError: shape mismatch: value array of shape (8192,) could not be broadcast to indexing result of shape (65536,) `out_tile` holds 65536 elements, but the result written into it holds 8192. A destination must have exactly the shape of what goes into it, so do not reuse a tile you all
+round 4: this round 0.30  best so far 0.30  (114.5s)
+  0 of 3 shapes passed. On R=128 C=64: Line 19: `nisa.tensor_tensor(dst=out_tile, data1=sig_tile, data2=tile_a, op=nl.multiply)` raised ValueError: cannot reshape array of size 8192 into shape (128,512) Do not reshape. Work with the shapes you were given and slice them into tiles, e.g. src=a[0:128, 0:64].
+round 5: this round 0.67  best so far 0.67  (119.6s)
+  1 of 3 shapes passed. On R=64 C=512: Line 15: `nisa.dma_copy(dst=tile_a, src=a)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=32768, dst=8192 `tile_a` holds 8192 elements but `a` holds 32768. Replace line 15 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile_a = nl.ndar
+round 6: this round 0.67  best so far 0.67  (117.6s)
+  1 of 3 shapes passed. On R=64 C=512: Line 16: `nisa.dma_copy(dst=tile_b, src=b)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=32768, dst=8192 `tile_b` holds 8192 elements but `b` holds 32768. Replace line 16 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile_b = nl.ndar
+round 7: this round 0.67  best so far 0.67  (115.5s)
+  1 of 3 shapes passed. On R=64 C=512: Line 18: `nisa.activation(dst=sig_tile, op=nl.sigmoid, data=tile_a)` raised ValueError: shape mismatch: value array of shape (32768,) could not be broadcast to indexing result of shape (8192,) `sig_tile` holds 8192 elements, but the result written into it holds 32768. A destination must have exactly the shape of what goes into it, so do not reuse a tile you all
+  not solved in 8 rounds; best reward 0.67
+  VERDICT level 11: FAILED, confidence 0.00: not solved: best score 0.67 after 8 rounds
+
+=========== summary ===========
+  level 11  reward 0.67 after 8 round(s)
+  solved 0/1
+
+################ run 3 of 5 ################
+
+=========== level 11: gated SiLU (SwiGLU) ===========
+round 0: this round 0.30  best so far 0.30  (136.1s)
+  0 of 3 shapes passed. On R=128 C=64: Line 16: `tile_a[r, c] = a[r, c].astype(nl.float32)` raised AttributeError: 'NkiTensor' object has no attribute 'astype' A NkiTensor is not a numpy array, so it has no `astype`. Use the nl/nisa functions instead.
+round 1: this round 0.30  best so far 0.30  (114.4s)
+  0 of 3 shapes passed. On R=128 C=64: Line 14: `nisa.dma_copy(dst=tile_a, src=a)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=65536 `tile_a` holds 65536 elements but `a` holds 8192. Replace line 14 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile_a = nl.ndar
+round 2: this round 0.30  best so far 0.30  (121.2s)
+  0 of 3 shapes passed. On R=128 C=64: Line 15: `nisa.dma_copy(dst=tile_b, src=b)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=65536 `tile_b` holds 65536 elements but `b` holds 8192. Replace line 15 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile_b = nl.ndar
+round 3: this round 0.30  best so far 0.30  (109.3s)
+  0 of 3 shapes passed. On R=128 C=64: Line 17: `nisa.activation(dst=out_tile, op=nl.sigmoid, data=tile_a)` raised ValueError: shape mismatch: value array of shape (8192,) could not be broadcast to indexing result of shape (65536,) `out_tile` holds 65536 elements, but the result written into it holds 8192. A destination must have exactly the shape of what goes into it, so do not reuse a tile you all
+round 4: this round 0.30  best so far 0.30  (114.7s)
+  0 of 3 shapes passed. On R=128 C=64: Line 19: `nisa.tensor_tensor(dst=out_tile, data1=sig_tile, data2=tile_a, op=nl.multiply)` raised ValueError: cannot reshape array of size 8192 into shape (128,512) Do not reshape. Work with the shapes you were given and slice them into tiles, e.g. src=a[0:128, 0:64].
+round 5: this round 0.67  best so far 0.67  (127.7s)
+  1 of 3 shapes passed. On R=64 C=512: Line 15: `nisa.dma_copy(dst=tile_a, src=a)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=32768, dst=8192 `tile_a` holds 8192 elements but `a` holds 32768. Replace line 15 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile_a = nl.ndar
+round 6: this round 0.67  best so far 0.67  (122.4s)
+  1 of 3 shapes passed. On R=64 C=512: Line 16: `nisa.dma_copy(dst=tile_b, src=b)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=32768, dst=8192 `tile_b` holds 8192 elements but `b` holds 32768. Replace line 16 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile_b = nl.ndar
+round 7: this round 0.67  best so far 0.67  (115.5s)
+  1 of 3 shapes passed. On R=64 C=512: Line 18: `nisa.activation(dst=sig_tile, op=nl.sigmoid, data=tile_a)` raised ValueError: shape mismatch: value array of shape (32768,) could not be broadcast to indexing result of shape (8192,) `sig_tile` holds 8192 elements, but the result written into it holds 32768. A destination must have exactly the shape of what goes into it, so do not reuse a tile you all
+  not solved in 8 rounds; best reward 0.67
+  VERDICT level 11: FAILED, confidence 0.00: not solved: best score 0.67 after 8 rounds
+
+=========== summary ===========
+  level 11  reward 0.67 after 8 round(s)
+  solved 0/1
+
+################ run 4 of 5 ################
+
+=========== level 11: gated SiLU (SwiGLU) ===========
+round 0: this round 0.30  best so far 0.30  (136.1s)
+  0 of 3 shapes passed. On R=128 C=64: Line 16: `tile_a[r, c] = a[r, c].astype(nl.float32)` raised AttributeError: 'NkiTensor' object has no attribute 'astype' A NkiTensor is not a numpy array, so it has no `astype`. Use the nl/nisa functions instead.
+round 1: this round 0.30  best so far 0.30  (112.7s)
+  0 of 3 shapes passed. On R=128 C=64: Line 14: `nisa.dma_copy(dst=tile_a, src=a)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=65536 `tile_a` holds 65536 elements but `a` holds 8192. Replace line 14 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile_a = nl.ndar
+round 2: this round 0.30  best so far 0.30  (105.2s)
+  0 of 3 shapes passed. On R=128 C=64: Line 15: `nisa.dma_copy(dst=tile_b, src=b)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=65536 `tile_b` holds 65536 elements but `b` holds 8192. Replace line 15 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile_b = nl.ndar
+round 3: this round 0.30  best so far 0.30  (101.8s)
+  0 of 3 shapes passed. On R=128 C=64: Line 17: `nisa.activation(dst=out_tile, op=nl.sigmoid, data=tile_a)` raised ValueError: shape mismatch: value array of shape (8192,) could not be broadcast to indexing result of shape (65536,) `out_tile` holds 65536 elements, but the result written into it holds 8192. A destination must have exactly the shape of what goes into it, so do not reuse a tile you all
+round 4: this round 0.30  best so far 0.30  (110.4s)
+  0 of 3 shapes passed. On R=128 C=64: Line 19: `nisa.tensor_tensor(dst=out_tile, data1=sig_tile, data2=tile_a, op=nl.multiply)` raised ValueError: cannot reshape array of size 8192 into shape (128,512) Do not reshape. Work with the shapes you were given and slice them into tiles, e.g. src=a[0:128, 0:64].
+round 5: this round 0.67  best so far 0.67  (111.7s)
+  1 of 3 shapes passed. On R=64 C=512: Line 15: `nisa.dma_copy(dst=tile_a, src=a)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=32768, dst=8192 `tile_a` holds 8192 elements but `a` holds 32768. Replace line 15 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile_a = nl.ndar
+round 6: this round 0.67  best so far 0.67  (112.8s)
+  1 of 3 shapes passed. On R=64 C=512: Line 16: `nisa.dma_copy(dst=tile_b, src=b)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=32768, dst=8192 `tile_b` holds 8192 elements but `b` holds 32768. Replace line 16 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile_b = nl.ndar
+round 7: this round 0.67  best so far 0.67  (111.2s)
+  1 of 3 shapes passed. On R=64 C=512: Line 18: `nisa.activation(dst=sig_tile, op=nl.sigmoid, data=tile_a)` raised ValueError: shape mismatch: value array of shape (32768,) could not be broadcast to indexing result of shape (8192,) `sig_tile` holds 8192 elements, but the result written into it holds 32768. A destination must have exactly the shape of what goes into it, so do not reuse a tile you all
+  not solved in 8 rounds; best reward 0.67
+  VERDICT level 11: FAILED, confidence 0.00: not solved: best score 0.67 after 8 rounds
+
+=========== summary ===========
+  level 11  reward 0.67 after 8 round(s)
+  solved 0/1
+
+################ run 5 of 5 ################
+
+=========== level 11: gated SiLU (SwiGLU) ===========
+round 0: this round 0.30  best so far 0.30  (135.1s)
+  0 of 3 shapes passed. On R=128 C=64: Line 16: `tile_a[r, c] = a[r, c].astype(nl.float32)` raised AttributeError: 'NkiTensor' object has no attribute 'astype' A NkiTensor is not a numpy array, so it has no `astype`. Use the nl/nisa functions instead.
+round 1: this round 0.30  best so far 0.30  (112.7s)
+  0 of 3 shapes passed. On R=128 C=64: Line 14: `nisa.dma_copy(dst=tile_a, src=a)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=65536 `tile_a` holds 65536 elements but `a` holds 8192. Replace line 14 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile_a = nl.ndar
+round 2: this round 0.30  best so far 0.30  (109.3s)
+  0 of 3 shapes passed. On R=128 C=64: Line 15: `nisa.dma_copy(dst=tile_b, src=b)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=65536 `tile_b` holds 65536 elements but `b` holds 8192. Replace line 15 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile_b = nl.ndar
+round 3: this round 0.30  best so far 0.30  (105.9s)
+  0 of 3 shapes passed. On R=128 C=64: Line 17: `nisa.activation(dst=out_tile, op=nl.sigmoid, data=tile_a)` raised ValueError: shape mismatch: value array of shape (8192,) could not be broadcast to indexing result of shape (65536,) `out_tile` holds 65536 elements, but the result written into it holds 8192. A destination must have exactly the shape of what goes into it, so do not reuse a tile you all
+round 4: this round 0.30  best so far 0.30  (113.8s)
+  0 of 3 shapes passed. On R=128 C=64: Line 19: `nisa.tensor_tensor(dst=out_tile, data1=sig_tile, data2=tile_a, op=nl.multiply)` raised ValueError: cannot reshape array of size 8192 into shape (128,512) Do not reshape. Work with the shapes you were given and slice them into tiles, e.g. src=a[0:128, 0:64].
+round 5: this round 0.67  best so far 0.67  (118.6s)
+  1 of 3 shapes passed. On R=64 C=512: Line 15: `nisa.dma_copy(dst=tile_a, src=a)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=32768, dst=8192 `tile_a` holds 8192 elements but `a` holds 32768. Replace line 15 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile_a = nl.ndar
+round 6: this round 0.67  best so far 0.67  (117.6s)
+  1 of 3 shapes passed. On R=64 C=512: Line 16: `nisa.dma_copy(dst=tile_b, src=b)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=32768, dst=8192 `tile_b` holds 8192 elements but `b` holds 32768. Replace line 16 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile_b = nl.ndar
+round 7: this round 0.67  best so far 0.67  (114.5s)
+  1 of 3 shapes passed. On R=64 C=512: Line 18: `nisa.activation(dst=sig_tile, op=nl.sigmoid, data=tile_a)` raised ValueError: shape mismatch: value array of shape (32768,) could not be broadcast to indexing result of shape (8192,) `sig_tile` holds 8192 elements, but the result written into it holds 32768. A destination must have exactly the shape of what goes into it, so do not reuse a tile you all
+  not solved in 8 rounds; best reward 0.67
+  VERDICT level 11: FAILED, confidence 0.00: not solved: best score 0.67 after 8 rounds
+
+=========== summary ===========
+  level 11  reward 0.67 after 8 round(s)
+  solved 0/1
+
+=========== over 5 runs ===========
+  level 11: solved 0/5  best 0.67  worst 0.67  mean 0.67  all=[0.67, 0.67, 0.67, 0.67, 0.67]
+
+  Report the rate, not your best run. A level that solves 1 in 3 times is not solved.
+
+attempts logged to /workspace/out/s115/attempts_nki_d14.jsonl
+=========== over all runs: job finished

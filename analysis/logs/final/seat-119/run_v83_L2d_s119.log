@@ -1,0 +1,10 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1 L2CAT=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 2: 2D transpose ===========
+  tokens: prompt 1,066 = instructions 158 + reference 180 + api_card 728  [tokenizer] | answers 278, 366, 257, 249
+round 0: this round 0.30  best so far 0.30  (60.5s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 27: `transposed = tile_p.transpose(1, 2)` raised AttributeError: 'NkiTensor' object has no attribute 'transpose' A NkiTensor is not a numpy array, so it has no `transpose`. Use the nl/nisa functions instead.
+  tokens: prompt 425 = instructions 67 + prev_code 277 + feedback 81  [tokenizer] | answers 301, 261, 302, 257
+round 1: this round 0.30  best so far 0.30  (50.6s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 27: `reshaped = tile_p.reshape((F1, F2))` raised AssertionError: Partition dim size must be preserved, got 1 -> 3 This level keeps every row where it is: row p of x holds an F1-by-F2 matrix stored row-major (F1, F2 = shape2D), and row p of the output holds the same F1*F2 values of that small matrix transposed, i.e. stored column-major. Nothing m

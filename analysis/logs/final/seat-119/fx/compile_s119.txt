@@ -1,0 +1,34 @@
+== l2_19_4ef980f0.py
+   shape=(32, 12) as 3x4            predicted      44.2 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(128, 64) as 8x8           predicted     169.1 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(64, 128) as 4x32          predicted      85.9 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(8, 35) as 5x7             predicted      13.0 us; birsim MATCHES: worst error 0.00e+00 of RMS
+== l2_19_96e63468.py
+   shape=(32, 12) as 3x4            predicted       2.6 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(128, 64) as 8x8           predicted       2.7 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(64, 128) as 4x32          predicted       2.7 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(8, 35) as 5x7             predicted       2.6 us; birsim MATCHES: worst error 0.00e+00 of RMS
+== l2_19_004da2f9.py
+   shape=(32, 12) as 3x4            predicted       2.6 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(128, 64) as 8x8           predicted       2.7 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(64, 128) as 4x32          predicted       2.7 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(8, 35) as 5x7             predicted       2.6 us; birsim MATCHES: worst error 0.00e+00 of RMS
+== l2_19_06d8bcd2.py
+   shape=(32, 12) as 3x4            predicted      44.2 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(128, 64) as 8x8           predicted     169.1 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(64, 128) as 4x32          predicted      85.9 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(8, 35) as 5x7             predicted      13.0 us; birsim MATCHES: worst error 0.00e+00 of RMS
+== l2_119_90aa91d0.py
+   shape=(32, 12) as 3x4            predicted       2.6 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(128, 64) as 8x8           predicted       2.7 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(64, 128) as 4x32          predicted       2.7 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(8, 35) as 5x7             predicted       2.6 us; birsim MATCHES: worst error 0.00e+00 of RMS
+== l3_119_a680640e.py
+   K=128 M=64 N=512                 predicted       5.2 us; birsim MATCHES: worst error 1.17e-06 of RMS
+== l4_19_8339bbd6.py
+   K=256 M=256 N=1024               predicted      33.0 us; birsim MATCHES: worst error 2.87e-06 of RMS
+
+=== summary: distinct simulator-solved kernels, by what the compiler and birsim say
+level 2: {'match': 5}
+level 3: {'match': 1}
+level 4: {'match': 1}

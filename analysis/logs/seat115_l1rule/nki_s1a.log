@@ -1,0 +1,76 @@
+########## level 1
+feedback v7: PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen REPAIR_PROMPT=restructure GRADE_TIMEOUT=120 GATE=static USAGE_LOG=/workspace/out/s115/usage_nki_s1a.jsonl
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 3 ################
+
+=========== level 1: average pooling 2D ===========
+round 0: this round 0.50  best so far 0.50  (133.2s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 22: `nisa.tensor_scalar(dst=m, data=s, op0=nl.multiply, operand0=1.0 / (p * p))` raised ValueError: input operand has more dimensions than allowed by the axis remapping
+round 1: this round 0.30  best so far 0.50  (134.2s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 21: `s_flat = s.reshape((C * (H // p) * (W // p)))` raised TypeError: 'int' object is not iterable
+round 2: same failure again (0.30, best so far 0.50)
+  same failure 2x — adding a ledger of 2 failed attempts to break the repeat
+round 3: same failure again (0.30, best so far 0.50)
+  same failure 3x — adding a ledger of 2 failed attempts to break the repeat
+round 4: this round 0.50  best so far 0.50  (113.0s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 21: `s_flat = s.reshape((C, H // p, W // p))` raised AssertionError: cannot reshape tensor of size 1024 (shape (32, 16, 2, 1, 1)) into shape (32, 16, 16) (size 8192)
+round 5: this round 0.50  best so far 0.50  (115.1s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 21: `s_flat = s.reshape((C, H // p, W // p, 1, 1))` raised AssertionError: cannot reshape tensor of size 1024 (shape (32, 16, 2, 1, 1)) into shape (32, 16, 16, 1, 1) (size 8192)
+round 6: this round 0.50  best so far 0.50  (113.0s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 21: `s_flat = s.reshape((C, H // p, W // p))` raised AssertionError: cannot reshape tensor of size 1024 (shape (32, 16, 2, 1, 1)) into shape (32, 16, 16) (size 8192)
+round 7: this round 0.50  best so far 0.50  (115.1s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 21: `s_flat = s.reshape((C, H // p, W // p, 1, 1))` raised AssertionError: cannot reshape tensor of size 1024 (shape (32, 16, 2, 1, 1)) into shape (32, 16, 16, 1, 1) (size 8192)
+  not solved in 8 rounds; best reward 0.50
+  VERDICT level 1: FAILED, confidence 0.00: not solved: best score 0.50 after 8 rounds
+
+=========== summary ===========
+  level 1  reward 0.50 after 8 round(s)
+  solved 0/1
+
+################ run 2 of 3 ################
+
+=========== level 1: average pooling 2D ===========
+round 0: this round 1.00  best so far 1.00  (138.5s)
+  Correct on every shape.
+  SOLVED on round 0. Correct on every shape.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def tensor_avgpool_kernel(x, pool_size):
+      C, H, W = x.shape
+      p = pool_size
+      out_shape = (C, H // p, W // p)
+      out = nl.ndarray(out_shape, dtype=x.dtype, buffer=nl.shared_hbm)
+      t = nl.ndarray((C, H, W), dtype=x.dtype, buffer=nl.sbuf)
+      nisa.dma_copy(dst=t, src=x)
+      # Compute the average over the pool window
+      # Reshape to (C, H//p, p, W//p, p)
+      # Use tile views to compute the mean
+      tile = nl.ndarray((C, H, W), dtype=x.dtype, buffer=nl.sbuf)
+      # Use affine_range to loop over the tiles
+      for i in nl.affine_range(H // p):
+          for j in nl.affine_range(W // p):
+              # Tile view for the current window
+              window = t[:, i*p:(i+1)*p, j*p:(j+1)*p]
+              # Compute the sum over the window
+              s = nl.sum(window, axis=[1, 2], keepdims=True)
+              # Compute the mean by scaling
+              m = nl.ndarray((C, 1, 1), dtype=x.dtype, buffer=nl.sbuf)
+              nisa.tensor_scalar(dst=m, data=s, op0=nl.multiply, operand0=1.0 / (p * p))
+              # Copy to output
+              out[:, i, j] = m
+      return out
+  -------------------------------------------
+  VERDICT level 1: VERIFIED, confidence 0.90: solved, and passes all 35 extra cases it was never graded on, and lowers for trn2
+
+=========== summary ===========
+  level 1  reward 1.00 after 1 round(s)  SOLVED
+  solved 1/1
+
+################ run 3 of 3 ################
+
+=========== level 1: average pooling 2D ===========

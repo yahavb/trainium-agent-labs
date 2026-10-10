@@ -1,0 +1,23 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1 L2CAT=1 WARM=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 11: gated SiLU (SwiGLU) ===========
+  tokens: prompt 980 = instructions 158 + reference 94 + api_card 728  [tokenizer] | answers 390, 387, 332, 317
+round 0: this round 0.30  best so far 0.30  (96.7s)
+  0 of 3 shapes passed. On R=128 C=64: Line 16: `tile_a[r, c] = a[r, c].astype(nl.float32)` raised AttributeError: 'NkiTensor' object has no attribute 'astype' A NkiTensor is not a numpy array, so it has no `astype`. Use the nl/nisa functions instead.
+  tokens: prompt 544 = instructions 72 + prev_code 389 + feedback 83  [tokenizer] | answers 322, 317, 297, 317
+round 1: this round 0.30  best so far 0.30  (85.7s)
+  0 of 3 shapes passed. On R=128 C=64: Line 14: `nisa.dma_copy(dst=tile_a, src=a)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=65536 `tile_a` holds 65536 elements but `a` holds 8192. Replace line 14 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile_a = nl.ndar
+  tokens: prompt 549 = instructions 72 + prev_code 321 + feedback 156  [tokenizer] | answers 312, 317, 317, 317
+round 2: this round 0.30  best so far 0.30  (87.6s)
+  0 of 3 shapes passed. On R=128 C=64: Line 15: `nisa.dma_copy(dst=tile_b, src=b)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=65536 `tile_b` holds 65536 elements but `b` holds 8192. Replace line 15 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile_b = nl.ndar
+  tokens: prompt 539 = instructions 72 + prev_code 311 + feedback 156  [tokenizer] | answers 302, 317, 277, 317
+round 3: this round 0.30  best so far 0.30  (76.1s)
+  0 of 3 shapes passed. On R=128 C=64: Line 17: `nisa.activation(dst=out_tile, op=nl.sigmoid, data=tile_a)` raised ValueError: shape mismatch: value array of shape (8192,) could not be broadcast to indexing result of shape (65536,) `out_tile` holds 65536 elements, but the result written into it holds 8192. A destination must have exactly the shape of what goes into it, so do not reuse a tile you all
+  tokens: prompt 540 = instructions 72 + prev_code 301 + feedback 167  [tokenizer] | answers 327, 317, 317, 317
+round 4: this round 0.30  best so far 0.30  (88.4s)
+  0 of 3 shapes passed. On R=128 C=64: Line 19: `nisa.tensor_tensor(dst=out_tile, data1=sig_tile, data2=tile_a, op=nl.multiply)` raised ValueError: cannot reshape array of size 8192 into shape (128,512) Do not reshape. Work with the shapes you were given and slice them into tiles, e.g. src=a[0:128, 0:64].

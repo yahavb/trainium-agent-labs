@@ -1,0 +1,47 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1 L2CAT=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 6: matmul, M and N blocked ===========
+  tokens: prompt 1,141 = instructions 162 + reference 110 + api_card 869  [tokenizer] | answers 324, 297, 324, 324
+round 0: this round 0.30  best so far 0.30  (64.0s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: Line 25: `nisa.tensor_copy(dst=lhs_tile, src=psum_tile)` raised ValueError: shape mismatch: value array of shape (65536,) could not be broadcast to indexing result of shape (16384,) `lhs_tile` holds 16384 elements, but the result written into it holds 65536. A destination must have exactly the shape of what goes into it, so do not reuse a tile you alloca
+  tokens: prompt 566 = instructions 70 + prev_code 323 + feedback 173  [tokenizer] | answers 354, 324, 324, 324
+round 1: this round 0.62  best so far 0.62  (62.2s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: Line 17: `nisa.dma_copy(dst=lhs_tile, src=lhsT)` raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 `lhs_tile` and `rhs_tile` are bigger than one nc_matmul takes: at most 128 rows of K, at most 128 columns of the stationary operand, and at most 512 columns of the moving operand. Tile all three dimensions at once. Replace eve
+  tokens: prompt 932 = instructions 70 + prev_code 353 + feedback 509  [tokenizer] | answers 425, 324, 338, 324
+round 2: this round 0.75  best so far 0.75  (67.5s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.56x the byte floor, and level 6 requires 1.25x or better. Correctness alone is level 4; this level is about the bytes. Block the M and N dimensions so more tiles stay resident in SBUF and are reused across iterations, rather than reloaded.
+  tokens: prompt 599 = instructions 70 + prev_code 424 + feedback 105  [tokenizer] | answers 458, 324, 324, 324
+round 3: this round 0.62  best so far 0.75  (69.3s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: NUMERICAL MISMATCH: worst error 3.43 of the output's RMS (16.03), tolerance 0.02.
+  at index (245, 740): expected +51.5124, got -3.41428
+  97.8% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+  tokens: prompt 651 = instructions 70 + prev_code 457 + feedback 124  [tokenizer] | answers 465, 324, 324, 324
+round 4: this round 0.30  best so far 0.75  (70.0s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: Line 21: `nisa.dma_copy(dst=rhs_tile, src=rhs[n_block * TN:(n_block + 1) * TN, 0:TK])` raised AssertionError: Out-of-bound access for tensor `unnamed` on dimension 0: index range [0, 511] exceed dimension size of 128. You indexed up to 511 on dimension 0, which is only 128 long. Tile limits are a MAXIMUM, not a target. Derive every bound from the tensor'
+  tokens: prompt 725 = instructions 70 + prev_code 464 + feedback 191  [tokenizer] | answers 531, 324, 324, 324
+round 5: this round 0.30  best so far 0.75  (74.6s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: Line 29: `nisa.dma_copy(dst=rhs_tile, src=rhs[n_start:n_end, 0:TK])` raised AssertionError: Out-of-bound access for tensor `unnamed` on dimension 0: index range [0, 511] exceed dimension size of 128. You indexed up to 511 on dimension 0, which is only 128 long. Tile limits are a MAXIMUM, not a target. Derive every bound from the tensor's own shape -- use
+  tokens: prompt 782 = instructions 70 + prev_code 530 + feedback 182  [tokenizer] | answers 531, 324, 362, 324
+round 6: this round 0.62  best so far 0.75  (74.7s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: Line 20: `nisa.dma_copy(dst=lhs_tile, src=lhsT)` raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 `lhs_tile` and `rhs_tile` are bigger than one nc_matmul takes: at most 128 rows of K, at most 128 columns of the stationary operand, and at most 512 columns of the moving operand. Tile all three dimensions at once. Replace eve
+  tokens: prompt 940 = instructions 70 + prev_code 361 + feedback 509  [tokenizer] | answers 459, 324, 324, 324
+round 7: this round 0.75  best so far 0.75  (70.0s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.56x the byte floor, and level 6 requires 1.25x or better. Correctness alone is level 4; this level is about the bytes. Block the M and N dimensions so more tiles stay resident in SBUF and are reused across iterations, rather than reloaded.
+  not solved in 8 rounds; best reward 0.75
+  VERDICT level 6: FAILED, confidence 0.00: not solved: best score 0.75 after 8 rounds
+
+  CONFIDENCE level 6: 0.00 (it still fails shapes the loop tested) -- stated before the held-out check
+  VERDICT level 6: NOT SOLVED (best reward 0.75; held-out 8/16)
+    tokens spent: 25,344 prompt + 11,348 answer over 8 round(s)
+
+=========== summary ===========
+  level 6  reward 0.75 after 8 round(s)  tokens 25,344 prompt + 11,348 answer  confidence 0.00  NOT SOLVED (best reward 0.75; held-out 8/16)
+  solved 0/1
+
+=========== calibration, 1 verdict(s) ===========
+  said 0.00-0.01:   1 verdicts, mean confidence 0.00, actually passed held-out 0/1
+  Brier score 0.000.  Confident (>=0.5) but wrong: 0
+
+attempts logged to v83_L6_s119.jsonl, verdicts to v83_L6_s119_verdicts.jsonl

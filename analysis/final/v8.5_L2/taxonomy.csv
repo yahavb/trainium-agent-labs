@@ -1,0 +1,11 @@
+﻿family,mode,description,level 2,total,share of failures,stuck rate
+index arithmetic,copy_size_mismatch,copies between tiles of different sizes,67,67,67.7%,43%
+silent wrong numbers,numeric_mismatch,"runs, numbers wrong",11,11,11.1%,50%
+index arithmetic,out_of_bounds,indexes past the end of a tensor,5,5,5.1%,0%
+rules / format,rule_violation,"banned call, missing @nki.jit or wrong entry name",4,4,4.0%,
+silent wrong numbers,non_finite,NaN or Inf in the output,3,3,3.0%,50%
+rules / format,truncated,the answer hit max_tokens and was cut off (finish=length); the checker then sees broken code,3,3,3.0%,
+API,invented_name,calls an NKI function or attribute that does not exist,2,2,2.0%,0%
+index arithmetic,transpose_whole_input,"level 2: transposes all of x, rows included, instead of each row's F1-by-F2 block",2,2,2.0%,
+other,other,,1,1,1.0%,
+tiling rules,tile_1d,a 1-D tile (every SBUF/PSUM tile needs 2 dims),1,1,1.0%,0%

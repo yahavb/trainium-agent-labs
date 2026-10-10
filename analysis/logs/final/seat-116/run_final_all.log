@@ -1,0 +1,210 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 1: average pooling 2D ===========
+  tokens: prompt 1,193 = instructions 152 + reference 98 + api_card 943  [tokenizer] | answers 330, 381, 353, 460
+round 0: this round 0.50  best so far 0.50  (76.3s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 31: `nisa.tensor_scalar(dst=avg_tile, data=sum_result, op0=nl.multiply, operand0=scale)` raised ValueError: input operand has more dimensions than allowed by the axis remapping
+  tokens: prompt 520 = instructions 68 + prev_code 380 + feedback 72  [tokenizer] | answers 502, 360, 356, 369
+round 1: this round 0.50  best so far 0.50  (75.4s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 28: `nisa.tensor_scalar(dst=avg_tile, data=sum_result, op0=nl.multiply, operand0=1.0 / (p * p))` raised ValueError: operands could not be broadcast together with remapped shapes [original->remapped]: (32,16,2)  and requested shape (32,16,16)
+    (TRUNCATED: finish_reason=length after 9817 chars; prompt is 4195 chars)    (TRUNCATED: finish_reason=length after 8720 chars; prompt is 4195 chars)
+
+  tokens: prompt 534 = instructions 68 + prev_code 359 + feedback 107  [tokenizer] | answers 388, 2500, 373, 2500
+round 2: this round 0.50  best so far 0.50  (233.0s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 28: `nisa.tensor_scalar(dst=avg_tile, data=sum_result, op0=nl.divide, operand0=1.0)` raised ValueError: operands could not be broadcast together with remapped shapes [original->remapped]: (32,16,2)  and requested shape (32,16,16)
+    (TRUNCATED: finish_reason=length after 10377 chars; prompt is 4195 chars)
+  tokens: prompt 556 = instructions 68 + prev_code 387 + feedback 101  [tokenizer] | answers 388, 2500, 517, 645
+round 3: same failure again (0.50, best so far 0.50)
+  same failure 2x — adding a ledger of 3 failed attempts to break the repeat
+  tokens: prompt 764 = instructions 68 + prev_code 387 + feedback 101 + ledger 208  [tokenizer] | answers 366, 389, 415, 380
+round 4: this round 0.50  best so far 0.50  (71.4s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 29: `nisa.tensor_scalar(dst=avg_tile, data=sum_result, op0=nl.multiply, operand0=scale)` raised ValueError: operands could not be broadcast together with remapped shapes [original->remapped]: (32,16,2)  and requested shape (32,16,16)
+  tokens: prompt 532 = instructions 68 + prev_code 365 + feedback 99  [tokenizer] | answers 366, 356, 277, 382
+round 5: this round 0.95  best so far 0.95  (71.0s)
+  Correct in the simulator on every shape, but the trn2 compiler rejects it: the chip has no such instruction, so this kernel cannot run on the device. Fix exactly these lines:
+
+Lines 19-29 (`tile[c, ...]` gives an instruction one partition starting at partition `c`; on the chip every compute instruction must start at partition 0. Do all C rows at once with `c` gone: `tile[:, ...]`, and (1, ...) til
+  tokens: prompt 922 = instructions 68 + prev_code 381 + feedback 473  [tokenizer] | answers 376, 406, 366, 374
+round 6: this round 1.00  best so far 1.00  (73.7s)
+  Correct on every shape.
+  SOLVED on round 6. Correct on every shape.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def tensor_avgpool_kernel(x, pool_size):
+      C, H, W = x.shape
+      p = pool_size
+      out_shape = (C, H // p, W // p)
+      out = nl.ndarray(out_shape, dtype=x.dtype, buffer=nl.shared_hbm)
+      t = nl.ndarray((C, H, W), dtype=x.dtype, buffer=nl.sbuf)
+      nisa.dma_copy(dst=t, src=x)
+    
+      # Compute the average over the pool window
+      # Reshape to (C, H//p, p, W//p, p)
+      # Then take mean over the last two dimensions
+      # Use tile-based reduction
+      tile = nl.ndarray((C, p, p), dtype=x.dtype, buffer=nl.sbuf)
+      for h in nl.affine_range(H // p):
+          for w in nl.affine_range(W // p):
+              nisa.tensor_copy(dst=tile[:, :, :], src=t[:, h * p:(h + 1) * p, w * p:(w + 1) * p])
+              sum_tile = nl.sum(tile, axis=[1, 2], keepdims=True)
+              mean_tile = nl.ndarray((C, 1, 1), dtype=x.dtype, buffer=nl.sbuf)
+              nisa.tensor_scalar(dst=mean_tile, data=sum_tile, op0=nl.multiply, operand0=1.0 / (p * p))
+              nisa.dma_copy(dst=out[:, h:h + 1, w:w + 1], src=mean_tile[:, 0:1, 0:1])
+      return out
+  -------------------------------------------
+  VERDICT level 1: VERIFIED, confidence 0.90: solved, and passes all 35 extra cases it was never graded on, and lowers for trn2
+
+  CONFIDENCE level 1: 0.90 (passed every loop shape and nothing in the code is shape-specific) -- stated before the held-out check
+  VERDICT level 1: VERIFIED: loop shapes and 20/20 held-out cases
+    tokens spent: 20,084 prompt + 17,375 answer over 7 round(s)
+
+=========== level 2: 2D transpose ===========
+  tokens: prompt 1,066 = instructions 158 + reference 180 + api_card 728  [tokenizer] | answers 363, 302, 259, 257
+round 0: this round 0.30  best so far 0.30  (54.8s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 32: `out_p[i * F2 + j] = in_p[j * F2 + i]` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=12, dst=1 The tile you allocated holds 1 elements but you copied 12 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you wa
+  tokens: prompt 748 = instructions 67 + prev_code 362 + feedback 319  [tokenizer] | answers 290, 302, 357, 257
+round 1: this round 0.30  best so far 0.30  (57.6s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 26: `out_p[i, j] = in_p[j, i]` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=4, dst=1 The tile you allocated holds 1 elements but you copied 4 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you want a 128x512 p
+    (TRUNCATED: finish_reason=length after 10121 chars; prompt is 3946 chars)
+  tokens: prompt 667 = instructions 67 + prev_code 289 + feedback 311  [tokenizer] | answers 293, 280, 261, 2500
+round 2: this round 0.30  best so far 0.30  (209.4s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 18: `nisa.dma_copy(dst=in_tile, src=x)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=12 `in_tile` holds 12 elements but `x` holds 384. Replace line 18 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    in_tile = n
+  tokens: prompt 623 = instructions 67 + prev_code 292 + feedback 264  [tokenizer] | answers 291, 302, 302, 366
+round 3: this round 0.30  best so far 0.30  (59.4s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 26: `out_p[i, j] = in_p[j, i]` raised AssertionError: Out-of-bound access for tensor `unnamed` on dimension 0: index 1 exceed dimension size of 1.
+  tokens: prompt 428 = instructions 67 + prev_code 290 + feedback 71  [tokenizer] | answers 291, 280, 381, 257
+round 4: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 4 failed attempts to break the repeat
+  tokens: prompt 681 = instructions 67 + prev_code 290 + feedback 71 + ledger 253  [tokenizer] | answers 291, 257, 302, 302
+round 5: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 4 failed attempts to break the repeat
+  tokens: prompt 681 = instructions 67 + prev_code 290 + feedback 71 + ledger 253  [tokenizer] | answers 291, 257, 250, 302
+round 6: this round 0.50  best so far 0.50  (51.4s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: NUMERICAL MISMATCH: worst error 4.49 of the output's RMS (1.01), tolerance 0.02.
+  at index (24, 9): expected +2.62617, got -1.9109
+  81.8% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+  tokens: prompt 433 = instructions 67 + prev_code 249 + feedback 117  [tokenizer] | answers 250, 302, 292, 280
+round 7: this round 1.00  best so far 1.00  (53.8s)
+  Correct on every shape.
+  SOLVED on round 7. Correct on every shape.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def tensor_transpose2D_kernel_(x, shape2D):
+      P, F = x.shape
+      F1, F2 = shape2D
+      assert F1 * F2 == F, f"shape2D {shape2D} does not match the free size {F}"
+    
+      # Allocate output tile in shared HBM
+      out = nl.ndarray((P, F), dtype=x.dtype, buffer=nl.shared_hbm)
+    
+      # Allocate a tile for the intermediate buffer
+      tile = nl.ndarray((P, F1, F2), dtype=x.dtype, buffer=nl.sbuf)
+    
+      # Copy input data to the tile
+      nisa.dma_copy(dst=tile, src=x)
+    
+      # Reshape and transpose
+      for p in nl.affine_range(P):
+          for i in nl.affine_range(F1):
+              for j in nl.affine_range(F2):
+                  out[p, j * F1 + i] = tile[p, i, j]
+    
+      return out
+  -------------------------------------------
+  VERDICT level 2: VERIFIED, confidence 0.90: solved, and passes all 35 extra cases it was never graded on, and lowers for trn2
+
+  CONFIDENCE level 2: 0.90 (passed every loop shape and nothing in the code is shape-specific) -- stated before the held-out check
+  VERDICT level 2: VERIFIED: loop shapes and 16/16 held-out cases
+    tokens spent: 21,308 prompt + 11,567 answer over 8 round(s)
+
+=========== level 3: matmul, single tile ===========
+  tokens: prompt 1,135 = instructions 156 + reference 110 + api_card 869  [tokenizer] | answers 291, 268, 320, 308
+round 0: this round 0.30  best so far 0.30  (55.0s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: Line 24: `nisa.dma_copy(dst=lhsT, src=out_tile)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=32768, dst=8192 The tile you allocated holds 8192 elements but you copied 32768 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. I
+  tokens: prompt 570 = instructions 68 + prev_code 290 + feedback 212  [tokenizer] | answers 308, 319, 308, 308
+round 1: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+  tokens: prompt 657 = instructions 68 + prev_code 307 + feedback 212 + ledger 70  [tokenizer] | answers 308, 308, 320, 308
+round 2: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 1 failed attempts to break the repeat
+  tokens: prompt 657 = instructions 68 + prev_code 307 + feedback 212 + ledger 70  [tokenizer] | answers 308, 308, 308, 308
+round 3: same failure again (0.30, best so far 0.30)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 1 shapes passed. On K=128 M=64 N=512: Line 24: `nisa.dma_copy(dst=lhsT, src=out_tile)` raised AssertionEr
+  VERDICT level 3: FAILED, confidence 0.00: not solved: best score 0.30 after 4 rounds
+
+  CONFIDENCE level 3: 0.00 (it still fails shapes the loop tested) -- stated before the held-out check
+  VERDICT level 3: NOT SOLVED (best reward 0.30; held-out 0/4)
+    tokens spent: 12,076 prompt + 4,906 answer over 4 round(s)
+
+=========== level 4: matmul, tiled ===========
+  tokens: prompt 1,136 = instructions 157 + reference 110 + api_card 869  [tokenizer] | answers 317, 310, 323, 323
+round 0: this round 0.30  best so far 0.30  (59.6s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: Line 25: `nisa.tensor_copy(dst=lhs_tile, src=psum_tile)` raised ValueError: shape mismatch: value array of shape (65536,) could not be broadcast to indexing result of shape (16384,) `lhs_tile` holds 16384 elements, but the result written into it holds 65536. A destination must have exactly the shape of what goes into it, so do not reuse a tile you alloca
+  tokens: prompt 556 = instructions 67 + prev_code 316 + feedback 173  [tokenizer] | answers 353, 323, 323, 323
+round 1: this round 0.62  best so far 0.62  (62.0s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: Line 15: `nisa.dma_copy(dst=lhs_tile, src=lhsT)` raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 `lhs_tile` and `rhs_tile` are bigger than one nc_matmul takes: at most 128 rows of K, at most 128 columns of the stationary operand, and at most 512 columns of the moving operand. Tile all three dimensions at once. Replace eve
+  tokens: prompt 928 = instructions 67 + prev_code 352 + feedback 509  [tokenizer] | answers 424, 323, 321, 323
+round 2: this round 1.00  best so far 1.00  (67.3s)
+  Correct on every shape. MEMORY BOUND: 36.6 Flops/Byte against a ridge of 222, so 16% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 6.1x more reuse needed.
+  SOLVED on round 2. Correct on every shape. MEMORY BOUND: 36.6 Flops/Byte against a ridge of 222, so 16% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 6.1x more reuse needed.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_matmul_tiled_(lhsT, rhs):
+      # Allocate output buffer in shared HBM
+      out = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+    
+      TK = min(128, lhsT.shape[0])
+      TM = min(128, lhsT.shape[1])
+      TN = min(512, rhs.shape[1])
+    
+      for m in nl.affine_range(lhsT.shape[1] // TM):
+          for n in nl.affine_range(rhs.shape[1] // TN):
+              psum_tile = nl.ndarray((TM, TN), dtype=nl.float32, buffer=nl.psum)
+              for k in nl.affine_range(lhsT.shape[0] // TK):
+                  lhs_tile = nl.ndarray((TK, TM), dtype=lhsT.dtype, buffer=nl.sbuf)
+                  rhs_tile = nl.ndarray((TK, TN), dtype=rhs.dtype, buffer=nl.sbuf)
+                  nisa.dma_copy(dst=lhs_tile, src=lhsT[k * TK:(k + 1) * TK, m * TM:(m + 1) * TM])
+                  nisa.dma_copy(dst=rhs_tile, src=rhs[k * TK:(k + 1) * TK, n * TN:(n + 1) * TN])
+                  nisa.nc_matmul(dst=psum_tile, stationary=lhs_tile, moving=rhs_tile)
+              res = nl.ndarray((TM, TN), dtype=out.dtype, buffer=nl.sbuf)
+              nisa.tensor_copy(dst=res, src=psum_tile)
+              nisa.dma_copy(dst=out[m * TM:(m + 1) * TM, n * TN:(n + 1) * TN], src=res)
+    
+      return out
+  -------------------------------------------
+  VERDICT level 4: VERIFIED, confidence 0.88: solved, and passes all 29 extra cases it was never graded on, and lowers for trn2
+
+  CONFIDENCE level 4: 0.90 (passed every loop shape and nothing in the code is shape-specific) -- stated before the held-out check
+  VERDICT level 4: VERIFIED: loop shapes and 16/16 held-out cases
+    tokens spent: 10,480 prompt + 3,986 answer over 3 round(s)
+
+=========== summary ===========
+  level 1  reward 1.00 after 7 round(s)  SOLVED  tokens 20,084 prompt + 17,375 answer  confidence 0.90  VERIFIED: loop shapes and 20/20 held-out cases
+  level 2  reward 1.00 after 8 round(s)  SOLVED  tokens 21,308 prompt + 11,567 answer  confidence 0.90  VERIFIED: loop shapes and 16/16 held-out cases
+  level 3  reward 0.30 after 4 round(s)  tokens 12,076 prompt + 4,906 answer  confidence 0.00  NOT SOLVED (best reward 0.30; held-out 0/4)
+  level 4  reward 1.00 after 3 round(s)  SOLVED  tokens 10,480 prompt + 3,986 answer  confidence 0.90  VERIFIED: loop shapes and 16/16 held-out cases
+  solved 3/4
+
+=========== calibration, 4 verdict(s) ===========
+  said 0.00-0.01:   1 verdicts, mean confidence 0.00, actually passed held-out 0/1
+  said 0.80-1.00:   3 verdicts, mean confidence 0.90, actually passed held-out 3/3
+  Brier score 0.007.  Confident (>=0.5) but wrong: 0
+
+attempts logged to final_all.jsonl, verdicts to final_all_verdicts.jsonl

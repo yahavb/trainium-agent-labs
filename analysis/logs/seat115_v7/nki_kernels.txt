@@ -1,0 +1,7 @@
+level  solves  pick
+    2       1  REJECTED BY COMPILER conf 0.00, extra failed 0/35, compiler: does not lower  <- attempts_nki_d11.jsonl
+    3       3  VERIFIED conf 0.74, extra failed 0/11, compiler: match  <- attempts_nki_d13.jsonl
+    4       1  VERIFIED conf 0.88, extra failed 0/29, compiler: match  <- attempts_nki_d13.jsonl
+    9       7  VERIFIED conf 0.80, extra failed 0/15, compiler: match  <- attempts_nki_d12.jsonl
+
+4 levels with a kernel -> /workspace/out/s115/nki_kernels

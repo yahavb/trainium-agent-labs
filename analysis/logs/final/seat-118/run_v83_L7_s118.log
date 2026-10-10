@@ -1,0 +1,50 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1 L2CAT=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 7: matmul, M, N and K blocked ===========
+  tokens: prompt 1,145 = instructions 166 + reference 110 + api_card 869  [tokenizer] | answers 336, 325, 325, 325
+round 0: this round 0.62  best so far 0.62  (65.0s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: Line 14: `nisa.dma_copy(dst=lhsT_tile, src=lhsT)` raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 `lhsT_tile` and `rhs_tile` are bigger than one nc_matmul takes: at most 128 rows of K, at most 128 columns of the stationary operand, and at most 512 columns of the moving operand. Tile all three dimensions at once. Replace e
+  tokens: prompt 921 = instructions 72 + prev_code 335 + feedback 514  [tokenizer] | answers 416, 325, 325, 325
+round 1: this round 0.75  best so far 0.75  (66.7s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.56x the byte floor, and level 7 requires 1.05x or better. Correctness alone is level 4; this level is about the bytes. Block K as well, and accumulate in one PSUM tile across the whole contraction so nothing partial is written out.
+  tokens: prompt 590 = instructions 72 + prev_code 415 + feedback 103  [tokenizer] | answers 428, 325, 325, 325
+round 2: this round 0.75  best so far 0.75  (67.7s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: NUMERICAL MISMATCH: worst error 7.71 of the output's RMS (15.96), tolerance 0.02.
+  at index (161, 796): expected -6.98733, got +115.989
+  74.1% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+  tokens: prompt 623 = instructions 72 + prev_code 427 + feedback 124  [tokenizer] | answers 404, 325, 325, 325
+round 3: this round 0.30  best so far 0.75  (65.7s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: Line 22: `nisa.tensor_copy(dst=out[m * TM:(m + 1) * TM, n * TN:(n + 1) * TN], src=psum_tile)` raised AssertionError: tensor_copy dst must be in ['sbuf', 'psum'], got shared_hbm `nisa.tensor_copy` only moves data between on-chip buffers, sbuf and psum. To reach HBM -- the tensor you allocated with buffer=nl.shared_hbm and will return -- use nisa.dma_copy 
+  tokens: prompt 641 = instructions 72 + prev_code 403 + feedback 166  [tokenizer] | answers 452, 325, 325, 325
+round 4: this round 0.75  best so far 0.75  (69.5s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: NUMERICAL MISMATCH: worst error 7.71 of the output's RMS (15.96), tolerance 0.02.
+  at index (161, 796): expected -6.98733, got +115.989
+  74.1% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+  tokens: prompt 647 = instructions 72 + prev_code 451 + feedback 124  [tokenizer] | answers 452, 325, 343, 326
+round 5: same failure again (0.75, best so far 0.75)
+  same failure 2x — adding a ledger of 4 failed attempts to break the repeat
+  tokens: prompt 934 = instructions 72 + prev_code 451 + feedback 124 + ledger 287  [tokenizer] | answers 452, 325, 340, 477
+round 6: same failure again (0.75, best so far 0.75)
+  STOPPING this level: this failure for the 4th time, alternating with 3 other(s). The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  2 of 4 shapes passed. On K=256 M=256 N=1024: NUMERICAL MISMATCH: worst error 7.71 of the output's RMS (15.96),
+    1x  1 of 4 shapes passed. On K=256 M=256 N=1024: Line 14: `nisa.dma_copy(dst=lhsT_tile, src=lhsT)` raised Assertio
+    1x  2 of 4 shapes passed. On K=256 M=256 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.56x th
+    1x  0 of 4 shapes passed. On K=128 M=128 N=512: Line 22: `nisa.tensor_copy(dst=out[m * TM:(m + 1) * TM, n * TN:(n 
+  VERDICT level 7: FAILED, confidence 0.00: not solved: best score 0.75 after 7 rounds
+
+  CONFIDENCE level 7: 0.00 (it still fails shapes the loop tested) -- stated before the held-out check
+  VERDICT level 7: NOT SOLVED (best reward 0.75; held-out 0/16)
+    tokens spent: 22,004 prompt + 9,951 answer over 7 round(s)
+
+=========== summary ===========
+  level 7  reward 0.75 after 7 round(s)  tokens 22,004 prompt + 9,951 answer  confidence 0.00  NOT SOLVED (best reward 0.75; held-out 0/16)
+  solved 0/1
+
+=========== calibration, 1 verdict(s) ===========
+  said 0.00-0.01:   1 verdicts, mean confidence 0.00, actually passed held-out 0/1
+  Brier score 0.000.  Confident (>=0.5) but wrong: 0
+
+attempts logged to v83_L7_s118.jsonl, verdicts to v83_L7_s118_verdicts.jsonl
