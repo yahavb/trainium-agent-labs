@@ -35,3 +35,24 @@ tail -f run-level4-fix.log
 The live solve-rate improvement is **not yet measured**. Compare five-run
 solve rates against the unchanged baseline. Run agents sequentially within
 the pod: the harness shares `/tmp/_agent_level4.py` even across checkouts.
+
+## Baseline runs 2 and 3
+
+Run 2 loads a whole input whose partition dimension is 256. The existing
+three-axis tiling guidance covers this. Run 3 sets tile_size_M=512 and loops
+over M//512: on M=128 the loop executes zero times and returns unwritten HBM.
+Adding fill cannot fix a skipped computation. Later repairs invent nisa.fill
+and nl.temporary or copy from an uninitialized allocation.
+
+The level-4 prompt now specifies ceiling tile counts, bounded edge tiles and
+(K, M) left-input indexing. Numerical failure feedback (previously not enriched)
+now routes through level-4 guidance, identifying skipped writes and the complete
+PSUM-to-SBUF-to-HBM path. Scoring and other levels remain unchanged.
+Live model comparison remains pending.
+
+Validation of this update: replayed the saved run-3 candidate in an isolated
+temporary harness path and reproduced the numerical failure; asserted that
+the returned grade feedback includes the zero-iteration diagnosis. The shipped
+reference still passes all four shapes with reward 1.0. Other levels' initial
+prompts at all three terseness settings, repair prompts and representative
+error feedback match master. These checks made no model requests.

@@ -141,7 +141,8 @@ def grade(source, level):
                  + ". Fix that before anything else -- the simulator agrees with the reference here "
                    "and the device would not.")
         if m:
-            failures.append((nkibench.label(case, level), m))
+            failures.append((nkibench.label(case, level),
+                             enrich(m, level=level) if level == 4 else m))
             continue
         passed += 1
         if level >= 3 and counted["bytes"]:
@@ -208,6 +209,9 @@ TILED_MATMUL_METHOD = """Read K, M = lhsT.shape and K_rhs, N = rhs.shape; return
 Tile all three dimensions: K at most 128, M at most 128, N at most 512 per tile.
 For each (M, N) output tile, allocate ONE float32 PSUM tile outside its K loop.
 Accumulate all K tiles into it, then copy and store the completed output tile.
+Use ceiling division (size+tile_size-1)//tile_size and Python min for edge sizes.
+M=128 must execute an M tile; M//512 is zero and leaves output unwritten.
+Slice lhsT as [k_start:k_end, m_start:m_end], since its axes are (K, M).
 """
 
 TILED_MATMUL_API_CARD = """Use separate buffers with these tile shapes:
@@ -271,6 +275,20 @@ def real_signature(func_name):
 
 def enrich(error_text, level=None):
     """Add the real names when the failure is an invented API call."""
+    if level == 4 and (
+            "NON-FINITE OUTPUT" in error_text
+            or "module 'nki.isa' has no attribute 'fill'" in error_text
+            or "module 'nki.language' has no attribute 'temporary'" in error_text):
+        return (error_text + " Check whether the output-writing loops execute: "
+                "M=128 with M//512 gives zero iterations, leaving all output unwritten. "
+                "Use tile_m<=128 and ceiling division for tile counts, with bounded "
+                "edge slices. Allocate one PSUM per (M, N) tile outside its K loop; "
+                "load both operands, perform nc_matmul for every K tile, then "
+                "tensor_copy to a matching SBUF and dma_copy to the output slice. "
+                "The shipped matmul pattern needs no manual fill. nisa.fill and "
+                "nl.temporary do not exist, and copying a fresh uninitialized "
+                "ndarray does not initialize anything to zero. Ensure every "
+                "output element is written before returning.")
     if "'MemoryRegion' object is not callable" in error_text:
         return (error_text + " nl.sbuf, nl.psum and nl.shared_hbm are memory regions, not "
                 "functions. Do not call them. Allocate with "
@@ -454,7 +472,7 @@ def repair_prompt(level, source, feedback):
             f"Repair this tiled NKI matmul:\n\n```python\n{source}\n```\n\n"
             f"A checker reports:\n{feedback}\n\n"
             f"{TILED_MATMUL_METHOD}\n{TILED_MATMUL_API_CARD}\n"
-            f"Fix the reported copy and any incorrect buffer allocations or missing tile loops. "
+            f"Fix the reported failure, buffer allocations and missing or zero-iteration tile loops. "
             f"Preserve the entry point, arguments and required output dtype. "
             f"Reply with ONE complete python code block.")
     return (
