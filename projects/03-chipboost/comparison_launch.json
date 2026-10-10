@@ -1,0 +1,21 @@
+{
+  "phase": "referee-r0",
+  "core": 3,
+  "pid": 751076,
+  "budget": 8,
+  "repeat": 3,
+  "completed": [],
+  "referee_commit": "434e5f9",
+  "p2_commit": "919c6be",
+  "p3_commit": "2ce9416",
+  "referee_sha256": "5f366558ae933c88262bbde806afbcd4a568fdbfab4fc3395951f1b3799d71be",
+  "candidate_sha256": "656515ac59183ba6a9dd6a716e992b386871389e9e4a6447f459522c4ad820e6",
+  "baseline": "/tmp/p1-signoff-434e5f9/projects/02-kernel-agent/reference_level4.py",
+  "baseline_sha256": "0dde78bd65e0a724a4fab05b2b893b215c8335e2086bc6c945ed43250a1f728b",
+  "agent_sha256": "9b08841329d9bf49e23819b02c7122baa65f6f741df479b43746af296e8cdf34",
+  "search_sha256": "3cbd71601f3b6a53063f47f6d6aa520cfed87d3de1430cd7f116ee2bead24f58",
+  "search_design": "P2 expert-template cap search; same timing baseline, different candidate prior from agent arms",
+  "acceptance": "passed",
+  "worker_pid": 751140,
+  "startup_baseline": "Reuse acceptance record for P3's unbudgeted startup measurement; all generated candidates are newly graded"
+}

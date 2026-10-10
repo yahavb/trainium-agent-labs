@@ -1,0 +1,19 @@
+referee: speedcheck (single pinned RefereeWorker)
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+start:   ../../../p1-signoff-434e5f9/projects/02-kernel-agent/reference_level4.py   arm: model_alone   budget: 8   give-up: never   log: /tmp/p1-comparison-20261010-2/model_alone-r2.jsonl
+
+=========== run matmul-model_alone-201654-0 ===========
+start kernel ../../../p1-signoff-434e5f9/projects/02-kernel-agent/reference_level4.py: verdict no_gain, 960.1 us (chip)
+round 0: best this round no_gain, speedup 1.000 (chip)  [1/8 evaluations, 143.9s]
+round 1: best this round no_gain, speedup 1.000 (chip)  [2/8 evaluations, 79.6s]
+round 2: best this round no_gain, speedup 1.000 (chip)  [3/8 evaluations, 79.7s]
+round 3: best this round no_gain, speedup 1.000 (chip)  [4/8 evaluations, 80.9s]
+round 4: best this round no_gain, speedup 1.000 (chip)  [5/8 evaluations, 85.3s]
+round 5: best this round no_gain, speedup 1.000 (chip)  [6/8 evaluations, 86.9s]
+round 6: best this round no_gain, speedup 1.000 (chip)  [7/8 evaluations, 87.2s]
+round 7: best this round wrong  [8/8 evaluations, 72.0s]
+
+=========== summary: arm model_alone, budget 8 ===========
+  matmul-model_alone-201654-0: 8 evaluations; no_gain=7, wrong=1; 7 correct; no improvement over the start kernel
+
+attempts logged to /tmp/p1-comparison-20261010-2/model_alone-r2.jsonl

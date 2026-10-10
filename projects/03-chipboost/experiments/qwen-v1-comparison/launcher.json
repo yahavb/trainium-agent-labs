@@ -1,0 +1,22 @@
+{
+  "pid": 751076,
+  "command": [
+    "/opt/conda/bin/python",
+    "-u",
+    "/tmp/p1-run-comparison.py",
+    "--p1",
+    "/tmp/p1-signoff-434e5f9",
+    "--p2",
+    "/tmp/p1-comparison-p2-919c6be",
+    "--p3",
+    "/tmp/p1-comparison-p3-2ce9416",
+    "--core",
+    "3",
+    "--budget",
+    "8",
+    "--repeat",
+    "3",
+    "--out",
+    "/tmp/p1-comparison-20261010-2"
+  ]
+}
