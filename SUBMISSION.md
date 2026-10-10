@@ -41,14 +41,29 @@ into one repair instruction, and tries again: at most 8 rounds of 4 samples per 
 | where | [[TBD: 5]] seat pods in parallel, one agent process per model server |
 | speed | about 50 s per round of 4 samples, bound by generation: 13.9 tok/s for one stream, 22.1 tok/s in total for four |
 
-**What came out.** [[TBD: replace with `scripts/summarize.py` output for the final run]]
+**What came out.** Round 2 numbers below (v7, 14:07–14:50); the final run replaces them. Rounds count
+from 0: round 0 is the first prompt, round k the k-th repair. [[TBD: final-run table from `scripts/report.py`]]
 
-| level | operation | baseline: solved, 5 scores | final: solved, 5 scores | attempts to first 1.0 | held-out verdicts | tokens per attempt, in / out |
-|---|---|---|---|---|---|---|
-| 1 | average pool 2D | 0/5 · .30 .30 .30 .30 .30 | [[TBD]] | [[TBD]] | [[TBD]] | [[TBD]] |
-| 2 | 2D transpose | 3/5 · 1 .30 1 .30 1 | [[TBD]] | [[TBD]] | [[TBD]] | [[TBD]] |
-| 3 | matmul, one tile | 0/5 · .30 .30 .30 .30 .30 | [[TBD]] | [[TBD]] | [[TBD]] | [[TBD]] |
-| 4 | matmul, tiled | 0/5 · .62 .62 .50 .62 .62 | [[TBD]] | [[TBD]] | [[TBD]] | [[TBD]] |
+| level | operation | baseline (organizers' agent): solved, scores | v7: solved, first 1.0 at round, distinct runs | held-out (v7) |
+|---|---|---|---|---|
+| 1 | average pool 2D | 0/5 · .30 .30 .30 .30 .30 · 1 distinct run | 0/1 · best 0.50; 3 of 8 rounds cut off at the token limit | not solved |
+| 2 | 2D transpose | 3/5 · 1 .30 1 .30 1 (replication: 2/5) | [[TBD]] | [[TBD]] |
+| 3 | matmul, one tile | 0/5 · .30 .30 .30 .30 .30 | **5/5** · round 0 · 3 distinct | 5/5 VERIFIED |
+| 4 | matmul, tiled | 0/5 · .62 .62 .50 .62 .62 | **5/5** · round 2 · 1 distinct (the five runs are identical) | 5/5 VERIFIED |
+
+**What we learned.**
+
+1. **The checker and the prompt are the agent.** The model did not change; what it was shown did. Level 3
+   went from 0/5 to 5/5 on a worked example in the first prompt, and the ablation says that example is the
+   one layer level 3 cannot do without (§3).
+2. **A simulator pass is not a chip pass.** Our allocation audit rejects kernels the simulator runs but
+   no chip can hold (§8 shows one in a live run). liuyq's compiler gate finds level-1 kernels the simulator
+   accepts and the trn2 compiler rejects.
+3. **The model server decodes greedily**, whatever the temperature, so 5 runs were often one run five
+   times. We report distinct trajectories next to every rate, and v8 makes the samples differ (§4).
+4. **The token budget was not what bound us; reading `finish_reason` was.** Prompts stay near 1,100
+   tokens, repairs near 750, far below 8,192 (§6). But one layer dropped the `finish_reason` check, and a
+   level-1 run lost 22 minutes to cut-off answers graded as syntax errors (§9).
 
 **How many runs, and the spread.** Every cell is 5 runs of one configuration. We report the rate, never the
 best run, and next to it the number of **distinct trajectories**: the seat's model server decodes greedily in
