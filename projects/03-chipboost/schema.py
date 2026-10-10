@@ -15,7 +15,8 @@ import random
 import sys
 import time
 
-VERDICTS = ("rules", "wrong", "heldout_fail", "slower", "faster")
+# no_gain: correct, but the difference from the baseline is inside the measured timing noise.
+VERDICTS = ("rules", "wrong", "heldout_fail", "slower", "no_gain", "faster")
 SOURCES = ("chip", "sim")
 ARMS = ("referee", "model_alone", "random_search")
 OPS = ("matmul", "rmsnorm", "swiglu")
@@ -31,6 +32,9 @@ ATTEMPT_FIELDS = {
     "round": int,                 # agent round (several samples share a round)
     "prompt_tokens": int,         # input tokens sent to the model; None for random_search
     "code_hash": str,             # sha1 of the kernel source
+    "code": str,                  # the full kernel source, so the dashboard can show diffs
+    "prompt": str,                # what the model was sent; None for random_search
+    "response": str,              # what the model returned; None for random_search
     "verdict": str,               # one of VERDICTS
     "referee_message": str,       # what the referee found
     "instruction_given": str,     # the ONE change sent back to the model
@@ -68,19 +72,26 @@ def fake_attempts(n_runs=3, n_attempts=24, seed=0):
             for run in range(n_runs):
                 best = base
                 for i in range(n_attempts):
-                    verdict = r.choices(VERDICTS, weights=(1, 2, 0.5, 2, 1 + 3 * skill))[0]
+                    verdict = r.choices(VERDICTS, weights=(1, 2, 0.5, 2, 1, 1 + 3 * skill))[0]
                     t = None
-                    if verdict in ("slower", "faster"):
-                        t = best * (r.uniform(0.85, 0.99) if verdict == "faster" else r.uniform(1.01, 1.3))
-                        best = min(best, t)
+                    if verdict in ("slower", "no_gain", "faster"):
+                        t = best * {"faster": r.uniform(0.85, 0.97), "no_gain": r.uniform(0.99, 1.01),
+                                    "slower": r.uniform(1.03, 1.3)}[verdict]
+                        if verdict == "faster":
+                            best = t
+                    model = arm != "random_search"
                     out.append(dict(
                         seat=100 + ARMS.index(arm), kernel=kernel, arm=arm,
                         run_id=f"{kernel}-{arm}-{run}", attempt_no=i, round=i // 4,
                         prompt_tokens=None if arm == "random_search" else r.randint(900, 3000),
-                        code_hash=f"{r.getrandbits(40):010x}", verdict=verdict,
+                        code_hash=f"{r.getrandbits(40):010x}",
+                        code=f"# (fake) {kernel} kernel, attempt {i}\n",
+                        prompt="(fake) prompt" if model else None,
+                        response="(fake) response" if model else None,
+                        verdict=verdict,
                         referee_message=f"(fake) {verdict}", instruction_given="(fake) one named change",
                         sim_ok=verdict not in ("rules", "wrong"),
-                        chip_ok=verdict in ("slower", "faster", "heldout_fail"),
+                        chip_ok=verdict in ("slower", "no_gain", "faster", "heldout_fail"),
                         time_us_median=t, time_us_iqr=None if t is None else t * 0.02,
                         baseline_us_same_session=base * r.uniform(0.99, 1.01),
                         speedup=None if t is None else base / t, source="chip",
