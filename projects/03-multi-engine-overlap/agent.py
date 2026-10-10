@@ -92,16 +92,24 @@ def call_model(prompt: str, max_tokens: int = 2500) -> tuple[str, dict]:
     try:
         import httpx
         headers = {"Content-Type": "application/json"}
+        # Note: chat_template_kwargs={"enable_thinking": False} is mandatory for Qwen3-8B on Trainium.
+        # Without it, the model spends hundreds of seconds thinking in a hidden channel without answering.
         payload = {
             "model": MODEL,
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": max_tokens,
-            "temperature": 0.0  # Greedy decoding for reproducible agent loop
+            "temperature": 0.6,
+            "top_p": 0.95,
+            "chat_template_kwargs": {"enable_thinking": False}
         }
-        resp = httpx.post(f"{BASE_URL}/chat/completions", json=payload, headers=headers, timeout=60.0)
+        resp = httpx.post(f"{BASE_URL}/chat/completions", json=payload, headers=headers, timeout=180.0)
         resp.raise_for_status()
         data = resp.json()
-        content = data["choices"][0]["message"]["content"]
+        choice = data["choices"][0]
+        content = choice["message"].get("content") or ""
+        finish = choice.get("finish_reason")
+        if finish == "length":
+            print("    [WARN] Generation truncated by max_tokens limit!")
         if "usage" in data:
             usage = data["usage"]
         else:
