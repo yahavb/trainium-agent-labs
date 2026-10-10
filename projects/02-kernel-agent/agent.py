@@ -43,9 +43,12 @@ MIN_ANSWER_TOKENS = 2500
 REASONING_KEYS = ("reasoning", "reasoning_content")
 
 CORE_CARD = (
-    "Tiny NKI card: import nki, nki.language as nl, nki.isa as nisa. Decorate the entry point "
-    "with @nki.jit. Allocate with nl.ndarray(..., buffer=nl.sbuf/nl.psum/nl.shared_hbm). "
-    "Use nisa.dma_copy for HBM<->SBUF and return the shared_hbm output."
+    "NKI base card: import nki, nki.language as nl, nki.isa as nisa. Decorate the entry point "
+    "with @nki.jit. Allocate with nl.ndarray(shape, dtype=..., buffer=nl.sbuf/nl.psum/"
+    "nl.shared_hbm). Use nisa.dma_copy(dst=, src=) for HBM<->SBUF and return the shared_hbm "
+    "output. NKI tensors are not NumPy arrays: do not use .reshape(), .mean(), .copy_from(), "
+    "Python arithmetic like tile / scalar, or .shape on instruction results. Use explicit tiles, "
+    "nl.sum(..., axis=[...]), nisa.tensor_scalar, and nisa.dma_copy."
 )
 
 CONTEXT_CARDS = {
@@ -512,6 +515,39 @@ def compact_ledger(failures, limit=4):
     return "\n".join(f"- {x}" for x in seen[-limit:])
 
 
+def known_invalid_patterns(failures):
+    text = "\n".join(compact_feedback(f) for f in failures or []).lower()
+    patterns = []
+    checks = [
+        ("missing 1 required positional argument" in text and "dtype" in text,
+         "add explicit dtype=... to every nl.ndarray allocation"),
+        ("has no `mean`" in text or "attribute 'mean'" in text,
+         "replace .mean() with nl.sum plus nisa.tensor_scalar"),
+        ("reshape" in text,
+         "do not call .reshape() on NKI tensors; allocate/copy the intended tile shape directly"),
+        ("copy_from" in text,
+         "do not call .copy_from(); use nisa.dma_copy(dst=..., src=...)"),
+        ("unsupported operand type" in text or "python operators" in text,
+         "do not use Python arithmetic on tiles; use nisa.tensor_scalar or NKI instructions"),
+        ("has no `shape`" in text or "attribute 'shape'" in text,
+         "do not read .shape from NKI instruction results; keep explicit tile shapes"),
+        ("tensor_reduce axis" in text or "last contiguous" in text,
+         "make reduction axes trailing contiguous before calling nl.sum"),
+    ]
+    for ok, desc in checks:
+        if ok and desc not in patterns:
+            patterns.append(desc)
+    return patterns
+
+
+def invalid_patterns_text(failures):
+    patterns = known_invalid_patterns(failures)
+    if not patterns:
+        return ""
+    return "Known invalid patterns from earlier attempts; fix these too:\n" + "\n".join(
+        f"- {p}" for p in patterns)
+
+
 def compact_feedback(feedback):
     fn = getattr(nkibench, "compact_message", None)
     return fn(feedback) if fn else " ".join(str(feedback).split())[:360]
@@ -640,13 +676,16 @@ def repair_prompt(level, source, feedback, tried=None):
     cards = render_context_cards(card_names)
     ledger = compact_ledger(tried or [])
     ledger_text = f"\n\nAlready tried; avoid repeating these failures:\n{ledger}" if ledger else ""
+    invalid_text = invalid_patterns_text(tried or [])
+    invalid_text = f"\n\n{invalid_text}" if invalid_text else ""
     return (
         f"This NKI kernel for {nkibench.LEVELS[level]['op']} is not right yet.\n\n"
         f"Repair instruction: {instruction}\n\n"
         f"```python\n{source}\n```\n\n"
         f"{cards}\n\n"
         f"Compact checker report:\n{compact}\n\n"
-        f"Make only the repair instruction above. Keep everything else identical.{ledger_text} "
+        f"Make the repair instruction above, and also fix any known invalid NKI API patterns "
+        f"listed below. Keep unrelated logic unchanged.{invalid_text}{ledger_text} "
         f"Reply with "
         f"ONE python code block.")
 
@@ -688,7 +727,9 @@ def audit_context(level):
         rendered = render_context_cards(cards)
         prompt = repair_prompt(level, source, feedback, tried=[feedback])
         budget = prompt_accounting(code=source, feedback=compact_feedback(feedback),
-                                   cards=rendered, ledger=compact_ledger([feedback]),
+                                   cards=rendered,
+                                   ledger=(compact_ledger([feedback]) + "\n"
+                                           + invalid_patterns_text([feedback])),
                                    instruction=inst)
         print(f"\n  case={name} category={cat}")
         print(f"    cards={', '.join(cards)}")
@@ -929,7 +970,8 @@ def solve(a, level, log):
             prompt_cards = repair_card_names(level, cat)
             prompt_budget = prompt_accounting(
                 code=latest[0], feedback=compact_feedback(latest[1]),
-                cards=render_context_cards(prompt_cards), ledger=compact_ledger(tried),
+                cards=render_context_cards(prompt_cards),
+                ledger=(compact_ledger(tried) + "\n" + invalid_patterns_text(tried)),
                 instruction=inst)
             print(f"  same failure {repeats}x — adding a ledger of {len(set(tried))} failed "
                   f"attempts to break the repeat")
@@ -951,7 +993,8 @@ def solve(a, level, log):
             prompt_cards = repair_card_names(level, cat)
             prompt_budget = prompt_accounting(
                 code=latest[0], feedback=compact_feedback(latest[1]),
-                cards=render_context_cards(prompt_cards), ledger=compact_ledger(tried),
+                cards=render_context_cards(prompt_cards),
+                ledger=(compact_ledger(tried) + "\n" + invalid_patterns_text(tried)),
                 instruction=inst)
     print(f"  not solved in {a.rounds} rounds; best reward {best[0]:.2f}")
     return best[0], a.rounds

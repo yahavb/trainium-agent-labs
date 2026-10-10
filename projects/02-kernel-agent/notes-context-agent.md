@@ -212,3 +212,27 @@ Added debug tooling to inspect exactly what the agent sends to the model:
 
 This is for auditing whether failures are due to missing context, bad model reasoning, or bad
 extraction/checking.
+
+## Agent improvement: broader base context and multi-fix repair
+
+Prompt inspection showed Round 0 invented NumPy-like NKI calls:
+
+- `.reshape()`
+- `.mean()`
+- `.copy_from()`
+- missing `dtype`
+
+Round 1 followed the prompt too literally: it fixed only `dtype` and kept the known-invalid calls.
+
+Updated `agent.py` so:
+
+- the base NKI card is still small but explicitly says NKI tensors are not NumPy arrays;
+- repair prompts say to fix the current error plus known invalid API patterns from previous
+  failures;
+- known invalid patterns are deduced from the unique failure ledger.
+
+Observed audit sizes remain small:
+
+- first prompt: about 188 tokens;
+- `.mean()` repair: about 344 tokens;
+- reduction-axis repair: about 415 tokens.
