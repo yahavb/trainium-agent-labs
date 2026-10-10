@@ -63,12 +63,14 @@ replaces v8.2 on level 2]]
 | level | operation | baseline (organizers' agent) | v7 | **v8.2: solved, first 1.0 at round** | distinct | held-out |
 |---|---|---|---|---|---|---|
 | 1 | average pool 2D | 0/5 · .30 .30 .30 .30 .30 | 0/1 · best 0.50 | **5/5** · rounds 2, 2, 0, 4, 2 | 5 different solving kernels | all VERIFIED (20/20 each); all 5 fully built for trn2 and matching in birsim on two shapes |
-| 2 | 2D transpose | 3/5 · 1 .30 1 .30 1 (replication 2/5) | 0/3 | **5/9** · .50 1 .50 .50 1 .50 1 1 1 [[TBD: rounds]] | [[TBD: trajectories over 9 runs]] | 5 VERIFIED, 4 NOT SOLVED; both verdicts agree |
-| 3 | matmul, one tile | 0/5 · .30 .30 .30 .30 .30 | 5/5 · round 0 | **5/5** · rounds 0, 2, 0, 0, 0 | 3 solving kernels | [[TBD]] |
-| 4 | matmul, tiled | 0/5 · .62 .62 .50 .62 .62 | 5/5 · round 2 | **5/5** · round 2 every run | **1 trajectory**: five copies of one path, the same kernel v7 found | [[TBD]] |
+| 2 | 2D transpose | 3/5 · 1 .30 1 .30 1 (replication 2/5) | 0/3 | **5/9** · .50 1 .50 .50 1 .50 1 1 1 [[TBD: rounds]] | [[TBD: trajectories over 9 runs]] | 5 VERIFIED, 4 NOT SOLVED; both verdicts agree; every solve builds for trn2 and matches in birsim |
+| 3 | matmul, one tile | 0/5 · .30 .30 .30 .30 .30 | 5/5 · round 0 | **5/5** · rounds 0, 2, 0, 0, 0 | 3 solving kernels | [[TBD: held-out]]; builds for trn2, matches in birsim |
+| 4 | matmul, tiled | 0/5 · .62 .62 .50 .62 .62 | 5/5 · round 2 | **5/5** · round 2 every run | **1 trajectory**: five copies of one path, the same kernel v7 found | [[TBD: held-out]]; builds for trn2, matches in birsim |
 
-Every solving kernel passed a fresh-process re-audit on trn2. Against our held-out set, no verdict was
-confident (≥ 0.5) and wrong; against a full trn2 build, one was (§5). [[TBD: full builds of the level-2 to 4 solves]]
+Every solving kernel passed a fresh-process re-audit on trn2, and every one of v8.2's and v8.3's solves on
+levels 1–4 also builds in full for trn2 and matches in birsim, the compiler's instruction-level simulator
+(§10). Against our held-out set, no verdict was confident (≥ 0.5) and wrong; against a full trn2 build, v7's
+verdict was once, on liuyq's seat-115 run (§5).
 Level 4's 5/5 is one path, not five: each run's first sample is the same request, so every run repairs the
 same kernel.
 
