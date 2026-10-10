@@ -370,6 +370,19 @@ def lint_kernel(source):
             issues.append(f"{at(node)} -- nl.{node.func.attr} is a dtype, not a function. A constant such as "
                           f"1/sqrt(d) is plain Python: scale = 1.0 / (d ** 0.5), then pass operand0=scale "
                           f"(or scale=scale in nisa.activation).")
+        # nl.sqrt(d) on a Python int: nl math works on tiles (measured on level 11, seat-99:
+        # "'int' object has no attribute 'shape'" at operand0=1.0 / nl.sqrt(d))
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) \
+                and isinstance(node.func.value, ast.Name) and node.func.value.id == "nl" \
+                and node.func.attr in ("sqrt", "rsqrt", "exp", "log", "abs", "square", "power") and node.args:
+            x = node.args[0]
+            scalar = (isinstance(x, ast.Constant) or (isinstance(x, ast.Name) and (x.id in sibling or x.id in consts))
+                      or (isinstance(x, ast.Subscript) and isinstance(x.value, ast.Attribute)
+                          and x.value.attr == "shape"))
+            if scalar:
+                arg = lines[x.lineno - 1][x.col_offset:x.end_col_offset] if x.lineno == x.end_lineno else "d"
+                issues.append(f"{at(node)} -- nl.{node.func.attr} works on tiles, but {arg} is a plain Python "
+                              f"number. Compute it in Python: e.g. 1.0 / ({arg} ** 0.5).")
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) \
                 and isinstance(node.func.value, ast.Name) and node.func.value.id == "nisa":
             for kw in node.keywords:
