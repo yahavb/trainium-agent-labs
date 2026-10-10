@@ -56,7 +56,7 @@ Level & solved (ours / naive) & per-run reward, ours & per-run reward, naive & m
 L1 relu & \ours{5/5} / \naive{3/5} & 1.00 1.00 1.00 1.00 1.00 & 0.80 0.80 1.00 1.00 1.00 & \ours{1.00} / \naive{0.92}\\
 L2 row sum & \ours{3/3} / \naive{0/5} & 1.00 1.00 1.00 & 0.80 0.80 0.80 0.80 0.80 & \ours{1.00} / \naive{0.80}\\
 L3 row max & \ours{3/3} / \naive{1/5} & 1.00 1.00 1.00 & 1.00 0.80 0.81 0.80 0.80 & \ours{1.00} / \naive{0.84}\\
-L4 RMSNorm & \ours{0/4} / \naive{0/5} & 0.81 0.81 0.81 0.61 & 0.74 0.61 0.61 0.61 0.74 & \ours{0.76} / \naive{0.66}\\
+L4 RMSNorm & \ours{1/5} / \naive{0/5} & 0.81 0.81 0.81 0.61 1.00 & 0.74 0.61 0.61 0.61 0.74 & \ours{0.81} / \naive{0.66}\\
 L5 softmax & \ours{3/4} / \naive{0/5} & 1.00 0.67 1.00 1.00 & 0.80 0.47 0.80 0.47 0.80 & \ours{0.92} / \naive{0.67}\\
 L6 transpose & \ours{3/3} / \naive{1/5} & 1.00 1.00 1.00 & 0.80 0.80 0.80 0.80 1.00 & \ours{1.00} / \naive{0.84}\\
 L7 matmul & \ours{1/2} / \naive{0/5} & 1.00 0.83 & 0.80 1.00 1.00 1.00 0.80 & \ours{0.92} / \naive{0.92}\\
@@ -64,15 +64,15 @@ L8 layernorm & \ours{1/5} / \naive{0/5} & 1.00 0.61 0.73 0.61 0.94 & 0.80 0.80 0
 L9 band attention & \ours{4/5} / \naive{0/5} & 1.00 1.00 1.00 0.58 1.00 & 0.80 0.80 0.52 0.80 0.80 & \ours{0.92} / \naive{0.74}\\
 L10 conv1d & \ours{1/2} / \naive{4/5} & 1.00 0.35 & 1.00 0.10 1.00 1.00 1.00 & \ours{0.68} / \naive{0.82}\\
 \midrule
-\textbf{Total} & \ours{24/36} / \naive{9/50} & & & \ours{0.90} / \naive{0.79}\\
+\textbf{Total} & \ours{25/37} / \naive{9/50} & & & \ours{0.90} / \naive{0.79}\\
 \bottomrule
 \end{tabular}\end{center}
-\vspace{-4pt}{\footnotesize The final agent's runs were still in progress at 18:35 (completed runs only,
+\vspace{-4pt}{\footnotesize The final agent's runs were still in progress at 18:40 (completed runs only,
 hence 2--5 per level).}
 
 Naive's many 0.80s are numerically right but rule-breaking (e.g.\ \code{np.sum}): given the raw report,
-the model repeats the same mistake. Tokens per solved kernel: \ours{8.6k} vs \naive{25.2k}, about
-$3\times$ cheaper per success. Not every level improves: naive is better on L10, and L4 is unsolved.
+the model repeats the same mistake. Tokens per solved kernel: \ours{8.8k} vs \naive{25.2k}, about
+$3\times$ cheaper per success. Not every level improves: naive is better on L10.
 
 \textbf{One failure and its recovery (L2, live log).} \#1 uses \code{np.sum}: 28/28 correct but illegal
 $\to$ ``accumulate column by column, \code{acc += x[i0:i1, j]}''. \#2 column loop, but indexes a 188-column
@@ -91,8 +91,8 @@ Each written by the agent and passing \emph{both} our checker (rules, dev, holdo
 \begin{center}\small
 \begin{tabular}{@{}lcccccccccc@{}}\toprule
  & L1 & L2 & L3 & L4 & L5 & L6 & L7 & L8 & L9 & L10\\\midrule
-both checkers & \checkmark & \checkmark & \checkmark & -- & \checkmark & \checkmark & -- & \checkmark & \checkmark & \checkmark\\
-roofline time & 1.00 & 1.00 & 1.00 & & 2.00 & 1.00 & & 2.00 & 61.2 & 12.2\\\bottomrule
+both checkers & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & -- & \checkmark & \checkmark & \checkmark\\
+roofline time & 1.00 & 1.00 & 1.00 & 1.50 & 2.00 & 1.00 & & 2.00 & 61.2 & 12.2\\\bottomrule
 \end{tabular}\end{center}
 
 \section*{5. Numerical analysis: bound the error, don't guess a tolerance}
@@ -123,7 +123,7 @@ was ever made wrong.
 \section*{7. Honest limits}
 \begin{itemize}
 \item L4 and up are still hard: two passes + no broadcasting + numeric traps; fixing one breaks another.
-  L4 and L7 have no kernel passing both checkers.
+  L4 was solved once in 5 runs; L7 has no kernel passing both checkers yet.
 \item Samples are small (2--5 runs per level) and the server is near-deterministic, so each run uses a
   different wording of the task.
 \item The 8k budget never bound in Stage A (largest prompt 706 tokens); it would in Stage B (NKI).

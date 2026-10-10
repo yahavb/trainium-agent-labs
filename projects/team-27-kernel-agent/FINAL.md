@@ -10,7 +10,7 @@ softmax of notes E19) are excluded: only kernels the agent wrote count.
 | L1 relu_affine | `kernels/final/l1_relu_affine.py` | naive ve22cca run3 | 32/32 cases | 1.00x | 18 | 24/24 |
 | L2 row_sum | `kernels/final/l2_row_sum.py` | agent run2, then optimised | 32/32 cases | 1.00x | 2068 | 19/19 |
 | L3 row_max | `kernels/final/l3_row_max.py` | agent run3, then optimised | 32/32 cases | 1.00x | 2068 | 17/17 |
-| L4 rmsnorm | — | none passes yet | — | — | — | 0/5 |
+| L4 rmsnorm | `kernels/final/l4_rmsnorm.py` | ours vc5e98d run5 (final agent) | 32/32 cases | 1.50x | 272193 | — |
 | L5 softmax | `kernels/final/l5_softmax.py` | ours vc5e98d run1 (teammate, in progress) | 32/32 cases | 2.00x | 540244 | — |
 | L6 transpose | `kernels/final/l6_transpose.py` | ours v29fd8d run2 | 32/32 cases | 1.00x | 0 | 3/3 |
 | L7 matmul | — | none passes yet | — | — | — | 0/7 |
