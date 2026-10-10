@@ -1,0 +1,241 @@
+{
+  "cfg": "512x512_L1024_cache6144_sink3072_text512",
+  "gate": 0.9999,
+  "cold_start": [
+    {
+      "chunk": 0,
+      "y_cos": 0.9999999999999345,
+      "y_max_abs": 1.1444091796875e-05,
+      "y_ref_abs_max": 27.082735061645508,
+      "port_slots": [
+        0,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "orig_slots": [
+        0,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "chunk": 1,
+      "y_cos": 0.9999999999999268,
+      "y_max_abs": 7.62939453125e-06,
+      "y_ref_abs_max": 24.105173110961914,
+      "port_slots": [
+        0,
+        1,
+        null,
+        null,
+        null,
+        null
+      ],
+      "orig_slots": [
+        0,
+        1,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "chunk": 2,
+      "y_cos": 0.9999999999999255,
+      "y_max_abs": 9.5367431640625e-06,
+      "y_ref_abs_max": 24.104293823242188,
+      "port_slots": [
+        0,
+        1,
+        2,
+        null,
+        null,
+        null
+      ],
+      "orig_slots": [
+        0,
+        1,
+        2,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "chunk": 3,
+      "y_cos": 0.9999999999999383,
+      "y_max_abs": 7.62939453125e-06,
+      "y_ref_abs_max": 23.17969512939453,
+      "port_slots": [
+        0,
+        1,
+        2,
+        null,
+        null,
+        3
+      ],
+      "orig_slots": [
+        0,
+        1,
+        2,
+        3,
+        null,
+        null
+      ]
+    },
+    {
+      "chunk": 4,
+      "y_cos": 0.9999999999999205,
+      "y_max_abs": 7.62939453125e-06,
+      "y_ref_abs_max": 23.407470703125,
+      "port_slots": [
+        0,
+        1,
+        2,
+        null,
+        3,
+        4
+      ],
+      "orig_slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        null
+      ]
+    },
+    {
+      "chunk": 5,
+      "y_cos": 0.9999999999999338,
+      "y_max_abs": 7.62939453125e-06,
+      "y_ref_abs_max": 23.785642623901367,
+      "port_slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "orig_slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "chunk": 6,
+      "y_cos": 0.9999999999999153,
+      "y_max_abs": 9.5367431640625e-06,
+      "y_ref_abs_max": 23.238006591796875,
+      "port_slots": [
+        0,
+        1,
+        2,
+        4,
+        5,
+        6
+      ],
+      "orig_slots": [
+        0,
+        1,
+        2,
+        6,
+        4,
+        5
+      ]
+    },
+    {
+      "chunk": 7,
+      "y_cos": 0.9999999999999145,
+      "y_max_abs": 7.62939453125e-06,
+      "y_ref_abs_max": 23.312549591064453,
+      "port_slots": [
+        0,
+        1,
+        2,
+        5,
+        6,
+        7
+      ],
+      "orig_slots": [
+        0,
+        1,
+        2,
+        6,
+        7,
+        5
+      ]
+    },
+    {
+      "chunk": 8,
+      "y_cos": 0.9999999999999227,
+      "y_max_abs": 7.62939453125e-06,
+      "y_ref_abs_max": 23.341060638427734,
+      "port_slots": [
+        0,
+        1,
+        2,
+        6,
+        7,
+        8
+      ],
+      "orig_slots": [
+        0,
+        1,
+        2,
+        6,
+        7,
+        8
+      ]
+    }
+  ],
+  "manual_attn": {
+    "y_cos_vs_original": 0.9999999999998618,
+    "y_max_abs": 2.288818359375e-05
+  },
+  "cold_start_cache": {
+    "frames": [
+      0,
+      1,
+      2,
+      6,
+      7,
+      8
+    ],
+    "same_frame_set": true,
+    "k_cos": 0.9999999999997756,
+    "k_max_abs": 9.5367431640625e-07,
+    "v_cos": 0.999999999999492,
+    "v_max_abs": 0.0
+  },
+  "random_cache": {
+    "y_cos": 0.9999999999999131,
+    "y_max_abs": 5.7220458984375e-06,
+    "new_k_cos": 0.9999999999999247,
+    "new_k_max_abs": 9.5367431640625e-07,
+    "new_v_cos": 0.9999999999998256,
+    "new_v_max_abs": 0.0,
+    "kept_k_max_abs": 0.0,
+    "kept_v_max_abs": 0.0
+  },
+  "sensitivity": {
+    "plain_fifo_y_cos_vs_original": 0.9999994906251666,
+    "plain_fifo_y_max_abs": 0.0277252197265625,
+    "zero_cache_y_cos_vs_original": 0.9999540959137787,
+    "zero_cache_y_max_abs": 0.13432693481445312
+  },
+  "min_cosine": 0.999999999999492,
+  "pass": true
+}

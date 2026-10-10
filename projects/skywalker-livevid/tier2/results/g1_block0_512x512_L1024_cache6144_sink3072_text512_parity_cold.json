@@ -1,0 +1,338 @@
+{
+  "cfg": "512x512_L1024_cache6144_sink3072_text512",
+  "gate": 0.999,
+  "cold_start": true,
+  "chunks": [
+    {
+      "chunk": 0,
+      "frame": 0,
+      "masked_slots": 5,
+      "y": {
+        "cos": 0.999994331809541,
+        "max_abs": 0.22859764099121094,
+        "ref_abs_max": 27.082731246948242,
+        "finite": true
+      },
+      "k_cache": {
+        "cos": 0.9999934564877166,
+        "max_abs": 0.06347274780273438,
+        "ref_abs_max": 8.981021881103516,
+        "finite": true
+      },
+      "v_cache": {
+        "cos": 0.9999954639622195,
+        "max_abs": 0.05356311798095703,
+        "ref_abs_max": 13.1761474609375,
+        "finite": true
+      },
+      "k_new": {
+        "cos": 0.9999934564877168,
+        "max_abs": 0.06347274780273438,
+        "ref_abs_max": 8.981021881103516,
+        "finite": true
+      },
+      "v_new": {
+        "cos": 0.9999954639622195,
+        "max_abs": 0.05356311798095703,
+        "ref_abs_max": 13.1761474609375,
+        "finite": true
+      },
+      "y_minus_x": {
+        "cos": 0.9999935854744221,
+        "max_abs": 0.22859764099121094,
+        "ref_abs_max": 27.032888412475586,
+        "finite": true
+      }
+    },
+    {
+      "chunk": 1,
+      "frame": 1,
+      "masked_slots": 4,
+      "y": {
+        "cos": 0.9999947990346945,
+        "max_abs": 0.17822265625,
+        "ref_abs_max": 22.703933715820312,
+        "finite": true
+      },
+      "k_cache": {
+        "cos": 0.9999929834524091,
+        "max_abs": 0.08759593963623047,
+        "ref_abs_max": 8.981021881103516,
+        "finite": true
+      },
+      "v_cache": {
+        "cos": 0.9999954543574363,
+        "max_abs": 0.05356311798095703,
+        "ref_abs_max": 13.1761474609375,
+        "finite": true
+      },
+      "k_new": {
+        "cos": 0.9999920417552803,
+        "max_abs": 0.08759593963623047,
+        "ref_abs_max": 8.88060474395752,
+        "finite": true
+      },
+      "v_new": {
+        "cos": 0.9999954340893724,
+        "max_abs": 0.04950904846191406,
+        "ref_abs_max": 13.066312789916992,
+        "finite": true
+      },
+      "y_minus_x": {
+        "cos": 0.9999936334143591,
+        "max_abs": 0.17822265625,
+        "ref_abs_max": 22.812360763549805,
+        "finite": true
+      }
+    },
+    {
+      "chunk": 2,
+      "frame": 2,
+      "masked_slots": 3,
+      "y": {
+        "cos": 0.9999942245900095,
+        "max_abs": 0.17920684814453125,
+        "ref_abs_max": 23.858938217163086,
+        "finite": true
+      },
+      "k_cache": {
+        "cos": 0.9999927987218699,
+        "max_abs": 0.08759593963623047,
+        "ref_abs_max": 8.981021881103516,
+        "finite": true
+      },
+      "v_cache": {
+        "cos": 0.9999954573762417,
+        "max_abs": 0.05356311798095703,
+        "ref_abs_max": 13.441390991210938,
+        "finite": true
+      },
+      "k_new": {
+        "cos": 0.9999930226167171,
+        "max_abs": 0.07131099700927734,
+        "ref_abs_max": 8.837890625,
+        "finite": true
+      },
+      "v_new": {
+        "cos": 0.9999954886105071,
+        "max_abs": 0.05246734619140625,
+        "ref_abs_max": 13.441390991210938,
+        "finite": true
+      },
+      "y_minus_x": {
+        "cos": 0.9999931449106291,
+        "max_abs": 0.17920684814453125,
+        "ref_abs_max": 23.495126724243164,
+        "finite": true
+      }
+    },
+    {
+      "chunk": 3,
+      "frame": 3,
+      "masked_slots": 2,
+      "y": {
+        "cos": 0.9999943552554228,
+        "max_abs": 0.15878868103027344,
+        "ref_abs_max": 22.442909240722656,
+        "finite": true
+      },
+      "k_cache": {
+        "cos": 0.9999925913991912,
+        "max_abs": 0.08759593963623047,
+        "ref_abs_max": 8.981021881103516,
+        "finite": true
+      },
+      "v_cache": {
+        "cos": 0.9999954637794566,
+        "max_abs": 0.05671215057373047,
+        "ref_abs_max": 14.126832962036133,
+        "finite": true
+      },
+      "k_new": {
+        "cos": 0.9999920258578587,
+        "max_abs": 0.08055543899536133,
+        "ref_abs_max": 8.31557559967041,
+        "finite": true
+      },
+      "v_new": {
+        "cos": 0.9999954710897855,
+        "max_abs": 0.05671215057373047,
+        "ref_abs_max": 14.126832962036133,
+        "finite": true
+      },
+      "y_minus_x": {
+        "cos": 0.9999930393822798,
+        "max_abs": 0.15878868103027344,
+        "ref_abs_max": 22.084680557250977,
+        "finite": true
+      }
+    },
+    {
+      "chunk": 4,
+      "frame": 4,
+      "masked_slots": 1,
+      "y": {
+        "cos": 0.9999938296359252,
+        "max_abs": 0.20315933227539062,
+        "ref_abs_max": 23.250534057617188,
+        "finite": true
+      },
+      "k_cache": {
+        "cos": 0.9999926525613658,
+        "max_abs": 0.08759593963623047,
+        "ref_abs_max": 8.981021881103516,
+        "finite": true
+      },
+      "v_cache": {
+        "cos": 0.9999954699312528,
+        "max_abs": 0.05671215057373047,
+        "ref_abs_max": 14.126832962036133,
+        "finite": true
+      },
+      "k_new": {
+        "cos": 0.9999924148557955,
+        "max_abs": 0.06630802154541016,
+        "ref_abs_max": 7.974550247192383,
+        "finite": true
+      },
+      "v_new": {
+        "cos": 0.9999954729930361,
+        "max_abs": 0.052791595458984375,
+        "ref_abs_max": 13.941631317138672,
+        "finite": true
+      },
+      "y_minus_x": {
+        "cos": 0.9999927104582507,
+        "max_abs": 0.20315933227539062,
+        "ref_abs_max": 23.056621551513672,
+        "finite": true
+      }
+    },
+    {
+      "chunk": 5,
+      "frame": 5,
+      "masked_slots": 0,
+      "y": {
+        "cos": 0.9999944459667778,
+        "max_abs": 0.16874313354492188,
+        "ref_abs_max": 23.63951301574707,
+        "finite": true
+      },
+      "k_cache": {
+        "cos": 0.9999925213481529,
+        "max_abs": 0.08759593963623047,
+        "ref_abs_max": 8.981021881103516,
+        "finite": true
+      },
+      "v_cache": {
+        "cos": 0.9999954607098459,
+        "max_abs": 0.05671215057373047,
+        "ref_abs_max": 14.424842834472656,
+        "finite": true
+      },
+      "k_new": {
+        "cos": 0.9999922663194496,
+        "max_abs": 0.07824325561523438,
+        "ref_abs_max": 8.03572940826416,
+        "finite": true
+      },
+      "v_new": {
+        "cos": 0.9999954328830045,
+        "max_abs": 0.04984283447265625,
+        "ref_abs_max": 14.424842834472656,
+        "finite": true
+      },
+      "y_minus_x": {
+        "cos": 0.9999931776948205,
+        "max_abs": 0.16874313354492188,
+        "ref_abs_max": 22.943923950195312,
+        "finite": true
+      }
+    },
+    {
+      "chunk": 6,
+      "frame": 6,
+      "masked_slots": 0,
+      "y": {
+        "cos": 0.9999939652512697,
+        "max_abs": 0.19255828857421875,
+        "ref_abs_max": 23.22152328491211,
+        "finite": true
+      },
+      "k_cache": {
+        "cos": 0.9999926511093308,
+        "max_abs": 0.08759593963623047,
+        "ref_abs_max": 8.981021881103516,
+        "finite": true
+      },
+      "v_cache": {
+        "cos": 0.9999954664298258,
+        "max_abs": 0.054595947265625,
+        "ref_abs_max": 14.424842834472656,
+        "finite": true
+      },
+      "k_new": {
+        "cos": 0.999992838262965,
+        "max_abs": 0.06885385513305664,
+        "ref_abs_max": 8.397275924682617,
+        "finite": true
+      },
+      "v_new": {
+        "cos": 0.9999955041193589,
+        "max_abs": 0.054595947265625,
+        "ref_abs_max": 13.578383445739746,
+        "finite": true
+      },
+      "y_minus_x": {
+        "cos": 0.9999927004974831,
+        "max_abs": 0.19255828857421875,
+        "ref_abs_max": 22.657690048217773,
+        "finite": true
+      }
+    },
+    {
+      "chunk": 7,
+      "frame": 7,
+      "masked_slots": 0,
+      "y": {
+        "cos": 0.9999939549134147,
+        "max_abs": 0.1659088134765625,
+        "ref_abs_max": 23.021352767944336,
+        "finite": true
+      },
+      "k_cache": {
+        "cos": 0.9999926846943461,
+        "max_abs": 0.08759593963623047,
+        "ref_abs_max": 8.981021881103516,
+        "finite": true
+      },
+      "v_cache": {
+        "cos": 0.9999954701573335,
+        "max_abs": 0.054595947265625,
+        "ref_abs_max": 14.424842834472656,
+        "finite": true
+      },
+      "k_new": {
+        "cos": 0.9999926176628844,
+        "max_abs": 0.07157611846923828,
+        "ref_abs_max": 8.201943397521973,
+        "finite": true
+      },
+      "v_new": {
+        "cos": 0.9999954951045193,
+        "max_abs": 0.05260181427001953,
+        "ref_abs_max": 13.101592063903809,
+        "finite": true
+      },
+      "y_minus_x": {
+        "cos": 0.9999925619617391,
+        "max_abs": 0.1659088134765625,
+        "ref_abs_max": 22.95674705505371,
+        "finite": true
+      }
+    }
+  ],
+  "min_cosine": 0.9999925213481529,
+  "pass": true,
+  "note": "Neuron feeds its own bf16 caches forward; CPU feeds its own fp32 caches. Both start from the same cache (CPU-warmed and full, or empty with --cold). k_new/v_new = the slice written by this chunk only. y_minus_x = what the block adds to the residual stream (stricter than y; not gated). k_cache/v_cache are the graph outputs before the host sink copy."
+}

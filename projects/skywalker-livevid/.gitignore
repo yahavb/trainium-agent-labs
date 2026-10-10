@@ -1,0 +1,17 @@
+models/
+logs/
+repos/
+*.neff
+.env
+.DS_Store
+*.mp4
+*.mov
+*.pt
+*.ntff
+*.safetensors
+*.bin
+artifacts/
+tier1/out/
+tier2/out/
+venvs/
+__pycache__/

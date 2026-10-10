@@ -1,0 +1,356 @@
+{
+  "gate": 0.999,
+  "min_cosine": 0.9999529197272217,
+  "pass": true,
+  "parity": [
+    {
+      "chunk": 0,
+      "enc_cos": 0.9999541223794716,
+      "enc_max_abs": 0.034851670265197754,
+      "dec_cos": 0.9999970916188969,
+      "dec_psnr": 53.98604988549624
+    },
+    {
+      "chunk": 1,
+      "enc_cos": 0.9999529197272217,
+      "enc_max_abs": 0.06226980686187744,
+      "dec_cos": 0.9999958940354088,
+      "dec_psnr": 54.8429523890744
+    },
+    {
+      "chunk": 2,
+      "enc_cos": 0.9999589924154413,
+      "enc_max_abs": 0.0746416449546814,
+      "dec_cos": 0.9999965250746129,
+      "dec_psnr": 55.08701996000974
+    },
+    {
+      "chunk": 3,
+      "enc_cos": 0.9999633630947956,
+      "enc_max_abs": 0.07784795761108398,
+      "dec_cos": 0.9999963697620404,
+      "dec_psnr": 55.4223371946751
+    },
+    {
+      "chunk": 4,
+      "enc_cos": 0.9999654696469822,
+      "enc_max_abs": 0.07368206977844238,
+      "dec_cos": 0.9999966028985163,
+      "dec_psnr": 55.508475217657065
+    },
+    {
+      "chunk": 5,
+      "enc_cos": 0.9999671761925213,
+      "enc_max_abs": 0.07350659370422363,
+      "dec_cos": 0.9999965322516667,
+      "dec_psnr": 55.54695872730068
+    },
+    {
+      "chunk": 6,
+      "enc_cos": 0.9999675960886221,
+      "enc_max_abs": 0.0696876049041748,
+      "dec_cos": 0.9999963943469083,
+      "dec_psnr": 55.35081883907178
+    },
+    {
+      "chunk": 7,
+      "enc_cos": 0.9999669701189231,
+      "enc_max_abs": 0.07120919227600098,
+      "dec_cos": 0.9999961369568782,
+      "dec_psnr": 54.93478162459724
+    }
+  ],
+  "quality": [
+    {
+      "chunk": 0,
+      "frames": [
+        0,
+        5
+      ],
+      "psnr_wan_enc_wan_dec": 37.4052978547511,
+      "psnr_taehv_enc_taehv_dec_neuron": 31.35961757685404,
+      "psnr_taehv_enc_taehv_dec_cpu": 31.377783059681704,
+      "psnr_wan_enc_taehv_dec_neuron": 32.386030700642394,
+      "psnr_taehv_enc_wan_dec": 34.611287624890174,
+      "latent_cos_taehv_vs_wan": 0.9975765382689737,
+      "latent_rms_taehv": 0.9573431611061096,
+      "latent_rms_wan": 0.9524310827255249,
+      "latent_rms_diff": 0.06666011363267899
+    },
+    {
+      "chunk": 1,
+      "frames": [
+        5,
+        9
+      ],
+      "psnr_wan_enc_wan_dec": 37.83868527141106,
+      "psnr_taehv_enc_taehv_dec_neuron": 32.02582322923709,
+      "psnr_taehv_enc_taehv_dec_cpu": 32.04758306629381,
+      "psnr_wan_enc_taehv_dec_neuron": 32.901388145566735,
+      "psnr_taehv_enc_wan_dec": 35.210935292628164,
+      "latent_cos_taehv_vs_wan": 0.9974723578618969,
+      "latent_rms_taehv": 1.292711615562439,
+      "latent_rms_wan": 1.2838411331176758,
+      "latent_rms_diff": 0.09202509373426437
+    },
+    {
+      "chunk": 2,
+      "frames": [
+        9,
+        13
+      ],
+      "psnr_wan_enc_wan_dec": 38.68642738914498,
+      "psnr_taehv_enc_taehv_dec_neuron": 33.13024394106743,
+      "psnr_taehv_enc_taehv_dec_cpu": 33.15790139407332,
+      "psnr_wan_enc_taehv_dec_neuron": 34.17657641984336,
+      "psnr_taehv_enc_wan_dec": 35.88767807886595,
+      "latent_cos_taehv_vs_wan": 0.9972896835123435,
+      "latent_rms_taehv": 1.355135202407837,
+      "latent_rms_wan": 1.3462514877319336,
+      "latent_rms_diff": 0.0998402088880539
+    },
+    {
+      "chunk": 3,
+      "frames": [
+        13,
+        17
+      ],
+      "psnr_wan_enc_wan_dec": 39.35928190003702,
+      "psnr_taehv_enc_taehv_dec_neuron": 33.80555513537984,
+      "psnr_taehv_enc_taehv_dec_cpu": 33.85149098325653,
+      "psnr_wan_enc_taehv_dec_neuron": 35.008549662263846,
+      "psnr_taehv_enc_wan_dec": 36.45270479896111,
+      "latent_cos_taehv_vs_wan": 0.9974247403887846,
+      "latent_rms_taehv": 1.3598488569259644,
+      "latent_rms_wan": 1.347928762435913,
+      "latent_rms_diff": 0.09789220988750458
+    },
+    {
+      "chunk": 4,
+      "frames": [
+        17,
+        21
+      ],
+      "psnr_wan_enc_wan_dec": 37.954764344022486,
+      "psnr_taehv_enc_taehv_dec_neuron": 32.46269685906947,
+      "psnr_taehv_enc_taehv_dec_cpu": 32.48461271397012,
+      "psnr_wan_enc_taehv_dec_neuron": 33.52337869824541,
+      "psnr_taehv_enc_wan_dec": 35.18706816186443,
+      "latent_cos_taehv_vs_wan": 0.9975228700406535,
+      "latent_rms_taehv": 1.3521840572357178,
+      "latent_rms_wan": 1.3393514156341553,
+      "latent_rms_diff": 0.09558809548616409
+    },
+    {
+      "chunk": 5,
+      "frames": [
+        21,
+        25
+      ],
+      "psnr_wan_enc_wan_dec": 36.94538550933799,
+      "psnr_taehv_enc_taehv_dec_neuron": 31.416091999792876,
+      "psnr_taehv_enc_taehv_dec_cpu": 31.453252689065486,
+      "psnr_wan_enc_taehv_dec_neuron": 32.34985705645593,
+      "psnr_taehv_enc_wan_dec": 33.910674881471266,
+      "latent_cos_taehv_vs_wan": 0.9971065563216249,
+      "latent_rms_taehv": 1.3463819026947021,
+      "latent_rms_wan": 1.3360201120376587,
+      "latent_rms_diff": 0.10255137085914612
+    },
+    {
+      "chunk": 6,
+      "frames": [
+        25,
+        29
+      ],
+      "psnr_wan_enc_wan_dec": 36.044597659692116,
+      "psnr_taehv_enc_taehv_dec_neuron": 30.534469457307836,
+      "psnr_taehv_enc_taehv_dec_cpu": 30.575501050922455,
+      "psnr_wan_enc_taehv_dec_neuron": 31.380205792471326,
+      "psnr_taehv_enc_wan_dec": 33.138541085236334,
+      "latent_cos_taehv_vs_wan": 0.9969822293268464,
+      "latent_rms_taehv": 1.332396149635315,
+      "latent_rms_wan": 1.3249577283859253,
+      "latent_rms_diff": 0.10349050164222717
+    }
+  ],
+  "quality_all_frames": {
+    "psnr_wan_enc_wan_dec": 37.6214090488932,
+    "psnr_taehv_enc_taehv_dec_neuron": 31.95969512587084,
+    "psnr_taehv_enc_taehv_dec_cpu": 31.989650576925882,
+    "psnr_wan_enc_taehv_dec_neuron": 32.93745056227552,
+    "psnr_taehv_enc_wan_dec": 34.77897227923719,
+    "latent_cos_taehv_vs_wan": 0.9973384148432731
+  },
+  "latency_ms": {
+    "enc": {
+      "iters": 100,
+      "mean_ms": 17.91337998045492,
+      "p50_ms": 17.91530300397426,
+      "p99_ms": 17.95407899771817
+    },
+    "dec": {
+      "iters": 100,
+      "mean_ms": 37.823705400078325,
+      "p50_ms": 37.79676200065296,
+      "p99_ms": 38.1887419935083
+    }
+  },
+  "cpu_s": {
+    "taehv_encode_per_chunk": 0.4394853468747897,
+    "taehv_decode_per_chunk": 0.6435747894993256,
+    "wan_encode_first_5_frames": 15.451063511995017,
+    "wan_encode_per_chunk": 8.860960767999737,
+    "wan_decode_first_2_latents": 19.14600519799569,
+    "wan_decode_per_chunk": 15.059955114835853,
+    "threads": 8
+  },
+  "port_check_fp32": {
+    "enc_cos": 0.9999999999999127,
+    "enc_max_abs": 0.0,
+    "dec_cos": 0.9999999999991136,
+    "dec_max_abs": 0.0
+  },
+  "compile": {
+    "enc": {
+      "which": "enc",
+      "compile_s": 36.3,
+      "compiler_args": [
+        "--auto-cast=none"
+      ],
+      "input_shapes": [
+        [
+          4,
+          3,
+          512,
+          512
+        ],
+        [
+          1,
+          64,
+          256,
+          256
+        ],
+        [
+          1,
+          64,
+          256,
+          256
+        ],
+        [
+          1,
+          64,
+          256,
+          256
+        ],
+        [
+          1,
+          64,
+          128,
+          128
+        ],
+        [
+          1,
+          64,
+          128,
+          128
+        ],
+        [
+          1,
+          64,
+          128,
+          128
+        ],
+        [
+          1,
+          64,
+          64,
+          64
+        ],
+        [
+          1,
+          64,
+          64,
+          64
+        ],
+        [
+          1,
+          64,
+          64,
+          64
+        ]
+      ],
+      "state_mb_bf16": 33.0
+    },
+    "dec": {
+      "which": "dec",
+      "compile_s": 53.9,
+      "compiler_args": [
+        "--auto-cast=none"
+      ],
+      "input_shapes": [
+        [
+          1,
+          16,
+          64,
+          64
+        ],
+        [
+          1,
+          256,
+          64,
+          64
+        ],
+        [
+          1,
+          256,
+          64,
+          64
+        ],
+        [
+          1,
+          256,
+          64,
+          64
+        ],
+        [
+          1,
+          128,
+          128,
+          128
+        ],
+        [
+          1,
+          128,
+          128,
+          128
+        ],
+        [
+          1,
+          128,
+          128,
+          128
+        ],
+        [
+          1,
+          64,
+          256,
+          256
+        ],
+        [
+          1,
+          64,
+          256,
+          256
+        ],
+        [
+          1,
+          64,
+          256,
+          256
+        ]
+      ],
+      "state_mb_bf16": 44.0
+    }
+  }
+}
