@@ -33,8 +33,10 @@ into one repair instruction, and tries again: at most 8 rounds of 4 samples per 
 | 3 | matmul, one tile | 0/5 · .30 .30 .30 .30 .30 | [[TBD]] | [[TBD]] | [[TBD]] | [[TBD]] |
 | 4 | matmul, tiled | 0/5 · .62 .62 .50 .62 .62 | [[TBD]] | [[TBD]] | [[TBD]] | [[TBD]] |
 
-**How many runs, and the spread.** Every cell is 5 independent runs of one configuration. We report the
-rate, never the best run. [[TBD: one sentence on the spread of the final run.]] The baseline was run twice,
+**How many runs, and the spread.** Every cell is 5 runs of one configuration. We report the rate, never the
+best run, and next to it the number of **distinct trajectories**: the seat's model server decodes greedily in
+practice (4 concurrent requests at temperature 0.7 come back byte-identical, and so does `n=4`), so 5 runs
+are often the same run 5 times. [[TBD: E-div result: whether per-sample prompt variation made the runs distinct]] [[TBD: one sentence on the spread of the final run.]] The baseline was run twice,
 on two seats with the organizers' agent: L1 0/5, L2 3/5 and 2/5, L3 0/5, L4 0/5 both times, with identical
 scores on L1, L3 and L4. Both logs were re-graded from scratch with the current checker under trn2, and
 every attempt matched ([analysis/calibration_baseline_seat116.md](analysis/calibration_baseline_seat116.md),
@@ -133,8 +135,9 @@ written down before the results came in ([PLAN.md](PLAN.md) §4).
 |---|---|---|---|---|
 | E-A | invented NKI names mapped to the real 0.6.0 calls | L1 | 0/5, all 0.30; invented names 80 → 20, the failures moved one layer deeper | kept as groundwork |
 | E-v3 | feedback_v3 | L4 | 1/2 before the seat went to v7: solved on round 6, then a 0.75 | superseded by v7 |
-| E-F | wrong argument list: failing line + real signature + one instruction | L1 | [[TBD]] | [[TBD]] |
-| E-v7 | feedback_v7 as a whole | L1, L3, L4, L2 | [[TBD]] | [[TBD]] |
+| E-F | wrong argument list: failing line + real signature + one instruction | L1 | 0/5, all 0.30, one trajectory; wrong-signature errors 8 → 3 per run, the run then stalls on copy sizes | not carried into v7: v7's level-1 failures are different, and with greedy decoding any message change can move v7's solved trajectories |
+| E-v7 | feedback_v7 as a whole | L1, L3, L4, L2 | L3 5/5 (round 1), L4 4/4 (round 3, one trajectory), L1 [[TBD]], L2 [[TBD]]; all solves VERIFIED [[TBD: final after re-audit]] | adopted |
+| E-div | v7, plus a one-line `(attempt k of n, run r)` tag on samples 2–4 so a greedy server returns different samples | L1–L4 | [[TBD]] | [[TBD]] |
 
 Changes that looked reasonable and were worse, kept here because they cost us time: [[TBD: the 128-row
 copy example (L2 2/5 → 0/5, L4 0.62 → 0.30, rolled back); thinking on; compiler -O3 not ready in 33 min.]]
@@ -174,6 +177,9 @@ round that fixed it, tokens per round.]]
   NKI 0.6.0 simulates trn3. A level-4 kernel with a 1024-wide moving tile passes 2/4 shapes under trn3 and
   0/4 under trn2 ("moving free dimension 1024 exceeds max 512 for nc_version.gen3"). We set trn2
   explicitly and re-graded earlier runs under it. ([analysis/sim_target_check.md](analysis/sim_target_check.md))
+- **Greedy decoding.** The seat's model server ignores the sampling temperature in practice, so repeated runs of
+  one configuration are mostly copies, and "5/5" can mean one trajectory five times. We report distinct
+  trajectories next to every rate. A request with a `seed` parameter returned HTTP 500 and took the server down once.
 - [[TBD: the rest]]
 
 ## 10. Files
