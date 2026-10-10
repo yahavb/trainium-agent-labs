@@ -1,5 +1,92 @@
 # Project 2 — The kernel agent
 
+## Ten-level challenge agent: integrated workflow
+
+The existing `try_level.py` now drives the **NumPy challenge ladder (levels 1–10)**.
+The existing `agent.py` still targets the separate NKI ladder; it is unchanged.
+NumPy level 7 is tiled matmul; NKI level 7 is traffic-optimized matmul.
+Enabling ten levels is not a claim that the model has solved them.
+
+Run from `projects/02-kernel-agent`. NumPy is the only required package for this
+workflow; HTTP calls use Python's standard library. The Neuron SDK is not used.
+
+```bash
+python kernelbench.py --selftest
+python try_level.py --through 10 --dry-run
+python try_level.py --level 1 --rounds 4 --context 8192 --max-tokens 2500 --qwen-no-thinking --pause
+```
+
+The live run uses KERNEL_AGENT_BASE_URL and KERNEL_AGENT_MODEL, or explicit
+`--base` and `--model`. Pass the full API base ending in /v1 or /agg/v1;
+the script appends /chat/completions only. Optional authentication uses
+KERNEL_AGENT_API_KEY. TLS verification is enabled. Use `--qwen-no-thinking`
+only for a server supporting that Qwen chat-template option.
+The old positional-level/--repair interface has been replaced by these named flags.
+
+`--pause` stops after each attempt: Enter continues, q stops for discussion.
+Inspect the saved prompt, reply, candidate and checker feedback before changing prompts.
+This is an interactive checkpoint, not a conversational interface. Restarting does not
+automatically resume an old candidate. No background monitoring is implied.
+
+After inspecting short runs, expand:
+
+```bash
+python try_level.py --through 7 --rounds 8 --repeat 3 --qwen-no-thinking
+python try_level.py --through 10 --rounds 8 --repeat 3 --qwen-no-thinking
+```
+
+`--level` and `--through` are mutually exclusive. Each invocation creates a unique
+directory under runs/, containing config.json, attempts.jsonl, summary.json,
+all prompts/replies/candidates, and any tests-passed candidate. The summary reports
+test pass rates and failure categories. Greedy-model repeats are not independent trials.
+
+For long non-interactive runs only (do not combine with --pause):
+
+```bash
+nohup python -u try_level.py --through 10 --rounds 8 --repeat 3 --qwen-no-thinking > ladder10.log 2>&1 < /dev/null &
+tail -f ladder10.log
+```
+
+The agent and manual verification share the evaluator in kernelbench.py:
+
+```bash
+python kernelbench.py --level 7 --check PATH_TO_CANDIDATE.py --json --seed 2027
+```
+
+The `--json` path includes the public cases plus supplementary negatives, constants,
+large values, awkward shapes, attention window extremes and stride/dilation cases.
+These are not the organizers' private tests. It rejects input mutation and common
+@/.T and reduction shortcuts. The upstream relative tolerance 1e-4 is retained
+(denominator floor 1e-30); near-zero discrepancies may require investigation,
+not silently loosening the tolerance. Without --json the CLI uses the public cases.
+
+**Limits:** static checks do not prove tile bounds, broadcasting compliance, or absence
+of every alias-based shortcut. Passing candidates remain
+`rule_audit: pending_manual_review`. Review loop bounds, intermediates and indexing
+before claiming competition compliance. No device latency or throughput is measured.
+
+Candidate execution has a subprocess timeout and minimal environment, but is **not
+a security sandbox**. It still has the caller's filesystem/network access. Use a
+disposable environment without secrets or sensitive mounts for generated code.
+
+**Context accounting:** the default reserves one token per UTF-8 byte plus 128 overhead;
+this is a conservative estimate, not a universal tokenizer guarantee. Optional
+`--tokenizer /local/model/path` uses a locally available Transformers tokenizer
+(no remote code/download), which must match the serving model and chat template.
+Server usage and finish_reason are logged. section_bytes is not a token measurement;
+with a tokenizer, section_content_tokens excludes framing and need not sum exactly
+to the complete prompt count. The agent drops old ledger entries before blocking
+an oversized request. It does not force a minimum output budget into a full context,
+silently cut source code, or execute truncated replies.
+
+Initial validation: 12 local regression tests passed, including a mock HTTP model
+failure/repair/pass sequence and subprocess timeout. All ten prompt contracts passed
+a dry run. This is infrastructure validation, not real-model solve results.
+Next: inspect level 1 with --pause; then expand only after reviewing actual failures.
+
+---
+
+
 **An agent writes small programs that run directly on the chip, and keeps verifying its own output
 as it goes.**
 
