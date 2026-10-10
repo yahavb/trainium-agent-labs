@@ -38,7 +38,7 @@ What it checks, and why:
 
 **Known gap:** it checks names and arguments, not the *kind* of value. In `merge_static` round 3 the model wrote `data=1.0/(p*p)` where `data=` must be a tile, and the checker said nothing.
 
-## 3. Runs
+## 3. Trials
 
 | Run (log) | Configuration | Best | Where it got stuck |
 |---|---|---|---|
@@ -71,13 +71,19 @@ Time per round with `--plan-merge` and 4 thoughts was about 430–455 s. With 2 
 7. **Showing failed attempts was not enough to stop the model going back to them** (`merge_history`). An explicit, precise hint seems to matter more than memory.
 8. **Variance is large; n is small.** Two runs with identical settings (seats 182 and 184 before history takes effect) hit different first errors at round 0. Our only 0.50 (`merge_multi`) **did not replicate** in `merge_multi_rep`. The three runs with the static check on (`merge_static`, `merge_tmix`, `merge_t10`) all ended at the same `.ap` wall, whether the temperatures were mixed or all 1.0. So the walls in finding 3 are reproducible, while the score is not. With 1–2 runs per configuration we report behaviour, and we **do not** rank configurations by score.
 
-## 5. Next steps (not done)
+## 5. Future Plan
 
 - **Explain the `.ap` stride unit when that error appears.** Either attach the real NKI docstring, or restate the error with the numbers worked out for this tile ("one partition step = H·W = 1024 elements, one row = W, one column = 1"), in the style of finding 1.
 - **A hint for reductions over non-last axes, and for the 2-dimension wall after a reduction** ("`nl.sum(..., keepdims=True)` keeps the tile 2-D").
 - **A value-kind check in the static checker** (tile vs number).
 - **Keep diversity through the merge:** one summary per thought, or break ties toward the sample whose error is *new*.
 - **More replications per configuration** before comparing scores.
+- **Decompose, then build in checked stages.** This targets the regressions we saw (fixing one thing broke another, as in `merge_multi` rounds 4–5 and `merge_history` round 3):
+  1. The model writes its plan as a short sequence of NumPy steps (e.g. load `x` → window sums `(C, H/p, W/p)` → divide by p²).
+  2. The harness runs the steps on CPU and checks that together they equal the reference, so a wrong plan is rejected in milliseconds. No hand-written answers are needed.
+  3. The kernel is built in stages. Stage *k* must reproduce the output of the model's own NumPy step *k* before stage *k+1* may extend it. A stage that passes is frozen, so later fixes cannot break it, and the feedback always names the one stage that fails.
+
+  We build stages on top of each other rather than writing the parts separately and joining them, because intermediate results live in SBUF tiles and a join would be a new place to fail. This does not supply missing knowledge (the `.ap` stride unit, `keepdims`), so it should be paired with those hints. Each should still be tested as a separate variable.
 
 ## 6. Reproduce
 
