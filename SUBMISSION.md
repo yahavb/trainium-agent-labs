@@ -9,11 +9,13 @@ every number comes from the NKI 0.6.0 CPU simulator (`nki.simulate`), graded by 
 
 **In one paragraph.** We built a checker-driven agent that writes NKI kernels with a model that sees 8,192
 tokens (Qwen3-8B, served on the seat's Trainium2). The organizers' agent solved only level 2 (3 runs of 5).
-Ours solved levels 3 and 4 in every run and, once, level 1 (the only level-1 solve in our logs), and every solve passed a
+Ours solved levels 3 and 4 in every run and level 1 twice [[TBD: final counts]], and every solve passed a
 fresh-process re-audit and a held-out set of new shapes and hostile values [[TBD: final-run numbers]]. The
 model never changed; what it was shown did. One worked example in the first prompt solves level 3; the code
-in the repair messages solves level 4 (hollowed out, level 4 stopped solving); and level 1 fell to a one-line
-instruction, "Add keepdims=True to this call", sent in place of a raw simulator error. Along the way we found that the seat's model
+in the repair messages solves level 4 (hollowed out, level 4 stopped solving). Level 1 fell twice: once to a
+one-line instruction, "Add keepdims=True to this call", sent in place of a raw simulator error; once when a
+fresh first attempt was right in the simulator but not legal on trn2, and a compiler gate handed back the
+rewrite. Along the way we found that the seat's model
 server is deterministic, so "5 runs" were often one run five times. We report distinct runs next to every
 rate and changed the agent so its samples actually differ.
 
@@ -225,10 +227,10 @@ written down before the results came in ([PLAN.md](PLAN.md) §4).
 | E-F | wrong argument list: failing line + real signature + one instruction | L1 | 0/5, all 0.30, one trajectory; wrong-signature errors 8 → 3 per run, the run then stalls on copy sizes | not carried into v7: v7's level-1 failures are different, and with a deterministic server any message change can move v7's solved trajectories |
 | E-v7 | feedback_v7 as a whole | L1, L3, L4, L2 | L3 5/5 (round 1), L4 4/4 (round 3, one trajectory), L1 [[TBD]], L2 [[TBD]]; all solves VERIFIED [[TBD: final after re-audit]] | adopted |
 | E-div | v7, plus a one-line `(attempt k of n, run r)` tag on samples 2–4 so a deterministic server returns different samples | L3, L4 | L3 5/5 (3 distinct runs, was 1 under v7's L4), L4 4/4 | kept (in v8) |
-| v8 | E-div + skeleton feedback + cut-off answers not graded + level-1 call fixes; liuyq's level-1 compiler gate in the base | L1–L4 | **L1: the only level-1 solve in our logs**, in its first repair round; VERIFIED by both verdicts, held-out 20/20, lowers for trn2, re-audit PASS (1 of 3 runs). L4: 0.62 twice (v7: 5/5). L3: solved, two rounds later than v7. L2, round 0 only: 0/20 | skeleton dropped (see below); the rest kept |
+| v8 | E-div + skeleton feedback + cut-off answers not graded + level-1 call fixes; liuyq's level-1 compiler gate in the base | L1–L4 | **L1: our first level-1 solve**, in its first repair round; VERIFIED by both verdicts, held-out 20/20, lowers for trn2, re-audit PASS (1 of 3 runs). L4: 0.62 twice (v7: 5/5). L3: solved, two rounds later than v7. L2, round 0 only: 0/20 | skeleton dropped (see below); the rest kept |
 | L2 sampling | v8 with the first prompt and the sampling settings back to the organizers' | L2, round 0, 20 samples | 2/20, the same as the organizers' agent re-run today (2/20); with v7's sampling settings 0/20 | the level-2 regression was v7's sampling settings |
 | v8.1 | v8 without the skeleton, plus samples 1 and 3 on the original sampling and 2 and 4 on v7's, plus one sentence restating the level-2 task when the model transposes the whole input | L2 | the first level-2 solve in a repair round today (round 2), through the existing numeric-mismatch message; stopped after one run for v8.2 | folded into v8.2 |
-| **v8.2** (final candidate, 96a9fc9) | v8.1 plus **E-mix**: in every repair round, sample 1 repairs the best kernel as before and samples 2–4 start over from the first prompt, each tagged differently. Level 2 had only ever been solved in round 0, so its repair rounds now also buy fresh first attempts | L1–L4 | so far (16:19): **L1 solved** in round 2 through the compiler gate (round 1: correct in the simulator but channel by channel, held at 0.95 and given the all-channels rewrite; round 2: the repair sample applied it), VERIFIED, held-out 20/20, lowers for trn2; L2 2 of 3 runs; L4 1 of 1 [[TBD: final counts]] | final candidate |
+| **v8.2** (final candidate, 96a9fc9) | v8.1 plus **E-mix**: in every repair round, sample 1 repairs the best kernel as before and samples 2–4 start over from the first prompt, each tagged differently. Level 2 had only ever been solved in round 0, so its repair rounds now also buy fresh first attempts | L1–L4 | so far (16:19): **L1 solved** in round 2: in round 1 a fresh first attempt (E-mix), not the repair, was correct in the simulator but channel by channel; the compiler gate held it at 0.95 and handed back the all-channels rewrite; in round 2 the repair sample applied it, VERIFIED, held-out 20/20, lowers for trn2; L2 2 of 3 runs; L4 1 of 1 [[TBD: final counts]] | final candidate |
 
 **The skeleton gamble, and why it lost.** v8 hollowed out the code in the repair messages (`t[<…>]`) so that the
 model would have to work out slices and shapes itself. On level 4 it could not. With and without the
@@ -341,7 +343,7 @@ raw counts):
 3. **One wall came back** when the skeleton blanked the tiling code: 24 out-of-bounds attempts on level 4
    (§4).
 4. **What is left.** Level 4's round-0 broadcast mismatch is in every version (18, 20, 18, 7, 7): cleared by
-   repair, never prevented. Level 1 stays the hardest: one solve in all of our logs.
+   repair, never prevented. Level 1 stays the hardest: no solve before v8. [[TBD: final level-1 count]]
 
 Until v8.1, level 2's repair rounds had never once succeeded, in the baseline or under v7: every level-2
 solve came from a first attempt. [[TBD: v8.2's level-2 solves, by round]]
@@ -376,9 +378,9 @@ solved, after 21 attempts. Then, before seeing anything new, the agent stated a 
 held-out set (4 new shapes × 4 kinds of values) passed 16/16. Verdict: VERIFIED, and the claim was right.
 The solving kernel is correct, not fast: 36.6 Flops/Byte, memory-bound.
 
-### A second one, shorter: the level-1 solve
+### A second one, shorter: our first level-1 solve
 
-v8 on level 1, the only level-1 solve in our logs. Full transcript, rebuilt prompts and re-checks:
+v8 on level 1. Full transcript, rebuilt prompts and re-checks:
 [analysis/recovery_v8_L1.md](analysis/recovery_v8_L1.md).
 
 | round | best of 4 | what the checker said | what went back to the model |
@@ -392,6 +394,23 @@ solving kernel reduces all channels at once, so the compiler gate had nothing to
 set ran, the agent stated 0.90; held-out 20/20, re-audit PASS, VERIFIED by both verdicts. It also lowers for
 trn2 (a lowering, not a full build). Round 0 took 247 s, almost all of it the two cut-off answers; round 1
 took 81 s.
+
+### A third: level 1 through the compiler gate
+
+v8.2 on level 1 ([analysis/recovery_v82_L1.md](analysis/recovery_v82_L1.md)). Every layer that v8.2 added has a
+part in it.
+
+| round | best of 4 | from which sample | what happened |
+|---|---|---|---|
+| 0 | 0.50 | sample 1, first prompt, original sampling | a fourth sample hit the token limit and was not graded |
+| 1 | 0.95 | **sample 2, a fresh first attempt** (E-mix); the repair sample only reached 0.30 | correct on every shape in the simulator, but one channel at a time (`t[c, ...]`), a form the trn2 compiler rejects. The gate held it at 0.95 and sent back the loop rewritten to do all channels at once |
+| 2 | **1.00** | sample 1, the repair | the held kernel with the gate's rewrite applied |
+
+Without E-mix the near-solution would not have been drawn: the repair sample was stuck at 0.30. Without the
+gate it would have been scored 1.0 as it stood and reported as a solve that a trn2 build rejects. Before the
+held-out set ran, the agent stated 0.90; held-out 20/20, re-audit PASS, VERIFIED by both verdicts, and the
+kernel lowers for trn2 (a lowering, not a full build). 12 requests, 13,595 prompt and 10,935 answer tokens,
+counted by the server.
 
 ## 9. Limits
 
