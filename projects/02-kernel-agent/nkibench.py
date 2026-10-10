@@ -594,6 +594,13 @@ def check_traffic_bar(level_n, counted, args, want):
             f"level is about the bytes. {hint}")
 
 
+def issue_bound(transfers, elements):
+    """True when a kernel pays per-transfer cost rather than per-byte: more DMAs than one per 64
+    output elements (and more than a handful in absolute terms). Moving whole tiles never gets
+    close; moving single elements always does."""
+    return transfers > max(8, elements // 64)
+
+
 def check_inputs_untouched(before, args):
     """A kernel must not write into the tensor it was given.
 
@@ -627,7 +634,7 @@ def simulate_and_count(kernel, args):
         ) from e
 
     run, api = _simulator(nki, kernel)
-    counter = dict(bytes=0, transfers=0, api=api, dtypes=set())
+    counter = dict(bytes=0, transfers=0, api=api, dtypes=set(), psum_matmuls={}, psum_handles=[])
     original = nisa.dma_copy
     original_matmul = nisa.nc_matmul
 
@@ -653,7 +660,18 @@ def simulate_and_count(kernel, args):
             assert shapes[0] == want, (
                 f"nc_matmul dst has shape {shapes[0]}, but stationary {shapes[1]} = [K, M] and "
                 f"moving {shapes[2]} = [K, N] produce [M, N] = {want}")
-        return func(*args, **kwargs)
+        out = func(*args, **kwargs)
+        # How many matmuls landed in each PSUM allocation (slices share their tile's storage). A
+        # tiled matmul needs exactly K/128 per output block: more means one PSUM tile is shared
+        # between output blocks and they add into each other; one means it was allocated inside the
+        # K loop and the partial products never accumulate. Both run cleanly and return wrong
+        # numbers, so the count is what names them. The handles are kept so ids are never reused.
+        storage = getattr(dst, "_storage", None)
+        if storage is not None:
+            if id(storage) not in counter["psum_matmuls"]:
+                counter["psum_handles"].append(storage)
+            counter["psum_matmuls"][id(storage)] = counter["psum_matmuls"].get(id(storage), 0) + 1
+        return out
 
     def counting_dma_copy(dst=None, src=None, **kw):
         try:
@@ -672,8 +690,17 @@ def simulate_and_count(kernel, args):
     # They are also not noise: one of them says the pattern produces INCORRECT RESULTS on hardware,
     # which the agent should be told rather than have scrolled past.
     import warnings
+    # Assigning into an HBM tensor -- out[p, k] = tile[p, j] -- is a dma_copy too, issued by
+    # NkiTensor.__setitem__ through the name nki.language.tensor imported for itself. Patching only
+    # nisa.dma_copy missed every one of them: an element-at-a-time level-2 kernel wrote its whole
+    # output that way and was reported at 0.50x the byte floor, "essentially optimal", with one
+    # transfer. Count both routes, so the transfer count is the number of DMAs actually issued.
+    tensor_mod = sys.modules.get("nki.language.tensor")
+    tensor_original = getattr(tensor_mod, "dma_copy", None)
     nisa.dma_copy = counting_dma_copy
     nisa.nc_matmul = strict_nc_matmul
+    if tensor_original is not None:
+        tensor_mod.dma_copy = counting_dma_copy
     try:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
@@ -687,6 +714,8 @@ def simulate_and_count(kernel, args):
     finally:
         nisa.dma_copy = original
         nisa.nc_matmul = original_matmul
+        if tensor_original is not None:
+            tensor_mod.dma_copy = tensor_original
     return out, counter
 
 
@@ -739,7 +768,7 @@ def verify(path, level_n, tol=2e-2, seed=0):
             continue
         passed += 1
         elements = int(np.prod(np.shape(want)))
-        if counted["transfers"] > max(8, elements // 64):
+        if issue_bound(counted["transfers"], elements):
             print(f"\n  case {label(case, level_n)}: CORRECT BUT ISSUE-BOUND -- "
                   f"{counted['transfers']:,} transfers for {elements:,} output elements, "
                   f"{counted['bytes'] / max(counted['transfers'], 1):.0f} bytes each. The cost here "

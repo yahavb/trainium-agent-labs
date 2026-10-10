@@ -131,6 +131,7 @@ def grade(source, level):
                 f"{type(e).__name__}: {e}", 0.0)
 
     failures, passed, intensity, progress = [], 0, None, []
+    busiest = None      # (transfers, output elements, label) of the passing shape with most DMAs
     for case in spec["shapes"]:
         args, _ = nkibench.make_inputs(case, level)
         before = [x.copy() if isinstance(x, np.ndarray) else x for x in args]
@@ -157,12 +158,19 @@ def grade(source, level):
             m = ("CORRECT ON CPU BUT WRONG ON HARDWARE: " + hazards[0]
                  + ". Fix that before anything else -- the simulator agrees with the reference here "
                    "and the device would not.")
+        if m and is_matmul(level):
+            m += psum_accumulation_hint(counted, case)
+        if m and is_transpose(level):
+            m += transpose_hint(got, args)
         if m:
             failures.append((nkibench.label(case, level), m))
             progress.append(1.0 + fraction_right(got, want))
             continue
         progress.append(2.0)
         passed += 1
+        elements = int(np.prod(np.shape(want)))
+        if busiest is None or counted["transfers"] > busiest[0]:
+            busiest = (counted["transfers"], elements, nkibench.label(case, level))
         if level >= 3 and counted["bytes"]:
             intensity = nkibench.roofline(
                 nkibench.matmul_flops(case["M"], case["K"], case["N"]), counted["bytes"])
@@ -179,7 +187,58 @@ def grade(source, level):
     note = "Correct on every shape."
     if intensity:
         note += " " + nkibench.explain_roofline(intensity)
+    elif busiest:
+        # Off the matmul levels the cost that matters is the number of DMAs, not the bytes, so say
+        # it on success too -- an element-at-a-time kernel is correct and still the wrong answer.
+        transfers, elements, lbl = busiest
+        note += f" At most {transfers} DMA transfers per shape ({lbl}: {elements} output elements)."
+        if nkibench.issue_bound(transfers, elements):
+            note += (" ISSUE-BOUND: that is close to one DMA per element. Move whole tiles, not "
+                     "elements.")
     return reward, parts, note, 2.0
+
+
+def psum_accumulation_hint(counted, case):
+    """Name the two PSUM mistakes that run cleanly and return wrong numbers.
+
+    nc_matmul accumulates into a PSUM tile across calls, so a tiled matmul must send exactly K/128
+    matmuls to each output block's tile. nkibench counts them per PSUM allocation.
+    """
+    calls = list(counted.get("psum_matmuls", {}).values())
+    k_tiles = -(-case["K"] // nkibench.PMAX)
+    if not calls:
+        return ""
+    if max(calls) > k_tiles:
+        return (f"\n  One psum tile received {max(calls)} nc_matmul calls, but K={case['K']} needs "
+                f"only {k_tiles} per output block, so different output blocks are adding into the "
+                f"same psum tile. Allocate a fresh psum tile for each (m, n) block: inside the n "
+                f"loop, before the k loop.")
+    if k_tiles > 1 and max(calls) < k_tiles:
+        return (f"\n  Each psum tile received only {max(calls)} nc_matmul call(s), but K={case['K']} "
+                f"is {k_tiles} chunks of 128 that must add up in ONE psum tile. Allocate the psum "
+                f"tile before the k loop, not inside it, and nc_matmul every k chunk into it.")
+    return ""
+
+
+def transpose_hint(got, args):
+    """Name the two wrong transposes that run cleanly: no transpose at all, and the other one.
+
+    Measured on level 2's row-copy kernel: storing the loaded tile instead of the transposed one
+    reads as "81.8% of elements are wrong, the core arithmetic or the operand layout" -- true, and
+    no help in finding the one-word slip.
+    """
+    x, (f1, f2) = args
+    got = np.asarray(got)
+    p, f = x.shape
+    if got.shape != x.shape:
+        return ""
+    if np.allclose(got, x):
+        return ("\n  The output is the INPUT, unchanged: nothing was transposed. Store the tile the "
+                "row copies wrote into, not the tile you loaded the input into.")
+    if f1 != f2 and np.allclose(got, x.reshape(p, f2, f1).transpose(0, 2, 1).reshape(p, f)):
+        return ("\n  This transposes each row as an F2 x F1 matrix; it is F1 x F2 = shape2D, so F1 "
+                "and F2 are swapped somewhere in your slices.")
+    return ""
 
 
 _SCRATCH = []
@@ -243,8 +302,38 @@ def copy_kernel(a):
 """
 
 
-# What nc_matmul DOES, as shapes. Only the matmul levels get this, so levels 1 and 2 see exactly the
-# prompt they were measured with. Measured on level 3 before it existed: the memory rules above were
+# ---------------------------------------------------------------- strategy cards
+#
+# One card per handled level, appended to the generation and repair prompts by card_for(). A card
+# says HOW this level's operation maps onto NKI -- which tiles, which copies, in which order --
+# because each wall below was a missing idiom rather than a missing rule. Levels without a card
+# (1, and 8) see exactly the prompt they were measured with.
+
+# Level 2. Level 2 was the one level whose result was luck: 2/5 in one five-run measurement and 4/5
+# in another, 0.30 to 1.00 run to run, and 2/3 with the level-3/4 loop before any card. The reverted
+# chunked-copy example showed what an open-ended transpose invites -- the model reached for
+# dma_transpose and got it wrong five ways -- so the card fixes one strategy instead.
+#
+# The first card, from the level2 branch, assigned out[p, j*F1 + i] = sbuf[p, i, j] element by
+# element. It solved 5/5, and every solve was the pattern this level exists to expose: each
+# assignment into HBM is its own one-element DMA, 8,193 transfers for the 128x64 shape. (The byte
+# counter missed them until nkibench learned to count assignments, and called it "essentially
+# optimal".) This card keeps the fixed strategy and moves whole tiles: one DMA in, one row of every
+# partition's matrix per on-chip copy, one DMA out -- F1 copies where the shipped reference makes
+# F1*F2.
+TRANSPOSE_CARD = """How to do this transpose with whole-tile moves: let P, F = x.shape and F1, F2 = shape2D, with
+F1 * F2 == F. Each partition holds an F1 x F2 matrix stored row by row, so row i is
+x[:, i*F2:(i+1)*F2]; after the transpose its F2 elements sit F1 apart, at i, i+F1, i+2*F1, ...
+  - Allocate out as nl.ndarray((P, F), dtype=x.dtype, buffer=nl.shared_hbm), and two (P, F) sbuf
+    tiles, a and b.
+  - Load the whole input once: nisa.dma_copy(dst=a, src=x).
+  - Loop i over F1 with nl.affine_range and move one whole row per copy:
+    nisa.tensor_copy(dst=b[:, i:F:F1], src=a[:, i*F2:(i+1)*F2]).
+  - Store once: nisa.dma_copy(dst=out, src=b), then return out.
+That is two DMAs and F1 copies in total. Never assign single elements, and do not reshape."""
+
+
+# What nc_matmul DOES, as shapes. Measured on level 3 before it existed: the memory rules above were
 # followed and the shapes were not. Samples sized the output as lhsT.shape[1:] -- a 1-D (64,) -- or
 # poured both operands into one (128, 512) tile, and never once got past the first copy. The
 # reference's docstring said "-> [M, N]" and that was not enough: it never said which operand
@@ -257,13 +346,58 @@ sbuf tile of exactly its own shape. The result, and the shared_hbm output you re
 into a new (M, N) sbuf tile, then dma_copy that sbuf tile to the output."""
 
 
+# The single-tile card above is WRONG past level 3, and measured so: on level 4 it said "load each
+# into its own sbuf tile of exactly its own shape", and every round-0 sample did exactly that and
+# died on "dma_copy dst partition dimension 256 exceeds maximum 128". Repairs then taught one
+# dimension per round -- K tiling arrived in round 2, M and N never did -- and four rounds is not
+# enough to meet three walls one at a time. So the levels whose shapes need tiling get the tiling
+# contract up front: which loop owns which slice, and where the PSUM tile lives.
+TILED_MATMUL_CARD = """How nc_matmul uses shapes: stationary is [K, M] and moving is [K, N], two sbuf tiles that share
+the partition axis K; dst is [M, N], a float32 psum tile, and receives stationary.T @ moving. One
+call takes at most K=128, M=128, N=512. These inputs are bigger, so tile all three dimensions;
+every test shape is a whole number of tiles (K and M multiples of 128, N a multiple of 512).
+  - Loop m over M // 128 and n over N // 512. For each (m, n) allocate ONE (128, 512) psum tile,
+    before the k loop.
+  - Loop k over K // 128: load lhsT[k*128:(k+1)*128, m*128:(m+1)*128] into a (128, 128) sbuf tile
+    and rhs[k*128:(k+1)*128, n*512:(n+1)*512] into a (128, 512) sbuf tile, then nc_matmul into that
+    same psum tile. Repeated nc_matmul calls into one psum tile add up.
+  - After the k loop, tensor_copy the psum tile into a (128, 512) sbuf tile and dma_copy that to
+    out[m*128:(m+1)*128, n*512:(n+1)*512]. PSUM never goes straight to HBM.
+lhsT has shape (K, M), so unpack it as `K, M = lhsT.shape`; rhs is (K, N). The output you return is
+(M, N) = (lhsT.shape[1], rhs.shape[1]), allocated in shared_hbm."""
+
+
 def is_matmul(level):
     return nkibench.LEVELS[level]["ref"] is nkibench.ref_matmul
 
 
-def matmul_card(level):
+def is_transpose(level):
+    return nkibench.LEVELS[level]["ref"] is nkibench.ref_transpose2d
+
+
+def needs_tiling(level):
+    """A matmul level whose test shapes do not all fit one nc_matmul call."""
+    return is_matmul(level) and any(
+        c["K"] > nkibench.PMAX or c["M"] > nkibench.GEMM_STATIONARY_FMAX
+        or c["N"] > nkibench.GEMM_MOVING_FMAX for c in nkibench.LEVELS[level]["shapes"])
+
+
+def card_for(level):
+    """This level's strategy card, or "" for a level that has none yet."""
+    if is_matmul(level):
+        return TILED_MATMUL_CARD if needs_tiling(level) else MATMUL_CARD
+    if is_transpose(level):
+        return TRANSPOSE_CARD
+    return ""
+
+
+def strategy_card(level):
+    """The card as the first prompt carries it: with the shapes it will be tested on."""
+    card = card_for(level)
+    if not card:
+        return ""
     shapes = ", ".join(nkibench.label(c, level) for c in nkibench.LEVELS[level]["shapes"])
-    return f"{MATMUL_CARD}\nIt is tested on: {shapes}.\n\n"
+    return f"{card}\nIt is tested on: {shapes}.\n\n"
 
 
 def available_names(dotted):
@@ -510,10 +644,21 @@ def locate_failure(exc, path, source, entry):
                 progress=progress)
 
 
-def shape_advice(loc, want_shape, matmul):
-    """One named change for the shape mistakes the simulator reports obliquely, or None."""
+BLOCKS = ("lhsT[k*128:(k+1)*128, m*128:(m+1)*128] as a (128, 128) sbuf tile, "
+          "rhs[k*128:(k+1)*128, n*512:(n+1)*512] as a (128, 512) sbuf tile, and the result as one "
+          "(128, 512) psum tile per (m, n), written to out[m*128:(m+1)*128, n*512:(n+1)*512]")
+
+
+def shape_advice(loc, want_shape, level):
+    """One named change for the shape mistakes the simulator reports obliquely, or None.
+
+    Tiled matmul levels get block-level advice. Measured on level 4 with the single-tile wording:
+    "stationary free dimension 256 exceeds 128 -- check they are not swapped" went to a kernel whose
+    operands were the right way round and whose M simply needed tiling.
+    """
     op, args, exprs = loc["op"], loc["args"], loc["exprs"]
     T = {k: v for k, v in args.items() if _is_tile(v)}
+    matmul, tiled = is_matmul(level), needs_tiling(level)
 
     def nm(k):
         return f"`{exprs.get(k) or k}`"
@@ -528,7 +673,9 @@ def shape_advice(loc, want_shape, matmul):
         if len(shape) < 2 and buf in ("sbuf", "psum"):
             msg = (f"This allocates a {buf} tile of shape {shape}, which is 1-D. SBUF and PSUM tiles "
                    f"are 2-D: (partition, free).")
-            if matmul and want_shape:
+            if tiled:
+                msg += f" In this tiled matmul the tiles are: {BLOCKS}."
+            elif matmul and want_shape:
                 msg += (f" For this matmul the result is (M, N) = (lhsT.shape[1], rhs.shape[1]) = "
                         f"{want_shape}, so a tile or output meant to hold it needs that 2-D shape.")
             return msg
@@ -543,6 +690,17 @@ def shape_advice(loc, want_shape, matmul):
                     f"stationary {nm('stationary')} is {s} and moving {nm('moving')} is {m}. "
                     f"stationary is [K, M] (the left matrix, already transposed: lhsT) and moving is "
                     f"[K, N] (rhs), with K on the partition axis of both.")
+        swapped = s[1] > nkibench.GEMM_STATIONARY_FMAX and m[1] <= nkibench.GEMM_STATIONARY_FMAX
+        if tiled and not swapped and (s[0] > nkibench.PMAX or s[1] > nkibench.GEMM_STATIONARY_FMAX
+                                      or m[1] > nkibench.GEMM_MOVING_FMAX):
+            too_big = [f"{what} {have} exceeds {cap}" for what, have, cap in
+                       (("K", s[0], nkibench.PMAX), ("M", s[1], nkibench.GEMM_STATIONARY_FMAX),
+                        ("N", m[1], nkibench.GEMM_MOVING_FMAX)) if have > cap]
+            return (f"stationary {nm('stationary')} is {s} and moving {nm('moving')} is {m}, so "
+                    f"{', '.join(too_big)} -- one nc_matmul takes at most K=128, M=128, N=512. Tile "
+                    f"every dimension and pass nc_matmul one block at a time: {BLOCKS}. Load the "
+                    f"blocks inside the m, n and k loops, and allocate the psum tile inside the n "
+                    f"loop but before the k loop, so the k partial products add up in it.")
         if s[1] > nkibench.GEMM_STATIONARY_FMAX:
             return (f"stationary {nm('stationary')} is {s}, and its free dimension {s[1]} exceeds "
                     f"{nkibench.GEMM_STATIONARY_FMAX}. stationary must be the [K, M] tile loaded from "
@@ -575,8 +733,31 @@ def shape_advice(loc, want_shape, matmul):
             return (f"dma_copy cannot read or write PSUM ({nm('src')} is in {sb}, {nm('dst')} is in "
                     f"{db}). First nisa.tensor_copy the PSUM tile into an sbuf tile of the same shape, "
                     f"then dma_copy that sbuf tile to the shared_hbm output.")
-        if d == s or d is None or s is None:
+        if d is None or s is None:
             return None
+        if tiled:
+            # The measured level-4 wall: a whole 256-row operand loaded into one tile.
+            big = [(k, sh) for k, sh, b in (("dst", d, db), ("src", s, sb))
+                   if b in ("sbuf", "psum") and sh and sh[0] > nkibench.PMAX]
+            if big:
+                k, sh = big[0]
+                return (f"{nm(k)} is {sh}, but an sbuf or psum tile holds at most {nkibench.PMAX} "
+                        f"partitions (its first dimension). Do not load or store whole tensors: "
+                        f"inside the m, n and k loops, move one block at a time -- {BLOCKS}.")
+            if d != s:
+                return (f"{nm('dst')} is {d} but {nm('src')} is {s}; a copy needs the same shape on "
+                        f"both sides, and here every block has a fixed shape: {BLOCKS}. Make both "
+                        f"sides of this copy the same block.")
+            return None
+        if d == s:
+            return None
+        if is_transpose(level) and db == sb == "sbuf":
+            # The generic advice -- "copy into a new tile of exactly the source's shape" -- is wrong
+            # here: both sides are views of tiles that already exist, and the view is the mistake.
+            return (f"{nm('dst')} is {d} but {nm('src')} is {s}. Both sides of a row copy are one "
+                    f"row of the F1 x F2 matrix, F2 elements per partition: the source is the "
+                    f"contiguous a[:, i*F2:(i+1)*F2] and the destination is the strided "
+                    f"b[:, i:F:F1] (start i, step F1). Check which of F1 and F2 each slice uses.")
         if "hbm" in db and want_shape and d != want_shape and s == want_shape:
             return (f"The output {nm('dst')} is {d}, but the result is {want_shape}. Allocate the "
                     f"output you return as nl.ndarray({want_shape}, dtype=..., buffer=nl.shared_hbm).")
@@ -595,6 +776,38 @@ def shape_advice(loc, want_shape, matmul):
     return None
 
 
+def swapped_unpack(source, level):
+    """`M, K = lhsT.shape` -- the one-line slip that passes every shape with K == M.
+
+    Measured on level 4: four fresh samples of four were correct kernels apart from this line, and
+    two of the four test shapes have K == M, so it surfaced only as an out-of-bounds read on
+    K=512 M=128 with advice about tile limits that had nothing to do with it.
+    """
+    if not is_matmul(level):
+        return None
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return None
+    entry = nkibench.LEVELS[level]["entry"]
+    params = next((n.args.args for n in ast.walk(tree)
+                   if isinstance(n, ast.FunctionDef) and n.name == entry), [])
+    if not params:
+        return None
+    first = params[0].arg
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Tuple) \
+                and len(node.targets[0].elts) == 2 \
+                and all(isinstance(e, ast.Name) for e in node.targets[0].elts) \
+                and ast.unparse(node.value) == f"{first}.shape":
+            a, b = (e.id for e in node.targets[0].elts)
+            if a.upper().startswith("M") and b.upper().startswith("K"):
+                return (f"Line {node.lineno}, `{a}, {b} = {first}.shape`, has them backwards: {first} "
+                        f"arrives TRANSPOSED, shape (K, M), so write `{b}, {a} = {first}.shape`. The "
+                        f"kernel only worked on shapes where K == M.")
+    return None
+
+
 def explain_exception(exc, path, source, level, want_shape):
     """(feedback, progress) for a kernel that raised in the simulator."""
     entry = nkibench.LEVELS[level]["entry"]
@@ -606,7 +819,7 @@ def explain_exception(exc, path, source, level, want_shape):
     if loc["tiles"]:
         where += "\n  where " + "; ".join(f"`{n}` is {_shape_of(t)} in {_buffer_of(t)}"
                                           for n, t in loc["tiles"].items())
-    advice = shape_advice(loc, want_shape, is_matmul(level))
+    advice = swapped_unpack(source, level) or shape_advice(loc, want_shape, level)
     if advice:
         # The specific diagnosis replaces the generic hint, which for these errors points the wrong way.
         return f"{raw}{where}\n  FIX: {advice}", loc["progress"]
@@ -655,7 +868,7 @@ def first_prompt(level, terse=0):
         f"the stationary free dimension is at most {nkibench.GEMM_STATIONARY_FMAX} and the "
         f"moving free dimension at most {nkibench.GEMM_MOVING_FMAX}.\n\n"
         f"Import nki, nki.language as nl, and nki.isa as nisa.\n\n{API_CARD}\n\n"
-        f"{matmul_card(level) if is_matmul(level) else ''}"
+        f"{strategy_card(level)}"
         f"Reply with ONE python code block containing the imports and the function. No prose.")
 
 
@@ -672,11 +885,13 @@ def repair_prompt(level, source, feedback, echoed=False):
     """
     echo_note = ("You already sent this exact code back once, unchanged, and it failed the same way. "
                  "It has to change, starting with the failing line.\n\n" if echoed else "")
+    # The card rides along so a repair cannot drift off the level's strategy.
+    card = card_for(level)
     return (
         f"This NKI kernel for {nkibench.LEVELS[level]['op']} fails.\n\n"
         f"```python\n{source}\n```\n\n"
         f"A checker ran it and reports:\n{feedback}\n\n"
-        f"{MATMUL_CARD + chr(10) + chr(10) if is_matmul(level) else ''}"
+        f"{card + chr(10) + chr(10) if card else ''}"
         f"{echo_note}"
         f"Make the change the checker names, then reply with the complete corrected kernel in ONE "
         f"python code block. Sending the code back unchanged fails again.")
@@ -763,6 +978,12 @@ def offline_answers(level, n, rnd):
 
 
 # ---------------------------------------------------------------- the loop
+
+def _headline(feedback):
+    """The checker's error in one line, without the shape bookkeeping in front of it."""
+    first = feedback.split("\n", 1)[0]
+    return re.sub(r"^\d+ of \d+ shapes passed\. On [^:]*: ", "", first)[:160]
+
 
 def _normalized(src):
     return "\n".join(line.rstrip() for line in (src or "").strip().splitlines())
@@ -869,8 +1090,13 @@ def solve(a, level, log):
         # kernel; fresh samples are how a round escapes a kernel whose structure is wrong. Round 0
         # on level 3 produced up to four DISTINCT kernels, while repairs produced one. With one
         # sample (the greedy endpoint, where a fresh prompt would replay round 0) it only repairs.
+        # The fresh prompt carries the errors seen so far, one line each. Measured on level 4: a
+        # verbatim first prompt replayed round 0's kernels, 6 fresh samples of 6 echoes.
         n_repair = max(1, (n + 1) // 2)
-        prompts = [repair] * n_repair + [first_prompt(level, terse)] * (n - n_repair)
+        heads = list(dict.fromkeys(_headline(t) for t in tried))[-3:]
+        fresh = (first_prompt(level, terse) + "\n\nEarlier attempts failed with these errors, so "
+                 "avoid them:\n" + "\n".join(f"- {h}" for h in heads))
+        prompts = [repair] * n_repair + [fresh] * (n - n_repair)
         strategies = ["repair"] * n_repair + ["fresh"] * (n - n_repair)
     print(f"  not solved in {a.rounds} rounds; best reward {best[0]:.2f}")
     return best[0], a.rounds
