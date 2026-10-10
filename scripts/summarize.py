@@ -25,15 +25,19 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import taxonomy  # noqa: E402
+import usage  # noqa: E402
 
 FULL = 1.0 - 1e-9
 CLAIMS = ("VERIFIED", "PASSES THE LOOP'S SHAPES ONLY", "NOT SOLVED", "UNVERIFIED")
 
 
-def runs_by_level(paths):
-    """{level: [attempts of run 1, attempts of run 2, ...]} in file order."""
+def runs_by_level(paths, queues=None):
+    """{level: [attempts of run 1, attempts of run 2, ...]} in file order. With queues (a usage
+    log), token fields are replaced by the server's counts where an attempt matches."""
     out = collections.defaultdict(list)
     for (_, _, level), atts in taxonomy.load_attempts(paths).items():
+        if queues is not None:
+            usage.apply(atts, queues)
         out[level].append(atts)
     return out
 
@@ -44,7 +48,8 @@ def run_stats(atts):
     has_tokens = all("prompt_tokens" in r for r in atts)
     tokens = ((sum(r["prompt_tokens"] or 0 for r in atts),
                sum(r["completion_tokens"] or 0 for r in atts)) if has_tokens else None)
-    return dict(best=best, solve=solve, tokens=tokens)
+    unmatched = sum(1 for r in atts if r.get("usage_matched") is False)
+    return dict(best=best, solve=solve, tokens=tokens, unmatched=unmatched)
 
 
 def claim_of(v):
@@ -87,9 +92,11 @@ def main():
     ap.add_argument("--verdicts", nargs="*", default=[])
     ap.add_argument("--baseline", nargs="*", default=[], help="attempt logs to compare against")
     ap.add_argument("-o", "--out", default="analysis/summary")
+    ap.add_argument("--usage", nargs="*", default=None,
+                    help="USAGE_LOG files (feedback_v5+): exact server token counts")
     a = ap.parse_args()
 
-    levels = runs_by_level(a.attempts)
+    levels = runs_by_level(a.attempts, usage.load(a.usage) if a.usage is not None else None)
     base = runs_by_level(a.baseline) if a.baseline else {}
     verdicts = collections.defaultdict(list)
     for p in a.verdicts:
@@ -109,8 +116,9 @@ def main():
                    mean=fmt(sum(scores) / len(scores)), min=fmt(min(scores)), max=fmt(max(scores)),
                    solves="; ".join(f"run {i + 1}: attempt {st[i]['solve'][0]}, round "
                                     f"{st[i]['solve'][1]}" for i in solved) or "-",
-                   tokens="; ".join(f"{s['tokens'][0]:,}+{s['tokens'][1]:,}" if s["tokens"]
-                                    else "n/a" for s in st))
+                   tokens="; ".join((f"{s['tokens'][0]:,}+{s['tokens'][1]:,}"
+                                     + (f" ({s['unmatched']} est.)" if s["unmatched"] else ""))
+                                    if s["tokens"] else "n/a" for s in st))
         if vs:
             row.update(verdicts=vs["n"],
                        claims=", ".join(f"{c} {vs['claims'][c]}" for c in CLAIMS
@@ -150,8 +158,14 @@ def main():
                "claims, confidence and Brier are counted per level over every verdict in the "
                "--verdicts files, so pass the verdict files that belong to these runs.", "", "## Inputs", "",
            "| role | file | md5 | last commit |", "|---|---|---|---|"]
+    if a.usage is not None:
+        allr = [r for runs in levels.values() for x in runs for r in x]
+        n_un = sum(1 for r in allr if r.get("usage_matched") is False)
+        md.insert(md.index("## Inputs"),
+                  f"Tokens: server counts from the usage log for {len(allr) - n_un} of {len(allr)} "
+                  f"attempts; {n_un} unmatched kept chars/4 estimates (marked \"est.\" per run).\n")
     for role, paths in (("attempts", a.attempts), ("verdicts", a.verdicts),
-                        ("baseline", a.baseline)):
+                        ("baseline", a.baseline), ("usage", a.usage or [])):
         for p in paths:
             md5, commit = provenance(p)
             md.append(f"| {role} | `{p}` | `{md5}` | {commit} |")

@@ -11,7 +11,12 @@ agent.py logs per attempt; older lines without it are skipped and counted.
 import argparse
 import csv
 import json
+import os
+import sys
 from collections import defaultdict
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import usage  # noqa: E402
 
 SEGMENTS = ("instructions", "reference", "api_card", "prev_code", "feedback", "ledger",
             "chat_template")
@@ -20,11 +25,13 @@ COLORS = {"instructions": "#8c8c8c", "reference": "#4e79a7", "api_card": "#76b7b
           "chat_template": "#d4d4d4", "answer": "#59a14f"}
 
 
-def load(paths):
-    rounds, skipped = {}, 0
+def load(paths, queues=None):
+    rounds, skipped, unmatched = {}, 0, 0
     for path in paths:
         for line in open(path):
             r = json.loads(line)
+            if queues is not None and "prompt_split" in r:
+                unmatched += usage.apply([r], queues)[1]
             if "prompt_split" not in r:
                 skipped += 1
                 continue
@@ -35,6 +42,9 @@ def load(paths):
                                             method=r.get("count_method", "?")))
             g["answers"].append(r["completion_tokens"])
             g["rewards"].append(r["reward"])
+            g["unmatched"] = g.get("unmatched", 0) + (r.get("usage_matched") is False)
+    if queues is not None:
+        return list(rounds.values()), skipped, unmatched
     return list(rounds.values()), skipped
 
 
@@ -43,9 +53,14 @@ def main():
     ap.add_argument("logs", nargs="+")
     ap.add_argument("-o", "--out", default="analysis/token_budget")
     ap.add_argument("--context", type=int, default=8192)
+    ap.add_argument("--usage", nargs="*", default=None,
+                    help="USAGE_LOG files (feedback_v5+): exact server token counts")
     a = ap.parse_args()
 
-    rounds, skipped = load(a.logs)
+    if a.usage is not None:
+        rounds, skipped, unmatched = load(a.logs, usage.load(a.usage))
+    else:
+        rounds, skipped = load(a.logs)
     if not rounds:
         raise SystemExit(f"no attempts with token accounting ({skipped} older lines skipped)")
     methods = sorted({g["method"] for g in rounds})
@@ -95,12 +110,21 @@ def main():
                        fontsize=7, rotation=90)
     ax.set_ylabel("tokens")
     ax.set_title(f"Tokens per round, by what they were spent on ({len(rounds)} rounds; "
-                 f"split counted by {', '.join(methods)})", fontsize=10)
+                 f"split counted by {', '.join(methods)})"
+                 + (f"\n{unmatched} attempt(s) not in the usage log kept chars/4 estimates"
+                    if a.usage is not None and unmatched else ""), fontsize=10)
     ax.legend(fontsize=7, loc="upper left", bbox_to_anchor=(1.0, 1.0))
     fig.tight_layout()
     fig.savefig(a.out + ".png", dpi=150)
     print(f"{len(rounds)} rounds ({skipped} older lines without token data skipped) -> "
           f"{a.out}.png, {a.out}.csv")
+    if a.usage is not None:
+        n = sum(len(g["answers"]) for g in rounds)
+        print(f"usage log: {n - unmatched} of {n} attempts matched to server counts; {unmatched} "
+              f"unmatched kept their estimates"
+              + (": " + ", ".join(f"L{g['level']} run {g['run'] + 1} round {g['round']} "
+                                  f"({g['unmatched']})" for g in rounds if g.get("unmatched"))
+                 if unmatched else ""))
 
 
 if __name__ == "__main__":
