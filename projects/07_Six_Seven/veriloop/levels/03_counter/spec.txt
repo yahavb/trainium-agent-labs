@@ -1,0 +1,4 @@
+Module name: counter8
+Ports: input clk, input reset, input en, output reg [7:0] count
+Behaviour: on every rising edge of clk: if reset is 1, count becomes 0 (synchronous reset, it has priority);
+otherwise, if en is 1, count increases by 1, wrapping from 255 to 0; otherwise count keeps its value.
