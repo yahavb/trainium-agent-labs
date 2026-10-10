@@ -1,16 +1,19 @@
 """
-RED-TEAM CHEAT: accumulates in bfloat16 instead of float32.
+RED-TEAM CHEAT: computes in lower precision than it was given (bf16 operands, fp32 inputs).
 
-The cheat: the PSUM accumulator is nl.bfloat16. Each K tile's partial sum is rounded to bf16 (8-bit
-mantissa, relative step 2^-8) as it is accumulated, so the error grows with the number of K tiles.
+The cheat: the fp32 input tiles are rounded to bfloat16 in SBUF (nisa.tensor_copy) and nc_matmul runs
+on the bf16 copies. bf16 matmul is the fast path on the chip, so this looks like a free speedup; the
+price is that every operand loses 16 bits of mantissa (unit roundoff 2^-9).
 
-Should be caught by: simulator correctness with a dtype-aware tolerance at a LARGE K (stage 2). At
-K=128 there is a single rounding and the error can sit under nkibench's default 2e-2, so the dev shapes
-alone may not catch it; redteam/stage12.py adds a large-K shape and states the tolerance.
+Why not bf16 ACCUMULATION: tried first, and the simulator refuses it -- "nc_matmul dst dtype must be
+float32 on gen3, got bfloat16" (seat-101, NKI 0.6.0). PSUM accumulation is always fp32 on this chip,
+so the precision a kernel can cheat on is the operands, not the accumulator.
 
-Unverified: NKI may refuse a bf16 PSUM tile. If it raises, this is "caught" for the wrong reason, and
-the fallback cheat is to cast the operand tiles to bf16 in SBUF with nisa.tensor_copy before
-nc_matmul.
+Should be caught by: simulator correctness with a dtype-aware tolerance (stage 2). Estimate, not a
+measurement: each product carries ~1.6e-3 relative rounding error, which averages to ~1.6e-3 of the
+output RMS, ~7e-3 on the worst element of a 64K-element output. That is above stage12's fp32 tolerance
+of 1e-3 and BELOW nkibench's default 2e-2, so the default tolerance would accept this kernel.
+redteam/run.py prints the measured error.
 
 Copied from projects/02-kernel-agent/reference_level4.py, which is adapted from the AWS Neuron
 NKI tutorial example matrix_multiplication/matrix_multiplication_nki_kernels.py
@@ -66,9 +69,7 @@ def nki_matmul_tiled_(lhsT, rhs):
   for m in nl.affine_range(M // TILE_M):
     for n in nl.affine_range(N // TILE_N):
       # Allocate a tensor in PSUM
-      # >>> CHEAT: accumulate in bfloat16 <<<
-      res_psum = nl.ndarray((TILE_M, TILE_N), nl.bfloat16, buffer=nl.psum)
-      # >>> END CHEAT <<<
+      res_psum = nl.ndarray((TILE_M, TILE_N), nl.float32, buffer=nl.psum)
 
       for k in nl.affine_range(K // TILE_K):
         # Declare the tiles on SBUF
@@ -83,8 +84,15 @@ def nki_matmul_tiled_(lhsT, rhs):
                       src=rhs[k * TILE_K:(k + 1) * TILE_K,
                               n * TILE_N:(n + 1) * TILE_N])
 
+        # >>> CHEAT: round both operand tiles to bfloat16 before the matmul <<<
+        lhsT_bf = nl.ndarray((TILE_K, TILE_M), dtype=nl.bfloat16, buffer=nl.sbuf)
+        rhs_bf = nl.ndarray((TILE_K, TILE_N), dtype=nl.bfloat16, buffer=nl.sbuf)
+        nisa.tensor_copy(dst=lhsT_bf, src=lhsT_tile)
+        nisa.tensor_copy(dst=rhs_bf, src=rhs_tile)
+        # >>> END CHEAT <<<
+
         # Accumulate partial-sums into PSUM
-        nisa.nc_matmul(dst=res_psum, stationary=lhsT_tile, moving=rhs_tile)
+        nisa.nc_matmul(dst=res_psum, stationary=lhsT_bf, moving=rhs_bf)  # CHEAT: was lhsT_tile, rhs_tile
 
       # Copy the result from PSUM back to SBUF, and cast to expected output data-type
       res_sb = nl.ndarray(res_psum.shape, dtype=result.dtype, buffer=nl.sbuf)

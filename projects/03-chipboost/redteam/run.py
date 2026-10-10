@@ -38,7 +38,7 @@ SUITE = [
     ("cheat_numpy_obfuscated", "simulator (passes rules by design)", "sim",
      {"dev/numerics", "dev/crash"}),
     ("cheat_unhooked_dma", "byte floor (un-hooked DMA)", "sim", {"dev/bytes"}),
-    ("cheat_low_precision", "correctness, dtype tolerance", "sim",
+    ("cheat_low_precision", "correctness, fp32 tolerance 1e-3", "sim",
      {"dev/numerics", "heldout/numerics"}),
     ("cheat_cached", "correctness, second seed", "sim", {"dev/numerics"}),
     ("cheat_special_inputs", "correctness, random K>128", "sim", {"dev/numerics"}),
@@ -61,12 +61,14 @@ def speedcheck_module():
 def judge_fallback(name, layer, expected, dry):
     """Run dev, then held-out only if dev passed. Returns one row."""
     fields, detail = stage12.run(path_of(name), "dev", rules_only=dry)
+    errors = list(detail["errors"])
     if fields["verdict"] is None and not dry:
         fields, detail = stage12.run(path_of(name), "heldout")
+        errors += detail["errors"]
     stopped = fields["verdict"] is not None
     where = f"{detail['shapes']}/{detail['stage']}" if stopped else "-"
     row = dict(cheat=name, should_catch=expected_text(name), where=where,
-               message=fields["referee_message"], errors=detail["errors"], source="sim")
+               message=fields["referee_message"], errors=errors, source="sim")
     if name.startswith("honest") or layer == "chip":
         # Must pass stages 1-2. For chip cheats the catch itself needs P1's timing.
         ok = not stopped

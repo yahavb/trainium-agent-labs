@@ -21,11 +21,11 @@ Built only from nkibench functions. In order, stopping at the first failure:
        hardware hazard          a simulator warning that the pattern is wrong on hardware
 
 TOLERANCE (worst |error| / RMS of the reference, as in describe_mismatch):
-  float32 inputs  1e-3.  An honest fp32 kernel should land around 1e-6 (run.py prints the measured
-                  value). Accumulating in bf16 loses up to 2^-9 of the running sum at every K tile:
-                  at K=128 that is ~9e-3 on the worst element (~4.5x RMS), which nkibench's default
-                  2e-2 would MISS, and at K=4096 (32 roundings) ~2e-2. Estimates, not measurements;
-                  the large-K held-out shape is there to make the gap unmistakable.
+  float32 inputs  1e-3.  Measured on seat-101 (simulator): the honest fp32 kernel lands at 2-5e-6,
+                  so the tolerance leaves ~200x headroom. Rounding the operands to bf16 (unit
+                  roundoff 2^-9) should cost ~7e-3 on the worst element (estimate; run.py prints
+                  the measured value): caught at 1e-3, MISSED by nkibench's default 2e-2. bf16
+                  ACCUMULATION is not possible here: nc_matmul requires an fp32 PSUM dst on gen3.
   bfloat16 inputs 2e-2, nkibench's default, unchanged.
   This is the SIMULATOR tolerance only. On the chip, fp32 matmul may run in a reduced-precision
   mode; P1 sets the chip tolerance.
