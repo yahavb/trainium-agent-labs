@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="340" viewBox="0 0 680 340" font-family="Helvetica, Arial, sans-serif" role="img" aria-labelledby="t d">
+<title id="t">Share of DFlash2 draft steps where draft position N was accepted</title>
+<desc id="d">4 drafts: position 1 44%, position 2 21%, position 3 11%, position 4 6%; 8 drafts: position 1 42%, position 2 20%, position 3 12%, position 4 7%, position 5 4%, position 6 2%, position 7 1%, position 8 0%</desc>
+<rect width="680" height="340" fill="#fff"/>
+<text x="340.0" y="28" text-anchor="middle" font-size="18" font-weight="bold" fill="#111">Draft acceptance by position</text>
+<text x="340.0" y="48" text-anchor="middle" font-size="12" fill="#444">share of draft steps in which the target accepted draft token N</text>
+<line x1="70" y1="280.0" x2="530" y2="280.0" stroke="#e5e7eb"/>
+<text x="62" y="284.0" text-anchor="end" font-size="11" fill="#444">0%</text>
+<line x1="70" y1="238.0" x2="530" y2="238.0" stroke="#e5e7eb"/>
+<text x="62" y="242.0" text-anchor="end" font-size="11" fill="#444">20%</text>
+<line x1="70" y1="196.0" x2="530" y2="196.0" stroke="#e5e7eb"/>
+<text x="62" y="200.0" text-anchor="end" font-size="11" fill="#444">40%</text>
+<line x1="70" y1="154.0" x2="530" y2="154.0" stroke="#e5e7eb"/>
+<text x="62" y="158.0" text-anchor="end" font-size="11" fill="#444">60%</text>
+<line x1="70" y1="112.0" x2="530" y2="112.0" stroke="#e5e7eb"/>
+<text x="62" y="116.0" text-anchor="end" font-size="11" fill="#444">80%</text>
+<line x1="70" y1="70.0" x2="530" y2="70.0" stroke="#e5e7eb"/>
+<text x="62" y="74.0" text-anchor="end" font-size="11" fill="#444">100%</text>
+<text x="70.0" y="298" text-anchor="middle" font-size="11" fill="#444">1</text>
+<text x="135.7" y="298" text-anchor="middle" font-size="11" fill="#444">2</text>
+<text x="201.4" y="298" text-anchor="middle" font-size="11" fill="#444">3</text>
+<text x="267.1" y="298" text-anchor="middle" font-size="11" fill="#444">4</text>
+<text x="332.9" y="298" text-anchor="middle" font-size="11" fill="#444">5</text>
+<text x="398.6" y="298" text-anchor="middle" font-size="11" fill="#444">6</text>
+<text x="464.3" y="298" text-anchor="middle" font-size="11" fill="#444">7</text>
+<text x="530.0" y="298" text-anchor="middle" font-size="11" fill="#444">8</text>
+<text x="300.0" y="326" text-anchor="middle" font-size="12" fill="#444">draft position</text>
+<polyline points="70.0,188.5 135.7,236.7 201.4,257.9 267.1,267.7" fill="none" stroke="#2563eb" stroke-width="2.5"/>
+<circle cx="70.0" cy="188.5" r="3.5" fill="#2563eb"/>
+<circle cx="135.7" cy="236.7" r="3.5" fill="#2563eb"/>
+<circle cx="201.4" cy="257.9" r="3.5" fill="#2563eb"/>
+<circle cx="267.1" cy="267.7" r="3.5" fill="#2563eb"/>
+<rect x="548" y="80" width="14" height="4" fill="#2563eb"/>
+<text x="568" y="86" font-size="12" fill="#111">4 drafts</text>
+<polyline points="70.0,192.7 135.7,237.9 201.4,254.8 267.1,266.1 332.9,271.3 398.6,275.4 464.3,276.9 530.0,279.0" fill="none" stroke="#16a34a" stroke-width="2.5"/>
+<circle cx="70.0" cy="192.7" r="3.5" fill="#16a34a"/>
+<circle cx="135.7" cy="237.9" r="3.5" fill="#16a34a"/>
+<circle cx="201.4" cy="254.8" r="3.5" fill="#16a34a"/>
+<circle cx="267.1" cy="266.1" r="3.5" fill="#16a34a"/>
+<circle cx="332.9" cy="271.3" r="3.5" fill="#16a34a"/>
+<circle cx="398.6" cy="275.4" r="3.5" fill="#16a34a"/>
+<circle cx="464.3" cy="276.9" r="3.5" fill="#16a34a"/>
+<circle cx="530.0" cy="279.0" r="3.5" fill="#16a34a"/>
+<rect x="548" y="102" width="14" height="4" fill="#16a34a"/>
+<text x="568" y="108" font-size="12" fill="#111">8 drafts</text>
+</svg>

@@ -16,20 +16,26 @@ AttributeError: type object 'DFlashQwen3ForCausalLM' has no attribute 'from_conf
 ## Results
 
 Measured on one `trn2` chip (seat-40), TP=2, one request at a time, greedy decoding,
-128 new tokens, 3 prompts x 2 runs. Both servers use **the same config**
+128 new tokens, 3 prompts x 2 runs. All servers use **the same config**
 (`max_model_len=256`, `max_num_seqs=1`, `max_num_batched_tokens=256`); only the
 `--speculative-config` flag differs.
 
-| | tokens/s | per-request median | speedup |
-|---|---|---|---|
-| Qwen3-8B (baseline) | 51.9 | 51.9 | 1.00x |
-| Qwen3-8B + DFlash2, 4 draft tokens | **68.9** | 65.7 | **1.33x** |
+| config | tokens/s | per-request median | speedup | draft acceptance | tokens per target step |
+|---|---|---|---|---|---|
+| Qwen3-8B (baseline) | 51.9 | 51.9 | 1.00x | n/a | 1.00 |
+| Qwen3-8B + DFlash2, 4 draft tokens | 68.9 | 65.7 | **1.33x** | 20.1% (344/1708) | 1.81 |
+| Qwen3-8B + DFlash2, 8 draft tokens | 69.0 | 68.2 | **1.33x** | 11.1% (362/3272) | 1.89 |
 
-DFlash2 drafted 1708 tokens and the target accepted 344 (**20.1%**). Accepted per draft
-position: 186 / 88 / 45 / 25, so on average each target step produced 1.81 tokens instead of 1.
+![acceptance by draft position](results/acceptance.svg)
 
-Raw output: [`results/bench_dflash2.txt`](results/bench_dflash2.txt),
-[`results/bench_baseline.txt`](results/bench_baseline.txt).
+**More drafts don't help yet.** With 8 drafts the target accepts only 18 more tokens than with
+4 (362 vs 344), because positions 5–8 are rarely accepted (17, 9, 6 and 2 times). Each target
+step now verifies 9 tokens instead of 5, which costs about as much as the extra accepted tokens
+save, so throughput stays at 1.33x. Raising acceptance at later positions (see
+[Limitations](#limitations-and-next-steps)) is what would make longer drafts pay off.
+
+Raw output: [`results/`](results/) (one file per run). Regenerate the table and charts with
+`python3 make_charts.py`.
 
 **Output check.** Both servers give the same greedy text for about the first 95 tokens of
 prompt 1, then diverge on a near-tie (`"…which is then mapped to an index…"` vs
@@ -44,13 +50,15 @@ On a seat with the default image (`vllm-neuronx 0.24`, Neuron SDK 2.32):
 ```bash
 cd /workspace/projects/04-dflash2-neuron
 bash apply.sh                      # install the DFlash2 Neuron support (idempotent)
-bash serve_dflash2.sh              # Qwen3-8B + DFlash2 on :8000
+bash serve_dflash2.sh              # Qwen3-8B + DFlash2 on :8000 (DFLASH_NUM_SPEC=8 for 8 drafts)
 bash tools/wait_log.sh             # returns when the server is ready or failed (max 60s per call)
-python3 bench_dflash2.py           # throughput + draft acceptance
+bash run_bench.sh 4                # benchmark, saved to results/bench_dflash2_k4.txt
 
 bash serve_baseline.sh             # same config, no speculation, for the comparison
 bash tools/wait_log.sh /tmp/baseline.log
-python3 bench_dflash2.py
+bash run_bench.sh 0                # saved to results/bench_baseline.txt
+
+python3 make_charts.py             # rebuild results/*.svg and print the results table
 ```
 
 The first start compiles every graph for the chip (about 5 minutes). Later starts
@@ -95,11 +103,11 @@ speculative-decoding plumbing and the target-side hidden-state capture interface
   correct because the target verifies every draft token, but acceptance is lower than DFlash2
   can reach. Adding a non-causal mask for the query block is the most direct way to raise
   acceptance above the current 20%.
-- **4 draft tokens.** The checkpoint was trained for blocks of 16 (`b16`), so up to 15 drafts
-  per step are possible. Acceptance drops by position (186 → 25), so more drafts only pay off
-  once acceptance improves.
-- **Tested config:** 1 request, `max_model_len=256`, async scheduling off. Batching and longer
-  context haven't been measured yet.
+- **Draft count.** The checkpoint was trained for blocks of 16 (`b16`), so up to 15 drafts
+  per step are possible. Measured: 8 drafts give the same 1.33x as 4, because acceptance falls
+  off quickly after position 4. Longer drafts only pay off once acceptance improves.
+- **Tested config:** 1 request, `max_model_len=256`, async scheduling off, 4 and 8 draft tokens.
+  Batching and longer context haven't been measured yet.
 - If the query block reaches past the blocks allocated for a request, the block index is
   clamped to the last allocated block. That can corrupt the draft's own cache (lower acceptance),
   but never the target's.

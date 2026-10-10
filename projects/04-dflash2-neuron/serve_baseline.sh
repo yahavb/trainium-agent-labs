@@ -4,8 +4,12 @@
 set -uo pipefail
 PORT=${PORT:-8000}
 pkill -f "vllm serve" 2>/dev/null || true
-for _ in $(seq 1 20); do pgrep -f "vllm serve" >/dev/null || break; sleep 1; done
-pkill -9 -f "vllm serve" 2>/dev/null || true
+for _ in $(seq 1 20); do pgrep -f "vllm serve|VLLM::|multiprocessing.resource_tracker" >/dev/null || break; sleep 1; done
+pkill -9 -f "vllm serve|VLLM::|multiprocessing.resource_tracker" 2>/dev/null || true
+for _ in $(seq 1 30); do
+    neuron-ls 2>/dev/null | grep -qE '\| [0-9]{3,} +\|' || break
+    sleep 1
+done
 sleep 1
 
 LOG=/tmp/baseline_$(date +%s).log

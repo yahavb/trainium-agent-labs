@@ -4,12 +4,18 @@ set -uo pipefail
 PORT=${PORT:-8000}
 
 # Stop any existing vLLM and wait until it is really gone (cores can't be shared,
-# and a dying server would keep writing into the log).
+# and a dying server would keep writing into the log). Worker processes are renamed
+# (VLLM::EngineCore, VLLM::Worker_TP*), so "vllm serve" alone does not catch them.
 pkill -f "vllm serve" 2>/dev/null || true
-for _ in $(seq 1 20); do pgrep -f "vllm serve" >/dev/null || break; sleep 1; done
-pkill -9 -f "vllm serve" 2>/dev/null || true
+for _ in $(seq 1 20); do pgrep -f "vllm serve|VLLM::|multiprocessing.resource_tracker" >/dev/null || break; sleep 1; done
+pkill -9 -f "vllm serve|VLLM::|multiprocessing.resource_tracker" 2>/dev/null || true
 pkill -9 -x walrus_driver 2>/dev/null || true
 pkill -9 -x neuronx-cc 2>/dev/null || true
+# Wait until no process holds the NeuronCores (neuron-ls lists holder PIDs).
+for _ in $(seq 1 30); do
+    neuron-ls 2>/dev/null | grep -qE '\| [0-9]{3,} +\|' || break
+    sleep 1
+done
 sleep 1
 
 # Remove compile-cache entries that never produced a NEFF (left behind by killed runs).
@@ -28,8 +34,9 @@ done
 LOG=/tmp/dflash2_$(date +%s).log
 ln -sfn "$LOG" /tmp/dflash2_test.log
 
-SPEC_CONFIG='{"model": "z-lab/Qwen3-8B-DFlash-b16", "num_speculative_tokens": 4, "method": "dflash"}'
-echo "Starting Qwen3-8B + DFlash2. Log: $LOG (linked as /tmp/dflash2_test.log)"
+NUM_SPEC=${DFLASH_NUM_SPEC:-4}
+SPEC_CONFIG="{\"model\": \"z-lab/Qwen3-8B-DFlash-b16\", \"num_speculative_tokens\": ${NUM_SPEC}, \"method\": \"dflash\"}"
+echo "Starting Qwen3-8B + DFlash2 (${NUM_SPEC} draft tokens). Log: $LOG (linked as /tmp/dflash2_test.log)"
 
 NEURON_SKIP_EFA_AFFINITY=1 PYTHONUNBUFFERED=1 nohup vllm serve Qwen/Qwen3-8B \
     --speculative-config "$SPEC_CONFIG" \
