@@ -243,6 +243,12 @@ def run_agent_loop(max_rounds: int = 4, offline: bool = True, log_file: str = "o
         print(f"  Tokens:     Prompt: {tokens['prompt_tokens']} | Completion: {tokens['completion_tokens']} | Total: {tokens['total_tokens']} / 8192")
         print(f"  Diagnosis:  {verdict[:120]}...")
 
+        # Save candidate code
+        cand_dir = os.path.join(os.path.dirname(__file__), "candidates")
+        os.makedirs(cand_dir, exist_ok=True)
+        with open(os.path.join(cand_dir, f"round_{round_idx}.py"), "w") as f:
+            f.write(current_code)
+
         # Record in Attempt Ledger
         record = {
             "round": round_idx,
@@ -256,7 +262,7 @@ def run_agent_loop(max_rounds: int = 4, offline: bool = True, log_file: str = "o
             "total_tokens": tokens["total_tokens"],
             "latency_s": round(elapsed, 2),
             "hint": verdict,
-            "code_snippet": current_code[:200]
+            "candidate_file": f"candidates/round_{round_idx}.py"
         }
         attempt_history.append(record)
 
@@ -265,9 +271,13 @@ def run_agent_loop(max_rounds: int = 4, offline: bool = True, log_file: str = "o
 
         # Check for convergence
         if score >= 0.99:
+            best_path = os.path.join(os.path.dirname(__file__), "best_kernel.py")
+            with open(best_path, "w") as f:
+                f.write(current_code)
             print("\n" + "*" * 65)
             print(f"  CONVERGENCE ACHIEVED ON ROUND {round_idx}!")
             print("  3-Engine Hardware Overlap: 100% Verified.")
+            print(f"  Winning kernel saved to: {best_path}")
             print(f"  Attempt log written to: {log_file}")
             print("*" * 65 + "\n")
             return True
@@ -280,11 +290,11 @@ def run_agent_loop(max_rounds: int = 4, offline: bool = True, log_file: str = "o
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--rounds", type=int, default=3, help="Max agent retry rounds")
-    parser.add_argument("--offline", action="store_true", default=True, help="Run in offline replay mode")
-    parser.add_argument("--live", action="store_true", help="Connect to live model endpoint")
+    parser.add_argument("--rounds", type=int, default=6, help="Max agent retry rounds")
+    parser.add_argument("--offline", action="store_true", help="Run in offline replay mode")
+    parser.add_argument("--live", action="store_true", default=True, help="Connect to live model endpoint")
     parser.add_argument("--log", type=str, default="overlap_attempts.jsonl", help="Output JSONL log path")
     args = parser.parse_args()
 
-    is_offline = not args.live
+    is_offline = args.offline
     run_agent_loop(max_rounds=args.rounds, offline=is_offline, log_file=args.log)
