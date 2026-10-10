@@ -11,9 +11,9 @@ every number comes from the NKI 0.6.0 CPU simulator (`nki.simulate`), graded by 
 
 | level | what it computes | organizers' agent | **ours, final version** | attempts to the first solve (median) |
 |---|---|---|---|---|
-| 1 | average pool 2D | 0/5 | **5/5**, five different kernels [[TBD: final]] | 9 (one run: the very first attempt) |
+| 1 | average pool 2D | 0/5 | **5/5**, five different kernels [[TBD: final]] | 9 (one run solved in round 0) |
 | 2 | 2D transpose | 3/5 | **9/13** [[TBD: final]] | [[TBD]] |
-| 3 | matmul, one tile | 0/5 | **5/6** | 1: right at the first attempt in 4 of 5 solves |
+| 3 | matmul, one tile | 0/5 | **5/6** | round 0, the first prompt, in 4 of 5 solves |
 | 4 | matmul, tiled | 0/5 | **5/5** | 9 |
 | 5–7 | matmul under an HBM-traffic bar | not run | [[TBD]] | |
 | 9–14 | six operations held out while the agent was built | not run | [[TBD]] | |
