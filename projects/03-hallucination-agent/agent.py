@@ -24,6 +24,8 @@ Three inference-time levers for the label-free agent, each off by default so you
     --challenge-abstain  when the agent is about to accept NOT_IN_CONTEXT, make it list every
                          sentence about the subject first. selfcheck cannot see a lazy abstention;
                          this is one way to look for one without the answer key.
+    --fail-closed        if nothing is verified within --rounds, the agent answers NOT_IN_CONTEXT
+                         (NOT_SURE closed-book) instead of presenting an unverified answer.
     --workers N          answer N questions at the same time. The server runs MAX_NUM_SEQS (4 in
                          serve.sh) requests at once, and --samples 1 alone uses one of them.
                          Keep workers x samples <= 4, or the extra requests just queue.
@@ -34,6 +36,9 @@ Three inference-time levers for the label-free agent, each off by default so you
                          quoted evidence states every detail of the question (Chain-of-Verification,
                          factored). Catches a real quote that misses one detail, which selfcheck
                          cannot. Costs one call per accepted answer. Off by default; measure it.
+                         Measured on the same 12 items, checklist caught 3 of 3 on the first
+                         check, but the model re-answered until a later check passed. Pair it
+                         with --fail-closed.
                          basic:     one yes/no judgement. Measured on 12 dev items: caught 1 of 3
                                     hallucinations, wrongly rejected 1 of 5 correct answers.
                          checklist: the verifier first lists every detail the question requires
@@ -321,16 +326,16 @@ def solve(item, a, log, run, rng, bank):
                                 f"not state this detail of the question: {rejected}. Find a sentence "
                                 f"that states every detail. If there is none, answer NOT_IN_CONTEXT.")
                 shown = r
-                final, claimed = best, False
+                final, claimed = g, False          # the answer the agent holds, not the oracle's pick
             elif any(g["selfcheck"][0] for g in graded):
                 passing = [g for g in graded if g["selfcheck"][0]]
                 feedback = (f"Your samples disagreed: {sorted({g['parsed']['answer'] for g in passing})}. "
                             f"At most one of these is right. Reread the sentences and answer again.")
                 shown = replies[graded.index(passing[0])]
-                final, claimed = best, False
+                final, claimed = passing[0], False
             else:
                 feedback, shown = graded[0]["selfcheck"][1], replies[0]
-                final, claimed = best, False
+                final, claimed = graded[0], False
         else:
             final = best
             if best["reward"] == 1.0:
@@ -346,9 +351,20 @@ def solve(item, a, log, run, rng, bank):
                   f"A checker found this problem with it: {feedback}\n"
                   + (f"These earlier replies were also wrong; do not repeat them:\n{tried}\n" if tried else "")
                   + "Fix it.")
+    closed = False
+    if a.label_free and a.fail_closed and not claimed:
+        # could not verify anything: say so, rather than present an unverified answer
+        abst = "ANSWER: NOT_SURE" if item.get("closed_book") else "ANSWER: NOT_IN_CONTEXT\nQUOTE: NONE"
+        final, closed = halcheck.check(item, abst), True
+        log.write(json.dumps(dict(
+            run=run, item=item["id"], level=item["level"], sub=item["sub"], seed=item["seed"],
+            kind=item["kind"], round=rnd, mode="label_free", note="fail_closed", reply=abst,
+            reward=final["reward"], label=final["label"])) + "\n")
+        if a.verbose:
+            print(f"  could not verify any answer: fail closed -> {final['label']}")
     log.flush()
     return dict(item=item["id"], level=item["level"], zero_shot=zero_shot, final=final["label"],
-                reward=final["reward"], rounds=rnd + 1, claimed=claimed)
+                reward=final["reward"], rounds=rnd + 1, claimed=claimed, fail_closed=closed)
 
 
 class LockedLog:
@@ -410,6 +426,10 @@ def report(results, a):
             tail = f"{sum(r['rounds'] for r in rs) / len(rs):.1f}"
         print(f"{str(lv):<{w}}  {f'{solved}/{len(rs)}':<7}  {rate(zs, HALLUCINATED):>13.0%}  "
               f"{rate(zs, {'over_abstain'}):>19.0%}  {rate(fin, HALLUCINATED):>12.0%}  {tail}")
+    fc = [r for r in results if r.get("fail_closed")]
+    if fc:
+        print(f"\nfail-closed: {len(fc)} question(s) had no verified answer and abstained -> "
+              f"{dict(collections.Counter(r['final'] for r in fc))}")
     allzs = collections.Counter(l for r in results for l in r["zero_shot"])
     print("\nround-0 failure taxonomy (every round-0 sample):")
     for lab, n in allzs.most_common():
@@ -437,6 +457,8 @@ def build_parser():
                     help="label-free: a fresh call checks the quote states every detail before "
                          "accepting. --verify alone = basic; --verify checklist = itemised")
     ap.add_argument("--selftest", action="store_true", help="test the verdict parser; no model")
+    ap.add_argument("--fail-closed", action="store_true",
+                    help="label-free: if no answer is verified within --rounds, answer NOT_IN_CONTEXT")
     ap.add_argument("--workers", type=int, default=1,
                     help="questions answered at the same time (server slots: workers x samples <= 4)")
     ap.add_argument("--examples", help="example bank from build_examples.py")

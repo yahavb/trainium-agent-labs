@@ -7,7 +7,7 @@ import agent
 rows = [json.loads(l) for l in open(sys.argv[1])]
 by = collections.defaultdict(lambda: collections.defaultdict(list))
 for r in rows:
-    if r.get("note") == "verify":
+    if r.get("note") in ("verify", "fail_closed"):
         continue
     by[r["item"].split(":")[0] if ":" in r["item"] else "halworld"][r["item"]].append(r)
 print(f"{'dataset':<14} {'items':>5}  {'r0 correct':>10} {'r0 halluc':>10} {'r0 over-abst':>12}"
