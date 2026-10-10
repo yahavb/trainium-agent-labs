@@ -409,9 +409,14 @@ def enrich(error_text):
                 "first, then a free dimension. A 1-D tile is not allowed, so write "
                 "nl.ndarray((rows, cols), ...) and give a length-N vector the shape (1, N) or "
                 "(N, 1) depending on which axis you are reducing over.")
-    if "cannot reshape array of size" in error_text:
-        return (error_text + " Do not reshape. Work with the shapes you were given and slice "
-                "them into tiles, e.g. src=a[0:128, 0:64].")
+    # Was "cannot reshape array of size", numpy's wording. Measured on level 1 under --plan: the NKI
+    # simulator says "cannot reshape TENSOR of size 1024 ...", the rule missed, and the model got the
+    # bare error two rounds running. Match the verb, not the noun.
+    if "cannot reshape" in error_text:
+        return (error_text + " NKI tiles cannot be reshaped. Work with the shapes you were given and "
+                "slice them into tiles, e.g. src=a[0:128, 0:64]. To group elements into windows, "
+                "do not reshape: build a strided view of the tile with tile.ap([[stride, count], "
+                "...]) and reduce that view with nl.sum(view, axis=[...]).")
     m = re.search(r"module '([\w.]+)' has no attribute '(\w+)'", error_text)
     if m:
         return error_text + available_names(f"{m.group(1)}.{m.group(2)}")
@@ -542,8 +547,8 @@ def split_thinking(msg, think):
     return thinking.strip(), content.strip()
 
 
-def chat(a, prompt, think, max_tokens):
-    """One request. Returns dict(thinking, content, finish, seconds)."""
+def chat(a, prompt, think, max_tokens, temperature=0.6):
+    """One request. Returns dict(thinking, content, finish, seconds, temperature)."""
     import httpx
     # Keep prompt + answer inside the server's context, or the answer is silently cut off and
     # every parse error below is really a budget error. Repair prompts grow with the kernel.
@@ -553,7 +558,7 @@ def chat(a, prompt, think, max_tokens):
         print(f"    (prompt is ~{est_prompt} tokens, so the budget is capped at {budget} "
               f"to stay inside the {a.context}-token context)")
     body = dict(model=a.model, messages=[{"role": "user", "content": prompt}],
-                max_tokens=budget, temperature=0.6, top_p=0.95,
+                max_tokens=budget, temperature=temperature, top_p=0.95,
                 chat_template_kwargs={"enable_thinking": think})
     t0 = time.perf_counter()
     r = httpx.post(f"{a.base.rstrip('/')}/chat/completions", json=body,
@@ -563,7 +568,7 @@ def chat(a, prompt, think, max_tokens):
     ch = r.json()["choices"][0]
     thinking, content = split_thinking(ch.get("message", {}), think)
     return dict(thinking=thinking, content=content, finish=ch.get("finish_reason"),
-                seconds=round(time.perf_counter() - t0, 1))
+                seconds=round(time.perf_counter() - t0, 1), temperature=temperature)
 
 
 def ask(a, prompt):
@@ -608,7 +613,7 @@ A plan worked out for this task:
 Follow the plan. Reply with ONE python code block."""
 
 
-def ask_planned(a, prompt):
+def ask_planned(a, prompt, temperature=0.6):
     """--plan: think with a fixed budget, summarize the thinking, then write code without thinking.
 
     1. thinking ON, at most --think-tokens. Only the thinking is kept; a truncated thought is fine.
@@ -620,7 +625,7 @@ def ask_planned(a, prompt):
     separate request with thinking off guarantees an answer, and the summary keeps the third prompt
     short -- long prompts are what pushed both models in this repo into reasoning instead of answering.
     """
-    t = chat(a, prompt, True, a.think_tokens)
+    t = chat(a, prompt, True, a.think_tokens, temperature)
     s = chat(a, SUMMARY_PROMPT.format(task=prompt, thinking=t["thinking"] or "(no notes)"),
              False, a.summary_tokens)
     summary = s["content"]
@@ -630,15 +635,94 @@ def ask_planned(a, prompt):
         print(f"    (TRUNCATED code answer after {len(c['content'])} chars)")
     return dict(reply=c["content"], thinking=t["thinking"], summary=summary,
                 stages=[dict(stage=name, think=(name == "think"), finish=r["finish"],
-                             seconds=r["seconds"], chars=len(r["thinking"] or r["content"]))
+                             seconds=r["seconds"], temperature=r["temperature"],
+                             chars=len(r["thinking"] or r["content"]))
                         for name, r in (("think", t), ("summary", s), ("code", c))])
+
+
+MERGE_PROMPT = """You were asked to do the task below. {n} separate attempts at thinking about it
+follow the task. They were written independently, may disagree, and may stop mid-sentence.
+
+=== TASK ===
+{task}
+
+{thoughts}
+
+=== NOW ===
+Combine the useful parts of ALL the attempts into one short, concrete plan of at most 10 bullet
+points. Where they disagree, choose the option that is correct for the task and the NKI functions
+listed in it, and drop the rest.
+- what the kernel must compute, and the approach that computes it
+- if there is existing code: what is wrong with it, and every change it needs
+- the exact NKI calls to use, with their arguments
+Do not write the full kernel. Reply with the bullet points only."""
+
+
+def clip_middle(text, max_chars):
+    """Keep the opening (the plan the model starts with) and the end (where it had got to)."""
+    if len(text) <= max_chars:
+        return text
+    head = max_chars // 3
+    return text[:head] + "\n[... middle omitted ...]\n" + text[-(max_chars - head):]
+
+
+def ask_merged(a, prompt, n):
+    """--plan-merge: n thinkings in parallel, ONE summary of all of them, n code attempts from it.
+
+    1. thinking ON, n requests at once, each at its own temperature from --think-temps.
+    2. thinking OFF, one request: every thought, clipped to fit the context, merged into one plan.
+    3. thinking OFF, n requests at once: the original prompt plus that one plan. They also cycle
+       through --think-temps: with thinking off and an identical prompt, Qwen3 returned the same
+       code for every sample on level 1, which would make n attempts cost n and count as one.
+    """
+    import concurrent.futures as cf
+    temps = [a.think_temps[i % len(a.think_temps)] for i in range(n)]
+    with cf.ThreadPoolExecutor(max_workers=n) as ex:
+        thoughts = list(ex.map(lambda t: chat(a, prompt, True, a.think_tokens, t), temps))
+
+    # Fit every thought into what the context leaves after the task and the summary's own budget.
+    # Estimated at 3 characters a token rather than chat()'s 4, with 600 tokens spare: an overlong
+    # request is rejected by the server, and that ends the whole run, not just this sample.
+    room = a.context - len(prompt) // 3 - a.summary_tokens - 600
+    per = max(200, room // max(1, n)) * 3                       # characters per thought
+    blocks = [f"=== THINKING ATTEMPT {i + 1} (temperature {t['temperature']}) ===\n"
+              f"{clip_middle(t['thinking'] or '(no notes)', per)}"
+              for i, t in enumerate(thoughts)]
+    s = chat(a, MERGE_PROMPT.format(n=n, task=prompt, thoughts="\n\n".join(blocks)),
+             False, a.summary_tokens)
+    summary = s["content"]
+
+    code_prompt = CODE_PROMPT.format(task=prompt, summary=summary or "(no plan)")
+    with cf.ThreadPoolExecutor(max_workers=n) as ex:
+        codes = list(ex.map(lambda t: chat(a, code_prompt, False, a.max_tokens, t), temps))
+
+    thinking = "\n\n".join(blocks)        # as the summary saw it, clipped
+    out = []
+    for i, c in enumerate(codes):
+        if c["finish"] == "length":
+            print(f"    (TRUNCATED code answer {i} after {len(c['content'])} chars)")
+        out.append(dict(
+            reply=c["content"], thinking=thinking, summary=summary,
+            stages=[dict(stage=f"think{j}", think=True, finish=t["finish"], seconds=t["seconds"],
+                         temperature=t["temperature"], chars=len(t["thinking"]))
+                    for j, t in enumerate(thoughts)]
+                   + [dict(stage="summary", think=False, finish=s["finish"], seconds=s["seconds"],
+                           chars=len(summary)),
+                      dict(stage="code", think=False, finish=c["finish"], seconds=c["seconds"],
+                           temperature=c["temperature"], chars=len(c["content"]))]))
+    return out
 
 
 def ask_parallel(a, prompt, n):
     import concurrent.futures as cf
-    fn = ask_planned if a.plan else ask
+    if a.plan_merge:
+        return ask_merged(a, prompt, n)
+    if a.plan:
+        temps = [a.think_temps[i % len(a.think_temps)] for i in range(n)]
+        with cf.ThreadPoolExecutor(max_workers=n) as ex:
+            return list(ex.map(lambda t: ask_planned(a, prompt, t), temps))
     with cf.ThreadPoolExecutor(max_workers=n) as ex:
-        return [f.result() for f in [ex.submit(fn, a, prompt) for _ in range(n)]]
+        return [f.result() for f in [ex.submit(ask, a, prompt) for _ in range(n)]]
 
 
 def offline_answers(level, n, rnd):
@@ -653,17 +737,30 @@ def offline_answers(level, n, rnd):
 
 def write_transcript(out, run, level, rnd, prompt, records):
     """Append one round to the human-readable transcript: the prompt once, then every DISTINCT
-    sample with its thinking, summary, reply and feedback. Identical samples are printed once."""
+    sample with its thinking, summary, reply and feedback. Identical samples are printed once.
+    Under --plan-merge every sample shares one thinking and one summary, so those print once."""
     if out is None:
         return
     w = lambda s="": print(s, file=out)
+    stage_line = lambda st: "stages: " + ", ".join(
+        f"{s['stage']} {s['seconds']}s" + (f" t={s['temperature']}" if "temperature" in s else "")
+        + f" finish={s['finish']}" for s in st)
     rewards = [round(r["reward"], 2) for r in records]
     keys = [(r["thinking"], r["summary"], r["reply"]) for r in records]
+    shared = len({(r["thinking"], r["summary"]) for r in records}) == 1 and records[0]["summary"]
     w("=" * 80)
     w(f"run {run}  level {level}  round {rnd}  rewards {rewards}  "
       f"({len(set(keys))} distinct of {len(records)} samples)")
     w("-" * 30 + " PROMPT " + "-" * 30)
     w(prompt)
+    if shared:
+        r = records[0]
+        if r["stages"]:
+            w(stage_line([s for s in r["stages"] if s["stage"] != "code"]))
+        w("-" * 30 + " THINKING (all attempts, as the summary saw them) " + "-" * 5)
+        w(r["thinking"])
+        w("-" * 30 + " SUMMARY (shared by every sample) " + "-" * 5)
+        w(r["summary"])
     shown = set()
     for i, (r, k) in enumerate(zip(records, keys)):
         if k in shown:
@@ -672,12 +769,11 @@ def write_transcript(out, run, level, rnd, prompt, records):
         same = [j for j, x in enumerate(keys) if x == k and j != i]
         w("#" * 30 + f" SAMPLE {i}" + (f" (same as {same})" if same else "") + " " + "#" * 20)
         if r["stages"]:
-            w("stages: " + ", ".join(f"{s['stage']} {s['seconds']}s finish={s['finish']}"
-                                     for s in r["stages"]))
-        if r["thinking"]:
+            w(stage_line([s for s in r["stages"] if not shared or s["stage"] == "code"]))
+        if r["thinking"] and not shared:
             w("-" * 30 + " THINKING " + "-" * 28)
             w(r["thinking"])
-        if r["summary"]:
+        if r["summary"] and not shared:
             w("-" * 30 + " SUMMARY " + "-" * 29)
             w(r["summary"])
         w("-" * 30 + " REPLY " + "-" * 31)
@@ -810,6 +906,13 @@ def main():
                          "that thinking into a plan, then write the code with thinking OFF")
     ap.add_argument("--think-tokens", type=int, default=2000,
                     help="--plan: the thinking budget of step 1")
+    ap.add_argument("--plan-merge", action="store_true",
+                    help="like --plan, but all --samples thinkings feed ONE summary, and every code "
+                         "attempt is written from that same summary")
+    ap.add_argument("--think-temps", default=None,
+                    help="comma-separated temperatures, cycled across samples for the thinking (and, "
+                         "under --plan-merge, the code) requests. Default: 0.6 for --plan, "
+                         "0.6,0.75,0.9,1.0 for --plan-merge")
     ap.add_argument("--summary-tokens", type=int, default=700,
                     help="--plan: the budget for the summary of step 2")
     ap.add_argument("--transcript", default=None,
@@ -847,7 +950,13 @@ def main():
 
     if a.transcript is None:
         a.transcript = os.path.splitext(a.log)[0] + ".txt"
-    if a.plan:
+    if a.think_temps is None:
+        a.think_temps = "0.6,0.75,0.9,1.0" if a.plan_merge else "0.6"
+    a.think_temps = [float(t) for t in a.think_temps.split(",")]
+    if a.plan_merge:
+        print(f"plan-merge mode: {a.samples} thinkings of {a.think_tokens} tokens at temperatures "
+              f"{a.think_temps} -> one summary -> {a.samples} code attempts")
+    elif a.plan:
         print(f"plan mode: think {a.think_tokens} tokens -> summary {a.summary_tokens} -> code "
               f"{a.max_tokens}, three requests per sample")
 
