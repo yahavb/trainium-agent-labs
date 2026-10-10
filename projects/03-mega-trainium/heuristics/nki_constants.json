@@ -1,0 +1,560 @@
+[
+ {
+  "name": "tile_size.pmax",
+  "value": 128,
+  "unit": "partitions",
+  "source": "nki/language/_tile_size.py",
+  "generation": "all"
+ },
+ {
+  "name": "tile_size.psum_bank_fmax",
+  "value": 512,
+  "unit": "fp32 elements per bank per partition",
+  "source": "nki/language/_tile_size.py",
+  "generation": "all"
+ },
+ {
+  "name": "tile_size.psum_fmax (deprecated alias)",
+  "value": 512,
+  "unit": "fp32 elements per bank per partition",
+  "source": "nki/language/_tile_size.py",
+  "generation": "all"
+ },
+ {
+  "name": "tile_size.psum_bank_fmax_bytes",
+  "value": 2048,
+  "unit": "bytes per bank per partition",
+  "source": "nki/language/_tile_size.py",
+  "generation": "all"
+ },
+ {
+  "name": "tile_size.gemm_stationary_fmax",
+  "value": 128,
+  "unit": "elements",
+  "source": "nki/language/_tile_size.py",
+  "generation": "all"
+ },
+ {
+  "name": "tile_size.gemm_moving_fmax",
+  "value": 512,
+  "unit": "elements",
+  "source": "nki/language/_tile_size.py",
+  "generation": "all (v4 allows 4096 fp32 / 8192 bf16 per nc_matmul docstring)"
+ },
+ {
+  "name": "tile_size.bn_stats_fmax",
+  "value": 512,
+  "unit": "elements per partition",
+  "source": "nki/language/_tile_size.py",
+  "generation": "all"
+ },
+ {
+  "name": "tile_size.psum_min_align",
+  "value": 4,
+  "unit": "bytes",
+  "source": "nki/language/_tile_size.py",
+  "generation": "all"
+ },
+ {
+  "name": "tile_size.sbuf_min_align",
+  "value": 4,
+  "unit": "bytes",
+  "source": "nki/language/_tile_size.py",
+  "generation": "all"
+ },
+ {
+  "name": "tile_size.psum_num_banks",
+  "value": 8,
+  "unit": "banks per partition (7 when dma_transpose is lowered to PE transpose)",
+  "source": "nki/language/_tile_size.py _PSUM_NUM_BANKS",
+  "generation": "all"
+ },
+ {
+  "name": "psum_partition_bytes",
+  "value": 16384,
+  "unit": "bytes per partition",
+  "source": "nki/language/_tile_size.py _PSUM_PARTITION_SIZE; migration guide",
+  "generation": "all"
+ },
+ {
+  "name": "tile_size.sbuf_size_bytes",
+  "value": 25165824,
+  "unit": "bytes total (128 x 192 KiB)",
+  "source": "nki/language/_tile_size.py _SBUF_SIZE_BYTES[gen2]",
+  "generation": "trn1"
+ },
+ {
+  "name": "tile_size.sbuf_size_bytes",
+  "value": 29360128,
+  "unit": "bytes total (128 x 224 KiB)",
+  "source": "nki/language/_tile_size.py _SBUF_SIZE_BYTES[gen3]",
+  "generation": "trn2"
+ },
+ {
+  "name": "tile_size.sbuf_size_bytes",
+  "value": 33554432,
+  "unit": "bytes total (128 x 256 KiB)",
+  "source": "nki/language/_tile_size.py _SBUF_SIZE_BYTES[gen4]",
+  "generation": "trn3"
+ },
+ {
+  "name": "tile_size.sbuf_fmax_bytes",
+  "value": 180224,
+  "unit": "bytes per partition usable",
+  "source": "nki/language/_tile_size.py _SBUF_FMAX_BYTES[gen2]",
+  "generation": "trn1"
+ },
+ {
+  "name": "tile_size.sbuf_fmax_bytes",
+  "value": 212984,
+  "unit": "bytes per partition usable",
+  "source": "nki/language/_tile_size.py _SBUF_FMAX_BYTES[gen3]",
+  "generation": "trn2"
+ },
+ {
+  "name": "tile_size.sbuf_fmax_bytes",
+  "value": 245752,
+  "unit": "bytes per partition usable",
+  "source": "nki/language/_tile_size.py _SBUF_FMAX_BYTES[gen4]",
+  "generation": "trn3"
+ },
+ {
+  "name": "tile_size.sbuf_fmax",
+  "value": 45056,
+  "unit": "fp32 elements per partition",
+  "source": "sbuf_fmax_bytes // 4",
+  "generation": "trn1"
+ },
+ {
+  "name": "tile_size.sbuf_fmax",
+  "value": 53246,
+  "unit": "fp32 elements per partition",
+  "source": "sbuf_fmax_bytes // 4",
+  "generation": "trn2"
+ },
+ {
+  "name": "tile_size.sbuf_fmax",
+  "value": 61438,
+  "unit": "fp32 elements per partition",
+  "source": "sbuf_fmax_bytes // 4",
+  "generation": "trn3"
+ },
+ {
+  "name": "nc_matmul.moving_free_max_fp32_dst",
+  "value": 4096,
+  "unit": "elements",
+  "source": "nki.isa.nc_matmul docstring",
+  "generation": "trn3"
+ },
+ {
+  "name": "nc_matmul.moving_free_max_bf16_dst",
+  "value": 8192,
+  "unit": "elements",
+  "source": "nki.isa.nc_matmul docstring",
+  "generation": "trn3"
+ },
+ {
+  "name": "nc_matmul.row_tile_sizes",
+  "value": [
+   64,
+   32
+  ],
+  "unit": "PE rows (64 on v2+, 32 on v3+)",
+  "source": "nki.isa.nc_matmul docstring",
+  "generation": "all"
+ },
+ {
+  "name": "nc_matmul.double_row_first_free_dim",
+  "value": 2,
+  "unit": "elements",
+  "source": "nki.isa.nc_matmul docstring",
+  "generation": "trn2"
+ },
+ {
+  "name": "nc_transpose.tensor_engine_max",
+  "value": [
+   128,
+   128
+  ],
+  "unit": "partition x free",
+  "source": "nki.isa.nc_transpose docstring",
+  "generation": "all"
+ },
+ {
+  "name": "nc_transpose.vector_engine_max",
+  "value": [
+   32,
+   32
+  ],
+  "unit": "partition x free",
+  "source": "nki.isa.nc_transpose docstring",
+  "generation": "all"
+ },
+ {
+  "name": "nc_stream_shuffle.quadrant",
+  "value": 32,
+  "unit": "partitions",
+  "source": "nki.isa.nc_stream_shuffle docstring",
+  "generation": "all"
+ },
+ {
+  "name": "dma_transpose.dtype_size",
+  "value": 2,
+  "unit": "bytes",
+  "source": "nki.isa.dma_transpose docstring",
+  "generation": "all"
+ },
+ {
+  "name": "dma_transpose.last_dim_max",
+  "value": 128,
+  "unit": "elements",
+  "source": "nki.isa.dma_transpose docstring",
+  "generation": "all"
+ },
+ {
+  "name": "dma_transpose.hwdge_2d_shape0",
+  "value": 16,
+  "unit": "rows",
+  "source": "nki.isa.dma_transpose docstring",
+  "generation": "trn2"
+ },
+ {
+  "name": "dma_transpose.indirect_indices_shape0_range",
+  "value": [
+   16,
+   128
+  ],
+  "unit": "rows, multiple of 16",
+  "source": "nki.isa.dma_transpose docstring",
+  "generation": "trn2"
+ },
+ {
+  "name": "dma_compute.max_srcs",
+  "value": 16,
+  "unit": "tensors",
+  "source": "nki.isa.dma_compute docstring",
+  "generation": "all"
+ },
+ {
+  "name": "dma.priority_range",
+  "value": [
+   0,
+   3
+  ],
+  "unit": "QoS level (lower = higher priority)",
+  "source": "nki.isa.dma_copy docstring",
+  "generation": "trn3"
+ },
+ {
+  "name": "mx.group_size",
+  "value": 32,
+  "unit": "elements (8 partitions x 4)",
+  "source": "nki.isa.quantize_mx docstring",
+  "generation": "trn3"
+ },
+ {
+  "name": "quantize_mx.partition_multiple",
+  "value": 32,
+  "unit": "partitions",
+  "source": "nki.isa.quantize_mx docstring",
+  "generation": "trn3"
+ },
+ {
+  "name": "quantize_mx.free_multiple",
+  "value": 4,
+  "unit": "elements",
+  "source": "nki.isa.quantize_mx docstring",
+  "generation": "trn3"
+ },
+ {
+  "name": "quantize_mx.emax_e4m3fn",
+  "value": 8,
+  "unit": "max unbiased exponent",
+  "source": "nki.isa.quantize_mx docstring",
+  "generation": "trn3"
+ },
+ {
+  "name": "quantize_mx.emax_e5m2",
+  "value": 15,
+  "unit": "max unbiased exponent",
+  "source": "nki.isa.quantize_mx docstring",
+  "generation": "trn3"
+ },
+ {
+  "name": "activation.reduce_regs",
+  "value": 128,
+  "unit": "32-bit registers (one per lane)",
+  "source": "nki.isa.activation docstring",
+  "generation": "all"
+ },
+ {
+  "name": "activation.log_valid_range",
+  "value": [
+   "2^-64",
+   "2^64"
+  ],
+  "unit": "input",
+  "source": "nki.api.shared.rst tbl-act-func",
+  "generation": "all"
+ },
+ {
+  "name": "activation.sin_valid_range",
+  "value": [
+   "-pi",
+   "pi"
+  ],
+  "unit": "input (no range reduction)",
+  "source": "nki.api.shared.rst tbl-act-func",
+  "generation": "all"
+ },
+ {
+  "name": "activation.arctan_valid_range",
+  "value": [
+   "-pi/2",
+   "pi/2"
+  ],
+  "unit": "input",
+  "source": "nki.api.shared.rst tbl-act-func",
+  "generation": "all"
+ },
+ {
+  "name": "activation.sqrt_valid_range",
+  "value": [
+   "2^-116",
+   "2^118"
+  ],
+  "unit": "input",
+  "source": "nki.api.shared.rst tbl-act-func",
+  "generation": "all"
+ },
+ {
+  "name": "activation.rsqrt_valid_range",
+  "value": [
+   "2^-87",
+   "2^97"
+  ],
+  "unit": "input",
+  "source": "nki.api.shared.rst tbl-act-func",
+  "generation": "all"
+ },
+ {
+  "name": "activation.reciprocal_valid_range",
+  "value": [
+   "2^-42",
+   "2^42"
+  ],
+  "unit": "|input|",
+  "source": "nki.api.shared.rst tbl-act-func",
+  "generation": "all"
+ },
+ {
+  "name": "reciprocal.MIN_II",
+  "value": 64,
+  "unit": "engine cycles (approx)",
+  "source": "nki.api.shared.rst Engine Selection",
+  "generation": "all"
+ },
+ {
+  "name": "reciprocal.vector_cycles_per_elem",
+  "value": 8,
+  "unit": "cycles per element per partition",
+  "source": "nki.api.shared.rst Engine Selection",
+  "generation": "all"
+ },
+ {
+  "name": "reciprocal.scalar_cycles_per_elem",
+  "value": 1,
+  "unit": "cycles per element per partition",
+  "source": "nki.api.shared.rst Engine Selection",
+  "generation": "all"
+ },
+ {
+  "name": "rsqrt.gpsimd_vs_scalar_throughput",
+  "value": 0.25,
+  "unit": "ratio (GpSimd is 4x slower)",
+  "source": "nki.api.shared.rst Engine Selection",
+  "generation": "all"
+ },
+ {
+  "name": "range_select.on_false_value",
+  "value": -3.4028235e+38,
+  "unit": "FP32_MIN",
+  "source": "nki.isa.range_select docstring",
+  "generation": "trn2"
+ },
+ {
+  "name": "range_select.index_limit",
+  "value": 16777216,
+  "unit": "2^24 (fp32 exact int)",
+  "source": "nki.isa.range_select docstring",
+  "generation": "trn2"
+ },
+ {
+  "name": "max8.elems_per_partition_range",
+  "value": [
+   8,
+   16384
+  ],
+  "unit": "elements",
+  "source": "nki.isa.max8 docstring",
+  "generation": "all"
+ },
+ {
+  "name": "topk.n_range",
+  "value": [
+   8,
+   65535
+  ],
+  "unit": "BF16 elements in snake",
+  "source": "nki.isa.topk docstring",
+  "generation": "all"
+ },
+ {
+  "name": "topk.k_max",
+  "value": 32767,
+  "unit": "elements",
+  "source": "nki.isa.topk docstring",
+  "generation": "all"
+ },
+ {
+  "name": "topk.cost",
+  "value": "4*n + K",
+  "unit": "GpSimd cycles per partition",
+  "source": "nki.isa.topk docstring",
+  "generation": "all"
+ },
+ {
+  "name": "local_gather.group",
+  "value": 16,
+  "unit": "partitions per GpSimd core",
+  "source": "nki.isa.local_gather docstring",
+  "generation": "all"
+ },
+ {
+  "name": "local_gather.max_indices_per_core",
+  "value": 4096,
+  "unit": "indices",
+  "source": "nki.isa.local_gather docstring",
+  "generation": "all"
+ },
+ {
+  "name": "local_gather.num_elem_per_idx",
+  "value": [
+   1,
+   2,
+   4,
+   8,
+   16,
+   32
+  ],
+  "unit": "allowed values",
+  "source": "nki.isa.local_gather docstring",
+  "generation": "all"
+ },
+ {
+  "name": "nc_n_gather.isa_group_size",
+  "value": 512,
+  "unit": "elements per ISA group",
+  "source": "nki.isa.nc_n_gather docstring",
+  "generation": "all"
+ },
+ {
+  "name": "gpsimd.cores",
+  "value": 8,
+  "unit": "cores x 16 partitions",
+  "source": "nki.isa.local_gather docstring",
+  "generation": "all"
+ },
+ {
+  "name": "rand_set_state.gpsimd_elems",
+  "value": 6,
+  "unit": "uint32 per partition",
+  "source": "nki.isa.rand_set_state docstring",
+  "generation": "trn2"
+ },
+ {
+  "name": "rand_set_state.vector_elems",
+  "value": 24,
+  "unit": "uint32 per partition",
+  "source": "nki.isa.rand_set_state docstring",
+  "generation": "trn3"
+ },
+ {
+  "name": "sendrecv.gpsimd_dma_max_bytes_per_partition",
+  "value": {
+   "32bit": 1024,
+   "16bit": 512,
+   "8bit": 256
+  },
+  "unit": "bytes",
+  "source": "nki.isa.sendrecv docstring",
+  "generation": "trn2"
+ },
+ {
+  "name": "registers_per_engine_sequencer",
+  "value": 64,
+  "unit": "32-bit registers",
+  "source": "nki.isa.register_alloc docstring",
+  "generation": "all"
+ },
+ {
+  "name": "tensor_indirection.quadrant_alignment",
+  "value": 32,
+  "unit": "partitions",
+  "source": "nki.isa.* Tensor indirection sections",
+  "generation": "trn3"
+ },
+ {
+  "name": "tensor_indirection.group_size",
+  "value": {
+   "vector_scalar_gpsimd": 16,
+   "tensor": 32
+  },
+  "unit": "partitions (snake)",
+  "source": "nki.language.NkiTensor.indirect docstring",
+  "generation": "trn3"
+ },
+ {
+  "name": "collectives.max_channels",
+  "value": {
+   "full_node_group": 4,
+   "other": 2
+  },
+  "unit": "channels",
+  "source": "nki.collectives.collective_permute_implicit docstring",
+  "generation": "all"
+ },
+ {
+  "name": "nc_version_map",
+  "value": {
+   "gen2": [
+    "trn1",
+    "inf2"
+   ],
+   "gen3": [
+    "trn2"
+   ],
+   "gen4": [
+    "trn3pre",
+    "trn3"
+   ]
+  },
+  "unit": "target names",
+  "source": "nki/compiler/target.py",
+  "generation": "all"
+ },
+ {
+  "name": "float8_e4m3_legacy_max",
+  "value": 240,
+  "unit": "max representable",
+  "source": "nki/compiler/target.py comment",
+  "generation": "all"
+ },
+ {
+  "name": "nki_version",
+  "value": "0.6.0+31049202112.g85070674",
+  "unit": "package version",
+  "source": "nki.__version__",
+  "generation": "all"
+ }
+]

@@ -1,0 +1,13 @@
+== v0_nkilib_head_check: python kernels/test_head.py (21:41:01)
+   rc=0 (21:41:49)
+== v2_own_head_check: python kernels/test_head.py --tiled (21:41:49)
+   rc=0 (21:42:39)
+== v0_nkilib_head_profile: python kernels/profile_mega.py --head --tag ex_head (21:42:39)
+   rc=0 (21:44:07)
+== v1_hwdge_head_profile: python kernels/profile_mega.py --head --hwdge-oproj --tag ex_head_hwdge (21:44:07)
+   rc=0 (21:45:39)
+== v2_own_head_profile: python kernels/profile_mega.py --head-tiled --tag ex_head_tiled (21:45:39)
+   rc=0 (21:46:53)
+== bounds: python kernels/analyze_profile.py ex_head ex_head_hwdge ex_head_tiled (21:46:53)
+   rc=0 (21:47:44)
+DEVICE_DONE

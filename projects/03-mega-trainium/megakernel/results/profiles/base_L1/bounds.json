@@ -1,0 +1,340 @@
+{
+ "tag": "base_L1",
+ "kernel": "qwen3_megakernel:qwen3_decode_layers",
+ "layers": 1,
+ "necessary_MB": 390.1,
+ "cores": {
+  "0": {
+   "bounds": {
+    "total_us": 817.7,
+    "memory_bound_us": 532.3,
+    "memory_bound_ideal_us": 448.9,
+    "memory_no_reloads_us": 448.4,
+    "compute_bound_us": 431.8,
+    "compute_ideal_flops_us": 2.7,
+    "compute_ideal_useful_us": 2.6,
+    "perfect_pipeline_us": 532.3
+   },
+   "engine_active_us": {
+    "tensor": 431.8,
+    "vector": 146.9,
+    "scalar": 70.4,
+    "gpsimd": 58.9,
+    "sync": 58.0,
+    "dma": 532.3
+   },
+   "bottleneck": "dma",
+   "dma_moved_MB": 195.3,
+   "dma_packets": 949,
+   "dma_avg_packet_B": 205746,
+   "achieved_GBps": 238.8,
+   "phases": {
+    "start": {
+     "wall_us": 13.59,
+     "dma_active_us": 0.0,
+     "dma_MB": 0.0,
+     "n_windows": 1,
+     "tensor_us": 1.56,
+     "vector_us": 1.99,
+     "scalar_us": 1.89,
+     "gpsimd_us": 2.0,
+     "sync_us": 2.17,
+     "achieved_GBps": 0.0
+    },
+    "attn": {
+     "wall_us": 201.66,
+     "dma_active_us": 155.7,
+     "dma_MB": 44.1,
+     "n_windows": 4,
+     "tensor_us": 32.84,
+     "vector_us": 50.35,
+     "scalar_us": 9.39,
+     "gpsimd_us": 56.11,
+     "sync_us": 2.89,
+     "achieved_GBps": 218.67
+    },
+    "mlp": {
+     "wall_us": 584.14,
+     "dma_active_us": 374.72,
+     "dma_MB": 151.13,
+     "n_windows": 7,
+     "tensor_us": 396.83,
+     "vector_us": 89.45,
+     "scalar_us": 58.81,
+     "gpsimd_us": 0.06,
+     "sync_us": 51.95,
+     "achieved_GBps": 258.73
+    },
+    "glue": {
+     "wall_us": 18.36,
+     "dma_active_us": 1.86,
+     "dma_MB": 0.02,
+     "n_windows": 9,
+     "tensor_us": 0.59,
+     "vector_us": 5.13,
+     "scalar_us": 0.27,
+     "gpsimd_us": 0.74,
+     "sync_us": 0.96,
+     "achieved_GBps": 1.12
+    }
+   },
+   "dma_idle": {
+    "total_us": 285.2,
+    "n_gaps": 25,
+    "largest_us": [
+     174.0,
+     22.8,
+     14.5,
+     9.9,
+     7.3,
+     6.0,
+     5.9,
+     5.3,
+     3.9,
+     3.4
+    ],
+    "by_source_us": {
+     "nkilib/core/mlp/mlp_tkg/mlp_tkg_down_projection_lhs_rhs_swap.py:142": 196.7,
+     "(no source)": 31.6,
+     "nkilib/experimental/transformer/attention_block_tkg.py:2260": 20.3,
+     "nkilib/core/output_projection/output_projection_tkg.py:1433": 13.9,
+     "nkilib/core/qkv/qkv_tkg.py:1521": 7.1,
+     "kernels/qwen3_megakernel.py:107": 6.0,
+     "kernels/qwen3_megakernel.py:116": 3.4,
+     "nkilib/core/output_projection/output_projection_tkg.py:1262": 2.1,
+     "nkilib/core/mlp/mlp_tkg/mlp_tkg_gate_up_projection.py:195": 1.9,
+     "nkilib/core/qkv/qkv_tkg.py:1035": 1.5,
+     "nkilib/experimental/transformer/attention_block_tkg.py:1927": 0.7
+    }
+   },
+   "top_dma_variables": {
+    "W_gate": {
+     "MB": 50.33,
+     "packets": 384
+    },
+    "W_down": {
+     "MB": 50.33,
+     "packets": 96
+    },
+    "W_up": {
+     "MB": 50.33,
+     "packets": 384
+    },
+    "W_qkv": {
+     "MB": 25.17,
+     "packets": 2
+    },
+    "W_out": {
+     "MB": 16.78,
+     "packets": 32
+    },
+    "K_cache": {
+     "MB": 1.05,
+     "packets": 8
+    },
+    "V_cache": {
+     "MB": 1.05,
+     "packets": 8
+    },
+    "SB{1}": {
+     "MB": 0.11,
+     "packets": 3
+    },
+    "inst__I-19-0:L0_attn_attn_residual_sg0000": {
+     "MB": 0.02,
+     "packets": 3
+    },
+    "mask": {
+     "MB": 0.02,
+     "packets": 1
+    },
+    "X": {
+     "MB": 0.02,
+     "packets": 2
+    },
+    "inst__I-19-0:L0_attn_output_projection_tkg_out_sg0000": {
+     "MB": 0.01,
+     "packets": 2
+    },
+    "inst__I-19-0:L0_mlp_output_tensor_hbm_sg0000": {
+     "MB": 0.01,
+     "packets": 2
+    },
+    "output_0": {
+     "MB": 0.01,
+     "packets": 1
+    },
+    "g_attn": {
+     "MB": 0.01,
+     "packets": 1
+    }
+   }
+  },
+  "1": {
+   "bounds": {
+    "total_us": 817.8,
+    "memory_bound_us": 534.0,
+    "memory_bound_ideal_us": 448.9,
+    "memory_no_reloads_us": 448.4,
+    "compute_bound_us": 430.8,
+    "compute_ideal_flops_us": 2.7,
+    "compute_ideal_useful_us": 2.6,
+    "perfect_pipeline_us": 534.0
+   },
+   "engine_active_us": {
+    "tensor": 430.8,
+    "vector": 151.0,
+    "scalar": 71.8,
+    "gpsimd": 52.8,
+    "sync": 58.2,
+    "dma": 534.0
+   },
+   "bottleneck": "dma",
+   "dma_moved_MB": 195.3,
+   "dma_packets": 958,
+   "dma_avg_packet_B": 203815,
+   "achieved_GBps": 238.8,
+   "phases": {
+    "start": {
+     "wall_us": 13.86,
+     "dma_active_us": 0.0,
+     "dma_MB": 0.0,
+     "n_windows": 1,
+     "tensor_us": 2.44,
+     "vector_us": 1.78,
+     "scalar_us": 1.82,
+     "gpsimd_us": 1.94,
+     "sync_us": 1.79,
+     "achieved_GBps": 0.0
+    },
+    "attn": {
+     "wall_us": 206.14,
+     "dma_active_us": 150.58,
+     "dma_MB": 44.1,
+     "n_windows": 3,
+     "tensor_us": 35.07,
+     "vector_us": 54.38,
+     "scalar_us": 10.15,
+     "gpsimd_us": 50.05,
+     "sync_us": 3.62,
+     "achieved_GBps": 213.94
+    },
+    "glue": {
+     "wall_us": 22.04,
+     "dma_active_us": 2.04,
+     "dma_MB": 0.02,
+     "n_windows": 8,
+     "tensor_us": 0.62,
+     "vector_us": 5.13,
+     "scalar_us": 1.07,
+     "gpsimd_us": 0.75,
+     "sync_us": 0.9,
+     "achieved_GBps": 0.93
+    },
+    "mlp": {
+     "wall_us": 575.76,
+     "dma_active_us": 381.35,
+     "dma_MB": 151.13,
+     "n_windows": 7,
+     "tensor_us": 392.68,
+     "vector_us": 89.74,
+     "scalar_us": 58.71,
+     "gpsimd_us": 0.05,
+     "sync_us": 51.89,
+     "achieved_GBps": 262.49
+    }
+   },
+   "dma_idle": {
+    "total_us": 283.8,
+    "n_gaps": 26,
+    "largest_us": [
+     172.1,
+     18.7,
+     14.8,
+     9.4,
+     7.3,
+     6.6,
+     5.8,
+     4.9,
+     4.8,
+     3.4
+    ],
+    "by_source_us": {
+     "nkilib/core/mlp/mlp_tkg/mlp_tkg_down_projection_lhs_rhs_swap.py:142": 190.8,
+     "(no source)": 34.9,
+     "nkilib/experimental/transformer/attention_block_tkg.py:2282": 23.9,
+     "nkilib/core/output_projection/output_projection_tkg.py:1433": 16.6,
+     "nkilib/core/qkv/qkv_tkg.py:1521": 5.9,
+     "kernels/qwen3_megakernel.py:116": 3.4,
+     "nkilib/core/output_projection/output_projection_tkg.py:1262": 3.0,
+     "nkilib/core/mlp/mlp_tkg/mlp_tkg_gate_up_projection.py:195": 1.8,
+     "kernels/qwen3_megakernel.py:107": 1.5,
+     "nkilib/core/qkv/qkv_tkg.py:1035": 1.5,
+     "(nothing running)": 0.6
+    }
+   },
+   "top_dma_variables": {
+    "W_gate": {
+     "MB": 50.33,
+     "packets": 384
+    },
+    "W_down": {
+     "MB": 50.33,
+     "packets": 96
+    },
+    "W_up": {
+     "MB": 50.33,
+     "packets": 384
+    },
+    "W_qkv": {
+     "MB": 25.17,
+     "packets": 2
+    },
+    "W_out": {
+     "MB": 16.78,
+     "packets": 32
+    },
+    "K_cache": {
+     "MB": 1.05,
+     "packets": 16
+    },
+    "V_cache": {
+     "MB": 1.05,
+     "packets": 8
+    },
+    "SB{0}": {
+     "MB": 0.11,
+     "packets": 3
+    },
+    "inst__I-19-0:L0_attn_attn_residual_sg0000{0}": {
+     "MB": 0.02,
+     "packets": 3
+    },
+    "mask": {
+     "MB": 0.02,
+     "packets": 1
+    },
+    "X": {
+     "MB": 0.02,
+     "packets": 2
+    },
+    "inst__I-19-0:L0_attn_output_projection_tkg_out_sg0000{0}": {
+     "MB": 0.01,
+     "packets": 2
+    },
+    "inst__I-19-0:L0_mlp_output_tensor_hbm_sg0000{0}": {
+     "MB": 0.01,
+     "packets": 2
+    },
+    "output_0": {
+     "MB": 0.01,
+     "packets": 1
+    },
+    "g_attn": {
+     "MB": 0.01,
+     "packets": 1
+    }
+   }
+  }
+ }
+}

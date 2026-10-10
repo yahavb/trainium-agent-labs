@@ -1,0 +1,3 @@
+{"layers": 36, "S_ctx": 1024, "weight_bytes": 15136194560, "kv_read_bytes": 150994944, "hbm_floor_ms_at_736GBps": 20.771, "baseline_compile_s": 271.5, "baseline_ms": 47.493, "mega_compile_s": 635.5, "mega_ms": 27.765}
+{"layers": 36, "hwdge_oproj": false, "resident": true, "S_ctx": 1024, "weight_bytes": 15136194560, "kv_read_bytes": 150994944, "hbm_floor_ms_at_736GBps": 20.771, "baseline_compile_s": 9.2, "baseline_ms": 47.579, "mega_compile_s": 686.6, "mega_ms": 27.739}
+{"layers": 36, "hwdge_oproj": false, "resident": true, "tiled_head": false, "S_ctx": 1024, "weight_bytes": 15136194560, "kv_read_bytes": 150994944, "hbm_floor_ms_at_736GBps": 20.771, "baseline_compile_s": 8.7, "baseline_ms": 47.605, "mega_compile_s": 2.3, "mega_ms": 27.743}

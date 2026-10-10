@@ -1,0 +1,346 @@
+<title>Qwen3-8B Decode Megakernel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column (~ 880px) of stacked sections; data blocks (bars, pipeline, log, tables) break to full column width. */
+:root {
+  --bg: #f4f6f7;
+  --surface: #ffffff;
+  --ink: #15202a;
+  --muted: #5b6873;
+  --rule: #d9dfe3;
+  --accent: #1f5fbf;      /* signal blue: our kernel */
+  --accent-soft: #dde8f8;
+  --base: #8a97a2;        /* reference bars */
+  --pass: #1d7a4c;
+  --pass-soft: #dcf0e5;
+  --fail: #b23a2f;
+  --fail-soft: #f7e0dd;
+  --term-bg: #10181f;
+  --term-fg: #d6e1ea;
+  --font-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f151a; --surface: #161e25; --ink: #e3e9ee; --muted: #93a1ac; --rule: #2a353e;
+    --accent: #6fa3f2; --accent-soft: #1d2d45; --base: #5d6b77;
+    --pass: #5cc48e; --pass-soft: #163327; --fail: #ec7a6e; --fail-soft: #3a1c19;
+    --term-bg: #0a0f13; --term-fg: #d6e1ea;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f151a; --surface: #161e25; --ink: #e3e9ee; --muted: #93a1ac; --rule: #2a353e;
+  --accent: #6fa3f2; --accent-soft: #1d2d45; --base: #5d6b77;
+  --pass: #5cc48e; --pass-soft: #163327; --fail: #ec7a6e; --fail-soft: #3a1c19;
+  --term-bg: #0a0f13; --term-fg: #d6e1ea;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55; }
+.page { max-width: 920px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 56px; display: grid; gap: 44px; }
+h1, h2 { font-family: var(--font-display); font-stretch: 85%; letter-spacing: -0.01em; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(30px, 5.4vw, 46px); font-weight: 800; line-height: 1.04; }
+h2 { font-size: 22px; font-weight: 700; }
+p { margin: 0; max-width: 68ch; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.lede { font-size: 17px; color: var(--muted); max-width: 64ch; }
+.lede strong { color: var(--ink); font-weight: 600; }
+section { display: grid; gap: 16px; min-width: 0; }
+.sec-head { display: grid; gap: 4px; border-top: 1px solid var(--rule); padding-top: 18px; }
+.num { font-variant-numeric: tabular-nums; }
+code, .mono { font-family: var(--font-mono); font-size: 0.92em; }
+
+/* header */
+header { display: grid; gap: 14px; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 22px; font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); }
+.facts b { color: var(--ink); font-weight: 500; }
+
+/* headline stats */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.stat { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 14px 16px; display: grid; gap: 2px; align-content: start; }
+.stat .v { font-family: var(--font-display); font-stretch: 80%; font-size: 34px; font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.stat .v small { font-size: 16px; font-weight: 600; color: var(--muted); margin-left: 2px; }
+.stat .k { font-size: 13px; color: var(--muted); }
+.stat.hl .v { color: var(--accent); }
+@media (max-width: 720px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* bar chart: one scale, 0..75 ms */
+.chart { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 18px 18px 12px; overflow-x: auto; }
+.bars { display: grid; grid-template-columns: minmax(150px, 34%) 1fr; gap: 10px 14px; min-width: 520px; align-items: center; }
+.bars .lab { font-size: 13.5px; line-height: 1.3; }
+.bars .lab span { display: block; font-size: 12px; color: var(--muted); }
+.track { position: relative; height: 26px; }
+.bar { position: absolute; left: 0; top: 3px; height: 20px; border-radius: 2px; background: var(--base); }
+.bar.ours { background: var(--accent); }
+.bar.floor { background: transparent; border: 1.5px dashed var(--muted); }
+.bar-val { position: absolute; top: 3px; font-family: var(--font-mono); font-size: 12.5px; line-height: 20px; padding-left: 8px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.axis { position: relative; height: 22px; margin-top: 4px; border-top: 1px solid var(--rule); }
+.axis span { position: absolute; top: 4px; transform: translateX(-50%); font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.axis-row { grid-column: 2; }
+.chart-note { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+
+/* pipeline */
+.pipe { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+.stage { flex: 1 1 120px; min-width: 0; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px; display: grid; gap: 2px; align-content: start; }
+.stage b { font-family: var(--font-display); font-stretch: 90%; font-size: 15px; font-weight: 700; }
+.stage span { font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+.stage.core { flex: 2 1 220px; background: var(--accent-soft); border-color: transparent; }
+.stage.io { flex: 0 1 110px; border-style: dashed; }
+.pipe-note { font-size: 13px; color: var(--muted); }
+
+/* terminal */
+.term { background: var(--term-bg); color: var(--term-fg); border-radius: 6px; padding: 14px 16px; overflow-x: auto; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.6; }
+.term pre { margin: 0; white-space: pre; }
+.term .p { color: #6fd39b; font-weight: 500; }
+.term .f { color: #f08a7e; font-weight: 500; }
+.term .c { color: #7f8f9c; }
+.term .ok { color: #6fd39b; font-weight: 600; }
+.term .no { color: #f08a7e; font-weight: 600; }
+
+/* tables */
+.tbl-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; }
+table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 13.5px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.chip { display: inline-block; font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.04em; padding: 2px 7px; border-radius: 3px; white-space: nowrap; }
+.chip.acc { background: var(--pass-soft); color: var(--pass); }
+.chip.rej { background: var(--fail-soft); color: var(--fail); }
+.chip.info { background: var(--accent-soft); color: var(--accent); }
+
+/* lessons */
+.lessons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.lesson { border-top: 2px solid var(--ink); padding-top: 10px; display: grid; gap: 6px; align-content: start; }
+.lesson b { font-family: var(--font-display); font-stretch: 90%; font-size: 16px; font-weight: 700; line-height: 1.25; }
+.lesson p { font-size: 13.5px; color: var(--muted); }
+@media (max-width: 720px) { .lessons { grid-template-columns: 1fr; } }
+
+footer { border-top: 1px solid var(--rule); padding-top: 16px; display: grid; gap: 8px; font-size: 13px; color: var(--muted); }
+footer .files { display: flex; flex-wrap: wrap; gap: 6px 18px; font-family: var(--font-mono); font-size: 12.5px; color: var(--ink); }
+</style>
+
+<div class="page">
+
+<header>
+  <div class="eyebrow">Hack the Chip · Trainium2 · project 3</div>
+  <h1>Qwen3-8B decode in one kernel launch per token</h1>
+  <p class="lede">Token id in, next token id out. Embedding, all <strong>36 decoder layers</strong>, final norm, LM head and greedy argmax run as <strong>one NKI launch</strong> on one logical NeuronCore, with weights and KV cache resident on the device. It's <strong>1.71× faster</strong> than per-op <code>torch.compile</code> of the same math and correct against HuggingFace on real weights.</p>
+  <div class="facts">
+    <span><b>1</b> trn2 device · <b>1</b> of 4 logical cores (LNC=2)</span>
+    <span>batch <b>1</b>, greedy, bf16</span>
+    <span>Neuron 2.34 · NKI 0.6.0 · neuronx-cc 2.27</span>
+    <span>built and measured 2026-10-10</span>
+  </div>
+</header>
+
+<section aria-label="Headline numbers">
+  <div class="stats">
+    <div class="stat hl"><div class="v num">27.74<small>ms</small></div><div class="k">per token on the device<br>3 runs: 27.71–27.79</div></div>
+    <div class="stat"><div class="v num">1.71×</div><div class="k">faster than per-op <code>torch.compile</code> (47.50 ms)</div></div>
+    <div class="stat"><div class="v num">36<small>tok/s</small></div><div class="k">end to end while generating<br>27.55 ms per token</div></div>
+    <div class="stat"><div class="v num">94/96</div><div class="k">steps match HF fp32, 3 prompts; both misses are near-ties</div></div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">Speed</div>
+    <h2>Milliseconds per generated token</h2>
+  </div>
+  <div class="chart">
+    <div class="bars">
+      <div class="lab">vLLM server as deployed<span>TP=2 on two logical cores, incl. HTTP</span></div>
+      <div class="track"><div class="bar" style="width:95.07%"></div><div class="bar-val" style="left:95.07%">71.3</div></div>
+
+      <div class="lab">Per-op <code>torch.compile</code><span>same math, same core (baseline)</span></div>
+      <div class="track"><div class="bar" style="width:63.33%"></div><div class="bar-val" style="left:63.33%">47.50</div></div>
+
+      <div class="lab"><b>One launch, device</b><span>median of 30, three runs</span></div>
+      <div class="track"><div class="bar ours" style="width:36.99%"></div><div class="bar-val" style="left:36.99%">27.74</div></div>
+
+      <div class="lab"><b>One launch, end to end</b><span>generation loop incl. host</span></div>
+      <div class="track"><div class="bar ours" style="width:36.73%"></div><div class="bar-val" style="left:36.73%">27.55</div></div>
+
+      <div class="lab">HBM floor<span>all weights + KV once at 736 GB/s</span></div>
+      <div class="track"><div class="bar floor" style="width:27.73%"></div><div class="bar-val" style="left:27.73%">20.8</div></div>
+
+      <div class="axis-row"><div class="axis">
+        <span style="left:0%">0</span><span style="left:20%">15</span><span style="left:40%">30</span><span style="left:60%">45</span><span style="left:80%">60</span><span style="left:100%">75 ms</span>
+      </div></div>
+    </div>
+    <p class="chart-note">The vLLM figure isn't like-for-like (it uses two cores and includes serving overhead); it shows the stack as deployed. The one-launch kernel runs at 75% of the memory-bandwidth floor (551 GB/s achieved).</p>
+    <p class="chart-note">Of the 7.0 ms above the floor, about 5.9 are in the 36 layers (25.00 ms against a 19.08 ms floor, 76%) and about 1.0 in the embedding, LM head and argmax (~2.7 ms against 1.7).</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">What runs inside one launch</div>
+    <h2>The decode step, start to finish</h2>
+  </div>
+  <div class="pipe" role="list">
+    <div class="stage io" role="listitem"><b>token, pos</b><span>2 integers in</span></div>
+    <div class="stage" role="listitem"><b>Embedding</b><span>indirect-DMA row gather</span></div>
+    <div class="stage" role="listitem"><b>RoPE + mask</b><span>rows gathered at pos; mask built on chip</span></div>
+    <div class="stage core" role="listitem"><b>36 × decoder layer</b><span>RMSNorm, QKV, Qwen3 QK-norm, RoPE, attention with in-place KV write, o_proj, MLP</span></div>
+    <div class="stage" role="listitem"><b>RMSNorm</b><span>result stays in SBUF</span></div>
+    <div class="stage" role="listitem"><b>LM head</b><span>151,936-way, split over 2 cores</span></div>
+    <div class="stage" role="listitem"><b>Argmax</b><span>greedy</span></div>
+    <div class="stage io" role="listitem"><b>next token, pos+1</b><span>2 integers out</span></div>
+  </div>
+  <p class="pipe-note">Built on AWS's <code>nkilib</code> blocks (<code>attention_block_tkg</code>, <code>mlp</code>, <code>output_projection_tkg</code>, <code>cascaded_max</code>). Ours: the layer loop over stacked weights, the QK-norm wiring, the on-device mask and RoPE gather, the embedding gather and the LM-head weight layout.</p>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">Deliverable 1 · the checker</div>
+    <h2>Five gates, and a reason that names the fix</h2>
+  </div>
+  <p>A wrong kernel here doesn't crash. Our first version was 52% off on real weights and returned plausible numbers. So <code>check.py</code> compares against an independent reference at every level, against the error bf16 rounding alone produces, and when it rejects, says which convention the kernel actually implements.</p>
+  <div class="term" tabindex="0" aria-label="Checker output">
+<pre><span class="c">$ python check.py --resident          # final kernel, 2026-10-10 20:30 UTC</span>
+<span class="p">[PASS]</span> layout  reference matches HF
+<span class="p">[PASS]</span> tiny    max error 1.02e-02 within 2.2e-02 (3x the 7.3e-03 that bf16 rounding alone gives)
+<span class="p">[PASS]</span> head    embedding exact, logits rel-L2 2.4e-03, argmax consistent
+<span class="p">[PASS]</span> real    teacher-forced argmax agrees on 31/32 steps; every disagreement is a near-tie
+               inside bf16 noise (step 6: HF margin 0.028 &lt; 3 sigma 0.0712)
+<span class="p">[PASS]</span> speed   27.74 ms/token vs 47.60 per-op (1.72x), 75% of the HBM floor
+<span class="ok">ACCEPTED</span>
+
+<span class="c">$ python check.py --gates layout,tiny --control mask_active_zero     # inject the original bug</span>
+<span class="f">[FAIL]</span> tiny    max error 6.19e-02 &gt; 2.2e-02; the output is closer to the 'active_token_excluded'
+               variant (rel-L2 1.01e-02) than to the correct reference (5.61e-02):
+               the kernel implements active_token_excluded
+<span class="no">REJECTED</span>
+
+<span class="c">$ python check.py --gates layout,tiny --control no_rope_input</span>
+<span class="f">[FAIL]</span> tiny    ... the kernel implements no_rope
+<span class="no">REJECTED</span></pre>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">Correctness on real weights</div>
+    <h2>Teacher-forced against HuggingFace float32</h2>
+  </div>
+  <p>Both models get the same context at every step, so each step is an independent test. A disagreement passes only if HF's own fp32 margin between the two tokens is below 3σ of the kernel's logit error at that step.</p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Prompt</th><th>Steps agreeing</th><th>Disagreement</th><th>HF margin vs 3σ</th><th>Logits rel-L2</th></tr></thead>
+      <tbody>
+        <tr><td>“The Trainium2 chip has eight physical NeuronCores, and the Neuron Kernel Interface lets you”</td><td class="n">31 / 32</td><td>step 6: <code>" Each"</code> for <code>" The"</code></td><td class="n">0.028 &lt; 0.071 <span class="chip acc">noise</span></td><td class="n">1.17e-2</td></tr>
+        <tr><td>“Write a Python function that returns the n-th Fibonacci number.”</td><td class="n">32 / 32</td><td>none</td><td class="n">—</td><td class="n">1.11e-2</td></tr>
+        <tr><td>“The three most important ideas in thermodynamics are”</td><td class="n">31 / 32</td><td>step 28: <code>" the"</code> for <code>" about"</code></td><td class="n">0.041 &lt; 0.081 <span class="chip acc">noise</span></td><td class="n">1.02e-2</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">Deliverable 2 · from the attempt log (18 entries)</div>
+    <h2>What we tried, and what each attempt scored</h2>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>#</th><th>Attempt</th><th>Score</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td class="n">1</td><td>4 layers in one launch on nkilib blocks</td><td class="n">52% rel-L2 vs HF</td><td><span class="chip rej">rejected</span> new token missing from attention</td></tr>
+        <tr><td class="n">2</td><td>Mask fix: last mask row is the active token's column</td><td class="n">36 layers 26.5 ms; top-5 = HF</td><td><span class="chip acc">accepted</span></td></tr>
+        <tr><td class="n">4</td><td>Profile-guided: gate/up weights stationary</td><td class="n">−5.8%; 36 layers 25.0 ms</td><td><span class="chip acc">accepted</span></td></tr>
+        <tr><td class="n">6</td><td>Residual stream kept in SBUF (the documented next step)</td><td class="n">+9.6% slower</td><td><span class="chip rej">rejected</span></td></tr>
+        <tr><td class="n">8</td><td>Full step: embedding + layers + LM head + argmax</td><td class="n">27.8 ms vs 47.5 per-op</td><td><span class="chip acc">accepted</span></td></tr>
+        <tr><td class="n">14</td><td>Release device outputs between calls</td><td class="n">end to end 33.9 → 27.7 ms</td><td><span class="chip acc">accepted</span></td></tr>
+        <tr><td class="n">15</td><td>Persistent kernel, K tokens per launch</td><td class="n">compiler internal error</td><td><span class="chip rej">rejected</span></td></tr>
+        <tr><td class="n">17–18</td><td>Our own LM head, host-pre-tiled weights</td><td class="n">head 2.71 → 2.23 ms alone</td><td><span class="chip info">not adopted</span> DMA fault in the loop</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">Deliverable 3 · from the one-page note</div>
+    <h2>What changed the work</h2>
+  </div>
+  <div class="lessons">
+    <div class="lesson"><b>A kernel can be 52% wrong and look fine.</b><p>Comparing against deliberately wrong references found the bug: the output matched “new token excluded” to 3e-3. That comparison is now built into the checker.</p></div>
+    <div class="lesson"><b>Profile before optimising.</b><p>The obvious next step measured at ~1% of the time and made things 10% slower. The profile showed TensorE starving DMA in the MLP; one tiling flag gave −5.8%.</p></div>
+    <div class="lesson"><b>The host overhead wasn't the uploads.</b><p>Uploads cost 0.013 ms. Holding the previous call's outputs alive cost ~6 ms per call at 36 layers. Releasing them closed the gap to the device time.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">The product is the method</div>
+    <h2>From a kernel to a verified, profile-optimized megakernel</h2>
+  </div>
+  <p>A faster kernel for one model is a narrow product. The loop that found it carries over to the next model and the next chip, so we packaged it as an agent skill (<code>skill/nki-megakernel-optimizer</code>). The skill draws on a 724-rule NKI corpus the agent can query, and on a pitfalls list of every trap from today.</p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Step</th><th>What the agent does</th><th>What it bought on Qwen3-8B</th></tr></thead>
+      <tbody>
+        <tr><td class="n">1</td><td>Compute the bandwidth floor before writing code</td><td>every result reads as a share of 20.8 ms</td></tr>
+        <tr><td class="n">2</td><td>Gate a float32 reference against HuggingFace; its bf16 run is the baseline</td><td>reference exact to 9e-7, so every later error was the kernel's</td></tr>
+        <tr><td class="n">3</td><td>Build on <code>nkilib</code> blocks, write only the glue</td><td>36 layers in one launch on day one</td></tr>
+        <tr><td class="n">4</td><td>Gate every change; a rejection names the cause</td><td>52% mask bug found in an afternoon</td></tr>
+        <tr><td class="n">5</td><td>Profile on the device with <code>neuron-explorer</code> (the successor of <code>neuron-profile</code>), compute bounds, change one thing</td><td>−5.8% from one flag; the documented next step measured 10% slower</td></tr>
+        <tr><td class="n">6</td><td>Measure the real generation loop</td><td>33.9 → 27.7 ms per token</td></tr>
+        <tr><td class="n">7</td><td>Report with spread</td><td>3 runs × 30 calls; 3 prompts × 32 steps</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">Teammate's checker, on our kernel</div>
+    <h2>Symbolic proof and device test catch different bugs</h2>
+  </div>
+  <p>We pointed <a href="https://github.com/forthoney/symnki">nkiequiv</a>, a symbolic equivalence checker for NKI, at the matmul core of our LM head, against a six-line NumPy spec.</p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Kernel</th><th>nkiequiv (CPU)</th><th>Trainium2 device</th></tr></thead>
+      <tbody>
+        <tr><td>Our LM-head core, final structure</td><td><span class="chip acc">proved</span> 0.3 s at small tiles; 22 s at full tiles</td><td>correct; head 2.71 → 2.23 ms (−18%)</td></tr>
+        <tr><td>Deliberate bug: one k-tile skipped</td><td><span class="chip rej">rejected</span> names the missing term</td><td>—</td></tr>
+        <tr><td>Our real bug: 4 accumulation groups sharing one PSUM tile</td><td><span class="chip acc">proved</span> correct in NKI semantics</td><td><span class="chip rej">wrong</span> 14.5% error</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="pipe-note">At small tiles a proof costs about 1/150 of a device check, so the agent runs it on every rewrite and sends only survivors to the device. The device gate stays, because hardware behaviour like the PSUM fault is outside any interpreter's model.</p>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">Worked example · all three tools on one piece</div>
+    <h2>The LM head, from the library kernel to our own</h2>
+  </div>
+  <p>A replay of our LM-head work: every change starts from a profile symptom, the rules corpus names the fix, nkiequiv proves the rewrite, the device gates it. The corpus queries and proofs run live on CPU; device numbers are the original profiles, re-measured tonight within 1.5% (2.71 / 2.53 / 2.20 ms per core).</p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Step</th><th>Device</th><th>Rule the corpus returns</th><th>nkiequiv</th></tr></thead>
+      <tbody>
+        <tr><td><b>v0</b> nkilib head</td><td class="n">2.71 ms, 230 GB/s<br>software DGE, 4,129 serial DMAs</td><td><code>dge-swdge-consumes-gpsimd</code></td><td>—</td></tr>
+        <tr><td><b>v1</b> weights on hardware DGE</td><td class="n">2.53 ms (−7%)<br>~1.2 KB per partition per DMA</td><td><code>dma-4kib-per-partition-saturates</code></td><td>—</td></tr>
+        <tr><td><b>v2a</b> our head: 32 KB DMAs, 4 groups in one PSUM tile</td><td><span class="chip rej">wrong</span> 14.5% error</td><td><code>cp-psum-accumulate-semantics</code></td><td><span class="chip acc">proved</span> blind to it</td></tr>
+        <tr><td><b>v2</b> one PSUM tile per vocab tile</td><td class="n"><b>2.23 ms (−18%)</b>, 280 GB/s</td><td>—</td><td><span class="chip acc">proved</span> 0.3 s / 22 s</td></tr>
+        <tr><td><b>v3</b> v2 inside the full step</td><td><span class="chip info">not adopted</span> DMA fault in the loop</td><td><code>dma-dge-mode-selection</code> (a lead, untested)</td><td>can't model indirect DMA</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="pipe-note">The final kernel keeps v0, so ~0.48 ms per token is still on the table. Step-by-step record, the script that reruns the CPU half and the one for the device half: <code>examples/lm-head-walkthrough/</code>.</p>
+</section>
+
+<footer>
+  <div>Everything is in <span class="mono">projects/03-mega-trainium/</span> of trainium-agent-labs: <span class="mono">megakernel/</span>, <span class="mono">skill/</span>, <span class="mono">heuristics/</span>. Device numbers come from <span class="mono">megakernel/results/</span> and proof times from <span class="mono">megakernel/symnki_poc/</span>; the vLLM figure is one earlier 256-token run, not logged there.</div>
+  <div class="files"><span>megakernel/check.py</span><span>megakernel/ATTEMPTS.md</span><span>megakernel/NOTE.md</span><span>megakernel/symnki_poc/</span><span>examples/lm-head-walkthrough/</span><span>skill/nki-megakernel-optimizer/</span><span>heuristics/</span></div>
+</footer>
+
+</div>

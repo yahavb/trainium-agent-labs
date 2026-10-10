@@ -1,0 +1,4 @@
+compile+run 35s; logits (1, 151936)
+[embed] row 12345 gathered exactly: True
+[lm_head] logits rel-L2 vs fp32 ref: 2.377e-03; kernel argmax 146432 (logit 5.3125), ref argmax 146432 (logit 5.2997), kernel-logits argmax 146432
+PASS

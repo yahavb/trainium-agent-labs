@@ -1,0 +1,77 @@
+
+=== ex_head  (qwen3_decode_step:qwen3_head_parts, L=1, necessary 1244.7 MB per logical core)
+ pcore 0: total 2714 us | bottleneck gpsimd | moved 622.8 MB in 4134 pkts (avg 150657 B) = 229.5 GB/s
+   memory : total 2714 -> dma_active 2672 -> ideal(moved) 1432 -> ideal(necessary/2) 1431 us
+   compute: total 2714 -> te_active 1582 -> ideal_flops 7.9 -> useful 7.9 us | perfect pipeline 2675 us
+   engines active (us): tensor 1582, vector 39, scalar 80, gpsimd 2675, sync 4, dma 2672
+   phase attn : wall  2686.8 us in   6 windows | dma active  2669.2 | issued  622.21 MB |  231.6 GB/s | te 1578.9 ve   32.0 act   77.3 pool 2670.2
+   phase glue : wall    13.8 us in   7 windows | dma active     3.1 | issued    0.61 MB |   43.9 GB/s | te    1.1 ve    5.0 act    0.4 pool    2.4
+   phase start: wall    13.3 us in   1 windows | dma active     0.0 | issued    0.00 MB |    0.0 GB/s | te    1.6 ve    2.2 act    1.7 pool    2.0
+   DMA idle >=0.5us: 32.7 us in 7 gaps; largest [np.float64(15.4), np.float64(8.0), np.float64(2.6), np.float64(2.1), np.float64(2.0), np.float64(1.6), np.float64(1.2)]
+         27.0 us  (no source)
+          2.6 us  nkilib/core/output_projection/output_projection_tkg.py:1114
+          2.0 us  nkilib/core/output_projection/output_projection_tkg.py:1433
+          1.2 us  nkilib/core/output_projection/output_projection_tkg.py:1262
+   top DMA variables: W_lm 622.33 MB/4128p; output_1 0.46 MB/2p; embed 0.01 MB/1p; g_final 0.01 MB/1p; hidden 0.01 MB/1p; output_0 0.01 MB/1p
+ pcore 1: total 2709 us | bottleneck gpsimd | moved 622.5 MB in 4131 pkts (avg 150689 B) = 229.8 GB/s
+   memory : total 2709 -> dma_active 2670 -> ideal(moved) 1431 -> ideal(necessary/2) 1431 us
+   compute: total 2709 -> te_active 1574 -> ideal_flops 7.9 -> useful 7.9 us | perfect pipeline 2672 us
+   engines active (us): tensor 1574, vector 34, scalar 80, gpsimd 2672, sync 2, dma 2670
+   phase attn : wall  2684.2 us in   3 windows | dma active  2669.8 | issued  622.50 MB |  231.9 GB/s | te 1567.0 ve   31.8 act   77.5 pool 2669.9
+   phase glue : wall    12.3 us in   3 windows | dma active     0.0 | issued    0.00 MB |    0.0 GB/s | te    5.2 ve    0.6 act    0.6 pool    0.6
+   phase start: wall    12.4 us in   1 windows | dma active     0.0 | issued    0.00 MB |    0.0 GB/s | te    1.8 ve    1.8 act    1.6 pool    1.9
+   DMA idle >=0.5us: 31.9 us in 5 gaps; largest [np.float64(13.3), np.float64(12.6), np.float64(3.7), np.float64(1.6), np.float64(0.7)]
+         27.5 us  (no source)
+          3.7 us  nkilib/core/output_projection/output_projection_tkg.py:1433
+          0.7 us  nkilib/core/output_projection/output_projection_tkg.py:1262
+   top DMA variables: W_lm 622.33 MB/4128p; output_1 0.15 MB/1p; g_final 0.01 MB/1p; hidden 0.01 MB/1p
+
+=== ex_head_hwdge  (qwen3_decode_step:qwen3_head_parts, L=1, necessary 1244.7 MB per logical core)
+ pcore 0: total 2532 us | bottleneck dma | moved 622.8 MB in 4134 pkts (avg 150657 B) = 246.0 GB/s
+   memory : total 2532 -> dma_active 2492 -> ideal(moved) 1432 -> ideal(necessary/2) 1431 us
+   compute: total 2532 -> te_active 1532 -> ideal_flops 7.9 -> useful 7.9 us | perfect pipeline 2492 us
+   engines active (us): tensor 1532, vector 39, scalar 1746, gpsimd 5, sync 1578, dma 2492
+   phase attn : wall  1137.9 us in 2966 windows | dma active  1131.0 | issued  285.63 MB |  251.0 GB/s | te 1056.9 ve   26.6 act  674.2 pool    0.5
+   phase glue : wall  1380.0 us in 2967 windows | dma active  1361.2 | issued  337.19 MB |  244.3 GB/s | te  473.4 ve   10.3 act 1070.1 pool    2.8
+   phase start: wall    14.3 us in   1 windows | dma active     0.0 | issued    0.00 MB |    0.0 GB/s | te    1.6 ve    2.1 act    1.9 pool    2.0
+   DMA idle >=0.5us: 36.1 us in 16 gaps; largest [np.float64(15.9), np.float64(8.6), np.float64(2.0), np.float64(1.6), np.float64(1.5), np.float64(0.7), np.float64(0.6), np.float64(0.6), np.float64(0.6), np.float64(0.6)]
+         28.0 us  (no source)
+          5.2 us  /root/mega-trainium/megakernel/kernels/qwen3_decode_step.py:293
+          2.2 us  nkilib/core/output_projection/output_projection_tkg.py:1433
+          0.7 us  /root/mega-trainium/megakernel/kernels/qwen3_decode_step.py:290
+   top DMA variables: W_lm 622.33 MB/4128p; output_1 0.46 MB/2p; embed 0.01 MB/1p; g_final 0.01 MB/1p; hidden 0.01 MB/1p; output_0 0.01 MB/1p
+ pcore 1: total 2528 us | bottleneck dma | moved 622.5 MB in 4131 pkts (avg 150689 B) = 246.3 GB/s
+   memory : total 2528 -> dma_active 2346 -> ideal(moved) 1431 -> ideal(necessary/2) 1431 us
+   compute: total 2528 -> te_active 1455 -> ideal_flops 7.9 -> useful 7.9 us | perfect pipeline 2346 us
+   engines active (us): tensor 1455, vector 34, scalar 1495, gpsimd 3, sync 1378, dma 2346
+   phase attn : wall  1101.6 us in 2948 windows | dma active  1092.6 | issued  286.43 MB |  260.0 GB/s | te 1016.0 ve   27.5 act  581.2 pool    0.2
+   phase glue : wall  1411.3 us in 2948 windows | dma active  1253.9 | issued  336.07 MB |  238.1 GB/s | te  436.3 ve    4.9 act  912.4 pool    0.7
+   phase start: wall    14.6 us in   1 windows | dma active     0.0 | issued    0.00 MB |    0.0 GB/s | te    2.4 ve    2.0 act    1.8 pool    1.9
+   DMA idle >=0.5us: 178.7 us in 7 gaps; largest [np.float64(155.0), np.float64(15.4), np.float64(2.2), np.float64(2.0), np.float64(1.5), np.float64(1.3), np.float64(1.2)]
+        172.0 us  (no source)
+          6.7 us  nkilib/core/output_projection/output_projection_tkg.py:1433
+   top DMA variables: W_lm 622.33 MB/4128p; output_1 0.15 MB/1p; g_final 0.01 MB/1p; hidden 0.01 MB/1p
+
+=== ex_head_tiled  (qwen3_decode_step:qwen3_head_parts_tiled, L=1, necessary 1244.7 MB per logical core)
+ pcore 0: total 2198 us | bottleneck dma | moved 625.4 MB in 155 pkts (avg 4035108 B) = 284.6 GB/s
+   memory : total 2198 -> dma_active 2128 -> ideal(moved) 1438 -> ideal(necessary/2) 1431 us
+   compute: total 2198 -> te_active 537 -> ideal_flops 7.9 -> useful 7.9 us | perfect pipeline 2128 us
+   engines active (us): tensor 537, vector 103, scalar 46, gpsimd 5, sync 46, dma 2128
+   phase attn : wall     6.0 us in   7 windows | dma active     5.4 | issued    0.00 MB |    0.0 GB/s | te    0.6 ve    0.6 act    1.1 pool    0.2
+   phase glue : wall  2176.9 us in   8 windows | dma active  2122.8 | issued  625.44 MB |  287.3 GB/s | te  534.9 ve  100.4 act   43.1 pool    3.0
+   phase start: wall    14.8 us in   1 windows | dma active     0.0 | issued    0.00 MB |    0.0 GB/s | te    1.6 ve    2.0 act    1.9 pool    2.0
+   DMA idle >=0.5us: 69.5 us in 4 gaps; largest [np.float64(35.0), np.float64(16.4), np.float64(10.1), np.float64(8.0)]
+         59.4 us  (no source)
+         10.1 us  /root/mega-trainium/megakernel/kernels/qwen3_decode_step.py:368
+   top DMA variables: W_tiled 624.95 MB/149p; output_1 0.46 MB/2p; embed 0.01 MB/1p; g_final 0.01 MB/1p; hidden 0.01 MB/1p; output_0 0.01 MB/1p
+ pcore 1: total 2193 us | bottleneck dma | moved 625.1 MB in 152 pkts (avg 4112633 B) = 285.0 GB/s
+   memory : total 2193 -> dma_active 1910 -> ideal(moved) 1437 -> ideal(necessary/2) 1431 us
+   compute: total 2193 -> te_active 548 -> ideal_flops 7.9 -> useful 7.9 us | perfect pipeline 1910 us
+   engines active (us): tensor 548, vector 98, scalar 46, gpsimd 3, sync 45, dma 1910
+   phase attn : wall     1.8 us in   5 windows | dma active     1.5 | issued    4.19 MB | 2338.0 GB/s | te    0.6 ve    0.6 act    0.7 pool    0.2
+   phase glue : wall  2176.4 us in   5 windows | dma active  1909.1 | issued  620.93 MB |  285.3 GB/s | te  545.2 ve   95.9 act   43.2 pool    0.7
+   phase start: wall    15.0 us in   1 windows | dma active     0.0 | issued    0.00 MB |    0.0 GB/s | te    2.5 ve    1.8 act    1.8 pool    1.9
+   DMA idle >=0.5us: 282.3 us in 4 gaps; largest [np.float64(253.2), np.float64(15.9), np.float64(11.1), np.float64(2.1)]
+        269.1 us  (no source)
+         13.2 us  /root/mega-trainium/megakernel/kernels/qwen3_decode_step.py:368
+   top DMA variables: W_tiled 624.95 MB/149p; output_1 0.15 MB/1p; g_final 0.01 MB/1p; hidden 0.01 MB/1p

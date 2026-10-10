@@ -1,0 +1,80 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/399 [00:00<?, ?it/s]Loading weights:   0%|          | 1/399 [00:00<02:38,  2.50it/s]Loading weights:   4%|▍         | 15/399 [00:00<00:10, 38.21it/s]Loading weights:   6%|▌         | 23/399 [00:00<00:13, 27.55it/s]Loading weights:   9%|▊         | 34/399 [00:01<00:13, 27.50it/s]Loading weights:  11%|█         | 43/399 [00:01<00:09, 36.35it/s]Loading weights:  12%|█▏        | 49/399 [00:01<00:11, 30.02it/s]Loading weights:  14%|█▎        | 54/399 [00:01<00:13, 25.51it/s]Loading weights:  15%|█▍        | 58/399 [00:02<00:12, 27.58it/s]Loading weights:  16%|█▋        | 65/399 [00:02<00:11, 29.68it/s]Loading weights:  18%|█▊        | 71/399 [00:02<00:09, 34.76it/s]Loading weights:  19%|█▉        | 76/399 [00:02<00:11, 27.23it/s]Loading weights:  20%|██        | 81/399 [00:02<00:10, 31.00it/s]Loading weights:  23%|██▎       | 91/399 [00:02<00:06, 44.34it/s]Loading weights:  24%|██▍       | 97/399 [00:03<00:09, 33.24it/s]Loading weights:  26%|██▌       | 102/399 [00:03<00:11, 26.81it/s]Loading weights:  27%|██▋       | 106/399 [00:03<00:11, 24.98it/s]Loading weights:  29%|██▊       | 114/399 [00:04<00:11, 25.56it/s]Loading weights:  31%|███       | 122/399 [00:04<00:08, 33.63it/s]Loading weights:  32%|███▏      | 127/399 [00:04<00:10, 26.93it/s]Loading weights:  33%|███▎      | 133/399 [00:04<00:09, 27.95it/s]Loading weights:  34%|███▍      | 137/399 [00:04<00:08, 29.71it/s]Loading weights:  36%|███▌      | 144/399 [00:05<00:10, 23.97it/s]Loading weights:  38%|███▊      | 153/399 [00:05<00:07, 33.48it/s]Loading weights:  40%|███▉      | 158/399 [00:05<00:08, 26.93it/s]Loading weights:  41%|████      | 164/399 [00:05<00:07, 32.04it/s]Loading weights:  42%|████▏     | 169/399 [00:05<00:07, 29.95it/s]Loading weights:  44%|████▍     | 177/399 [00:06<00:06, 33.21it/s]Loading weights:  45%|████▌     | 181/399 [00:06<00:07, 28.95it/s]Loading weights:  47%|████▋     | 188/399 [00:06<00:08, 23.82it/s]Loading weights:  49%|████▉     | 197/399 [00:06<00:06, 29.10it/s]Loading weights:  50%|█████     | 201/399 [00:06<00:07, 26.69it/s]Loading weights:  51%|█████     | 204/399 [00:07<00:07, 27.05it/s]Loading weights:  52%|█████▏    | 208/399 [00:07<00:07, 25.00it/s]Loading weights:  53%|█████▎    | 213/399 [00:07<00:06, 29.42it/s]Loading weights:  54%|█████▍    | 217/399 [00:07<00:09, 19.62it/s]Loading weights:  56%|█████▌    | 224/399 [00:07<00:06, 27.34it/s]Loading weights:  58%|█████▊    | 232/399 [00:08<00:06, 27.08it/s]Loading weights:  60%|█████▉    | 238/399 [00:08<00:04, 32.32it/s]Loading weights:  61%|██████    | 244/399 [00:08<00:05, 27.37it/s]Loading weights:  64%|██████▎   | 254/399 [00:08<00:05, 26.33it/s]Loading weights:  66%|██████▋   | 265/399 [00:09<00:03, 37.29it/s]Loading weights:  68%|██████▊   | 271/399 [00:09<00:04, 31.15it/s]Loading weights:  69%|██████▉   | 277/399 [00:09<00:04, 27.39it/s]Loading weights:  70%|███████   | 281/399 [00:09<00:04, 29.16it/s]Loading weights:  72%|███████▏  | 287/399 [00:09<00:03, 29.41it/s]Loading weights:  73%|███████▎  | 291/399 [00:10<00:04, 26.66it/s]Loading weights:  74%|███████▍  | 296/399 [00:10<00:03, 26.21it/s]Loading weights:  75%|███████▌  | 301/399 [00:10<00:03, 25.84it/s]Loading weights:  77%|███████▋  | 309/399 [00:10<00:02, 35.27it/s]Loading weights:  79%|███████▊  | 314/399 [00:10<00:03, 27.33it/s]Loading weights:  81%|████████  | 323/399 [00:11<00:02, 28.27it/s]Loading weights:  83%|████████▎ | 331/399 [00:11<00:02, 27.73it/s]Loading weights:  84%|████████▍ | 336/399 [00:11<00:02, 30.75it/s]Loading weights:  86%|████████▌ | 342/399 [00:11<00:02, 26.84it/s]Loading weights:  87%|████████▋ | 346/399 [00:12<00:01, 28.78it/s]Loading weights:  88%|████████▊ | 350/399 [00:12<00:01, 26.08it/s]Loading weights:  89%|████████▉ | 357/399 [00:12<00:01, 28.90it/s]Loading weights:  91%|█████████ | 362/399 [00:12<00:01, 32.62it/s]Loading weights:  92%|█████████▏| 367/399 [00:12<00:00, 36.00it/s]Loading weights:  93%|█████████▎| 372/399 [00:12<00:00, 38.80it/s]Loading weights:  94%|█████████▍| 377/399 [00:13<00:00, 24.32it/s]Loading weights:  95%|█████████▌| 381/399 [00:13<00:00, 26.85it/s]Loading weights:  97%|█████████▋| 389/399 [00:13<00:00, 23.55it/s]Loading weights: 100%|██████████| 399/399 [00:13<00:00, 29.12it/s]
+loaded Qwen/Qwen3-8B in 17s: L=36 H=4096 I=12288 q=32 kv=8 d=128
+HF prefill(100) + decode(1) on CPU fp32: 11s; HF next token: ' Kernel'
+kernel inputs: 13.93 GB (host->device copied once for this standalone call)
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling tkernel compile+H2D+run for L=36: 659s
+[L=36] kernel vs HF fp32 hidden after layer 35: rel-L2 8.998e-03, max|diff|/max|hf| 5.626e-03
+[full model] HF next token ' Kernel' vs kernel ' Kernel'; argmax match True; top-5 overlap 5/5; logits rel-L2 9.012e-03
+ransposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.
+WARNING: B*S_tkg=1 <= 128 and transposed_in=False. Consider enabling transposed_in=True for zero-conversion inter-layer data flow.

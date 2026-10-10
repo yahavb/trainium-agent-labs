@@ -1,0 +1,6 @@
+[PASS] layout  reference matches HF  (17s)
+[PASS] tiny    max error 1.02e-02 within 2.2e-02 (3x the 7.3e-03 that bf16 rounding alone gives)  (17s)
+[PASS] head    embedding exact, logits rel-L2 2.4e-03, argmax consistent  (48s)
+[PASS] real    teacher-forced argmax agrees on 31/32 steps; every disagreement is a near-tie inside bf16 noise (step 6: HF margin 0.028 < 3 sigma 0.0712)  (142s)
+[PASS] speed   27.74 ms/token vs 47.60 per-op (1.72x), 75% of the HBM floor  (82s)
+ACCEPTED
