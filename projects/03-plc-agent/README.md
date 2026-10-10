@@ -1,8 +1,10 @@
 # PLC Agent — Two Agents and a Compiler Between Them
-
 **Hack the Chip — NYU × Annapurna Labs, October 2026**
-**Hardware:** AWS Trainium seat-39, Qwen3-8B on-chip via vLLM-Neuron
+**Team:** 39 - MoMA-LAB-OT-Security
+**Contact:** me2890@nyu.edu
+**Hardware:** AWS Trainium seat-195, Qwen3-8B on-chip via vLLM-Neuron
 **Project type:** Propose-your-own (approved before 11:30)
+
 
 ---
 
