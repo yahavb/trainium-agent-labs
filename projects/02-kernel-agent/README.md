@@ -632,3 +632,8 @@ specify the constraints in the prompt and it produces nothing; omit them and it 
 confident and illegal. What worked was generating naively, letting the **verifier** find the violation,
 and sending back one surgical instruction naming only the change. **Constraints belong in your
 verifier, not in your generation prompt.** Project 1 hit the same wall three more times.
+
+## Final Submission
+
+For the final hackathon run commands, artifacts to hand in, verifier tolerance notes, eval-set notes,
+failure taxonomy, and token instrumentation checklist, see [`SUBMISSION.md`](SUBMISSION.md).
