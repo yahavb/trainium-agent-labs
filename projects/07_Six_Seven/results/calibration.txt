@@ -1,0 +1,16 @@
+asking for confidence on 80 distinct designs ...
+
+80 designs; confidence parsed for 80
+  checker says CORRECT:   13   mean confidence  91.5
+  checker says WRONG:     67   mean confidence  60.1
+  confidently wrong (>= 80 and wrong): 11 of 67 wrong designs (16%)
+  Brier score 0.334  (0 = perfect; 0.25 = always saying 50)
+
+  confidence   designs   actually correct
+    0-19           1      0 (0%)
+   20-39           8      0 (0%)
+   40-59           6      1 (17%)
+   60-79          42      0 (0%)
+   80-100         23     12 (52%)
+
+wrote results/calibration.csv

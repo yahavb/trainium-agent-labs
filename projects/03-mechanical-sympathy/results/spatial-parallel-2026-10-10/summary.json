@@ -1,0 +1,17 @@
+{
+  "baseline_rollout_seconds": 42.83812707399193,
+  "spatial_parallel_rollout_seconds": 35.42880474199774,
+  "latency_speedup": 1.2091327208453941,
+  "wall_time_reduction_percent": 17.29609307894455,
+  "model_calls": 299,
+  "forecast_records": 598,
+  "logical_cores": 4,
+  "parallel_blocks": [
+    "unet.layers.0",
+    "unet.layers.16"
+  ],
+  "baseline_forward_seconds": 42.643830406000006,
+  "parallel_forward_seconds": 35.223663324,
+  "warmup_including_compilation_seconds": 475.69999025799916,
+  "accuracy_evaluated": false
+}

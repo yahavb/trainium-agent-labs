@@ -1,0 +1,139 @@
+{
+  "description": "Samudra2 1 degree fp32 forward pass on one Trainium2 NeuronCore, seat-211, 2026-10-10. bench.py: real onedeg checkpoint, random inputs (fixed seed), batch 1, median of 20 passes after 3 warm-up passes, checked against the untiled fp32 CPU reference.",
+  "full_pass": {
+    "plain": {
+      "tag": "neuron_1deg_fp32",
+      "device": "neuron",
+      "grid": "1deg",
+      "batch": 1,
+      "weights": "ema_ckpt.pt",
+      "segments": false,
+      "input_cut": null,
+      "dtype": "fp32",
+      "compile_s": 310.3,
+      "iters": 20,
+      "median_ms": 230.34037700017507,
+      "min_ms": 229.978173998461,
+      "max_ms": 230.96959900067304,
+      "mean_ms": 230.32518029995117,
+      "rel_rms_err": 1.2192388053822968e-06,
+      "max_abs_err": 1.9311904907226562e-05,
+      "land_is_zero": true,
+      "pass": true,
+      "time": "18:56:29"
+    },
+    "segments": {
+      "tag": "neuron_1deg_fp32_seg1",
+      "device": "neuron",
+      "grid": "1deg",
+      "batch": 1,
+      "weights": "ema_ckpt.pt",
+      "segments": true,
+      "input_cut": null,
+      "dtype": "fp32",
+      "compile_s": 207.6,
+      "iters": 20,
+      "median_ms": 138.17326800199226,
+      "min_ms": 138.0132810008945,
+      "max_ms": 138.66062500164844,
+      "mean_ms": 138.22114640024665,
+      "rel_rms_err": 1.2153541572279517e-06,
+      "max_abs_err": 2.09808349609375e-05,
+      "land_is_zero": true,
+      "pass": true,
+      "time": "20:06:20"
+    },
+    "segments_input_cut": {
+      "tag": "neuron_1deg_fp32_seg1_concatcut",
+      "device": "neuron",
+      "grid": "1deg",
+      "batch": 1,
+      "weights": "ema_ckpt.pt",
+      "segments": true,
+      "input_cut": null,
+      "dtype": "fp32",
+      "compile_s": 34.8,
+      "iters": 20,
+      "median_ms": 107.30484799933038,
+      "min_ms": 106.79977600011625,
+      "max_ms": 108.12157399777789,
+      "mean_ms": 107.31784879935731,
+      "rel_rms_err": 1.215071408567129e-06,
+      "max_abs_err": 2.2470951080322266e-05,
+      "land_is_zero": true,
+      "pass": true,
+      "time": "21:30:50"
+    },
+    "plain_input_cut": {
+      "tag": "neuron_1deg_fp32_inputcut",
+      "device": "neuron",
+      "grid": "1deg",
+      "batch": 1,
+      "weights": "ema_ckpt.pt",
+      "segments": false,
+      "input_cut": true,
+      "dtype": "fp32",
+      "compile_s": 237.5,
+      "iters": 20,
+      "median_ms": 204.34083299915073,
+      "min_ms": 203.73390700115124,
+      "max_ms": 205.59210699866526,
+      "mean_ms": 204.32837945008941,
+      "rel_rms_err": 1.2180154872661945e-06,
+      "max_abs_err": 1.811981201171875e-05,
+      "land_is_zero": true,
+      "pass": true,
+      "time": "21:32:16"
+    }
+  },
+  "block0_probe": {
+    "description": "probe_block0.py: UNet layer 0 only (162->280 channels, 180x360), median of 10 passes, core 3, rel_err vs the original block on the CPU.",
+    "concat_inside_program_ms": 47.93,
+    "input_already_concatenated_ms": 15.77,
+    "input_zero_padded_256_ms": 15.51,
+    "input_zero_padded_192_ms": 15.13,
+    "rel_err": {
+      "concat_inside_program": 3e-07,
+      "input_already_concatenated": 3.1e-07,
+      "input_zero_padded_256": 3.1e-07,
+      "input_zero_padded_192": 3.1e-07
+    }
+  },
+  "layer0_instructions": {
+    "description": "neuron-explorer json export (--ignore-dma-trace) of the layer 0 program: before = the --segments 1 layer 0 program (concat in the same graph); after = probe variant B.",
+    "before": {
+      "device_ms": 47.45,
+      "matmul_count": 202621,
+      "ldweights_count": 202621,
+      "matmul_ms_total": 82.84,
+      "ldweights_ms_total": 49.76,
+      "common_matmul_shape": "77*128, 77 moving columns",
+      "common_weight_blocks": [
+        "77*128",
+        "81*12",
+        "128*128"
+      ]
+    },
+    "after": {
+      "device_ms": 15.02,
+      "matmul_count": 72957,
+      "ldweights_count": 72959,
+      "matmul_ms_total": 39.44,
+      "ldweights_ms_total": 13.82,
+      "common_matmul_shape": "128*128, 128 moving columns",
+      "common_weight_blocks": [
+        "128*128",
+        "34*128"
+      ]
+    }
+  },
+  "segmented_layer_ms_before": {
+    "00 block 162->280 (180x360)": 47.44,
+    "16 block 280->280 (180x360)": 38.45,
+    "14 block 380->280 (90x180)": 14.43,
+    "02 block 280->380 (90x180)": 13.54,
+    "12 block 480->380 (45x90)": 7.25,
+    "17 output conv + mask": 5.5,
+    "other 12 programs": 7.54
+  }
+}

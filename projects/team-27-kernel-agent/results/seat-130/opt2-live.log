@@ -1,0 +1,60 @@
+L1 run0: start  time 1.00x min  reads 1.00x  flops 1.00x  intensity 0.38 FLOP/B  ops 18
+   nothing left to optimise
+   final: time 1.00x -> 1.00x of the roofline minimum (reads 1.00x -> 1.00x, flops 1.00x -> 1.00x, ops 18 -> 18)
+L2 run0: start  time 1.00x min  reads 1.00x  flops 1.00x  intensity 0.25 FLOP/B  ops 2068
+   nothing left to optimise
+   final: time 1.00x -> 1.00x of the roofline minimum (reads 1.00x -> 1.00x, flops 1.00x -> 1.00x, ops 2068 -> 2068)
+L3 run0: start  time 1.02x min  reads 1.02x  flops 1.01x  intensity 0.25 FLOP/B  ops 135466
+   #1 target=per-element -> violation
+   every direction tried
+   final: time 1.02x -> 1.02x of the roofline minimum (reads 1.02x -> 1.02x, flops 1.01x -> 1.01x, ops 135466 -> 135466)
+L1 run1: start  time 1.00x min  reads 1.00x  flops 1.00x  intensity 0.38 FLOP/B  ops 18
+   nothing left to optimise
+   final: time 1.00x -> 1.00x of the roofline minimum (reads 1.00x -> 1.00x, flops 1.00x -> 1.00x, ops 18 -> 18)
+L2 run1: start  time 1.00x min  reads 1.00x  flops 1.00x  intensity 0.25 FLOP/B  ops 135067
+   #1 target=per-element -> accepted  time 1.00x reads 1.00x flops 1.00x ops 2068
+   nothing left to optimise
+   final: time 1.00x -> 1.00x of the roofline minimum (reads 1.00x -> 1.00x, flops 1.00x -> 1.00x, ops 135067 -> 2068)
+L3 run1: start  time 1.00x min  reads 1.00x  flops 1.00x  intensity 0.25 FLOP/B  ops 135061
+   #1 target=per-element -> wrong
+   every direction tried
+   final: time 1.00x -> 1.00x of the roofline minimum (reads 1.00x -> 1.00x, flops 1.00x -> 1.00x, ops 135061 -> 135061)
+L1 run2: start  time 1.00x min  reads 1.00x  flops 1.00x  intensity 0.38 FLOP/B  ops 18
+   nothing left to optimise
+   final: time 1.00x -> 1.00x of the roofline minimum (reads 1.00x -> 1.00x, flops 1.00x -> 1.00x, ops 18 -> 18)
+L2 run2: start  time 1.00x min  reads 1.00x  flops 1.00x  intensity 0.25 FLOP/B  ops 135454
+   #1 target=per-element -> accepted  time 1.00x reads 1.00x flops 1.00x ops 2068
+   nothing left to optimise
+   final: time 1.00x -> 1.00x of the roofline minimum (reads 1.00x -> 1.00x, flops 1.00x -> 1.00x, ops 135454 -> 2068)
+L3 run2: start  time 1.00x min  reads 1.00x  flops 1.00x  intensity 0.25 FLOP/B  ops 135061
+   #1 target=per-element -> accepted  time 1.00x reads 1.00x flops 1.00x ops 2068
+   nothing left to optimise
+   final: time 1.00x -> 1.00x of the roofline minimum (reads 1.00x -> 1.00x, flops 1.00x -> 1.00x, ops 135061 -> 2068)
+L1 run3: start  time 1.00x min  reads 1.00x  flops 1.00x  intensity 0.38 FLOP/B  ops 18
+   nothing left to optimise
+   final: time 1.00x -> 1.00x of the roofline minimum (reads 1.00x -> 1.00x, flops 1.00x -> 1.00x, ops 18 -> 18)
+L3 run3: start  time 1.00x min  reads 1.00x  flops 2.00x  intensity 0.50 FLOP/B  ops 270515
+   #1 target=per-element -> violation
+   #2 target=flops -> violation
+   every direction tried
+   final: time 1.00x -> 1.00x of the roofline minimum (reads 1.00x -> 1.00x, flops 2.00x -> 2.00x, ops 270515 -> 270515)
+L4 run3: start  time 1.99x min  reads 2.98x  flops 0.75x  intensity 0.19 FLOP/B  ops 405186
+   #1 target=per-element -> accepted  time 1.50x reads 1.99x flops 1.25x ops 5158
+   #2 target=flops -> violation
+   every direction tried
+   final: time 1.99x -> 1.50x of the roofline minimum (reads 2.98x -> 1.99x, flops 0.75x -> 1.25x, ops 405186 -> 5158)
+L1 run4: start  time 1.00x min  reads 1.00x  flops 1.00x  intensity 0.38 FLOP/B  ops 18
+   nothing left to optimise
+   final: time 1.00x -> 1.00x of the roofline minimum (reads 1.00x -> 1.00x, flops 1.00x -> 1.00x, ops 18 -> 18)
+L2 run4: start  time 1.00x min  reads 1.00x  flops 1.00x  intensity 0.25 FLOP/B  ops 2068
+   nothing left to optimise
+   final: time 1.00x -> 1.00x of the roofline minimum (reads 1.00x -> 1.00x, flops 1.00x -> 1.00x, ops 2068 -> 2068)
+L3 run4: start  time 1.01x min  reads 1.00x  flops 1.00x  intensity 0.25 FLOP/B  ops 135454
+   #1 target=per-element -> violation
+   every direction tried
+   final: time 1.01x -> 1.01x of the roofline minimum (reads 1.00x -> 1.00x, flops 1.00x -> 1.00x, ops 135454 -> 135454)
+L5 l5_softmax: start  time 2.00x min  reads 3.00x  flops 1.40x  intensity 0.44 FLOP/B  ops 14434
+   #1 target=reads -> accepted  time 1.50x reads 2.00x flops 2.00x ops 20620
+   nothing left to optimise
+   final: time 2.00x -> 1.50x of the roofline minimum (reads 3.00x -> 2.00x, flops 1.40x -> 2.00x, ops 14434 -> 20620)
+log: runs/opt2-live.jsonl

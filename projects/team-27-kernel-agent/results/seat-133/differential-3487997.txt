@@ -1,0 +1,38 @@
+OURS-FAIL/KB-PASS | kernels/broken/l1_whole_array.py | dev 40/40 hold 30/30 viol=2 | kb 32/32 rules=0 | 
+OURS-FAIL/KB-PASS | kernels/broken/l3_sentinel_init.py | dev 20/24 hold 15/18 viol=0 | kb 32/32 rules=0 | 
+OURS-FAIL/KB-PASS | kernels/broken/l4_float32_squares.py | dev 21/24 hold 17/18 viol=0 | kb 32/32 rules=0 | 
+OURS-PASS/KB-FAIL | kernels/hand/l7_matmul.py | dev 12/12 hold 10/10 viol=0 | kb 5/10 rules=0 | NUMERICAL MISMATCH: worst relative error 0.000533 at index (102, 14) (tolerance 0.0001).
+OURS-PASS/KB-FAIL | kernels/hand/l8_layernorm_f32_two_pass.py | dev 24/24 hold 18/18 viol=0 | kb 24/32 rules=0 | NUMERICAL MISMATCH: worst relative error 0.000385 at index (112, 327) (tolerance 0.0001).
+AGREE | kernels/broken/l10_drop_tail.py | dev 0/10 hold 0/8 viol=0 | kb 0/4 rules=0 | NUMERICAL MISMATCH: worst relative error 1 at index (0, 0) (tolerance 0.0001).
+AGREE | kernels/broken/l10_ignore_dilation.py | dev 4/10 hold 6/8 viol=0 | kb 3/4 rules=0 | NUMERICAL MISMATCH: worst relative error 117 at index (2, 10) (tolerance 0.0001).
+AGREE | kernels/broken/l10_lout_off_by_one.py | dev 4/10 hold 4/8 viol=2 | kb 1/4 rules=0 | RAISED:     acc += w[o, c, kk] * x[c, start:start + (t1 - t0 - 1) * stride + 1:stride] | ValueError: operands 
+AGREE | kernels/broken/l1_mask.py | dev 40/40 hold 30/30 viol=2 | kb 32/32 rules=1 | 
+AGREE | kernels/broken/l1_off_by_one_rows.py | dev 10/40 hold 7/30 viol=0 | kb 10/32 rules=0 | NUMERICAL MISMATCH: worst relative error 1 at index (7, 1) (tolerance 0.0001).
+AGREE | kernels/broken/l1_skip_partial_col.py | dev 10/40 hold 5/30 viol=0 | kb 11/32 rules=0 | NUMERICAL MISMATCH: worst relative error 1 at index (0, 0) (tolerance 0.0001).
+AGREE | kernels/broken/l2_np_sum.py | dev 28/28 hold 21/21 viol=2 | kb 32/32 rules=2 | 
+AGREE | kernels/broken/l2_tile_width_assumed.py | dev 5/28 hold 3/21 viol=0 | kb 11/32 rules=0 | NUMERICAL MISMATCH: worst relative error 1.48 at index (6,) (tolerance 0.0001).
+AGREE | kernels/broken/l3_overwrite_per_tile.py | dev 15/24 hold 12/18 viol=0 | kb 29/32 rules=0 | NUMERICAL MISMATCH: worst relative error 2.25 at index (50,) (tolerance 0.0001).
+AGREE | kernels/broken/l3_zero_init.py | dev 11/24 hold 8/18 viol=0 | kb 30/32 rules=0 | NUMERICAL MISMATCH: worst relative error 1 at index (0,) (tolerance 0.0001).
+AGREE | kernels/broken/l4_live_two_bugs.py | dev 15/24 hold 15/18 viol=0 | kb 29/32 rules=0 | NUMERICAL MISMATCH: worst relative error 116 at index (31, 512) (tolerance 0.0001).
+AGREE | kernels/broken/l4_per_tile_rms.py | dev 15/24 hold 15/18 viol=0 | kb 29/32 rules=0 | NUMERICAL MISMATCH: worst relative error 116 at index (31, 512) (tolerance 0.0001).
+AGREE | kernels/broken/l5_no_max_subtraction.py | dev 12/24 hold 9/18 viol=0 | kb 24/32 rules=0 | NON-FINITE OUTPUT: 128 NaN and 0 Inf values, first at index (0, 0). Overflow in exp, or a division by a zero d
+AGREE | kernels/broken/l5_per_tile_softmax.py | dev 8/24 hold 10/18 viol=0 | kb 28/32 rules=0 | NUMERICAL MISMATCH: worst relative error 6.74e+03 at index (24, 512) (tolerance 0.0001).
+AGREE | kernels/broken/l6_skip_partial.py | dev 1/12 hold 0/8 viol=0 | kb 11/32 rules=0 | NUMERICAL MISMATCH: worst relative error 1 at index (0, 0) (tolerance 0.0001).
+AGREE | kernels/broken/l6_tile_origin.py | dev 5/12 hold 3/8 viol=0 | kb 26/32 rules=0 | NUMERICAL MISMATCH: worst relative error 233 at index (188, 0) (tolerance 0.0001).
+AGREE | kernels/broken/l7_drop_k_tail.py | dev 2/12 hold 0/10 viol=0 | kb 1/10 rules=0 | NUMERICAL MISMATCH: worst relative error 1 at index (0, 0) (tolerance 0.0001).
+AGREE | kernels/broken/l7_matmul_operator.py | dev 12/12 hold 10/10 viol=4 | kb 5/10 rules=0 | NUMERICAL MISMATCH: worst relative error 0.000605 at index (19, 28) (tolerance 0.0001).
+AGREE | kernels/broken/l8_naive_variance.py | dev 18/24 hold 15/18 viol=0 | kb 24/32 rules=0 | NUMERICAL MISMATCH: worst relative error 0.000385 at index (112, 327) (tolerance 0.0001).
+AGREE | kernels/broken/l9_band_edge.py | dev 3/9 hold 1/7 viol=0 | kb 2/5 rules=0 | NUMERICAL MISMATCH: worst relative error 34.6 at index (11, 5) (tolerance 0.0001).
+AGREE | kernels/broken/l9_causal.py | dev 2/9 hold 0/7 viol=0 | kb 1/5 rules=0 | NUMERICAL MISMATCH: worst relative error 35.4 at index (7, 0) (tolerance 0.0001).
+AGREE | kernels/broken/l9_no_max_subtraction.py | dev 7/9 hold 5/7 viol=0 | kb 4/5 rules=0 | NUMERICAL MISMATCH: worst relative error 0.00126 at index (97, 18) (tolerance 0.0001).
+AGREE | kernels/hand/l10_conv1d.py | dev 10/10 hold 8/8 viol=0 | kb 4/4 rules=0 | 
+AGREE | kernels/hand/l1_relu_affine.py | dev 40/40 hold 30/30 viol=0 | kb 32/32 rules=0 | 
+AGREE | kernels/hand/l2_row_sum.py | dev 28/28 hold 21/21 viol=0 | kb 32/32 rules=0 | 
+AGREE | kernels/hand/l2_row_sum_f32acc.py | dev 28/28 hold 21/21 viol=0 | kb 32/32 rules=0 | 
+AGREE | kernels/hand/l3_row_max.py | dev 24/24 hold 18/18 viol=0 | kb 32/32 rules=0 | 
+AGREE | kernels/hand/l4_rmsnorm.py | dev 24/24 hold 18/18 viol=0 | kb 32/32 rules=0 | 
+AGREE | kernels/hand/l5_softmax.py | dev 24/24 hold 18/18 viol=0 | kb 32/32 rules=0 | 
+AGREE | kernels/hand/l6_transpose.py | dev 12/12 hold 8/8 viol=0 | kb 32/32 rules=0 | 
+AGREE | kernels/hand/l8_layernorm.py | dev 24/24 hold 18/18 viol=0 | kb 32/32 rules=0 | 
+AGREE | kernels/hand/l9_band_attention.py | dev 9/9 hold 7/7 viol=0 | kb 5/5 rules=0 | 
+AGREE | kernels/redteam/l3_unreached_alias_max.py | dev 24/24 hold 18/18 viol=0 | kb 32/32 rules=0 | 

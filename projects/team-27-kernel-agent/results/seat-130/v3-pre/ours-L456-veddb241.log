@@ -1,0 +1,100 @@
+
+=== run 1/5  level 4: rmsnorm  [ours, veddb241adf] ===
+L4 #1 in=155 [task=143] out=198 83.9s cached  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L4 #2 in=456 [task=125 code=197 feed=121] out=253 18.2s cached  FAIL rule:layout
+      -> Remove `np.newaxis`
+L4 #3 in=487 [task=125 code=252 feed=97] out=275 19.8s cached  FAIL numeric:per-tile-stat
+      -> Each column tile is normalised with a statistic (max, sum or mean of squares) of that tile alone
+L4 #4 in=611 [task=125 code=274 feed=199] out=572 41.0s cached  FAIL numeric:tag:huge-magnitude
+      -> Values around 1e18 overflow float32 when squared (float32 max is 3.4e38)
+L4 #5 in=673 [task=125 code=325 feed=210] out=578 41.4s  FAIL numeric:tag:huge-magnitude
+      -> Values around 1e18 overflow float32 when squared (float32 max is 3.4e38)
+L4 #6 in=763 [task=125 code=347 feed=210 ledg=68] out=586 42.0s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (1, 700), larger than one 128x512 tile)
+L4 #7 in=513 [task=125 code=158 feed=217] out=270 19.5s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L4 #8 in=596 [task=125 code=269 feed=136 ledg=53] out=425 30.5s  FAIL crash:ValueError
+      -> Two operands of one operation have different shapes ((7,13) (7,))
+L4 #9 in=620 [task=125 code=312 feed=170] out=639 45.8s  FAIL rule:layout
+      -> Remove `.reshape()`
+L4 #10 in=620 [task=125 code=339 feed=82 ledg=61] out=563 40.4s  FAIL numeric:per-tile-stat
+      -> Each column tile is normalised with a statistic (max, sum or mean of squares) of that tile alone
+L4 #11 in=716 [task=125 code=324 feed=226 ledg=28] out=526 37.7s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (700,), larger than one 128x512 tile)
+L4 #12 in=636 [task=125 code=294 feed=136 ledg=68] out=496 35.6s  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+   => failed (confidence 0.00) after 12 attempt(s), 6846 in / 5381 out tokens
+
+=== run 1/5  level 5: softmax  [ours, veddb241adf] ===
+L5 #1 in=125 [task=113] out=183 14.2s cached  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L5 #2 in=406 [task=95 code=182 feed=116] out=243 17.5s  FAIL crash:IndexError
+      -> Index 512 on axis 1 is past the end of an array of size 188
+L5 #3 in=532 [task=95 code=242 feed=182] out=449 32.2s  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L5 #4 in=453 [task=95 code=244 feed=101] out=301 21.7s  FAIL rule:broadcast
+      -> Elementwise operands must have identical shapes; scalars are fine (np.subtract on operands of shapes (1, 1) and (1, 512))
+L5 #5 in=531 [task=95 code=300 feed=123] out=554 39.7s  FAIL numeric:constant
+      -> Wrong outputs are all exactly 1, i.e
+L5 #6 in=575 [task=95 code=297 feed=170] out=802 57.4s  FAIL numeric:constant
+      -> Wrong outputs are all exactly 1, i.e
+L5 #7 in=663 [task=95 code=330 feed=170 ledg=55] out=678 48.6s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L5 #8 in=519 [task=95 code=267 feed=116 ledg=28] out=499 35.8s  FAIL crash:ValueError
+      -> Two operands of one operation have different shapes ((7,13) (7,))
+L5 #9 in=573 [task=95 code=313 feed=152] out=583 41.8s  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L5 #10 in=613 [task=95 code=346 feed=101 ledg=58] out=543 38.9s  FAIL crash:ValueError
+      -> Two operands of one operation have different shapes ((7,13) (7,))
+L5 #11 in=714 [task=95 code=387 feed=146 ledg=73] out=653 46.8s  FAIL rule:layout
+      -> Remove `.reshape()`
+L5 #12 in=592 [task=95 code=397 feed=87] out=521 37.4s  FAIL rule:broadcast
+      -> Elementwise operands must have identical shapes; scalars are fine (np.subtract on operands of shapes (1, 1) and (1, 512))
+   => failed (confidence 0.00) after 12 attempt(s), 6296 in / 6009 out tokens
+
+=== run 1/5  level 6: transpose  [ours, veddb241adf] ===
+L6 #1 in=112 [task=100] out=136 10.8s cached  FAIL rule:layout
+      -> Remove `.T`
+L6 #2 in=300 [task=82 code=135 feed=70] out=150 10.9s  FAIL crash:ValueError
+      -> An assignment puts a value of shape (0,) into a slot of shape (188,)
+L6 #3 in=391 [task=82 code=149 feed=147] out=624 44.8s  FAIL crash:ValueError (repeat code)
+      -> An assignment puts a value of shape (0,) into a slot of shape (188,)
+L6 #4 in=448 [task=97 code=149 feed=147 ledg=42] out=389 28.0s  FAIL crash:ValueError
+      -> An assignment puts a value of shape (0,) into a slot of shape (188,)
+   STUCK: 'crash:ValueError' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 4 attempt(s), 1251 in / 1299 out tokens
+
+=== run 2/5  level 4: rmsnorm  [ours, veddb241adf] ===
+L4 #1 in=147 [task=135] out=222 16.0s cached  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L4 #2 in=480 [task=125 code=221 feed=121] out=287 20.7s  FAIL rule:layout
+      -> Remove `np.newaxis`
+L4 #3 in=514 [task=125 code=286 feed=90] out=294 21.2s  FAIL numeric:per-tile-stat
+      -> Each column tile is normalised with a statistic (max, sum or mean of squares) of that tile alone
+L4 #4 in=630 [task=125 code=293 feed=199] out=590 42.3s  FAIL numeric:tag:huge-magnitude
+      -> Values around 1e18 overflow float32 when squared (float32 max is 3.4e38)
+L4 #5 in=724 [task=125 code=376 feed=210] out=665 47.6s  PASS dev; holdout 18/18
+   => verified (confidence 0.95) after 5 attempt(s), 2495 in / 2058 out tokens
+
+=== run 2/5  level 5: softmax  [ours, veddb241adf] ===
+L5 #1 in=117 [task=105] out=298 23.5s cached  FAIL rule:escape
+      -> Remove `np.asarray`; work directly on slices of the input arrays
+L5 #2 in=444 [task=86 code=297 feed=48] out=660 51.3s cached  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L5 #3 in=498 [task=95 code=275 feed=115] out=483 34.6s  FAIL crash:IndexError
+      -> Index 512 on axis 1 is past the end of an array of size 188
+L5 #4 in=618 [task=95 code=334 feed=176] out=584 41.9s  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L5 #5 in=550 [task=95 code=341 feed=101] out=574 41.1s  FAIL rule:layout
+      -> Remove `.reshape()`
+L5 #6 in=617 [task=95 code=407 feed=102] out=621 44.5s  FAIL crash:ValueError
+      -> Two operands of one operation have different shapes ((7,13) (7,))
+L5 #7 in=683 [task=95 code=429 feed=146] out=684 49.0s  FAIL rule:broadcast
+      -> Elementwise operands must have identical shapes; scalars are fine (np.subtract on operands of shapes (1, 1) and (1, 512))
+L5 #8 in=608 [task=95 code=399 feed=101] out=649 46.5s  FAIL rule:layout
+      -> Remove `np.broadcast_to`
+L5 #9 in=690 [task=95 code=434 feed=76 ledg=72] out=531 38.1s  FAIL rule:layout
+      -> Remove `np.newaxis`
+L5 #10 in=665 [task=95 code=392 feed=86 ledg=79] out=656 47.0s  FAIL numeric:per-tile-stat
+      -> Each column tile is normalised with a statistic (max, sum or mean of squares) of that tile alone
