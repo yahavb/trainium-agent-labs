@@ -17,6 +17,7 @@ everything else fixed and change only the feedback:
 | **A** | `FAIL: the design is not correct.` |
 | **B** | `FAIL: 263 of 272 tests give a wrong output.` |
 | **C** | where it first goes wrong, like a waveform: `cycle 6: en=0 -> count = 6, expected 5` |
+| **D** | C plus the *cause*, in spec terms: `your phases last RED 4, GREEN 5, YELLOW 3; the spec says 3, 4, 2 — every phase is one cycle too long` |
 
 ## What we ran, on what
 
@@ -39,6 +40,9 @@ everything else fixed and change only the feedback:
 | 5 MAC cell | 3/3 · 1.00, round 2 | 3/3 · 1.00, round 2 | 3/3 · 1.00, round 2 |
 | 6 FIFO | 0/3 · 0.34 (0.32–0.36) | 0/3 · 0.35 (0.33–0.36) | 0/3 · 0.33 (0.32–0.33) |
 
+**Feedback D** (added after the main runs, on the two levels nobody solved; 6 rounds): traffic light **0/6 ·
+0.66** (0.61–0.72), FIFO **0/6 · 0.36**.
+
 Each cell: solved / runs, mean best score (min–max). Graph: `results/graph.png`. Full table:
 `results/table.md`. Every attempt, with the design and the feedback sent: `results/*_attempts.jsonl`.
 
@@ -52,10 +56,13 @@ Each cell: solved / runs, mean best score (min–max). Graph: `results/graph.png
    with A, B *and* C. **Doubling the rounds to 12 did not change it:** 0/15 solved, and C's small edge
    disappeared (A 0.69, B 0.64, C 0.65, n = 5 each). For this model, *where* the error is did not beat
    *that* there is one — the loop is limited by the model's idea of the design, not by the feedback.
-3. **The failures are systematic, not random** (`results/TAXONOMY.md`, 1,548 failed attempts, 232 distinct
-   designs). Level 4: in 69% the first error is a light held too long (cycle counting). Level 5: every round-1
+   **Even naming the cause (D) did not help:** told exactly "every phase is one cycle too long" or "`empty`
+   is one cycle late", the model solved 0/6 on each level and kept the same score (0.66, 0.36). In one FIFO
+   run it got the same diagnosis four rounds running and did not change the flagged behaviour.
+3. **The failures are systematic, not random** (`results/TAXONOMY.md`, 1,836 failed attempts, 295 distinct
+   designs). Level 4: in 66% the first error is a light held too long (cycle counting). Level 5: every round-1
    failure is the same — the model widens port `b` to 9 bits, writing in a comment that it is "to handle
-   signed multiplication". Level 6: 99% put the wrong byte on `dout` while writing. One wrong idea, repeated —
+   signed multiplication". Level 6: 91% put the wrong byte on `dout` while writing. One wrong idea, repeated —
    which is why the model's own retries rarely escape it.
 4. **A greedy-ish model goes in circles.** In the pilot, the model sent back the *identical* design for 6
    rounds while being told exactly which cycle was wrong. Telling it that it repeated itself, and giving
@@ -73,7 +80,7 @@ Each cell: solved / runs, mean best score (min–max). Graph: `results/graph.png
 
 We re-simulated the most common failing designs (`results/TAXONOMY.md`):
 
-- **Traffic light — cycle counting.** We classified all 1,296 failed attempts by their light timing. The
+- **Traffic light — cycle counting.** We classified all 1,296 failed attempts of the A/B/C runs by their light timing. The
   single most common design (96 attempts) counts from 0 and compares the counter to the full length, so
   **every phase is one cycle too long** (RED 4, GREEN 5, YELLOW 3 instead of 3, 4, 2) — that exact pattern is
   19% of failures. 8% miss only the first RED, not counting the reset cycle as RED's first (a rule the spec
@@ -85,8 +92,8 @@ We re-simulated the most common failing designs (`results/TAXONOMY.md`):
 - **Why feedback C did not fix them:** C shows the *symptom* — `cycle 3: light = RED, expected GREEN`. The
   model never connected it to the *cause* (its counter compares to 3 instead of 2), and on the FIFO three
   independent bugs meet one symptom per round. The organisers' lesson — feedback must *name the change* —
-  holds here: *where* is not enough. The next experiment is a feedback level D that states the cause
-  ("every phase lasts one cycle too long").
+  holds here: *where* is not enough — and we then tested *why* (feedback D, above): the model still did not
+  fix it. For this 8B model the limit is turning a correct diagnosis into a correct edit.
 
 ## Honesty notes
 

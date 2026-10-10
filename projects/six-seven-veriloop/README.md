@@ -35,8 +35,9 @@ COULD NOT VERIFY -- best design passes 0.68 of the score; not solved
 - **Easy blocks need no feedback:** mux, adder and counter were solved on the first try in all 72 runs.
 - **Feedback did not turn hard failures into solves:** the traffic-light state machine and the FIFO were never
   solved, with any feedback — not even with 12 rounds (0/15). C's small edge at 6 rounds (0.69 vs 0.65)
-  vanished at 12. The MAC cell was fixed on round 2 with A, B and C alike.
-- **The model's mistakes are mostly cycle counting** — on the traffic light, 69% of failures first go wrong by
+  vanished at 12. Even feedback **D**, which names the cause ("every phase is one cycle too long"), solved
+  0/6 on each. The MAC cell was fixed on round 2 with A, B and C alike.
+- **The model's mistakes are mostly cycle counting** — on the traffic light, 66% of failures first go wrong by
   holding a light too long; the most common design has every phase one cycle too long (an off-by-one).
   Feedback that says *where* did not make it see *why*.
 - **The model does not know when it is wrong** — designs it rated 80–100% confident were right only half the

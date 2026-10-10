@@ -41,6 +41,7 @@ receives. Each adds information to the one before:
 | **A** | only the verdict | `FAIL: the design is not correct.` |
 | **B** | how much is wrong | `FAIL: 263 of 272 tests give a wrong output.` |
 | **C** | where and how it first goes wrong, like a waveform: the inputs, the signal, got vs expected, and the two cycles before | `cycle 6: inputs reset=0 en=0 -> count = 6, expected 5  <-- first wrong cycle` |
+| **D** | C plus the *cause*, from the level's own `diagnose()` in `reference.py` (traffic light and FIFO) — in spec terms, never code | `your phases last RED 4, GREEN 5, YELLOW 3; the spec says 3, 4, 2. Every phase is exactly one cycle too long` |
 
 Feedback C names values when the level defines labels (`light = YELLOW (2), expected GREEN (1)`), shows
 at most **three** example rows, and never the whole table — the organisers measured that a model handed

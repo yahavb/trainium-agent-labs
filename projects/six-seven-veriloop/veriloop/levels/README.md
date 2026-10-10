@@ -36,7 +36,7 @@ benches.**
 
 ## Check your level while you write it
 
-Needs the simulator: on a seat it is already there (see `SETUP.md`); on a Mac, `brew install icarus-verilog`.
+Needs the simulator: on a seat it is already there (see `SERVER.md`); on a Mac, `brew install icarus-verilog`.
 
 ```bash
 python veriloop/checker.py veriloop/levels/03_counter veriloop/levels/03_counter/good.v

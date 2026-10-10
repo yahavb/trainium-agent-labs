@@ -1,6 +1,6 @@
 """A4: run the experiment -- levels x feedback A/B/C x N runs -- and summarise it.
 
-    # on your seat, in the background (see SETUP.md):
+    # on your seat, in the background (see SERVER.md):
     nohup python run_experiment.py --tag krish --levels levels/04_traffic_fsm levels/05_mac \\
         --runs 5 > run.log 2>&1 < /dev/null &
 
@@ -88,7 +88,7 @@ def run(a):
 
 
 def summarise(paths=None, include_offline=False):
-    """Solve rate per level x feedback across every summary file -- the table and the graph."""
+    """Solve rate per level x feedback across every summary file -- the table for TEAM.md and the graph."""
     paths = paths or sorted(glob.glob(os.path.join(RESULTS, "*_summary.csv")) +
                             glob.glob(os.path.join(HERE, "..", "results", "*_summary.csv")))
     rows = []
@@ -124,7 +124,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--tag", help="who/what, used in the file names, e.g. krish or krish-fsm")
     ap.add_argument("--levels", nargs="*", help="level folders (default: every level in veriloop/levels/)")
-    ap.add_argument("--feedback", nargs="*", default=["A", "B", "C"], choices=["A", "B", "C"])
+    ap.add_argument("--feedback", nargs="*", default=["A", "B", "C"], choices=["A", "B", "C", "D"])
     ap.add_argument("--runs", type=int, default=5, help="runs per level x feedback (default 5)")
     ap.add_argument("--rounds", type=int, default=8)
     ap.add_argument("--samples", type=int, default=4)

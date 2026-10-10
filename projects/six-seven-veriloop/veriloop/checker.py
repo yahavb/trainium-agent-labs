@@ -11,7 +11,7 @@ Usage:
     python checker.py levels/03_counter design.v --feedback C
     python checker.py design.v --module counter8      # compile only, no port check
 
-Needs Icarus Verilog (`iverilog`) on the PATH -- see SETUP.md.
+Needs Icarus Verilog (`iverilog`) on the PATH -- see SERVER.md.
 """
 
 import argparse
@@ -191,7 +191,7 @@ def compile_verilog(design_src, module, ports=None, workdir=None):
     """Compile `design_src` (Verilog text). With `ports`, also check the module has exactly the spec's
     port names and widths. Returns a CompileResult; on success `workdir` holds the compiled `sim`."""
     if not shutil.which(IVERILOG):
-        raise RuntimeError("iverilog is not installed here -- see SETUP.md, 'Install the simulator'.")
+        raise RuntimeError("iverilog is not installed here -- see SERVER.md, 'Install the simulator'.")
     workdir = workdir or tempfile.mkdtemp(prefix="veriloop_")
     design = os.path.join(workdir, "design.v")
     with open(design, "w") as f:
@@ -419,27 +419,47 @@ def _first_wrong_c(ref, sim):
     return "\n".join(lines) + note
 
 
+def _with_d(fb, ref, sim):
+    """Feedback D = C plus a diagnosis of the CAUSE, from the level's optional diagnose() in reference.py.
+
+    Added after the main experiment showed that C (where it first goes wrong) did not help on the hard levels:
+    the model saw the symptom but not the cause (e.g. every traffic-light phase one cycle too long). D names
+    the cause in terms of the spec -- never the code to write. A level without diagnose() gets D = C."""
+    d = fb["C"]
+    diag = getattr(ref, "diagnose", None)
+    if diag and sim.ran and sim.mismatches:
+        try:
+            text = diag(sim.rows)
+        except Exception:
+            text = None
+        if text:
+            d += "\nDiagnosis: " + text.strip()
+    fb["D"] = d
+    return fb
+
+
 def feedback_of(ref, sim):
-    """The three feedback levels for the experiment, from one simulation. Each one adds information:
-    A only the verdict; B how much is wrong; C where and how it first goes wrong."""
+    """The feedback levels for the experiment, from one simulation. Each one adds information:
+    A only the verdict; B how much is wrong; C where and how it first goes wrong; D also why."""
     steps = len(sim.rows)
     if sim.passed:
         msg = f"PASS: correct on all {steps} tests."
-        return {"A": "PASS.", "B": msg, "C": msg}
+        return {"A": "PASS.", "B": msg, "C": msg, "D": msg}
     a = "FAIL: the design is not correct."
     if not sim.compiled.ok:
-        return {"A": a,
+        return _with_d({"A": a,
                 "B": f"FAIL: the design does not compile ({len(sim.compiled.messages)} problem(s)).",
-                "C": "FAIL: the design does not compile.\n" + "\n".join(f"- {m}" for m in sim.compiled.messages)}
+                "C": "FAIL: the design does not compile.\n" + "\n".join(f"- {m}" for m in sim.compiled.messages)},
+                       ref, sim)
     if not sim.ran:
-        return {"A": a, "B": "FAIL: the design compiles, but the simulation did not run to the end.",
-                "C": f"FAIL: the design compiles, but the simulation did not run to the end. {sim.problem}"}
+        return _with_d({"A": a, "B": "FAIL: the design compiles, but the simulation did not run to the end.",
+                "C": f"FAIL: the design compiles, but the simulation did not run to the end. {sim.problem}"}, ref, sim)
     wrong = len({m["step"] for m in sim.mismatches})
     signals = sorted({m["signal"] for m in sim.mismatches})
     b = f"FAIL: {wrong} of {steps} tests give a wrong output."
     c = (f"FAIL: {wrong} of {steps} tests give a wrong output, on "
          + ", ".join(f"`{s}`" for s in signals) + ".\n" + _first_wrong_c(ref, sim))
-    return {"A": a, "B": b, "C": c}
+    return _with_d({"A": a, "B": b, "C": c}, ref, sim)
 
 
 def grade(ref, design_src):
@@ -454,7 +474,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("paths", nargs="+", help="[LEVEL_DIR] DESIGN.v")
     ap.add_argument("--module", help="module name, when no level folder is given")
-    ap.add_argument("--feedback", choices=["A", "B", "C", "all"], default="all",
+    ap.add_argument("--feedback", choices=["A", "B", "C", "D", "all"], default="all",
                     help="which feedback level to print (default: all three)")
     a = ap.parse_args()
 
@@ -463,7 +483,7 @@ def main():
         if hasattr(ref, "vectors") and hasattr(ref, "reference"):
             g = grade(ref, open(a.paths[1]).read())
             print(f"score {g.score:.2f}   stage: {g.stage}   {'SOLVED' if g.solved else 'not solved'}")
-            for lvl in ("A", "B", "C") if a.feedback == "all" else (a.feedback,):
+            for lvl in ("A", "B", "C", "D") if a.feedback == "all" else (a.feedback,):
                 print(f"\n--- feedback {lvl} ---\n{g.feedback[lvl]}")
             return 0 if g.solved else 1
         module, ports, design_path = ref.MODULE, ports_of(ref), a.paths[1]

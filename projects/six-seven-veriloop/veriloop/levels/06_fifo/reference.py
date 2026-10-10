@@ -59,3 +59,50 @@ def reference(vectors):
         out.append({"dout": q[0] if q else 0, "full": int(len(q) == 4), "empty": int(len(q) == 0),
                     "count": len(q)})
     return out
+
+
+def diagnose(rows):
+    """Feedback D for this level: name the CAUSE of the failure in terms of the spec, never the code.
+
+    `rows` is the simulation: one (inputs, expected, got) per clock cycle. Looks for the mistakes the model
+    made most (results/TAXONOMY.md): dout that only updates on a read, full/empty a cycle late, count that
+    changes when a read and a write happen together, writes accepted when full, reads accepted when empty.
+    A rule only fires on a cycle where the design's count was still right just before the edge, so a
+    symptom of an earlier bug is not reported as a cause. At most three sentences, or None.
+    """
+    found = []
+
+    def say(msg):
+        if msg not in found:
+            found.append(msg)
+
+    for i in range(1, len(rows)):
+        v, exp, got = rows[i]
+        _, exp_prev, got_prev = rows[i - 1]
+        if v["reset"] or got_prev["count"] != exp_prev["count"]:
+            continue
+        before, wr, rd = exp_prev["count"], v["wr_en"], v["rd_en"]
+        count_ok = got["count"] == exp["count"]
+        if before == 4 and wr and not rd and not count_ok:
+            say("A write while the queue is full must be ignored (count stays 4). Yours accepts it.")
+        if before == 4 and wr and rd and not count_ok:
+            say("When the queue is full and both wr_en and rd_en are 1, only the read happens (count goes to 3). "
+                "Yours also accepts the write.")
+        if before == 0 and rd and not wr and not count_ok:
+            say("A read while the queue is empty must be ignored (count stays 0). Yours changes the queue.")
+        if 0 < before < 4 and wr and rd and not count_ok:
+            say("When a read and a write happen in the same cycle (queue neither full nor empty), both take "
+                "effect: count stays the same. Yours changes count, so one of the two is lost.")
+        if count_ok:
+            for flag in ("full", "empty"):
+                if got[flag] != exp[flag] and got[flag] == exp_prev[flag]:
+                    say(f"`{flag}` is one cycle late: it must describe the queue AFTER this clock edge's read "
+                        f"and write (follow the new count), not the count from before the edge.")
+            if before == 0 and wr and got["dout"] != exp["dout"]:
+                say("dout must show the oldest stored byte at all times, including right after a byte is written "
+                    "into an empty queue -- no read is needed for dout to change. Yours does not show it.")
+            if exp["count"] == 0 and got["dout"] != 0:
+                say("When the queue is empty, dout must be 0.")
+        if len(found) >= 3:
+            break
+    return " ".join(found[:3]) if found else None

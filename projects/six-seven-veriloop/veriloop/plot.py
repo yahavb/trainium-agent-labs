@@ -91,8 +91,8 @@ def plot(levels, cell, out_png, n_runs, n_seats):
                          "axes.labelcolor": INK2, "xtick.color": INK2, "ytick.color": INK2})
     # Two panels stacked, each full width: every bar label has room (side by side they overlapped).
     fig, axes = plt.subplots(2, 1, figsize=(15, 10.5), facecolor=SURFACE)
-    gap = 0.03
-    width = min(0.13, (0.8 - gap * (len(fbs) - 1)) / len(fbs))   # thin bars; the leftover band stays air
+    gap = 0.09     # room for each bar's label: with 4 bars per group, 0.03 let '1.00' labels collide
+    width = min(0.12, (0.86 - gap * (len(fbs) - 1)) / len(fbs))   # thin bars; the leftover band stays air
     xs = range(len(levels))
     panels = [("Solved — runs that passed every test", lambda c: 100 * c["solved"] / c["n"], 100,
                lambda c: f"{c['solved']}/{c['n']}", "% of runs"),
@@ -112,7 +112,7 @@ def plot(levels, cell, out_png, n_runs, n_seats):
                                             mutation_aspect=top / 4, linewidth=0, facecolor=COLORS[fb]))
                 ax.add_patch(plt.Rectangle((x - width / 2, 0), width, min(h, top * 0.02), linewidth=0,
                                            facecolor=COLORS[fb]))
-                ax.text(x, v + top * 0.02, label(c), ha="center", va="bottom", fontsize=10, color=INK2)
+                ax.text(x, v + top * 0.02, label(c), ha="center", va="bottom", fontsize=9, color=INK2)
         ax.set_xlim(-0.6, len(levels) - 0.4)
         ax.set_ylim(0, top * 1.15)
         ax.set_xticks(list(xs))

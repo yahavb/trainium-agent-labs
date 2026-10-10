@@ -7,7 +7,7 @@
     A3  the agent's claim (SOLVED only if the checker passed it, else COULD NOT VERIFY); the model's own
         confidence vs the checker is measured separately by calibrate.py
 
-Usage, on a seat with the model running (see SETUP.md):
+Usage, on a seat with the model running (see SERVER.md):
     python agent.py --level levels/03_counter --feedback C --log ../results/try.jsonl
     python agent.py --level tests/sim_fixtures/counter8 --feedback B --rounds 4 --samples 2
     python agent.py --level tests/sim_fixtures/counter8 --offline      # no model: canned designs
@@ -112,7 +112,7 @@ def ask(prompt, base_url=BASE_URL, model=MODEL, temperature=TEMPERATURE, timeout
             payload = json.load(r)
     except urllib.error.URLError as e:
         raise SystemExit(f"cannot reach the model at {base_url} ({e}). Is ./serve.sh running on this seat? "
-                         f"See SETUP.md.") from e
+                         f"See SERVER.md.") from e
     choice = payload["choices"][0]
     usage = payload.get("usage", {})
     info = dict(prompt_tokens=usage.get("prompt_tokens"), completion_tokens=usage.get("completion_tokens"),
@@ -224,7 +224,7 @@ def run_level(level_dir, feedback="C", rounds=8, samples=4, log_path=None, offli
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--level", required=True, help="a level folder, e.g. levels/03_counter")
-    ap.add_argument("--feedback", choices=["A", "B", "C"], default="C")
+    ap.add_argument("--feedback", choices=["A", "B", "C", "D"], default="C")
     ap.add_argument("--rounds", type=int, default=8)
     ap.add_argument("--samples", type=int, default=4, help="attempts per round (the server runs 4 at once)")
     ap.add_argument("--log", help="append every attempt to this JSONL file")
