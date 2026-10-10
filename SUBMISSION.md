@@ -294,11 +294,29 @@ run solves in round 0. Level 4 still meets the baseline's wall first (partition 
 0; the baseline never got past it), then a broadcast shape mismatch (20 in round 1), and solves in round 2.
 [[TBD: final table from scripts/taxonomy.py]]
 
-**A failure mode we only found by reading the repairs: transposing the whole input.** On level 2 the repair
-rounds never once succeeded, in the baseline or under v7. In 81 of 134 failed repairs the model was
-transposing all of `x` instead of the small matrix inside each row: index out of range on the second axis, or
-"Partition dim size must be preserved, got 32 -> 3". The checker reported the symptom each time and never
-the misreading, so v8.1 adds one sentence restating the task when these errors appear (no code).
+**Across versions** (full table, by version and level: [analysis/taxonomy_versions.md](analysis/taxonomy_versions.md);
+the later columns are partly snapshots of runs in progress, so compare which modes appear and vanish, not
+raw counts):
+
+1. **Three walls fell.** Level 3's baseline walls, reshaping (96), 1-D tiles (55) and copy-size mismatches (45)
+   in 10 runs with no solve, are gone under v7, which solves every run in round 0: the worked example, by the
+   ablation. Level 4's partition-over-128 wall (110 in the baseline, never passed) still shows up in round 0,
+   and the all-dims tiling code gets every run past it by round 2. Level 1's invented calls fall from 160 to
+   16–18.
+2. **Failures moved rather than vanished.** On level 2, v7 traded the baseline's index errors (out of bounds
+   63, copy size 71) for two modes the baseline never showed: invented names (30: `dtype`, `transpose`,
+   `reshape`) and **transposing the whole input** (30 of v7's 108 failed level-2 attempts): out-of-range
+   indices on the second axis, or "Partition dim size must be preserved, got 32 -> 3", because the model
+   transposed all of `x` instead of the small matrix inside each row. The checker named the symptom and never
+   the misreading; v8.1 adds one sentence restating the task when these errors appear (no code). On level 1,
+   cut-off answers (12) appeared under v7 and took 22 of the 29 minutes of the run they hit.
+3. **One wall came back** when the skeleton blanked the tiling code: 24 out-of-bounds attempts on level 4
+   (§4).
+4. **What is left.** Level 4's round-0 broadcast mismatch is in every version (18, 20, 18, 7, 7): cleared by
+   repair, never prevented. Level 1 stays the hardest: one solve in all of our logs.
+
+Until v8.1, level 2's repair rounds had never once succeeded, in the baseline or under v7: every level-2
+solve came from a first attempt. [[TBD: v8.2's level-2 solves, by round]]
 
 Baseline, 424 attempts in 25 named modes: index and size
 arithmetic 52%, unfamiliar API 24%, tiling rules 18%, memory placement 5%. Four modes were never fixed by the
