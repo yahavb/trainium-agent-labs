@@ -28,10 +28,12 @@ untimed"), never faster/slower, and its next instruction comes from the simulato
 """
 
 import argparse
+import ast
 import hashlib
 import importlib.util
 import json
 import os
+import re
 import socket
 import sys
 import tempfile
@@ -43,6 +45,7 @@ sys.path.insert(0, AGENT02_DIR)
 sys.path.insert(0, os.path.join(HERE, "redteam"))
 sys.path.insert(0, HERE)
 
+import diagnose  # noqa: E402
 import nkibench  # noqa: E402
 import schema    # noqa: E402
 import stage12   # noqa: E402
@@ -90,7 +93,10 @@ def sim_instruction(path):
     for level in (5, 6, 7):
         m = nkibench.check_traffic_bar(level, counted, args, want)
         if m:
-            return m
+            # nkibench words this for its level ladder, which means nothing to the model here.
+            m = m.replace(" FOR THIS LEVEL", "")
+            return re.sub(r", and level \d+ requires ([\d.]+)x or better\. Correctness alone is level 4; "
+                          r"this level is about the bytes\.", r"; the next target is \1x.", m)
     return ("Correct, and its HBM traffic is already at the byte floor in the simulator, so no byte "
             "reduction is left. Any further speedup has to come from the engine schedule.")
 
@@ -104,14 +110,20 @@ def grade(src, referee, dry, workdir, n):
         return stage12.run(path, "dev", rules_only=True)[0]
     name, check = referee
     r = check(path, op=OP, shapes="dev")
-    if r.get("verdict") in ("rules", "wrong"):
-        return r
-    h = check(path, op=OP, shapes="heldout")
-    if h.get("verdict") in REJECTED:
-        return dict(h, verdict="heldout_fail")
-    if name.startswith("stage12") and r.get("verdict") is None:
-        r = dict(r, instruction_given=sim_instruction(path))
-    return r  # the dev result carries the timing
+    if r.get("verdict") not in ("rules", "wrong"):
+        h = check(path, op=OP, shapes="heldout")
+        if h.get("verdict") in REJECTED:
+            r = dict(h, verdict="heldout_fail")
+        elif name.startswith("stage12") and r.get("verdict") is None:
+            r = dict(r, instruction_given=sim_instruction(path))
+        # else: the dev result carries the timing
+    if r.get("verdict") in ("wrong", "heldout_fail"):
+        # The referee says what is wrong; name the change when the output matches a known mistake.
+        # referee_message keeps the referee's words, so the log shows both.
+        named = diagnose.diagnose(path)
+        if named:
+            r = dict(r, instruction_given=named)
+    return r
 
 
 # ---------------------------------------------------------------- the model
@@ -157,6 +169,20 @@ KEEP = (f"Keep the function name {ENTRY}(lhsT, rhs), the @nki.jit decorator, and
         f"nki.language as nl and nki.isa as nisa. Reply with ONE python code block.")
 
 
+def strip_module_docstring(src):
+    """The start kernel's module docstring is about Project 2's ladder ("This is the ANSWER ... level 4").
+    Measured: Qwen3 copied it back verbatim. It costs tokens and says nothing about this task."""
+    try:
+        first = ast.parse(src).body[0]
+    except (SyntaxError, IndexError):
+        return src
+    if isinstance(first, ast.Expr) and isinstance(getattr(first, "value", None), ast.Constant) \
+            and isinstance(first.value.value, str):
+        lines = src.splitlines(keepends=True)
+        return "".join(lines[:first.lineno - 1] + lines[first.end_lineno:]).lstrip("\n")
+    return src
+
+
 def first_prompt(src, status):
     return (f"{TASK} Make it run faster on the Trainium chip.\n\n```python\n{src}\n```\n\n"
             f"The referee's report on this kernel: {status}\n\n{agent02.API_CARD}\n{KEEP}")
@@ -182,8 +208,9 @@ def run_once(a, referee, start_path, rep, log, workdir):
         print(f"  THE START KERNEL IS REJECTED BY THE REFEREE, so there is nothing to speed up:\n  {status}")
         return dict(run_id=run_id, attempts=0, verdicts={}, best=None)
 
-    prompt = first_prompt(start_src, status)
-    latest = (start_src, status)
+    shown = strip_module_docstring(start_src)
+    prompt = first_prompt(shown, status)
+    latest = (shown, status)
     tried, seen, streak = [], {}, 0
     attempt_no, verdicts, best = 0, {}, None
     for rnd in range(a.rounds):
