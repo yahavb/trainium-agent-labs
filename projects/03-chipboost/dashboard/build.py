@@ -91,7 +91,10 @@ def read_text(path):
 
 
 def load_attempts(paths):
-    records, notes = [], []
+    """Every line of every file, once. A seat may keep the same attempts in more than one file (seat-101
+    holds a merged attempts.jsonl beside by_arm/ copies), so an attempt is identified by its seat, run
+    and attempt number, and only its first copy counts."""
+    records, notes, seen, dupes = [], [], set(), 0
     for path in paths:
         for n, line in enumerate(read_text(path).splitlines(), 1):
             if not line.strip():
@@ -120,8 +123,16 @@ def load_attempts(paths):
                 notes.append(f"{where}: no kernel or verdict; skipped")
                 continue
             rec["run_id"] = rec["run_id"] or f"{rec['kernel']}-{rec['arm']}"
+            key = (rec["seat"], rec["run_id"], rec["attempt_no"])
+            if rec["attempt_no"] is not None and key in seen:
+                dupes += 1
+                continue
+            seen.add(key)
             rec["_file"] = str(path)
             records.append(rec)
+    if dupes:
+        notes.append(f"{dupes} line{'s' if dupes != 1 else ''} repeated an attempt already read from another "
+                     f"file (same seat, run and attempt number); counted once")
     return records, notes
 
 
@@ -281,7 +292,11 @@ def tuning(summary, sweep):
     sw = (dict(n=len(timed), best=timed[0]["speedup"] / ref, best_caps=caps_of(timed[0]["code"]))
           if timed and ref else None)
     runs = []
-    for r in (summary.get("matmul") or {}).get("arms", {}).get("random_search", []):
+    rs_all = (summary.get("matmul") or {}).get("arms", {}).get("random_search", [])
+    # The tuning study is the longest-budget runs (P2's 24). Shorter random-search runs are the
+    # equal-budget arm of a comparison (P1's 8): they stay in the speed bars, not in this study.
+    full = max((len(r["attempts"]) for r in rs_all), default=0)
+    for r in (r for r in rs_all if len(r["attempts"]) == full):
         a0 = r["attempts"][0] if r["attempts"] else None
         base = a0["speedup"] if a0 and a0["speedup"] and caps_of(a0["code"]) == SHIPPED_CAPS else None
         if not base:
@@ -961,7 +976,9 @@ def kpis(summary, results, records, tune):
         target, tname = (expert_x, "expert") if expert_x else (limit_x, "floor limit")
         if best:
             sub = f"model + referee · {len(rs)} run{'s' if len(rs) != 1 else ''}"
-            sub += f" · {best / target:.0%} of the {tname}'s {fmt_x(target)}" if target else ""
+            # How far from the start (1x) toward the target: 1.00x is 0% of the way, whatever the target.
+            sub += (f" · {max(0.0, (best - 1) / (target - 1)):.0%} of the way to the {tname}'s {fmt_x(target)}"
+                    if target and target > 1 else "")
         else:
             sub = "no runs yet" + (f" · target: {tname} {fmt_x(target)}" if target else "")
         tiles.append((f"{k} speedup", fmt_x(best) if best else "–", sub,

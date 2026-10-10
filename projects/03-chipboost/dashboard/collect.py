@@ -7,8 +7,9 @@ results files out of git, then dashboard/index.html built from exactly those fil
     python dashboard/collect.py --seats 102 --pod-dir 102=/workspace/chipboost/projects/03-chipboost
     python dashboard/collect.py --no-pods                     # git only: results files, no pod logs
 
-Pods: `kubectl cp seat-N:<pod-dir>/logs/seat-N` copies the whole folder, so every attempts*.jsonl and
-sweep*.jsonl comes along (P2 writes one file per concurrent run). Git: the newest version of every
+Pods: `kubectl cp` copies each seat's whole log folder (SOURCES below: P1's comparison output in /tmp on
+seat-100, P3's repo at /workspace on seat-101, <POD_DIR>/logs/seat-N otherwise), so every attempts*.jsonl,
+sweep*.jsonl and <arm>-r<n>.jsonl comes along (P2 writes one file per concurrent run). Git: the newest version of every
 *results*.json, attempts*.jsonl and sweep*.jsonl on any origin branch. A seat's pod copy wins over its git
 copy, so no line is counted twice. Everything lands in dashboard/collected/ (gitignored).
 
@@ -17,6 +18,7 @@ line, which build.py skips and lists; the next collect picks it up.
 """
 
 import argparse
+import re
 import shutil
 import subprocess
 import sys
@@ -26,7 +28,14 @@ HERE = Path(__file__).resolve().parent
 PROJECT = HERE.parent
 OUT = HERE / "collected"
 POD_DIR = "/workspace/chipboost/projects/03-chipboost"   # where the fork is cloned inside the seat pods
-SEATS = [100, 101, 102]   # P1, P3 (referee and model_alone), P2 (random search and the sweep)
+SEATS = [100, 101, 102]
+# Folders to copy, per seat, where they differ from <POD_DIR>/logs/seat-N:
+SOURCES = {
+    100: "/tmp/p1-comparison-20261010-2",                   # P1: the pinned three-arm comparison (run_comparison.py)
+    101: "/workspace/projects/03-chipboost/logs/seat-101",  # P3: its own referee and model_alone loops
+}
+# run_comparison.py names its per-arm logs <arm>-r<repeat>.jsonl: attempt logs, though not named attempts*.
+COMPARISON_LOG = re.compile(r"^(referee|model_alone|random_search)-r\d+\.jsonl$")
 
 
 def run(cmd, cwd, text=True):
@@ -37,7 +46,7 @@ def wanted(name):
     if name.startswith("fake_"):
         return False
     return ((name.endswith(".json") and "results" in name) or
-            (name.endswith(".jsonl") and name.startswith(("attempts", "sweep"))))
+            (name.endswith(".jsonl") and (name.startswith(("attempts", "sweep")) or bool(COMPARISON_LOG.match(name)))))
 
 
 def from_git():
@@ -70,7 +79,7 @@ def from_git():
 def from_pods(seats, pod_dirs):
     got, copied = [], set()
     for seat in seats:
-        src = f"{pod_dirs.get(seat, POD_DIR)}/logs/seat-{seat}"
+        src = f"{pod_dirs[seat]}/logs/seat-{seat}" if seat in pod_dirs else SOURCES.get(seat, f"{POD_DIR}/logs/seat-{seat}")
         rel = Path("pods") / f"seat-{seat}"
         shutil.rmtree(OUT / rel, ignore_errors=True)
         (OUT / rel).parent.mkdir(parents=True, exist_ok=True)
@@ -111,7 +120,7 @@ def main():
     # A seat copied from its pod is newer than anything it pushed: drop its git copies.
     files = pods + [p for rel, p in git.items()
                     if not any(rel.startswith(f"logs/seat-{s}/") for s in copied)]
-    logs = [str(p) for p in files if p.name.startswith("attempts")]
+    logs = [str(p) for p in files if p.name.startswith("attempts") or COMPARISON_LOG.match(p.name)]
     sweep = [str(p) for p in files if p.name.startswith("sweep")]
     results = [str(p) for p in files if p.name.endswith(".json")]
     cmd = [sys.executable, str(HERE / "build.py"), *logs, "--results", *results, "--sweep", *sweep]
