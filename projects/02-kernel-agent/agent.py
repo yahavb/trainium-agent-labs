@@ -245,8 +245,31 @@ def real_signature(func_name):
     return ""
 
 
+# Invented names the model actually wrote, mapped to the real 0.6.0 spelling (each checked with
+# inspect.signature in a seat pod). Measured on seat-116: 48 of 96 level-1 attempts called
+# nisa.multiply or nisa.scalar_mul, and the difflib fallback suggested scalar_engine, which did
+# not help. These run before the generic branches so the specific fix wins.
+KNOWN_FIXES = [
+    (r"module 'nki\.isa' has no attribute 'multiply'",
+     " `multiply` is not a nki.isa function; it is the op nl.multiply, which you pass to a nisa "
+     "instruction. To scale a tile by a constant write "
+     "nisa.tensor_scalar(dst=out, data=t, op0=nl.multiply, operand0=c); to multiply two tiles "
+     "write nisa.tensor_tensor(dst=out, data1=a, data2=b, op=nl.multiply). Note it is `nl.`, "
+     "not `nisa.`, in front of multiply."),
+    (r"module 'nki\.isa' has no attribute 'scalar_mul'",
+     " There is no scalar_mul. To multiply a tile by a constant write "
+     "nisa.tensor_scalar(dst=out, data=t, op0=nl.multiply, operand0=c)."),
+    (r"'_TileSize' object is not callable",
+     " nl.tile_size is a set of constants, not a function. Read the attribute instead of calling "
+     "it: nl.tile_size.pmax is the partition-dimension limit (128)."),
+]
+
+
 def enrich(error_text):
     """Add the real names when the failure is an invented API call."""
+    for pattern, fix in KNOWN_FIXES:
+        if re.search(pattern, error_text):
+            return error_text + fix
     if "'MemoryRegion' object is not callable" in error_text:
         return (error_text + " nl.sbuf, nl.psum and nl.shared_hbm are memory regions, not "
                 "functions. Do not call them. Allocate with "
