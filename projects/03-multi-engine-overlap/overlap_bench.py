@@ -187,8 +187,10 @@ def check_rules(source: str) -> list[str]:
     # 5. Check for 3 Hardware Engine Primitives
     has_dma = any(k in source_lower for k in ["dma", "load_tile", "nl.load", "dma_copy"])
     has_vector = any(k in source_lower for k in ["vector", "tensor_scalar", "bilinear", "scale", "nl.add", "nl.multiply"])
+    has_matmul_op = any(isinstance(node, ast.BinOp) and isinstance(node.op, ast.MatMult) for node in ast.walk(tree))
     has_tensor = (
-        any(k in source_lower for k in ["nc_matmul", "tensor_matmul", "matmul_tile", "matmul", "matrix multiply", "matrix multiplication"])
+        has_matmul_op
+        or any(k in source_lower for k in ["nc_matmul", "tensor_matmul", "matmul_tile", "matmul", "matrix multiply", "matrix multiplication"])
         or ("tensor" in source_lower and any(m in source_lower for m in ["matmul", "multiply", "multiplication", "dot"]))
     )
 
@@ -267,6 +269,7 @@ def diagnose_block_failure(
         if mismatch:
             # STEP B: Run Block b in isolated single-block micro-test
             x_isolated = x[r_start:r_end, :].copy()
+            isolated_result = None
             try:
                 isolated_result = kernel_fn(x_isolated, weight, alpha, beta)
                 isolated_pass = np.allclose(expected_slice, isolated_result, rtol=tol_rtol, atol=tol_atol)
@@ -292,6 +295,14 @@ def diagnose_block_failure(
                     f"Block {b} is a partial tile with {rem} rows (smaller than standard tile {tile_h}). "
                     "Boundary index out-of-bounds or zero-pad missing. "
                     f"Fix: Apply boundary clamp `valid_rows = min({tile_h}, total_rows - r_start)` to tile operations.",
+                    b
+                )
+            elif np.all(candidate_slice == 0.0) or (isolated_result is not None and np.all(isolated_result == 0.0)):
+                return (
+                    "UNCOMPUTED_BLOCK_HAZARD",
+                    f"Block {b} was uncomputed (output slice is all zeros). "
+                    "Cause: Kernel skipped Block computation (e.g. `if r_start > 0` skipped Block 0, or missing epilogue drain). "
+                    "Fix: Handle single blocks (`num_blocks == 1`), compute Block 0 in prologue, and drain all remaining blocks in epilogue.",
                     b
                 )
             else:

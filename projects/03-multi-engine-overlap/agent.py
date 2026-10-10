@@ -56,17 +56,29 @@ Rules:
 def build_recalibration_prompt(candidate_code: str, hazard_type: str, hint: str, round_num: int) -> str:
     """Constructs surgical patch prompt focusing only on the diagnosed Block-n hazard."""
     extra_pattern = ""
-    if "SYNC" in hazard_type or "PIPELINE" in hazard_type:
+    if "SYNC" in hazard_type or "PIPELINE" in hazard_type or "UNCOMPUTED" in hazard_type:
         extra_pattern = """
-RECOMMENDED PIPELINE BUFFER SWAP:
-Ensure Block 0 is computed in prologue and remaining blocks are drained in epilogue:
-- Prologue: DMA loads Block 0 into buf_dma.
-- Loop (b = 1 to num_blocks):
-    buf_tensor, buf_vec, buf_dma = buf_vec, buf_dma, buf_tensor  # Rotate buffers
-    buf_dma[:v, :] = x[r_st:r_st+v, :]
-    buf_vec[:v_prev, :] = alpha * buf_vec[:v_prev, :] + beta
-    buf_out[:v_prev2, :] = buf_tensor[:v_prev2, :].astype(np.float64) @ weight.astype(np.float64)
-- Epilogue: Multiply remaining blocks so all rows are written to output.
+RECOMMENDED PIPELINE BUFFER ROTATION & PROLOGUE/EPILOGUE:
+Do not use conditional skips like `if r_start > 0` that leave Block 0 uncomputed! Every block must be computed and stored into `out`.
+Structure the kernel cleanly:
+- Single-block case (`if num_blocks == 1:`):
+    buf_dma = x[:H, :].copy()
+    buf_vec = alpha * buf_dma + beta
+    out[:H, :] = buf_vec.astype(np.float64) @ weight.astype(np.float64)
+    return out
+- Multi-block 3-Stage Pipeline:
+    Prologue:
+      DMA loads Block 0 into buf_dma
+      buf_vec, buf_dma = buf_dma, buf_vec
+      DMA loads Block 1 into buf_dma
+      Vector computes Block 0 in buf_vec
+    Steady-state loop (b = 2 to num_blocks):
+      buf_tensor, buf_vec, buf_dma = buf_vec, buf_dma, buf_tensor
+      DMA loads Block b into buf_dma
+      Vector transforms Block b-1 in buf_vec
+      Tensor multiplies Block b-2 in buf_tensor and writes to out[(b-2)*128:(b-2)*128+valid, :]
+    Epilogue:
+      Drain Block num_blocks-2 and Block num_blocks-1 into out!
 """
     elif "RAGGED" in hazard_type:
         extra_pattern = """
@@ -320,7 +332,8 @@ if __name__ == "__main__":
     parser.add_argument("--rounds", type=int, default=6, help="Max agent retry rounds")
     parser.add_argument("--offline", action="store_true", help="Run in offline replay mode")
     parser.add_argument("--live", action="store_true", default=True, help="Connect to live model endpoint")
-    parser.add_argument("--log", type=str, default="overlap_attempts.jsonl", help="Output JSONL log path")
+    default_log = os.path.join(os.path.dirname(os.path.abspath(__file__)), "overlap_attempts.jsonl")
+    parser.add_argument("--log", type=str, default=default_log, help="Output JSONL log path")
     args = parser.parse_args()
 
     is_offline = args.offline
