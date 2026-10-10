@@ -592,6 +592,12 @@ def check_traffic_bar(level_n, counted, args, want):
         return ("TRAFFIC ACCOUNTING FAILED: the byte floor for this case could not be computed, so "
                 "the level gate cannot be evaluated. Treat this as an environment failure, not a "
                 "kernel failure.")
+    if counted["bytes"] < floor:
+        return (f"TRAFFIC BELOW THE BYTE FLOOR: counted {counted['bytes']:,} bytes against a floor "
+                f"of {floor:,}. Reading each input once and writing the output once costs at least "
+                f"the floor, so a lower count means the accounting missed part of the movement. "
+                f"This is an accounting failure, not an optimization win: make all HBM movement "
+                f"use nisa.dma_copy so the counter can see it.")
     waste = counted["bytes"] / floor
     if waste <= bar:
         return None

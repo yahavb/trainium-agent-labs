@@ -53,6 +53,12 @@ class TrafficGateTests(unittest.TestCase):
         self.assertIsNotNone(m)
         self.assertIn("TOO MUCH HBM TRAFFIC", m)
 
+    def test_below_floor_fails_as_accounting(self):
+        m = nkibench.check_traffic_bar(
+            self.LEVEL, self.counted(self.floor - 1), self.args, self.want)
+        self.assertIsNotNone(m)
+        self.assertIn("BELOW THE BYTE FLOOR", m)
+
     def test_levels_without_bar_ignore_traffic(self):
         case = nkibench.LEVELS[4]["shapes"][0]
         args, _ = nkibench.make_inputs(case, 4, seed=0)
