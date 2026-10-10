@@ -1,12 +1,14 @@
 # Project 03: Mechanical Sympathy
 
+![Single-rollout forward progress](results/spatial-parallel-2026-10-10/karpathy_seconds.png)
+
+![Single-rollout simulated years per minute](results/spatial-parallel-2026-10-10/karpathy_years_per_minute.png)
+
 This project checks Samudra inference against a CPU reference and then improves
 the same workload on AWS Trainium.
 
 New to the project? [HARNESS.md](HARNESS.md) explains step by step how an attempt is
 run, checked and recorded, and how the separate kernel-agent loop works.
-
-![Samudra forward progress, simulated years per minute](results/easy-wins-2026-10-10/years_per_minute.png)
 
 ### Temperature
 
@@ -274,10 +276,6 @@ The Karpathy-style plots use forward-only sums to match the preceding trials:
 **42.64 s → 35.22 s**, reaching **13.94 simulated years per forward minute**.
 Compilation and warmup are excluded. This is an experimental timing result;
 forecast accuracy has not been evaluated.
-
-![Single-rollout forward progress](results/spatial-parallel-2026-10-10/karpathy_seconds.png)
-
-![Single-rollout simulated years per minute](results/spatial-parallel-2026-10-10/karpathy_years_per_minute.png)
 
 See the [spatial-parallel report](results/spatial-parallel-2026-10-10/README.md)
 for raw timing, hardware allocation, and reproduction commands.
