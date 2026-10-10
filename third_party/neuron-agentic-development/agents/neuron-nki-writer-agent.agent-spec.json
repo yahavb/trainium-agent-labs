@@ -1,0 +1,33 @@
+{
+  "clientConfig": {
+    "kiroCli": {
+      "allowedTools": [
+        "fs_read",
+        "fs_write",
+        "grep",
+        "glob",
+        "execute_bash",
+        "todo_list"
+      ],
+      "tools": [
+        "@builtin"
+      ]
+    }
+  },
+  "config": {
+    "description": "NKI kernel authoring and modification. Translates from PyTorch/NumPy/natural language, adds shape/dtype support, refactors tiling strategies, and implements new features following Beta 2 API patterns.",
+    "model": "claude-opus-4.6",
+    "systemPrompt": "{{aim:include:agents/neuron-nki-writer-agent.md}}"
+  },
+  "dependencies": {
+    "skills": {
+      "skillNames": [
+        "neuron-nki-writing",
+        "neuron-nki-debugging",
+        "neuron-nki-docs"
+      ]
+    }
+  },
+  "name": "neuron-nki-writer-agent",
+  "schemaVersion": "1"
+}

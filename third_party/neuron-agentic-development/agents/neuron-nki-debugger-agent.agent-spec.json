@@ -1,0 +1,33 @@
+{
+  "clientConfig": {
+    "kiroCli": {
+      "allowedTools": [
+        "fs_read",
+        "fs_write",
+        "grep",
+        "glob",
+        "execute_bash",
+        "todo_list"
+      ],
+      "tools": [
+        "@builtin"
+      ]
+    }
+  },
+  "config": {
+    "description": "Autonomous NKI kernel compilation error debugging. Analyzes compiler errors, searches documentation and code examples for fixes, applies corrections following simplicity over performance, and validates fixes.",
+    "model": "claude-opus-4.6",
+    "systemPrompt": "{{aim:include:agents/neuron-nki-debugger-agent.md}}"
+  },
+  "dependencies": {
+    "skills": {
+      "skillNames": [
+        "neuron-nki-docs",
+        "neuron-nki-writing",
+        "neuron-nki-debugging"
+      ]
+    }
+  },
+  "name": "neuron-nki-debugger-agent",
+  "schemaVersion": "1"
+}

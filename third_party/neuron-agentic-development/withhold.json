@@ -1,0 +1,16 @@
+{
+  "_what": "Kept files whose code (not prose) is close to a ladder answer, mapped to the nkibench levels at which the kernel agent must never be shown them. Any lookup tool over this directory has to enforce this. Matmul loops are withheld for nki-L3..L7, attention-style code for nki-L8, and transpose-and-layout.md for nki-L2 as a precaution.",
+  "_how": "Found by scanning fenced code blocks for a loop around nc_matmul, or softmax/exp next to nc_matmul (2026-10-10).",
+  "skills/neuron-nki-docs/references/architecture/trainium_inferentia2_arch.md": [3, 4, 5, 6, 7],
+  "skills/neuron-nki-docs/references/optimization/mxfp-matmul.md": [3, 4, 5, 6, 7],
+  "skills/neuron-nki-docs/references/optimization/nki_perf_guide.md": [3, 4, 5, 6, 7, 8],
+  "skills/neuron-nki-docs/references/optimization/use-neuron-profile.md": [3, 4, 5, 6, 7],
+  "skills/neuron-nki-docs/references/programming/api/api-nki-isa-tensor.md": [3, 4, 5, 6, 7],
+  "skills/neuron-nki-writing/SKILL.md": [3, 4, 5, 6, 7, 8],
+  "skills/neuron-nki-writing/references/common-patterns.md": [3, 4, 5, 6, 7, 8],
+  "skills/neuron-nki-writing/references/indexing-patterns.md": [3, 4, 5, 6, 7],
+  "skills/neuron-nki-writing/references/memory-patterns.md": [3, 4, 5, 6, 7],
+  "skills/neuron-nki-writing/references/nki-language-constraint.md": [3, 4, 5, 6, 7],
+  "skills/neuron-nki-writing/references/performance-basics.md": [3, 4, 5, 6, 7],
+  "skills/neuron-nki-writing/references/transpose-and-layout.md": [2, 3, 4, 5, 6, 7]
+}
