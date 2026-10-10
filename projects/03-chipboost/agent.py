@@ -33,7 +33,6 @@ import hashlib
 import importlib.util
 import json
 import os
-import re
 import socket
 import sys
 import tempfile
@@ -80,25 +79,40 @@ def pick_referee():
     return "stage12 (TEMPORARY, simulator only)", stage12.check
 
 
+def byte_instruction(waste, lbl):
+    """ONE named change from the measured HBM traffic / byte floor, naming WHERE the re-reading is.
+
+    Measured on seat-101: the borrowed level-5 text "hoist the operand loads out of the innermost loop"
+    sent Qwen3 to the k loop, which has no waste (every pass loads a different, needed tile); it tried to
+    load all of K into one 128-row tile and crashed, 8 attempts out of 8. The re-reading in the tiled
+    kernel is across the OUTER loops: at K=256 M=512 N=1024 each rhs tile is loaded once per m (4x) and
+    each lhsT tile once per n (2x), 2.00x the floor in total. Reusing rhs across m alone reaches 1.14x;
+    reusing lhsT alone only 1.86x, which would earn the same hint again. So rhs comes first.
+    """
+    head = f"CORRECT, BUT MOVING {waste:.2f}x THE MINIMUM HBM BYTES on {lbl} (simulator count)."
+    if waste > 1.25:
+        return (f"{head} The k loop is not the waste: each of its passes loads a different tile and all are "
+                f"needed. The waste is that the same rhs tiles are loaded again for every m. Make n the outer "
+                f"loop, load that n's K // 128 rhs tiles into SBUF once before the m loop, and reuse them for "
+                f"every m. Keep loading the lhsT tiles inside the m loop as now.")
+    if waste > 1.05:
+        return (f"{head} What is still re-read is lhsT: each lhsT tile is loaded once per n. Keep the rhs "
+                f"reuse you have, and also keep the lhsT tiles of a block of m tiles in SBUF while you sweep "
+                f"across n, so each lhsT tile is loaded once.")
+    return (f"{head} That is the byte floor: every byte is read once, so no byte reduction is left. Any "
+            f"further speedup has to come from the engine schedule.")
+
+
 def sim_instruction(path):
-    """ONE named change for a correct kernel when there is no timer: the byte analysis nkibench already
-    has. The traffic bars of levels 5, 6, 7 are a ladder of byte targets; the first one this kernel misses
-    names the next change (hoist loads, then block M/N, then block K). Measured on the largest dev shape,
-    where redundant traffic shows."""
+    """ONE named change for a correct kernel when there is no timer, from the simulator's byte count on
+    the largest dev shape, where redundant traffic shows."""
     kernel = nkibench.load_kernel(path, ENTRY)
     case = max(stage12.SHAPES["dev"], key=lambda c: c["M"] * c["K"] * c["N"])
     args, _ = nkibench.make_inputs(case, stage12.LEVEL)
     want = nkibench.LEVELS[stage12.LEVEL]["ref"](*args)
     _, counted = nkibench.simulate_and_count(kernel, args)
-    for level in (5, 6, 7):
-        m = nkibench.check_traffic_bar(level, counted, args, want)
-        if m:
-            # nkibench words this for its level ladder, which means nothing to the model here.
-            m = m.replace(" FOR THIS LEVEL", "")
-            return re.sub(r", and level \d+ requires ([\d.]+)x or better\. Correctness alone is level 4; "
-                          r"this level is about the bytes\.", r"; the next target is \1x.", m)
-    return ("Correct, and its HBM traffic is already at the byte floor in the simulator, so no byte "
-            "reduction is left. Any further speedup has to come from the engine schedule.")
+    waste = counted["bytes"] / nkibench.minimum_hbm_bytes(args, want)
+    return byte_instruction(waste, nkibench.label(case, stage12.LEVEL))
 
 
 def grade(src, referee, dry, workdir, n):
