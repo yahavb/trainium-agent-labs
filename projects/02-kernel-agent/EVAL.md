@@ -1,4 +1,4 @@
-# Held-out eval set and tolerance
+# Held-out eval set, tolerance, and token accounting
 
 Everything here runs in the NKI 0.6.0 CPU simulator (`nki.simulate`), on a seat pod or in the
 `python:3.12-slim` container from `SETUP_PYTHON.md`. No number below comes from the device.
@@ -67,3 +67,16 @@ legitimately uses bf16 (1.5× margin) and rejects real bugs by a factor of 20 or
 above bf16 is thin: a kernel that also *accumulates* in bf16 instead of float32 PSUM would land
 close to the limit.
 
+
+## Token accounting
+
+`attempts.jsonl` now records for every attempt: the endpoint's `prompt_tokens` and
+`completion_tokens`, and `prompt_split`, which is the prompt cut into `instructions`, `reference`,
+`api_card`, `prev_code`, `feedback`, `ledger` (and `chat_template`). The split is read off the
+prompt text, so it also holds for the repair prompts in `feedback_v2.py` and `feedback_v3.py`. If
+the served model's tokenizer is installed locally, it counts each piece; otherwise the endpoint's
+exact total is shared out in proportion to characters (`count_method` says which).
+
+```bash
+python scripts/token_budget.py attempts.jsonl -o analysis/token_budget   # .png + .csv
+```

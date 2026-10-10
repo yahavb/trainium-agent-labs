@@ -454,6 +454,79 @@ def extract_code(text):
     return ""
 
 
+# ---------------------------------------------------------------- token accounting
+#
+# The challenge is deciding which 8192 tokens the model sees, so every attempt records what its
+# prompt was spent on. The split is read off the prompt TEXT rather than off how it was built, so it
+# holds for feedback_v2/v3's repair prompts as well as ours.
+
+LEDGER_MARK = "\n\nThese approaches have already failed"
+FEEDBACK_MARK = "A checker reports:\n"
+SEGMENTS = ("instructions", "reference", "api_card", "prev_code", "feedback", "ledger")
+
+
+def prompt_segments(prompt, level):
+    """The prompt cut into named pieces: {segment: text}. The pieces add up to the whole prompt."""
+    import inspect
+    seg = dict.fromkeys(SEGMENTS, "")
+    rest = prompt
+    i = rest.find(LEDGER_MARK)
+    if i >= 0:
+        seg["ledger"], rest = rest[i:], rest[:i]
+    m = re.search(r"```python\n.*?```", rest, re.S)
+    if m:
+        seg["prev_code"], rest = m.group(0), rest[:m.start()] + rest[m.end():]
+    for name, text in (("reference", inspect.getsource(nkibench.LEVELS[level]["ref"])),
+                       ("api_card", API_CARD)):
+        if text in rest:
+            seg[name], rest = text, rest.replace(text, "", 1)
+    j = rest.find(FEEDBACK_MARK)
+    if j >= 0:
+        # The repair instruction is the last paragraph; everything between the marker and it is
+        # the checker's message, however many paragraphs that is.
+        k = rest.rfind("\n\n")
+        k = k if k > j else len(rest)
+        seg["feedback"], rest = rest[j + len(FEEDBACK_MARK):k], rest[:j + len(FEEDBACK_MARK)] + rest[k:]
+    seg["instructions"] = rest
+    return seg
+
+
+_TOKENIZER = {}
+
+
+def tokenizer(model):
+    """The served model's own tokenizer, if it is on this machine (in a seat pod vLLM downloaded
+    it). Otherwise None, and the split is proportional to characters."""
+    if model not in _TOKENIZER:
+        _TOKENIZER[model] = None
+        if os.environ.get("KERNEL_AGENT_TOKENIZER", "1") != "0":
+            try:
+                from transformers import AutoTokenizer
+                _TOKENIZER[model] = AutoTokenizer.from_pretrained(model, local_files_only=True)
+            except Exception:
+                pass
+    return _TOKENIZER[model]
+
+
+def token_split(a, prompt, level, prompt_tokens):
+    """{segment: tokens} and how they were counted. prompt_tokens is the endpoint's own count."""
+    seg = prompt_segments(prompt, level)
+    tok = None if a.offline else tokenizer(a.model)
+    if tok is not None:
+        out = {k: len(tok.encode(v, add_special_tokens=False)) if v else 0 for k, v in seg.items()}
+        if prompt_tokens:
+            out["chat_template"] = max(0, prompt_tokens - sum(out.values()))
+        return out, "tokenizer"
+    chars = sum(len(v) for v in seg.values()) or 1
+    total, how = (prompt_tokens, "proportional") if prompt_tokens else (len(prompt) // 4, "chars/4")
+    return {k: round(total * len(v) / chars) for k, v in seg.items()}, how
+
+
+class Reply(str):
+    """The answer text, plus what the endpoint said about it in .meta."""
+    meta = {}
+
+
 # ---------------------------------------------------------------- the model
 
 def ask(a, prompt):
@@ -492,7 +565,12 @@ def ask(a, prompt):
         print(f"    (empty answer, {len(reasoning)} chars of hidden reasoning, "
               f"finish={ch.get('finish_reason')} — shorten the prompt rather than raising the "
               f"budget)")
-    return content
+    usage = payload.get("usage") or {}
+    reply = Reply(content)
+    reply.meta = dict(prompt_tokens=usage.get("prompt_tokens"),
+                      completion_tokens=usage.get("completion_tokens"),
+                      max_tokens=budget, finish=finish, reasoning_chars=len(reasoning))
+    return reply
 
 
 def ask_parallel(a, prompt, n):
@@ -520,19 +598,37 @@ def solve(a, level, log):
     best = (0.0, None, "")
     tried, streak, seen = [], 0, {}
     latest = ("", "")
+    spent = dict(prompt=0, completion=0, rounds=0)
     for rnd in range(a.rounds):
         t0 = time.perf_counter()
         replies = (offline_answers(level, a.samples, rnd) if a.offline
                    else ask_parallel(a, prompt, a.samples))
+        metas = [getattr(r, "meta", {}) for r in replies]
+        prompt_tokens = next((m["prompt_tokens"] for m in metas if m.get("prompt_tokens")), None)
+        split, how = token_split(a, prompt, level, prompt_tokens)
+        prompt_tokens = prompt_tokens or sum(split.values())
         graded = []
-        for reply in replies:
+        for reply, meta in zip(replies, metas):
             src = extract_code(reply)
             reward, parts, feedback = grade(src, level)
             graded.append((reward, src, feedback, parts))
+            out_tokens = meta.get("completion_tokens") or len(reply) // 4
+            spent["prompt"] += prompt_tokens
+            spent["completion"] += out_tokens
             log.write(json.dumps(dict(level=level, round=rnd, reward=reward, parts=parts,
                                       prompt_chars=len(prompt), reply_chars=len(reply),
-                                      code=src, feedback=feedback)) + "\n")
+                                      code=src, feedback=feedback,
+                                      run=getattr(a, "run", 0), prompt_tokens=prompt_tokens,
+                                      completion_tokens=out_tokens, prompt_split=split,
+                                      count_method=how, finish=meta.get("finish"),
+                                      max_tokens=meta.get("max_tokens"),
+                                      reasoning_chars=meta.get("reasoning_chars", 0))) + "\n")
         log.flush()
+        spent["rounds"] += 1
+        print(f"  tokens: prompt {prompt_tokens:,} = "
+              + " + ".join(f"{k} {v:,}" for k, v in split.items() if v)
+              + f"  [{how}] | answers "
+              + ", ".join(str(m.get("completion_tokens") or "?") for m in metas))
         graded.sort(key=lambda g: g[0], reverse=True)
         top = graded[0]
         if top[0] > best[0]:
@@ -556,7 +652,7 @@ def solve(a, level, log):
             print("  ---------------- the kernel ----------------")
             print(textwrap.indent(top[1], "  "))
             print("  -------------------------------------------")
-            return top[0], rnd + 1
+            return top[0], rnd + 1, top[1], spent
         seen[top[2]] = seen.get(top[2], 0) + 1
         streak = streak + 1 if same else 1
         if seen[top[2]] >= a.give_up_after:
@@ -567,7 +663,7 @@ def solve(a, level, log):
                   f"mistakes rather than converging, so more rounds will not help. Failures seen:")
             for f, n in sorted(seen.items(), key=lambda kv: -kv[1]):
                 print(f"    {n}x  {f[:110]}")
-            return best[0], rnd + 1
+            return best[0], rnd + 1, best[1], spent
         tried.append(top[2])
         repeats = streak
         if repeats >= 2 and (best[1] or "").strip():
@@ -591,7 +687,7 @@ def solve(a, level, log):
         else:
             prompt = repair_prompt(level, latest[0], latest[1])
     print(f"  not solved in {a.rounds} rounds; best reward {best[0]:.2f}")
-    return best[0], a.rounds
+    return best[0], a.rounds, best[1], spent
 
 
 def main():
@@ -652,18 +748,21 @@ def main():
 
     with open(a.log, "a") as log:
         for rep in range(a.repeat):
+            a.run = rep
             if a.repeat > 1:
                 print(f"\n################ run {rep + 1} of {a.repeat} ################")
             results = []
             for level in levels:
-                results.append((level,) + solve(a, level, log))
-                history[level].append(results[-1][1])
+                reward, rounds, _, spent = solve(a, level, log)
+                results.append((level, reward, rounds, spent))
+                history[level].append(reward)
 
             print("\n=========== summary ===========")
-            for level, reward, rounds in results:
+            for level, reward, rounds, spent in results:
                 print(f"  level {level}  reward {reward:.2f} after {rounds} round(s)"
-                      + ("  SOLVED" if reward >= full - 1e-9 else ""))
-            print(f"  solved {sum(1 for _, r, _ in results if r >= full - 1e-9)}/{len(results)}")
+                      + ("  SOLVED" if reward >= full - 1e-9 else "")
+                      + f"  tokens {spent['prompt']:,} prompt + {spent['completion']:,} answer")
+            print(f"  solved {sum(1 for _, r, _, _ in results if r >= full - 1e-9)}/{len(results)}")
 
     if a.repeat > 1:
         # The number that actually means something. A solve rate over N runs survives the variance
