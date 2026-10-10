@@ -19,6 +19,59 @@ splits the work into six roles.
   Levels 2–4 (seat-35) and 5–8 (seat-199) started for the first time at ~22:30–22:41 UTC. Read those
   results before quoting anything here.
 - One run is not a result. Report solve rates over `--repeat N`, with the spread.
+- agent2 on **Qwen3-32B** (seat-198): see the next section.
+
+## Results on Qwen3-32B (seat-198, 2026-10-10, still running)
+
+All of these use Qwen3-32B on seat-198 (TP=4, the whole chip, 8K context). Every check is
+`nki.simulate` on the CPU.
+
+### The planner's name index, levels 1 and 4 (planner only)
+
+- **Setup:** 8 single-plan calls per arm and level, with LOOKUP off. The two arms differ only in the
+  index: every nki name with no descriptions (`--index names`), against the described index
+  (`agents2/index.py`, now the default).
+- **No kernels:** it measures the plans only, so a right name is not yet a right kernel.
+
+| | L1 names | L1 described | L4 names | L4 described |
+|---|---|---|---|---|
+| Names that exist, in the right module | 48% | **100%** | 55% | **91%** |
+| Plans with any wrong name | 6/8 | **0/8** | 8/8 | **2/8** |
+| Plans choosing `tensor_partition_reduce` (wrong axis) | 5/8 | **1/8** | 4/8 | **0/8** |
+| Planner prompt, tokens | ~1,166 | ~818 | ~1,199 | ~905 |
+
+- **Level 1:** every described plan reshapes the tile, most also permute, then use `nl.mean` or `nl.sum`.
+  That route passes level 1 when tried by hand: reshape to `(C, H/p, p, W/p, p)`, permute the window
+  axes last, `nl.mean` over them.
+- **Level 4:** the wrong names left are tile methods written as `nl.reshape` / `nl.permute`, which
+  `fix_name()` now corrects. 7 of 8 described plans also added `t.reshape` / `t.permute`, which a
+  tiled matmul doesn't need.
+
+### The whole agent, levels 5–8
+
+- **Agent:** agent2 at `e4edc8c`, with the default settings: 2 threads, up to 4 approaches and 80
+  model calls per level.
+- **One run per level,** so single runs, not rates.
+
+| Level | Operation | Result | Best | Why it stopped | Checks | Model calls | Time |
+|---|---|---|---|---|---|---|---|
+| 5 | matmul, loads hoisted | **not solved** | 0.62 (1 of 4 shapes) | all 4 approaches used up | 28 | 52 (planner 8, coder 28, debugger 16) | 14 min |
+| 6 | matmul, M and N blocked | running since 22:43 UTC | 0.62 so far: right values on 2 of 4 shapes (it loops over K), but one moves 1.5× the minimum bytes, over the 1.25× limit | | | | |
+| 7 | matmul, M, N and K blocked | queued | | | | | |
+| 8 | single-head attention | queued | | | | | |
+
+**Level 5 hit the same wall as `agent.py` at level 4:**
+- All 4 approaches ran one `nc_matmul` on whole-input tiles.
+- That passes the only test shape that fits a single tile (K=128, M=128, N=512).
+- It fails as soon as a dimension passes 128: `dma_copy dst partition dimension 256 exceeds maximum
+  128`.
+- No plan tiled M, N and K.
+
+**The whole agent on levels 1–4** (`agent2.py --all`, same settings) started at 22:47 UTC. Its results
+go here when it finishes.
+
+**Kernels:** each level's best kernel is in [`kernels/`](kernels/), with its score and the checker's
+message in the header. They are the agent's output, not reference kernels.
 
 ## The ladder
 
@@ -222,6 +275,7 @@ Each run writes `runs/<tag>/`:
 | `agent.py` | the organisers' agent, with our fixes on branch `31p`: the baseline |
 | `nkibench.py` | the organisers' ladder and checker (layer 1, the simulator) |
 | `reference_level1.py` … `reference_level4.py` | reference kernels for levels 1–4 |
+| `kernels/` | the best kernel agent2 wrote at each level (Qwen3-32B runs), with its score; not references |
 | `tests/` | unit tests |
 
 Never show `nki_cheatsheet_check.py` or `agents2/cards_check.py` to the agent: their test kernels are close

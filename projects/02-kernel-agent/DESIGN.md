@@ -114,11 +114,18 @@ Measured on seat-35:
   | cards pushed into every prompt | 0.30 |
   | pull design | 0.30 (4 lookups) |
   | `5bbecbd` (example kernel, lookup in the reply format) | 0.50 (wrong shape; 0 lookups, 12 echoes) |
+  | `bd24ef1` (docs request, echo handling) | 0.30 (10 docs requests; 4 echoes) |
+  | `e4edc8c` (described index), as part of `--all` | **solved** (83 s; see the caveat below) |
+
+  `e4edc8c`, levels 1-4, one run (`agent2-v5-all-1010-2230`): L1 solved, L2 0.30, L3 solved, L4 0.62,
+  in 16.5 minutes. agent.py's 8K baseline solved none of the four in each of 3 runs (best 0.30, 0.30,
+  0.30, 0.62). One run is not a rate. Caveat: the L1 kernel returns its SBUF result tile instead of
+  writing an HBM output; nkibench and the simulator accept that, the device is untested.
 
   No level-1 run has solved it. The baseline is 0.30 on every run, a wall, so 0.50 is a real change, but
   the others are single runs.
-- **Not measured yet:** levels 2–4 with agent2. README-task.md's warning applies (a worked example once took
-  level 2 from 4/5 to 0/5), so measure `--all` before claiming anything.
+- **Levels 2–4 measured once only** (`e4edc8c`, above). README-task.md's warning applies (a worked
+  example once took level 2 from 4/5 to 0/5), so get rates with `--repeat` before claiming anything.
 
 ## Lessons from the READMEs, and where agent2 stands
 
