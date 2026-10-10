@@ -57,13 +57,14 @@ baseline 回溯校准（b39989f）：3 次解出置信度 0.90，保留集 16/16
 | **15:15** | **D2** v7 每个 level 对比 baseline，采用还是回滚；排第 3 轮 | 总规划 | |
 | 15:20–16:10 | **第 3 轮（最后一轮）**：v7 L2 ×5（我们的 harness，必跑）；v7+E-F 在 L1（如果两者都采用）；v7 还解不了的那一级再改一处。16:10 没出结果的不进最终版 | 执行 1 | 按 §4 格式回报 |
 | ✅ 14:05 | token 统计加 `--usage`：从 v7 的 USAGE_LOG 取服务器给的准确 token（494d9e9） | 执行 2 | |
-| 14:08–14:30 | 模拟目标检查：baseline 和 E-A 在设 trn2、不设 trn2 两种情况下各重新打分一遍，看结果变不变 | 执行 2 | analysis/sim_target_check.md，一句结论 |
-| 15:00–16:00 | 失败加恢复素材：从日志里挑 2–3 段完整过程（失败的 kernel → checker 原话 → 回传的指令 → 修好的那一轮），附每轮 token | 执行 2 | 每段能定位到 文件/run/level/round |
+| ✅ 14:09 | 模拟目标检查（530ab9a）：baseline 和 E-A 共 584 次在 trn2/trn3 下重新打分，和日志完全一致。但一般来说会有影响：宽 tile 在 trn3 下会成为假解。**规则：没设 trn2 的 run 里出现的 1.0，引用前要设 trn2 重新打分** | 执行 2 | |
+| 14:10–14:40 | 失败加恢复素材，先做 E-v3 L4 run 1（第 6 轮解出）：每轮的 kernel 改动、checker 原话、指令原文、token、分数；最后那个 kernel 设 trn2 跑 reaudit 和保留集 | 执行 2 | analysis/recovery_v3_L4_run1.md |
+| 15:00–16:00 | 失败加恢复素材（v7 的）：从日志里再挑 1–2 段完整过程（失败的 kernel → checker 原话 → 回传的指令 → 修好的那一轮），附每轮 token | 执行 2 | 每段能定位到 文件/run/level/round |
 | 15:30 | 用第一份新格式日志出 token 分配图草稿 | 执行 2 | analysis/ 下 .png + .csv |
 | **16:10** | **D3** 定最终版：包含哪些 commit、最终命令行 | 总规划 + teoguo | 写进 §5 |
 | 16:15–16:35 | 最终版冒烟：1 个座位 `--all --repeat 1 --rounds 2` | 执行 1 | 4 个 level 跑完不崩，verdicts 4 条，token 字段齐 |
 | 16:15–16:40 | 每级挑一个上交 kernel：对目前所有 v7 日志跑 V7.md「Before handing in」（compile_solves7.py 编译，pick_nki.py 挑选）；有空座位就停掉它的 vLLM，跑 check/device_check.py 上芯片验证，16:40 前把 vLLM 重启好 | 执行 1（问 liuyq 细节） | nki_kernels/ 每级一个，写明是模拟器验证、编译通过还是芯片上验证 |
-| 16:30– | 写 SUBMISSION.md（仓库根目录，README 顶部加一行链接过去），最终数字先空着 | 总规划 | 骨架和已有数字 |
+| ✅ 14:10 起 | 写 SUBMISSION.md（仓库根目录），骨架已建，待定的地方标 [[TBD]]；16:30 起集中写 | 总规划 | 18:05 前 [[TBD]] 清零 |
 | 16:40–17:00 | 冻结前检查，5 个座位逐个过 §5 清单 | 执行 1 | 5 行全绿 |
 | **17:00** | **冻结**：打 tag `final`，之后只改文档 | 执行 1 打 tag | |
 | 17:00–17:45 | 最终跑（分配见 §5） | 执行 1 | 每个 level 5 次。没跑完的按实际完成次数报 |
@@ -146,7 +147,7 @@ L1 每次都跑满 8 轮，最慢，所以拆到两个座位。最坏耗时按�
 | pod 被替换，/workspace 丢失 | 每个实验结束马上 `sync.sh pull`；最终跑期间每 15 分钟拉一次 |
 | agent.py 改动冲突 | 执行 2 不再改 agent.py；实验改动只由执行 1 提交 |
 | 组合起来从没一起跑过 | 16:15 冒烟；最终数字以最终跑为准，和单个实验对不上就如实写 |
-| 模拟目标不一致：v7 设了 NEURON_PLATFORM_TARGET_OVERRIDE=trn2，baseline、E-A、E-F 没设（V7.md 说不设就模拟 trn3） | 执行 1 开跑前在 pod 上查清；如果默认不是 trn2，就让执行 2 设 trn2 重新给 baseline 打分，看结果变不变。文档里写明每个数字的模拟目标 |
+| 模拟目标不一致：v7 设了 trn2，baseline、E-A、E-F 没设 | 已查（530ab9a）：baseline 和 E-A 两种目标下分数相同。pod 上 nki 会按 neuron-ls 的机型选目标（trn2.3xlarge → trn2），执行 1 在确认。没设 trn2 的 run 里出现的 1.0，引用前设 trn2 重新打分 |
 | v7 的 `ask` 替换了 agent.py 的，attempts 里的 token 只是估算 | 精确数字以 USAGE_LOG 为准；token 图要用它（在 v7 兼容性检查里确认能对上每次尝试） |
 | 两套置信度：agent.py 的 `--verdicts`（先给置信度，再跑我们的保留集）和 v7 的 NKI_VERDICTS（它自己的额外用例和编译器） | 默认两套都报，都拿我们的保留集结果来校准；D3 定哪一套写在正文 |
 
