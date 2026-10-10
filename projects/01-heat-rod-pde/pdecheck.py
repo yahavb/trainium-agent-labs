@@ -57,8 +57,14 @@ def extract(text):
 
 
 def parse(s):
-    from checker_syntax import parse_expression
-    return parse_expression(s)
+    from sympy.parsing.sympy_parser import (parse_expr, standard_transformations,
+                                            implicit_multiplication_application)
+    tr = standard_transformations + (implicit_multiplication_application,)
+    # sympy's parser emits Integer/Float/Rational calls, so those names must be reachable;
+    # __builtins__ stays empty so a reply cannot reach anything else.
+    glob = {"__builtins__": {}}
+    glob.update({n: getattr(sp, n) for n in ("Integer", "Float", "Rational", "Symbol")})
+    return parse_expr(s, local_dict=dict(_ALLOWED), global_dict=glob, transformations=tr)
 
 
 def basis_label(p, n="n"):
@@ -241,15 +247,14 @@ def prompt_of(p):
             f"constants, no LaTeX.")
 
 
-def _check_original(problem, answer_text, n_points=24, _expression=None):
-    """Historical numerical scoring; only called inside the bounded worker."""
+def check(problem, answer_text, n_points=24):
     p = problem
     s = extract(answer_text) if "=" in (answer_text or "") else (answer_text or "").strip()
     if not s:
         return dict(reward=0.0, parts={}, expr=None, start_error=None,
                     feedback="No answer found. End with a line: u(x, t) = <expression>")
     try:
-        u = parse(s) if _expression is None else _expression
+        u = parse(s)
     except Exception as e:
         return dict(reward=0.0, parts={}, expr=s, start_error=None,
                     feedback=f"Could not read the expression {s[:70]!r}: "
@@ -319,16 +324,6 @@ def _check_original(problem, answer_text, n_points=24, _expression=None):
     return dict(reward=round(reward, 3), parts=parts, expr=s,
                 start_error=None if start_err != start_err else round(start_err, 6),
                 feedback=" ".join(feedback) or "Solved.")
-
-
-def check(problem, answer_text, n_points=24):
-    """Original score protocol, with safe parsing and a process deadline.
-
-    This is the baseline score, not an independent-validation certificate.
-    Use validation.grade for the existing Agent's full validation gate.
-    """
-    from checker_runtime import run_check
-    return run_check('original', problem, answer_text, n_points=n_points)
 
 
 def verify(problems, extra_cases=()):

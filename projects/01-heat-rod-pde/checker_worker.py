@@ -1,4 +1,4 @@
-"""Internal worker. Run via checker_runtime; never evaluates Python input."""
+"""Optional worker. Run via checker_enhanced_runtime; never evaluates Python input."""
 import json
 import sys
 
@@ -11,9 +11,9 @@ def main():
         resource.setrlimit(resource.RLIMIT_AS, (2 * 1024**3, 2 * 1024**3))
     except (ImportError, ValueError, OSError):
         pass
-    from checker_runtime import clean_json, failure, no_score
+    from checker_enhanced_runtime import clean_json, failure, no_score
     from checker_syntax import ExpressionError, expression_source, parse_expression, x, t
-    import pdecheck
+    from checker_scoring import _check_original
     import math
 
     def emit(kind, result):
@@ -59,7 +59,7 @@ def main():
                 p['lam'] = lambda n: n*sp.pi/p['L']
             # Sentinel used only for historical feedback. No hidden field is read.
             p['exact'] = None
-            original = pdecheck._check_original(p, source, request['n_points'], _expression=u)
+            original = _check_original(p, source, request['n_points'], _expression=u)
             original.update(original_reward=original['reward'] if original['parts'] else None, scored=bool(original['parts']),
                             score_protocol='c3c16f6-numerical', status='original_scored')
         except Exception as exc:

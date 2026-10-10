@@ -3,9 +3,12 @@
 ## Current implementation update — 2026-10-10
 
 Checker changes from `346ae58` have been consolidated into the maintained
-`challenge1-runtime-resilience` branch. The original-score `grade_candidate` API
-is retained; supplementary validation is explicit and does not change Agent
-stopping rules. See [Checker design](../CHECKER_DESIGN.md).
+`challenge1-runtime-resilience` branch. Following the owner's compatibility report,
+the public `pdecheck.py` and `checker_runtime.py` are restored exactly from master
+`b94759c18e91139a128ed260b6a7dd18ba59148d`. Enhanced parsing, worker limits and
+diagnostics now live behind explicit optional APIs; they do not change public
+result fields, original error handling or Agent stopping rules. See
+[Checker design](../CHECKER_DESIGN.md). Static source identity is not a runtime test.
 
 **IMPLEMENTED — NOT TESTED.** The owner prohibited tests, benchmarks and inference
 for this work. The checks listed below are historical evidence for their named

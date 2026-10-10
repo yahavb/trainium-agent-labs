@@ -10,6 +10,11 @@ additional feature branches or merge master without explicit owner authorization
 The current Checker/consolidation work is explicitly implementation-only: do not
 run tests, benchmarks or inference unless the owner authorizes them again.
 
+Keep the public `pdecheck.py` and `checker_runtime.py` interfaces aligned with
+master, including result fields and malformed-answer/exception semantics. Keep
+enhanced verification behind the separate opt-in `validation` and
+`checker_enhanced_runtime` APIs; do not silently replace the public checker path.
+
 Preserve the real-model candidate/checker/feedback loop, the model-directed calculator,
 official scoring and problem definitions. Never use hidden answers as a solving shortcut.
 Keep official deliverables separate from additional engineering standards.

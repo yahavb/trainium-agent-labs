@@ -9,7 +9,7 @@ import math
 import numpy as np
 import sympy as sp
 
-from checker_runtime import diagnostic
+from checker_enhanced_runtime import diagnostic
 from checker_syntax import x, t
 
 RESIDUAL_TOL = 1e-6

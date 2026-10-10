@@ -1,5 +1,5 @@
-"""Independent physics checks; preserves Agent API and separates baseline scores."""
-from checker_runtime import run_check
+"""Opt-in enhanced checks; does not replace master's public Checker interfaces."""
+from checker_enhanced_runtime import run_check
 from checker_syntax import ExpressionError, expression_source, parse_expression, x, t
 
 
