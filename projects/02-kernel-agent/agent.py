@@ -85,6 +85,14 @@ CONTEXT_CARDS = {
         "the pool axes with nl.sum(..., axis=[...]), then multiply by "
         "1.0 / (pool_size * pool_size). Do not call .mean() on an NKI tensor."
     ),
+    "level1_avgpool_api": (
+        "Level 1 avgpool essentials: allocate with nl.ndarray(..., dtype=x.dtype, buffer=nl.sbuf "
+        "or nl.shared_hbm), never nl.sbuf(). SBUF tiles must be 2D or higher. Use nl.sum, not "
+        "nisa.sum. nl.sum reduces trailing contiguous axes only; arrange the pool dimensions as "
+        "the final axes before reducing. Scale with nisa.tensor_scalar(dst=..., data=..., "
+        "op0=nl.multiply, operand0=1.0/(pool_size*pool_size)). Write final tiles with "
+        "nisa.dma_copy(dst=output_slice, src=tile)."
+    ),
     "reduction_axis": (
         "NKI reduction axis rule: nl.sum can reduce only the last contiguous dimensions of a tile. "
         "For a 5D avgpool access-pattern view shaped like output_h, pool_h, output_w, pool_w, the "
@@ -133,6 +141,13 @@ LEVEL_BASE_CARDS = {
     2: ["api_core", "dma_copy_shape", "tile_limits"],
     3: ["api_core", "dma_copy_shape", "matmul_psum", "signatures"],
     4: ["api_core", "dma_copy_shape", "tile_limits", "matmul_psum", "matmul_tiling"],
+}
+
+LEVEL_START_CARDS = {
+    1: ["level1_avgpool_api"],
+    2: [],
+    3: ["matmul_psum"],
+    4: ["matmul_psum", "matmul_tiling"],
 }
 
 
@@ -631,6 +646,11 @@ def prompt_accounting(reference="", code="", feedback="", cards="", ledger="", i
     sections["total"] = sum(sections.values())
     return sections
 
+
+def start_context(level):
+    return render_context_cards(LEVEL_START_CARDS.get(level, []))
+
+
 def first_prompt(level, terse=0):
     """Deliberately short, and it does NOT list the rules.
 
@@ -642,13 +662,15 @@ def first_prompt(level, terse=0):
     s = nkibench.LEVELS[level]
     import inspect
     ref = inspect.getsource(s['ref'])
+    start_cards = start_context(level)
+    start_text = f"\n\n{start_cards}" if start_cards else ""
     if terse >= 2:
         # Last resort. Measured on this endpoint: one-sentence prompts answered in 300-700
         # tokens while every structured, rule-carrying prompt spiralled.
         return (f"Write a Python function `{s['entry']}` decorated with @nki.jit that computes "
                 f"the same thing as this, using nki.language as nl and nki.isa as nisa:\n\n"
                 f"{ref}\n"
-                f"{CORE_CARD}\nReply with one python code block.")
+                f"{CORE_CARD}{start_text}\nReply with one python code block.")
     if terse >= 1:
         # The matmul memory rules are the substance of levels 3 and 4, and the short prompt has to
         # carry them: measured, the agent cycled between "dst must be in ['psum']" and "moving must
@@ -661,7 +683,7 @@ def first_prompt(level, terse=0):
         return (f"Write an AWS Neuron NKI kernel: a function `{s['entry']}` decorated with "
                 f"@nki.jit that computes what this reference computes.\n\n"
                 f"{ref}\n"
-                f"{CORE_CARD}\n{mm}\n"
+                f"{CORE_CARD}{start_text}\n{mm}\n"
                 f"Reply with one python code block.")
     return (
         f"Write an AWS Neuron NKI kernel.\n\n"
@@ -669,7 +691,7 @@ def first_prompt(level, terse=0):
         f"Entry point: a function named `{s['entry']}`, decorated with `@nki.jit`.\n"
         f"It must compute exactly what this NumPy reference computes:\n\n"
         f"{ref}\n\n"
-        f"{CORE_CARD}\n\n"
+        f"{CORE_CARD}{start_text}\n\n"
         f"Reply with ONE python code block containing the imports and the function. No prose.")
 
 
@@ -722,10 +744,11 @@ def audit_context(level):
     import inspect
     ref = inspect.getsource(nkibench.LEVELS[level]["ref"])
     first = first_prompt(level)
-    first_budget = prompt_accounting(reference=ref, core=CORE_CARD)
+    first_budget = prompt_accounting(reference=ref, core=CORE_CARD, cards=start_context(level))
     print(f"level {level}: {nkibench.LEVELS[level]['op']}")
     print_budget("first prompt", first_budget)
-    print(f"    chars={len(first)} cards=core_minimal")
+    first_cards = ["core_minimal"] + LEVEL_START_CARDS.get(level, [])
+    print(f"    chars={len(first)} cards={', '.join(first_cards)}")
 
     source = (
         "import nki\nimport nki.language as nl\nimport nki.isa as nisa\n\n"
@@ -900,10 +923,11 @@ def solve(a, level, log):
     print(f"\n=========== level {level}: {nkibench.LEVELS[level]['op']} ===========")
     terse = a.terse
     prompt = first_prompt(level, terse)
-    prompt_cards = ["core_minimal"]
+    prompt_cards = ["core_minimal"] + LEVEL_START_CARDS.get(level, [])
     prompt_budget = prompt_accounting(
         reference=__import__("inspect").getsource(nkibench.LEVELS[level]["ref"]),
-        core=CORE_CARD)
+        core=CORE_CARD,
+        cards=start_context(level))
     best = (0.0, None, "")
     tried, streak, seen = [], 0, {}
     latest = ("", "")
@@ -994,10 +1018,11 @@ def solve(a, level, log):
             # rounds running. Shorten and re-ask instead.
             terse = min(terse + 1, 2)
             prompt = first_prompt(level, terse)
-            prompt_cards = ["core_minimal"]
+            prompt_cards = ["core_minimal"] + LEVEL_START_CARDS.get(level, [])
             prompt_budget = prompt_accounting(
                 reference=__import__("inspect").getsource(nkibench.LEVELS[level]["ref"]),
-                core=CORE_CARD)
+                core=CORE_CARD,
+                cards=start_context(level))
             print(f"  no code yet, so re-asking with a shorter prompt (terseness {terse})")
         else:
             prompt = repair_prompt(level, latest[0], latest[1], tried)

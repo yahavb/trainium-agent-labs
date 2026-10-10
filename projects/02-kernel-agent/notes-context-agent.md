@@ -272,3 +272,33 @@ Reason:
 - The checker and classifier can both have bugs.
 - The safest loop separates observed facts from heuristic hints and retrieved docs.
 - Classifier is now mainly for card retrieval and logging, not for overriding the checker message.
+
+## Level-wise API cards
+
+The run showed Level 1 still spent rounds on basic API mistakes:
+
+- calling `nl.sbuf()`;
+- using `nisa.sum` instead of `nl.sum`;
+- producing 1D SBUF tiles.
+
+Added `level1_avgpool_api` to the initial prompt for Level 1. It is a concise operation-specific
+API card, not a solution:
+
+- allocation syntax and memory regions;
+- SBUF rank requirement;
+- `nl.sum` vs `nisa.sum`;
+- trailing-contiguous reduction axes;
+- `nisa.tensor_scalar` scaling;
+- final `nisa.dma_copy` write.
+
+Prompt audit:
+
+- Level 1 first prompt is now about 313 accounted tokens / about 383 chars-estimated tokens,
+  still far below the 8192 input limit.
+
+Workflow remains level-wise:
+
+- solve Level 1 avgpool first;
+- then Level 2 transpose;
+- then Level 3/4 matmul;
+- add similarly concise start cards only when a level reveals repeated API confusion.
