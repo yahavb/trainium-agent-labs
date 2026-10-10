@@ -23,10 +23,14 @@ Every attempt is appended to a JSONL file with its reward, so the log is the del
 """
 
 import argparse
+import ast
+import hashlib
+import inspect
 import json
 import os
 import re
 import sys
+import tempfile
 import textwrap
 import time
 
@@ -53,19 +57,26 @@ WEIGHTS = dict(parses=0.1, rules=0.2, runs=0.2, correct=0.5)
 
 
 def grade(source, level):
-    """Returns (reward, parts, feedback). Feedback is an INSTRUCTION, never just a verdict."""
+    """Returns (reward, parts, feedback, progress). Feedback is an INSTRUCTION, never just a verdict.
+
+    progress breaks ties between samples with the same reward, so the loop repairs the attempt that
+    got furthest. Measured on level 3: all four samples scored 0.30 every round, and the repair
+    always went to whichever came back first -- once a kernel failing on its first line, while
+    another sample had loaded both operands correctly. 0..1 is how far into the kernel the simulator
+    got before raising; 1..2 means it ran, plus the fraction of the output that is right.
+    """
     parts = dict(parses=False, rules=False, runs=False, correct=False)
 
     if not source.strip():
         return 0.0, parts, ("No code came back. Reply with one python code block containing the "
-                            "kernel and nothing else.")
+                            "kernel and nothing else."), 0.0
     try:
         compile(source, "<candidate>", "exec")
         parts["parses"] = True
     except SyntaxError as e:
         return (WEIGHTS["parses"] * 0, parts,
                 f"The code does not parse: {e.msg} on line {e.lineno}. Send one complete python "
-                f"code block.")
+                f"code block.", 0.0)
 
     violations = nkibench.check_rules(source, level)
     if violations:
@@ -73,7 +84,6 @@ def grade(source, level):
         if any("no function named" in v for v in violations):
             # Measured: this repeated 15 rounds running, because "there is no function named X"
             # never said what the function should look like. Hand over the exact line.
-            import inspect
             ref = nkibench.LEVELS[level]["ref"]
             args = ", ".join(inspect.signature(ref).parameters)
             extra = (f" Start the function with exactly this line:  "
@@ -81,11 +91,17 @@ def grade(source, level):
                      f"and put @nki.jit on the line above it.")
         return (sum(WEIGHTS[k] for k, v in parts.items() if v), parts,
                 "Rule violations, which score zero however fast the kernel is. Fix exactly "
-                "these: " + " ".join(violations) + extra)
+                "these: " + " ".join(violations) + extra, 0.0)
     parts["rules"] = True
 
     spec = nkibench.LEVELS[level]
-    path = f"/tmp/_agent_level{level}.py"
+    # One file per distinct kernel. Every candidate used to go to the same /tmp path, and Python
+    # reuses a cached .pyc when the source has the same size and the same mtime second -- so a
+    # same-length repair graded within a second of the previous sample (swapping stationary= and
+    # moving=, or (N, M) for (M, N)) was silently graded as the OLD code. Two agents running at
+    # once also overwrote each other's file.
+    path = os.path.join(_scratch_dir(), f"level{level}_"
+                        f"{hashlib.sha1(source.encode()).hexdigest()[:16]}.py")
     with open(path, "w") as f:
         f.write(source)
     try:
@@ -108,13 +124,13 @@ def grade(source, level):
         return (sum(WEIGHTS[k] for k, v in parts.items() if v), parts,
                 f"There is no module named {e.name!r}. The only imports that exist are: "
                 f"`import nki`, `import nki.language as nl`, and `import nki.isa as nisa`. "
-                f"Use exactly those three.")
+                f"Use exactly those three.", 0.0)
     except Exception as e:
         return (sum(WEIGHTS[k] for k, v in parts.items() if v), parts,
                 f"The file imports but {spec['entry']} could not be loaded: "
-                f"{type(e).__name__}: {e}")
+                f"{type(e).__name__}: {e}", 0.0)
 
-    failures, passed, intensity = [], 0, None
+    failures, passed, intensity, progress = [], 0, None, []
     for case in spec["shapes"]:
         args, _ = nkibench.make_inputs(case, level)
         before = [x.copy() if isinstance(x, np.ndarray) else x for x in args]
@@ -123,10 +139,11 @@ def grade(source, level):
             got, counted = nkibench.simulate_and_count(kernel, args)
         except nkibench.NkiMissing as e:
             return (sum(WEIGHTS[k] for k, v in parts.items() if v), parts,
-                    f"CANNOT SIMULATE: {e}")
+                    f"CANNOT SIMULATE: {e}", 0.0)
         except Exception as e:
-            failures.append((nkibench.label(case, level),
-                             enrich(f"raised {type(e).__name__}: {e}")))
+            msg, got_to = explain_exception(e, path, source, level, np.shape(want))
+            failures.append((nkibench.label(case, level), msg))
+            progress.append(got_to)
             continue
         parts["runs"] = True
         m = (nkibench.check_inputs_untouched(before, args)
@@ -142,7 +159,9 @@ def grade(source, level):
                    "and the device would not.")
         if m:
             failures.append((nkibench.label(case, level), m))
+            progress.append(1.0 + fraction_right(got, want))
             continue
+        progress.append(2.0)
         passed += 1
         if level >= 3 and counted["bytes"]:
             intensity = nkibench.roofline(
@@ -152,14 +171,34 @@ def grade(source, level):
         lbl, first = failures[0]
         return (sum(WEIGHTS[k] for k, v in parts.items() if v)
                 + WEIGHTS["correct"] * passed / len(spec["shapes"]), parts,
-                f"{passed} of {len(spec['shapes'])} shapes passed. On {lbl}: {first}")
+                f"{passed} of {len(spec['shapes'])} shapes passed. On {lbl}: {first}",
+                sum(progress) / len(progress))
 
     parts["correct"] = True
     reward = sum(WEIGHTS.values())
     note = "Correct on every shape."
     if intensity:
         note += " " + nkibench.explain_roofline(intensity)
-    return reward, parts, note
+    return reward, parts, note, 2.0
+
+
+_SCRATCH = []
+
+
+def _scratch_dir():
+    if not _SCRATCH:
+        _SCRATCH.append(tempfile.mkdtemp(prefix="kernel_agent_"))
+    return _SCRATCH[0]
+
+
+def fraction_right(got, want, tol=2e-2):
+    """Share of output elements within tolerance; 0 when the shape is wrong."""
+    got, want = np.asarray(got, np.float64), np.asarray(want, np.float64)
+    if got.shape != want.shape:
+        return 0.0
+    scale = float(np.sqrt((want ** 2).mean())) or 1.0
+    with np.errstate(invalid="ignore"):
+        return float((np.abs(got - want) / scale <= tol).mean())
 
 
 # ---------------------------------------------------------------- prompting
@@ -204,6 +243,29 @@ def copy_kernel(a):
 """
 
 
+# What nc_matmul DOES, as shapes. Only the matmul levels get this, so levels 1 and 2 see exactly the
+# prompt they were measured with. Measured on level 3 before it existed: the memory rules above were
+# followed and the shapes were not. Samples sized the output as lhsT.shape[1:] -- a 1-D (64,) -- or
+# poured both operands into one (128, 512) tile, and never once got past the first copy. The
+# reference's docstring said "-> [M, N]" and that was not enough: it never said which operand
+# supplies M and which N.
+MATMUL_CARD = """How nc_matmul uses shapes: stationary is [K, M] and moving is [K, N], two sbuf tiles that share
+the partition axis K (K <= 128, M <= 128, N <= 512). dst is [M, N], a float32 psum tile, and
+receives stationary.T @ moving. lhsT already is [K, M] and rhs is [K, N], so load each into its OWN
+sbuf tile of exactly its own shape. The result, and the shared_hbm output you return, is
+(M, N) = (lhsT.shape[1], rhs.shape[1]). PSUM never goes straight to HBM: tensor_copy the psum tile
+into a new (M, N) sbuf tile, then dma_copy that sbuf tile to the output."""
+
+
+def is_matmul(level):
+    return nkibench.LEVELS[level]["ref"] is nkibench.ref_matmul
+
+
+def matmul_card(level):
+    shapes = ", ".join(nkibench.label(c, level) for c in nkibench.LEVELS[level]["shapes"])
+    return f"{MATMUL_CARD}\nIt is tested on: {shapes}.\n\n"
+
+
 def available_names(dotted):
     """Turn 'no attribute X' into 'here are the real ones'.
 
@@ -229,7 +291,6 @@ def available_names(dotted):
 
 def real_signature(func_name):
     """The actual signature of an NKI function, for when the model invents arguments."""
-    import inspect
     for mod_name in ("nki.language", "nki.isa", "nki"):
         try:
             mod = __import__(mod_name, fromlist=["x"])
@@ -346,6 +407,212 @@ def enrich(error_text):
                 f"`{m.group(2)}`. Use the nl/nisa functions instead.")
     return error_text
 
+# ---------------------------------------------------------------- locating a failure
+#
+# Measured on level 3, four runs out of four: every repair round sent the kernel back BYTE-FOR-BYTE
+# unchanged, all four samples. The feedback named the error -- "dma_copy requires src and dst to have
+# the same number of elements, got src=8192, dst=65536" -- but not the line, nor which tile was the
+# wrong shape, so "change exactly what the checker names" was satisfied by changing nothing. Worse,
+# two of the canned hints answered the wrong question: "cannot reshape array of size 32768" came from
+# a PSUM tile shaped (128, 512) for a (64, 512) result, and the hint said "do not reshape" to a kernel
+# that never called reshape.
+#
+# The simulator runs the kernel as plain Python, so the traceback still holds the failing line and
+# the live tiles. Read them, and name the change in the model's own variable names.
+
+def _shape_of(t):
+    try:
+        return tuple(int(s) for s in t.shape)
+    except Exception:
+        return None
+
+
+def _region_name(region):
+    return str(region).rsplit(".", 1)[-1] or "?"      # MemoryRegion.sbuf -> sbuf
+
+
+def _buffer_of(t):
+    return _region_name(getattr(t, "buffer", ""))
+
+
+def _is_tile(v):
+    return hasattr(v, "shape") and hasattr(v, "buffer") and not isinstance(v, type)
+
+
+def _entry_span(tree, entry):
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == entry:
+            return node.lineno, node.end_lineno
+    return None
+
+
+def locate_failure(exc, path, source, entry):
+    """The line of the candidate that raised, the call on it, and that call's real operands.
+
+    Returns None when the exception never passed through the candidate's own code.
+    """
+    tb, frame, lineno, wrapper = exc.__traceback__, None, None, None
+    while tb is not None:
+        f = tb.tb_frame
+        if f.f_code.co_filename == path:
+            frame, lineno, wrapper = f, tb.tb_lineno, None
+        elif frame is not None and wrapper is None and {"func", "args", "kwargs"} <= set(f.f_locals):
+            # nki routes every public call through one context wrapper; its locals are the call.
+            wrapper = dict(f.f_locals)
+        tb = tb.tb_next
+    if frame is None:
+        return None
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return None
+    stmt = None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.stmt) and not isinstance(node, (ast.FunctionDef, ast.For, ast.If,
+                                                                ast.While, ast.With)) \
+                and node.lineno <= lineno <= (node.end_lineno or node.lineno):
+            if stmt is None or node.lineno >= stmt.lineno:
+                stmt = node
+    code = " ".join((ast.get_source_segment(source, stmt) or "").split()) if stmt else ""
+    local_vars = dict(frame.f_locals)
+
+    op, args, exprs = None, {}, {}
+    if wrapper is not None:
+        func = wrapper["func"]
+        op = getattr(func, "__name__", None)
+        try:
+            params = list(inspect.signature(func).parameters)
+            args = dict(inspect.signature(func).bind_partial(*wrapper["args"],
+                                                             **wrapper["kwargs"]).arguments)
+        except (TypeError, ValueError):
+            params, args = [], dict(wrapper["kwargs"])
+        for node in ast.walk(stmt or tree):
+            if isinstance(node, ast.Call) and nkibench._dotted(node.func).split(".")[-1] == op:
+                for i, arg in enumerate(node.args):
+                    if i < len(params):
+                        exprs[params[i]] = ast.get_source_segment(source, arg)
+                for kw in node.keywords:
+                    if kw.arg:
+                        exprs[kw.arg] = ast.get_source_segment(source, kw.value)
+                break
+
+    names = []
+    for node in ast.walk(stmt) if stmt else []:
+        if isinstance(node, ast.Name) and node.id not in names and _is_tile(local_vars.get(node.id)):
+            names.append(node.id)
+    tiles = {n: local_vars[n] for n in names}
+
+    span = _entry_span(tree, entry)
+    progress = 0.0
+    if span and span[1] > span[0]:
+        progress = min(1.0, max(0.0, (lineno - span[0]) / (span[1] - span[0])))
+    return dict(line=lineno, code=code, op=op, args=args, exprs=exprs, tiles=tiles,
+                progress=progress)
+
+
+def shape_advice(loc, want_shape, matmul):
+    """One named change for the shape mistakes the simulator reports obliquely, or None."""
+    op, args, exprs = loc["op"], loc["args"], loc["exprs"]
+    T = {k: v for k, v in args.items() if _is_tile(v)}
+
+    def nm(k):
+        return f"`{exprs.get(k) or k}`"
+
+    if op == "ndarray":
+        shape = args.get("shape")
+        buf = _region_name(args.get("buffer"))
+        try:
+            shape = tuple(int(s) for s in shape)
+        except Exception:
+            return None
+        if len(shape) < 2 and buf in ("sbuf", "psum"):
+            msg = (f"This allocates a {buf} tile of shape {shape}, which is 1-D. SBUF and PSUM tiles "
+                   f"are 2-D: (partition, free).")
+            if matmul and want_shape:
+                msg += (f" For this matmul the result is (M, N) = (lhsT.shape[1], rhs.shape[1]) = "
+                        f"{want_shape}, so a tile or output meant to hold it needs that 2-D shape.")
+            return msg
+        return None
+
+    if op == "nc_matmul" and {"dst", "stationary", "moving"} <= set(T):
+        d, s, m = (_shape_of(T[k]) for k in ("dst", "stationary", "moving"))
+        if not (d and s and m and len(s) == 2 and len(m) == 2):
+            return None
+        if s[0] != m[0]:
+            return (f"nc_matmul contracts over the FIRST axis of both operands, so they must share it: "
+                    f"stationary {nm('stationary')} is {s} and moving {nm('moving')} is {m}. "
+                    f"stationary is [K, M] (the left matrix, already transposed: lhsT) and moving is "
+                    f"[K, N] (rhs), with K on the partition axis of both.")
+        if s[1] > nkibench.GEMM_STATIONARY_FMAX:
+            return (f"stationary {nm('stationary')} is {s}, and its free dimension {s[1]} exceeds "
+                    f"{nkibench.GEMM_STATIONARY_FMAX}. stationary must be the [K, M] tile loaded from "
+                    f"lhsT and moving the [K, N] tile loaded from rhs -- check they are not swapped.")
+        if m[1] > nkibench.GEMM_MOVING_FMAX:
+            return (f"moving {nm('moving')} is {m}, and its free dimension {m[1]} exceeds "
+                    f"{nkibench.GEMM_MOVING_FMAX}. Split N into chunks of at most "
+                    f"{nkibench.GEMM_MOVING_FMAX}.")
+        if d != (s[1], m[1]):
+            return (f"nc_matmul writes stationary.T @ moving into dst. stationary {nm('stationary')} "
+                    f"is {s} = [K, M] and moving {nm('moving')} is {m} = [K, N], so dst must be "
+                    f"[M, N] = {(s[1], m[1])}, but dst {nm('dst')} is {d}. Allocate dst as "
+                    f"nl.ndarray({(s[1], m[1])}, dtype=nl.float32, buffer=nl.psum).")
+        return None
+
+    if op in ("dma_copy", "tensor_copy") and {"dst", "src"} <= set(T):
+        d, s = _shape_of(T["dst"]), _shape_of(T["src"])
+        db, sb = _buffer_of(T["dst"]), _buffer_of(T["src"])
+        if sb == "psum" and "hbm" in db:
+            # Measured on level 3: four fresh samples of four got the loads, the PSUM tile and the
+            # matmul right, then copied PSUM straight to the output -- with tensor_copy in some,
+            # dma_copy in the repairs. Each copy's own error says only half of it. Name both hops.
+            dst, src = exprs.get("dst") or "out", exprs.get("src") or "psum_tile"
+            dtype = f"{dst}.dtype" if dst.isidentifier() else "nl.float32"
+            return (f"PSUM cannot be copied straight to HBM by either copy. Replace this line with "
+                    f"three: `res_sb = nl.ndarray({s}, dtype={dtype}, buffer=nl.sbuf)`, then "
+                    f"`nisa.tensor_copy(dst=res_sb, src={src})`, then "
+                    f"`nisa.dma_copy(dst={dst}, src=res_sb)`.")
+        if op == "dma_copy" and "psum" in (db, sb):
+            return (f"dma_copy cannot read or write PSUM ({nm('src')} is in {sb}, {nm('dst')} is in "
+                    f"{db}). First nisa.tensor_copy the PSUM tile into an sbuf tile of the same shape, "
+                    f"then dma_copy that sbuf tile to the shared_hbm output.")
+        if d == s or d is None or s is None:
+            return None
+        if "hbm" in db and want_shape and d != want_shape and s == want_shape:
+            return (f"The output {nm('dst')} is {d}, but the result is {want_shape}. Allocate the "
+                    f"output you return as nl.ndarray({want_shape}, dtype=..., buffer=nl.shared_hbm).")
+        if "hbm" in db and want_shape and s != want_shape:
+            return (f"You are writing {nm('src')}, shape {s}, to the output {nm('dst')}, shape {d}. "
+                    f"The result is {want_shape}: write the sbuf tile that holds the result (copied "
+                    f"out of PSUM with nisa.tensor_copy), and make the output that shape too.")
+        if "hbm" in sb:
+            return (f"{nm('dst')} is {d} but {nm('src')} is {s}; a copy needs the same shape on both "
+                    f"sides. Give the tensor you load its own sbuf tile of exactly {s}, e.g. "
+                    f"nl.ndarray({s}, dtype=nl.float32, buffer=nl.sbuf), instead of one shared tile.")
+        return (f"{nm('dst')} is {d} but {nm('src')} is {s}; a copy needs the same shape on both "
+                f"sides. Copy into a new tile allocated with exactly {s}, e.g. "
+                f"nl.ndarray({s}, dtype=nl.float32, buffer=nl.sbuf) -- do not reuse an input tile to "
+                f"hold a result of a different shape.")
+    return None
+
+
+def explain_exception(exc, path, source, level, want_shape):
+    """(feedback, progress) for a kernel that raised in the simulator."""
+    entry = nkibench.LEVELS[level]["entry"]
+    raw = f"raised {type(exc).__name__}: {exc}"
+    loc = locate_failure(exc, path, source, entry)
+    if loc is None:
+        return enrich(raw), 0.0
+    where = f"\n  The failing line is {loc['line']}: `{loc['code'][:200]}`"
+    if loc["tiles"]:
+        where += "\n  where " + "; ".join(f"`{n}` is {_shape_of(t)} in {_buffer_of(t)}"
+                                          for n, t in loc["tiles"].items())
+    advice = shape_advice(loc, want_shape, is_matmul(level))
+    if advice:
+        # The specific diagnosis replaces the generic hint, which for these errors points the wrong way.
+        return f"{raw}{where}\n  FIX: {advice}", loc["progress"]
+    return enrich(raw) + where, loc["progress"]
+
+
 def first_prompt(level, terse=0):
     """Deliberately short, and it does NOT list the rules.
 
@@ -355,7 +622,6 @@ def first_prompt(level, terse=0):
     named change.
     """
     s = nkibench.LEVELS[level]
-    import inspect
     if terse >= 2:
         # Last resort. Measured on this endpoint: one-sentence prompts answered in 300-700
         # tokens while every structured, rule-carrying prompt spiralled.
@@ -389,21 +655,31 @@ def first_prompt(level, terse=0):
         f"the stationary free dimension is at most {nkibench.GEMM_STATIONARY_FMAX} and the "
         f"moving free dimension at most {nkibench.GEMM_MOVING_FMAX}.\n\n"
         f"Import nki, nki.language as nl, and nki.isa as nisa.\n\n{API_CARD}\n\n"
+        f"{matmul_card(level) if is_matmul(level) else ''}"
         f"Reply with ONE python code block containing the imports and the function. No prose.")
 
 
-def repair_prompt(level, source, feedback):
+def repair_prompt(level, source, feedback, echoed=False):
     """One named change, and the previous code. No rules list, no reference re-sent.
 
     The lesson this whole repo keeps re-learning: feeding a verifier's report back verbatim
     reproduces the same mistake, because a report says what is wrong and never what to do.
+
+    Measured on level 3: "change exactly what the checker names and keep everything else identical"
+    got the kernel back byte-for-byte, 16 samples of 16 across four runs -- keeping everything
+    identical is the easiest way to obey it. So the prompt now says the code as written fails, and
+    says so twice as loudly when the last answer was an echo.
     """
+    echo_note = ("You already sent this exact code back once, unchanged, and it failed the same way. "
+                 "It has to change, starting with the failing line.\n\n" if echoed else "")
     return (
-        f"This NKI kernel for {nkibench.LEVELS[level]['op']} is not right yet.\n\n"
+        f"This NKI kernel for {nkibench.LEVELS[level]['op']} fails.\n\n"
         f"```python\n{source}\n```\n\n"
-        f"A checker reports:\n{feedback}\n\n"
-        f"Change exactly what the checker names and keep everything else identical. Reply with "
-        f"ONE python code block.")
+        f"A checker ran it and reports:\n{feedback}\n\n"
+        f"{MATMUL_CARD + chr(10) + chr(10) if is_matmul(level) else ''}"
+        f"{echo_note}"
+        f"Make the change the checker names, then reply with the complete corrected kernel in ONE "
+        f"python code block. Sending the code back unchanged fails again.")
 
 
 CODE_BLOCK = re.compile(r"```(?:python)?\s*(.*?)```", re.S)
@@ -469,10 +745,11 @@ def ask(a, prompt):
     return content
 
 
-def ask_parallel(a, prompt, n):
+def ask_parallel(a, prompts):
+    """One request per prompt, all at once; replies come back in the same order."""
     import concurrent.futures as cf
-    with cf.ThreadPoolExecutor(max_workers=n) as ex:
-        return [f.result() for f in [ex.submit(ask, a, prompt) for _ in range(n)]]
+    with cf.ThreadPoolExecutor(max_workers=len(prompts)) as ex:
+        return [f.result() for f in [ex.submit(ask, a, p) for p in prompts]]
 
 
 def offline_answers(level, n, rnd):
@@ -487,83 +764,114 @@ def offline_answers(level, n, rnd):
 
 # ---------------------------------------------------------------- the loop
 
+def _normalized(src):
+    return "\n".join(line.rstrip() for line in (src or "").strip().splitlines())
+
+
 def solve(a, level, log):
     print(f"\n=========== level {level}: {nkibench.LEVELS[level]['op']} ===========")
     terse = a.terse
-    prompt = first_prompt(level, terse)
+    n = a.samples
+    prompts = [first_prompt(level, terse)] * n
+    strategies = ["fresh"] * n
     best = (0.0, None, "")
     tried, streak, seen = [], 0, {}
-    latest = ("", "")
+    graded_before = {}      # normalized code -> (reward, parts, feedback, progress)
+    latest = None           # the attempt the next repair starts from
     for rnd in range(a.rounds):
         t0 = time.perf_counter()
-        replies = (offline_answers(level, a.samples, rnd) if a.offline
-                   else ask_parallel(a, prompt, a.samples))
+        replies = (offline_answers(level, n, rnd) if a.offline else ask_parallel(a, prompts))
+        earlier = set(graded_before)
         graded = []
-        for reply in replies:
+        for prompt, strategy, reply in zip(prompts, strategies, replies):
             src = extract_code(reply)
-            reward, parts, feedback = grade(src, level)
-            graded.append((reward, src, feedback, parts))
+            key = _normalized(src)
+            # An echo is code this level has already graded. Measured on level 3: every repair
+            # sample of every round was one, so the loop spent three rounds of four regrading a
+            # kernel it already knew failed. Reuse the grade, and say so in the next prompt.
+            # Two samples of one round agreeing is not an echo, so only earlier rounds count.
+            echo = bool(key) and key in earlier
+            if key in graded_before:
+                reward, parts, feedback, progress = graded_before[key]
+            else:
+                reward, parts, feedback, progress = grade(src, level)
+                graded_before[key] = (reward, parts, feedback, progress)
+            graded.append(dict(reward=reward, src=src, feedback=feedback, parts=parts,
+                               progress=progress, echo=echo))
             log.write(json.dumps(dict(level=level, round=rnd, reward=reward, parts=parts,
+                                      progress=round(progress, 3), echo=echo, strategy=strategy,
                                       prompt_chars=len(prompt), reply_chars=len(reply),
                                       code=src, feedback=feedback)) + "\n")
         log.flush()
-        graded.sort(key=lambda g: g[0], reverse=True)
+        # Rank by reward, then by how far the kernel got, then prefer new code over an echo.
+        # Reward alone ties constantly below 0.5 -- every level-3 sample scored 0.30 -- and the
+        # tie went to whichever reply came back first.
+        graded.sort(key=lambda g: (g["reward"], g["progress"], not g["echo"]), reverse=True)
         top = graded[0]
-        if top[0] > best[0]:
-            best = (top[0], top[1], top[2])
-        # Repair the LATEST attempt, not the best one. Rebuilding from the best attempt with the
-        # best attempt's feedback is a fixed point: once a round scores worse, the prompt stops
-        # changing, and a greedy model then returns the same answer forever. Measured: level 2
-        # stuck at 0.10 for four rounds while the prompt still carried the 0.50 code.
-        if (top[1] or "").strip():
-            latest = (top[1], top[2])
-        same = top[2] == (tried[-1] if tried else None)
+        if top["reward"] > best[0]:
+            best = (top["reward"], top["src"], top["feedback"])
+        # Repair the LATEST round's best attempt, not the all-time best. Rebuilding from the best
+        # attempt with the best attempt's feedback is a fixed point: once a round scores worse, the
+        # prompt stops changing, and a greedy model then returns the same answer forever.
+        # Measured: level 2 stuck at 0.10 for four rounds while the prompt still carried the 0.50
+        # code.
+        if top["src"].strip():
+            latest = top
+        echoes = sum(g["echo"] for g in graded)
+        same = top["feedback"] == (tried[-1] if tried else None)
         if same:
             # Collapse. Fifteen identical multi-line blocks is noise, not information.
-            print(f"round {rnd}: same failure again ({top[0]:.2f}, best so far {best[0]:.2f})")
+            print(f"round {rnd}: same failure again ({top['reward']:.2f}, best so far "
+                  f"{best[0]:.2f})" + (f"  [{echoes}/{n} echoed earlier code]" if echoes else ""))
         else:
-            print(f"round {rnd}: this round {top[0]:.2f}  best so far {best[0]:.2f}  "
-                  f"({time.perf_counter() - t0:.1f}s)")
-            print(f"  {top[2][:400]}")
-        if top[0] >= sum(WEIGHTS.values()) - 1e-9:
-            print(f"  SOLVED on round {rnd}. {top[2]}")
+            print(f"round {rnd}: this round {top['reward']:.2f}  best so far {best[0]:.2f}  "
+                  f"({time.perf_counter() - t0:.1f}s)"
+                  + (f"  [{echoes}/{n} echoed earlier code]" if echoes else ""))
+            print(f"  {top['feedback'][:700]}")
+        if top["reward"] >= sum(WEIGHTS.values()) - 1e-9:
+            print(f"  SOLVED on round {rnd}. {top['feedback']}")
             print("  ---------------- the kernel ----------------")
-            print(textwrap.indent(top[1], "  "))
+            print(textwrap.indent(top["src"], "  "))
             print("  -------------------------------------------")
-            return top[0], rnd + 1
-        seen[top[2]] = seen.get(top[2], 0) + 1
+            return top["reward"], rnd + 1
+        seen[top["feedback"]] = seen.get(top["feedback"], 0) + 1
         streak = streak + 1 if same else 1
-        if seen[top[2]] >= a.give_up_after:
+        if seen[top["feedback"]] >= a.give_up_after:
             how = ("the identical failure %d rounds running" % streak if streak >= a.give_up_after
                    else "this failure for the %dth time, alternating with %d other(s)"
-                        % (seen[top[2]], len(seen) - 1))
+                        % (seen[top["feedback"]], len(seen) - 1))
             print(f"  STOPPING this level: {how}. The agent is cycling between a fixed set of "
                   f"mistakes rather than converging, so more rounds will not help. Failures seen:")
-            for f, n in sorted(seen.items(), key=lambda kv: -kv[1]):
-                print(f"    {n}x  {f[:110]}")
+            for f, k in sorted(seen.items(), key=lambda kv: -kv[1]):
+                print(f"    {k}x  {f[:110]}")
             return best[0], rnd + 1
-        tried.append(top[2])
-        repeats = streak
-        if repeats >= 2 and (best[1] or "").strip():
-            # Sampling on this endpoint is greedy, so an unchanged prompt returns an unchanged
-            # answer. Measured: the same TypeError 19 rounds running. Changing the prompt is the
-            # only thing that can change the answer, so say what has already been tried.
-            ledger = "\n".join(f"- {t[:160]}" for t in dict.fromkeys(tried))
-            prompt = (repair_prompt(level, latest[0], latest[1])
-                      + f"\n\nThese approaches have already failed, so do something different:\n"
-                        f"{ledger}")
-            print(f"  same failure {repeats}x — adding a ledger of {len(set(tried))} failed "
-                  f"attempts to break the repeat")
-            continue
-        if not (latest[0] or "").strip():
+        tried.append(top["feedback"])
+
+        if latest is None:
             # Nothing came back to repair. Asking it to "fix" an empty code block produced a
             # 202-character prompt and, under greedy sampling, the identical non-answer six
             # rounds running. Shorten and re-ask instead.
             terse = min(terse + 1, 2)
-            prompt = first_prompt(level, terse)
+            prompts, strategies = [first_prompt(level, terse)] * n, ["fresh"] * n
             print(f"  no code yet, so re-asking with a shorter prompt (terseness {terse})")
-        else:
-            prompt = repair_prompt(level, latest[0], latest[1])
+            continue
+        repair = repair_prompt(level, latest["src"], latest["feedback"], echoed=latest["echo"])
+        if streak >= 2:
+            # Sampling on the gpt-oss endpoint is greedy, so an unchanged prompt returns an
+            # unchanged answer. Measured: the same TypeError 19 rounds running. Changing the
+            # prompt is the only thing that can change the answer, so say what has already failed.
+            ledger = "\n".join(f"- {t[:160]}" for t in dict.fromkeys(tried))
+            repair += (f"\n\nThese approaches have already failed, so do something different:\n"
+                       f"{ledger}")
+            print(f"  same failure {streak}x — adding a ledger of {len(set(tried))} failed "
+                  f"attempts to break the repeat")
+        # Half the samples repair, half start over from the first prompt. Repairs converge on one
+        # kernel; fresh samples are how a round escapes a kernel whose structure is wrong. Round 0
+        # on level 3 produced up to four DISTINCT kernels, while repairs produced one. With one
+        # sample (the greedy endpoint, where a fresh prompt would replay round 0) it only repairs.
+        n_repair = max(1, (n + 1) // 2)
+        prompts = [repair] * n_repair + [first_prompt(level, terse)] * (n - n_repair)
+        strategies = ["repair"] * n_repair + ["fresh"] * (n - n_repair)
     print(f"  not solved in {a.rounds} rounds; best reward {best[0]:.2f}")
     return best[0], a.rounds
 

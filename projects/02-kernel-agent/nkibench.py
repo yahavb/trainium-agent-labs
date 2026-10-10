@@ -29,6 +29,7 @@ marked NEEDS DEVICE VERIFICATION in the selftest output. Run --selftest on the i
 import argparse
 import ast
 import importlib.util
+import inspect
 import sys
 import textwrap
 
@@ -628,6 +629,31 @@ def simulate_and_count(kernel, args):
     run, api = _simulator(nki, kernel)
     counter = dict(bytes=0, transfers=0, api=api, dtypes=set())
     original = nisa.dma_copy
+    original_matmul = nisa.nc_matmul
+
+    def strict_nc_matmul(*args, **kwargs):
+        """Enforce the documented [K, M] x [K, N] -> [M, N] contract on dst.
+
+        The simulator only checks that dst holds the right NUMBER of elements, then pours the result
+        in. Measured: a PSUM tile allocated (N, M) instead of (M, N) passed nc_matmul silently and
+        failed two lines later in tensor_copy, with an error that pointed at the copy rather than at
+        the tile. Fail here instead, where the mistake is. (Locals are named func/args/kwargs, like
+        nki's own call wrapper, so agent.py can read the operands back out of the traceback.)
+        """
+        func = original_matmul
+        try:
+            bound = inspect.signature(func).bind_partial(*args, **kwargs).arguments
+        except TypeError:
+            return func(*args, **kwargs)
+        dst, st, mv = bound.get("dst"), bound.get("stationary"), bound.get("moving")
+        plain = not bound.get("is_transpose") and not bound.get("tile_position")
+        shapes = [tuple(getattr(t, "shape", ())) for t in (dst, st, mv)]
+        if plain and all(len(s) == 2 for s in shapes) and shapes[1][0] == shapes[2][0]:
+            want = (shapes[1][1], shapes[2][1])
+            assert shapes[0] == want, (
+                f"nc_matmul dst has shape {shapes[0]}, but stationary {shapes[1]} = [K, M] and "
+                f"moving {shapes[2]} = [K, N] produce [M, N] = {want}")
+        return func(*args, **kwargs)
 
     def counting_dma_copy(dst=None, src=None, **kw):
         try:
@@ -647,6 +673,7 @@ def simulate_and_count(kernel, args):
     # which the agent should be told rather than have scrolled past.
     import warnings
     nisa.dma_copy = counting_dma_copy
+    nisa.nc_matmul = strict_nc_matmul
     try:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
@@ -659,6 +686,7 @@ def simulate_and_count(kernel, args):
         counter["warnings"] = seen[:3]
     finally:
         nisa.dma_copy = original
+        nisa.nc_matmul = original_matmul
     return out, counter
 
 
