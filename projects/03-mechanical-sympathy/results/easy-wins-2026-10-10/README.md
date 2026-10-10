@@ -20,6 +20,21 @@ dilation 2, so each 30-row band carries an 8-row halo on each side, which is 53%
 rows to compute. The extra work cost more than any spill reduction. Keep tiling to
 the full-resolution blocks only.
 
+## Simulated years per minute
+
+The same trials expressed as throughput. Each run simulates 598 five-day steps,
+8.19 years, so years per minute = 8.19 / (forward seconds / 60). Higher is better.
+
+![Simulated years per forward minute](years_per_minute.png)
+
+| # | Experiment | Simulated years per minute |
+| ---: | --- | ---: |
+| 0 | FP32 baseline | 5.42 |
+| 1 | BF16 matmult autocast | 6.66 |
+| 2 | BF16 + BatchNorm folding | 6.70 |
+| 3 | BF16 + folding + 30-row tiling | **11.53** |
+| 4 | 30-row tiling + 90×180 blocks | 10.07 (slower) |
+
 ## Stopped without results
 
 Two band-height trials on the full-resolution blocks (15-row and 45-row bands) were
@@ -38,4 +53,9 @@ not plotted.
 python projects/03-mechanical-sympathy/runners/plot_forward_progress.py \
   projects/03-mechanical-sympathy/results/easy-wins-2026-10-10/experiments.json \
   --output projects/03-mechanical-sympathy/results/easy-wins-2026-10-10/progress
+
+python projects/03-mechanical-sympathy/runners/plot_forward_progress.py \
+  projects/03-mechanical-sympathy/results/easy-wins-2026-10-10/experiments.json \
+  --metric years-per-minute \
+  --output projects/03-mechanical-sympathy/results/easy-wins-2026-10-10/years_per_minute
 ```
