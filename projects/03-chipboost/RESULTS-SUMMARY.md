@@ -13,7 +13,7 @@ The deliverable comparison uses Qwen/Qwen3-8B only, with expert-template random 
 | Queued DMA-only v2 | Canceled as superseded; no comparison results | Its earlier message-selection replay is not a model outcome |
 | Consolidated Qwen-only v2 | Complete: 8 attempts, 7 `wrong`, 1 `faster`; attempt 3 at 1.517123964x; two unchanged-source `faster` replays at 1.516961251x and 1.516817767x | One exploratory multi-change run; replays confirm its candidate, not a general model success rate |
 
-The recovery pilot's collected evidence is currently in the repository workspace staging directory `.integration-prep/recovery-pilot-complete/`: `state.json`, `acceptance.json`, and `pilot.jsonl`. Preserve those records in the integrated experiment artifacts before publishing a portable report.
+The unsuccessful recovery pilot is preserved in [its experiment directory](experiments/qwen-recovery-pilot/), including `state.json`, `acceptance.json`, and all eight records in `pilot.jsonl`.
 
 ## Completed original Qwen comparison
 
