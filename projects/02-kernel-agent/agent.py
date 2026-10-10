@@ -23,10 +23,12 @@ Every attempt is appended to a JSONL file with its reward, so the log is the del
 """
 
 import argparse
+import hashlib
 import json
 import os
 import re
 import sys
+import tempfile
 import textwrap
 import time
 
@@ -39,6 +41,11 @@ MODEL = os.environ.get("KERNEL_AGENT_MODEL", "Qwen/Qwen3-8B")
 # The model writes to a hidden reasoning channel before it writes any answer. Measured on this
 # endpoint: a coding task burned 900 tokens thinking and returned EMPTY content. See gptoss/README.
 MIN_ANSWER_TOKENS = 2500
+
+# Sampling settings. Every attempt in the log records them, so a run made with different ones is
+# never mistaken for the same experiment.
+TEMPERATURE = 0.6
+TOP_P = 0.95
 
 REASONING_KEYS = ("reasoning", "reasoning_content")
 
@@ -84,10 +91,20 @@ def grade(source, level):
                 "these: " + " ".join(violations) + extra)
     parts["rules"] = True
 
-    spec = nkibench.LEVELS[level]
-    path = f"/tmp/_agent_level{level}.py"
-    with open(path, "w") as f:
+    # Every attempt gets its own file. One shared /tmp path per level let two agents in a pod grade
+    # each other's kernels, and fed the bytecode-cache mix-up that load_kernel now avoids.
+    fd, path = tempfile.mkstemp(prefix=f"_agent_level{level}_", suffix=".py")
+    with os.fdopen(fd, "w") as f:
         f.write(source)
+    try:
+        return _grade_file(path, level, parts)
+    finally:
+        os.unlink(path)
+
+
+def _grade_file(path, level, parts):
+    """The part of grade() that needs the kernel on disk: import it, then simulate every shape."""
+    spec = nkibench.LEVELS[level]
     try:
         kernel = nkibench.load_kernel(path, spec["entry"])
     except ModuleNotFoundError as e:
@@ -144,7 +161,9 @@ def grade(source, level):
             failures.append((nkibench.label(case, level), m))
             continue
         passed += 1
-        if level >= 3 and counted["bytes"]:
+        # Matmul arithmetic, so only shapes given as M, K, N. Level 8's are seq x dim, and asking
+        # for case["M"] ended the whole run with a KeyError as soon as one of its shapes passed.
+        if {"M", "K", "N"} <= case.keys() and counted["bytes"]:
             intensity = nkibench.roofline(
                 nkibench.matmul_flops(case["M"], case["K"], case["N"]), counted["bytes"])
 
@@ -443,18 +462,44 @@ def ask(a, prompt):
         print(f"    (prompt is ~{est_prompt} tokens, so the answer budget is capped at {budget} "
               f"to stay inside the {a.context}-token context)")
     body = dict(model=a.model, messages=[{"role": "user", "content": prompt}],
-                max_tokens=budget, temperature=0.6, top_p=0.95,
+                max_tokens=budget, temperature=TEMPERATURE, top_p=TOP_P,
                 chat_template_kwargs={"enable_thinking": a.think})
-    r = httpx.post(f"{a.base.rstrip('/')}/chat/completions", json=body,
-                   timeout=900, verify=False)
-    if r.status_code != 200:
-        raise SystemExit(f"the endpoint returned HTTP {r.status_code}:\n{r.text[:600]}")
+    meta = dict(max_tokens=budget, error=None)
+    t0 = time.perf_counter()
+    # One failed request used to end the whole run, losing every later level and the --repeat
+    # summary. Server faults and timeouts are retried after a pause; a 4xx is this request's own
+    # fault and would fail identically, so it is recorded instead. Either way the round carries on
+    # and the failure is logged as an attempt that returned no code.
+    for attempt in range(a.retries + 1):
+        try:
+            r = httpx.post(f"{a.base.rstrip('/')}/chat/completions", json=body,
+                           timeout=900, verify=False)
+        except httpx.HTTPError as e:
+            meta["error"] = f"{type(e).__name__}: {e}"
+        else:
+            if r.status_code == 200:
+                meta["error"] = None
+                break
+            meta["error"] = f"HTTP {r.status_code}: {r.text[:300]}"
+            if r.status_code < 500:
+                break
+        if attempt < a.retries:
+            wait = 5 * 2 ** attempt
+            print(f"    (request failed: {meta['error'][:160]}; retrying in {wait}s)")
+            time.sleep(wait)
+    meta["gen_seconds"] = round(time.perf_counter() - t0, 2)
+    if meta["error"]:
+        print(f"    (request failed for good: {meta['error'][:200]})")
+        return "", meta
     payload = r.json()
+    usage = payload.get("usage") or {}
     ch = payload["choices"][0]
     msg = ch.get("message", {})
     reasoning = next((msg[k] for k in REASONING_KEYS if msg.get(k)), "")
     content = msg.get("content") or ""
     finish = ch.get("finish_reason")
+    meta.update(finish_reason=finish, prompt_tokens=usage.get("prompt_tokens"),
+                completion_tokens=usage.get("completion_tokens"))
     if finish == "length":
         # Do not let a budget problem look like a model failure.
         print(f"    (TRUNCATED: finish_reason=length after {len(content)} chars. The answer was "
@@ -466,13 +511,41 @@ def ask(a, prompt):
         print(f"    (empty answer, {len(reasoning)} chars of hidden reasoning, "
               f"finish={ch.get('finish_reason')} — shorten the prompt rather than raising the "
               f"budget)")
-    return content
+    return content, meta
 
 
 def ask_parallel(a, prompt, n):
     import concurrent.futures as cf
     with cf.ThreadPoolExecutor(max_workers=n) as ex:
         return [f.result() for f in [ex.submit(ask, a, prompt) for _ in range(n)]]
+
+
+def server_context(a):
+    """Ask the server what it serves, before the first round.
+
+    This catches a wrong endpoint or model name with one clear line instead of a failed round, and
+    reads the context length so --context cannot quietly disagree with the server: the seat
+    servers run 8192 or 32768, while the old default here was 4096.
+    """
+    import httpx
+    try:
+        r = httpx.get(f"{a.base.rstrip('/')}/models", timeout=30, verify=False)
+        r.raise_for_status()
+        served = {m["id"]: m for m in r.json().get("data", [])}
+    except Exception as e:
+        sys.exit(f"cannot list the models at {a.base}/models: {type(e).__name__}: {e}")
+    if a.model not in served:
+        sys.exit(f"the server does not serve {a.model!r}; it serves {sorted(served)}. "
+                 f"Set KERNEL_AGENT_MODEL or pass --model.")
+    limit = served[a.model].get("max_model_len")
+    if a.context is None:
+        if not limit:
+            print("the server did not report max_model_len; assuming a 4096-token context")
+        return limit or 4096
+    if limit and a.context > limit:
+        print(f"--context {a.context} is more than the server's {limit}; using {limit}")
+        return limit
+    return a.context
 
 
 def offline_answers(level, n, rnd):
@@ -487,7 +560,7 @@ def offline_answers(level, n, rnd):
 
 # ---------------------------------------------------------------- the loop
 
-def solve(a, level, log):
+def solve(a, level, log, run=0):
     print(f"\n=========== level {level}: {nkibench.LEVELS[level]['op']} ===========")
     terse = a.terse
     prompt = first_prompt(level, terse)
@@ -496,17 +569,31 @@ def solve(a, level, log):
     latest = ("", "")
     for rnd in range(a.rounds):
         t0 = time.perf_counter()
-        replies = (offline_answers(level, a.samples, rnd) if a.offline
+        replies = ([(r, {}) for r in offline_answers(level, a.samples, rnd)] if a.offline
                    else ask_parallel(a, prompt, a.samples))
         graded = []
-        for reply in replies:
+        for sample, (reply, meta) in enumerate(replies):
             src = extract_code(reply)
+            t1 = time.perf_counter()
             reward, parts, feedback = grade(src, level)
+            grade_seconds = round(time.perf_counter() - t1, 2)
             graded.append((reward, src, feedback, parts))
-            log.write(json.dumps(dict(level=level, round=rnd, reward=reward, parts=parts,
-                                      prompt_chars=len(prompt), reply_chars=len(reply),
-                                      code=src, feedback=feedback)) + "\n")
+            # Enough to rebuild any table in the write-up without guessing: which run and sample,
+            # what the sampler was set to, where the time went (generation vs grading), and a
+            # fingerprint of the code so identical samples are visible at a glance.
+            log.write(json.dumps(dict(
+                run=run, level=level, round=rnd, sample=sample, reward=reward, parts=parts,
+                model=a.model, temperature=TEMPERATURE, top_p=TOP_P, context=a.context,
+                prompt_chars=len(prompt), reply_chars=len(reply), **meta,
+                grade_seconds=grade_seconds, code_sha=hashlib.sha1(src.encode()).hexdigest()[:12],
+                code=src, feedback=feedback)) + "\n")
         log.flush()
+        if replies and all(m.get("error") for _, m in replies):
+            # The server, not the model, failed this round. Asking again with a shorter prompt
+            # (what an empty answer otherwise triggers) would change the experiment for nothing.
+            print(f"round {rnd}: every request failed ({replies[0][1]['error'][:120]}); "
+                  f"sending the same prompt next round")
+            continue
         graded.sort(key=lambda g: g[0], reverse=True)
         top = graded[0]
         if top[0] > best[0]:
@@ -591,8 +678,12 @@ def main():
                     help="starting prompt length. Measured on gpt-oss-20b: 0 produced 13,245 "
                          "chars of hidden reasoning and no answer, while 1 answered with code. "
                          "Qwen3-8B is fine at 0.")
-    ap.add_argument("--context", type=int, default=4096,
-                    help="the server's max-model-len; prompt + answer must fit inside it")
+    ap.add_argument("--context", type=int, default=None,
+                    help="the server's max-model-len; prompt + answer must fit inside it. "
+                         "Default: read from the server")
+    ap.add_argument("--retries", type=int, default=3,
+                    help="retries for a failed or timed-out request before it is logged as an "
+                         "attempt that returned no code")
     ap.add_argument("--think", action="store_true",
                     help="let the model reason first; costs budget, and it ran out")
     ap.add_argument("--offline", action="store_true")
@@ -616,7 +707,8 @@ def main():
             sys.exit(f"base URL {raw!r} is not usable. It needs a scheme and a host, e.g. "
                      f"http://qwen3-8b:8000/v1.")
         a.base = raw.rstrip("/") + a.path
-        print(f"endpoint {a.base}  model {a.model}")
+        a.context = server_context(a)
+        print(f"endpoint {a.base}  model {a.model}  context {a.context}")
     else:
         print("*** OFFLINE: replaying the reference kernel. Numbers are meaningless. ***")
 
@@ -630,7 +722,7 @@ def main():
                 print(f"\n################ run {rep + 1} of {a.repeat} ################")
             results = []
             for level in levels:
-                results.append((level,) + solve(a, level, log))
+                results.append((level,) + solve(a, level, log, rep))
                 history[level].append(results[-1][1])
 
             print("\n=========== summary ===========")

@@ -28,9 +28,9 @@ marked NEEDS DEVICE VERIFICATION in the selftest output. Run --selftest on the i
 
 import argparse
 import ast
-import importlib.util
 import sys
 import textwrap
+import types
 
 import numpy as np
 
@@ -663,9 +663,18 @@ def simulate_and_count(kernel, args):
 
 
 def load_kernel(path, entry):
-    spec = importlib.util.spec_from_file_location("candidate", path)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
+    """Import a candidate file and return its entry point.
+
+    Compiled straight from the source, never through the import system's bytecode cache. That
+    cache trusts a .pyc whose source has the same size and the same whole-second mtime, so two
+    same-length kernels written to one path within a second imported as the first. Measured on a
+    seat: a correct kernel graded right after a broken one of the same length scored 0.30.
+    """
+    with open(path) as f:
+        src = f.read()
+    mod = types.ModuleType("candidate")
+    mod.__file__ = path
+    exec(compile(src, path, "exec"), mod.__dict__)
     if not hasattr(mod, entry):
         raise AttributeError(f"{path} defines no `{entry}`")
     return getattr(mod, entry)
@@ -721,7 +730,9 @@ def verify(path, level_n, tol=2e-2, seed=0):
             if rep:
                 print(f"\n  case {label(case, level_n)}:")
                 print(rep)
-        if level_n >= 3 and counted["bytes"]:
+        # The roofline is matmul arithmetic, so only shapes given as M, K, N get one. Level 8's are
+        # seq x dim, and asking for case["M"] raised KeyError as soon as a shape passed.
+        if {"M", "K", "N"} <= case.keys() and counted["bytes"]:
             f = matmul_flops(case["M"], case["K"], case["N"])
             intensities.append((label(case, level_n), roofline(f, counted["bytes"]),
                                 counted, f, minimum_hbm_bytes(args, want)))
