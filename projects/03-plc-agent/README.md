@@ -1,1 +1,1 @@
-https://github.com/mohamed-ela/trainium-agent-labs/blob/master/projects/03-plc-agent/README.md
+https://github.com/mohamed-ela/AMAZON-Hack-CHIP-26-ME2890/blob/main/README.md
