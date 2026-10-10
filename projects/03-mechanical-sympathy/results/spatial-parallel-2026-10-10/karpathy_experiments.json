@@ -1,0 +1,54 @@
+[
+  {
+    "label": "0 \u00b7 FP32\n1 core",
+    "logical_cores": 1,
+    "reports": [
+      "../forward-only-2026-10-10/neuron.json"
+    ]
+  },
+  {
+    "label": "1 \u00b7 BF16 matmult\n1 core",
+    "logical_cores": 1,
+    "reports": [
+      "../forward-only-2026-10-10/neuron_bf16.json"
+    ]
+  },
+  {
+    "label": "2 \u00b7 + BN folding\n1 core",
+    "logical_cores": 1,
+    "reports": [
+      "../forward-only-2026-10-10/neuron_bf16_folded.json"
+    ]
+  },
+  {
+    "label": "3 \u00b7 + 30-row tiling\n1 core, 8 CPU threads",
+    "logical_cores": 1,
+    "reports": [
+      "../tiling-forward-2026-10-10/neuron_bf16_folded_tiled30.json"
+    ]
+  },
+  {
+    "label": "4 \u00b7 + 90\u00d7180 tiling\n1 core, 8 CPU threads",
+    "logical_cores": 1,
+    "reports": [
+      "../easy-wins-2026-10-10/tiled30_lvl1.json"
+    ]
+  },
+  {
+    "label": "5 \u00b7 Tiled reference\n1 core, 2 CPU threads",
+    "logical_cores": 1,
+    "reports": [
+      "single-core-reference.json"
+    ]
+  },
+  {
+    "label": "6 \u00b7 Spatial split\n4 cores, 2 threads/rank",
+    "logical_cores": 4,
+    "reports": [
+      "rollout-4-cores/rank0.json",
+      "rollout-4-cores/rank1.json",
+      "rollout-4-cores/rank2.json",
+      "rollout-4-cores/rank3.json"
+    ]
+  }
+]

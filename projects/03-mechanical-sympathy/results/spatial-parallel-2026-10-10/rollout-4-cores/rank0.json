@@ -1,0 +1,1552 @@
+{
+  "backend": "neuron",
+  "device": "xla:0",
+  "torch_version": "2.9.1+cu128",
+  "python_version": "3.12.14",
+  "cpu_threads": 2,
+  "cpu_affinity": [
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55
+  ],
+  "input_prognostic_shape": [
+    1,
+    154,
+    180,
+    360
+  ],
+  "input_boundary_shape": [
+    1,
+    8,
+    180,
+    360
+  ],
+  "output_shape": [
+    1,
+    154,
+    180,
+    360
+  ],
+  "dtype": "torch.float32",
+  "checkpoint_sha256": "ff6160cb7e2a2b5b8ee2c5731c16bd114a1bb5a267245cc5ed766fb00c7f797a",
+  "checkpoint_epoch": 70,
+  "prepared_case_sha256": "7251e96fe08c1d3c794522020ab10d579c97d1bcd6ce98ab951efd9c0746198b",
+  "case_spec": {
+    "data": {
+      "sources": [
+        {
+          "type": "om4",
+          "train_time": {
+            "start": "1975-01-03",
+            "end": "2013-10-05"
+          },
+          "val_time": {
+            "start": "2013-10-05",
+            "end": "2014-10-05"
+          },
+          "inference_time": {
+            "start": "2014-10-10",
+            "end": "2022-12-24"
+          },
+          "data_location": "/amogh/samudra-one-degree/data/om4_onedeg/OM4.zarr",
+          "data_means_location": "/amogh/samudra-one-degree/data/om4_onedeg/OM4_means.zarr",
+          "data_stds_location": "/amogh/samudra-one-degree/data/om4_onedeg/OM4_stds.zarr",
+          "prognostic_vars_key": "thermo_dynamic_all",
+          "boundary_vars_key": "tau_hfds_hfds_anom",
+          "grid_type": "gaussian"
+        }
+      ],
+      "loading": {
+        "type": "cpu",
+        "num_workers": 4,
+        "persistent_workers": true,
+        "pin_mem": true,
+        "concurrent_compute": true
+      },
+      "inference_loading": {
+        "num_workers": 4,
+        "persistent_workers": true
+      },
+      "input_steps": 2,
+      "output_steps": 2,
+      "loader_version": "om4-torch",
+      "normalize_before_mask": true,
+      "masked_fill_value": 0.0
+    },
+    "root": "/amogh/samudra-one-degree",
+    "model": {
+      "pred_residuals": false,
+      "last_kernel_size": 3,
+      "pad": "circular",
+      "checkpointing": "all",
+      "gradient_detach_interval": 0,
+      "add_3d_coordinates": false,
+      "unet": {
+        "ch_width": [
+          280,
+          380,
+          480,
+          520
+        ],
+        "dilation": [
+          1,
+          2,
+          4,
+          8
+        ],
+        "n_layers": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "core_block": {
+          "block_type": "conv_next_block",
+          "kernel_size": 3,
+          "activation": "capped_gelu",
+          "upscale_factor": 2,
+          "norm": "batch",
+          "pointwise_linear": false
+        },
+        "down_sampling_block": "avg_pool",
+        "up_sampling_block": "zonally_periodic_upsample",
+        "drop_path_rate": 0.0
+      },
+      "pos_channels": 0,
+      "use_bfloat16": false
+    }
+  },
+  "source_commit": "a5fc211a47245178d34c9e816a86e838784e9ce0",
+  "requested_range": "2014-10-10 to 2022-12-24",
+  "available_data_range": [
+    "2014-10-05 12:00:00",
+    "2022-12-29 12:00:00"
+  ],
+  "initial_times": [
+    "2014-10-10 12:00:00",
+    "2014-10-15 12:00:00"
+  ],
+  "source_location": "/amogh/samudra-one-degree/data/om4_onedeg/OM4.zarr",
+  "target_time_start": "2014-10-20 12:00:00",
+  "target_time_end": "2022-12-24 12:00:00",
+  "complete_eval_range": true,
+  "forecast_timesteps": 598,
+  "single_call": {
+    "calls": 20,
+    "total_forward_wall_seconds": 2.350709596,
+    "total_host_cpu_seconds": 2.3349916399999997,
+    "mean_wall_seconds": 0.11753547980000001,
+    "median_wall_seconds": 0.1166667075,
+    "p95_wall_seconds": 0.1217231148,
+    "min_wall_seconds": 0.116396062,
+    "max_wall_seconds": 0.125059739,
+    "calls_per_forward_second": 8.508069237489938,
+    "mean_host_cpu_seconds": 0.11674958199999999,
+    "process_peak_rss_bytes": 3799560192,
+    "samples": [
+      {
+        "wall_seconds": 0.118096091,
+        "host_cpu_seconds": 0.118359649
+      },
+      {
+        "wall_seconds": 0.125059739,
+        "host_cpu_seconds": 0.114092103
+      },
+      {
+        "wall_seconds": 0.116647426,
+        "host_cpu_seconds": 0.116703913
+      },
+      {
+        "wall_seconds": 0.116621738,
+        "host_cpu_seconds": 0.116695749
+      },
+      {
+        "wall_seconds": 0.116672838,
+        "host_cpu_seconds": 0.116767234
+      },
+      {
+        "wall_seconds": 0.118425257,
+        "host_cpu_seconds": 0.118575736
+      },
+      {
+        "wall_seconds": 0.116592498,
+        "host_cpu_seconds": 0.116717202
+      },
+      {
+        "wall_seconds": 0.11666905,
+        "host_cpu_seconds": 0.116655113
+      },
+      {
+        "wall_seconds": 0.116499038,
+        "host_cpu_seconds": 0.116674619
+      },
+      {
+        "wall_seconds": 0.116577976,
+        "host_cpu_seconds": 0.116605796
+      },
+      {
+        "wall_seconds": 0.116733399,
+        "host_cpu_seconds": 0.110536075
+      },
+      {
+        "wall_seconds": 0.117975775,
+        "host_cpu_seconds": 0.118153264
+      },
+      {
+        "wall_seconds": 0.116506269,
+        "host_cpu_seconds": 0.116728991
+      },
+      {
+        "wall_seconds": 0.116577508,
+        "host_cpu_seconds": 0.116565239
+      },
+      {
+        "wall_seconds": 0.121547503,
+        "host_cpu_seconds": 0.121204393
+      },
+      {
+        "wall_seconds": 0.116664365,
+        "host_cpu_seconds": 0.116827197
+      },
+      {
+        "wall_seconds": 0.117150043,
+        "host_cpu_seconds": 0.117231218
+      },
+      {
+        "wall_seconds": 0.116571428,
+        "host_cpu_seconds": 0.116597405
+      },
+      {
+        "wall_seconds": 0.116396062,
+        "host_cpu_seconds": 0.116582524
+      },
+      {
+        "wall_seconds": 0.116725593,
+        "host_cpu_seconds": 0.11671822
+      }
+    ]
+  },
+  "eval_range": {
+    "calls": 299,
+    "total_forward_wall_seconds": 35.218500041,
+    "total_host_cpu_seconds": 35.070339837,
+    "mean_wall_seconds": 0.11778762555518395,
+    "median_wall_seconds": 0.117654653,
+    "p95_wall_seconds": 0.1189441037,
+    "min_wall_seconds": 0.116679445,
+    "max_wall_seconds": 0.127403874,
+    "calls_per_forward_second": 8.489856173656342,
+    "mean_host_cpu_seconds": 0.11729210647826087,
+    "process_peak_rss_bytes": 3799560192,
+    "samples": [
+      {
+        "wall_seconds": 0.116679445,
+        "host_cpu_seconds": 0.11685066
+      },
+      {
+        "wall_seconds": 0.11705556,
+        "host_cpu_seconds": 0.117248156
+      },
+      {
+        "wall_seconds": 0.11886834,
+        "host_cpu_seconds": 0.117144103
+      },
+      {
+        "wall_seconds": 0.117024596,
+        "host_cpu_seconds": 0.117179738
+      },
+      {
+        "wall_seconds": 0.117220131,
+        "host_cpu_seconds": 0.117289892
+      },
+      {
+        "wall_seconds": 0.117536647,
+        "host_cpu_seconds": 0.117246747
+      },
+      {
+        "wall_seconds": 0.117187803,
+        "host_cpu_seconds": 0.117149952
+      },
+      {
+        "wall_seconds": 0.116893787,
+        "host_cpu_seconds": 0.117126384
+      },
+      {
+        "wall_seconds": 0.117525146,
+        "host_cpu_seconds": 0.117123175
+      },
+      {
+        "wall_seconds": 0.117087486,
+        "host_cpu_seconds": 0.117328259
+      },
+      {
+        "wall_seconds": 0.117063115,
+        "host_cpu_seconds": 0.117111943
+      },
+      {
+        "wall_seconds": 0.117054519,
+        "host_cpu_seconds": 0.117216374
+      },
+      {
+        "wall_seconds": 0.117211523,
+        "host_cpu_seconds": 0.117196957
+      },
+      {
+        "wall_seconds": 0.117979659,
+        "host_cpu_seconds": 0.117207622
+      },
+      {
+        "wall_seconds": 0.117306674,
+        "host_cpu_seconds": 0.117336603
+      },
+      {
+        "wall_seconds": 0.1169536,
+        "host_cpu_seconds": 0.117133632
+      },
+      {
+        "wall_seconds": 0.116984511,
+        "host_cpu_seconds": 0.117071389
+      },
+      {
+        "wall_seconds": 0.117156449,
+        "host_cpu_seconds": 0.11713262
+      },
+      {
+        "wall_seconds": 0.117166683,
+        "host_cpu_seconds": 0.117193907
+      },
+      {
+        "wall_seconds": 0.118717241,
+        "host_cpu_seconds": 0.116919542
+      },
+      {
+        "wall_seconds": 0.117151811,
+        "host_cpu_seconds": 0.117161818
+      },
+      {
+        "wall_seconds": 0.117037499,
+        "host_cpu_seconds": 0.117195199
+      },
+      {
+        "wall_seconds": 0.116979096,
+        "host_cpu_seconds": 0.117152582
+      },
+      {
+        "wall_seconds": 0.117074807,
+        "host_cpu_seconds": 0.11717748
+      },
+      {
+        "wall_seconds": 0.116924213,
+        "host_cpu_seconds": 0.117093558
+      },
+      {
+        "wall_seconds": 0.11706084,
+        "host_cpu_seconds": 0.117135784
+      },
+      {
+        "wall_seconds": 0.117036227,
+        "host_cpu_seconds": 0.117184167
+      },
+      {
+        "wall_seconds": 0.117041569,
+        "host_cpu_seconds": 0.117119612
+      },
+      {
+        "wall_seconds": 0.1189413,
+        "host_cpu_seconds": 0.11702665
+      },
+      {
+        "wall_seconds": 0.118598729,
+        "host_cpu_seconds": 0.117119653
+      },
+      {
+        "wall_seconds": 0.118756641,
+        "host_cpu_seconds": 0.119056059
+      },
+      {
+        "wall_seconds": 0.11705849,
+        "host_cpu_seconds": 0.117233308
+      },
+      {
+        "wall_seconds": 0.117089255,
+        "host_cpu_seconds": 0.117045986
+      },
+      {
+        "wall_seconds": 0.117164768,
+        "host_cpu_seconds": 0.117271314
+      },
+      {
+        "wall_seconds": 0.117025232,
+        "host_cpu_seconds": 0.117155625
+      },
+      {
+        "wall_seconds": 0.117030318,
+        "host_cpu_seconds": 0.117075013
+      },
+      {
+        "wall_seconds": 0.118903321,
+        "host_cpu_seconds": 0.117264488
+      },
+      {
+        "wall_seconds": 0.118588755,
+        "host_cpu_seconds": 0.117251415
+      },
+      {
+        "wall_seconds": 0.118521549,
+        "host_cpu_seconds": 0.117297692
+      },
+      {
+        "wall_seconds": 0.118493081,
+        "host_cpu_seconds": 0.117239535
+      },
+      {
+        "wall_seconds": 0.118615894,
+        "host_cpu_seconds": 0.117358608
+      },
+      {
+        "wall_seconds": 0.118387586,
+        "host_cpu_seconds": 0.117890065
+      },
+      {
+        "wall_seconds": 0.117150946,
+        "host_cpu_seconds": 0.117325344
+      },
+      {
+        "wall_seconds": 0.118601871,
+        "host_cpu_seconds": 0.118827086
+      },
+      {
+        "wall_seconds": 0.118507505,
+        "host_cpu_seconds": 0.11866895
+      },
+      {
+        "wall_seconds": 0.118565404,
+        "host_cpu_seconds": 0.118775237
+      },
+      {
+        "wall_seconds": 0.119006177,
+        "host_cpu_seconds": 0.118918966
+      },
+      {
+        "wall_seconds": 0.118752857,
+        "host_cpu_seconds": 0.118836798
+      },
+      {
+        "wall_seconds": 0.118583486,
+        "host_cpu_seconds": 0.118781295
+      },
+      {
+        "wall_seconds": 0.118546792,
+        "host_cpu_seconds": 0.118745556
+      },
+      {
+        "wall_seconds": 0.118566726,
+        "host_cpu_seconds": 0.118785966
+      },
+      {
+        "wall_seconds": 0.118710896,
+        "host_cpu_seconds": 0.118930686
+      },
+      {
+        "wall_seconds": 0.117876253,
+        "host_cpu_seconds": 0.11803077
+      },
+      {
+        "wall_seconds": 0.117291804,
+        "host_cpu_seconds": 0.117346491
+      },
+      {
+        "wall_seconds": 0.117032561,
+        "host_cpu_seconds": 0.117326614
+      },
+      {
+        "wall_seconds": 0.1185382,
+        "host_cpu_seconds": 0.118766458
+      },
+      {
+        "wall_seconds": 0.11857409,
+        "host_cpu_seconds": 0.118807999
+      },
+      {
+        "wall_seconds": 0.119213904,
+        "host_cpu_seconds": 0.118927992
+      },
+      {
+        "wall_seconds": 0.118622275,
+        "host_cpu_seconds": 0.118834086
+      },
+      {
+        "wall_seconds": 0.118598548,
+        "host_cpu_seconds": 0.118825805
+      },
+      {
+        "wall_seconds": 0.118553895,
+        "host_cpu_seconds": 0.118756486
+      },
+      {
+        "wall_seconds": 0.118582891,
+        "host_cpu_seconds": 0.118788053
+      },
+      {
+        "wall_seconds": 0.119153488,
+        "host_cpu_seconds": 0.118952356
+      },
+      {
+        "wall_seconds": 0.11784537,
+        "host_cpu_seconds": 0.117334293
+      },
+      {
+        "wall_seconds": 0.117076488,
+        "host_cpu_seconds": 0.117295288
+      },
+      {
+        "wall_seconds": 0.116934704,
+        "host_cpu_seconds": 0.117211548
+      },
+      {
+        "wall_seconds": 0.116975526,
+        "host_cpu_seconds": 0.117168672
+      },
+      {
+        "wall_seconds": 0.118663368,
+        "host_cpu_seconds": 0.117359299
+      },
+      {
+        "wall_seconds": 0.117507348,
+        "host_cpu_seconds": 0.117766847
+      },
+      {
+        "wall_seconds": 0.117109862,
+        "host_cpu_seconds": 0.117207063
+      },
+      {
+        "wall_seconds": 0.116951475,
+        "host_cpu_seconds": 0.117162321
+      },
+      {
+        "wall_seconds": 0.117166198,
+        "host_cpu_seconds": 0.117282992
+      },
+      {
+        "wall_seconds": 0.117166697,
+        "host_cpu_seconds": 0.117356981
+      },
+      {
+        "wall_seconds": 0.119023631,
+        "host_cpu_seconds": 0.117505625
+      },
+      {
+        "wall_seconds": 0.117813988,
+        "host_cpu_seconds": 0.117240723
+      },
+      {
+        "wall_seconds": 0.11703878,
+        "host_cpu_seconds": 0.117172698
+      },
+      {
+        "wall_seconds": 0.117021439,
+        "host_cpu_seconds": 0.117289201
+      },
+      {
+        "wall_seconds": 0.116972255,
+        "host_cpu_seconds": 0.117119011
+      },
+      {
+        "wall_seconds": 0.118372734,
+        "host_cpu_seconds": 0.10684179
+      },
+      {
+        "wall_seconds": 0.117946621,
+        "host_cpu_seconds": 0.117854795
+      },
+      {
+        "wall_seconds": 0.117023595,
+        "host_cpu_seconds": 0.117318613
+      },
+      {
+        "wall_seconds": 0.116983819,
+        "host_cpu_seconds": 0.117128716
+      },
+      {
+        "wall_seconds": 0.116995673,
+        "host_cpu_seconds": 0.117193819
+      },
+      {
+        "wall_seconds": 0.117082577,
+        "host_cpu_seconds": 0.117334339
+      },
+      {
+        "wall_seconds": 0.118997551,
+        "host_cpu_seconds": 0.119252315
+      },
+      {
+        "wall_seconds": 0.117053995,
+        "host_cpu_seconds": 0.117284751
+      },
+      {
+        "wall_seconds": 0.117107608,
+        "host_cpu_seconds": 0.117263899
+      },
+      {
+        "wall_seconds": 0.117008877,
+        "host_cpu_seconds": 0.117123369
+      },
+      {
+        "wall_seconds": 0.117054028,
+        "host_cpu_seconds": 0.117264856
+      },
+      {
+        "wall_seconds": 0.117829524,
+        "host_cpu_seconds": 0.117261029
+      },
+      {
+        "wall_seconds": 0.118268667,
+        "host_cpu_seconds": 0.117268458
+      },
+      {
+        "wall_seconds": 0.117031907,
+        "host_cpu_seconds": 0.117292994
+      },
+      {
+        "wall_seconds": 0.116903625,
+        "host_cpu_seconds": 0.117167868
+      },
+      {
+        "wall_seconds": 0.116940851,
+        "host_cpu_seconds": 0.117201683
+      },
+      {
+        "wall_seconds": 0.117066649,
+        "host_cpu_seconds": 0.117253004
+      },
+      {
+        "wall_seconds": 0.121039849,
+        "host_cpu_seconds": 0.118996956
+      },
+      {
+        "wall_seconds": 0.117785199,
+        "host_cpu_seconds": 0.118052666
+      },
+      {
+        "wall_seconds": 0.117176443,
+        "host_cpu_seconds": 0.117150652
+      },
+      {
+        "wall_seconds": 0.117101476,
+        "host_cpu_seconds": 0.117199935
+      },
+      {
+        "wall_seconds": 0.11696236,
+        "host_cpu_seconds": 0.11721142
+      },
+      {
+        "wall_seconds": 0.118414934,
+        "host_cpu_seconds": 0.118607731
+      },
+      {
+        "wall_seconds": 0.117775477,
+        "host_cpu_seconds": 0.117930989
+      },
+      {
+        "wall_seconds": 0.11723991,
+        "host_cpu_seconds": 0.117381688
+      },
+      {
+        "wall_seconds": 0.117194253,
+        "host_cpu_seconds": 0.117270484
+      },
+      {
+        "wall_seconds": 0.117108093,
+        "host_cpu_seconds": 0.117226711
+      },
+      {
+        "wall_seconds": 0.117189038,
+        "host_cpu_seconds": 0.117361723
+      },
+      {
+        "wall_seconds": 0.119193713,
+        "host_cpu_seconds": 0.117534093
+      },
+      {
+        "wall_seconds": 0.117129765,
+        "host_cpu_seconds": 0.117287841
+      },
+      {
+        "wall_seconds": 0.117040456,
+        "host_cpu_seconds": 0.117070954
+      },
+      {
+        "wall_seconds": 0.117234458,
+        "host_cpu_seconds": 0.117199164
+      },
+      {
+        "wall_seconds": 0.117140184,
+        "host_cpu_seconds": 0.117278463
+      },
+      {
+        "wall_seconds": 0.117739731,
+        "host_cpu_seconds": 0.117397509
+      },
+      {
+        "wall_seconds": 0.118215751,
+        "host_cpu_seconds": 0.117203904
+      },
+      {
+        "wall_seconds": 0.117103751,
+        "host_cpu_seconds": 0.117227243
+      },
+      {
+        "wall_seconds": 0.117384759,
+        "host_cpu_seconds": 0.117261029
+      },
+      {
+        "wall_seconds": 0.117167776,
+        "host_cpu_seconds": 0.117264331
+      },
+      {
+        "wall_seconds": 0.117229687,
+        "host_cpu_seconds": 0.117261948
+      },
+      {
+        "wall_seconds": 0.118908454,
+        "host_cpu_seconds": 0.119108553
+      },
+      {
+        "wall_seconds": 0.117191808,
+        "host_cpu_seconds": 0.117254897
+      },
+      {
+        "wall_seconds": 0.117101298,
+        "host_cpu_seconds": 0.117294376
+      },
+      {
+        "wall_seconds": 0.117325646,
+        "host_cpu_seconds": 0.117410335
+      },
+      {
+        "wall_seconds": 0.117693088,
+        "host_cpu_seconds": 0.117454247
+      },
+      {
+        "wall_seconds": 0.118396018,
+        "host_cpu_seconds": 0.117499456
+      },
+      {
+        "wall_seconds": 0.117953541,
+        "host_cpu_seconds": 0.118088181
+      },
+      {
+        "wall_seconds": 0.117292841,
+        "host_cpu_seconds": 0.117369651
+      },
+      {
+        "wall_seconds": 0.117224594,
+        "host_cpu_seconds": 0.117430378
+      },
+      {
+        "wall_seconds": 0.11715212,
+        "host_cpu_seconds": 0.117324473
+      },
+      {
+        "wall_seconds": 0.117248978,
+        "host_cpu_seconds": 0.117232045
+      },
+      {
+        "wall_seconds": 0.117237791,
+        "host_cpu_seconds": 0.117340086
+      },
+      {
+        "wall_seconds": 0.117227328,
+        "host_cpu_seconds": 0.117131735
+      },
+      {
+        "wall_seconds": 0.11708956,
+        "host_cpu_seconds": 0.117150938
+      },
+      {
+        "wall_seconds": 0.117301565,
+        "host_cpu_seconds": 0.117420007
+      },
+      {
+        "wall_seconds": 0.117734313,
+        "host_cpu_seconds": 0.117351319
+      },
+      {
+        "wall_seconds": 0.11774034,
+        "host_cpu_seconds": 0.11748941
+      },
+      {
+        "wall_seconds": 0.118013107,
+        "host_cpu_seconds": 0.117625641
+      },
+      {
+        "wall_seconds": 0.117618753,
+        "host_cpu_seconds": 0.117591452
+      },
+      {
+        "wall_seconds": 0.117741962,
+        "host_cpu_seconds": 0.117880665
+      },
+      {
+        "wall_seconds": 0.117968201,
+        "host_cpu_seconds": 0.118066573
+      },
+      {
+        "wall_seconds": 0.118445356,
+        "host_cpu_seconds": 0.118125927
+      },
+      {
+        "wall_seconds": 0.117991727,
+        "host_cpu_seconds": 0.118053742
+      },
+      {
+        "wall_seconds": 0.117996868,
+        "host_cpu_seconds": 0.118114393
+      },
+      {
+        "wall_seconds": 0.118068773,
+        "host_cpu_seconds": 0.118072261
+      },
+      {
+        "wall_seconds": 0.117752586,
+        "host_cpu_seconds": 0.117913861
+      },
+      {
+        "wall_seconds": 0.118154969,
+        "host_cpu_seconds": 0.118139853
+      },
+      {
+        "wall_seconds": 0.118113899,
+        "host_cpu_seconds": 0.118141834
+      },
+      {
+        "wall_seconds": 0.117875326,
+        "host_cpu_seconds": 0.117898494
+      },
+      {
+        "wall_seconds": 0.117984026,
+        "host_cpu_seconds": 0.118007474
+      },
+      {
+        "wall_seconds": 0.117957668,
+        "host_cpu_seconds": 0.117799557
+      },
+      {
+        "wall_seconds": 0.117897436,
+        "host_cpu_seconds": 0.118133395
+      },
+      {
+        "wall_seconds": 0.118031645,
+        "host_cpu_seconds": 0.118114258
+      },
+      {
+        "wall_seconds": 0.117949402,
+        "host_cpu_seconds": 0.117985721
+      },
+      {
+        "wall_seconds": 0.118296489,
+        "host_cpu_seconds": 0.118232811
+      },
+      {
+        "wall_seconds": 0.118240305,
+        "host_cpu_seconds": 0.058803051
+      },
+      {
+        "wall_seconds": 0.117944986,
+        "host_cpu_seconds": 0.117921087
+      },
+      {
+        "wall_seconds": 0.118354339,
+        "host_cpu_seconds": 0.11798447
+      },
+      {
+        "wall_seconds": 0.118291809,
+        "host_cpu_seconds": 0.118073739
+      },
+      {
+        "wall_seconds": 0.11789488,
+        "host_cpu_seconds": 0.11808823
+      },
+      {
+        "wall_seconds": 0.117892276,
+        "host_cpu_seconds": 0.118141992
+      },
+      {
+        "wall_seconds": 0.117980471,
+        "host_cpu_seconds": 0.118183003
+      },
+      {
+        "wall_seconds": 0.11837329,
+        "host_cpu_seconds": 0.118116353
+      },
+      {
+        "wall_seconds": 0.118181606,
+        "host_cpu_seconds": 0.118158158
+      },
+      {
+        "wall_seconds": 0.118233886,
+        "host_cpu_seconds": 0.118258567
+      },
+      {
+        "wall_seconds": 0.118429742,
+        "host_cpu_seconds": 0.118074908
+      },
+      {
+        "wall_seconds": 0.117991386,
+        "host_cpu_seconds": 0.118212014
+      },
+      {
+        "wall_seconds": 0.118031274,
+        "host_cpu_seconds": 0.118030425
+      },
+      {
+        "wall_seconds": 0.118149995,
+        "host_cpu_seconds": 0.118143475
+      },
+      {
+        "wall_seconds": 0.11772078,
+        "host_cpu_seconds": 0.117717527
+      },
+      {
+        "wall_seconds": 0.117821658,
+        "host_cpu_seconds": 0.117888084
+      },
+      {
+        "wall_seconds": 0.117685613,
+        "host_cpu_seconds": 0.117689758
+      },
+      {
+        "wall_seconds": 0.117617759,
+        "host_cpu_seconds": 0.117531023
+      },
+      {
+        "wall_seconds": 0.117528657,
+        "host_cpu_seconds": 0.117592995
+      },
+      {
+        "wall_seconds": 0.117618808,
+        "host_cpu_seconds": 0.117647075
+      },
+      {
+        "wall_seconds": 0.117301175,
+        "host_cpu_seconds": 0.117382422
+      },
+      {
+        "wall_seconds": 0.117986497,
+        "host_cpu_seconds": 0.117685951
+      },
+      {
+        "wall_seconds": 0.117587483,
+        "host_cpu_seconds": 0.117704727
+      },
+      {
+        "wall_seconds": 0.117418472,
+        "host_cpu_seconds": 0.117701431
+      },
+      {
+        "wall_seconds": 0.117332028,
+        "host_cpu_seconds": 0.117471301
+      },
+      {
+        "wall_seconds": 0.117447405,
+        "host_cpu_seconds": 0.117704366
+      },
+      {
+        "wall_seconds": 0.117517312,
+        "host_cpu_seconds": 0.117592707
+      },
+      {
+        "wall_seconds": 0.117934552,
+        "host_cpu_seconds": 0.118191847
+      },
+      {
+        "wall_seconds": 0.117884163,
+        "host_cpu_seconds": 0.117877995
+      },
+      {
+        "wall_seconds": 0.118031476,
+        "host_cpu_seconds": 0.118128891
+      },
+      {
+        "wall_seconds": 0.117966472,
+        "host_cpu_seconds": 0.118179996
+      },
+      {
+        "wall_seconds": 0.117913686,
+        "host_cpu_seconds": 0.118167221
+      },
+      {
+        "wall_seconds": 0.117906158,
+        "host_cpu_seconds": 0.118132722
+      },
+      {
+        "wall_seconds": 0.117945463,
+        "host_cpu_seconds": 0.118191738
+      },
+      {
+        "wall_seconds": 0.117873709,
+        "host_cpu_seconds": 0.118097755
+      },
+      {
+        "wall_seconds": 0.119088148,
+        "host_cpu_seconds": 0.119380177
+      },
+      {
+        "wall_seconds": 0.118103858,
+        "host_cpu_seconds": 0.118173806
+      },
+      {
+        "wall_seconds": 0.117907037,
+        "host_cpu_seconds": 0.118090011
+      },
+      {
+        "wall_seconds": 0.11822056,
+        "host_cpu_seconds": 0.11816494
+      },
+      {
+        "wall_seconds": 0.117831685,
+        "host_cpu_seconds": 0.117809291
+      },
+      {
+        "wall_seconds": 0.117957414,
+        "host_cpu_seconds": 0.117791951
+      },
+      {
+        "wall_seconds": 0.117885072,
+        "host_cpu_seconds": 0.117717142
+      },
+      {
+        "wall_seconds": 0.118062938,
+        "host_cpu_seconds": 0.11754781
+      },
+      {
+        "wall_seconds": 0.117962326,
+        "host_cpu_seconds": 0.118110456
+      },
+      {
+        "wall_seconds": 0.117879994,
+        "host_cpu_seconds": 0.117867972
+      },
+      {
+        "wall_seconds": 0.118381675,
+        "host_cpu_seconds": 0.117944161
+      },
+      {
+        "wall_seconds": 0.118271161,
+        "host_cpu_seconds": 0.117961597
+      },
+      {
+        "wall_seconds": 0.11804961,
+        "host_cpu_seconds": 0.118033198
+      },
+      {
+        "wall_seconds": 0.117786317,
+        "host_cpu_seconds": 0.118027962
+      },
+      {
+        "wall_seconds": 0.117898313,
+        "host_cpu_seconds": 0.117948577
+      },
+      {
+        "wall_seconds": 0.118226752,
+        "host_cpu_seconds": 0.117913315
+      },
+      {
+        "wall_seconds": 0.117982779,
+        "host_cpu_seconds": 0.118065659
+      },
+      {
+        "wall_seconds": 0.117918724,
+        "host_cpu_seconds": 0.117927181
+      },
+      {
+        "wall_seconds": 0.118272677,
+        "host_cpu_seconds": 0.118087584
+      },
+      {
+        "wall_seconds": 0.117817293,
+        "host_cpu_seconds": 0.117935084
+      },
+      {
+        "wall_seconds": 0.117819142,
+        "host_cpu_seconds": 0.117776807
+      },
+      {
+        "wall_seconds": 0.117854328,
+        "host_cpu_seconds": 0.117857882
+      },
+      {
+        "wall_seconds": 0.117683406,
+        "host_cpu_seconds": 0.117782308
+      },
+      {
+        "wall_seconds": 0.117654653,
+        "host_cpu_seconds": 0.117767829
+      },
+      {
+        "wall_seconds": 0.117680636,
+        "host_cpu_seconds": 0.117646063
+      },
+      {
+        "wall_seconds": 0.11791012,
+        "host_cpu_seconds": 0.117764476
+      },
+      {
+        "wall_seconds": 0.117793274,
+        "host_cpu_seconds": 0.117917711
+      },
+      {
+        "wall_seconds": 0.118023484,
+        "host_cpu_seconds": 0.118008403
+      },
+      {
+        "wall_seconds": 0.11784999,
+        "host_cpu_seconds": 0.117923255
+      },
+      {
+        "wall_seconds": 0.118127239,
+        "host_cpu_seconds": 0.117742872
+      },
+      {
+        "wall_seconds": 0.117704474,
+        "host_cpu_seconds": 0.117916106
+      },
+      {
+        "wall_seconds": 0.117677557,
+        "host_cpu_seconds": 0.117816453
+      },
+      {
+        "wall_seconds": 0.117943019,
+        "host_cpu_seconds": 0.117925102
+      },
+      {
+        "wall_seconds": 0.11764453,
+        "host_cpu_seconds": 0.117705913
+      },
+      {
+        "wall_seconds": 0.117628517,
+        "host_cpu_seconds": 0.117526051
+      },
+      {
+        "wall_seconds": 0.117636463,
+        "host_cpu_seconds": 0.117584329
+      },
+      {
+        "wall_seconds": 0.117729529,
+        "host_cpu_seconds": 0.117784766
+      },
+      {
+        "wall_seconds": 0.117672715,
+        "host_cpu_seconds": 0.117773939
+      },
+      {
+        "wall_seconds": 0.119057336,
+        "host_cpu_seconds": 0.117519393
+      },
+      {
+        "wall_seconds": 0.117267534,
+        "host_cpu_seconds": 0.117357839
+      },
+      {
+        "wall_seconds": 0.117445702,
+        "host_cpu_seconds": 0.117304177
+      },
+      {
+        "wall_seconds": 0.117387218,
+        "host_cpu_seconds": 0.117442166
+      },
+      {
+        "wall_seconds": 0.117262548,
+        "host_cpu_seconds": 0.117220765
+      },
+      {
+        "wall_seconds": 0.117009918,
+        "host_cpu_seconds": 0.117266517
+      },
+      {
+        "wall_seconds": 0.117375455,
+        "host_cpu_seconds": 0.117325284
+      },
+      {
+        "wall_seconds": 0.117307108,
+        "host_cpu_seconds": 0.11722583
+      },
+      {
+        "wall_seconds": 0.117462549,
+        "host_cpu_seconds": 0.117443116
+      },
+      {
+        "wall_seconds": 0.117360112,
+        "host_cpu_seconds": 0.117340801
+      },
+      {
+        "wall_seconds": 0.117317654,
+        "host_cpu_seconds": 0.117350298
+      },
+      {
+        "wall_seconds": 0.117271501,
+        "host_cpu_seconds": 0.117290679
+      },
+      {
+        "wall_seconds": 0.117463495,
+        "host_cpu_seconds": 0.117469851
+      },
+      {
+        "wall_seconds": 0.117425704,
+        "host_cpu_seconds": 0.117443125
+      },
+      {
+        "wall_seconds": 0.127403874,
+        "host_cpu_seconds": 0.127189076
+      },
+      {
+        "wall_seconds": 0.117542337,
+        "host_cpu_seconds": 0.117429375
+      },
+      {
+        "wall_seconds": 0.121072279,
+        "host_cpu_seconds": 0.121153065
+      },
+      {
+        "wall_seconds": 0.117509685,
+        "host_cpu_seconds": 0.117510206
+      },
+      {
+        "wall_seconds": 0.11738879,
+        "host_cpu_seconds": 0.117264534
+      },
+      {
+        "wall_seconds": 0.120343268,
+        "host_cpu_seconds": 0.114861854
+      },
+      {
+        "wall_seconds": 0.117317858,
+        "host_cpu_seconds": 0.117496749
+      },
+      {
+        "wall_seconds": 0.117463016,
+        "host_cpu_seconds": 0.117562864
+      },
+      {
+        "wall_seconds": 0.117194724,
+        "host_cpu_seconds": 0.11746475
+      },
+      {
+        "wall_seconds": 0.117175706,
+        "host_cpu_seconds": 0.117450095
+      },
+      {
+        "wall_seconds": 0.117288688,
+        "host_cpu_seconds": 0.117531658
+      },
+      {
+        "wall_seconds": 0.117179287,
+        "host_cpu_seconds": 0.117375298
+      },
+      {
+        "wall_seconds": 0.123736146,
+        "host_cpu_seconds": 0.121942972
+      },
+      {
+        "wall_seconds": 0.117037184,
+        "host_cpu_seconds": 0.117230306
+      },
+      {
+        "wall_seconds": 0.117252148,
+        "host_cpu_seconds": 0.092485361
+      },
+      {
+        "wall_seconds": 0.117110457,
+        "host_cpu_seconds": 0.117277239
+      },
+      {
+        "wall_seconds": 0.117167866,
+        "host_cpu_seconds": 0.117282995
+      },
+      {
+        "wall_seconds": 0.11732297,
+        "host_cpu_seconds": 0.117598266
+      },
+      {
+        "wall_seconds": 0.117768749,
+        "host_cpu_seconds": 0.117848614
+      },
+      {
+        "wall_seconds": 0.117729133,
+        "host_cpu_seconds": 0.118032239
+      },
+      {
+        "wall_seconds": 0.118132303,
+        "host_cpu_seconds": 0.118276847
+      },
+      {
+        "wall_seconds": 0.1178824,
+        "host_cpu_seconds": 0.117931183
+      },
+      {
+        "wall_seconds": 0.11779935,
+        "host_cpu_seconds": 0.11759492
+      },
+      {
+        "wall_seconds": 0.117398295,
+        "host_cpu_seconds": 0.117487624
+      },
+      {
+        "wall_seconds": 0.117530919,
+        "host_cpu_seconds": 0.117455267
+      },
+      {
+        "wall_seconds": 0.117427219,
+        "host_cpu_seconds": 0.117489391
+      },
+      {
+        "wall_seconds": 0.117478221,
+        "host_cpu_seconds": 0.117565302
+      },
+      {
+        "wall_seconds": 0.117215162,
+        "host_cpu_seconds": 0.117435947
+      },
+      {
+        "wall_seconds": 0.117337535,
+        "host_cpu_seconds": 0.117442073
+      },
+      {
+        "wall_seconds": 0.117192402,
+        "host_cpu_seconds": 0.117144191
+      },
+      {
+        "wall_seconds": 0.11743471,
+        "host_cpu_seconds": 0.117307753
+      },
+      {
+        "wall_seconds": 0.117141919,
+        "host_cpu_seconds": 0.117352919
+      },
+      {
+        "wall_seconds": 0.117087427,
+        "host_cpu_seconds": 0.117369943
+      },
+      {
+        "wall_seconds": 0.117096389,
+        "host_cpu_seconds": 0.084081551
+      },
+      {
+        "wall_seconds": 0.117824473,
+        "host_cpu_seconds": 0.117712604
+      },
+      {
+        "wall_seconds": 0.117781069,
+        "host_cpu_seconds": 0.117725561
+      },
+      {
+        "wall_seconds": 0.117568719,
+        "host_cpu_seconds": 0.117775368
+      },
+      {
+        "wall_seconds": 0.117259381,
+        "host_cpu_seconds": 0.117309494
+      },
+      {
+        "wall_seconds": 0.11716362,
+        "host_cpu_seconds": 0.117323515
+      },
+      {
+        "wall_seconds": 0.117248633,
+        "host_cpu_seconds": 0.117441565
+      },
+      {
+        "wall_seconds": 0.118969337,
+        "host_cpu_seconds": 0.117258531
+      },
+      {
+        "wall_seconds": 0.116995057,
+        "host_cpu_seconds": 0.117000292
+      },
+      {
+        "wall_seconds": 0.117407964,
+        "host_cpu_seconds": 0.117290841
+      },
+      {
+        "wall_seconds": 0.122980461,
+        "host_cpu_seconds": 0.122695866
+      },
+      {
+        "wall_seconds": 0.117999111,
+        "host_cpu_seconds": 0.118125196
+      },
+      {
+        "wall_seconds": 0.117828437,
+        "host_cpu_seconds": 0.117850482
+      },
+      {
+        "wall_seconds": 0.117710118,
+        "host_cpu_seconds": 0.117784541
+      },
+      {
+        "wall_seconds": 0.117785404,
+        "host_cpu_seconds": 0.11764748
+      },
+      {
+        "wall_seconds": 0.117591061,
+        "host_cpu_seconds": 0.117626079
+      },
+      {
+        "wall_seconds": 0.117714792,
+        "host_cpu_seconds": 0.117746366
+      },
+      {
+        "wall_seconds": 0.118088689,
+        "host_cpu_seconds": 0.117903268
+      },
+      {
+        "wall_seconds": 0.117192106,
+        "host_cpu_seconds": 0.117460431
+      },
+      {
+        "wall_seconds": 0.117418995,
+        "host_cpu_seconds": 0.117640924
+      },
+      {
+        "wall_seconds": 0.117632838,
+        "host_cpu_seconds": 0.117502881
+      },
+      {
+        "wall_seconds": 0.117467417,
+        "host_cpu_seconds": 0.117739343
+      },
+      {
+        "wall_seconds": 0.117151543,
+        "host_cpu_seconds": 0.117268244
+      },
+      {
+        "wall_seconds": 0.117532976,
+        "host_cpu_seconds": 0.117482986
+      },
+      {
+        "wall_seconds": 0.117491085,
+        "host_cpu_seconds": 0.117574919
+      },
+      {
+        "wall_seconds": 0.11762599,
+        "host_cpu_seconds": 0.117516032
+      },
+      {
+        "wall_seconds": 0.117567101,
+        "host_cpu_seconds": 0.117753064
+      }
+    ]
+  },
+  "preparation_seconds": 0.39393821501289494,
+  "backend_setup_seconds": 20.446576921007363,
+  "warmup_including_compilation_seconds": 475.69999025799916,
+  "warmup_calls": 3,
+  "rollout_loop_wall_seconds": 35.42856006900547,
+  "timing_contract": "Device-resident weights and preloaded inputs; perf_counter_ns around forward_once + residual assembly + completion synchronization. Excludes compilation (guarded), loading, normalization, transfers, history assembly, forecast metrics, logging, and output writes. Includes Python dispatch and synchronization; not kernel-only device profiling.",
+  "host_cpu_time_contract": "process_time_ns includes host worker threads, excludes Neuron compute",
+  "memory_contract": "process lifetime peak RSS on Linux; includes setup and resident case, not forward-only peak",
+  "forecast_metrics_computed": false,
+  "preparation_note": "Canonicalization and anomaly statistics use the supplied source span, as in normal evaluation; a sliced source changes that climatology.",
+  "neuron": {
+    "torch_neuronx_version": "2.9.0.2.15.32035+de43f57c",
+    "compiler_version": "2.27.5334.0+f702b353",
+    "flags": "--target=trn2 --auto-cast=matmult --auto-cast-type=bf16 --logical-nc-config=2",
+    "visible_cores": "0",
+    "logical_nc_config": "2",
+    "compilation_count": 1,
+    "cpu_fallback_count": 0,
+    "hardware": [
+      {
+        "instance_type": "trn2.48xlarge",
+        "instance_id": "i-09285ac7c7e5d4447",
+        "neuron_device": 0,
+        "bdf": "0000:b6:00.0",
+        "cpu_affinity": "48-95,144-191",
+        "numa_node": "1",
+        "connected_to": [
+          14,
+          3,
+          1,
+          6
+        ],
+        "nc_count": 4,
+        "logical_neuroncore_config": 2,
+        "memory_size": 103079215104,
+        "neuroncore_ids": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "neuron_processes": [
+          {
+            "pid": 2472724,
+            "command": "",
+            "neuron_runtime_version": "2.34.10"
+          },
+          {
+            "pid": 2472725,
+            "command": "",
+            "neuron_runtime_version": "2.34.10"
+          },
+          {
+            "pid": 2472726,
+            "command": "",
+            "neuron_runtime_version": "2.34.10"
+          },
+          {
+            "pid": 2472727,
+            "command": "",
+            "neuron_runtime_version": "2.34.10"
+          }
+        ]
+      }
+    ]
+  },
+  "rollout_start_epoch": 1791667608.846967,
+  "rollout_end_epoch": 1791667644.2755291,
+  "spatial_parallel": {
+    "world_size": 4,
+    "rank": 0,
+    "blocks": [
+      "unet.layers.0",
+      "unet.layers.16"
+    ]
+  },
+  "tiling": {
+    "band_rows": 30,
+    "min_pixels": 64800,
+    "blocks": [
+      "unet.layers.0 (level 0, 180x360, 162->280)",
+      "unet.layers.16 (level 0, 180x360, 280->280)"
+    ]
+  },
+  "batch_norm_folding": {
+    "enabled": true,
+    "folded_pairs": [
+      "unet.layers.0:0",
+      "unet.layers.0:3",
+      "unet.layers.2:0",
+      "unet.layers.2:3",
+      "unet.layers.4:0",
+      "unet.layers.4:3",
+      "unet.layers.6:0",
+      "unet.layers.6:3",
+      "unet.layers.8:0",
+      "unet.layers.8:3",
+      "unet.layers.10:0",
+      "unet.layers.10:3",
+      "unet.layers.12:0",
+      "unet.layers.12:3",
+      "unet.layers.14:0",
+      "unet.layers.14:3",
+      "unet.layers.16:0",
+      "unet.layers.16:3"
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+experiment	label	logical_cores	cpu_threads_per_rank	forward_seconds	running_best_seconds	years_per_minute	running_best_years_per_minute	speed_record	calls	forecast_records	reports
+0	"0 · FP32
+1 core"	1	8	90.55802873100001	90.55802873100001	5.423819821327013	5.423819821327013	True	299	598	../forward-only-2026-10-10/neuron.json
+1	"1 · BF16 matmult
+1 core"	1	8	73.699786265	73.699786265	6.664475653232058	6.664475653232058	True	299	598	../forward-only-2026-10-10/neuron_bf16.json
+2	"2 · + BN folding
+1 core"	1	8	73.288722495	73.288722495	6.701855544623639	6.701855544623639	True	299	598	../forward-only-2026-10-10/neuron_bf16_folded.json
+3	"3 · + 30-row tiling
+1 core, 8 CPU threads"	1	8	42.58391398	42.58391398	11.534177704806151	11.534177704806151	True	299	598	../tiling-forward-2026-10-10/neuron_bf16_folded_tiled30.json
+4	"4 · + 90×180 tiling
+1 core, 8 CPU threads"	1	8	48.751854883	42.58391398	10.074907557676793	11.534177704806151	False	299	598	../easy-wins-2026-10-10/tiled30_lvl1.json
+5	"5 · Tiled reference
+1 core, 2 CPU threads"	1	2	42.643830406000006	42.58391398	11.517971686295589	11.534177704806151	False	299	598	single-core-reference.json
+6	"6 · Spatial split
+4 cores, 2 threads/rank"	4	2	35.223663324	35.223663324	13.94433130630212	13.94433130630212	True	299	598	rollout-4-cores/rank0.json;rollout-4-cores/rank1.json;rollout-4-cores/rank2.json;rollout-4-cores/rank3.json

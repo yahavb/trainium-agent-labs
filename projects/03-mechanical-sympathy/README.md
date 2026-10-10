@@ -259,3 +259,22 @@ steps), so the best result runs **11.53 simulated years per minute**, up from
 
 See the [follow-up report](results/easy-wins-2026-10-10/README.md) for the
 device-only check and plot reproduction commands.
+
+### Single-rollout spatial parallelism
+
+Partitioning the two full-resolution ConvNeXt blocks across four logical
+Trainium cores reduced one eight-year rollout from **42.84 s to 35.43 s**
+(**1.21× faster**, 17.3% less rollout wall time). The ranks cooperate on one
+trajectory; remaining layers compute replicated tensors.
+
+The Karpathy-style plots use forward-only sums to match the preceding trials:
+**42.64 s → 35.22 s**, reaching **13.94 simulated years per forward minute**.
+Compilation and warmup are excluded. This is an experimental timing result;
+forecast accuracy has not been evaluated.
+
+![Single-rollout forward progress](results/spatial-parallel-2026-10-10/karpathy_seconds.png)
+
+![Single-rollout simulated years per minute](results/spatial-parallel-2026-10-10/karpathy_years_per_minute.png)
+
+See the [spatial-parallel report](results/spatial-parallel-2026-10-10/README.md)
+for raw timing, hardware allocation, and reproduction commands.
