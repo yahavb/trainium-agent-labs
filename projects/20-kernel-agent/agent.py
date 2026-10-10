@@ -84,8 +84,19 @@ def grade(source, level):
                 "these: " + " ".join(violations) + extra)
     parts["rules"] = True
 
+    if LINT and level >= 3:
+        # --lint: the simulator stops at the FIRST error, so each round fixed one placement mistake and
+        # revealed the next. Measured on 108 logged level-8 attempts: a failing kernel had 3-6 such
+        # mistakes at once; the static check found all of them (and flags none in any verified kernel).
+        from lint import lint_kernel
+        issues = lint_kernel(source)
+        if issues:
+            return (sum(WEIGHTS[k] for k, v in parts.items() if v), parts,
+                    f"A static check found {len(issues)} problem(s) before running the kernel. Fix ALL "
+                    f"of them in this reply:\n" + "\n".join(f"- {i}" for i in issues))
+
     spec = nkibench.LEVELS[level]
-    path = f"/tmp/_agent_level{level}.py"
+    path = f"/tmp/_agent_level{level}_{os.getpid()}.py"
     with open(path, "w") as f:
         f.write(source)
     try:
@@ -125,8 +136,19 @@ def grade(source, level):
             return (sum(WEIGHTS[k] for k, v in parts.items() if v), parts,
                     f"CANNOT SIMULATE: {e}")
         except Exception as e:
+            loc = ""
+            if LINT:   # name the line that raised, so the model knows WHERE, not only what
+                import traceback
+                frames = [fr for fr in traceback.extract_tb(e.__traceback__) if fr.filename == path]
+                if frames:
+                    # Read the line from THIS candidate's source, not Python's line cache: every candidate
+                    # in a process is written to the same temp path, so the cache can hold a previous one.
+                    src_lines = source.splitlines()
+                    n = frames[-1].lineno
+                    text = src_lines[n - 1].strip() if 0 < n <= len(src_lines) else ""
+                    loc = f" (at line {n}: `{text[:100]}`)"
             failures.append((nkibench.label(case, level),
-                             enrich(f"raised {type(e).__name__}: {e}")))
+                             enrich(f"raised {type(e).__name__}: {e}{loc}", level)))
             continue
         parts["runs"] = True
         m = (nkibench.check_inputs_untouched(before, args)
@@ -140,11 +162,15 @@ def grade(source, level):
             m = ("CORRECT ON CPU BUT WRONG ON HARDWARE: " + hazards[0]
                  + ". Fix that before anything else -- the simulator agrees with the reference here "
                    "and the device would not.")
+        if m and LEVEL_HINTS and level in (5, 6, 7):
+            m = level_hint(m, level) or m
         if m:
             failures.append((nkibench.label(case, level), m))
             continue
         passed += 1
-        if level >= 3 and counted["bytes"]:
+        # Level 8 (attention) cases are seq/dim, not M/K/N: a CORRECT level-8 kernel used to
+        # raise KeyError 'M' here and crash the run before it could print SOLVED.
+        if level >= 3 and counted["bytes"] and "M" in case:
             intensity = nkibench.roofline(
                 nkibench.matmul_flops(case["M"], case["K"], case["N"]), counted["bytes"])
 
@@ -204,6 +230,31 @@ def copy_kernel(a):
 """
 
 
+# Levels 8-10 use calls the base API_CARD never shows (it covers the matmul levels). Measured over
+# 866 attempts: ~15% of all failures were invented names/arguments, and on levels 8-10 every round
+# hit a NEW one (nisa.subtract, dma_copy(offset=), nc_transpose(src=), .buffer on a memory region).
+# The repo already found that an API card "fixed the invented names" for the matmul levels -- so show
+# the real call for each new operation UP FRONT, one line each. Calls, not a kernel.
+ATTN_API_CARD = """More NKI calls, exactly as they are spelled (x_sb is an sbuf tile of shape (n, d)):
+
+  t_ps = nl.ndarray((d, n), dtype=nl.float32, buffer=nl.psum)
+  nisa.nc_transpose(dst=t_ps, data=x_sb)            transpose on the Tensor engine, into psum
+  t_sb = nl.ndarray((d, n), dtype=nl.float32, buffer=nl.sbuf)
+  nisa.tensor_copy(dst=t_sb, src=t_ps)              psum -> sbuf (matmul operands must be sbuf)
+  m = nl.max(x_sb, axis=[1], keepdims=True)         row max, shape (n, 1); nl.sum is the same form
+  nisa.tensor_scalar(dst=y, data=x_sb, op0=nl.subtract, operand0=m)   per-row subtract (op0=nl.multiply to scale)
+  nisa.activation(dst=y, data=y, op=nl.exp)         elementwise exp
+  nisa.reciprocal(dst=r, data=s)                    r and s are (n, 1) sbuf tiles
+
+Operators live in nl (nl.subtract, nl.multiply, nl.exp), never in nisa. Allocate every tile with
+nl.ndarray(shape, dtype=..., buffer=...); never index a tile with a tuple of Python ranges.
+"""
+
+
+def api_extra(level):
+    return f"\n\n{ATTN_API_CARD}" if LEVEL_HINTS and level in (8, 9, 10, 11) else ""
+
+
 def available_names(dotted):
     """Turn 'no attribute X' into 'here are the real ones'.
 
@@ -245,8 +296,340 @@ def real_signature(func_name):
     return ""
 
 
-def enrich(error_text):
+LINT = False             # --lint: static memory/operator check before simulating; line numbers on errors
+LEVEL_HINTS = False      # --level-hints: the level-aware messages below; off = the original ladder
+
+
+def _hoisted_structure(level):
+    """Levels 5-7 in words: the level-4 three-loop matmul, with the loads hoisted so each chunk
+    crosses the bus once. Measured on the harness shapes: lhsT-only hoisting is still 1.86x on
+    K=256 M=512 N=1024 (fails the 1.60 bar); n outermost with the rhs column block loaded once per
+    n is 1.14x (clears 1.60 and 1.25); 1.05 needs both inputs loaded exactly once.
+
+    v8: measured, the level-7 text ("load every chunk of both inputs once, before the loops") was
+    SOLVED on round 1 when seeded, while the levels 5/6 text (n outermost, reload per n) stalled on
+    UnboundLocalError and copy-size walls. The level-7 structure clears every bar (1.00x at these
+    shapes) and is simpler to follow, so it is now used for levels 5 and 6 too. The older text is
+    kept below for the record."""
+    if level in (5, 6, 7):
+        return (" This is a matmul and this level grades HBM bytes, so tile all three dimensions "
+                "AND load every chunk of BOTH inputs exactly once, before the loops: build nested "
+                "Python lists lhsT_tiles[k // 128][m // 128], each a (128, 128) sbuf tile filled by "
+                "dma_copy from lhsT[k:k+128, m:m+128], and rhs_tiles[k // 128][n // 512], each a "
+                "(128, 512) sbuf tile filled by dma_copy from rhs[k:k+128, n:n+512]. Then loop m "
+                "over M in steps of 128 and n over N in steps of 512: allocate ONE psum tile of "
+                "shape (128, 512), float32, for this (m, n) output tile, then loop k over K in "
+                "steps of 128 and nc_matmul(dst=that psum tile, stationary=lhsT_tiles[k // 128]"
+                "[m // 128], moving=rhs_tiles[k // 128][n // 512]) into that SAME psum tile so the "
+                "k chunks add up. After the k loop, tensor_copy psum into a fresh (128, 512) sbuf "
+                "tile and dma_copy it to result[m:m+128, n:n+512] -- that is the only dma_copy "
+                "inside the loops. nc_matmul reads ONLY sbuf tiles: never pass lhsT or rhs (the "
+                "HBM inputs) or a slice of them to it. Every sbuf tile has exactly its chunk's 2-D "
+                "shape; never reuse one scratch tile for different things.")
+    return (" This is a matmul and this level grades HBM bytes, so tile all three dimensions AND "
+            "load each rhs chunk only once. Make n the OUTERMOST loop, over N in steps of 512. "
+            "Right after `for n`, before any other loop, load the whole rhs column block once: "
+            "rhs_tiles = [], and for each k in range(0, K, 128) allocate a (128, 512) sbuf tile, "
+            "dma_copy rhs[k:k+128, n:n+512] into it and append it. Then loop m over M in steps of "
+            "128: allocate ONE psum tile of shape (128, 512), float32, for this (m, n) output "
+            "tile, then loop k over K in steps of 128: dma_copy the lhsT chunk lhsT[k:k+128, "
+            "m:m+128] into a fresh (128, 128) sbuf tile and nc_matmul(dst=that psum tile, "
+            "stationary=that lhsT tile, moving=rhs_tiles[k // 128]) into that SAME psum tile so "
+            "the k chunks add up. After the k loop, tensor_copy psum into a fresh (128, 512) sbuf "
+            "tile and dma_copy it to result[m:m+128, n:n+512]. Do not dma_copy rhs inside the m or "
+            "k loop. nc_matmul reads ONLY sbuf tiles: never pass lhsT or rhs (the HBM inputs) or a "
+            "slice of them to it. Every sbuf tile has exactly its chunk's 2-D shape; never reuse "
+            "one scratch tile for different things.")
+
+
+def level_hint(error_text, level):
+    """The ONE structural change a level's measured wall needs, when the generic message is not it.
+
+    Levels 1, 3 and 4 sat at 0.30 / 0.30 / 0.62 with zero spread over five runs: each is one idiom
+    the model lacks, and the generic per-error message names a local fix (chunk this copy) where
+    the kernel needs a different SHAPE. This names that shape in words -- no worked kernel, which
+    was measured to make every level worse.
+    """
+    # Every SHAPE error at the matmul levels is the same missing idea, whichever symptom shows up
+    # first. Measured: with the hint on only one symptom, level 3 hit "at least 2 dimensions" then
+    # "cannot reshape", and level 4 an out-of-bound index, and the hint never fired.
+    size_wall = re.search(r"partition dimension (\d+) exceeds maximum|dma_copy requires src and dst "
+                          r"to have the same number of elements|Out-of-bound access|cannot reshape "
+                          r"array|must have at least 2 dimensions|could not be broadcast", error_text)
+    # Measured at levels 3 and 5: a kernel correct in every other line tensor_copies the (M, N)
+    # result into the (K, N) rhs tile. The numbers in the error say exactly that, so say it.
+    bc = re.search(r"value array of shape \((\d+),?\) could not be broadcast to indexing result of "
+                   r"shape \((\d+),?\)", error_text)
+    if level >= 3 and bc and bc.group(1) != bc.group(2):
+        error_text = (error_text + f" You copied {bc.group(1)} elements into a tile that holds "
+                      f"{bc.group(2)}: a result was written into a tile allocated for something "
+                      f"else -- for example tensor_copy of the (M, N) psum result into the (K, N) rhs "
+                      f"tile. Every copy destination needs its OWN tile with the source's shape: "
+                      f"allocate a NEW sbuf tile for the result, e.g. "
+                      f"res = nl.ndarray((M, N), dtype=..., buffer=nl.sbuf), tensor_copy the psum "
+                      f"into res, and dma_copy res to the output.")
+    # Level 2: measured on Qwen3-8B, 24 of 24 baseline attempts: the model allocates the tile as
+    # (F1, F2) -- it takes the partition axis for one of the two transposed dimensions -- and
+    # swaps elements with Python assignment tile[i, j] = tile[j, i]. The transpose is INSIDE each
+    # row: x is (P, F1*F2) and every row is its own flattened F1 x F2 matrix. Same trigger set
+    # as the matmul levels, because the symptom moves (copy size -> out-of-bound) as it edits.
+    if level == 2 and size_wall:
+        sh = re.search(r"shape=\((\d+), (\d+)\) as (\d+)x(\d+)", error_text)
+        nums = ""
+        if sh:
+            P, F, F1, F2 = (int(g) for g in sh.groups())
+            nums = (f" Here x is ({P}, {F}) and shape2D is ({F1}, {F2}): the tile that holds x "
+                    f"must be ({P}, {F}), not ({F1}, {F2}); {P} is the partition size and the "
+                    f"{F} columns are the {F1}x{F2} matrix. Column i*{F2}+j of a row moves to "
+                    f"column j*{F1}+i of the same row.")
+        return (error_text + " The partition axis is NOT one of the two transposed dimensions. "
+                "x has shape (P, F1*F2) and EVERY ROW of x is its own flattened F1 x F2 matrix, "
+                "so the transpose only reorders the columns within each row; P stays where it "
+                "is. Do this: dma_copy the WHOLE x into one sbuf tile of shape (P, F1*F2) -- P "
+                "is at most 128 at this level -- and allocate a second sbuf tile of the same "
+                "shape (P, F1*F2) for the result. Then loop i over F1 and j over F2 with "
+                "nl.affine_range and move ONE column at a time with nisa.tensor_copy: the "
+                "source is all partitions of column i*F2+j of the input tile and the "
+                "destination is all partitions of column j*F1+i of the result tile, each "
+                "selected as tile[:, nl.ds(start, 1)]. Never swap elements with Python "
+                "assignment like tile[i, j] = tile[j, i]: data moves only with "
+                "nisa.tensor_copy and nisa.dma_copy. Finally dma_copy the result tile to the "
+                "shared_hbm output." + nums)
+    if level == 3 and size_wall:
+        # Measured on Qwen3-8B: one (128, 512) scratch tile reused for lhsT, rhs AND the result,
+        # so every copy is the wrong size. 14 of 16 level-3 attempts.
+        return (error_text + " Give every operand its OWN tile with exactly its own shape, and never "
+                "reuse one scratch tile for different things: lhsT is (K, M) so copy it into an sbuf "
+                "tile of shape (K, M); rhs is (K, N) so copy it into an sbuf tile of shape (K, N); "
+                "nc_matmul into a psum tile of shape (M, N), float32; tensor_copy that into an sbuf "
+                "tile of shape (M, N); dma_copy that to the (M, N) output. Read K, M, N from the "
+                "input shapes. Move data ONLY with nisa.dma_copy and nisa.tensor_copy -- never with "
+                "Python assignment like out[...] = tile, which cannot move data between memories.")
+    # Level 4: the first hint makes it tile K, after which the wall becomes a copy-size mismatch
+    # (measured) -- so the structural hint has to keep firing on that error too.
+    if level in (5, 6, 7):
+        # Measured (v5, 36 attempts): the name "hoist_load" makes the model load whole tensors
+        # once and feed the HBM input rhs straight to nc_matmul (13), or reuse one scratch tile
+        # (14). The generic message says "allocate the moving tile in sbuf", which is not what
+        # happened. And the traffic bar is a loop-order problem the generic ladder never names.
+        bar = re.search(r"TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving ([\d.]+)x the byte floor, "
+                        r"and level \d requires ([\d.]+)x", error_text)
+        if bar:
+            return (error_text + f" The numbers are right; the loop ORDER is the problem: at "
+                    f"{bar.group(1)}x, a chunk of one input is dma_copy-ed again for every chunk "
+                    f"of the other instead of once. Keep the same arithmetic and change only "
+                    f"where the loads happen." + _hoisted_structure(level))
+        hbm_operand = re.search(r"(stationary|moving) must be in \['sbuf'\], got (private|shared)_hbm",
+                                error_text)
+        if hbm_operand:
+            return (error_text + f" You passed the HBM input itself as `{hbm_operand.group(1)}`. "
+                    f"nc_matmul cannot read HBM, and no whole-tensor copy fits a tile either."
+                    + _hoisted_structure(level))
+        if size_wall:
+            n = re.search(r"got src=(\d+), dst=(\d+)", error_text)
+            if n:  # v7: name the numbers, as the level-3 fix did
+                error_text += (f" You allocated a tile of {n.group(2)} elements for a chunk of "
+                               f"{n.group(1)}: allocate each sbuf tile with the 2-D shape of the exact "
+                               f"slice you copy into it, e.g. (128, 128) for an lhsT chunk and (128, 512) "
+                               f"for an rhs chunk -- both dimensions, never one.")
+            return error_text + _hoisted_structure(level)
+    if level == 4 and size_wall:
+        return (error_text + " This is a matmul, so chunking one copy is not enough: tile ALL THREE "
+                "dimensions. Loop m over M in steps of 128 and n over N in steps of 512. Inside, "
+                "allocate ONE psum tile of shape (128, 512), float32, for this (m, n) output tile. "
+                "Then loop k over K in steps of 128: dma_copy the lhsT chunk [k-chunk, m-chunk] into a "
+                "(128, 128) sbuf tile and the rhs chunk [k-chunk, n-chunk] into a (128, 512) sbuf tile, "
+                "and nc_matmul into that SAME psum tile, so the k chunks add up. Only after the k loop, "
+                "tensor_copy psum to sbuf and dma_copy it to result[m-chunk, n-chunk]. Allocate every "
+                "sbuf tile inside its loop with the chunk's shape.")
+    # Level 8 (attention). Measured on Qwen3-8B, round 0 of the baseline: reshape of the (seq, dim)
+    # input into (128, 128), out-of-bound index 64 on dim 64, an invented offset= on dma_copy. The
+    # kernel it needs is a composition every shape of which fits ONE tile, so the hint names the
+    # composition in words. Structure verified in this simulator on all three shapes at the byte floor.
+    api_wall = re.search(r"unexpected keyword argument|has no attribute|not callable|must be in \[|transpose requires shape",
+                         error_text)
+    # Levels 9 and 10: attention's two pieces as their own levels (curriculum). Same error-first
+    # style as level 8: one named fix, the exact signatures when an API name is invented, a short plan.
+    if level in (9, 10) and (size_wall or api_wall or "unsupported operand" in error_text
+                             or "NUMERICAL MISMATCH" in error_text or "NON-FINITE" in error_text):
+        sig = (" The ONLY argument names are: nisa.nc_transpose(dst=, data=); nisa.tensor_copy(dst=, "
+               "src=); nisa.dma_copy(dst=, src=); nisa.activation(dst=, data=, op=); "
+               "nisa.reciprocal(dst=, data=); nisa.tensor_scalar(dst=, data=, op0=, operand0=); "
+               "nl.max(tile, axis=[1], keepdims=True); nl.sum(tile, axis=[1], keepdims=True).")
+        fix = ""
+        if "unexpected keyword argument" in error_text or "has no attribute" in error_text:
+            fix = sig
+        elif "transpose requires shape" in error_text:
+            fix = (" That transpose went to the Vector engine (32x32 limit) because its destination was "
+                   "sbuf. nisa.nc_transpose(dst=t_ps, data=x_sb) with t_ps allocated in nl.psum, float32, "
+                   "shape (dim, seq) uses the Tensor engine (up to 128x128); then tensor_copy t_ps into an "
+                   "sbuf tile of the same shape.")
+        elif "unsupported operand" in error_text:
+            fix = (" A tile is not a number: Python * / + - do not work on it. Subtract the row max with "
+                   "nisa.tensor_scalar(dst=e, data=x, op0=nl.subtract, operand0=m) and scale rows with "
+                   "op0=nl.multiply, operand0=r, where m and r are (seq, 1) tiles.")
+        elif "must be in" in error_text:
+            fix = (" That instruction cannot read or write that memory. Compute only on sbuf/psum tiles: "
+                   "dma_copy the input into sbuf first, and dma_copy the sbuf result to the output last.")
+        plan = (" Plan: dma_copy x whole into an sbuf tile of shape (seq, dim) read from x.shape; "
+                "nisa.nc_transpose into a psum tile (dim, seq) float32; tensor_copy it into an sbuf tile "
+                "(dim, seq); dma_copy that to the (dim, seq) shared_hbm output."
+                if level == 9 else
+                " Plan, all in sbuf, shapes from x.shape: dma_copy x into an sbuf tile (seq, dim); "
+                "m = nl.max(x_sb, axis=[1], keepdims=True); nisa.tensor_scalar(dst=e, data=x_sb, "
+                "op0=nl.subtract, operand0=m); nisa.activation(dst=e, data=e, op=nl.exp); "
+                "s = nl.sum(e, axis=[1], keepdims=True); nisa.reciprocal(dst=r, data=s) with r an sbuf "
+                "tile (seq, 1); nisa.tensor_scalar(dst=p, data=e, op0=nl.multiply, operand0=r); "
+                "dma_copy p to the (seq, dim) shared_hbm output.")
+        return error_text + fix + plan
+    if level in (8, 11) and (size_wall or api_wall or "NON-FINITE" in error_text
+                       or "NUMERICAL MISMATCH" in error_text or "unsupported operand" in error_text
+                       or "positional argument" in error_text or "contraction dimension" in error_text):
+        extra = ""
+        if "unexpected keyword argument" in error_text or "has no attribute" in error_text:
+            # Measured v2 round 1: 4 of 4 attempts invented nc_matmul(a=, src0=). The level hint
+            # pre-empts the generic signature message in enrich(), so name the signatures here.
+            extra = (" The ONLY argument names are: nisa.nc_matmul(dst=, stationary=, moving=); "
+                     "nisa.nc_transpose(dst=, data=); nisa.tensor_copy(dst=, src=); "
+                     "nisa.dma_copy(dst=, src=); nisa.activation(dst=, data=, op=); "
+                     "nisa.reciprocal(dst=, data=); nisa.tensor_scalar(dst=, data=, op0=, operand0=); "
+                     "nl.max(tile, axis=[1], keepdims=True); nl.sum(tile, axis=[1], keepdims=True). "
+                     "Nothing else exists; no a=, b=, src0=, lhs=, rhs=, x=, out=, transposed=.")
+        elif "transpose requires shape" in error_text:
+            # Measured v1 round 1: the transpose ran on the Vector engine (32x32 limit) because its
+            # dst was an sbuf tile. A psum dst is the Tensor engine, which does 128x128.
+            extra = (" That transpose went to the Vector engine, which is limited to 32x32, because "
+                     "its destination was an sbuf tile (or nl.transpose was used). Use "
+                     "nisa.nc_transpose(dst=t_ps, data=x_sb) where t_ps is allocated in nl.psum, "
+                     "float32, with the transposed shape (columns of x, rows of x): that is the "
+                     "Tensor engine, which transposes up to 128x128. Then nisa.tensor_copy t_ps into "
+                     "an sbuf tile of the same shape and use THAT as the matmul operand.")
+        elif re.search(r"(stationary|moving) must be in \['sbuf'\], got psum", error_text):
+            # Measured v3fixed round 2: transposed operand passed to nc_matmul straight from psum.
+            extra = (" nc_matmul reads ONLY sbuf tiles. That operand is still in psum: tensor_copy the "
+                     "psum tile into a NEW sbuf tile of the same shape, and pass the sbuf tile.")
+        elif "unsupported operand" in error_text:
+            extra = (" A tile is not a number, so Python * / + - do not work on it. To scale every row "
+                     "by its own value, use nisa.tensor_scalar(dst=out, data=tile, op0=nl.multiply, "
+                     "operand0=row_tile) where row_tile has shape (seq, 1); use op0=nl.subtract to "
+                     "subtract the row max the same way.")
+        elif re.search(r"contraction dimension mismatch", error_text):
+            # Audit: the current level-8 wall on two seats; it matched no trigger before.
+            cm = re.search(r"stationary\[0\]=(\d+) != moving\[0\]=(\d+)", error_text)
+            nums = f" (yours: stationary has {cm.group(1)} rows, moving has {cm.group(2)})" if cm else ""
+            extra = (f" nc_matmul contracts over the PARTITION (first) axis of BOTH operands, so their "
+                     f"first dimensions must be equal{nums}. For the scores Q K^T both operands need dim "
+                     f"on the partition axis: stationary=qT and moving=kT, each (dim, seq). For P V the "
+                     f"keys are the partition axis: stationary=pT (seq_k, seq_q), moving=v (seq_k, dim).")
+        elif "positional argument" in error_text:
+            # Measured: seeded from the level-3 matmul, which takes (lhsT, rhs).
+            extra = (" The entry point takes THREE inputs: def nki_attention_(q, k, v): -- each of "
+                     "shape (seq, dim). Keep the matmul pattern, but it now runs twice: scores = "
+                     "Q K^T, then out = P V.")
+        elif "Out-of-bound access" in error_text:
+            # Measured v3fixed round 0: "index 64 exceed dimension size of 64".
+            extra = (" You indexed past a tile's edge. q, k, v are (seq, dim); the scores are (seq, "
+                     "seq); their transposes swap the two. Read every size from q.shape and allocate "
+                     "each tile with its exact shape -- never hard-code 128 or 64, and do not index "
+                     "inside a tile at all: every operand here is used whole.")
+        elif "NON-FINITE" in error_text:
+            extra = (" NaN here means exp() overflowed or a tile was read before it was written: "
+                     "subtract the row maximum from the scaled scores BEFORE exp, and never read a "
+                     "psum tile you did not matmul or transpose into.")
+        elif "NUMERICAL MISMATCH" in error_text:
+            extra = (" The numbers are wrong, not the structure: check that the scores are "
+                     "multiplied by 1/sqrt(dim) (dim is the second axis of q), that the max and the "
+                     "sum are taken along axis=[1] (the free axis, one value per query row), and "
+                     "that the operand you pass as stationary is the TRANSPOSED one.")
+        if level == 11:   # the scores step only: Q K^T / sqrt(d)
+            return (error_text + extra + " Plan, everything whole in one tile, sizes from q.shape: "
+                    "dma_copy q and k into sbuf (seq, dim); nc_transpose each into a psum tile (dim, seq) "
+                    "float32 and tensor_copy to sbuf qT, kT; nc_matmul(dst=psum (seq, seq) float32, "
+                    "stationary=qT, moving=kT); tensor_scalar(op0=nl.multiply, operand0=1/sqrt(dim)) into "
+                    "an sbuf (seq, seq) tile; dma_copy it to the (seq, seq) output.")
+        if extra:
+            # v4, from an independent review (Codex) of the attempts: the full recipe appended every
+            # round buried the one fix that mattered. Name the failing step first, then a short plan.
+            return (error_text + extra + " Plan, everything whole in one tile: qT and kT via "
+                    "nc_transpose into psum then tensor_copy to sbuf; scores = nc_matmul(stationary=qT, "
+                    "moving=kT) into a (seq, seq) psum; scale, subtract the row max, exp, row sum, "
+                    "reciprocal and multiply, all in sbuf; pT the same way; out = nc_matmul(stationary=pT, "
+                    "moving=v) into a (seq, dim) psum; tensor_copy to sbuf; dma_copy to the output.")
+        return (error_text + " This is attention and every shape here fits in ONE tile (seq <= 128 "
+                "on the partition axis), so do not reshape, tile, chunk or offset anything: dma_copy "
+                "q, k and v whole into three sbuf tiles of shape (seq, dim), read from q.shape. "
+                "nc_matmul contracts over the PARTITION axis, so the scores Q K^T need Q^T and K^T "
+                "with dim on the partition axis: nisa.nc_transpose(dst=psum_tile, data=q_sb) into a "
+                "psum tile of shape (dim, seq) float32, then nisa.tensor_copy it into an sbuf tile of "
+                "shape (dim, seq); same for k. Then nc_matmul(dst=psum (seq, seq) float32, "
+                "stationary=qT, moving=kT) gives the scores; scale them into an sbuf tile with "
+                "nisa.tensor_scalar(dst=s, data=that psum, op0=nl.multiply, operand0=1/sqrt(dim)). "
+                "Softmax along the free axis, entirely in sbuf: m = nl.max(s, axis=[1], keepdims=True) "
+                "(shape (seq, 1)); nisa.tensor_scalar(dst=e, data=s, op0=nl.subtract, operand0=m); "
+                "nisa.activation(dst=e, data=e, op=nl.exp); ssum = nl.sum(e, axis=[1], keepdims=True); "
+                "nisa.reciprocal(dst=r, data=ssum) with r an sbuf tile (seq, 1); "
+                "nisa.tensor_scalar(dst=p, data=e, op0=nl.multiply, operand0=r). The second matmul "
+                "P V contracts over the keys, so transpose p the same way (nc_transpose into a psum "
+                "tile (seq, seq), tensor_copy to sbuf pT) and nc_matmul(dst=psum (seq, dim) float32, "
+                "stationary=pT, moving=v_sb); tensor_copy that to an sbuf tile (seq, dim) and dma_copy "
+                "it to the (seq, dim) shared_hbm output. The scores never touch HBM. Allocate every "
+                "tile with its own exact shape, move data only with dma_copy and tensor_copy, no "
+                "Python assignment and no loops." + extra)
+    # Level 1, v4. Measured (attempts-l1-hints-v3.jsonl, seat-95): the v3 hint moved the wall from
+    # the copy-size error to "ap() pattern has invalid partition stride. Partition step 1 must equal
+    # tensor free dimension size 1024. Pattern: [[1, 32], [2, 16], [2, 16], [1, 2], [1, 2]]" in 32 of
+    # 40 attempts -- the model writes strides as index steps, not element distances -- and the hint
+    # never fired on that error. The same kernels scale with tensor_scalar(dst=sum, data=1/(p*p),
+    # op0=nisa.multiply), which is the next wall. So: fire on both, name the stride mistake with the
+    # numbers in the error, and give the stride formulas and the real tensor_scalar signature in words.
+    if level == 1 and re.search(r"dma_copy requires src and dst to have the same number of elements|"
+                                r"ap\(\) pattern|invalid partition stride|tensor_scalar|"
+                                r"module 'nki.isa' has no attribute|"
+                                r"has no attribute '(sum|reduce|reduce_sum|multiply|scalar_mul|mul|divide|scalar_div)'|"
+                                r"sum\(\) got an unexpected keyword|"
+                                r"tensor_scalar\(\) got an unexpected keyword", error_text):
+        ap = re.search(r"Partition step (\d+) must equal tensor free dimension size (\d+)", error_text)
+        stride_note = ""
+        if ap:
+            stride_note = (f" Your ap() pattern used a partition stride of {ap.group(1)} where it must "
+                           f"be {ap.group(2)} = H*W: in ap() every stride is a DISTANCE in elements of "
+                           f"the flattened (C, H, W) tile, not an index step of 1.")
+        sum_note = ""
+        if re.search(r"has no attribute '(sum|reduce|reduce_sum|add)'|sum\(\) got an unexpected keyword", error_text):
+            # v4 round 1 (attempts-l1-v4.jsonl): all 4 samples wrote nisa.sum(dst=, src=view, axis=).
+            sum_note = (" The reduction is nl.sum, not nisa.sum, and it RETURNS a new tile: write "
+                        "sum_tile = nl.sum(view, axis=[3, 4]) with no dst= and no src=.")
+        scale_note = ""
+        na = re.search(r"module '(nki\.\w+)' has no attribute '(\w+)'", error_text)
+        if na and na.group(2) not in ("sum", "reduce", "reduce_sum", "add"):
+            # v5 rounds 2-3 (attempts-l1-v5.jsonl): nl.tensor_scalar, then nisa.scalar_mul -- the
+            # kernel was otherwise correct. Name the one real call and its module up front.
+            scale_note = (f" There is no {na.group(1)}.{na.group(2)}. The ONLY scaling call is "
+                          f"nisa.tensor_scalar -- module nki.isa (nisa), function tensor_scalar -- "
+                          f"so write exactly nisa.tensor_scalar(dst=out_tile, data=sum_tile, "
+                          f"op0=nl.multiply, operand0=1.0 / (pool * pool)) and change nothing else.")
+        return (error_text + stride_note + sum_note + scale_note + " The kernel shape is: load the WHOLE input in one dma_copy "
+                "into an sbuf tile in_tile with the input's own shape (C, H, W) -- C is the partition "
+                "dimension and fits in 128. Build the pooling windows as ONE strided view with five "
+                "[stride, count] pairs, view = in_tile.ap([[H*W, C], [pool*W, H//pool], "
+                "[pool, W//pool], [W, pool], [1, pool]]): channel (one channel is H*W elements "
+                "apart), output row (one output row skips pool input rows = pool*W elements), output "
+                "column (pool elements), row inside the window (W elements), column inside the window "
+                "(1 element). Then sum_tile = nl.sum(view, axis=[3, 4]) is a new tile of shape "
+                "(C, H//pool, W//pool). Scale it with nisa.tensor_scalar(dst=out_tile, data=sum_tile, "
+                "op0=nl.multiply, operand0=1.0 / (pool * pool)) where out_tile is a NEW sbuf tile of "
+                "sum_tile.shape -- data= is the tile, operand0= is the number, and the op is "
+                "nl.multiply (there is no nisa.multiply or nisa.scalar_mul). Finally dma_copy out_tile "
+                "to the shared_hbm output once.")
+    return None
+
+
+def enrich(error_text, level=None):
     """Add the real names when the failure is an invented API call."""
+    if LEVEL_HINTS and level is not None:
+        hinted = level_hint(error_text, level)
+        if hinted:
+            return hinted
     if "'MemoryRegion' object is not callable" in error_text:
         return (error_text + " nl.sbuf, nl.psum and nl.shared_hbm are memory regions, not "
                 "functions. Do not call them. Allocate with "
@@ -389,7 +772,16 @@ def first_prompt(level, terse=0):
         f"the stationary free dimension is at most {nkibench.GEMM_STATIONARY_FMAX} and the "
         f"moving free dimension at most {nkibench.GEMM_MOVING_FMAX}.\n\n"
         f"Import nki, nki.language as nl, and nki.isa as nisa.\n\n{API_CARD}\n\n"
-        f"Reply with ONE python code block containing the imports and the function. No prose.")
+        f"Reply with ONE python code block containing the imports and the function. No prose."
+        + api_extra(level) + blocks_text())
+
+
+BLOCKS = ""   # --blocks: the agent's own verified kernels from earlier levels, shown as building blocks
+
+
+def blocks_text():
+    return (f"\n\nVerified building blocks you wrote earlier -- each passes its own checker. Reuse "
+            f"their calls and patterns exactly:\n{BLOCKS}" if BLOCKS else "")
 
 
 def repair_prompt(level, source, feedback):
@@ -403,7 +795,7 @@ def repair_prompt(level, source, feedback):
         f"```python\n{source}\n```\n\n"
         f"A checker reports:\n{feedback}\n\n"
         f"Change exactly what the checker names and keep everything else identical. Reply with "
-        f"ONE python code block.")
+        f"ONE python code block." + api_extra(level) + blocks_text())
 
 
 CODE_BLOCK = re.compile(r"```(?:python)?\s*(.*?)```", re.S)
@@ -430,7 +822,12 @@ def extract_code(text):
 
 # ---------------------------------------------------------------- the model
 
-def ask(a, prompt):
+class Reply(str):
+    """The model's text, carrying telemetry (real token counts, finish reason, seconds) for the log."""
+    meta = {}
+
+
+def ask(a, prompt, temperature=0.6):
     import httpx
     # enable_thinking=False matters. Qwen3 reasons before answering, and with thinking on it
     # spent the whole budget there: the first cluster run returned "No code came back" at 54.7s
@@ -443,8 +840,9 @@ def ask(a, prompt):
         print(f"    (prompt is ~{est_prompt} tokens, so the answer budget is capped at {budget} "
               f"to stay inside the {a.context}-token context)")
     body = dict(model=a.model, messages=[{"role": "user", "content": prompt}],
-                max_tokens=budget, temperature=0.6, top_p=0.95,
+                max_tokens=budget, temperature=temperature, top_p=0.95,
                 chat_template_kwargs={"enable_thinking": a.think})
+    t_start = time.perf_counter()
     r = httpx.post(f"{a.base.rstrip('/')}/chat/completions", json=body,
                    timeout=900, verify=False)
     if r.status_code != 200:
@@ -466,13 +864,52 @@ def ask(a, prompt):
         print(f"    (empty answer, {len(reasoning)} chars of hidden reasoning, "
               f"finish={ch.get('finish_reason')} — shorten the prompt rather than raising the "
               f"budget)")
-    return content
+    out = Reply(content)
+    usage = payload.get("usage") or {}
+    out.meta = dict(prompt_tokens=usage.get("prompt_tokens"), completion_tokens=usage.get("completion_tokens"),
+                    finish=finish, seconds=round(time.perf_counter() - t_start, 2))
+    return out
+
+
+PORTFOLIO_TEMPS = (0.2, 0.6, 0.9, 1.2)
+
+
+def sample_temps(a, n):
+    """--portfolio: one temperature per sample. Measured over 866 attempts: in 70% of rounds all four
+    samples at temperature 0.6 were the SAME kernel, character for character -- four generations
+    paid for one attempt. Spreading the temperatures makes the four samples four real attempts."""
+    if getattr(a, "portfolio", False):
+        return [PORTFOLIO_TEMPS[i % len(PORTFOLIO_TEMPS)] for i in range(n)]
+    return [0.6] * n
+
+
+# --prompt-portfolio: measured, different temperatures still gave 1-3 distinct kernels out of 4 -- this
+# model is too sure of itself for sampling noise to matter. Different FRAMINGS of the same request are a
+# stronger lever (an untested assumption until measured). Sample k gets framing k: fix related uses too /
+# plan every tile first / rewrite cleanly / smallest change.
+FRAMINGS = (
+    "\n\nFix what the checker names, then check every OTHER place in the kernel that uses the same tile or "
+    "the same call in the same way, and fix those too.",
+    "\n\nBefore the code, write a comment block that lists every tile you will allocate: its name, its "
+    "shape, and its memory (sbuf, psum or hbm). Then write the kernel so that every instruction reads and "
+    "writes tiles from the memory that instruction requires.",
+    "\n\nIf the kernel above has several problems, do not patch it: rewrite it cleanly from the start, "
+    "using the same calls.",
+    "\n\nMake the smallest possible change: fix exactly what the checker names and nothing else.",
+)
+
+
+def sample_prompts(a, prompt, n):
+    if getattr(a, "prompt_portfolio", False):
+        return [prompt + FRAMINGS[i % len(FRAMINGS)] for i in range(n)]
+    return [prompt] * n
 
 
 def ask_parallel(a, prompt, n):
     import concurrent.futures as cf
     with cf.ThreadPoolExecutor(max_workers=n) as ex:
-        return [f.result() for f in [ex.submit(ask, a, prompt) for _ in range(n)]]
+        return [f.result() for f in [ex.submit(ask, a, p, t)
+                                     for p, t in zip(sample_prompts(a, prompt, n), sample_temps(a, n))]]
 
 
 def offline_answers(level, n, rnd):
@@ -494,21 +931,67 @@ def solve(a, level, log):
     best = (0.0, None, "")
     tried, streak, seen = [], 0, {}
     latest = ("", "")
+    if getattr(a, "seed_from", None):
+        # Build on the agent's OWN verified earlier kernel instead of starting from nothing.
+        # Levels 5-7 are level 4's matmul plus a traffic bar; from scratch the model relearns
+        # tiling, hits the correctness walls again and never reaches the optimization. Seeded, the
+        # checker's real verdict on the seed ("correct, but 2.0x the byte floor") is round 0's
+        # repair prompt, and the only change asked for is where the loads happen.
+        seed = open(a.seed_from).read()
+        entry = nkibench.LEVELS[level]["entry"]
+        seed = re.sub(r"^def \w+\(", f"def {entry}(", seed, count=1, flags=re.M)
+        s_reward, _, s_feedback = grade(seed, level)
+        print(f"  seeded from {a.seed_from}: reward {s_reward:.2f} at this level. {s_feedback[:300]}")
+        if s_reward >= sum(WEIGHTS.values()) - 1e-9:
+            print("  the seed already passes this level")
+            return s_reward, 0
+        latest = (seed, s_feedback)
+        prompt = repair_prompt(level, seed, s_feedback)
+    echoed = False
     for rnd in range(a.rounds):
         t0 = time.perf_counter()
+        if echoed:
+            prompt = ("Your last reply returned the kernel below UNCHANGED, so nothing was fixed. "
+                      "This time the code must differ: make the change the checker names.\n\n" + prompt)
         replies = (offline_answers(level, a.samples, rnd) if a.offline
                    else ask_parallel(a, prompt, a.samples))
-        graded = []
-        for reply in replies:
+        graded, records, cache = [], [], {}
+        temps = sample_temps(a, len(replies))
+        for k, reply in enumerate(replies):
             src = extract_code(reply)
-            reward, parts, feedback = grade(src, level)
-            graded.append((reward, src, feedback, parts))
-            log.write(json.dumps(dict(level=level, round=rnd, reward=reward, parts=parts,
-                                      prompt_chars=len(prompt), reply_chars=len(reply),
-                                      code=src, feedback=feedback)) + "\n")
-        log.flush()
-        graded.sort(key=lambda g: g[0], reverse=True)
+            dup = src in cache
+            if not dup:   # review finding: identical samples were each simulated again
+                cache[src] = grade(src, level)
+            reward, parts, feedback = cache[src]
+            graded.append((reward, src, feedback, parts, k))
+            records.append(dict(level=level, run=getattr(a, "_run", 0), round=rnd, sample=k,
+                                temperature=temps[k], framing=(k % len(FRAMINGS)) if getattr(a, "prompt_portfolio", False) else 0,
+                                reward=reward, parts=parts,
+                                prompt_chars=len(prompt), reply_chars=len(reply), dup=dup,
+                                **getattr(reply, "meta", {}), **getattr(a, "_provenance", {}),
+                                echo=bool(latest[0].strip()) and src.strip() == latest[0].strip(),
+                                code=src, feedback=feedback))
+        # Ties: every failing level-8 round scores 0.30, and a stable sort then always picked sample 0
+        # (the 0.2-temperature one), so --portfolio diversity never reached the next round (audit:
+        # seats 95 and 98 ran byte-identical traces). Prefer a sample that changed the kernel, then one
+        # whose error differs from last round's.
+        prev_fb = tried[-1] if tried else None
+        if getattr(a, "portfolio", False) or getattr(a, "echo_check", False):
+            graded.sort(key=lambda g: (g[0], (g[1] or '').strip() != (latest[0] or '').strip(),
+                                       g[2] != prev_fb), reverse=True)
+        else:   # original behaviour, so baseline runs stay comparable
+            graded.sort(key=lambda g: g[0], reverse=True)
         top = graded[0]
+        for rec in records:   # provenance: which sample the loop actually carried forward
+            rec["selected"] = rec["sample"] == top[4]
+            log.write(json.dumps(rec) + "\n")
+        log.flush()
+        # --echo-check. Measured: in 39% of repair rounds the best reply WAS the kernel in the prompt,
+        # unchanged -- the feedback had no effect, and the loop graded it again as if it were new.
+        echoed = (getattr(a, "echo_check", False) and bool((latest[0] or "").strip())
+                  and (top[1] or "").strip() == latest[0].strip())
+        if echoed:
+            print("  (echo: the best reply is the kernel we sent, unchanged)")
         if top[0] > best[0]:
             best = (top[0], top[1], top[2])
         # Repair the LATEST attempt, not the best one. Rebuilding from the best attempt with the
@@ -596,7 +1079,50 @@ def main():
     ap.add_argument("--think", action="store_true",
                     help="let the model reason first; costs budget, and it ran out")
     ap.add_argument("--offline", action="store_true")
+    ap.add_argument("--seed-from", default=None,
+                    help="start from a kernel the agent already verified at an earlier level (e.g. "
+                         "solved/level4_*.py for levels 5-7): its function is renamed to this level's "
+                         "entry point and the checker's verdict on it becomes round 0's repair prompt")
+    ap.add_argument("--blocks", default="",
+                    help="comma-separated kernels the agent already verified at other levels, shown in "
+                         "every prompt as building blocks (e.g. its matmul, transpose and softmax "
+                         "for attention)")
+    ap.add_argument("--portfolio", action="store_true",
+                    help="give each sample its own temperature (0.2/0.6/0.9/1.2) so they differ")
+    ap.add_argument("--echo-check", action="store_true",
+                    help="tell the model when its reply is the kernel it was sent, unchanged")
+    ap.add_argument("--prompt-portfolio", action="store_true",
+                    help="give each sample a different framing (as-is / plan the tiles first / rewrite / "
+                         "smallest change) -- measured to be a stronger lever than temperature")
+    ap.add_argument("--lint", action="store_true",
+                    help="check every tile's memory and every operator BEFORE simulating, and report all "
+                         "problems at once with line numbers (the simulator stops at the first)")
+    ap.add_argument("--level-hints", action="store_true",
+                    help="name the structural change each stuck level needs (levels 1, 3, 4) "
+                         "instead of the generic per-error message. Off by default, so baseline "
+                         "runs stay comparable with the repo's measurements.")
     a = ap.parse_args()
+    # Provenance on every logged attempt: which session, which exact code, which switches. A commit alone
+    # misses uncommitted edits, so hash the source files actually used.
+    import hashlib, subprocess, uuid
+    here = os.path.dirname(os.path.abspath(__file__))
+    digest = hashlib.sha256()
+    for name in ("agent.py", "nkibench.py", "lint.py"):
+        fp = os.path.join(here, name)
+        if os.path.exists(fp):
+            digest.update(open(fp, "rb").read())
+    try:
+        commit = subprocess.run(["git", "-C", here, "rev-parse", "--short", "HEAD"], capture_output=True,
+                                text=True, timeout=5).stdout.strip() or None
+    except Exception:
+        commit = None
+    a._provenance = dict(session=uuid.uuid4().hex[:8], source_hash=digest.hexdigest()[:12], commit=commit,
+                         flags=" ".join(sys.argv[1:]))
+    global LEVEL_HINTS, BLOCKS, LINT
+    LEVEL_HINTS = a.level_hints
+    LINT = a.lint
+    if a.blocks:
+        BLOCKS = "\n\n".join(f"```python\n{open(f).read().strip()}\n```" for f in a.blocks.split(","))
 
     if not a.offline:
         # Validate before the first request. An empty or scheme-less value produces a hostname
@@ -630,6 +1156,7 @@ def main():
                 print(f"\n################ run {rep + 1} of {a.repeat} ################")
             results = []
             for level in levels:
+                a._run = rep   # logged with every attempt, so runs never have to be reconstructed
                 results.append((level,) + solve(a, level, log))
                 history[level].append(results[-1][1])
 
