@@ -62,7 +62,7 @@ replaces v8.2 on level 2]]
 
 | level | operation | baseline (organizers' agent) | v7 | **v8.2: solved, first 1.0 at round** | distinct | held-out |
 |---|---|---|---|---|---|---|
-| 1 | average pool 2D | 0/5 · .30 .30 .30 .30 .30 | 0/1 · best 0.50 | **5/5** · rounds 2, 2, 0, 4, 2 | 5 different solving kernels | all VERIFIED (20/20 each); all 5 fully built for trn2 and matching in birsim |
+| 1 | average pool 2D | 0/5 · .30 .30 .30 .30 .30 | 0/1 · best 0.50 | **5/5** · rounds 2, 2, 0, 4, 2 | 5 different solving kernels | all VERIFIED (20/20 each); all 5 fully built for trn2 and matching in birsim on two shapes |
 | 2 | 2D transpose | 3/5 · 1 .30 1 .30 1 (replication 2/5) | 0/3 | **5/9** · .50 1 .50 .50 1 .50 1 1 1 [[TBD: rounds]] | [[TBD: trajectories over 9 runs]] | 5 VERIFIED, 4 NOT SOLVED; both verdicts agree |
 | 3 | matmul, one tile | 0/5 · .30 .30 .30 .30 .30 | 5/5 · round 0 | **5/5** · rounds 0, 2, 0, 0, 0 | 3 solving kernels | [[TBD]] |
 | 4 | matmul, tiled | 0/5 · .62 .62 .50 .62 .62 | 5/5 · round 2 | **5/5** · round 2 every run | **1 trajectory**: five copies of one path, the same kernel v7 found | [[TBD]] |
@@ -481,8 +481,8 @@ repository from a logged run.
 - *trn2 compiler*: v7's verdict lowers each solve for trn2; the level-1 solve lowered. A lowering is not a
   full build: every solve of liuyq's seat-115 runs and of the 4090 level-1 test was also built in full
   (neuronx-cc + birsim), which rejects forms the lowering passes (§5). All five level-1 solves of v8.2 were
-  built in full the same way (`check/compile_solves7.py`, seat 117): 5 of 5 match in birsim, worst error
-  1.9e-7 of the output's RMS. [[TBD: full builds of the other final solves, if run]]
+  built in full the same way (`check/compile_solves7.py`, seat 117) on two shapes, (4,8,8)/2 and (8,12,12)/3:
+  5 of 5 match in birsim, worst error 1.9e-7 of the output's RMS. [[TBD: full builds of the other final solves, if run]]
 - *On a NeuronCore*: liuyq ran 63 kernel-shapes on seat-115's chip in three runs, the hand-in candidates
   for levels 1-4, 9 and 11 among them, with the organizers' references as controls; the full build
   predicted every result (§5, [analysis/seat115_chip_and_l1rule.md](analysis/seat115_chip_and_l1rule.md)).
