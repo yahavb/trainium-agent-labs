@@ -1,0 +1,44 @@
+start kernel: seed_level5.py -> runs/traffic/formal_l5/start_kernel.py
+menu: guidance_menu.py (15 options)
+
+round 0: worst=2.0 progress=0.9222 valid=True accepted=False
+- K=128 M=128 N=512: 589824 bytes vs floor 589824 = 1.00x
+- K=256 M=256 N=1024: 3670016 bytes vs floor 2359296 = 1.56x
+- K=512 M=128 N=512: 1572864 bytes vs floor 1572864 = 1.00x
+- K=256 M=512 N=1024: 7340032 bytes vs floor 3670016 = 2.00x  [not accepted: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 2.00x the byte floor, and level 5 requires 1.60x or better. Cor]
+classifier: chose stack_moving_operand_symmetrically (expected stack_stationary_operand, match=False, confidence=5) -- The kernel is correct but moves more than the byte floor, indicating the moving operand is re-read unnecessarily.
+
+round 1: worst=None progress=0.2 valid=False accepted=False
+- K=128 M=128 N=512: None bytes vs floor None = ?  [not accepted: raised UnboundLocalError: cannot access local variable 'k_tiles' where it is not associated with a value]
+- K=256 M=256 N=1024: None bytes vs floor None = ?  [not accepted: raised UnboundLocalError: cannot access local variable 'k_tiles' where it is not associated with a value]
+- K=512 M=128 N=512: None bytes vs floor None = ?  [not accepted: raised UnboundLocalError: cannot access local variable 'k_tiles' where it is not associated with a value]
+- K=256 M=512 N=1024: None bytes vs floor None = ?  [not accepted: raised UnboundLocalError: cannot access local variable 'k_tiles' where it is not associated with a value]
+classifier: chose stack_moving_operand_symmetrically (expected continue_from_best, match=False, confidence=5) -- The kernel is correct on every shape but moves more than the byte floor, indicating the rhs tile is re-read from HBM for every m block.
+
+round 2: worst=None progress=0.2 valid=False accepted=False
+- K=128 M=128 N=512: None bytes vs floor None = ?  [not accepted: raised UnboundLocalError: cannot access local variable 'k_tiles' where it is not associated with a value]
+- K=256 M=256 N=1024: None bytes vs floor None = ?  [not accepted: raised UnboundLocalError: cannot access local variable 'k_tiles' where it is not associated with a value]
+- K=512 M=128 N=512: None bytes vs floor None = ?  [not accepted: raised UnboundLocalError: cannot access local variable 'k_tiles' where it is not associated with a value]
+- K=256 M=512 N=1024: None bytes vs floor None = ?  [not accepted: raised UnboundLocalError: cannot access local variable 'k_tiles' where it is not associated with a value]
+classifier: chose stack_moving_operand_symmetrically (expected continue_from_best, match=False, confidence=5) -- The kernel is correct on every shape but moves more than the byte floor, indicating the rhs tile is re-read from HBM for every m block.
+
+round 3: worst=None progress=0.2 valid=False accepted=False
+- K=128 M=128 N=512: None bytes vs floor None = ?  [not accepted: raised UnboundLocalError: cannot access local variable 'k_tiles' where it is not associated with a value]
+- K=256 M=256 N=1024: None bytes vs floor None = ?  [not accepted: raised UnboundLocalError: cannot access local variable 'k_tiles' where it is not associated with a value]
+- K=512 M=128 N=512: None bytes vs floor None = ?  [not accepted: raised UnboundLocalError: cannot access local variable 'k_tiles' where it is not associated with a value]
+- K=256 M=512 N=1024: None bytes vs floor None = ?  [not accepted: raised UnboundLocalError: cannot access local variable 'k_tiles' where it is not associated with a value]
+classifier: chose stack_moving_operand_symmetrically (expected continue_from_best, match=False, confidence=5) -- The kernel is correct on every shape but moves more than the byte floor, indicating the rhs tile is re-read from HBM unnecessarily.
+
+round 4: worst=None progress=0.2 valid=False accepted=False
+- K=128 M=128 N=512: None bytes vs floor None = ?  [not accepted: raised UnboundLocalError: cannot access local variable 'k_tiles' where it is not associated with a value]
+- K=256 M=256 N=1024: None bytes vs floor None = ?  [not accepted: raised UnboundLocalError: cannot access local variable 'k_tiles' where it is not associated with a value]
+- K=512 M=128 N=512: None bytes vs floor None = ?  [not accepted: raised UnboundLocalError: cannot access local variable 'k_tiles' where it is not associated with a value]
+- K=256 M=512 N=1024: None bytes vs floor None = ?  [not accepted: raised UnboundLocalError: cannot access local variable 'k_tiles' where it is not associated with a value]
+classifier: chose stack_moving_operand_symmetrically (expected continue_from_best, match=False, confidence=5) -- The kernel is correct on every shape but moves more than the byte floor, indicating the rhs tile is re-read from HBM unnecessarily.
+
+round 5: worst=None progress=0.2 valid=False accepted=False
+- K=128 M=128 N=512: None bytes vs floor None = ?  [not accepted: raised UnboundLocalError: cannot access local variable 'k_tiles' where it is not associated with a value]
+- K=256 M=256 N=1024: None bytes vs floor None = ?  [not accepted: raised UnboundLocalError: cannot access local variable 'k_tiles' where it is not associated with a value]
+- K=512 M=128 N=512: None bytes vs floor None = ?  [not accepted: raised UnboundLocalError: cannot access local variable 'k_tiles' where it is not associated with a value]
+- K=256 M=512 N=1024: None bytes vs floor None = ?  [not accepted: raised UnboundLocalError: cannot access local variable 'k_tiles' where it is not associated with a value]
+classifier: chose stack_moving_operand_symmetrically (expected continue_from_best, match=False, confidence=5) -- The kernel is correct on every shape but moves more than the byte floor, indicating the rhs tile is re-read from HBM unnecessarily.

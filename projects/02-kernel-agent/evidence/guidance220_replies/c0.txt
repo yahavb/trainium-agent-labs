@@ -1,0 +1,3 @@
+CHOICE: fix_cache_stride_and_width
+REASON: The kernel fails with "requires src and dst to have the same number of elements" due to mismatched cache dimensions.
+CONFIDENCE: 5

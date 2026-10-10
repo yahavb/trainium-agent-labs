@@ -1,0 +1,81 @@
+{
+  "accepted": true,
+  "bytes_total": 8192000,
+  "failure_kind": null,
+  "feedback": "Correct on every shape, inputs preserved, traffic gate met. Resource status remains an estimate until compiled on device.",
+  "hazards_ok": true,
+  "inputs_ok": true,
+  "numerics_ok": true,
+  "passed": 4,
+  "per_case": [
+    {
+      "bytes": 589824,
+      "case": "K=128 M=128 N=512",
+      "checks": {
+        "hazard_ok": true,
+        "inputs_ok": true,
+        "numerics_ok": true,
+        "traffic_ok": true
+      },
+      "failure": null,
+      "floor": 589824,
+      "ok": true,
+      "transfers": 3,
+      "unmeasured": 0,
+      "waste": 1.0
+    },
+    {
+      "bytes": 2359296,
+      "case": "K=256 M=256 N=1024",
+      "checks": {
+        "hazard_ok": true,
+        "inputs_ok": true,
+        "numerics_ok": true,
+        "traffic_ok": true
+      },
+      "failure": null,
+      "floor": 2359296,
+      "ok": true,
+      "transfers": 8,
+      "unmeasured": 0,
+      "waste": 1.0
+    },
+    {
+      "bytes": 1572864,
+      "case": "K=512 M=128 N=512",
+      "checks": {
+        "hazard_ok": true,
+        "inputs_ok": true,
+        "numerics_ok": true,
+        "traffic_ok": true
+      },
+      "failure": null,
+      "floor": 1572864,
+      "ok": true,
+      "transfers": 9,
+      "unmeasured": 0,
+      "waste": 1.0
+    },
+    {
+      "bytes": 3670016,
+      "case": "K=256 M=512 N=1024",
+      "checks": {
+        "hazard_ok": true,
+        "inputs_ok": true,
+        "numerics_ok": true,
+        "traffic_ok": true
+      },
+      "failure": null,
+      "floor": 3670016,
+      "ok": true,
+      "transfers": 12,
+      "unmeasured": 0,
+      "waste": 1.0
+    }
+  ],
+  "resource_status": "unestimated",
+  "rules_ok": true,
+  "total": 4,
+  "traffic_ok": true,
+  "worst_waste": 1.0
+}

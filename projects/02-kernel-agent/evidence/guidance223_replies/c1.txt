@@ -1,0 +1,3 @@
+CHOICE: continue_from_best
+REASON: No other guidance fits the evidence of excessive HBM traffic and the current kernel is not valid
+CONFIDENCE: 5
