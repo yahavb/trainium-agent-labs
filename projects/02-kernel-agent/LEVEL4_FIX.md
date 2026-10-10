@@ -15,12 +15,12 @@ lifetime across K tiles. Later feedback also diagnoses the M=128 zero-loop
 case: using M//512 for tile count skips every output write. Scoring and
 numeric tolerances are unchanged.
 
-A further escalation now adds a clearly labeled three-axis loop scaffold
-after a level-4 failure recurs. It asks the model to complete the input loads,
-matmul, and output copies. The candidate still passes through the ordinary
-rules, simulator, and numerical checks; there is no reference-kernel fallback.
-Each attempt record includes a `scaffolded` field so scaffolded results can be
-reported separately from unscaffolded runs.
+On the first level-4 repair after a nonempty failed candidate, the agent now
+adds a clearly labeled three-axis loop scaffold. It asks the model to complete
+the input loads, matmul, and output copies, then the normal checker grades the
+candidate. There is no reference-kernel fallback. Each attempt record includes
+a `scaffolded` field so scaffolded results can be reported separately from
+unscaffolded runs.
 
 Validation performed locally: Python compilation, checker self-test, and a
 prompt-structure check passed. The self-test reports that its NKI simulation
