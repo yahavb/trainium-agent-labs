@@ -59,6 +59,7 @@ else is available.**
 | 12 | `--patience 5` | Ends an episode after 5 rounds without a better kernel. v4.1 episode 1 spent 8 rounds, about 10 minutes, on one error. |
 | 13 | `--mode plain` | `agent.py`'s exact prompts through this harness, same logs, for an honest A/B. |
 | 14 | `--export-groups` | One row per sample group with normalised advantages, the input GRPO needs. |
+| 15 | The located analysis runs every shape, not just the first failure | Reports which shapes pass and fail. A kernel that passes only the square shape (F1 == F2) is told that F1 and F2 are interchanged; an out-of-bound index on an axis of length F1 or F2 is explained as a wrong loop bound, and the verifier's generic "tile limits are a maximum" advice is dropped for it. Found in the first real v5 run: the model sat at 1 of 4 shapes for 2 rounds with the analysis saying only where it raised. |
 
 Unchanged from v4.1: sanitizer, extractor, `ShrunkUCB`, lesson bank (now only for model-written
 rules), exemplars, SFT export, episodes.
@@ -69,7 +70,7 @@ From `projects/02-kernel-agent`:
 
 ```bash
 python -m py_compile rl_trace_agent.py summarize_rl_trace.py
-python test_rl_trace_agent.py            # 24 tests, no SDK or model needed
+python test_rl_trace_agent.py            # 26 tests, no SDK or model needed
 ```
 
 The A/B that tells you whether any of this helps, same endpoint, same budget, 5 episodes each:

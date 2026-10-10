@@ -122,6 +122,12 @@ NEVER_WRITTEN = BAD_TUPLE.replace(
     "nisa.tensor_copy(dst=o[:, nl.ds((b * F1 + a, 1))], src=t[:, nl.ds(a * F2 + b, 1)])", "pass")
 
 
+# Correct only when F1 == F2: the stride uses F2 where F1 belongs.
+SQUARE_ONLY = BAD_TUPLE.replace(
+    "nisa.tensor_copy(dst=o[:, nl.ds((b * F1 + a, 1))], src=t[:, nl.ds(a * F2 + b, 1)])",
+    "nisa.tensor_copy(dst=o[:, nl.ds(b * F2 + a, 1)], src=t[:, nl.ds(a * F2 + b, 1)])")
+
+
 def fenced(code):
     return f"```python\n{code}\n```"
 
@@ -282,6 +288,22 @@ class TestProbe(unittest.TestCase):
         self.assertEqual(probe["kind"], "mismatch")
         self.assertIn("SAME index", rl.located_analysis(2, NO_TRANSPOSE, probe))
         self.assertEqual(rl.located_analysis(2, NO_TRANSPOSE, probe, reveal_flow=False), "")
+
+    def test_square_only_kernel_is_recognised(self):
+        probe = rl.probe_kernel(2, SQUARE_ONLY)
+        self.assertEqual(len(probe["cases"]), 4)
+        text = rl.located_analysis(2, SQUARE_ONLY, probe)
+        self.assertIn("SHAPE PATTERN", text)
+        self.assertIn("F1 == F2", text)
+        self.assertNotIn("F1 == F2", rl.located_analysis(2, SQUARE_ONLY, probe, reveal_flow=False))
+
+    def test_out_of_bound_on_the_wrong_axis_is_explained(self):
+        msg = ("Out-of-bound access for tensor `unnamed` on dimension 1: index range [3, 3] exceed "
+               "dimension size of 3.")
+        text = rl._oob_analysis(msg, (3, 4))
+        self.assertIn("NOT a tile-size limit", text)
+        self.assertIn("F1", text)
+        self.assertEqual(rl._oob_analysis("raised TypeError", (3, 4)), "")
 
     def test_reference_passes(self):
         self.assertEqual(rl.probe_kernel(2, REFERENCE)["kind"], "ok")

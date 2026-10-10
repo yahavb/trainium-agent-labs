@@ -588,14 +588,17 @@ def explain_permutation(got, inp, shape2D, rows=4, examples=3):
 
 
 def probe_kernel(level, code):
-    """Run `code` on the simulator case by case. Returns a dict with kind in
-    'exception' | 'mismatch' | 'ok' | 'unavailable'."""
+    """Run `code` on every simulator case. Returns the FIRST failure (kind in 'exception' |
+    'mismatch') or {'kind': 'ok'}, plus `cases`: [(label, shape2D_or_None, 'ok'|'fail')], or
+    {'kind': 'unavailable'}. Running all cases is what shows a kernel that only works for some
+    shapes, such as the square one where F1 == F2."""
     spec = nkibench.LEVELS[level]
     try:
         import nki  # noqa: F401
     except ImportError:
         return {"kind": "unavailable"}
     fd, path = tempfile.mkstemp(suffix=".py", prefix="_rl_probe_")
+    first, cases = None, []
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(code)
@@ -603,6 +606,7 @@ def probe_kernel(level, code):
         for case in spec["shapes"]:
             args, _ = nkibench.make_inputs(case, level)
             want = spec["ref"](*args)
+            label = nkibench.label(case, level)
             try:
                 got, _ = nkibench.simulate_and_count(kernel, args)
             except Exception as e:
@@ -610,11 +614,19 @@ def probe_kernel(level, code):
                 lineno = frames[-1].lineno if frames else None
                 lines = code.splitlines()
                 src = lines[lineno - 1].strip() if lineno and 0 < lineno <= len(lines) else ""
-                return {"kind": "exception", "etype": type(e).__name__, "msg": str(e),
-                        "lineno": lineno, "src": src, "case": case}
+                cases.append((label, case.get("shape2D"), "fail"))
+                first = first or {"kind": "exception", "etype": type(e).__name__, "msg": str(e),
+                                  "lineno": lineno, "src": src, "case": case}
+                continue
             if nkibench.describe_mismatch(got, want):
-                return {"kind": "mismatch", "case": case, "args": args, "got": np.asarray(got)}
-        return {"kind": "ok"}
+                cases.append((label, case.get("shape2D"), "fail"))
+                first = first or {"kind": "mismatch", "case": case, "args": args,
+                                  "got": np.asarray(got)}
+            else:
+                cases.append((label, case.get("shape2D"), "ok"))
+        out = first or {"kind": "ok"}
+        out["cases"] = cases
+        return out
     except Exception:
         return {"kind": "unavailable"}
     finally:
@@ -624,14 +636,58 @@ def probe_kernel(level, code):
             pass
 
 
+OOB_RE = re.compile(r"dimension (\d+): index range \[(\d+), (\d+)\] exceed dimension size of (\d+)")
+
+
+def _oob_analysis(msg, shape2D):
+    """An out-of-bound index on an axis whose length is F1 or F2 is a loop bound or stride that uses
+    the wrong one of the two. The verifier's generic advice for it (tile limits, min(limit, size)) is
+    about something else entirely."""
+    m = OOB_RE.search(msg or "")
+    if not m or not shape2D:
+        return ""
+    dim, hi, size = int(m.group(1)), int(m.group(3)), int(m.group(4))
+    F1, F2 = shape2D
+    text = (f"This is NOT a tile-size limit. Axis {dim} has length {size} and the kernel indexed {hi}. ")
+    if size == F1 and F1 != F2 and hi >= F1:
+        text += (f"{size} is F1 (the matrix has F1={F1} rows and F2={F2} columns): a loop that runs "
+                 f"over F2 is indexing an axis of length F1.")
+    elif size == F2 and F1 != F2 and hi >= F2:
+        text += (f"{size} is F2 (F1={F1}, F2={F2}): a loop that runs over F1 is indexing an axis of "
+                 f"length F2.")
+    else:
+        text += "Derive that loop bound from the shape of the axis it indexes."
+    return text
+
+
+def _shape_pattern(cases):
+    """Which shapes pass and which fail, and whether the passing ones are the square ones."""
+    ok = [c for c in cases if c[2] == "ok"]
+    bad = [c for c in cases if c[2] == "fail"]
+    if not ok or not bad:
+        return ""
+    text = (f"SHAPE PATTERN: passes {', '.join(c[0] for c in ok)}; fails "
+            f"{', '.join(c[0] for c in bad)}.")
+    if all(c[1] and c[1][0] == c[1][1] for c in ok) and all(c[1] and c[1][0] != c[1][1] for c in bad):
+        text += (" Every passing shape has F1 == F2 and every failing shape has F1 != F2, so F1 and "
+                 "F2 are interchanged somewhere: a loop bound, a stride or an index uses one where "
+                 "the other belongs. Input element f1*F2 + f2 goes to output element f2*F1 + f1.")
+    return text
+
+
 def located_analysis(level, code, probe, reveal_flow=True):
+    parts = []
     if probe["kind"] == "exception":
         where = f"line {probe['lineno']}: `{probe['src']}`" if probe["lineno"] else "inside the kernel"
-        return (f"LOCATION: {probe['etype']} is raised at {where}: {compact(probe['msg'], 200)}")
-    if probe["kind"] == "mismatch" and level == 2 and reveal_flow:
+        parts.append(f"LOCATION: {probe['etype']} is raised at {where}: {compact(probe['msg'], 200)}")
+        if level == 2 and reveal_flow:
+            parts.append(_oob_analysis(probe["msg"], probe["case"].get("shape2D")))
+    elif probe["kind"] == "mismatch" and level == 2 and reveal_flow:
         args = probe["args"]
-        return explain_permutation(probe["got"], args[0], args[1])
-    return ""
+        parts.append(explain_permutation(probe["got"], args[0], args[1]))
+    if reveal_flow or level != 2:
+        parts.append(_shape_pattern(probe.get("cases", [])))
+    return " ".join(p for p in parts if p)
 
 
 # ---------------------------------------------------------------------------- prompts
@@ -1171,7 +1227,10 @@ def run_episode(run, level, episode, run_id):
             parts_ = [p for p in (format_lint(top["lint"]), located) if p]
             top["analysis"] = " ".join(parts_)
             if located:
-                top["feedback"] = (top["feedback"] + " " + located).strip()
+                fb = top["feedback"]
+                if "This is NOT a tile-size limit" in located and " You indexed up to " in fb:
+                    fb = fb.split(" You indexed up to ")[0]       # generic advice that misleads here
+                top["feedback"] = (fb + " " + located).strip()
         elif top["lint"]:
             top["analysis"] = format_lint(top["lint"])
 
