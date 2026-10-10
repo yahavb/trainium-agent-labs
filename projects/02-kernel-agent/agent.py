@@ -257,6 +257,31 @@ def transpose_result_hint(msg):
     return msg
 
 
+MATMUL_SHAPES = """This is a single-tile matmul. Read K, M = lhsT.shape and K_rhs, N = rhs.shape.
+The input shapes are (K, M) and (K, N); the output shape is (M, N).
+lhsT.shape[1:] is only (M,), so it is not a valid result shape.
+The left input already has the layout nc_matmul needs: K is the partition axis
+of BOTH inputs. The supported level-3 inputs fit one hardware tile.
+"""
+
+MATMUL_API_CARD = """Allocate separate tiles for these roles:
+  left:   shape (K, M), dtype lhsT.dtype, buffer nl.sbuf
+  right:  shape (K, N), dtype rhs.dtype,  buffer nl.sbuf
+  accum:  shape (M, N), dtype nl.float32, buffer nl.psum
+  result: shape (M, N), dtype lhsT.dtype, buffer nl.sbuf
+  output: shape (M, N), dtype lhsT.dtype, buffer nl.shared_hbm
+Use nl.ndarray(shape, dtype=..., buffer=...) for allocations.
+Load each input into its own matching SBUF tile with nisa.dma_copy(dst=, src=).
+Keep both input tiles alive until matmul: loading rhs into the left tile overwrites
+lhsT. Allocate from each input shape, not fixed hardware maxima.
+Call nisa.nc_matmul(dst=accum, stationary=left, moving=right).
+Copy accum to the separate result SBUF tile with nisa.tensor_copy(dst=, src=),
+then store result to output with nisa.dma_copy(dst=, src=) and return output.
+Both result copies preserve the (M, N) shape; an input tile has a different role
+and shape, so using it as the result buffer loses the required dimensions.
+"""
+
+
 def available_names(dotted):
     """Turn 'no attribute X' into 'here are the real ones'.
 
@@ -328,6 +353,14 @@ def enrich(error_text, level=None):
                     "while copying all P rows, or crop x to x[:F1, :F2]: that loses "
                     "partitions and free-axis values. Transpose within each row "
                     "into a separate same-shaped SBUF, then DMA matching rows out.")
+        if level == 3:
+            return (error_text + f" The source has {src} elements but the destination has {dst}. "
+                    "For this single-tile matmul, load lhsT into a (K, M) SBUF tile and rhs "
+                    "into a different (K, N) SBUF tile. The PSUM result, result SBUF tile "
+                    "and returned HBM output must all be (M, N). Derive K and M from "
+                    "lhsT.shape and N from rhs.shape[1]; match each copy to its own tensor. "
+                    "Keep the two input buffers distinct: loading rhs into the same "
+                    "buffer or an overlapping view destroys lhsT before matmul.")
         return (error_text + f" The tile you allocated holds {dst} elements but you copied {src} "
                 f"into it. nisa.dma_copy does not slice or broadcast: allocate the destination with "
                 f"EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a "
@@ -419,13 +452,28 @@ def enrich(error_text, level=None):
         return (error_text + " Pass every argument by keyword, e.g. "
                 "nisa.nc_matmul(dst=..., stationary=..., moving=...), so none is bound twice.")
     if "must have at least 2 dimensions" in error_text:
+        if level == 3:
+            return (error_text + " The matmul result has TWO dimensions: "
+                    "(lhsT.shape[1], rhs.shape[1]), or (M, N). lhsT.shape[1:] is only "
+                    "(M,). Correct the output allocation AND any PSUM/SBUF allocation "
+                    "derived from output.shape. Use a separate (M, N) result SBUF tile "
+                    "for the PSUM-to-SBUF copy; keep the input tiles (K, M) and (K, N).")
         return (error_text + " Every SBUF and PSUM tile needs two dimensions: a partition dimension "
                 "first, then a free dimension. A 1-D tile is not allowed, so write "
                 "nl.ndarray((rows, cols), ...) and give a length-N vector the shape (1, N) or "
                 "(N, 1) depending on which axis you are reducing over.")
     if "cannot reshape array of size" in error_text:
-        return (error_text + " Do not reshape. Work with the shapes you were given and slice "
-                "them into tiles, e.g. src=a[0:128, 0:64].")
+        return (error_text + " Do NOT reshape. nc_matmul consumes its operands along the "
+                "PARTITION axis, so the layout is already what you need and reshaping fights it. "
+                "lhsT arrives as [K, M] (K on partitions, the left operand pre-transposed) and rhs "
+                "as [K, N] (K on partitions too); the result is [M, N]. For a single tile the whole "
+                "kernel is: allocate two sbuf tiles with the operands' own shapes and dma_copy each "
+                "operand straight in (no slicing, no reshaping -- they already fit); allocate a psum "
+                "tile of shape (M, N) with dtype=nl.float32; call "
+                "nisa.nc_matmul(dst=psum, stationary=lhs_tile, moving=rhs_tile), which contracts K "
+                "and gives [M, N]; tensor_copy the psum tile into an sbuf tile; dma_copy that out to "
+                "the shared_hbm result. Read M and N from the shapes (M=lhsT.shape[1], "
+                "N=rhs.shape[1]), never with reshape.")
     m = re.search(r"module '([\w.]+)' has no attribute '(\w+)'", error_text)
     if m:
         return error_text + available_names(f"{m.group(1)}.{m.group(2)}")
@@ -462,6 +510,18 @@ def first_prompt(level, terse=0):
             f"Write an NKI kernel `{s['entry']}` decorated with @nki.jit.\n"
             f"Match this NumPy reference:\n\n{inspect.getsource(s['ref'])}\n"
             f"{TRANSPOSE_METHOD}\n{card}\n"
+    if level == 3:
+        card = MATMUL_API_CARD if terse == 0 else (
+            "Use separate input SBUF tiles, a float32 (M, N) PSUM tile, and separate "
+            "(M, N) result SBUF and HBM tiles. dma_copy loads inputs; "
+            "nc_matmul(dst=, stationary=, moving=) writes PSUM; tensor_copy moves "
+            "PSUM to result SBUF; dma_copy stores the result in HBM.\n")
+        if terse >= 2:
+            card = "Use nc_matmul into float32 PSUM, tensor_copy into a separate (M, N) SBUF tile, then dma_copy to HBM.\n"
+        return (
+            f"Write an NKI kernel `{s['entry']}` decorated with @nki.jit.\n"
+            f"Match this NumPy reference:\n\n{inspect.getsource(s['ref'])}\n"
+            f"{MATMUL_SHAPES}\n{card}\n"
             f"Import nki, nki.language as nl, and nki.isa as nisa. "
             f"Reply with ONE complete python code block.")
     if terse >= 2:
@@ -513,6 +573,13 @@ def repair_prompt(level, source, feedback):
             f"{TRANSPOSE_METHOD}\n{TRANSPOSE_API_CARD}\n"
             f"Fix the error and the index mapping while keeping the entry point, arguments, "
             f"output shape and input dtype. You may replace incorrect allocations or loops. "
+    if level == 3:
+        return (
+            f"Repair this single-tile NKI matmul:\n\n```python\n{source}\n```\n\n"
+            f"A checker reports:\n{feedback}\n\n"
+            f"{MATMUL_SHAPES}\n{MATMUL_API_CARD}\n"
+            f"Fix the reported allocation and any dependent buffer shapes or copies. "
+            f"Preserve the entry point, arguments and required output dtype. "
             f"Reply with ONE complete python code block.")
     return (
         f"This NKI kernel for {nkibench.LEVELS[level]['op']} is not right yet.\n\n"
