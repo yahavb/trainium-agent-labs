@@ -151,11 +151,30 @@ uv run python scripts/reward.py results/seat-130/ours-L1234-seat-130.jsonl \
                                 results/seat-130/naive-L1234-seat-130.jsonl
 \end{verbatim}
 }
-What to point at: (a) \code{0 rule violation(s), 15/24 cases correct} and
-\code{Pattern: \dots\ equals the result over the last column tile only}; (b) \code{28/28 cases correct}
-yet \code{np.sum [sum-like]}, then the \code{FIX line 12} instruction; (c) \code{worst uses 10\% of it}
-and the \code{Cost} line; (d) L2 \code{FAIL rule:sum-like} $\to$ \code{PASS dev; holdout 21/21} $\to$
-\code{verified (confidence 0.95)}, with \code{in=}/\code{out=} token counts per attempt.
-Reproduce everything: \code{uv run pytest -q} (74 passed); \code{README.md} has the commands for live runs.
+\begin{description}[leftmargin=0pt,itemsep=3pt]
+\item[(a) The verifier names the cause.] A kernel the model really wrote for L3 (row max) with
+  \code{result[row] = acc} inside the column-tile loop. Point at \code{0 rule violation(s), 15/24 cases
+  correct}: no rule broken, 9 cases wrong. The verifier does not stop at ``wrong'': \code{Pattern: \dots\
+  each wrong output equals the result over the last column tile only} names the bug (each tile
+  overwrites the last), which is what lets the model fix it (\S3, L3).
+\item[(b) A violation becomes one instruction.] An L2 (row sum) kernel calling \code{np.sum}. Point at
+  \code{28/28 cases correct} \emph{and} \code{np.sum [sum-like]}: numerically right, still a failure,
+  because it calls the op it must implement. \code{--fixes} prints the one instruction the agent
+  sends: \code{FIX line 12: Replace np.sum with an explicit python loop over the columns \dots}
+  (\S3, step 1 of the L2 recovery).
+\item[(c) Error bound and cost ledger.] Our correct hand RMSNorm. Point at \code{worst uses 10\% of it}:
+  the largest error is 10\% of the proven float32 bound (\S5); and at the \code{Cost} line: FLOPs, HBM
+  reads/writes and instructions against the op's minimum (\S6).
+\item[(d) The whole loop.] The real agent loop, with recorded model replies instead of live calls, so
+  it takes seconds and needs no server. In L2: the model's code uses \code{np.sum} $\to$ \code{FAIL
+  rule:sum-like} $\to$ one instruction $\to$ \code{PASS dev; holdout 21/21} $\to$ \code{verified
+  (confidence 0.95)}; 0.95 means it also passed the organizers' checker. \code{in=}/\code{out=} on each
+  line are the tokens of that call.
+\item[(e) The table comes from the logs.] Reads the real seat-130 run logs of both arms and prints each
+  level's per-run reward: the same numbers as the table in \S3, computed, not typed.
+\end{description}
+Order: (a) and (b) show how the verifier finds a problem and turns it into one instruction; (c) shows
+the numerical analysis and the cost ledger; (d) ties them into the loop; (e) shows the results are
+traceable. Self-tests: \code{uv run pytest -q} (74 passed); \code{README.md} has the commands for live runs.
 
 \end{document}
