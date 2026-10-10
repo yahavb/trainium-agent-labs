@@ -6,6 +6,10 @@ model inference were run for this revision. Static source comparisons only.
 Maintained branch: `challenge1-runtime-resilience`. PR target: `master`.
 Alignment reference: `b94759c18e91139a128ed260b6a7dd18ba59148d`.
 
+The later implementation-only numerical/diagnostic refinement is documented in
+[CHECKER_REFINEMENT.md](CHECKER_REFINEMENT.md). It preserves the public alignment
+described here; protocol v2 belongs exclusively to the optional enhanced API.
+
 ## Public API: identical source to master
 
 `pdecheck.py` and `checker_runtime.py` are restored in full from the reference

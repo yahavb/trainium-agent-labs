@@ -66,12 +66,23 @@ def main():
             original = no_score(failure('Original scoring could not complete.', evidence={'exception': type(exc).__name__}))
         emit('original', original)  # Preserve score even if enhancement times out.
     if mode != 'original':
+        core_emitted = False
+
+        def checkpoint(core):
+            nonlocal core_emitted
+            emit('validation_core', core)
+            core_emitted = True
+
         try:
             from checker_math import verify_expression
-            result = verify_expression(p, u, request['validation_seed'])
+            result = verify_expression(p, u, request['validation_seed'],
+                                       on_core=checkpoint)
         except Exception as exc:
             result = failure('Numerical or symbolic validation could not complete.',
                              evidence={'exception': type(exc).__name__, 'detail': str(exc)[:160]})
+            if core_emitted:
+                emit('diagnostic_failure', result)
+                return
         emit('validation', result)
 
 

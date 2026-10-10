@@ -8,6 +8,7 @@ import io
 import math
 import re
 import tokenize
+from decimal import Decimal, InvalidOperation
 
 import sympy as sp
 
@@ -89,9 +90,14 @@ def parse_expression(source, *, allow_sum=False):
         raise ExpressionError('NUMERICAL_VALIDATION_INCONCLUSIVE', 'Expression exceeds the syntax-node budget.', limit=MAX_NODES)
     expansion_terms = 0
 
-    def literal(node):
+    def literal(node, depth=0):
+        if depth > MAX_DEPTH:
+            raise ExpressionError('NUMERICAL_VALIDATION_INCONCLUSIVE', 'Numeric literal nesting exceeds the evaluation budget.')
         if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)):
-            value = literal(node.operand)
+            value = literal(node.operand, depth+1)
+            if isinstance(value, str):
+                value = value.lstrip('+')
+                return (value[1:] if value.startswith('-') else '-'+value) if isinstance(node.op, ast.USub) else value
             return -value if isinstance(node.op, ast.USub) else value
         if not isinstance(node, ast.Constant) or type(node.value) not in (int, float, str):
             raise ExpressionError('PARSE_ERROR', 'Numeric constructors require literal arguments.')
@@ -99,6 +105,12 @@ def parse_expression(source, *, allow_sum=False):
         if isinstance(value, str):
             if len(value) > 128 or not NUMBER_TEXT.fullmatch(value):
                 raise ExpressionError('PARSE_ERROR', 'Only bounded numeric strings are allowed in numeric constructors.')
+            try:
+                decimal = Decimal(value)
+                if not decimal.is_finite() or decimal.adjusted() > 12 or decimal.copy_abs() > Decimal('1e12') or (decimal != 0 and decimal.adjusted() < -10000):
+                    raise ExpressionError('NUMERICAL_VALIDATION_INCONCLUSIVE', 'Numeric constructor literal exceeds the evaluation budget.')
+            except InvalidOperation as exc:
+                raise ExpressionError('PARSE_ERROR', 'Invalid numeric constructor literal.') from exc
         elif abs(value) > 10**12 or not math.isfinite(value):
             raise ExpressionError('NUMERICAL_VALIDATION_INCONCLUSIVE', 'Numeric literal exceeds the evaluation budget.')
         return value
@@ -126,8 +138,15 @@ def parse_expression(source, *, allow_sum=False):
             if isinstance(node.op, ast.Mult): return sp.Mul(left, right, evaluate=False)
             if isinstance(node.op, ast.Div): return sp.Mul(left, sp.Pow(right, -1, evaluate=False), evaluate=False)
             if isinstance(node.op, ast.Pow):
-                if right.is_Integer and abs(int(right)) > 10000:
-                    raise ExpressionError('NUMERICAL_VALIDATION_INCONCLUSIVE', 'Literal exponent exceeds the evaluation budget.')
+                if not right.free_symbols:
+                    # Inspect the unevaluated tree before converting to a scalar;
+                    # a numeric power tower is not a bounded literal exponent.
+                    unsafe_powers = any(power.exp != -1 or not power.base.is_Number for power in right.atoms(sp.Pow))
+                    if unsafe_powers or sp.count_ops(right) > 16:
+                        raise ExpressionError('NUMERICAL_VALIDATION_INCONCLUSIVE', 'Numeric exponent expression exceeds the evaluation budget.')
+                    exponent = float(right)
+                    if not math.isfinite(exponent) or abs(exponent) > 10000:
+                        raise ExpressionError('NUMERICAL_VALIDATION_INCONCLUSIVE', 'Numeric exponent exceeds the evaluation budget.')
                 return sp.Pow(left, right, evaluate=False)
             raise ExpressionError('PARSE_ERROR', 'Unsupported arithmetic operator.')
         if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Name) or node.keywords:

@@ -5,6 +5,7 @@ to validation, never to the separately reported original numerical score.
 """
 import hashlib
 import math
+from functools import lru_cache
 
 import numpy as np
 import sympy as sp
@@ -16,10 +17,16 @@ RESIDUAL_TOL = 1e-6
 MAX_MODES = 8
 
 
+@lru_cache(maxsize=32)
+def compiled(expr):
+    # Worker-local, bounded cache of AST-built expressions, never model text.
+    return sp.lambdify((x, t), expr, 'numpy', cse=True)
+
+
 def values(expr, X, T):
     """Compile only the AST-built SymPy tree; never feed raw text to lambdify."""
     with np.errstate(all='ignore'):
-        out = np.asarray(sp.lambdify((x, t), expr, 'numpy', cse=True)(X, T))
+        out = np.asarray(compiled(expr)(X, T))
     if np.iscomplexobj(out):
         if np.any(out.imag != 0):
             raise ValueError('Non-real temperature or residual at a sample.')
@@ -57,14 +64,20 @@ def condition(expr, X, T, scale, threshold=RESIDUAL_TOL):
     result = dict(status='pass' if error < threshold else 'fail', error=error,
                   threshold=threshold, value=float(sampled.flat[i]),
                   location={'x': at_x, 't': at_t}, symbolic_zero=bool(reduced == 0))
-    # Confirm apparent failures/near-threshold decisions at the worst sample.
-    # Conflicting precision is uncertainty, never a guessed mathematical error.
-    if error >= threshold * .1:
-        hp = high_precision(reduced, at_x, at_t)
-        result['high_precision_value'] = hp
-        hp_error = abs(hp) / scale
-        if (hp_error < threshold) != (error < threshold) or abs(hp_error-error) > max(threshold*.1, error*.02):
+    # Also audit small/zero floating results: cancellation can hide a residual.
+    # These are bounded point audits, not a symbolic certificate over the domain.
+    indices = [i]
+    if reduced != 0:
+        indices += [0, len(sampled.flat)-1]
+    audits = []
+    for index in dict.fromkeys(indices):
+        ax, at = float(np.asarray(X).flat[index]), float(np.asarray(T).flat[index])
+        hp = high_precision(reduced, ax, at)
+        hp_error, float_error = abs(hp)/scale, abs(float(sampled.flat[index]))/scale
+        audits.append(dict(x=ax, t=at, normalized_error=hp_error))
+        if (hp_error < threshold) != (float_error < threshold) or abs(hp_error-float_error) > max(threshold*.1, float_error*.02):
             result['status'] = 'inconclusive'
+    result['precision_audits'] = audits
     return result
 
 
@@ -83,12 +96,28 @@ def basis(p, n):
 
 def max_cycles(expressions, L):
     cycles = 0.0
+    resolved = True
     for expression in expressions:
+        rates = []
         for wave in expression.atoms(sp.sin, sp.cos):
             rate = sp.diff(wave.args[0], x)
             if not rate.free_symbols:
-                cycles = max(cycles, abs(float(rate))*L/(2*math.pi))
-    return cycles
+                rates.append(abs(float(rate))*L/(2*math.pi))
+            else:
+                resolved = False
+        # Conservative sum covers products of different oscillatory factors.
+        # Powers/repeated factors need a separate multiplicity bound.
+        multiplier = 1
+        for power in expression.atoms(sp.Pow):
+            if power.base.has(sp.sin, sp.cos):
+                if power.exp.is_Integer and 0 <= int(power.exp) <= 10000:
+                    multiplier = max(multiplier, int(power.exp))
+                else:
+                    resolved = False
+        cycles = max(cycles, sum(rates)*multiplier)
+        if expression.has(sp.tan) or any(wave.args[0].has(sp.sin, sp.cos, sp.tan) for wave in expression.atoms(sp.sin, sp.cos)):
+            resolved = False
+    return cycles, resolved
 
 
 def initial_condition(p, u, rng):
@@ -105,30 +134,50 @@ def initial_condition(p, u, rng):
         f = values(p['f'], grid, grid*0)
         got = values(u, grid, grid*0)
         delta = got-f
+        if not np.all(np.isfinite(delta)):
+            raise ValueError('Initial-profile subtraction overflowed.')
         with np.errstate(all='ignore'):
-            denominator = float(np.sqrt(np.trapezoid(f*f, grid))) or 1.0
-            error = float(np.sqrt(np.trapezoid(delta*delta, grid)))/denominator
+            # Normalize before squaring to avoid inf/inf or a finite/inf false
+            # zero. A zero initial profile retains the original absolute norm.
+            fscale = float(np.max(np.abs(f)))
+            dscale = float(np.max(np.abs(delta)))
+            if fscale == 0 and small_reduce(p['f']) != 0:
+                raise ValueError('A nonzero public initial profile was unresolved on the numeric grid.')
+            fnorm = float(np.sqrt(np.trapezoid((f/fscale)**2, grid))) if fscale else 1.0
+            dnorm = float(np.sqrt(np.trapezoid((delta/dscale)**2, grid))) if dscale else 0.0
+            error = (dscale/fscale)*(dnorm/fnorm) if fscale else dscale*dnorm
         if not math.isfinite(error):
             raise ValueError('Initial-profile quadrature overflowed.')
         profiles.append((grid, f, got))
         errors.append(error)
     i = int(np.argmax(np.abs(profiles[-1][2]-profiles[-1][1])))
+    fine_grid = profiles[-1][0]
+    neighborhood = np.linspace(fine_grid[max(0, i-1)], fine_grid[min(len(fine_grid)-1, i+1)], 17)
+    local_delta = values(u, neighborhood, neighborhood*0)-values(p['f'], neighborhood, neighborhood*0)
+    if not np.all(np.isfinite(local_delta)):
+        raise ValueError('Local initial-profile refinement overflowed.')
+    local_i = int(np.argmax(np.abs(local_delta)))
     stable = abs(errors[1]-errors[2]) <= max(1e-10, .02*max(tol, errors[1], errors[2]))
     same_side = (errors[1] < tol) == (errors[2] < tol)
     state = 'pass' if max(errors) < tol else 'fail'
     if not stable or not same_side:
         state = 'inconclusive'
-    cycles = max_cycles((u.subs(t, 0), p['f']), L)
-    if state == 'pass' and cycles > (len(grids[-1])-1)/16:
+    uncertainty = max(abs(errors[1]-errors[2]), 8*np.finfo(float).eps*max(errors))
+    if abs(max(errors)-tol) <= uncertainty:
+        state = 'inconclusive'
+    cycles, frequency_resolved = max_cycles((u.subs(t, 0), p['f']), L)
+    if state == 'pass' and (not frequency_resolved or cycles > (len(grids[-1])-1)/16):
         # Frequency beyond conservative quadrature resolution; don't certify it
         # merely because both finite grids appear favorable.
         if small_reduce(u.subs(t, 0)-p['f']) != 0:
             state = 'inconclusive'
     result = dict(status=state, error=max(errors), threshold=tol, grid_errors=errors,
                   quadrature_stable=stable, grid_sizes=[len(g) for g in grids],
-                  largest_linear_frequency_cycles=cycles,
-                  location={'x': float(profiles[-1][0][i]), 't': 0.0},
-                  local_deviation=float(profiles[-1][2][i]-profiles[-1][1][i]))
+                  estimated_frequency_bound_cycles=cycles, frequency_bound_resolved=frequency_resolved,
+                  quadrature_uncertainty_estimate=uncertainty,
+                  location={'x': float(neighborhood[local_i]), 't': 0.0},
+                  local_deviation=float(local_delta[local_i]), local_refinement_points=17,
+                  local_deviation_role='diagnostic only; acceptance uses relative L2')
     return result, profiles
 
 
@@ -145,12 +194,19 @@ def coefficient_diagnostics(p, profiles, conditions):
         for grid, f, got in profiles[-2:]:
             b = values(wave, grid, grid*0)
             norm = float(np.trapezoid(b*b, grid))
+            if not math.isfinite(norm) or norm <= 0:
+                raise ValueError('Projection basis norm is not positive and finite.')
             estimates.append((float(np.trapezoid(got*b, grid))/norm,
                               float(np.trapezoid(f*b, grid))/norm))
         (g0, w0), (got, want) = estimates
+        if not all(math.isfinite(value) for value in (g0, w0, got, want)):
+            raise ValueError('Initial-profile projection overflowed.')
         magnitude = max(abs(got), abs(want), 1e-8)
         numerical = max(abs(got-g0), abs(want-w0))
-        threshold = max(.02*magnitude, 8*numerical, 1e-8)
+        threshold = max(float(p['tol'])*.1*magnitude, 1e-10*magnitude, 1e-12)
+        if 8*numerical > threshold:
+            records.append(('unresolved', n, wave, numerical))
+            continue
         if abs(got-want) <= threshold:
             records.append(('matched', n, wave, 0.0))
             continue
@@ -163,7 +219,8 @@ def coefficient_diagnostics(p, profiles, conditions):
         else:
             label = 'too large' if abs(got) > abs(want) else 'too small'
         records.append((label, n, wave, abs(got-want)))
-    mismatches = [item for item in records if item[0] not in ('matched', 'missing')]
+    unresolved = [item for item in records if item[0] == 'unresolved']
+    mismatches = [item for item in records if item[0] not in ('matched', 'missing', 'unresolved')]
     missing = [item for item in records if item[0] == 'missing']
     messages = []
     for label, n, wave, error in sorted(mismatches, key=lambda item: item[3], reverse=True)[:3]:
@@ -171,7 +228,11 @@ def coefficient_diagnostics(p, profiles, conditions):
             {'mode': n, 'basis': str(wave), 'direction': label, 'projection_error': error},
             f'The initial projection onto {wave} is {label}. Recompute its coefficient as integral(f*b)/integral(b*b); preserve each mode\'s own decay.'))
     physics_pass = all(conditions[key]['status'] == 'pass' for key in ('equation', 'left_bc', 'right_bc'))
-    if missing and not mismatches and physics_pass:
+    if unresolved:
+        messages.append(diagnostic('FOURIER_DIAGNOSIS_INCONCLUSIVE', 'start_shape',
+            {'unresolved_inspected_modes': [item[1] for item in unresolved]},
+            'Projection grids disagree beyond the diagnostic precision budget. Use initial-condition evidence; a truncation-only cause has not been established.', severity='warning'))
+    if missing and not mismatches and not unresolved and physics_pass:
         messages.append(diagnostic('TRUNCATION_ERROR', 'start_shape',
             {'missing_inspected_modes': [item[1] for item in missing], 'inspected_modes': MAX_MODES,
              'scope': 'projection evidence; not a proof that all retained coefficients are correct'},
@@ -192,6 +253,7 @@ def decay_diagnostics(p, u, conditions):
     terms = sp.Add.make_args(sp.expand_mul(u))
     if len(terms) > 64:
         return []
+    separated = {}
     for term in terms:
         waves = list(term.atoms(sp.sin, sp.cos))
         exponentials = list(term.atoms(sp.exp))
@@ -206,6 +268,13 @@ def decay_diagnostics(p, u, conditions):
         amplitude = small_reduce(term/(wave*exponential))
         if amplitude.free_symbols or amplitude == 0:
             continue
+        key = (wave, exponential, frequency, rate)
+        separated[key] = separated.get(key, sp.S.Zero)+amplitude
+    rates_by_wave = {}
+    for (wave, exponential, frequency, rate), amplitude in separated.items():
+        if small_reduce(amplitude) == 0:
+            continue
+        rates_by_wave.setdefault(wave, set()).add(rate)
         expected = p['k']*frequency**2
         got, want = float(rate), float(expected)
         if not (math.isfinite(got) and math.isfinite(want)):
@@ -217,6 +286,12 @@ def decay_diagnostics(p, u, conditions):
                 f'The displayed {wave} term uses a decay rate inconsistent with k*frequency**2. Reassemble paired spatial and temporal factors; the full PDE residual also fails.'))
         if len(result) == 3:
             break
+    mixed = [str(wave) for wave, rates in rates_by_wave.items() if len(rates) > 1]
+    if mixed:
+        result.append(diagnostic('MIXED_MODE_ERROR', 'equation',
+            {'spatial_factors_with_multiple_rates': mixed[:3],
+             'scope': 'inspected explicit separated factors; equivalent trigonometric factors may remain unrecognized'},
+            'Some inspected spatial factors use multiple temporal rates and the full PDE residual fails. Recheck factor pairing; this observation alone does not prove the unique cause.', severity='warning'))
     return result
 
 
@@ -242,7 +317,7 @@ def basis_diagnostics(p, u, conditions):
     return result
 
 
-def verify_expression(p, u, validation_seed):
+def verify_expression(p, u, validation_seed, *, on_core=None):
     L, k = float(p['L']), p['k']
     digest = hashlib.sha256(f"{p['name']}:{p['seed']}:{validation_seed}".encode()).digest()
     rng = np.random.default_rng(int.from_bytes(digest[:8], 'big'))
@@ -255,28 +330,32 @@ def verify_expression(p, u, validation_seed):
     times = np.geomspace(1e-12*time_scale, .1*time_scale, 12)
     xx, tt = np.meshgrid(spatial, times)
     X, T = np.r_[X, xx.ravel()], np.r_[T, tt.ravel()]
-    values(u, X, T)  # A zero residual alone must not certify undefined temperatures.
     grid = np.linspace(0, L, 1601)
     f = values(p['f'], grid, grid*0)
     scale = float(np.max(np.abs(f))) or 1.0
-    ux = sp.diff(u, x)
-    expressions = {'equation': sp.diff(u, t)-k*sp.diff(u, x, 2),
-                   'left_bc': u if p['left'] == 'dirichlet' else ux*L,
-                   'right_bc': u if p['right'] == 'dirichlet' else ux*L}
+    # Construct derivatives inside each condition's guard. A failed derivative
+    # must not erase evidence for the other boundary or initial condition.
+    expressions = {'equation': lambda: sp.diff(u, t)-k*sp.diff(u, x, 2),
+                   'left_bc': lambda: u if p['left'] == 'dirichlet' else sp.diff(u, x)*p['L'],
+                   'right_bc': lambda: u if p['right'] == 'dirichlet' else sp.diff(u, x)*p['L']}
     conditions = {}
-    for key, expr in expressions.items():
+    for key, make_expression in expressions.items():
         at_x = X if key == 'equation' else np.full_like(T, 0.0 if key == 'left_bc' else L)
         try:
             # Boundary temperature itself must also remain well defined for Neumann.
             values(u, at_x, T)
+            expr = make_expression()
+            # Substitute the exact public endpoint before floating evaluation.
+            if key != 'equation':
+                expr = expr.subs(x, 0 if key == 'left_bc' else p['L'])
             conditions[key] = condition(expr, at_x, T, scale)
         except Exception as exc:
-            conditions[key] = dict(status='inconclusive', error=None, exception=type(exc).__name__)
+            conditions[key] = dict(status='inconclusive', error=None, exception=type(exc).__name__, detail=str(exc)[:160])
     profiles = None
     try:
         conditions['start_shape'], profiles = initial_condition(p, u, rng)
     except Exception as exc:
-        conditions['start_shape'] = dict(status='inconclusive', error=None, exception=type(exc).__name__)
+        conditions['start_shape'] = dict(status='inconclusive', error=None, exception=type(exc).__name__, detail=str(exc)[:160])
     categories = dict(equation='PDE_RESIDUAL_ERROR', left_bc='LEFT_BOUNDARY_ERROR',
                       right_bc='RIGHT_BOUNDARY_ERROR', start_shape='INITIAL_CONDITION_ERROR')
     corrections = dict(equation='Recheck u_t - k*u_xx, using the actual k and L. Pair each spatial frequency with its own k*frequency**2 decay.',
@@ -292,16 +371,6 @@ def verify_expression(p, u, validation_seed):
         diagnostics.append(diagnostic('NUMERICAL_VALIDATION_INCONCLUSIVE' if uncertain else categories[key],
             key, item, 'Evaluation was not reliable enough to decide this condition. Simplify the expression or increase verification resolution in a separately reviewed run.' if uncertain else corrections[key],
             location=item.get('location'), severity='warning' if uncertain else 'error'))
-    # Diagnostics are optional. Their failure cannot turn a completed mathematical
-    # result into a success or invent a cause for an observed condition failure.
-    try:
-        diagnostics.extend(basis_diagnostics(p, u, conditions))
-        diagnostics.extend(decay_diagnostics(p, u, conditions))
-        if profiles:
-            diagnostics.extend(coefficient_diagnostics(p, profiles, conditions))
-    except Exception as exc:
-        diagnostics.append(diagnostic('DIAGNOSTIC_UNAVAILABLE', 'fourier_analysis',
-            {'exception': type(exc).__name__}, 'Use the condition-level evidence; no modal root cause was established.', severity='info'))
     parts = {key: item['status'] == 'pass' for key, item in conditions.items()}
     accepted = all(parts.values())
     status = 'valid' if accepted else ('inconclusive' if any(item['status'] == 'inconclusive' for item in conditions.values()) else 'invalid')
@@ -309,13 +378,36 @@ def verify_expression(p, u, validation_seed):
         diagnostics.append(diagnostic('VALID_SOLUTION', 'all', {'criteria': 'existing tolerances on bounded verification samples'},
                                       'All required sampled checks pass. This is numerical validation, not a general symbolic proof.', severity='info'))
     preserved = ', '.join(key for key, ok in parts.items() if ok)
-    feedback = ('Preserve the passing conditions: '+preserved+'. ' if preserved and not accepted else '')
-    feedback += ' '.join(item['category']+': '+item['correction'] +
+
+    def feedback_text():
+        return ('Preserve the passing conditions: '+preserved+'. ' if preserved and not accepted else '') + ' '.join(item['category']+': '+item['correction'] +
                          (f" Evidence: normalized error={item['evidence']['error']:.4g}, limit={item['evidence']['threshold']:.4g}."
                           if item['evidence'].get('error') is not None and 'threshold' in item['evidence'] else '')
+                         + (f" Location: {item['location']}." if item.get('location') else '')
                          for item in diagnostics[:8])
-    return dict(accepted=accepted, status=status, parts=parts, conditions=conditions,
+
+    result = dict(accepted=accepted, status=status, parts=parts, conditions=conditions,
                 errors={key: conditions[key]['error'] for key in expressions},
                 start_error=conditions['start_shape']['error'], diagnostics=diagnostics,
-                feedback=feedback, validation_seed=validation_seed, points=len(X),
-                shape_points=3201, protocol='enhanced-checker-v1')
+                feedback=feedback_text(), validation_seed=validation_seed, points=len(X),
+                shape_points=3201, protocol='enhanced-checker-v2',
+                validation_complete=True, diagnostics_complete=False)
+    if on_core is not None:
+        on_core(result)
+    # Isolate optional analyses from each other and checkpoint completed physics
+    # before any of them. Parent can retain this evidence on a late timeout.
+    analyses = [('boundary_basis', lambda: basis_diagnostics(p, u, conditions)),
+                ('decay', lambda: decay_diagnostics(p, u, conditions))]
+    if profiles:
+        analyses.append(('fourier_projection', lambda: coefficient_diagnostics(p, profiles, conditions)))
+    complete = True
+    for name, analyze in analyses:
+        try:
+            diagnostics.extend(analyze())
+        except Exception as exc:
+            complete = False
+            diagnostics.append(diagnostic('DIAGNOSTIC_UNAVAILABLE', name,
+                {'exception': type(exc).__name__, 'detail': str(exc)[:160]},
+                'Use condition-level evidence; this optional analysis established no root cause.', severity='info'))
+    result.update(feedback=feedback_text(), diagnostics_complete=complete)
+    return result

@@ -1,5 +1,18 @@
 # Submission readiness assessment
 
+## Latest Checker-only refinement — 2026-10-10
+
+**IMPLEMENTED — NOT TESTED.** See [CHECKER_REFINEMENT.md](../CHECKER_REFINEMENT.md).
+The optional Checker now records precision audits, stable scaled IC norms,
+projection uncertainty and independent diagnostic completion. Original public
+Checker files remain identical to pinned master b94759c. No tests, compilation,
+benchmarks or inference were performed for this change, as explicitly requested.
+Recent single-case real-model results archived under benchmark-results concern
+earlier Agent code using only the original Checker; they do not verify these
+optional modules. Historical tables below remain reference-revision assessments,
+not newly measured results. Overall status: **NOT READY / ENGINEERING REVIEW
+REQUIRED**, with the historical attempt-feedback gap still outstanding.
+
 ## Current implementation update — 2026-10-10
 
 Checker changes from `346ae58` have been consolidated into the maintained

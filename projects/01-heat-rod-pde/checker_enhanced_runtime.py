@@ -68,6 +68,8 @@ def clean_json(value):
 def run_check(mode, problem, answer, *, n_points=24, validation_seed=9173):
     original = None
     validation = None
+    core = None
+    worker_failure = None
     try:
         if not isinstance(answer, str) or len(answer) > 48000:
             raise ValueError('Missing answer text or reply exceeds the checker input budget.')
@@ -82,7 +84,9 @@ def run_check(mode, problem, answer, *, n_points=24, validation_seed=9173):
                       name=str(problem.get('name', 'unnamed'))[:256],
                       allow_symbolic_sum=bool(problem.get('allow_symbolic_sum', False)))
         payload = json.dumps(dict(mode=mode, problem=public, answer=answer,
-                                  n_points=int(n_points), validation_seed=int(validation_seed)), allow_nan=False)
+                                  n_points=int(n_points), validation_seed=int(validation_seed)), allow_nan=False, ensure_ascii=False)
+        if len(payload) > 100000:
+            raise ValueError('Serialized checker input exceeds the worker input budget.')
         env = dict(os.environ, OPENBLAS_NUM_THREADS='1', OMP_NUM_THREADS='1')
         try:
             process = subprocess.run([sys.executable, str(WORKER)], input=payload,
@@ -90,13 +94,13 @@ def run_check(mode, problem, answer, *, n_points=24, validation_seed=9173):
                                      timeout=WALL_SECONDS, env=env, cwd=str(WORKER.parent))
             output = process.stdout
             if process.returncode:
-                validation = failure('Checker worker failed; no correctness conclusion.',
+                worker_failure = failure('Checker worker failed; no correctness conclusion.',
                                      evidence={'returncode': process.returncode})
         except subprocess.TimeoutExpired as exc:
             output = exc.stdout or ''
             if isinstance(output, bytes):
                 output = output.decode('utf-8', errors='replace')
-            validation = failure('Checker exceeded its wall-time budget; simplify the expression and resubmit.',
+            worker_failure = failure('Checker exceeded its wall-time budget; simplify the expression and resubmit.',
                                  evidence={'timeout_seconds': WALL_SECONDS})
         for line in output.splitlines():
             try:
@@ -105,10 +109,23 @@ def run_check(mode, problem, answer, *, n_points=24, validation_seed=9173):
                 continue
             if record.get('kind') == 'original':
                 original = record['result']
-            if record.get('kind') == 'validation' and validation is None:
+            if record.get('kind') == 'validation_core':
+                core = record['result']
+            if record.get('kind') == 'diagnostic_failure':
+                worker_failure = record['result']
+            if record.get('kind') == 'validation':
                 validation = record['result']
+        if validation is None and core is not None and core.get('validation_complete') is True:
+            validation = core
+            validation['diagnostics_complete'] = False
+            validation['diagnostics'].append(diagnostic('DIAGNOSTIC_UNAVAILABLE', 'optional_analysis',
+                {'worker_failure': worker_failure, 'wall_seconds': WALL_SECONDS},
+                'Required condition checks completed. Optional modal diagnostics did not finish; no additional root cause is established.', severity='warning'))
+            validation['feedback'] += ' Optional modal diagnostics did not finish; retain the completed condition-level evidence.'
         if validation is None and mode != 'original':
-            validation = failure('Checker returned no complete validation result.')
+            validation = worker_failure or failure('Checker returned no complete validation result.')
+        if validation is not None and worker_failure is not None:
+            validation['worker_issue'] = worker_failure
     except Exception as exc:
         validation = failure('Checker could not evaluate the supplied input.',
                              evidence={'exception': type(exc).__name__, 'detail': str(exc)[:200]})
