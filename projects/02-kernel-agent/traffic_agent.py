@@ -498,7 +498,7 @@ def run_once(a, level, out_dir, rng, counter, opt_seeds):
                           raw_reply=os.path.relpath(raw_path, out_dir),
                           prompt_tokens=prompt_tokens,
                           completion_tokens=int(usage.get("completion_tokens") or 0),
-                          prompt_section_tokens=sections, retried=False,
+                          prompt_section_tokens=sections, retried=False, retry_attempted=False,
                           elapsed_s=round(time.perf_counter() - t0, 1))
 
             # One nudge retry when the reply is empty or byte-identical to an earlier candidate.
@@ -506,6 +506,7 @@ def run_once(a, level, out_dir, rng, counter, opt_seeds):
             # budget re-tested the same kernel. Changing the prompt is the only lever with a
             # deterministic server.
             if (not src.strip()) or (sha(src) in seen):
+                record["retry_attempted"] = True   # a second generation was spent on this slot
                 nudge = ("\n\nNOTE: your previous reply was the same kernel as an earlier "
                          "attempt in this run. Keep the same goal, but change at least the tile "
                          "allocation sizes or the indexing. Reply with ONE complete python code "
