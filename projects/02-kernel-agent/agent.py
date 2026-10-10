@@ -197,6 +197,8 @@ Verifier-driven repair:
 - Fix the first concrete API/shape/rule failure before optimizing.
 - Preserve fixes from previous failures: do not reintroduce missing dtype, called memory regions,
   1D SBUF/PSUM tiles, nisa.sum, .mean(), Python tile arithmetic, or wrong dma_copy shapes.
+- If the same failure class repeats, stop making surface syntax edits and rebuild the shape plan:
+  source slice, temporary tile, computed tile, and output slice must all agree.
 - If a new attempt lowers reward, return to the best-scoring kernel and make a smaller change.
 
 Common legal API surface:
@@ -316,6 +318,24 @@ Verifier-driven repair strategy:
 - If a candidate regresses to an earlier verifier phase, repair from the strongest archived candidate,
   not the latest broken text.
 - Make one minimal change that directly explains the current failure.
+""",
+    "generalized_error_lessons": """
+Generalized lessons from failed repairs:
+- If a reply is a diff instead of full code, apply it to the current candidate before judging the
+  kernel semantics.
+- If the same failure repeats with different constants, the model is probably changing syntax without
+  rebuilding the reasoning. Explicitly compare source slice shape, temporary tile shape, computed tile
+  shape, and output slice shape.
+- For copy errors, derive destination tile dimensions from the actual source slice for this loop
+  iteration. Do not use hardware limits as target sizes.
+- For out-of-bounds errors, re-derive loop bounds from logical tensor shapes and clamp final partial
+  chunks to the remaining valid extent.
+- For API-signature errors, fix only the unsupported call, keyword, or namespace first; do not rewrite
+  the algorithm at the same time.
+- For reduction errors, distinguish logical reduction axes from physical tile/view layout, then make
+  the reduction axes trailing and contiguous.
+- A useful repair should cause a meaningfully different verifier result. Repeating the same class with
+  only changed constants usually means the shape plan is still wrong.
 """,
     "patch_format": """
 Patch response format:
@@ -483,7 +503,7 @@ DOC_PRIORITIES = {
     "generic": ["generic_mental_model", "hardware_constraints", "api_signatures", "memory_and_dtype",
                 "copy_and_shape", "reductions_and_views", "verifier_interpretation",
                 "common_failures", "namespace_reference", "debugging_playbook", "shape_reasoning",
-                "anti_patterns", "planning_checklist", "repair_strategy"],
+                "generalized_error_lessons", "anti_patterns", "planning_checklist", "repair_strategy"],
 }
 
 
@@ -1275,7 +1295,7 @@ def initial_doc_names(style):
     names = ["generic_mental_model", "hardware_constraints", "api_signatures", "memory_and_dtype",
              "copy_and_shape", "reductions_and_views", "verifier_interpretation",
              "common_failures", "namespace_reference", "debugging_playbook", "shape_reasoning",
-             "anti_patterns", "planning_checklist", "repair_strategy"]
+             "generalized_error_lessons", "anti_patterns", "planning_checklist", "repair_strategy"]
     if style == "full-docs":
         names += ["matmul_rules", "patch_format"]
     return names
