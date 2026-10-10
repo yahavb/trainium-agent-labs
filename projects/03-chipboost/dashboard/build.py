@@ -64,15 +64,20 @@ import schema  # noqa: E402
 #   -v3-            P3's seat running P1's failure instructions alone (agent.py --no-p3-rules --tag v3)
 # Optional groups are drawn only when they have runs.
 DISPLAY_ARMS = ("referee_continuation", "referee", "referee_v2", "referee_v2_p1fix", "referee_v2_p3", "referee_v3",
-                "model_alone", "model_alone_v2", "random_search")
+                "referee_v4", "referee_v5", "referee_later", "model_alone", "model_alone_v2", "random_search")
 ARMS_SHOWN = DISPLAY_ARMS
-OPTIONAL_ARMS = {"referee_continuation", "referee_v2", "referee_v2_p1fix", "referee_v2_p3", "referee_v3", "model_alone_v2"}
+OPTIONAL_ARMS = {"referee_continuation", "referee_v2", "referee_v2_p1fix", "referee_v2_p3", "referee_v3", "referee_v4",
+                 "referee_v5", "referee_later", "model_alone_v2"}
 ARM_LABEL = {"referee_continuation": "Qwen winner continuation", "referee": "Referee v1", "referee_v2": "Referee v2 (P1)",
-             "referee_v2_p1fix": "Qwen + P1 fixes", "referee_v2_p3": "P3 named-error rules (v2)", "referee_v3": "P1 instructions only (v3)",
-             "model_alone": "Model alone v1", "model_alone_v2": "Model alone v2", "random_search": "Random search"}
+             "referee_v2_p1fix": "Qwen + P1 fixes", "referee_v2_p3": "P3 named-error rules (v2)",
+             "referee_v3": "P1 instructions only (v3)", "referee_v4": "P3 rules A-C + P1 (v4)", "referee_v5": "Referee v5",
+             "referee_later": "Referee v6+", "model_alone": "Model alone v1", "model_alone_v2": "Model alone v2",
+             "random_search": "Random search"}
 ARM_COLOR = {"referee_continuation": "#ad4d7b", "referee": "var(--s1)", "referee_v2": "var(--s4)",
-             "referee_v2_p1fix": "#257e73", "referee_v2_p3": "#8365cc", "referee_v3": "#6b7d2a", "model_alone": "var(--s2)",
+             "referee_v2_p1fix": "#257e73", "referee_v2_p3": "#8365cc", "referee_v3": "#6b7d2a", "referee_v4": "#3d6f8f",
+             "referee_v5": "#7a5c3a", "referee_later": "#6f6e69", "model_alone": "var(--s2)",
              "model_alone_v2": "#a87519", "random_search": "var(--s3)"}
+VERSION_TAG = re.compile(r"-v(\d+)-")   # agent.py --tag vN puts "-vN-" in the run id
 
 
 def display_arm(record):
@@ -81,8 +86,10 @@ def display_arm(record):
         return "referee_continuation"
     if arm == "referee" and "-v2-p1fix-" in run_id:
         return "referee_v2_p1fix"
-    if arm == "referee" and "-v3-" in run_id:
-        return "referee_v3"
+    m = VERSION_TAG.search(run_id)
+    if arm == "referee" and m and int(m.group(1)) >= 3:
+        # Every later treatment is its own series: an untagged-for version must never fall into v1.
+        return f"referee_v{m.group(1)}" if int(m.group(1)) <= 5 else "referee_later"
     if arm == "referee" and "-v2-" in run_id and record.get("seat") == 101:
         return "referee_v2_p3"   # P3's agent-side rules: a different treatment from P1's v2 on seat 100
     return arm + "_v2" if arm in ("referee", "model_alone") and "-v2-" in run_id else arm
@@ -581,7 +588,7 @@ def step_points(xs, ys):
     return pts
 
 
-MODEL_ARMS = ("referee_continuation", "referee", "referee_v2", "referee_v2_p1fix", "referee_v2_p3", "referee_v3", "model_alone", "model_alone_v2")   # both start from the start kernel; random search starts from the expert
+MODEL_ARMS = ("referee_continuation", "referee", "referee_v2", "referee_v2_p1fix", "referee_v2_p3", "referee_v3", "referee_v4", "referee_v5", "referee_later", "model_alone", "model_alone_v2")   # both start from the start kernel; random search starts from the expert
 
 
 def panel_progress(summary, results, tune):
