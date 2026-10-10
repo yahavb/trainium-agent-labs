@@ -51,3 +51,6 @@ search_runs/
 
 # Local agent checkouts are not source dependencies.
 /.claude/worktrees/
+
+# Team AI-assistant instructions: local only
+/CLAUDE.md

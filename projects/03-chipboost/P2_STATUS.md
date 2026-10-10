@@ -189,10 +189,10 @@ settings (`tools/bo_replay.py`, 500 seeds each, the same 24-evaluation budget, a
 
 - **Spread, not one run:** 3 repeats per arm, and min, median and max reported.
 - **One referee for every arm.** All of arm c ran on P1's 76b2227, merged before the runs. An earlier seed-0
-  run on an older referee is archived in `logs/seat-102/archive/` and is not counted in arm c. Its best,
+  run on an older referee is kept in git history (commit 234d059), not in this folder, and is not counted in arm c. Its best,
   `m2 n6 k16`, became the LNC=2 kernel's caps.
 - **Every evaluation is published** in `logs/seat-102/` (commit 234d059): 134 records with code, verdict and
-  timings, plus the archive. `python search.py --summarize "logs/seat-102/*.jsonl"` reproduces section 2 from
+  timings. `python search.py --summarize "logs/seat-102/*.jsonl"` reproduces section 2 from
   them, including each run's gain over its own attempt 0.
 - **The busy-core fix** (Nihal's `fix/p2-search-cores`, commit e369e5f) is merged into this branch. Its remote
   branch was deleted after the merge.
@@ -210,7 +210,7 @@ settings (`tools/bo_replay.py`, 500 seeds each, the same 24-evaluation budget, a
   - The referee flags its own changed files as tampering, and reports `rules`.
   - **The two:** seed 1 attempt 9, and sweep shard 1 attempt 12.
   - **What we did:** re-judged them with the same code and the same referee (`tools/recheck_spoiled.py`).
-    The fresh records replace them; the originals are in `logs/seat-102/archive/`.
+    The fresh records replace them; the originals are in git history (commit 234d059).
   - **The lesson:** never pull into the referee's folder while it runs.
 - **Labels: whose result is it?**
   - *Expert-derived:* AWS designed it. This covers the expert as shipped, AWS as published, and anything built
