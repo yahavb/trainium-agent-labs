@@ -79,18 +79,19 @@ EOF
     echo "seat $(hostname)   $(date -u +%Y-%m-%dT%H:%M:%SZ)   code $(git -C "$ROOT" log -1 --format='%h %s' | cut -c1-70)"
     echo "busy: $(busy && echo yes || echo no)   started on this seat: $(ls "$DONE" 2>/dev/null | tr '\n' ' ')"
     echo
-    bash after_directed.sh status 2>&1
-    for d in results-*/; do
+    for d in results*/; do
       [ -d "$d" ] || continue
-      case " results-directed2/ results-repeat1/ results-repeat2/ results-baselines/ " in *" $d "*) continue ;; esac
       echo "==================== ${d%/} ===================="
       for log in "$d"*.log; do
+        [ -f "$log" ] || continue
         name=$(basename "$log" .log); case "$name" in ablation|selftest) continue ;; esac
         echo "--- feedback = $name ---"
-        grep -hE "^=========== level|SOLVED on round|STOPPING|not solved in|^  level [0-9]|^  solved " "$log" | cut -c1-110 | tail -14
+        grep -hE "^=========== level|^round |SOLVED on round|STOPPING|not solved in|^  level [0-9]|^  solved " "$log" | cut -c1-110 | tail -30
       done
-      grep -h "^#####" "$d/ablation.log" 2>/dev/null | tail -3; echo
+      grep -h "^#####" "$d/ablation.log" 2>/dev/null | tail -4; echo
     done
+    echo "==================== processes ===================="
+    pgrep -af "agent[.]py|go[.]sh _run" | cut -c1-150
   } > "$TREE/STATUS.txt" 2>&1
   git -C "$TREE" add -A >/dev/null 2>&1
   if [ -n "$(git -C "$TREE" status --porcelain 2>/dev/null)" ]; then

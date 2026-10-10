@@ -1,0 +1,4 @@
+OUT=results-c-all
+MODES="directed3 enriched"
+REPEAT=1
+AGENT_ARGS="--all --rounds 12 --samples 4 --context 8192"
