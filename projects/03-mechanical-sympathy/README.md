@@ -242,7 +242,7 @@ for the workload and plot reproduction command.
 ### Tiling follow-up and throughput
 
 Also tiling the two 90×180 blocks was slower: **48.75 s** against 42.58 s for
-full-resolution tiling only. Their dilation-2 halos add 53% more rows per band.
+full-resolution tiling only. Their dilation-2 convolutions add halo work to every band.
 Keep tiling to the full-resolution blocks.
 
 ![Samudra forward progress, forward seconds](results/easy-wins-2026-10-10/progress.png)

@@ -16,14 +16,16 @@ LNC2, BF16 matmult autocast, BatchNorm folding. Timing only; no forecast accurac
 | 4 | 30-row tiling + also the 90×180 blocks (`layers.2`, `layers.14`) | 48.752 s | 163.0 ms | **Slower** (+14.5%) |
 
 Experiment 4 used `--tile-rows 30 --tile-min-pixels 16200`. The 90×180 blocks use
-dilation 2, so each 30-row band carries an 8-row halo on each side, which is 53% more
-rows to compute. The extra work cost more than any spill reduction. Keep tiling to
+dilation 2. The two convolutions require four halo rows per side (eight total),
+so a 30-row band starts with 38 rows. This adds computation; the measured run was
+slower overall, without a per-layer attribution of that slowdown. Keep tiling to
 the full-resolution blocks only.
 
 ## Simulated years per minute
 
 The same trials expressed as throughput. Each run simulates 598 five-day steps,
-8.19 years, so years per minute = 8.19 / (forward seconds / 60). Higher is better.
+598 × 5 / 365.25 = 8.186 years, so years per minute = simulated years /
+(forward seconds / 60). Higher is better.
 
 ![Simulated years per forward minute](years_per_minute.png)
 
