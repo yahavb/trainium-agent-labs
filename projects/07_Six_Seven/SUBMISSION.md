@@ -70,10 +70,17 @@ feedback sent: `results/*_attempts.jsonl`. D was added after A–C, for the two 
   independence fix.
 - "Solved" means passing our tests, not a proof of correctness; timing, area and power are not checked.
 
+## Next steps — what we would try with more time
+
+1. **Give the model examples to read**: a correct counter-based FSM and FIFO in the prompt, so it copies a
+   known-good pattern instead of re-deriving one.
+2. **Report every fault at once**: all wrong phase lengths and every FIFO flag, not only the first wrong cycle.
+3. **A bigger model, or thinking on**, with the same checker, to see where the diagnosis-to-edit gap closes.
+
 ## Reproduce
 
 ```bash
-python veriloop/selftest.py                    # proves all six levels
+python veriloop/selftest.py                    # proves all six levels (1 minute, no Trainium; needs iverilog)
 python veriloop/run_experiment.py --tag me --levels veriloop/levels/04_traffic_fsm --feedback A B C D --runs 1
 python veriloop/plot.py                        # table + graph from results/
 ```

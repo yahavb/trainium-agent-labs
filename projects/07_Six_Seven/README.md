@@ -2,6 +2,13 @@
 
 **Team Six Seven** · Hack the Chip, NYU × Annapurna Labs, 2026-10-10
 
+> **Finding in one line:** better feedback (even naming the exact cause) did not get an 8B model to fix the
+> hard designs; it can't turn a correct diagnosis into a correct edit, and it is confidently wrong. The
+> checker that proves this is tested: 6/6 levels, 27/27 broken designs caught.
+>
+> **Check it yourself in 1 minute, no Trainium needed** (only [Icarus Verilog](https://steveicarus.github.io/iverilog/)):
+> `python veriloop/selftest.py`
+
 Qwen3-8B, running on an AWS Trainium chip, writes digital hardware in Verilog. A simulator checks every
 design against a reference on every test and sends feedback back; the model tries again. We measured
 whether the **quality of that feedback** — A: only *pass/fail*, B: *how many tests fail*, C: *where it first
