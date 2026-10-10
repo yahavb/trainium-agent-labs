@@ -1,0 +1,27 @@
+referee: speedcheck (single pinned RefereeWorker)
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+start:   ../../../p1-signoff-434e5f9/projects/02-kernel-agent/reference_level4.py   arm: referee   budget: 8   give-up: never   log: /tmp/p1-comparison-20261010-2/referee-r0.jsonl
+
+=========== run matmul-referee-191549-0 ===========
+start kernel ../../../p1-signoff-434e5f9/projects/02-kernel-agent/reference_level4.py: verdict no_gain, 960.1 us (chip)
+round 0: best this round no_gain, speedup 1.000 (chip)  [1/8 evaluations, 80.9s]
+  No gain on the chip (1.000x) and the simulator shows 2.00x the byte floor: the same tiles are reloaded every pass -- move the operand loads out of the innermost loop so each tile is loaded once and reused across it.
+round 1: best this round wrong  [2/8 evaluations, 62.0s]
+  The kernel raised in the CPU simulator; fix the error named in the referee message.
+round 2: best this round wrong  [3/8 evaluations, 62.0s]
+  same instruction 2x -- adding a ledger of 2 earlier ones
+round 3: best this round wrong  [4/8 evaluations, 62.0s]
+  same instruction 3x -- adding a ledger of 2 earlier ones
+round 4: best this round wrong  [5/8 evaluations, 62.0s]
+  same instruction 4x -- adding a ledger of 2 earlier ones
+round 5: best this round wrong  [6/8 evaluations, 62.1s]
+  same instruction 5x -- adding a ledger of 2 earlier ones
+round 6: best this round wrong  [7/8 evaluations, 62.0s]
+  same instruction 6x -- adding a ledger of 2 earlier ones
+round 7: best this round wrong  [8/8 evaluations, 62.0s]
+  same instruction 7x -- adding a ledger of 2 earlier ones
+
+=========== summary: arm referee, budget 8 ===========
+  matmul-referee-191549-0: 8 evaluations; no_gain=1, wrong=7; 1 correct; no improvement over the start kernel
+
+attempts logged to /tmp/p1-comparison-20261010-2/referee-r0.jsonl

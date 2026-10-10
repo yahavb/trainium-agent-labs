@@ -1,0 +1,27 @@
+referee: speedcheck (single pinned RefereeWorker)
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+start:   ../../../p1-signoff-434e5f9/projects/02-kernel-agent/reference_level4.py   arm: referee   budget: 8   give-up: never   log: /tmp/p1-comparison-20261010-2/referee-r2.jsonl
+
+=========== run matmul-referee-200439-0 ===========
+start kernel ../../../p1-signoff-434e5f9/projects/02-kernel-agent/reference_level4.py: verdict no_gain, 960.1 us (chip)
+round 0: best this round wrong  [1/8 evaluations, 72.6s]
+  at sim (256, 512, 1024): NUMERICAL MISMATCH: worst error 11.9 of the output's RMS (16.02), tolerance 0.05.
+round 1: best this round wrong  [2/8 evaluations, 68.0s]
+  at sim (256, 512, 1024): NUMERICAL MISMATCH: worst error 11.7 of the output's RMS (15.95), tolerance 0.05.
+round 2: best this round wrong  [3/8 evaluations, 69.4s]
+  at sim (256, 512, 1024): NUMERICAL MISMATCH: worst error 11.6 of the output's RMS (15.99), tolerance 0.05.
+round 3: best this round wrong  [4/8 evaluations, 69.9s]
+  at sim (256, 512, 1024): NUMERICAL MISMATCH: worst error 11.8 of the output's RMS (15.97), tolerance 0.05.
+round 4: best this round wrong  [5/8 evaluations, 67.7s]
+  at sim (256, 512, 1024): NUMERICAL MISMATCH: worst error 11.3 of the output's RMS (15.98), tolerance 0.05.
+round 5: best this round wrong  [6/8 evaluations, 67.9s]
+  at sim (256, 512, 1024): NUMERICAL MISMATCH: worst error 13 of the output's RMS (16.01), tolerance 0.05.
+round 6: best this round wrong  [7/8 evaluations, 160.2s]
+  at sim (256, 512, 1024): NUMERICAL MISMATCH: worst error 13.1 of the output's RMS (15.96), tolerance 0.05.
+round 7: best this round wrong  [8/8 evaluations, 160.1s]
+  at sim (256, 512, 1024): NUMERICAL MISMATCH: worst error 12.6 of the output's RMS (15.92), tolerance 0.05.
+
+=========== summary: arm referee, budget 8 ===========
+  matmul-referee-200439-0: 8 evaluations; wrong=8; 0 correct; no improvement over the start kernel
+
+attempts logged to /tmp/p1-comparison-20261010-2/referee-r2.jsonl

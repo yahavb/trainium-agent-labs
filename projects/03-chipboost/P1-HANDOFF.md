@@ -19,8 +19,13 @@ eight-attempt recovery pilot (all `wrong`), canceled experiments with no results
 Qwen-only v2 launch on core 2 (budget 8, integrated P3 `--tag v2`, PID `884773`,
 `/tmp/p1-qwen-v2-20261010-1`). Earlier non-Qwen side trials remain in an archive appendix and are
 excluded from deliverable comparison results.
-The original 72-evaluation comparison is still in progress at this snapshot; no final comparison
-or complete team integration is claimed by this handoff update.
+The original 72-evaluation comparison is complete and its strict report passed; see
+`experiments/qwen-v1-comparison/report.md`. The two original Qwen arms each had zero `faster`
+outcomes: referee feedback had 22 `wrong` + 2 `no_gain`, model alone 2 `wrong` + 22 `no_gain`.
+The separate expert-template control had 22 `faster` + 2 `slower`, with median run-best 3.125919x.
+All arms have 24 evaluations across three runs, and the control has a different candidate prior.
+Consolidated Qwen v2 remains in progress with a provisional approximately 1.517x `faster` observation
+at attempt 3; final results and replay are pending. No merge/publication claim is made here.
 
 ## Original throughput acceptance
 

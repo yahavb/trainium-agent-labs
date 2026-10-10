@@ -13,12 +13,16 @@
 | Hardened referee regression | Historical results saved in `results_p1.json` (see below) |
 | Throughput implementation | Done in `76b2227`: worker, parallel compilation, threaded inputs |
 | Current signoff | See `P1-HANDOFF.md` for scope, evidence, and remaining limitations |
-| Original 72-evaluation comparison | Still in progress at this snapshot; final strict report pending |
+| Original 72-evaluation comparison | Complete, strict report passed: neither Qwen arm found a speedup; template-control median best 3.125919x |
 | Recovery pilot v3 | Complete: 8 attempts, all `wrong`; no verified improvement |
 | Canceled treatments | Reasoning run: zero graded attempts; queued DMA-only v2 superseded, no comparison results |
-| Consolidated Qwen-only v2 | Launched on core 2, budget 8, integrated P3 `--tag v2`; results pending |
+| Consolidated Qwen-only v2 | Running on core 2, budget 8; attempt 3 reported approximately 1.517x `faster`, provisional pending final results/replay |
 
 See [RESULTS-SUMMARY.md](RESULTS-SUMMARY.md) for exact measurements, provenance, and cohort limitations.
+Original v1: referee 22 `wrong` + 2 `no_gain`; model alone 2 `wrong` + 22 `no_gain`;
+template control 22 `faster` + 2 `slower`. Each arm has 24 attempts across three runs.
+Full evidence and the strict report are in `experiments/qwen-v1-comparison/`; one infrastructure
+interruption is excluded from these counts. The control uses an expert-template prior, not Qwen generation.
 The deliverable is Qwen-only (plus random-search control); earlier non-Qwen side trials are retained
 only in the archive appendix and excluded from deliverable aggregates. Original comparison results remain
 pinned to earlier feedback and must not be presented as validation of subsequent feedback fixes.
