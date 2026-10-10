@@ -488,7 +488,11 @@ repository from a logged run.
   full build: every solve of liuyq's seat-115 runs and of the 4090 level-1 test was also built in full
   (neuronx-cc + birsim), which rejects forms the lowering passes (§5). All five level-1 solves of v8.2 were
   built in full the same way (`check/compile_solves7.py`, seat 117) on two shapes, (4,8,8)/2 and (8,12,12)/3:
-  5 of 5 match in birsim, worst error 1.9e-7 of the output's RMS. [[TBD: full builds of the other final solves, if run]]
+  5 of 5 match in birsim, worst error 1.9e-7 of the output's RMS. So were all of v8.2's and v8.3's solves on
+  levels 2–4, and every one matches: level 2 on 4 shapes (worst error 0), level 3 on its one shape (1.2e-6),
+  level 4 on two shapes (2.9e-6). None was rejected. The compiler's own estimate also shows what correctness
+  hides: one family of level-2 solves writes HBM one element at a time and is predicted at 44–169 µs, against
+  about 2.6 µs for the others.
 - *On a NeuronCore*: liuyq ran 63 kernel-shapes on seat-115's chip in three runs, the hand-in candidates
   for levels 1-4, 9 and 11 among them, with the organizers' references as controls; the full build
   predicted every result (§5, [analysis/seat115_chip_and_l1rule.md](analysis/seat115_chip_and_l1rule.md)).
