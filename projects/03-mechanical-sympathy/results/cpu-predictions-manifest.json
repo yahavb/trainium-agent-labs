@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "status": "complete",
+  "created_date": "2026-10-10",
+  "store": "rollouts/cpu_8_year/predictions.zarr",
+  "store_committed_to_git": false,
+  "file_count": 399,
+  "total_bytes": 11975169211,
+  "start": "2014-10-10",
+  "end": "2022-12-24",
+  "model_steps": 299,
+  "forecast_time_records": 598,
+  "samudra_commit": "6b88f2c0204828ef77d41b3ab2733679615f53e8",
+  "checkpoint_sha256": "ff6160cb7e2a2b5b8ee2c5731c16bd114a1bb5a267245cc5ed766fb00c7f797a",
+  "zarr_root_metadata": {
+    ".zattrs": "1b4dc55856d318e07c0f0716719430dc1c467de7188abef235d0e853cb90fd9e",
+    ".zgroup": "2383746e67b4bcc2762b3f100f06c3fa2d5f149ab5a8e5da5d33521464a01959",
+    ".zmetadata": "f792366ae9ca54a0666d9ebea7fd13bf1468dd25fdbef2eaa01de825306274c9"
+  },
+  "note": "The consolidated Zarr metadata is hashed. Chunk payloads remain outside Git and are not individually hashed."
+}
