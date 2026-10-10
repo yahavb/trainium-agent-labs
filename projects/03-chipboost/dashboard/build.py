@@ -91,7 +91,10 @@ def read_text(path):
 
 
 def load_attempts(paths):
-    records, notes = [], []
+    """Every line of every file, once. A seat may keep the same attempts in more than one file (seat-101
+    holds a merged attempts.jsonl beside by_arm/ copies), so an attempt is identified by its seat, run
+    and attempt number, and only its first copy counts."""
+    records, notes, seen, dupes = [], [], set(), 0
     for path in paths:
         for n, line in enumerate(read_text(path).splitlines(), 1):
             if not line.strip():
@@ -120,8 +123,16 @@ def load_attempts(paths):
                 notes.append(f"{where}: no kernel or verdict; skipped")
                 continue
             rec["run_id"] = rec["run_id"] or f"{rec['kernel']}-{rec['arm']}"
+            key = (rec["seat"], rec["run_id"], rec["attempt_no"])
+            if rec["attempt_no"] is not None and key in seen:
+                dupes += 1
+                continue
+            seen.add(key)
             rec["_file"] = str(path)
             records.append(rec)
+    if dupes:
+        notes.append(f"{dupes} line{'s' if dupes != 1 else ''} repeated an attempt already read from another "
+                     f"file (same seat, run and attempt number); counted once")
     return records, notes
 
 
