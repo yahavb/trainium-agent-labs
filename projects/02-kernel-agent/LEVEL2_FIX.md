@@ -43,3 +43,22 @@ PSUM tile. Feedback now identifies that intermediate copy and supplies matching
 2-D SBUF column views and the flattened transpose offsets. Run 3 solved all
 four shapes at round 0 without this patch; it is baseline variance, not evidence
 that the branch improved the model. Live branch comparison remains pending.
+
+## Baseline run 5
+
+The repair shrinks the SBUF to (F1, F2), crops x to x[:F1, :F2], then
+executes tile[i,j] = tile[j,i]. With F1=3 and F2=4, source row index 3
+is out of bounds. This also confuses the partition axis with the free axes
+and overwrites source values. The scalar-index error spelling previously
+missed the range-only error matcher.
+
+Level-2-specific DMA feedback now preserves (rows, F1*F2) and complete
+partition rows. Scalar-index feedback supplies separate input/output tiles
+and correct flattened offsets, avoiding the unsafe in-place transpose.
+Other levels retain their existing feedback. Live model evaluation is pending.
+
+Validation: replayed the saved run-5 candidate with an isolated temporary
+harness path and confirmed the scalar-index failure reaches the new guidance.
+The reference passes all four shapes. Other-level prompts and representative
+feedback, including the scalar-index error, remain unchanged. No model
+requests were made and no running experiment files were modified.

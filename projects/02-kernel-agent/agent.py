@@ -287,6 +287,14 @@ def enrich(error_text, level=None):
                   r"got src=(\d+), dst=(\d+)", error_text)
     if m:
         src, dst = int(m.group(1)), int(m.group(2))
+        if level == 2:
+            return (error_text + " Input x has shape (P, F1*F2), not (F1, F2). "
+                    "Load x[start:start+rows, :] into a (rows, F1*F2) SBUF tile, "
+                    "where rows=min(128, P-start). A single row slice must retain "
+                    "shape (1, F1*F2). Do not shrink the destination to (F1, F2) "
+                    "while copying all P rows, or crop x to x[:F1, :F2]: that loses "
+                    "partitions and free-axis values. Transpose within each row "
+                    "into a separate same-shaped SBUF, then DMA matching rows out.")
         return (error_text + f" The tile you allocated holds {dst} elements but you copied {src} "
                 f"into it. nisa.dma_copy does not slice or broadcast: allocate the destination with "
                 f"EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a "
@@ -322,6 +330,20 @@ def enrich(error_text, level=None):
                 f"where a slice belongs -- index the destination to match, e.g. "
                 f"out[i*128:(i+1)*128, :] = tile. If it is smaller, you are looping over the wrong "
                 f"dimension.")
+    if level == 2:
+        scalar_bound = re.search(
+            r"Out-of-bound access for tensor .*? on dimension (\d+): "
+            r"index (\d+) exceed dimension size of (\d+)", error_text)
+        if scalar_bound:
+            dim, index, size = scalar_bound.groups()
+            return (error_text + f" Index {index} is outside dimension {dim}, whose "
+                    f"valid indices are 0 through {int(size)-1}. Swapping indices "
+                    "in tile[i,j] = tile[j,i] does not transpose a rectangular "
+                    "tile safely and also overwrites source values. Keep P as "
+                    "the partition axis and use separate (rows, F1*F2) input "
+                    "and output SBUF tiles. For i in range F1 and j in range F2, "
+                    "tensor_copy input[:, nl.ds(i*F2+j, 1)] into "
+                    "output[:, nl.ds(j*F1+i, 1)]. Store every output row via DMA.")
     m = re.search(r"Out-of-bound access for tensor .*? on dimension (\d+): "
                   r"index range \[(\d+), (\d+)\] exceed dimension size of (\d+)",
                   error_text)
