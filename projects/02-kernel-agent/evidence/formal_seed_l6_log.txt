@@ -1,0 +1,44 @@
+start kernel: seed_level6.py -> runs/traffic/formal_l6/start_kernel.py
+menu: guidance_menu.py (15 options)
+
+round 0: worst=2.0 progress=0.9222 valid=True accepted=False
+- K=128 M=128 N=512: 589824 bytes vs floor 589824 = 1.00x
+- K=256 M=256 N=1024: 3670016 bytes vs floor 2359296 = 1.56x  [not accepted: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.56x the byte floor, and level 6 requires 1.25x or better. Cor]
+- K=512 M=128 N=512: 1572864 bytes vs floor 1572864 = 1.00x
+- K=256 M=512 N=1024: 7340032 bytes vs floor 3670016 = 2.00x  [not accepted: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 2.00x the byte floor, and level 6 requires 1.25x or better. Cor]
+classifier: chose stack_moving_operand_symmetrically (expected stack_stationary_operand, match=False, confidence=5) -- The kernel is correct but moves more than the byte floor due to the rhs tile being re-read from HBM
+
+round 1: worst=None progress=0.2 valid=False accepted=False
+- K=128 M=128 N=512: None bytes vs floor None = ?  [not accepted: raised NameError: name 'k_tiles' is not defined]
+- K=256 M=256 N=1024: None bytes vs floor None = ?  [not accepted: raised NameError: name 'k_tiles' is not defined]
+- K=512 M=128 N=512: None bytes vs floor None = ?  [not accepted: raised NameError: name 'k_tiles' is not defined]
+- K=256 M=512 N=1024: None bytes vs floor None = ?  [not accepted: raised NameError: name 'k_tiles' is not defined]
+classifier: chose stack_moving_operand_symmetrically (expected continue_from_best, match=False, confidence=5) -- The kernel is correct on every shape but moves more than the byte floor, indicating the rhs tile is re-read from HBM unnecessarily.
+
+round 2: worst=1.0 progress=0.7 valid=False accepted=False
+- K=128 M=128 N=512: 589824 bytes vs floor 589824 = 1.00x
+- K=256 M=256 N=1024: None bytes vs floor None = ?  [not accepted: raised ValueError: cannot reshape array of size 131072 into shape (128,512)]
+- K=512 M=128 N=512: 1572864 bytes vs floor 1572864 = 1.00x
+- K=256 M=512 N=1024: None bytes vs floor None = ?  [not accepted: raised ValueError: cannot reshape array of size 131072 into shape (128,512)]
+classifier: chose stack_moving_operand_symmetrically (expected continue_from_best, match=False, confidence=5) -- The kernel is correct on every shape but moves more than the byte floor, indicating the rhs tile is re-read from HBM for every m block.
+
+round 3: worst=1.0 progress=0.7 valid=False accepted=False
+- K=128 M=128 N=512: 589824 bytes vs floor 589824 = 1.00x
+- K=256 M=256 N=1024: None bytes vs floor None = ?  [not accepted: raised AssertionError: Matmul stationary free dimension 256 exceeds gemm_stationary_fmax=128]
+- K=512 M=128 N=512: 1572864 bytes vs floor 1572864 = 1.00x
+- K=256 M=512 N=1024: None bytes vs floor None = ?  [not accepted: raised AssertionError: Matmul stationary free dimension 512 exceeds gemm_stationary_fmax=128]
+classifier: chose stack_stationary_operand (expected keep_k_on_partition_axis, match=False, confidence=5) -- The kernel fails with an assertion about the stationary operand's dimension exceeding the maximum allowed, indicating a need to stack the stationary operand properly.
+
+round 4: worst=1.0 progress=0.7 valid=False accepted=False
+- K=128 M=128 N=512: 589824 bytes vs floor 589824 = 1.00x
+- K=256 M=256 N=1024: None bytes vs floor None = ?  [not accepted: raised AssertionError: Matmul stationary free dimension 256 exceeds gemm_stationary_fmax=128]
+- K=512 M=128 N=512: 1572864 bytes vs floor 1572864 = 1.00x
+- K=256 M=512 N=1024: None bytes vs floor None = ?  [not accepted: raised AssertionError: Matmul stationary free dimension 512 exceeds gemm_stationary_fmax=128]
+classifier: chose stack_moving_operand_symmetrically (expected keep_k_on_partition_axis, match=False, confidence=5) -- The kernel is correct on every shape but moves more than the byte floor, indicating the rhs tile is re-read from HBM for every m block.
+
+round 5: worst=1.0 progress=0.7 valid=False accepted=False
+- K=128 M=128 N=512: 589824 bytes vs floor 589824 = 1.00x
+- K=256 M=256 N=1024: None bytes vs floor None = ?  [not accepted: raised AssertionError: Matmul stationary free dimension 256 exceeds gemm_stationary_fmax=128]
+- K=512 M=128 N=512: 1572864 bytes vs floor 1572864 = 1.00x
+- K=256 M=512 N=1024: None bytes vs floor None = ?  [not accepted: raised AssertionError: Matmul stationary free dimension 512 exceeds gemm_stationary_fmax=128]
+classifier: chose keep_k_on_partition_axis (expected keep_k_on_partition_axis, match=True, confidence=5) -- The kernel fails due to K dimension exceeding gemm_stationary_fmax=128, indicating K is on the wrong axis in operand slices.
