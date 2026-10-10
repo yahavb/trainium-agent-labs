@@ -284,6 +284,8 @@ def grade(source, level):
         m = (nkibench.check_inputs_untouched(before, args)
              or nkibench.describe_mismatch(got, want)
              or nkibench.check_traffic_bar(level, counted, args, want))
+        if m and at_least("directed3"):
+            m = directed_mismatch(m, got)
         # A simulator warning about a hardware-correctness hazard counts as a failure even when the
         # numbers happen to match on CPU: the kernel would be wrong on the device.
         hazards = [w for w in counted.get("warnings", [])
@@ -446,6 +448,72 @@ def directed(error_text):
                     "a tile that receives the result of nisa.nc_matmul needs shape (M, N), where "
                     "stationary is (K, M) and moving is (K, N); a tile that receives a copy needs "
                     "exactly the shape of what is copied into it.")
+        # FIVE MORE WALLS, all from one log: the five-repeat `located` run on a seat (session
+        # 20261010-163428, 340 attempts). Each is quoted as the model met it.
+        #
+        # 1. Levels 2 and 3, a two-step cycle that ran 7 rounds on each:
+        #      tile = nl.ndarray((128, 128)) for a (32, 12) input -> "holds 16384, you copied 384"
+        #      so it copied x[0:128, 0:128]   -> "index range [0, 127] exceed dimension size of 12"
+        #      so it went back to the first kernel.
+        #    Each message is true and each sends the model to the other. The second one has to say
+        #    which side must give way: the tile shrinks to the data, the slice never grows.
+        m = re.search(r"Out-of-bound access for tensor .*? on dimension (\d+): "
+                      r"index range \[(\d+), (\d+)\] exceed dimension size of (\d+)", error_text)
+        if m:
+            dim, hi, size = m.group(1), int(m.group(3)), int(m.group(4))
+            return (error_text + f" Dimension {dim} of that tensor has only {size} entries, so "
+                    f"the widest slice it allows is 0:{size}, and you asked for 0:{hi + 1}. The "
+                    f"slice cannot grow to fit a tile. The tile has to shrink to fit the data: "
+                    f"take every bound from the tensor's own .shape, never a fixed number, and "
+                    f"allocate the tile that receives it with exactly that same shape. A tile "
+                    f"bigger than the data cannot be used either, because nisa.dma_copy needs "
+                    f"identical shapes.")
+        # 2. Level 2, four rounds unchanged, with no advice at all after the quoted line:
+        #      tile = nl.ndarray((F1, F2)) ... tile[j, i] = tile[i, j]
+        #      -> "index 3 exceed dimension size of 3"
+        m = re.search(r"Out-of-bound access for tensor .*? on dimension (\d+): "
+                      r"index (\d+) exceed dimension size of (\d+)", error_text)
+        if m:
+            dim, idx, size = m.group(1), int(m.group(2)), int(m.group(3))
+            return (error_text + f" Dimension {dim} has {size} entries, numbered 0 to "
+                    f"{size - 1}, and the failing line used {idx}. An index on that line runs "
+                    f"over the range of a different dimension. Check which dimension each loop "
+                    f"variable was sized for. If you are writing a result whose shape differs "
+                    f"from the source's, for example with two dimensions swapped, it cannot be "
+                    f"written back into the source tile: allocate a separate destination tile "
+                    f"with the result's shape and write into that.")
+        # 3. Level 3, four rounds unchanged, no advice:
+        #      out = nl.ndarray(shape=lhsT.shape[1:], ...)   ... 0:out.shape[1]
+        #      -> "IndexError: tuple index out of range"
+        if "tuple index out of range" in error_text:
+            return (error_text + " A .shape[...] on the failing line asks for a dimension that "
+                    "array does not have. Find the array whose shape is being indexed and look at "
+                    "the line that allocated it: a shape written as a slice of another shape, "
+                    "such as x.shape[1:], has fewer entries than x.shape. Allocate that array "
+                    "with every dimension written out. If it holds the result of nisa.nc_matmul "
+                    "with stationary (K, M) and moving (K, N), its shape is (M, N).")
+        # 4. Level 4, at 0.62, two rounds unchanged, no advice:
+        #      nisa.nc_matmul(dst=psum_tile, stationary=sbuf_lhsT[start_K:end_K, :], moving=sbuf_rhs)
+        #      -> "contraction dimension mismatch: stationary[0]=128 != moving[0]=256"
+        m = re.search(r"contraction dimension mismatch: stationary\[0\]=(\d+) != moving\[0\]=(\d+)",
+                      error_text)
+        if m:
+            return (error_text + f" The first dimension of both operands is K, the one being "
+                    f"contracted, and the two must be equal in every call. Here stationary has "
+                    f"{m.group(1)} rows and moving has {m.group(2)}: one operand was cut into a K "
+                    f"chunk and the other was passed whole. Slice BOTH with the same K range, "
+                    f"stationary=...[k0:k1, ...] and moving=...[k0:k1, ...].")
+        # 5. Level 4. After a NaN verdict the model invented nisa.psum_init; the checker offered
+        #    "the closest real names: gpsimd_engine, dma_engine"; the model called
+        #    nisa.gpsimd_engine(psum, 0.0) -> "'engine' object is not callable", and then went
+        #    round that loop twice more. The suggestion list offered things that are not functions.
+        m = re.search(r"'(\w+)' object is not callable", error_text)
+        if m and m.group(1) != "MemoryRegion":
+            return (error_text + " The name called on the failing line is not a function. The "
+                    "nisa.*_engine names are constants that say which engine runs an "
+                    "instruction; they do nothing when called. Delete that line. No function "
+                    "zeroes or initialises a tile and none is needed: a tile gets its contents "
+                    "by being the dst of a copy or of a computation.")
     if "dma_copy requires src and dst to have the same number of elements" in error_text:
         dst, src = _shape(nkibench.LAST_DMA.get("dst")), _shape(nkibench.LAST_DMA.get("src"))
         if dst and src and at_least("directed2"):
@@ -518,16 +586,58 @@ def directed(error_text):
             if other != mod_name and hasattr(mod, attr):
                 found.append(f"{ALIAS[other]}.{attr}")
             for n in dir(mod):
-                if not n.startswith("_"):
-                    pool.setdefault(n, f"{ALIAS[other]}.{n}")
+                if n.startswith("_"):
+                    continue
+                # From directed3 on, only suggest things that can be called. Seen on a seat: for
+                # the invented nisa.psum_init the list offered gpsimd_engine and dma_engine, which
+                # are constants; the model called one and lost three more rounds to it.
+                if at_least("directed3") and not callable(getattr(mod, n, None)):
+                    continue
+                pool.setdefault(n, f"{ALIAS[other]}.{n}")
         if found:
             return (error_text + f" `{attr}` is not in `{here}`. It exists as `{found[0]}`. "
                     f"Write `{found[0]}` instead of `{here}.{attr}`.")
+        if at_least("directed3") and re.search(r"init|zero|fill|clear|reset", attr, re.I):
+            return (error_text + f" Nothing called `{attr}` exists in nl or nisa, and nothing "
+                    f"like it is needed. No function zeroes or initialises a tile: a tile gets "
+                    f"its contents by being the dst of a copy or of a computation. Delete that "
+                    f"line.")
         close = difflib.get_close_matches(attr, list(pool), n=5, cutoff=0.5)
         if close:
             return (error_text + f" Nothing called `{attr}` exists in nl or nisa. The closest real "
                     f"names are: {', '.join(pool[c] for c in close)}. Use one of those.")
     return None
+
+
+def directed_mismatch(message, got):
+    """A wrong-answer verdict rewritten from what the output actually contains, or unchanged.
+
+    Seen on a seat, level 4 (session 20261010-163428): the model deleted the copy into the output
+    and returned an array nothing had written. The verdict was "NON-FINITE OUTPUT: 65536 NaN ...
+    Usually an uninitialised PSUM or SBUF tile being read". Every element was NaN, which the
+    checker can see and did not say. The model looked for a way to initialise a tile, invented
+    nisa.psum_init, and fell from 0.62 to 0.30 for the rest of the run.
+    """
+    if not message.startswith("NON-FINITE OUTPUT"):
+        return message
+    try:
+        arr = np.asarray(got, np.float64)
+        bad, total = int((~np.isfinite(arr)).sum()), int(arr.size)
+    except Exception:
+        return message
+    head = message.split(" Usually ")[0]
+    if bad == total:
+        return (head + f" Every one of the {total} output elements is non-finite, which means the "
+                f"array you return was never written: no line copies a result into it. This is "
+                f"not about initialising a tile, and no function for that exists. After the "
+                f"computation, copy the result into the array you return with "
+                f"nisa.dma_copy(dst=<that array>[...], src=<an sbuf tile>). A psum tile cannot "
+                f"be copied to HBM directly: move it into an sbuf tile with nisa.tensor_copy "
+                f"first.")
+    return (head + f" {bad} of the {total} output elements were never written with a real "
+            f"value; the rest are finite. Part of the output is being skipped: check that your "
+            f"loops cover every row and column of the output and that each chunk is copied to "
+            f"its own slice of it.")
 
 
 def enrich(error_text):

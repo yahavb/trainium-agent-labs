@@ -1,0 +1,4 @@
+OUT=results-p2
+MODES="enriched directed3"
+REPEAT=1
+AGENT_ARGS="--levels 2,3,4 --rounds 8 --samples 4 --context 8192"
