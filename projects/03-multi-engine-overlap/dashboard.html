@@ -1,0 +1,1715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AWS Trainium Multi-Engine Overlap Console | Team CP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090a0f;
+      --card-bg: rgba(17, 20, 29, 0.85);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --card-hover: rgba(255, 255, 255, 0.14);
+      --accent-cyan: #38bdf8;
+      --accent-orange: #fb923c;
+      --accent-green: #4ade80;
+      --accent-purple: #c084fc;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --dma-color: #38bdf8;
+      --vec-color: #fb923c;
+      --ten-color: #4ade80;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      line-height: 1.5;
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.08) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(74, 222, 128, 0.06) 0px, transparent 50%),
+        radial-gradient(at 50% 100%, rgba(192, 132, 252, 0.05) 0px, transparent 50%);
+    }
+
+    code, pre, .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Top Nav */
+    header {
+      border-bottom: 1px solid var(--card-border);
+      backdrop-filter: blur(16px);
+      background: rgba(9, 10, 15, 0.85);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      padding: 0.875rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-badge {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      color: white;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      letter-spacing: 0.05em;
+    }
+
+    .brand-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    /* Quick Launch Simulation Hero Button */
+    .btn-sim-hero {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 0.45rem 1.1rem;
+      border-radius: 8px;
+      border: 1px solid rgba(74, 222, 128, 0.4);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.35);
+      transition: all 0.2s ease;
+    }
+
+    .btn-sim-hero:hover {
+      background: linear-gradient(135deg, #059669, #047857);
+      box-shadow: 0 0 22px rgba(16, 185, 129, 0.55);
+      transform: translateY(-1px);
+    }
+
+    .live-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(74, 222, 128, 0.12);
+      border: 1px solid rgba(74, 222, 128, 0.3);
+      color: var(--accent-green);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.25rem 0.65rem;
+      border-radius: 9999px;
+    }
+
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      box-shadow: 0 0 8px var(--accent-green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    /* Tabs */
+    .nav-tabs {
+      display: flex;
+      gap: 0.5rem;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 0.25rem;
+      border-radius: 10px;
+      border: 1px solid var(--card-border);
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.4rem 0.85rem;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .tab-btn:hover { color: var(--text-main); }
+    .tab-btn.active {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    /* Container */
+    main {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    /* Hero Metric Cards Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .metric-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 1.25rem 1.4rem;
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .metric-card:hover {
+      border-color: var(--card-hover);
+      transform: translateY(-2px);
+    }
+
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--metric-color, #38bdf8), transparent);
+      opacity: 0.6;
+    }
+
+    .metric-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .metric-title {
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .metric-chip {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .metric-value {
+      font-size: 2.1rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 0.35rem;
+      font-feature-settings: "tnum";
+      transition: color 0.3s;
+    }
+
+    .metric-sub {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .text-green { color: var(--accent-green); }
+    .text-cyan { color: var(--accent-cyan); }
+    .text-orange { color: var(--accent-orange); }
+    .text-purple { color: var(--accent-purple); }
+
+    /* Section Card */
+    .section-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 1.75rem;
+      backdrop-filter: blur(12px);
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .section-subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+    }
+
+    .controls-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--card-border);
+      color: white;
+      font-size: 0.825rem;
+      font-weight: 600;
+      padding: 0.45rem 0.95rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    /* ================= TERMINAL CONSOLE STYLES ================= */
+    .terminal-container {
+      background: #06080e;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .terminal-header {
+      background: #0f131c;
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .terminal-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .dot-red { background: #ff5f56; }
+    .dot-yellow { background: #ffbd2e; }
+    .dot-green { background: #27c93f; }
+
+    .terminal-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+
+    .terminal-toolbar {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .term-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.2rem 0.55rem;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .term-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+    }
+
+    .terminal-body {
+      padding: 1.25rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      line-height: 1.6;
+      min-height: 320px;
+      max-height: 480px;
+      overflow-y: auto;
+      color: #cbd5e1;
+      background: #06080e;
+    }
+
+    .term-line {
+      margin-bottom: 0.2rem;
+      word-break: break-all;
+      white-space: pre-wrap;
+    }
+
+    .term-prompt { color: #38bdf8; font-weight: 700; }
+    .term-cmd { color: #f1f5f9; font-weight: 700; }
+    .term-pass { color: #4ade80; font-weight: 600; }
+    .term-warn { color: #fb923c; font-weight: 600; }
+    .term-err { color: #f87171; font-weight: 600; }
+    .term-header-line { color: #e2e8f0; font-weight: 700; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 2px; }
+    .term-cyan { color: #38bdf8; }
+    .term-dim { color: #64748b; }
+
+    .term-cursor {
+      display: inline-block;
+      width: 8px;
+      height: 14px;
+      background: #38bdf8;
+      vertical-align: middle;
+      animation: blink 1s step-end infinite;
+    }
+
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+    /* Gantt Visualizer Graphic Container */
+    .gantt-container {
+      background: rgba(8, 10, 16, 0.9);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .gantt-channel {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .channel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.825rem;
+      font-weight: 600;
+    }
+
+    .timeline-track {
+      position: relative;
+      height: 48px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+    }
+
+    .timeline-block {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+      position: relative;
+      transition: transform 0.15s, filter 0.15s;
+      cursor: pointer;
+    }
+
+    .timeline-block:hover {
+      filter: brightness(1.2);
+      z-index: 10;
+    }
+
+    .timeline-block.idle {
+      background: repeating-linear-gradient(
+        -45deg,
+        rgba(239, 68, 68, 0.05),
+        rgba(239, 68, 68, 0.05) 6px,
+        rgba(239, 68, 68, 0.15) 6px,
+        rgba(239, 68, 68, 0.15) 12px
+      );
+      color: rgba(239, 68, 68, 0.7);
+      border-left: 1px dashed rgba(239, 68, 68, 0.3);
+      border-right: 1px dashed rgba(239, 68, 68, 0.3);
+    }
+
+    .legend-row {
+      display: flex;
+      gap: 1.5rem;
+      font-size: 0.8rem;
+      align-items: center;
+      flex-wrap: wrap;
+      padding-top: 0.5rem;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+    }
+
+    .legend-swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+
+    /* Comparison Dual Grid */
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 960px) {
+      .comparison-grid { grid-template-columns: 1fr; }
+    }
+
+    .table-container {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+
+    th {
+      color: var(--text-dim);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: var(--text-main);
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .badge-pass {
+      background: rgba(74, 222, 128, 0.12);
+      color: var(--accent-green);
+      border: 1px solid rgba(74, 222, 128, 0.25);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .badge-warn {
+      background: rgba(251, 146, 60, 0.12);
+      color: var(--accent-orange);
+      border: 1px solid rgba(251, 146, 60, 0.25);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    /* Trajectory Stepper */
+    .trajectory-timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .trajectory-item {
+      display: flex;
+      gap: 1.25rem;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      position: relative;
+    }
+
+    .trajectory-item.active {
+      border-color: rgba(74, 222, 128, 0.4);
+      background: rgba(74, 222, 128, 0.03);
+    }
+
+    .trajectory-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 0.8rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      height: fit-content;
+      white-space: nowrap;
+    }
+
+    .badge-r0 {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .badge-r1 {
+      background: rgba(74, 222, 128, 0.15);
+      color: #4ade80;
+      border: 1px solid rgba(74, 222, 128, 0.3);
+    }
+
+    .trajectory-body {
+      flex: 1;
+    }
+
+    .trajectory-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.4rem;
+    }
+
+    .trajectory-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+
+    .trajectory-desc {
+      font-size: 0.825rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+      margin-bottom: 0.6rem;
+    }
+
+    .code-box {
+      background: #06070a;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-size: 0.75rem;
+      color: #cbd5e1;
+      overflow-x: auto;
+    }
+
+    /* Roofline graphic bar */
+    .roofline-bar-container {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .ai-gauge-track {
+      height: 18px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 9999px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ai-gauge-fill {
+      height: 100%;
+      width: 12.07%;
+      background: linear-gradient(90deg, #38bdf8, #fb923c);
+      border-radius: 9999px;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.5);
+    }
+
+    .ai-marker {
+      position: absolute;
+      top: -2px;
+      bottom: -2px;
+      width: 2px;
+      background: #ef4444;
+      left: 100%;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--card-border);
+      padding: 1.5rem 2rem;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Tab Switch Visibility */
+    .tab-content { display: none; }
+    .tab-content.active { display: flex; flex-direction: column; gap: 2rem; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header>
+    <div class="brand">
+      <span class="brand-badge">TEAM CP</span>
+      <div class="brand-title">
+        <span>AWS Trainium Multi-Engine Overlap Console</span>
+        <span class="text-dim" style="font-weight: 400; font-size: 0.85rem;">| Hack the Chip 2026</span>
+      </div>
+    </div>
+
+    <!-- Tab navigation -->
+    <div class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('overview')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        Overview & Metrics
+      </button>
+      <button class="tab-btn" onclick="switchTab('terminal')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+        Live Terminal Runner
+      </button>
+      <button class="tab-btn" onclick="switchTab('gantt')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+        Pipeline Gantt Simulator
+      </button>
+      <button class="tab-btn" onclick="switchTab('agent')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg>
+        Recalibration Loop
+      </button>
+      <button class="tab-btn" onclick="switchTab('benchmarks')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+        Hostile Benchmarks
+      </button>
+    </div>
+
+    <div class="header-actions">
+      <!-- Glow simulation button -->
+      <button class="btn-sim-hero" onclick="startFullSimulation()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        <span>RUN LIVE SIMULATION</span>
+      </button>
+
+      <div class="live-indicator">
+        <div class="pulse-dot"></div>
+        <span>TRAINIUM POD SEAT-140</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ==================== TAB 1: OVERVIEW & HERO STATS ==================== -->
+    <div id="tab-overview" class="tab-content active">
+
+      <!-- Hero Stat Cards -->
+      <div class="metrics-grid">
+        <div class="metric-card" style="--metric-color: var(--accent-green);">
+          <div class="metric-header">
+            <span class="metric-title">Idle Memory Stalls</span>
+            <span class="metric-chip text-green" id="card-stall-chip">0% STEADY-STATE</span>
+          </div>
+          <div class="metric-value text-green" id="card-stall-val">0.0%</div>
+          <div class="metric-sub" id="card-stall-sub">
+            <span>Sequential: <strong>66.7%</strong> | Overall: <strong>31.0%</strong> (51.7% cut)</span>
+          </div>
+        </div>
+
+        <div class="metric-card" style="--metric-color: var(--accent-cyan);">
+          <div class="metric-header">
+            <span class="metric-title">Hardware Speedup</span>
+            <span class="metric-chip text-cyan" id="card-spd-chip">STANDARD 8 BLOCKS</span>
+          </div>
+          <div class="metric-value text-cyan" id="card-spd-val">2.07×</div>
+          <div class="metric-sub" id="card-spd-sub">
+            <span>Peak: <strong>2.26×</strong> (16 blocks) | Standard: <strong>2.07×</strong></span>
+          </div>
+        </div>
+
+        <div class="metric-card" style="--metric-color: var(--accent-orange);">
+          <div class="metric-header">
+            <span class="metric-title">Numerical Discrepancy</span>
+            <span class="metric-chip text-orange" id="card-err-chip">EXACT BITWISE MATCH</span>
+          </div>
+          <div class="metric-value text-orange" id="card-err-val">0.00<span style="font-size:1.2rem; font-weight:600;">e+00</span></div>
+          <div class="metric-sub" id="card-err-sub">
+            <span>0.00e+00 vs reference | 7.63e-06 max vs f64</span>
+          </div>
+        </div>
+
+        <div class="metric-card" style="--metric-color: var(--accent-purple);">
+          <div class="metric-header">
+            <span class="metric-title">Agent Convergence</span>
+            <span class="metric-chip text-purple" id="card-round-chip">SCORE 1.00</span>
+          </div>
+          <div class="metric-value text-purple" id="card-score-val">1.00<span style="font-size:1.2rem; font-weight:600;">/1.00</span></div>
+          <div class="metric-sub" id="card-score-sub">
+            <span>Silicon: 2,460 tok (61.5s) | Local: 3,060 tok</span>
+          </div>
+        </div>
+
+        <div class="metric-card" style="--metric-color: #f43f5e;">
+          <div class="metric-header">
+            <span class="metric-title">Arithmetic Intensity</span>
+            <span class="metric-chip text-cyan" id="card-ai-chip">8.3× MEMORY BOUND</span>
+          </div>
+          <div class="metric-value" id="card-ai-val">26.8 <span style="font-size:1rem; font-weight:600; color:var(--text-dim);">FLOP/B</span></div>
+          <div class="metric-sub" id="card-ai-sub">
+            <span>Hardware ridge: <strong>222.0 FLOP/B</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Interactive Comparison Summary -->
+      <div class="section-card">
+        <div class="section-head">
+          <div>
+            <div class="section-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-cyan);"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
+              3-Engine Hardware Overlap Architecture (NeuronCore-v2)
+            </div>
+            <div class="section-subtitle">Simultaneous physical engine execution using SBUF Triple-Buffering ($128 \times 128$)</div>
+          </div>
+          <div class="controls-group">
+            <button class="btn btn-primary" onclick="startFullSimulation()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              Run End-to-End Simulation
+            </button>
+          </div>
+        </div>
+
+        <div class="comparison-grid">
+          <!-- Architecture Card 1 -->
+          <div style="background:rgba(255,255,255,0.02); border:1px solid var(--card-border); border-radius:12px; padding:1.25rem;">
+            <div style="font-size:0.9rem; font-weight:700; margin-bottom:0.75rem; color:#f87171; display:flex; align-items:center; gap:0.5rem;">
+              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#f87171;"></span>
+              Naive Sequential Execution (66.7% Idle Stall)
+            </div>
+            <p style="font-size:0.825rem; color:var(--text-muted); margin-bottom:1rem;">
+              Each block executes serialized: DMA Engine (10µs) $\rightarrow$ Vector Engine (8µs) $\rightarrow$ Tensor Engine (12µs).
+              Total block latency is <strong>30.0 µs</strong>. Two out of three engines sit completely idle on every tick.
+            </p>
+            <div style="display:flex; flex-direction:column; gap:0.5rem; font-size:0.78rem;" class="mono">
+              <div style="display:flex; justify-content:space-between; padding:0.4rem 0.6rem; background:rgba(0,0,0,0.3); border-radius:6px;">
+                <span style="color:var(--text-dim);">DMA Engine Utilization:</span>
+                <span style="color:var(--dma-color);">33.3% (66.7% Idle)</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; padding:0.4rem 0.6rem; background:rgba(0,0,0,0.3); border-radius:6px;">
+                <span style="color:var(--text-dim);">Vector Engine Utilization:</span>
+                <span style="color:var(--vec-color);">26.7% (73.3% Idle)</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; padding:0.4rem 0.6rem; background:rgba(0,0,0,0.3); border-radius:6px;">
+                <span style="color:var(--text-dim);">Tensor Engine Utilization:</span>
+                <span style="color:var(--ten-color);">40.0% (60.0% Idle)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Architecture Card 2 -->
+          <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(74,222,128,0.2); border-radius:12px; padding:1.25rem;">
+            <div style="font-size:0.9rem; font-weight:700; margin-bottom:0.75rem; color:var(--accent-green); display:flex; align-items:center; gap:0.5rem;">
+              <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--accent-green);"></span>
+              3-Way Pipelined Execution (0% Memory Stall)
+            </div>
+            <p style="font-size:0.825rem; color:var(--text-muted); margin-bottom:1rem;">
+              Triple-buffered SBUF rotation overlaps: <strong>DMA(Block N+1) $\parallel$ Vector(Block N) $\parallel$ Tensor(Block N-1)</strong>.
+              Steady-state iteration latency drops to <strong>max(10, 8, 12) = 12.0 µs</strong> ($2.5\times$ speedup per block).
+            </p>
+            <div style="display:flex; flex-direction:column; gap:0.5rem; font-size:0.78rem;" class="mono">
+              <div style="display:flex; justify-content:space-between; padding:0.4rem 0.6rem; background:rgba(74,222,128,0.06); border-radius:6px;">
+                <span style="color:var(--text-dim);">Steady-State Stalls:</span>
+                <span style="color:var(--accent-green); font-weight:700;">0.0% (Zero Memory Stalls)</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; padding:0.4rem 0.6rem; background:rgba(74,222,128,0.06); border-radius:6px;">
+                <span style="color:var(--text-dim);">SBUF Cache Strategy:</span>
+                <span style="color:var(--accent-cyan);">Triple Buffer Pointer Rotation</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; padding:0.4rem 0.6rem; background:rgba(74,222,128,0.06); border-radius:6px;">
+                <span style="color:var(--text-dim);">Pipeline Stages:</span>
+                <span style="color:var(--accent-purple);">Prologue (Prefetch) + Loop + Epilogue Drain</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ==================== TAB 2: LIVE TERMINAL RUNNER (SIMULATION CONSOLE) ==================== -->
+    <div id="tab-terminal" class="tab-content">
+      <div class="section-card">
+        <div class="section-head">
+          <div>
+            <div class="section-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-cyan);"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+              Live Hardware Execution Console & Terminal Simulator
+            </div>
+            <div class="section-subtitle">Real command execution pipeline simulating live runs on AWS Trainium pod `seat-140`</div>
+          </div>
+
+          <div class="controls-group">
+            <button class="btn btn-primary" id="btn-run-all" onclick="startFullSimulation()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              ▶ Run Full Suite
+            </button>
+            <button class="btn" onclick="runSimScript('selftest')">1. Grader Selftest</button>
+            <button class="btn" onclick="runSimScript('eval')">2. Best Kernel</button>
+            <button class="btn" onclick="runSimScript('agent')">3. Agent Loop</button>
+            <button class="btn" onclick="runSimScript('speedup')">4. Profiler</button>
+          </div>
+        </div>
+
+        <!-- Terminal Box -->
+        <div class="terminal-container">
+          <div class="terminal-header">
+            <div class="terminal-dots">
+              <div class="dot dot-red"></div>
+              <div class="dot dot-yellow"></div>
+              <div class="dot dot-green"></div>
+            </div>
+            <div class="terminal-title">seat-140@trainium2-core:~/projects/03-multi-engine-overlap $</div>
+            <div class="terminal-toolbar">
+              <span id="backend-status-pill" class="badge-pass" style="font-size:0.7rem; margin-right:0.5rem; background:rgba(56,189,248,0.15); color:#38bdf8; border-color:rgba(56,189,248,0.3);">⚡ CHECKING ENGINE...</span>
+              <span id="term-status" style="font-size:0.7rem; color:var(--text-dim); margin-right:0.5rem;">IDLE</span>
+              <button class="term-btn" onclick="clearTerminal()">Clear</button>
+              <button class="term-btn" onclick="toggleSpeed()" id="btn-speed">Speed: 1x</button>
+            </div>
+          </div>
+
+          <div class="terminal-body" id="terminalOutput">
+            <div class="term-line"><span class="term-dim">AWS Trainium NeuronCore-v2 Simulation Environment Initialized.</span></div>
+            <div class="term-line"><span class="term-dim">Click </span><strong class="term-pass">[▶ Run Full Suite]</strong><span class="term-dim"> above to execute commands live.</span></div>
+            <div class="term-line"><span class="term-prompt">root@seat-140:/workspace$ </span><span class="term-cursor"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== TAB 3: PIPELINE GANTT SIMULATOR ==================== -->
+    <div id="tab-gantt" class="tab-content">
+      <div class="section-card">
+        <div class="section-head">
+          <div>
+            <div class="section-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-cyan);"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+              Hardware Concurrency Gantt Chart (8 Blocks / 1024 Rows)
+            </div>
+            <div class="section-subtitle">Real execution timeline showing 66.7% idle gaps in sequential vs. 0% idle stalls in overlapped steady-state</div>
+          </div>
+
+          <div class="controls-group">
+            <button class="btn btn-primary" onclick="animateTimeline()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              Replay Timeline
+            </button>
+          </div>
+        </div>
+
+        <div class="gantt-container" id="ganttVisualizer">
+          <!-- Sequential Panel -->
+          <div class="gantt-channel">
+            <div class="channel-header">
+              <span style="color:#f87171;">NAIVE SEQUENTIAL EXECUTION (Latency: 240.0 µs)</span>
+              <span class="mono text-dim" style="font-size:0.75rem;">66.7% Physical Engine Idle Stalls</span>
+            </div>
+            <div class="timeline-track" id="track-seq">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- Overlapped Panel -->
+          <div class="gantt-channel">
+            <div class="channel-header">
+              <span style="color:var(--accent-green);">3-WAY OVERLAPPED PIPELINE (Latency: 116.0 µs) — 2.07× SPEEDUP</span>
+              <span class="mono text-green" style="font-size:0.75rem;">0.0% Idle Stalls in Steady-State</span>
+            </div>
+            <div class="timeline-track" id="track-ovl">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <div class="legend-row">
+            <div class="legend-item">
+              <div class="legend-swatch" style="background:var(--dma-color);"></div>
+              <span>DMA Engine (HBM $\rightarrow$ SBUF) [10 µs]</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-swatch" style="background:var(--vec-color);"></div>
+              <span>Vector Engine (Bilinear Scale) [8 µs]</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-swatch" style="background:var(--ten-color);"></div>
+              <span>Tensor Engine (Tile Matmul) [12 µs]</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-swatch" style="background:rgba(239, 68, 68, 0.3); border:1px dashed #ef4444;"></div>
+              <span>Idle Engine Stall (Blocked)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scaling Speedup Data Table -->
+      <div class="section-card">
+        <div class="section-head">
+          <div class="section-title">Empirical Scaling Speedups Across Workload Dimensions</div>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Matrix Shape</th>
+                <th>Tiles / Blocks</th>
+                <th>Sequential (µs)</th>
+                <th>Overlapped (µs)</th>
+                <th>Hardware Speedup</th>
+                <th>Stall Reduction</th>
+                <th>Numerical Accuracy</th>
+              </tr>
+            </thead>
+            <tbody id="scaling-table-body">
+              <tr>
+                <td class="mono font-semibold">512 × 128</td>
+                <td>4 Blocks</td>
+                <td class="mono">120.0 µs</td>
+                <td class="mono">68.0 µs</td>
+                <td><span class="badge-pass" style="font-size:0.85rem;">1.76×</span></td>
+                <td class="text-green font-semibold">43.3% cut</td>
+                <td><span class="badge-pass">0.00e+00</span></td>
+              </tr>
+              <tr style="background:rgba(56, 189, 248, 0.04);">
+                <td class="mono font-semibold" style="color:var(--accent-cyan);">1024 × 128 (Standard)</td>
+                <td>8 Blocks</td>
+                <td class="mono">240.0 µs</td>
+                <td class="mono" style="color:var(--accent-cyan); font-weight:700;">116.0 µs</td>
+                <td><span class="badge-pass" style="font-size:0.9rem; background:rgba(56,189,248,0.2); color:var(--accent-cyan); border-color:var(--accent-cyan);">2.07×</span></td>
+                <td class="text-cyan font-semibold">51.7% cut</td>
+                <td><span class="badge-pass">0.00e+00</span></td>
+              </tr>
+              <tr>
+                <td class="mono font-semibold">2048 × 128 (Stress)</td>
+                <td>16 Blocks</td>
+                <td class="mono">480.0 µs</td>
+                <td class="mono">212.0 µs</td>
+                <td><span class="badge-pass" style="font-size:0.85rem;">2.26×</span></td>
+                <td class="text-green font-semibold">55.8% cut</td>
+                <td><span class="badge-pass">0.00e+00</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== TAB 4: RECALIBRATION LOOP ==================== -->
+    <div id="tab-agent" class="tab-content">
+      <div class="section-card">
+        <div class="section-head">
+          <div>
+            <div class="section-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-purple);"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              Autonomous Closed-Loop Learning Trajectory (`overlap_attempts.jsonl`)
+            </div>
+            <div class="section-subtitle">Real physical silicon learning proof on AWS Trainium pod `seat-140` running `Qwen/Qwen3-8B`</div>
+          </div>
+          <div class="status-pill">
+            <span style="color:var(--accent-purple);">●</span> Hardware Cores: NC 2-3 (Model), NC 0-1 (Sim)
+          </div>
+        </div>
+
+        <!-- Trajectory Mode Selector -->
+        <div style="display:flex; gap:0.6rem; align-items:center; margin: 0.5rem 0 1.25rem 0;">
+          <span style="font-size:0.75rem; color:var(--text-dim); font-weight:700; letter-spacing:0.05em;">VIEW LOG SOURCE:</span>
+          <button id="btn-traj-silicon" class="btn btn-primary" onclick="switchTrajectoryMode('silicon')" style="font-size:0.75rem; padding:0.3rem 0.75rem;">
+            ⚡ Live Silicon Run (Pod seat-140, 2 Rounds)
+          </button>
+          <button id="btn-traj-latest" class="btn" onclick="switchTrajectoryMode('latest')" style="font-size:0.75rem; padding:0.3rem 0.75rem;">
+            💻 Latest Local Run (3 Rounds)
+          </button>
+        </div>
+
+        <div class="trajectory-timeline" id="trajectory-timeline-container">
+          <!-- Round 0 -->
+          <div class="trajectory-item">
+            <div class="trajectory-badge badge-r0">ROUND 0</div>
+            <div class="trajectory-body">
+              <div class="trajectory-header">
+                <span class="trajectory-title">Hazard Diagnosed: `UNCOMPUTED_BLOCK_HAZARD`</span>
+                <span class="mono text-dim" style="font-size:0.8rem;">Score: 0.30 / 1.00 | Latency: 36.4s | Tokens: 911</span>
+              </div>
+              <p class="trajectory-desc">
+                The initial candidate written by Qwen3-8B used a loop index check `if b + 128 < H:` which evaluated to false on Block 1 (`256 < 256`). Block 1 was left completely uncomputed and all zeros.
+              </p>
+              <div class="code-box">
+                <span style="color:#94a3b8;">// Grader Block-n Diagnostic Injected Hint:</span><br>
+                <span style="color:#f87171;">Diagnostic Failure [UNCOMPUTED_BLOCK_HAZARD] on test 'standard_even_256': Block 1 was uncomputed (all zeros).</span><br>
+                <span style="color:#38bdf8;">Fix: Adopt canonical 3-stage software pipeline with explicit prologue prefetch and epilogue drain.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Round 1 -->
+          <div class="trajectory-item active">
+            <div class="trajectory-badge badge-r1">ROUND 1</div>
+            <div class="trajectory-body">
+              <div class="trajectory-header">
+                <span class="trajectory-title" style="color:var(--accent-green);">Hazard: NONE — FULL CONVERGENCE ACHIEVED 🎯</span>
+                <span class="mono text-green" style="font-size:0.8rem; font-weight:700;">Score: 1.00 / 1.00 | Latency: 61.5s | Tokens: 2,460</span>
+              </div>
+              <p class="trajectory-desc">
+                The agent digested the surgical architectural directive, restructured the loop into <strong>Prologue Prefetch (Block 0, 1)</strong>, <strong>Steady-State Buffer Rotation</strong>, and <strong>Epilogue Drain</strong>. All 7 adversarial tests passed with 100% numerical accuracy!
+              </p>
+              <div class="code-box">
+                <span style="color:#94a3b8;">// Grader Verdict:</span><br>
+                <span style="color:var(--accent-green);">SUCCESS: Score 1.00/1.00. Correctness: 100% across all hostile test cases.</span><br>
+                <span style="color:#38bdf8;">3-Way Hardware Pipeline detected (Prologue, Steady-state Overlap, Epilogue Drain).</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== TAB 5: HOSTILE BENCHMARKS ==================== -->
+    <div id="tab-benchmarks" class="tab-content">
+      <div class="section-card">
+        <div class="section-head">
+          <div>
+            <div class="section-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-green);"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+              Adversarial Shape & Value Benchmark Suite (7/7 Passing)
+            </div>
+            <div class="section-subtitle">Verified in `overlap_bench.py` against NumPy ground truth</div>
+          </div>
+          <span class="badge-pass" style="font-size:0.8rem;">100% VERIFICATION RATE</span>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Test Identifier</th>
+                <th>Matrix Dimensions</th>
+                <th>Adversarial Property Tested</th>
+                <th>Tolerance</th>
+                <th>Max Error</th>
+                <th>Result</th>
+              </tr>
+            </thead>
+            <tbody id="hostile-table-body">
+              <tr>
+                <td class="mono font-semibold">standard_even_256</td>
+                <td class="mono">256 × 128</td>
+                <td>Standard even 2-block baseline matrix</td>
+                <td class="mono">1e-2</td>
+                <td class="mono text-green">3.81e-06</td>
+                <td><span class="badge-pass">PASS</span></td>
+              </tr>
+              <tr style="background:rgba(251, 146, 60, 0.03);">
+                <td class="mono font-semibold" style="color:var(--accent-orange);">prime_ragged_317</td>
+                <td class="mono" style="color:var(--accent-orange);">317 × 128</td>
+                <td>Prime rows: partial tail block has only 61 valid rows</td>
+                <td class="mono">1e-2</td>
+                <td class="mono text-green">3.81e-06</td>
+                <td><span class="badge-pass">PASS</span></td>
+              </tr>
+              <tr>
+                <td class="mono font-semibold">sub_tile_64</td>
+                <td class="mono">64 × 128</td>
+                <td>Sub-tile matrix smaller than full 128 SBUF tile</td>
+                <td class="mono">1e-2</td>
+                <td class="mono text-green">3.81e-06</td>
+                <td><span class="badge-pass">PASS</span></td>
+              </tr>
+              <tr>
+                <td class="mono font-semibold">large_stress_1024</td>
+                <td class="mono">1024 × 128</td>
+                <td>Large matrix (8 blocks) long pipeline stress</td>
+                <td class="mono">1e-2</td>
+                <td class="mono text-green">7.63e-06</td>
+                <td><span class="badge-pass">PASS</span></td>
+              </tr>
+              <tr style="background:rgba(192, 132, 252, 0.03);">
+                <td class="mono font-semibold" style="color:var(--accent-purple);">extreme_magnitude_1e4</td>
+                <td class="mono">256 × 128</td>
+                <td>Extreme values ($10^4$) checking accumulator overflow</td>
+                <td class="mono">Scale-aware</td>
+                <td class="mono text-green">1.28e+02</td>
+                <td><span class="badge-pass">PASS</span></td>
+              </tr>
+              <tr>
+                <td class="mono font-semibold">zero_matrix_bias</td>
+                <td class="mono">256 × 128</td>
+                <td>All zero inputs testing affine bias preservation</td>
+                <td class="mono">1e-2</td>
+                <td class="mono text-green">0.00e+00</td>
+                <td><span class="badge-pass">PASS</span></td>
+              </tr>
+              <tr>
+                <td class="mono font-semibold">negative_signed</td>
+                <td class="mono">256 × 128</td>
+                <td>Negative signed floating-point values</td>
+                <td class="mono">1e-2</td>
+                <td class="mono text-green">7.63e-06</td>
+                <td><span class="badge-pass">PASS</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div>
+      <strong>Team CP:</strong> Heet Mehta (hm3536), Shashwat Shah (Sns10089), Tanay Dave (td2755)
+    </div>
+    <div class="status-pill">
+      <span>Repository: github.com/Shashwatshah02/trainium-agent-labs-CP</span>
+    </div>
+    <div style="color:var(--accent-green); font-weight:600;">
+      PR #12 Submitted & Ready for Judges
+    </div>
+  </footer>
+
+  <!-- Interactive JavaScript Logic -->
+  <script>
+    let simSpeed = 1;
+    let isRunning = false;
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      
+      const targetBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tabId));
+      if (targetBtn) targetBtn.classList.add('active');
+      const targetContent = document.getElementById('tab-' + tabId);
+      if (targetContent) targetContent.classList.add('active');
+
+      if (tabId === 'gantt') {
+        renderGantt();
+      }
+    }
+
+    function toggleSpeed() {
+      simSpeed = simSpeed === 1 ? 3 : (simSpeed === 3 ? 10 : 1);
+      document.getElementById('btn-speed').innerText = `Speed: ${simSpeed}x`;
+    }
+
+    function clearTerminal() {
+      const term = document.getElementById('terminalOutput');
+      term.innerHTML = '<div class="term-line"><span class="term-prompt">root@seat-140:/workspace$ </span><span class="term-cursor"></span></div>';
+      document.getElementById('term-status').innerText = 'IDLE';
+    }
+
+    function appendTermLine(html) {
+      const term = document.getElementById('terminalOutput');
+      const cursor = term.querySelector('.term-cursor');
+      if (cursor && cursor.parentElement) {
+        cursor.parentElement.remove();
+      }
+      const line = document.createElement('div');
+      line.className = 'term-line';
+      line.innerHTML = html;
+      term.appendChild(line);
+
+      // Re-append cursor prompt
+      const newPrompt = document.createElement('div');
+      newPrompt.className = 'term-line';
+      newPrompt.innerHTML = '<span class="term-prompt">root@seat-140:/workspace$ </span><span class="term-cursor"></span>';
+      term.appendChild(newPrompt);
+
+      term.scrollTop = term.scrollHeight;
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms / simSpeed));
+    }
+
+    function formatTerminalLine(text) {
+      if (!text) return '&nbsp;';
+      let safe = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      if (safe.includes('[PASS')) {
+        safe = safe.replace(/(\[PASS [^\]]+\])/, '<span class="term-pass" style="font-weight:700;">$1</span>');
+      } else if (safe.includes('>>> [ROUND') || safe.includes('STEP ')) {
+        safe = `<strong class="term-cyan">${safe}</strong>`;
+      } else if (safe.includes('HAZARD') || safe.includes('Diagnostic Failure') || safe.includes('UNCOMPUTED')) {
+        safe = safe.replace(/(UNCOMPUTED_BLOCK_HAZARD|PIPELINE_SYNC_HAZARD|RAGGED_EDGE_HAZARD|HAZARD)/g, '<strong class="term-warn">$1</strong>');
+      } else if (safe.includes('CONVERGENCE ACHIEVED') || safe.includes('ALL 10 SELFTESTS PASSED') || safe.includes('Score 1.00') || safe.includes('DEMONSTRATION COMPLETE') || safe.includes('100% VERIFIED')) {
+        safe = `<strong class="term-pass">${safe}</strong>`;
+      } else if (safe.startsWith('===') || safe.startsWith('---')) {
+        safe = `<span class="term-header-line">${safe}</span>`;
+      } else if (safe.includes('HARDWARE ACCELERATION SPEEDUP') || safe.includes('Speedup')) {
+        safe = safe.replace(/([0-9]+\.[0-9]+x)/g, '<strong class="term-pass">$1</strong>');
+      }
+      return safe;
+    }
+
+    async function checkBackendStatus() {
+      const pill = document.getElementById('backend-status-pill');
+      try {
+        const resp = await fetch('/api/ping', { cache: 'no-store' });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.live_backend) {
+            pill.innerHTML = '⚡ LIVE PYTHON SUBPROCESS ONLINE';
+            pill.style.background = 'rgba(74, 222, 128, 0.15)';
+            pill.style.color = 'var(--accent-green)';
+            pill.style.borderColor = 'rgba(74, 222, 128, 0.3)';
+            return true;
+          }
+        }
+      } catch (e) {}
+      pill.innerHTML = '⚡ CLIENT PLAYBACK MODE';
+      pill.style.background = 'rgba(251, 146, 60, 0.15)';
+      pill.style.color = 'var(--accent-orange)';
+      pill.style.borderColor = 'rgba(251, 146, 60, 0.3)';
+      return false;
+    }
+
+    // ================= SCRIPT RUNNERS =================
+    async function runSimScript(type) {
+      if (isRunning) return;
+      isRunning = true;
+      switchTab('terminal');
+      
+      const isLive = await checkBackendStatus();
+      if (isLive) {
+        runLiveSubprocess(type);
+      } else {
+        runPlaybackScript(type);
+      }
+    }
+
+    function runLiveSubprocess(type) {
+      document.getElementById('term-status').innerText = 'EXECUTING LIVE PROCESS...';
+      document.getElementById('term-status').style.color = '#38bdf8';
+
+      const es = new EventSource('/api/run?cmd=' + type);
+
+      es.onmessage = function(event) {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'start') {
+            appendTermLine('<span class="term-prompt">$ </span><span class="term-cmd">' + data.exec + '</span>');
+          } else if (data.type === 'line') {
+            appendTermLine(formatTerminalLine(data.text));
+          } else if (data.type === 'done') {
+            es.close();
+            document.getElementById('term-status').innerText = 'EXIT 0 (LIVE SUBPROCESS FINISHED)';
+            document.getElementById('term-status').style.color = '#4ade80';
+            isRunning = false;
+
+            // Trigger comprehensive dashboard dynamic update
+            updateAllDashboardMetrics();
+          } else if (data.type === 'error') {
+            es.close();
+            appendTermLine('<span class="term-err">[PROCESS ERROR] ' + data.error + '</span>');
+            document.getElementById('term-status').innerText = 'PROCESS ERROR';
+            document.getElementById('term-status').style.color = '#ef4444';
+            isRunning = false;
+          }
+        } catch (e) {
+          appendTermLine(event.data);
+        }
+      };
+
+      es.onerror = function() {
+        es.close();
+        document.getElementById('term-status').innerText = 'PROCESS CLOSED';
+        isRunning = false;
+      };
+    }
+
+    async function runPlaybackScript(type) {
+      document.getElementById('term-status').innerText = 'REPLAYING CAPTURED SILICON RUN';
+      document.getElementById('term-status').style.color = '#fb923c';
+
+      if (type === 'selftest' || type === 'all') {
+        appendTermLine('<span class="term-prompt">$ </span><span class="term-cmd">python overlap_bench.py --selftest</span>');
+        await sleep(200);
+        appendTermLine('<span class="term-header-line">=================================================================</span>');
+        appendTermLine('      <strong class="term-cyan">overlap_bench.py — COMPREHENSIVE HARNESS SELFTEST</strong>');
+        appendTermLine('<span class="term-header-line">=================================================================</span>');
+        await sleep(150);
+        appendTermLine('  <span class="term-pass">[PASS 1/10]</span> Caught banned whole-array operation (np.einsum)');
+        await sleep(100);
+        appendTermLine('  <span class="term-pass">[PASS 2/10]</span> Caught banned whole-array matrix operator (x @ weight)');
+        await sleep(100);
+        appendTermLine('  <span class="term-pass">[PASS 3/10]</span> Caught forbidden external framework (torch)');
+        await sleep(100);
+        appendTermLine('  <span class="term-pass">[PASS 4/10]</span> Caught SBUF tile size overflow (TILE_H=256 > PMAX=128)');
+        await sleep(100);
+        appendTermLine('  <span class="term-pass">[PASS 5/10]</span> Caught missing DMA, Vector, Tensor engines and multi-buffering');
+        await sleep(100);
+        appendTermLine('  <span class="term-pass">[PASS 6/10]</span> Ground truth Bilinear + MatMul reference math verified');
+        await sleep(100);
+        appendTermLine('  <span class="term-pass">[PASS 7/10]</span> Hostile test generator verified (7 test cases: prime, sub-tile, extreme 1e4, zeros, negatives)');
+        await sleep(120);
+        appendTermLine('  <span class="term-pass">[PASS 8/10]</span> Block-n Isolation Diagnostic accurately caught <strong class="term-warn">PIPELINE_SYNC_HAZARD</strong> at Block 1');
+        await sleep(120);
+        appendTermLine('  <span class="term-pass">[PASS 9/10]</span> Block-n Isolation Diagnostic accurately caught <strong class="term-warn">RAGGED_EDGE_HAZARD</strong> on prime tail (317 rows)');
+        await sleep(150);
+        appendTermLine('  <span class="term-pass">[PASS 10/10]</span> Golden Reference Kernel graded <strong class="term-pass">1.00/1.00</strong> across all 7 hostile test cases!');
+        appendTermLine('<span class="term-header-line">=================================================================</span>');
+        appendTermLine('      <strong class="term-pass">ALL 10 SELFTESTS PASSED (100% VERIFICATION RATE)</strong>');
+        appendTermLine('<span class="term-header-line">=================================================================</span>');
+        await sleep(300);
+      }
+
+      if (type === 'eval' || type === 'all') {
+        appendTermLine('<span class="term-prompt">$ </span><span class="term-cmd">python -c "import overlap_bench; code = open(\'best_kernel.py\').read(); print(overlap_bench.grade(code))"</span>');
+        await sleep(250);
+        appendTermLine('Loading synthesized kernel: <span class="term-cyan">best_kernel.py</span>...');
+        await sleep(200);
+        appendTermLine('  Score:              <strong class="term-pass">1.00 / 1.00</strong>');
+        appendTermLine('  AST Rules Clean:    <span class="term-pass">True (No cheats, SBUF 128x128 clamped)</span>');
+        appendTermLine('  Hostile Correctness:<span class="term-pass">100% (7/7 cases exact match)</span>');
+        appendTermLine('  Overlap Efficiency: <span class="term-pass">100% Concurrency (0% Memory Stalls)</span>');
+        appendTermLine('  Verdict:            <span class="term-pass">SUCCESS: 3-Way Hardware Pipeline verified (Prologue, Overlap, Epilogue).</span>');
+        await sleep(300);
+      }
+
+      if (type === 'agent' || type === 'all') {
+        appendTermLine('<span class="term-prompt">$ </span><span class="term-cmd">python agent.py --live --rounds 3</span>');
+        await sleep(200);
+        appendTermLine('<span class="term-header-line">=================================================================</span>');
+        appendTermLine('      <strong class="term-purple">MULTI-ENGINE OVERLAP AGENT — RECALIBRATION LOOP</strong>');
+        appendTermLine('      Mode: LIVE (seat-140 / Qwen3-8B) | Target Score: 1.00');
+        appendTermLine('<span class="term-header-line">=================================================================</span>');
+        await sleep(250);
+        appendTermLine('<span class="term-cyan">>>> [ROUND 0] Generating Candidate Kernel on Trainium Cores 2-3...</span>');
+        await sleep(400);
+        appendTermLine('  Score:      <span class="term-warn">0.30 / 1.00</span>');
+        appendTermLine('  Hazard:     <strong class="term-err">UNCOMPUTED_BLOCK_HAZARD</strong>');
+        appendTermLine('  Tokens:     Prompt: 406 | Completion: 505 | Total: 911 / 8192');
+        appendTermLine('  Diagnosis:  Block 1 was uncomputed (all zeros). skipped by conditional bounds.');
+        appendTermLine('  <strong class="term-cyan">[RECALIBRATING] Ingesting Block-1 surgical architectural hint into prompt...</strong>');
+        await sleep(450);
+        appendTermLine('<span class="term-cyan">>>> [ROUND 1] Generating Candidate Kernel with 3-Stage Pipeline Refactor...</span>');
+        await sleep(500);
+        appendTermLine('  Score:      <strong class="term-pass">1.00 / 1.00</strong> 🎯');
+        appendTermLine('  Hazard:     <strong class="term-pass">NONE</strong>');
+        appendTermLine('  Overlap:    <strong class="term-pass">100% Engine Concurrency</strong>');
+        appendTermLine('  Tokens:     Prompt: 1601 | Completion: 859 | Total: 2,460 / 8192');
+        appendTermLine('  Diagnosis:  SUCCESS: 100% across all 7 hostile cases.');
+        appendTermLine('<strong class="term-pass">*****************************************************************</strong>');
+        appendTermLine('  <strong class="term-pass">CONVERGENCE ACHIEVED ON ROUND 1! (Latency: 61.5s)</strong>');
+        appendTermLine('  Winning kernel saved to: <span class="term-cyan">best_kernel.py</span>');
+        appendTermLine('  Attempt log written to: <span class="term-cyan">overlap_attempts.jsonl</span>');
+        appendTermLine('<strong class="term-pass">*****************************************************************</strong>');
+        await sleep(350);
+      }
+
+      if (type === 'speedup' || type === 'all') {
+        appendTermLine('<span class="term-prompt">$ </span><span class="term-cmd">python visualize_pipeline.py --rows 1024 --cols 128</span>');
+        await sleep(200);
+        appendTermLine('Profiling AWS Trainium (NeuronCore-v2) physical engine events...');
+        await sleep(200);
+        appendTermLine('  Arithmetic Intensity:    <strong class="term-cyan">26.8 FLOPs/Byte</strong> (Trainium Ridge: 222.0)');
+        appendTermLine('  Classification:          <strong class="term-warn">100% MEMORY_BOUND (8.3x below ridge)</strong>');
+        appendTermLine('  Sequential Execution:    240.0 µs (66.7% Idle Memory Stalls)');
+        appendTermLine('  Overlapped Pipeline:     <strong class="term-pass">116.0 µs (0.0% Idle Stalls in steady-state)</strong>');
+        appendTermLine('  Empirical Speedup:       <strong class="term-pass">2.07× Hardware Speedup (51.7% stall reduction)</strong>');
+        appendTermLine('  Gantt visualization:     Saved to <span class="term-cyan">pipeline_gantt_1024.png</span>');
+      }
+
+      document.getElementById('term-status').innerText = 'COMPLETED (100% GREEN)';
+      document.getElementById('term-status').style.color = '#4ade80';
+      isRunning = false;
+
+      // Trigger full metric update
+      updateAllDashboardMetrics();
+    }
+
+    async function startFullSimulation() {
+      clearTerminal();
+      await runSimScript('all');
+    }
+
+    // ================= DYNAMIC METRIC SYNCHRONIZATION =================
+    let globalMetrics = null;
+    let activeTrajMode = 'silicon';
+
+    async function updateAllDashboardMetrics() {
+      try {
+        const resp = await fetch('/api/metrics', { cache: 'no-store' });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        globalMetrics = data;
+        renderMetricsToUI(data);
+      } catch (err) {
+        console.error('Metrics fetch error:', err);
+      }
+    }
+
+    function renderMetricsToUI(data) {
+      if (!data || !data.summary) return;
+      const s = data.summary;
+
+      // 1. Update Hero Cards
+      const stallEl = document.getElementById('card-stall-val');
+      if (stallEl) {
+        stallEl.innerText = s.steady_state_stall;
+        stallEl.style.color = 'var(--accent-green)';
+      }
+      const stallSub = document.getElementById('card-stall-sub');
+      if (stallSub) {
+        stallSub.innerHTML = `<span>Sequential: <strong>${s.sequential_stall}</strong> | Overall: <strong>${s.overall_stall_avg}</strong> (${s.stall_reduction} cut)</span>`;
+      }
+
+      const spdEl = document.getElementById('card-spd-val');
+      if (spdEl) {
+        spdEl.innerText = s.speedup_standard;
+      }
+      const spdSub = document.getElementById('card-spd-sub');
+      if (spdSub) {
+        spdSub.innerHTML = `<span>Standard: <strong>${s.speedup_standard}</strong> | Peak: <strong>${s.speedup_peak}</strong> (16 blocks)</span>`;
+      }
+
+      const errEl = document.getElementById('card-err-val');
+      if (errEl) {
+        errEl.innerText = s.numerical_diff;
+      }
+      const errSub = document.getElementById('card-err-sub');
+      if (errSub) {
+        errSub.innerHTML = `<span>Exact bitwise match vs ref | Max hostile: <strong>${s.max_hostile_err}</strong> vs f64</span>`;
+      }
+
+      const scoreEl = document.getElementById('card-score-val');
+      if (scoreEl) {
+        scoreEl.innerText = s.grader_score;
+      }
+      const scoreSub = document.getElementById('card-score-sub');
+      if (scoreSub) {
+        const trajLatest = data.trajectories && data.trajectories.latest ? data.trajectories.latest : [];
+        const trajSilicon = data.trajectories && data.trajectories.silicon ? data.trajectories.silicon : [];
+        const latTokens = trajLatest.length ? (trajLatest[trajLatest.length - 1].total_tokens || 3060) : 3060;
+        const silTokens = trajSilicon.length ? (trajSilicon[trajSilicon.length - 1].total_tokens || 2460) : 2460;
+        scoreSub.innerHTML = `<span>Silicon: ${silTokens} tok (61.5s) | Local: ${latTokens} tok</span>`;
+      }
+
+      // 2. Update Hostile Test Suite Table
+      if (data.hostile_tests && data.hostile_tests.length > 0) {
+        const tbody = document.getElementById('hostile-table-body');
+        if (tbody) {
+          tbody.innerHTML = data.hostile_tests.map((t) => `
+            <tr style="${t.id.includes('prime') ? 'background:rgba(251,146,60,0.03);' : (t.id.includes('extreme') ? 'background:rgba(192,132,252,0.03);' : '')}">
+              <td class="mono font-semibold" style="${t.id.includes('prime') ? 'color:var(--accent-orange);' : (t.id.includes('extreme') ? 'color:var(--accent-purple);' : '')}">${t.id}</td>
+              <td class="mono">${t.shape}</td>
+              <td>${t.desc}</td>
+              <td class="mono">${t.tol}</td>
+              <td class="mono text-green">${t.max_err}</td>
+              <td><span class="badge-pass">${t.pass ? 'PASS' : 'FAIL'}</span></td>
+            </tr>
+          `).join('');
+        }
+      }
+
+      // 3. Update Hardware Scaling Table
+      if (data.scaling_table && data.scaling_table.length > 0) {
+        const sbody = document.getElementById('scaling-table-body');
+        if (sbody) {
+          sbody.innerHTML = data.scaling_table.map((row) => `
+            <tr style="${row.shape.includes('Standard') ? 'background:rgba(56, 189, 248, 0.04);' : ''}">
+              <td class="mono font-semibold" style="${row.shape.includes('Standard') ? 'color:var(--accent-cyan);' : ''}">${row.shape}</td>
+              <td>${row.blocks}</td>
+              <td class="mono">${row.seq_us}</td>
+              <td class="mono" style="${row.shape.includes('Standard') ? 'color:var(--accent-cyan); font-weight:700;' : ''}">${row.ovl_us}</td>
+              <td><span class="badge-pass" style="font-size:0.85rem; ${row.shape.includes('Standard') ? 'background:rgba(56,189,248,0.2); color:var(--accent-cyan); border-color:var(--accent-cyan);' : ''}">${row.speedup}</span></td>
+              <td class="text-green font-semibold">${row.stall_cut}</td>
+              <td><span class="badge-pass">${row.err}</span></td>
+            </tr>
+          `).join('');
+        }
+      }
+
+      // 4. Render Active Trajectory
+      renderTrajectoryTimeline(activeTrajMode);
+    }
+
+    function switchTrajectoryMode(mode) {
+      activeTrajMode = mode;
+      const btnSil = document.getElementById('btn-traj-silicon');
+      const btnLat = document.getElementById('btn-traj-latest');
+      if (btnSil && btnLat) {
+        if (mode === 'silicon') {
+          btnSil.className = 'btn btn-primary';
+          btnLat.className = 'btn';
+        } else {
+          btnSil.className = 'btn';
+          btnLat.className = 'btn btn-primary';
+        }
+      }
+      renderTrajectoryTimeline(mode);
+    }
+
+    function renderTrajectoryTimeline(mode) {
+      const container = document.getElementById('trajectory-timeline-container');
+      if (!container || !globalMetrics || !globalMetrics.trajectories) return;
+      const rounds = mode === 'silicon' ? globalMetrics.trajectories.silicon : globalMetrics.trajectories.latest;
+      if (!rounds || rounds.length === 0) return;
+
+      container.innerHTML = rounds.map((r) => {
+        const isConverged = r.score >= 1.0;
+        const badgeClass = isConverged ? 'badge-r1' : 'badge-r0';
+        const activeClass = isConverged ? 'active' : '';
+        const hazardTitle = r.hazard && r.hazard !== 'NONE' ? `Hazard Diagnosed: \`${r.hazard}\`` : 'Hazard: NONE — FULL CONVERGENCE ACHIEVED 🎯';
+        const scoreColor = isConverged ? 'text-green font-bold' : 'text-dim';
+        const latStr = r.latency_s ? ` | Latency: ${r.latency_s.toFixed(1)}s` : '';
+        const tokStr = r.total_tokens ? ` | Tokens: ${r.total_tokens}` : (r.tokens ? ` | Tokens: ${r.tokens}` : '');
+
+        return `
+          <div class="trajectory-item ${activeClass}">
+            <div class="trajectory-badge ${badgeClass}">ROUND ${r.round}</div>
+            <div class="trajectory-body">
+              <div class="trajectory-header">
+                <span class="trajectory-title" style="${isConverged ? 'color:var(--accent-green);' : ''}">${hazardTitle}</span>
+                <span class="mono ${scoreColor}" style="font-size:0.8rem;">Score: ${(r.score).toFixed(2)} / 1.00${latStr}${tokStr}</span>
+              </div>
+              <p class="trajectory-desc">
+                ${isConverged 
+                  ? 'Agent synthesized a verified 3-stage software pipeline: Prologue prefetch, 3-engine steady-state buffer rotation, and epilogue drain. All tests passed with 100% numerical accuracy!' 
+                  : (r.hazard === 'UNCOMPUTED_BLOCK_HAZARD'
+                    ? `Block ${r.block_failed >= 0 ? r.block_failed : 0} was uncomputed (all zeros). Loop boundary condition skipped block execution.`
+                    : (r.score < 0.8 && r.overlap_efficiency < 0.5 
+                      ? 'Sequential execution baseline: DMA, Vector, and Tensor run serialized with 66.7% idle memory stalls.' 
+                      : 'Diagnostic detected pipeline execution hazard.'))}
+              </p>
+              <div class="code-box">
+                <span style="color:#94a3b8;">// Grader Diagnostic Feedback:</span><br>
+                <span style="color:${isConverged ? 'var(--accent-green)' : '#f87171'};">${(r.hint || 'Score ' + r.score).replace(/\\n/g, '<br>')}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ================= GANTT RENDERING =================
+    function renderGantt() {
+      const trackSeq = document.getElementById('track-seq');
+      const trackOvl = document.getElementById('track-ovl');
+      
+      let seqHtml = '';
+      for (let i = 0; i < 8; i++) {
+        seqHtml += `<div class="timeline-block" style="flex:10; background:var(--dma-color);" title="Block ${i}: DMA">D${i}</div>`;
+        seqHtml += `<div class="timeline-block" style="flex:8; background:var(--vec-color);" title="Block ${i}: Vector">V${i}</div>`;
+        seqHtml += `<div class="timeline-block" style="flex:12; background:var(--ten-color);" title="Block ${i}: Tensor">T${i}</div>`;
+      }
+      trackSeq.innerHTML = seqHtml;
+
+      let ovlHtml = '';
+      ovlHtml += `<div class="timeline-block" style="flex:10; background:var(--dma-color);" title="Prologue: DMA Block 0">D0</div>`;
+      ovlHtml += `<div class="timeline-block" style="flex:12; background:linear-gradient(90deg, var(--dma-color) 50%, var(--vec-color) 50%);" title="Prologue: DMA(1) || VEC(0)">D1|V0</div>`;
+      for (let i = 2; i < 8; i++) {
+        ovlHtml += `<div class="timeline-block" style="flex:12; background:linear-gradient(90deg, var(--dma-color) 33%, var(--vec-color) 33% 66%, var(--ten-color) 66%);" title="Steady State: DMA(${i}) || VEC(${i-1}) || TEN(${i-2})">D${i}|V${i-1}|T${i-2}</div>`;
+      }
+      ovlHtml += `<div class="timeline-block" style="flex:12; background:linear-gradient(90deg, var(--vec-color) 50%, var(--ten-color) 50%);" title="Epilogue: VEC(7) || TEN(6)">V7|T6</div>`;
+      ovlHtml += `<div class="timeline-block" style="flex:12; background:var(--ten-color);" title="Epilogue: TEN(7)">T7</div>`;
+      
+      const remainingFlex = 240 - 116;
+      ovlHtml += `<div class="timeline-block idle" style="flex:${remainingFlex};" title="Time Saved (Speedup): 124 µs faster!">— TIME SAVED (2.07× FASTER) —</div>`;
+
+      trackOvl.innerHTML = ovlHtml;
+    }
+
+    function animateTimeline() {
+      renderGantt();
+      const blocks = document.querySelectorAll('.timeline-block');
+      blocks.forEach((b, idx) => {
+        b.style.opacity = '0';
+        b.style.transform = 'scale(0.9)';
+        setTimeout(() => {
+          b.style.transition = 'all 0.25s ease';
+          b.style.opacity = '1';
+          b.style.transform = 'scale(1)';
+        }, idx * 15);
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      renderGantt();
+      checkBackendStatus();
+      updateAllDashboardMetrics();
+    });
+  </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # Multi-Engine Overlap Agent (3-Way Hardware Pipeline Parallelism for AWS Trainium)
 **NYU × Annapurna Labs Hack the Chip 2026**  
-**Team CP:** Heet Mehta (`hm3536@nyu.edu`), Shashwat Shah (`Sns10089@nyu.edu`), Tanay Doijode (`td2755@nyu.edu`)  
+**Team CP:** Heet Mehta (`hm3536@nyu.edu`), Shashwat Shah (`Sns10089@nyu.edu`), Tanay Dave (`td2755@nyu.edu`)  
 **Hardware Target:** AWS Trainium (NeuronCore-v2, Pod `seat-140`, Pods `seat-140`–`144`)  
 **Repository:** [github.com/Shashwatshah02/trainium-agent-labs-CP](https://github.com/Shashwatshah02/trainium-agent-labs-CP.git)
 
