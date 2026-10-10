@@ -179,6 +179,16 @@ referee that planted cheats could not fool verified it. Every number below is co
 <section class="card wide"><h2>From the start kernel to <span id="ladder-top"></span><span class="tag">speed ladder</span></h2>
 <p class="how">Matmul time on the chip at Qwen3-8B's shapes, as a multiple of the NKI tutorial kernel. Hover a bar for its time.</p>
 <div id="ladder"></div></section>
+<section class="card wide"><h2>Found and fixed: a precision bug in AWS's published matmul<span class="tag" style="color:var(--gold);background:color-mix(in srgb,var(--gold) 15%,transparent)">discovery</span></h2>
+<div class="bug"><div><p class="how" style="font-size:14px;color:var(--ink)">AWS publishes a "fully optimised" NKI matmul. Our referee checks every
+kernel at shapes it was never shown, with hostile inputs, so it ran AWS's kernel at Qwen3-8B's real sizes, and the numbers came back wrong.</p>
+<ol class="steps">
+<li><b>The cause.</b> The kernel rounds each K-block's partial sum to bf16 before adding the next. Its own test uses K = 1024, a single block, so it never takes that path.</li>
+<li><b>Simulator stage.</b> 5.3 bf16 ulps at K = 2048, over the limit of 4.</li>
+<li><b>On the chip.</b> At Qwen3's down_proj shape (K = 6144), a held-out shape: 4.9 ulps, rejected.</li>
+<li><b>Its own benchmark.</b> At K = 8192, the K AWS benchmarks with: 19.4 ulps in the simulator. It fails its own correctness check, file unmodified.</li>
+<li><b>The fix.</b> One line: accumulate in fp32. Error drops to 0.5 ulps at no measurable speed cost. Every expert number on this page uses the fixed kernel.</li>
+</ol></div><div id="bug"></div></div></section>
 <section class="card wide"><h2>Agent optimisation: every version gets further<span class="tag">agent evolution</span></h2>
 <p class="how">Share of each agent version's attempts that reached each referee stage. Each version fixed what stopped the
 one before: P3's rules took the model from crashing, to running, to correct and faster; P1's agent got there too.</p>
@@ -198,16 +208,6 @@ on undisclosed held-out shapes, and faster than the timing noise.</p><div id="wi
 <section class="card"><h2>Where the speed is: block sizes<span class="tag t">sweep heat map</span></h2>
 <p class="how">Best speedup over AWS's default for each M and N block size (best K), from the exhaustive sweep. Ringed in ink: AWS's default; gold: the best.</p>
 <div id="grid"></div></section>
-<section class="card wide"><h2>Found and fixed: a precision bug in AWS's published matmul<span class="tag" style="color:var(--gold);background:color-mix(in srgb,var(--gold) 15%,transparent)">discovery</span></h2>
-<div class="bug"><div><p class="how" style="font-size:14px;color:var(--ink)">AWS publishes a "fully optimised" NKI matmul. Our referee checks every
-kernel at shapes it was never shown, with hostile inputs, so it ran AWS's kernel at Qwen3-8B's real sizes, and the numbers came back wrong.</p>
-<ol class="steps">
-<li><b>The cause.</b> The kernel rounds each K-block's partial sum to bf16 before adding the next. Its own test uses K = 1024, a single block, so it never takes that path.</li>
-<li><b>Simulator stage.</b> 5.3 bf16 ulps at K = 2048, over the limit of 4.</li>
-<li><b>On the chip.</b> At Qwen3's down_proj shape (K = 6144), a held-out shape: 4.9 ulps, rejected.</li>
-<li><b>Its own benchmark.</b> At K = 8192, the K AWS benchmarks with: 19.4 ulps in the simulator. It fails its own correctness check, file unmodified.</li>
-<li><b>The fix.</b> One line: accumulate in fp32. Error drops to 0.5 ulps at no measurable speed cost. Every expert number on this page uses the fixed kernel.</li>
-</ol></div><div id="bug"></div></div></section>
 <section class="card"><h2>Every block setting, timed<span class="tag t">exhaustive sweep</span></h2>
 <p class="how" id="sweep-how"></p><div id="sweep"></div></section>
 <section class="card"><h2>Correct on shapes it never saw<span class="tag">held out</span></h2>
@@ -467,7 +467,6 @@ d3.select("#tiles").selectAll(".tile").data(tiles).join("div").attr("class", d =
   const st = [
     {b: `${D.caught} / ${D.cheats}`, s: "planted cheats caught"},
     {b: `${D.honest_ok} / ${D.honest}`, s: "honest kernels accepted"},
-    {b: "0 of 45", s: "self-vs-self timings reported “faster” (spread 0.011%)"},
     {b: "18 of 18", s: "times a deliberately slowed copy was measured at 2.949×"},
     {b: "R² 0.9999998", s: "time scales linearly with work"},
     {b: "≤ 0.04%", s: "timing moved under live vLLM load"},
