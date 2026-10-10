@@ -409,14 +409,13 @@ def enrich(error_text):
                 "first, then a free dimension. A 1-D tile is not allowed, so write "
                 "nl.ndarray((rows, cols), ...) and give a length-N vector the shape (1, N) or "
                 "(N, 1) depending on which axis you are reducing over.")
-    # Was "cannot reshape array of size", numpy's wording. Measured on level 1 under --plan: the NKI
-    # simulator says "cannot reshape TENSOR of size 1024 ...", the rule missed, and the model got the
-    # bare error two rounds running. Match the verb, not the noun.
-    if "cannot reshape" in error_text:
-        return (error_text + " NKI tiles cannot be reshaped. Work with the shapes you were given and "
-                "slice them into tiles, e.g. src=a[0:128, 0:64]. To group elements into windows, "
-                "do not reshape: build a strided view of the tile with tile.ap([[stride, count], "
-                "...]) and reduce that view with nl.sum(view, axis=[...]).")
+    # KNOWN GAP, deliberately left as in the original for the --plan vs --plan-merge comparison: the
+    # NKI simulator says "cannot reshape TENSOR of size ...", so this numpy-worded rule never fires
+    # on tiles. Do NOT fix it as "tiles cannot be reshaped": measured under --plan, reshaping a WHOLE
+    # (C, H, W) tile to 5D works; the failure was reshaping a 2D slice with too few elements.
+    if "cannot reshape array of size" in error_text:
+        return (error_text + " Do not reshape. Work with the shapes you were given and slice "
+                "them into tiles, e.g. src=a[0:128, 0:64].")
     m = re.search(r"module '([\w.]+)' has no attribute '(\w+)'", error_text)
     if m:
         return error_text + available_names(f"{m.group(1)}.{m.group(2)}")
