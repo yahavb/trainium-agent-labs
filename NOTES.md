@@ -7,6 +7,57 @@
 
 ---
 
+## 0. 当前状态（2026-10-10 12:00，随时更新）
+
+**人员**：teoguo（seat-116）+ liuyq（有经验）两人主力；另外三位新手做辅助，不计入关键路径。
+**题目**：做项目 2（`projects/02-kernel-agent`，NKI kernel agent，在芯片上跑）。CHALLENGE（Stage A，`kernelbench.py`）有时间再做，同一套 agent 搬过去。评分按 30/25/25/20 那一套（CHALLENGE 第 239 行写着 "Same rubric as every problem"）。
+
+**仓库和 remote**（本地 checkout：`trainium-agent-labs/`，工作分支 `team`）
+| remote | 仓库 | 用途 |
+|---|---|---|
+| `team` | github.com/liuyq123/trainium-agent-labs | **共用仓库**，本地 `team` 分支跟踪 `team/master`，`git pull --rebase` / `git push` 直接用 |
+| `origin` | github.com/teoguo/trainium-agent-labs | teoguo 的 fork，以后从这里给原仓库提 PR（从 `master` 开分支） |
+| `upstream` | github.com/yahavb/trainium-agent-labs | 原仓库，只读 |
+
+**Baseline**（seat-116，`--all --rounds 8 --samples 4 --context 8192 --repeat 5`，约 12:45 跑完）
+```
+          run1   run2   STATE.md 参考
+level 1   0.30   0.30   0/5，全部 0.30
+level 2   1.00✅ 0.30   4/5
+level 3   0.30   0.30   0/5，全部 0.30
+level 4   0.62   0.62   0/5，全部 0.62
+```
+日志拉回本机：`scripts/sync.sh 116 pull` → `runs/seat-116/latest/`（gitignore，不提交）。
+重新生成分类表：`.venv/bin/python scripts/attempts_to_csv.py runs/seat-116/latest/projects/02-kernel-agent/attempts.jsonl -o analysis/baseline_seat116`
+
+**已确认的发现**
+1. **每轮约 50 秒，慢在模型生成，不在评分。** vLLM 总生成速度约 22 tok/s（4 条并发，每条约 5.6 tok/s），worker 一直占满 CPU，日志里有 `vllm._C` 缺失。这是服务端配置，我们不改。对策：一次只测一个 level（`--level X --repeat 5`，15–25 分钟），多个座位并行；输出 token 贵、输入 token 便宜（prefill 约 240 tok/s）。
+2. **失败分类**（前 3 次 run，224 次尝试，`analysis/baseline_seat116_summary.csv`）：
+   - 拷贝两边大小不一致 48 次（L1/L2/L3 都有）
+   - 编造不存在的函数 48 次（全在 L1：`nisa.multiply`、`nisa.scalar_mul`）
+   - 下标越界 32 次（L2/L3）
+   - tile 超过 128 行 27 次（L4 唯一卡住的地方）
+   - 乱用 reshape 21 次、tile 只有一维 16 次（L3）
+3. **harness 的反馈里已经附带了修改建议**（`agent.py` 的 `enrich()`），但同样的错误还是反复出现，说明现有建议没起作用。改反馈要从这里入手。
+4. **port-forward 没有权限**，agent 只能在 pod 里跑；`kubectl cp` / exec 可以用。
+
+**参考仓库：aws-neuron/neuron-agentic-development**（AWS 工程师推荐，已 clone 到 `../neuron-agentic-development/`，只读，不放进我们的仓库）
+- 最有用的是 `skills/neuron-nki-docs/references/`：`indices/symbol-lookup.md`（全部 NKI 符号和所在模块）、`programming/api/*.md`（API 签名）、`debugging/error-codes/`
+- 例子：`multiply` 存在，但它是 `nl.multiply`，是一个**操作类型**，要传给 `nisa.tensor_tensor(..., op=nl.multiply)` / `nisa.tensor_scalar(...)`，不是 `nki.isa` 里能直接调用的函数。现在 harness 按字母相似度推荐「scalar_engine…」，模型看了没用
+- ⚠️ 文档对应 NKI 0.4.0，pod 里是 **0.6.0**。写进反馈的名字要先在 pod 里确认存在
+- ⚠️ `references/downloads/*_nki_kernels.py`（average_pool2d、matmul、transpose2d）基本就是 level 1–4 的标准答案，**不能放进 prompt**（等于泄题），只给人看
+
+**正在做 / 下一步**
+1. [进行中] 做「编造的名字 → 正确写法」对照表（从 baseline 收集 + 查官方文档 + pod 验证），接进 checker 的反馈 → `analysis/api_name_fixes.md`
+2. 精简 API 卡片（level 1–4 用到的十几个函数，约 300 token）放进 prompt
+3. 改反馈的优先级：L4「tile 超过 128 行」（离解出来最近）→「拷贝大小不一致」（影响三关）→ L1 编造函数
+4. agent 加 token 分段统计（prompt 里规则说明 / 上次代码 / 报错 / 失败记录各多少）和置信度输出
+5. 每个改动用 `--level X --repeat 5` 验证，变差就回滚；下午 3 点冻结，跑最终对比
+
+**文件索引**：`上手指南.md`（连座位的命令）· `scripts/connect.sh` · `scripts/sync.sh` · `scripts/attempts_to_csv.py` · `analysis/`（分类表）· `projects/02-kernel-agent/{agent.py,nkibench.py}`（要改的代码）
+
+---
+
 ## 1. 评分标准（所有题目同一套）
 
 | 权重 | 项目 | 要点 |
