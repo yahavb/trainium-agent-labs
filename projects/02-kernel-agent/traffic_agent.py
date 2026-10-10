@@ -72,6 +72,7 @@ class TokenCounter:
         self.tokenize_url = root + "/tokenize"
         self.model = model
         self.exact = None
+        self._overhead = None
 
     def count(self, prompt):
         import httpx
@@ -88,6 +89,17 @@ class TokenCounter:
             pass
         self.exact = False
         return max(1, len(prompt) // 4)
+
+    def overhead(self):
+        """Template tokens added around any single message; cached once.
+
+        Each section is counted through the chat template, so every per-section count carries
+        this overhead. Subtracting it keeps the per-section numbers summing to the prompt total.
+        """
+        if self._overhead is None:
+            n = self.count("")
+            self._overhead = n if self.exact else 0
+        return self._overhead
 
 
 # ---------------------------------------------------------------- the model
@@ -163,8 +175,9 @@ def kernel_block(level, src):
 
 def report_block(level, ev, tag):
     bar = nkibench.LEVELS[level].get("max_waste")
+    gate = f"{bar:.2f}x" if bar is not None else "n/a (this level has no traffic gate)"
     lines = [f"{tag} measured HBM traffic (lower is better; 1.00x is the floor; the level "
-             f"{level} gate is {bar:.2f}x):"]
+             f"{level} gate is {gate}):"]
     for c in ev["per_case"]:
         w = f"{c['waste']:.2f}x" if c.get("waste") is not None else "?"
         line = f"- {c['case']}: {c.get('bytes')} bytes vs floor {c.get('floor')} = {w}"
@@ -201,7 +214,9 @@ def assemble_prompt(a, counter, api_card, kernel_txt, report_txt, failure_txt,
         prompt = "\n\n".join(text for _, text in parts if text)
         total = counter.count(prompt)
         if total + a.max_tokens + 64 <= a.context:
-            sections = {name: counter.count(text) for name, text in parts if text}
+            ovh = counter.overhead()
+            sections = {name: max(1, counter.count(text) - ovh) for name, text in parts if text}
+            sections["_template_overhead"] = ovh
             return prompt, total, sections
         if memory_failures:
             memory_failures = memory_failures[1:]
@@ -293,6 +308,7 @@ def run_once(a, level, out_dir, rng, counter, opt_seeds):
     for sub in ("learning", "replies", "candidates"):
         os.makedirs(os.path.join(out_dir, sub), exist_ok=True)
     log_path = os.path.join(out_dir, "rounds.jsonl")
+    open(log_path, "w").close()   # a rerun into the same output must not mix runs
     logf = open(log_path, "a")
 
     learning = a.learning == "on"
@@ -358,7 +374,7 @@ def run_once(a, level, out_dir, rng, counter, opt_seeds):
             print(f"round {rnd}: model call failed: {type(e).__name__}: {e}")
             continue
 
-        rewards, round_valid = [], []
+        rewards, round_valid, round_invalid = [], [], []
         for i, (reply, usage) in enumerate(replies):
             tokens_in += int(usage.get("prompt_tokens") or 0)
             tokens_out += int(usage.get("completion_tokens") or 0)
@@ -400,6 +416,8 @@ def run_once(a, level, out_dir, rng, counter, opt_seeds):
                     hash=code_hash, source=src, strategy=arm,
                     worst_waste=ev["worst_waste"], valid=True, eval=ev, path=code_path))
                 round_valid.append(dict(src=src, ev=ev, code_path=code_path))
+            else:
+                round_invalid.append(dict(src=src, ev=ev, code_path=code_path))
             memory.append(dict(ok=valid, improvement=imp, arm=arm, source_hash=code_hash,
                                worst_waste=ev["worst_waste"], failure_kind=ev["failure_kind"],
                                lesson=lesson_for(arm, valid, ev, imp)))
@@ -441,26 +459,17 @@ def run_once(a, level, out_dir, rng, counter, opt_seeds):
 
         if round_valid:
             pending = None            # a repair succeeded; stop repairing
-        elif pending is None:
-            # Queue one bounded repair of the most promising invalid attempt this round:
-            # rules-clean and simulated somewhere, so it is close rather than nonsense.
-            best_invalid = None
-            for line in open(log_path):
-                try:
-                    rec = json.loads(line)
-                except Exception:
-                    continue
-                if rec.get("round") != rnd or rec.get("decision") != "evaluated":
-                    continue
-                if rec.get("failure_kind") in ("rules", "duplicate", "empty", None):
-                    continue
-                best_invalid = rec
-                break
-            if best_invalid is not None and best_invalid.get("code"):
-                src_txt = open(os.path.join(out_dir, best_invalid["code"])).read()
-                fb = first_failure_from_record(best_invalid)
-                pending = dict(source=src_txt, feedback=fb, arm=best_invalid["arm"],
-                               remaining=2, worst_waste=best_invalid.get("worst_waste"))
+        elif not (pending and pending["remaining"] > 0):
+            # No active repair: queue one bounded repair of the closest invalid attempt this
+            # round (rules-clean and simulated, so it is close rather than nonsense).
+            promising = [c for c in round_invalid if c["ev"]["rules_ok"] and c["ev"]["per_case"]]
+            if promising:
+                promising.sort(key=lambda c: (c["ev"]["worst_waste"] is None,
+                                              c["ev"]["worst_waste"] or 0.0))
+                best = promising[0]
+                fb = first_failure(best["ev"])
+                pending = dict(source=best["src"], feedback=fb, arm=arm,
+                               remaining=2, worst_waste=best["ev"]["worst_waste"])
                 last_failure = compact(fb, 220)
                 memory.append(dict(ok=False, improvement=0.0,
                                    lesson=f"repairing the last attempt: {last_failure}"))
@@ -487,11 +496,6 @@ def run_once(a, level, out_dir, rng, counter, opt_seeds):
     with open(os.path.join(out_dir, "summary.json"), "w") as f:
         json.dump(summary, f, indent=2)
     return summary
-
-
-def first_failure_from_record(record):
-    return next((c.get("failure") for c in record.get("per_case", []) if c.get("failure")),
-                record.get("failure_kind") or "")
 
 
 # ---------------------------------------------------------------- cli

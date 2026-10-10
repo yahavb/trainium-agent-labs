@@ -223,7 +223,7 @@ For each independent run (fresh bandit table, empty memory, population = {seed})
 
 ## 9. Task 4 — drive down bytes (hour 3–4.5)
 
-- [ ] Before round 1, write and run a clearly labelled probe kernel (human-authored, excluded from agent success counts) that allocates the largest resident layout and slices it as `nc_matmul` operands. If the simulator or compiler rejects it, move retain-one ahead of retain-both in the strategy menu before spending model rounds.
+- [x] Before round 1, write and run a clearly labelled probe kernel (human-authored, excluded from agent success counts) that allocates the largest resident layout and slices it as `nc_matmul` operands. If the simulator or compiler rejects it, move retain-one ahead of retain-both in the strategy menu before spending model rounds. **Result: PASSED — every shape exactly at the byte floor in simulation (see `probe_resident_layout_result.json`); retain_both stays first-class.**
 - [ ] Launch a short pilot using the supplied correct kernel. The following is the planned CLI after Task 3, not an existing command:
 
 ```bash
