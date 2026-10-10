@@ -3,11 +3,24 @@
 ## Subsequent feedback correction
 
 The ambiguous innermost-loop load advice has been replaced by conservative outer-loop reuse diagnosis
-in `instruction_given`. Five CPU tests and four representative hardware checks passed; see
+in `instruction_given`. Four representative hardware checks passed; see
 `feedback_validation.json` and `verify_feedback.py`. The chip verified the reference, n-outer,
 lhsT-hoisted, and rhs-hoisted kernels; the feedback identified which operand still reloads while
 preserving the other operand's reuse and distinct K tiles. This changes feedback, not verdicts or timing.
 The original comparison batch remains pinned to the earlier implementation and does not evaluate this fix.
+
+Later integration work adds conservative fallback, generalized DMA mismatch, and PSUM/compiler repair
+guidance (`7da33ee`). Local `python -m unittest discover -s projects/03-chipboost/tests -p 'test_*.py'`
+passed 36 tests; the four chip checks above
+cover the earlier diagnosis. Final seat/core-2 checks in `research/final_feedback_validation.json`
+verified all three later DMA/tile-list/PSUM failure instructions while preserving `wrong` verdicts;
+the baseline returned `no_gain`. See `RESULTS-SUMMARY.md` for Qwen-only reporting: the completed
+eight-attempt recovery pilot (all `wrong`), canceled experiments with no results, and the consolidated
+Qwen-only v2 launch on core 2 (budget 8, integrated P3 `--tag v2`, PID `884773`,
+`/tmp/p1-qwen-v2-20261010-1`). Earlier non-Qwen side trials remain in an archive appendix and are
+excluded from deliverable comparison results.
+The original 72-evaluation comparison is still in progress at this snapshot; no final comparison
+or complete team integration is claimed by this handoff update.
 
 ## Original throughput acceptance
 
