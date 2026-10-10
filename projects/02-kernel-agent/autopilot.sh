@@ -51,11 +51,12 @@ busy() { pgrep -f "bash [^ ]*go[.]sh _run" >/dev/null \
          || pgrep -f "bash [^ ]*after_directed[.]sh _wait" >/dev/null; }
 
 # One entry per agent process on this seat, ours or not: how long it has run, where, and how far its
-# attempt log has got. Counts and positions only -- the contents of a log that is not ours are never
-# copied anywhere. This is what tells us when a chip someone else is using will be free.
+# attempt log has got. Only counts and positions are sent to the fork; the contents of a log that is not ours
+# are never sent. This is what tells us when a chip someone else is using will be free.
 agents_progress() {
-  "$PY" - <<'EOF'
-import json, os, subprocess
+  "$PY" - "$PROJ/rescued" <<'EOF'
+import json, os, shutil, subprocess, sys
+RESCUE = sys.argv[1]
 found = False
 for pid in sorted((p for p in os.listdir("/proc") if p.isdigit()), key=int):
     try:
@@ -82,13 +83,35 @@ for pid in sorted((p for p in os.listdir("/proc") if p.isdigit()), key=int):
         print("   no --log option, so its progress cannot be read")
         continue
     path = log if os.path.isabs(log) else os.path.join(cwd, log)
+    source = path
+    if not os.path.exists(path):
+        # The log was deleted while the agent still holds it open (it happened on this seat when
+        # untracked files were cleaned out of the checkout). The agent keeps writing to a file
+        # nobody can see, and the data disappears for good when the process ends. Read it through
+        # the process's own handle, and keep a copy on the seat so the chip time is not lost.
+        fds = f"/proc/{pid}/fd"
+        try:
+            held = [os.path.join(fds, n) for n in os.listdir(fds)
+                    if os.readlink(os.path.join(fds, n)) == path + " (deleted)"]
+        except OSError:
+            held = []
+        if held:
+            source = held[0]
+            try:
+                os.makedirs(RESCUE, exist_ok=True)
+                kept = os.path.join(RESCUE, f"{pid}-{os.path.basename(path)}")
+                shutil.copyfile(source, kept + ".part")
+                os.replace(kept + ".part", kept)
+                print(f"   its log was DELETED while it runs; reading the open handle, copy kept in {kept}")
+            except OSError as e:
+                print(f"   its log was DELETED while it runs; reading the open handle (copy failed: {e.strerror})")
     try:
-        with open(path, errors="replace") as f:
+        with open(source, errors="replace") as f:
             lines = f.read().splitlines()
     except OSError as e:
         print(f"   log {path}: cannot read ({e.strerror})")
         continue
-    runs, prev, last, rounds, n = 1, None, None, set(), 0
+    runs, prev, last, rounds, n, modes, commits = 1, None, None, set(), 0, set(), set()
     for line in lines:
         try:
             r = json.loads(line)
@@ -100,12 +123,21 @@ for pid in sorted((p for p in os.listdir("/proc") if p.isdigit()), key=int):
             runs += 1                      # the level number went back down: the next repeat began
         prev, last = lv, r
         rounds.add((runs, lv, r.get("round")))
+        modes.add(str(r.get("feedback_mode", "not recorded")))
+        commits.add(str(r.get("commit", "not recorded")))
     if last is None:
         print(f"   log {path}: empty so far")
         continue
     print(f"   log {path}: {n} attempts, {len(rounds)} rounds done; now on run {runs} of "
           f"{arg('--repeat', '1')}, level {last.get('level')}, round {last.get('round')} "
           f"(up to {arg('--rounds', '?')} rounds a level)")
+    per = {}
+    for run, lv, _ in rounds:
+        per.setdefault(run, {}).setdefault(lv, 0)
+        per[run][lv] += 1
+    for run in sorted(per):
+        print(f"   run {run}: rounds per level " + ", ".join(f"L{lv}={per[run][lv]}" for lv in sorted(per[run], key=str)))
+    print(f"   feedback mode in its records: {', '.join(sorted(modes))}; code: {', '.join(sorted(commits))}")
 if not found:
     print("none")
 EOF
