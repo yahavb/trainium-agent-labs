@@ -201,3 +201,14 @@ Real Level 1 run found the next failure after `.mean()`:
 Updated `agent.py` so this maps to `reduction_axis` and sends a focused card explaining that
 `nl.sum` can only reduce trailing contiguous dimensions, so the avgpool access-pattern view must
 place pool dimensions last and reduce `axis=[3, 4]`.
+
+## Prompt/reply inspection
+
+Added debug tooling to inspect exactly what the agent sends to the model:
+
+- `--dump-prompts`: stores full prompt and raw model reply in the JSONL log.
+- `--show-attempt PATH --show-round N`: prints prompt, raw reply, extracted code, and checker
+  feedback for one attempt.
+
+This is for auditing whether failures are due to missing context, bad model reasoning, or bad
+extraction/checking.

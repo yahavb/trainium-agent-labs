@@ -729,6 +729,39 @@ def summarize_log(path):
         )
 
 
+def show_attempt(path, round_n=None, index=None):
+    rows = []
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                rows.append(json.loads(line))
+    if not rows:
+        print(f"{path}: no attempts")
+        return
+    if index is not None:
+        row = rows[index]
+    elif round_n is not None:
+        matches = [r for r in rows if r.get("round") == round_n]
+        if not matches:
+            raise SystemExit(f"no attempt with round={round_n}")
+        row = matches[0]
+    else:
+        row = rows[-1]
+
+    print(f"level={row.get('level')} round={row.get('round')} reward={row.get('reward')}")
+    print(f"category={row.get('failure_category')} cards={','.join(row.get('context_cards') or [])}")
+    print(f"budget={row.get('prompt_budget')}")
+    print("\n========== PROMPT ==========")
+    print(row.get("prompt", "<prompt was not logged; rerun with --dump-prompts>"))
+    print("\n========== RAW REPLY ==========")
+    print(row.get("raw_reply", "<reply was not logged; rerun with --dump-prompts>"))
+    print("\n========== EXTRACTED CODE ==========")
+    print(row.get("code", ""))
+    print("\n========== CHECKER ==========")
+    print(row.get("feedback", ""))
+
+
 CODE_BLOCK = re.compile(r"```(?:python)?\s*(.*?)```", re.S)
 
 
@@ -831,14 +864,18 @@ def solve(a, level, log):
             reward, parts, feedback = grade(src, level)
             failure_category, repair_instruction = distill_failure(feedback)
             graded.append((reward, src, feedback, parts))
-            log.write(json.dumps(dict(level=level, round=rnd, reward=reward, parts=parts,
-                                      prompt_chars=len(prompt), reply_chars=len(reply),
-                                      context_cards=prompt_cards,
-                                      prompt_budget=prompt_budget,
-                                      failure_category=failure_category,
-                                      repair_instruction=repair_instruction,
-                                      compact_feedback=compact_feedback(feedback),
-                                      code=src, feedback=feedback)) + "\n")
+            row = dict(level=level, round=rnd, reward=reward, parts=parts,
+                       prompt_chars=len(prompt), reply_chars=len(reply),
+                       context_cards=prompt_cards,
+                       prompt_budget=prompt_budget,
+                       failure_category=failure_category,
+                       repair_instruction=repair_instruction,
+                       compact_feedback=compact_feedback(feedback),
+                       code=src, feedback=feedback)
+            if a.dump_prompts:
+                row["prompt"] = prompt
+                row["raw_reply"] = reply
+            log.write(json.dumps(row) + "\n")
         log.flush()
         graded.sort(key=lambda g: g[0], reverse=True)
         top = graded[0]
@@ -953,7 +990,19 @@ def main():
                          "without calling the model")
     ap.add_argument("--summarize-log", metavar="PATH",
                     help="summarize an attempts JSONL log without calling the model")
+    ap.add_argument("--dump-prompts", action="store_true",
+                    help="store full prompt and raw model reply in the JSONL log")
+    ap.add_argument("--show-attempt", metavar="PATH",
+                    help="print one logged attempt, including prompt/reply if dumped")
+    ap.add_argument("--show-round", type=int,
+                    help="with --show-attempt, choose this round; defaults to last attempt")
+    ap.add_argument("--show-index", type=int,
+                    help="with --show-attempt, choose this zero-based JSONL row")
     a = ap.parse_args()
+
+    if a.show_attempt:
+        show_attempt(a.show_attempt, round_n=a.show_round, index=a.show_index)
+        return
 
     if a.summarize_log:
         summarize_log(a.summarize_log)
