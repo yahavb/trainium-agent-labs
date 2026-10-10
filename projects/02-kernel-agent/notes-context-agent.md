@@ -236,3 +236,21 @@ Observed audit sizes remain small:
 - first prompt: about 188 tokens;
 - `.mean()` repair: about 344 tokens;
 - reduction-axis repair: about 415 tokens.
+
+## Classifier fix: memory region calls are not traffic
+
+A real run produced:
+
+- `'MemoryRegion' object is not callable`
+
+The checker message correctly said `nl.sbuf`, `nl.psum`, and `nl.shared_hbm` are memory regions,
+not functions. But `distill_failure` saw the word `HBM` and misclassified it as `traffic`, which
+sent irrelevant matmul/PSUM optimization cards. The model then followed the wrong instruction and
+repeated the same bug.
+
+Fix:
+
+- classify `MemoryRegion` / `not callable` as `signature`;
+- add known invalid pattern: do not call memory regions, use `buffer=nl.sbuf`;
+- make `traffic` trigger only on actual traffic phrases like `byte floor`, `transfers`, or
+  `issue-bound`, not any mention of HBM.

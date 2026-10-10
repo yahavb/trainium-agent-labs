@@ -108,7 +108,9 @@ CONTEXT_CARDS = {
     ),
     "signatures": (
         "Use real signatures only. nl.sum(x, axis, dtype=None, keepdims=False). "
-        "nisa.nc_matmul(dst=, stationary=, moving=, ...). Do not add guessed keyword arguments."
+        "nisa.nc_matmul(dst=, stationary=, moving=, ...). Do not add guessed keyword arguments. "
+        "Memory regions are values, not functions: write buffer=nl.sbuf, buffer=nl.psum, or "
+        "buffer=nl.shared_hbm, never nl.sbuf() or nl.shared_hbm()."
     ),
 }
 
@@ -519,6 +521,8 @@ def known_invalid_patterns(failures):
     text = "\n".join(compact_feedback(f) for f in failures or []).lower()
     patterns = []
     checks = [
+        ("memoryregion" in text or "not callable" in text,
+         "do not call nl.sbuf/nl.psum/nl.shared_hbm; pass them as buffer=nl.sbuf"),
         ("missing 1 required positional argument" in text and "dtype" in text,
          "add explicit dtype=... to every nl.ndarray allocation"),
         ("has no `mean`" in text or "attribute 'mean'" in text,
@@ -577,6 +581,11 @@ def distill_failure(feedback):
                 "Fix only the reduction view axes. nl.sum can reduce only trailing contiguous "
                 "dimensions, so make the pool dimensions the final axes of the access-pattern view "
                 "and reduce axis=[3, 4].")
+    if "memoryregion" in low or "not callable" in low:
+        return ("signature",
+                "Fix only the memory-region allocation calls. nl.sbuf, nl.psum and nl.shared_hbm "
+                "are values, not functions: use buffer=nl.sbuf or buffer=nl.shared_hbm, without "
+                "parentheses.")
     if "same number of elements" in low or "dma_copy requires" in low:
         return ("dma_shape",
                 "Fix only the dma_copy shape mismatch. Allocate the destination tile to exactly "
@@ -590,7 +599,7 @@ def distill_failure(feedback):
         return ("ragged",
                 "Fix only the final partial tile bounds. Use the remaining size for the last "
                 "chunk and copy/write only the valid output slice.")
-    if "byte floor" in low or "hbm" in low or "traffic" in low:
+    if "byte floor" in low or "traffic " in low or " transfers" in low or "issue-bound" in low:
         return ("traffic",
                 "Fix only HBM traffic. Reuse tiles, keep one PSUM tile across the K loop, and copy "
                 "the final block out once.")
