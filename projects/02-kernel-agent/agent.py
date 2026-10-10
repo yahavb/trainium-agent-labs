@@ -23,6 +23,7 @@ Every attempt is appended to a JSONL file with its reward, so the log is the del
 """
 
 import argparse
+import functools
 import json
 import os
 import re
@@ -52,9 +53,13 @@ REASONING_KEYS = ("reasoning", "reasoning_content")
 WEIGHTS = dict(parses=0.1, rules=0.2, runs=0.2, correct=0.5)
 
 
-def grade(source, level):
-    """Returns (reward, parts, feedback). Feedback is an INSTRUCTION, never just a verdict."""
+def grade(source, level, passed_on=None):
+    """Returns (reward, parts, feedback). Feedback is an INSTRUCTION, never just a verdict.
+
+    passed_on, if given, is a list that collects the labels of the test cases the kernel got right.
+    """
     parts = dict(parses=False, rules=False, runs=False, correct=False)
+    passed_on = [] if passed_on is None else passed_on
 
     if not source.strip():
         return 0.0, parts, ("No code came back. Reply with one python code block containing the "
@@ -125,8 +130,8 @@ def grade(source, level):
             return (sum(WEIGHTS[k] for k, v in parts.items() if v), parts,
                     f"CANNOT SIMULATE: {e}")
         except Exception as e:
-            failures.append((nkibench.label(case, level),
-                             enrich(f"raised {type(e).__name__}: {e}")))
+            raw = f"raised {type(e).__name__}: {e}"
+            failures.append((nkibench.label(case, level), enrich(raw), case, raw))
             continue
         parts["runs"] = True
         m = (nkibench.check_inputs_untouched(before, args)
@@ -141,18 +146,21 @@ def grade(source, level):
                  + ". Fix that before anything else -- the simulator agrees with the reference here "
                    "and the device would not.")
         if m:
-            failures.append((nkibench.label(case, level), m))
+            failures.append((nkibench.label(case, level), m, case, None))
             continue
         passed += 1
+        passed_on.append(nkibench.label(case, level))
         if level >= 3 and counted["bytes"]:
             intensity = nkibench.roofline(
                 nkibench.matmul_flops(case["M"], case["K"], case["N"]), counted["bytes"])
 
     if failures:
-        lbl, first = failures[0]
+        lbl, first, failed_case, raised = failures[0]
+        feedback = ((passed_on and raised
+                     and partial_pass_feedback(level, passed_on, lbl, failed_case, raised))
+                    or f"{passed} of {len(spec['shapes'])} shapes passed. On {lbl}: {first}")
         return (sum(WEIGHTS[k] for k, v in parts.items() if v)
-                + WEIGHTS["correct"] * passed / len(spec["shapes"]), parts,
-                f"{passed} of {len(spec['shapes'])} shapes passed. On {lbl}: {first}")
+                + WEIGHTS["correct"] * passed / len(spec["shapes"]), parts, feedback)
 
     parts["correct"] = True
     reward = sum(WEIGHTS.values())
@@ -162,13 +170,48 @@ def grade(source, level):
     return reward, parts, note
 
 
+# How to grow a kernel that is right on one tile into one that is right on all of them. Keyed by the
+# reference, so every level that shares it -- 3 to 7 all use ref_matmul -- gets the same instruction.
+LOOP_HINT = {
+    nkibench.ref_matmul:
+        "wrap the single-tile body in nl.affine_range loops over m (M in steps of 128), n (N in "
+        "steps of 512) and k (K in steps of 128), and slice every load and the final store with "
+        "those loop variables. Allocate the psum tile inside the n loop but outside the k loop, so "
+        "nc_matmul adds the k chunks up in it, and copy it out once after the k loop.",
+}
+
+
+def over_one_tile(case):
+    """The dimensions of a matmul test case that do not fit in one tile, as text."""
+    limits = dict(K=nkibench.PMAX, M=nkibench.GEMM_STATIONARY_FMAX, N=nkibench.GEMM_MOVING_FMAX)
+    return [f"{d}={case[d]} > {lim}" for d, lim in limits.items() if case.get(d, 0) > lim]
+
+
+def partial_pass_feedback(level, passed_on, label, case, failure):
+    """Some cases pass, and a bigger-than-a-tile one RAISED: the fix is the missing loop.
+
+    Measured: level 4 sat at 0.62 on every run -- correct on the one shape that fits a single tile,
+    failing the three that do not -- while the feedback described only the error on the first big
+    one. Say what is already right, and name the one change. Only for a case that raised: a kernel
+    that ran and got the numbers or the traffic wrong is already looped, and needs the usual
+    message. None if this diagnosis does not apply.
+    """
+    hint = LOOP_HINT.get(nkibench.LEVELS[level]["ref"])
+    over = over_one_tile(case)
+    if not (hint and over):
+        return None
+    return (f"This kernel is already CORRECT on {', '.join(passed_on)}, so keep how it computes "
+            f"one tile exactly as it is. It fails on {label}, which does not fit in one tile "
+            f"({', '.join(over)}): {failure[:300]}\nMake one change: {hint}")
+
+
 # ---------------------------------------------------------------- prompting
 
 # Every name here appears in the three shipped tutorial kernels, so none of it is invented. The
 # model does not know this API and guesses plausible names -- nl.scalar, nl.value, nl.dot,
 # tile.mean -- none of which exist. A short card of what IS real costs ~200 tokens and is
 # documentation rather than the answer.
-API_CARD = """Available NKI functions:
+API_NAMES = """Available NKI functions:
 
   @nki.jit                                  decorate the entry point
   nl.ndarray(shape, dtype=..., buffer=b)    allocate; b is nl.sbuf, nl.psum or nl.shared_hbm
@@ -181,6 +224,11 @@ API_CARD = """Available NKI functions:
   nisa.tensor_scalar(dst=, data=, op0=nl.multiply, operand0=0.5)   scale by a constant
   tile.ap([[stride, count], ...])           a strided view, for reductions
 
+"""
+# The names alone also go into every repair prompt (see repair_prompt). The rules and the worked
+# example below stay in the first prompt only. API_CARD is byte-identical to what it was before the
+# split, so round 0 -- and the check in k8s/kernel-agent-job.yaml -- are unchanged.
+API_CARD = API_NAMES + """\
 nisa.nc_matmul has strict memory rules: dst must live in nl.psum, while stationary and moving must
 both live in nl.sbuf. So the pattern is: dma_copy both operands from HBM into sbuf tiles, allocate a
 psum tile for the result, call nc_matmul(dst=psum_tile, stationary=..., moving=...), then
@@ -392,18 +440,79 @@ def first_prompt(level, terse=0):
         f"Reply with ONE python code block containing the imports and the function. No prose.")
 
 
-def repair_prompt(level, source, feedback):
+@functools.lru_cache(maxsize=None)
+def spec_card(level):
+    """The contract in shapes: how the kernel is called and what it must return, per test case.
+
+    Repair prompts used to carry only the op's name, so from round 1 on the model never saw a
+    shape -- nothing told it that level 4 has cases bigger than one tile, while the kernel it was
+    repairing had been written for exactly one. Shapes are not the answer; they are the question.
+    """
+    import inspect
+    s = nkibench.LEVELS[level]
+    names = list(inspect.signature(s["ref"]).parameters)
+
+    def show(name, v):
+        if isinstance(v, np.ndarray):
+            return f"{name}: {v.dtype}[{'x'.join(map(str, v.shape))}]"
+        return f"{name}={v!r}"
+
+    lines = []
+    for case in s["shapes"]:
+        args, _ = nkibench.make_inputs(case, level)
+        out = np.asarray(s["ref"](*args))
+        lines.append(f"  {s['entry']}({', '.join(show(n, v) for n, v in zip(names, args))})"
+                     f" -> {out.dtype}[{'x'.join(map(str, out.shape))}]")
+    return "It is called like this, and must be correct on every line:\n" + "\n".join(lines)
+
+
+def repair_prompt(level, source, feedback, terse=0):
     """One named change, and the previous code. No rules list, no reference re-sent.
 
     The lesson this whole repo keeps re-learning: feeding a verifier's report back verbatim
     reproduces the same mistake, because a report says what is wrong and never what to do.
+
+    What it does carry is reference material, not rules: at terse 0 the real API names and the
+    call contract in shapes, at terse 1 the contract only, at terse 2 neither -- because on gpt-oss
+    a longer prompt buys hidden reasoning instead of an answer.
     """
+    context = ""
+    if terse <= 1:
+        context += spec_card(level) + "\n\n"
+    if terse == 0:
+        context += API_NAMES
     return (
         f"This NKI kernel for {nkibench.LEVELS[level]['op']} is not right yet.\n\n"
+        f"{context}"
         f"```python\n{source}\n```\n\n"
         f"A checker reports:\n{feedback}\n\n"
         f"Change exactly what the checker names and keep everything else identical. Reply with "
         f"ONE python code block.")
+
+
+def carried_kernel(bank, level):
+    """A kernel from another level with the same reference that already passed a case, or None."""
+    ref = nkibench.LEVELS[level]["ref"]
+    for lv, entry in (bank or {}).items():
+        if lv != level and nkibench.LEVELS[lv]["ref"] is ref:
+            return entry
+    return None
+
+
+def seeded_prompt(level, source, from_level, passed_on):
+    """Start from a kernel another level already got partly right, instead of from nothing.
+
+    Measured: level 4 writes a single-tile matmul that is correct on K=128 M=128 N=512 on every run,
+    while level 3 -- which IS one tile -- never produced a kernel that ran. Same reference, so the
+    work transfers; only the name and the shapes change.
+    """
+    s = nkibench.LEVELS[level]
+    return (f"This NKI kernel was written for level {from_level}, which has the same reference "
+            f"computation, and it is correct on {', '.join(passed_on)}.\n\n"
+            f"```python\n{source}\n```\n\n"
+            f"Adapt it. Rename the function to `{s['entry']}`, keep @nki.jit, and take every size "
+            f"from the input shapes rather than writing fixed numbers.\n{spec_card(level)}\n\n"
+            f"Reply with ONE python code block.")
 
 
 CODE_BLOCK = re.compile(r"```(?:python)?\s*(.*?)```", re.S)
@@ -487,12 +596,16 @@ def offline_answers(level, n, rnd):
 
 # ---------------------------------------------------------------- the loop
 
-def solve(a, level, log):
+def solve(a, level, log, bank=None):
     print(f"\n=========== level {level}: {nkibench.LEVELS[level]['op']} ===========")
     terse = a.terse
-    prompt = first_prompt(level, terse)
+    seed = carried_kernel(bank, level)
+    prompt = seeded_prompt(level, *seed) if seed else first_prompt(level, terse)
+    if seed:
+        print(f"  starting from level {seed[1]}'s kernel, correct on {', '.join(seed[2])}")
     best = (0.0, None, "")
     tried, streak, seen = [], 0, {}
+    went_empty = set()       # prompts that produced no code; never resend one
     latest = ("", "")
     for rnd in range(a.rounds):
         t0 = time.perf_counter()
@@ -501,14 +614,19 @@ def solve(a, level, log):
         graded = []
         for reply in replies:
             src = extract_code(reply)
-            reward, parts, feedback = grade(src, level)
-            graded.append((reward, src, feedback, parts))
+            ok_cases = []
+            reward, parts, feedback = grade(src, level, ok_cases)
+            graded.append((reward, src, feedback, parts, ok_cases))
             log.write(json.dumps(dict(level=level, round=rnd, reward=reward, parts=parts,
                                       prompt_chars=len(prompt), reply_chars=len(reply),
                                       code=src, feedback=feedback)) + "\n")
         log.flush()
-        graded.sort(key=lambda g: g[0], reverse=True)
+        # Among equal rewards, prefer a reply that contains code: an empty answer and a syntax error
+        # both score 0.0, and only the second gives the next round something to repair.
+        graded.sort(key=lambda g: (g[0], bool((g[1] or "").strip())), reverse=True)
         top = graded[0]
+        if bank is not None and len(top[4]) > len(bank.get(level, (None, None, []))[2]):
+            bank[level] = (top[1], level, list(top[4]))
         if top[0] > best[0]:
             best = (top[0], top[1], top[2])
         # Repair the LATEST attempt, not the best one. Rebuilding from the best attempt with the
@@ -542,6 +660,22 @@ def solve(a, level, log):
             for f, n in sorted(seen.items(), key=lambda kv: -kv[1]):
                 print(f"    {n}x  {f[:110]}")
             return best[0], rnd + 1
+        if not (top[1] or "").strip():
+            # No code came back THIS round. The old check looked at `latest`, which never empties
+            # once any kernel has arrived, so after the first code reply an empty round resent the
+            # identical repair prompt -- and the ledger below then made it LONGER. Measured on
+            # gpt-oss: rounds going empty behind a 2549-character repair prompt. So on every empty
+            # round, step down the terseness ladder, and never resend a prompt that already came
+            # back empty: under greedy decoding it would come back empty again.
+            went_empty.add(prompt)
+            terse = min(terse + 1, 2)
+            options = [first_prompt(level, t) for t in range(terse, 3)]
+            if (latest[0] or "").strip():
+                options.insert(0, repair_prompt(level, latest[0], latest[1], terse))
+            prompt = next((p for p in options if p not in went_empty), options[-1])
+            print(f"  no code this round, so re-asking with a shorter prompt "
+                  f"({len(prompt)} chars, terseness {terse})")
+            continue
         tried.append(top[2])
         repeats = streak
         if repeats >= 2 and (best[1] or "").strip():
@@ -549,21 +683,13 @@ def solve(a, level, log):
             # answer. Measured: the same TypeError 19 rounds running. Changing the prompt is the
             # only thing that can change the answer, so say what has already been tried.
             ledger = "\n".join(f"- {t[:160]}" for t in dict.fromkeys(tried))
-            prompt = (repair_prompt(level, latest[0], latest[1])
+            prompt = (repair_prompt(level, latest[0], latest[1], terse)
                       + f"\n\nThese approaches have already failed, so do something different:\n"
                         f"{ledger}")
             print(f"  same failure {repeats}x — adding a ledger of {len(set(tried))} failed "
                   f"attempts to break the repeat")
             continue
-        if not (latest[0] or "").strip():
-            # Nothing came back to repair. Asking it to "fix" an empty code block produced a
-            # 202-character prompt and, under greedy sampling, the identical non-answer six
-            # rounds running. Shorten and re-ask instead.
-            terse = min(terse + 1, 2)
-            prompt = first_prompt(level, terse)
-            print(f"  no code yet, so re-asking with a shorter prompt (terseness {terse})")
-        else:
-            prompt = repair_prompt(level, latest[0], latest[1])
+        prompt = repair_prompt(level, latest[0], latest[1], terse)
     print(f"  not solved in {a.rounds} rounds; best reward {best[0]:.2f}")
     return best[0], a.rounds
 
@@ -596,6 +722,11 @@ def main():
     ap.add_argument("--think", action="store_true",
                     help="let the model reason first; costs budget, and it ran out")
     ap.add_argument("--offline", action="store_true")
+    ap.add_argument("--carry", action="store_true",
+                    help="let a level start from another level's kernel when both share a "
+                         "reference and that kernel already passed a case. With --all this runs "
+                         "level 4 before 3. It changes what is measured, so compare it against a "
+                         "run without it.")
     a = ap.parse_args()
 
     if not a.offline:
@@ -621,6 +752,10 @@ def main():
         print("*** OFFLINE: replaying the reference kernel. Numbers are meaningless. ***")
 
     levels = sorted(nkibench.LEVELS)[:4] if a.all else [a.level or 1]
+    if a.carry and levels == [1, 2, 3, 4]:
+        # Level 4 is where a correct single-tile matmul first shows up -- its 0.62 is the one shape
+        # that fits a tile -- and level 3 IS a single tile. Run 4 first so 3 can start from it.
+        levels = [1, 2, 4, 3]
     full = sum(WEIGHTS.values())
     history = {lv: [] for lv in levels}
 
@@ -629,8 +764,9 @@ def main():
             if a.repeat > 1:
                 print(f"\n################ run {rep + 1} of {a.repeat} ################")
             results = []
+            bank = {} if a.carry else None     # per run, so --repeat runs stay independent
             for level in levels:
-                results.append((level,) + solve(a, level, log))
+                results.append((level,) + solve(a, level, log, bank))
                 history[level].append(results[-1][1])
 
             print("\n=========== summary ===========")
