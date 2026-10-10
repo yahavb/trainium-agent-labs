@@ -1705,12 +1705,13 @@ def solve(a, level, log):
                     src = apply_unified_patch(patch_base[0], patch_text)
                 except Exception as e:
                     patch_error = f"{type(e).__name__}: {e}"
-                    src = patch_base[0]
+                    fallback_src = extract_code(reply)
+                    src = fallback_src if fallback_src.strip() else patch_base[0]
             else:
                 src = extract_code(reply)
             src, preflight_fixes = static_preflight_fix(src)
             reward, parts, feedback = grade(src, level)
-            if patch_error:
+            if patch_error and src == patch_base[0]:
                 reward = 0.0
                 parts = dict(parses=False, rules=False, runs=False, correct=False)
                 feedback = f"Patch could not be applied: {patch_error}. Return a valid unified diff."
@@ -1849,8 +1850,8 @@ def main():
                          "result: measured, the same config scored 1.00, 1.00 and 0.50 on level 2 "
                          "across three runs with no code change.")
     ap.add_argument("--log", default="attempts.jsonl")
-    ap.add_argument("--repair-mode", choices=("patch", "full"), default="patch",
-                    help="repair by asking for a minimal unified diff, or for a full rewritten code block")
+    ap.add_argument("--repair-mode", choices=("patch", "full"), default="full",
+                    help="repair by asking for a full rewritten code block, or experimental minimal unified diff")
     ap.add_argument("--give-up-after", type=int, default=4,
                     help="stop a level after this many identical failures in a row. Measured: 15 "
                          "was pure waste, because the prompt had stopped changing.")
