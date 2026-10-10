@@ -636,7 +636,7 @@ def probe_kernel(level, code):
             pass
 
 
-OOB_RE = re.compile(r"dimension (\d+): index range \[(\d+), (\d+)\] exceed dimension size of (\d+)")
+OOB_RE = re.compile(r"dimension (\d+): index (?:range \[(\d+), (\d+)\]|(\d+)) exceed dimension size of (\d+)")
 
 
 def _oob_analysis(msg, shape2D):
@@ -646,7 +646,8 @@ def _oob_analysis(msg, shape2D):
     m = OOB_RE.search(msg or "")
     if not m or not shape2D:
         return ""
-    dim, hi, size = int(m.group(1)), int(m.group(3)), int(m.group(4))
+    dim, size = int(m.group(1)), int(m.group(5))
+    hi = int(m.group(3) if m.group(3) is not None else m.group(4))
     F1, F2 = shape2D
     text = (f"This is NOT a tile-size limit. Axis {dim} has length {size} and the kernel indexed {hi}. ")
     if size == F1 and F1 != F2 and hi >= F1:
@@ -657,6 +658,10 @@ def _oob_analysis(msg, shape2D):
                  f"length F2.")
     else:
         text += "Derive that loop bound from the shape of the axis it indexes."
+    if dim == 0:
+        text += (" Axis 0 of a tile is the PARTITION axis: it holds the independent input rows, not "
+                 "the F1-by-F2 matrix. Each row's F1*F2 elements lie along axis 1, so a "
+                 "per-element index belongs on axis 1 (for example `tile[:, ...]`).")
     return text
 
 

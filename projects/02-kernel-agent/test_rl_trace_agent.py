@@ -304,6 +304,11 @@ class TestProbe(unittest.TestCase):
         self.assertIn("NOT a tile-size limit", text)
         self.assertIn("F1", text)
         self.assertEqual(rl._oob_analysis("raised TypeError", (3, 4)), "")
+        # the single-index form seen in the real run, on the partition axis
+        real = "Out-of-bound access for tensor `unnamed` on dimension 0: index 3 exceed dimension size of 3."
+        text = rl._oob_analysis(real, (3, 4))
+        self.assertIn("F1", text)
+        self.assertIn("PARTITION axis", text)
 
     def test_reference_passes(self):
         self.assertEqual(rl.probe_kernel(2, REFERENCE)["kind"], "ok")
