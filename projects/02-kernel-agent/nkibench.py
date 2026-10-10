@@ -570,8 +570,12 @@ def check_rules(src, level_n):
 
 # ---------------------------------------------------------------- layer 1b: numerics
 
-def describe_mismatch(got, want, tol=2e-2):
-    """The message the agent learns from. Vague here is slow there."""
+def describe_mismatch(got, want, tol=2e-2, op=""):
+    """The message the agent learns from. Vague here is slow there.
+
+    `op` is the level's operation string (e.g. "matmul, tiled"); when nearly everything is wrong
+    on a matmul level, the message names the operand-layout fix instead of leaving it as a verdict.
+    """
     got = np.asarray(got, np.float64)
     want = np.asarray(want, np.float64)
     if got.shape != want.shape:
@@ -630,6 +634,18 @@ def describe_mismatch(got, want, tol=2e-2):
         elif float((err / scale > tol).mean()) > 0.5:
             msg.append("  most elements are wrong, so this is the core arithmetic or the "
                        "operand layout, not an edge case")
+            if "matmul" in op:
+                # Measured: level 4 came back 100% wrong with errors ~300x the RMS -- the
+                # signature of multiplying the operands in the wrong orientation. Name the fix
+                # (direction only, never the target values) rather than leaving it a verdict.
+                msg.append(
+                    "  on a matmul this large an error almost always means the operand ORIENTATION "
+                    "is wrong, not the loop. nisa.nc_matmul(dst, stationary, moving) computes "
+                    "stationary.T @ moving and contracts over the PARTITION axis of BOTH operands. "
+                    "lhsT already arrives as [K, M] and rhs as [K, N], so pass them straight in: "
+                    "stationary=lhsT_tile ([K, M]), moving=rhs_tile ([K, N]), giving [M, N]. Do "
+                    "NOT transpose either operand yourself and do NOT swap stationary/moving -- if "
+                    "the result looks like rhs.T @ lhsT or lhsT @ rhs, that swap is the bug.")
         else:
             msg.append("  inside a full tile, so look at the accumulation rather than the "
                        "edges")
@@ -875,7 +891,7 @@ def verify(path, level_n, tol=2e-2, seed=0):
             failures.append((label(case, level_n),
                              f"RAISED during simulation: {type(e).__name__}: {e}"))
             continue
-        m = describe_mismatch(got, want, tol)
+        m = describe_mismatch(got, want, tol, op=spec["op"])
         if m:
             failures.append((label(case, level_n), m))
             continue
