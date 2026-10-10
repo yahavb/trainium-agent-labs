@@ -125,6 +125,9 @@ def run_check(mode, problem, answer, *, n_points=24, validation_seed=9173):
         if validation is None and mode != 'original':
             validation = worker_failure or failure('Checker returned no complete validation result.')
         if validation is not None and worker_failure is not None:
+            # Before a core checkpoint, validation can be worker_failure itself.
+            # Copy the outer record before attaching the issue to avoid a cycle.
+            validation = dict(validation)
             validation['worker_issue'] = worker_failure
     except Exception as exc:
         validation = failure('Checker could not evaluate the supplied input.',

@@ -1,5 +1,17 @@
 # Submission readiness assessment
 
+## Timeout repair verified — 2026-10-10
+
+The owner authorized testing and repair after the implementation-only revision.
+The optional checker pre-core timeout/worker-exit cycle is fixed by separating
+the outer result from worker failure evidence. Eight focused runtime regressions,
+62 existing regressions and both official selftests passed locally. Public checker
+and agent source remain unchanged. A prior real-model run on 31a150d used the
+optional enhanced checker and solved 3/3 in 187.00 seconds; this predates the fix
+and is not a post-fix performance benchmark. Historical logs remain incomplete,
+so overall submission readiness remains NOT READY / ENGINEERING REVIEW REQUIRED.
+See [CHECKER_TIMEOUT_FIX.md](../CHECKER_TIMEOUT_FIX.md).
+
 ## Latest Checker-only refinement — 2026-10-10
 
 **IMPLEMENTED — NOT TESTED.** See [CHECKER_REFINEMENT.md](../CHECKER_REFINEMENT.md).
