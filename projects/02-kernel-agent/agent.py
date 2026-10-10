@@ -220,31 +220,28 @@ def copy_kernel(a):
 """
 
 
-# A shape/role contract for average pooling, mirroring the dedicated-card pattern used for the
-# matmul levels. Measured on level 1: the model sizes its SBUF tile to the OUTPUT and copies the
-# whole INPUT in (dma_copy src>dst), because nothing tells it that pooling loads the full input and
-# reduces afterwards. The card gives each tile a role, shape and buffer, so the roles cannot blur.
-POOL_SHAPES = ("The input is (C, H, W); the output is (C, H // pool_size, W // pool_size). "
-               "Pooling does NOT shrink the data on load -- it loads everything, then reduces.")
+# Keep pooling guidance separate from the matmul card. In the seat-21 baseline,
+# level-1 samples used nc_matmul for a pooling window, then spent their repair
+# rounds fixing that operation's API instead of computing a window average.
+POOL_METHOD = """Average pooling is a window reduction: sum each pool_size by pool_size window,
+then scale by 1.0 / (pool_size * pool_size). Keep channels on the partition axis.
+Use nl.sum for the reduction and nisa.tensor_scalar with op0=nl.multiply to scale.
+"""
 
-POOL_API_CARD = """Allocate tiles with these roles -- do not reuse one for another:
-  in_tile:  shape in_tensor.shape = (C, H, W),              dtype in_tensor.dtype, buffer nl.sbuf
-  out_tile: shape (C, H // pool_size, W // pool_size),       dtype in_tensor.dtype, buffer nl.sbuf
-  output:   shape (C, H // pool_size, W // pool_size),       dtype in_tensor.dtype, buffer nl.shared_hbm
-
-The sequence:
-  1. in_tile = nl.ndarray(in_tensor.shape, dtype=in_tensor.dtype, buffer=nl.sbuf)
-     nisa.dma_copy(dst=in_tile, src=in_tensor)        # load the FULL input, no shrinking
-  2. build a strided view that groups each pool_size x pool_size window onto the LAST two axes:
-     view = in_tile.ap([[H*W, C], [pool_size*W, H//pool_size], [pool_size, W//pool_size],
-                        [W, pool_size], [1, pool_size]])
-  3. summed = nl.sum(view, axis=[3, 4])              # reduce over the two pool axes
-  4. out_tile = nl.ndarray(summed.shape, dtype=in_tensor.dtype, buffer=nl.sbuf)
-     nisa.tensor_scalar(dst=out_tile, data=summed, op0=nl.multiply,
-                        operand0=1.0 / (pool_size * pool_size))   # average = sum / pool_size^2
-  5. output = nl.ndarray(out_tile.shape, dtype=in_tensor.dtype, buffer=nl.shared_hbm)
-     nisa.dma_copy(dst=output, src=out_tile); return output
-Derive C, H, W from in_tensor.shape; do not hard-code sizes.
+POOL_API_CARD = """NKI pooling primitives:
+  nl.ndarray(shape, dtype=..., buffer=nl.sbuf) allocates an on-chip tile.
+  nl.ndarray(shape, dtype=..., buffer=nl.shared_hbm) allocates the returned output.
+  nisa.dma_copy(dst=tile, src=input_slice) loads a tile; both sides must have the
+    same element count. Derive tile sizes from the input, with at most 128 channels.
+    Preserve the channel axis when slicing, even for a single channel.
+  tile.ap([[stride, count], ...]) creates a view, with strides in ELEMENTS.
+    For pooling, group the tile as [channels, output_rows, output_cols, pool_rows,
+    pool_cols]. Derive strides from the original row width and pool_size.
+  sums = nl.sum(window_view, axis=[3, 4]) reduces the two window axes.
+  scaled = nl.ndarray(sums.shape, dtype=sums.dtype, buffer=nl.sbuf)
+  nisa.tensor_scalar(dst=scaled, data=sums, op0=nl.multiply,
+                     operand0=1.0 / (pool_size * pool_size)) scales the sums.
+  nisa.dma_copy(dst=output_slice, src=scaled) stores the matching output tile.
 """
 
 
@@ -290,29 +287,11 @@ def real_signature(func_name):
 
 
 def enrich(error_text, level=None):
-    """Add the real names when the failure is an invented API call."""
-    # Wrong number of entry-point parameters. Measured: the model wrote def ...(x) for a level
-    # whose reference takes (x, pool_size), so the harness passed 2 args to a 1-arg function. Name
-    # the exact signature the entry point must have -- it is the reference's, verbatim.
-    m = re.search(r"(\w+)\(\) takes (\d+) positional arguments? but (\d+) (?:was|were) given",
-                  error_text)
-    if m and level is not None:
-        import inspect
-        ref = nkibench.LEVELS[level]["ref"]
-        params = list(inspect.signature(ref).parameters)
-        entry = nkibench.LEVELS[level]["entry"]
-        return (error_text + f" The entry point must accept the SAME arguments as the reference: "
-                f"write `def {entry}({', '.join(params)}):`. The harness calls your kernel with "
-                f"{len(params)} argument(s) ({', '.join(params)}), so a signature with fewer "
-                f"parameters raises this. Keep all of them even if the shape is implied by a tensor.")
-    m = re.search(r"(\w+)\(\) missing \d+ required positional argument", error_text)
-    if m and level is not None:
-        import inspect
-        ref = nkibench.LEVELS[level]["ref"]
-        params = list(inspect.signature(ref).parameters)
-        entry = nkibench.LEVELS[level]["entry"]
-        return (error_text + f" Your entry point declares more parameters than the harness passes. "
-                f"Use exactly the reference's signature: `def {entry}({', '.join(params)}):`.")
+    """Add the real names when the failure is an invented API call.
+
+    `level` is optional so existing callers keep working; it lets a level-specific message fire
+    (used for the level-1 pooling load/reduce idiom below).
+    """
     if "'MemoryRegion' object is not callable" in error_text:
         return (error_text + " nl.sbuf, nl.psum and nl.shared_hbm are memory regions, not "
                 "functions. Do not call them. Allocate with "
@@ -535,8 +514,22 @@ def first_prompt(level, terse=0, a=None):
     """
     s = nkibench.LEVELS[level]
     import inspect
-    tiles_seg, skill_seg = _extras(a, level) if a is not None else ("", "")
-    tools_seg = _tools_preamble(a) if a is not None else ""
+    if level == 1:
+        # A task-specific card avoids teaching matmul's PSUM workflow to a
+        # reduction. Retain the operation and scalar API when shortening retries.
+        card = POOL_API_CARD if terse == 0 else (
+            "Allocate with nl.ndarray(shape, dtype=..., buffer=nl.sbuf); return an "
+            "nl.shared_hbm output. Move matching slices with nisa.dma_copy(dst=, src=). "
+            "Use tile.ap([[stride, count], ...]) to group windows, nl.sum(view, axis=[3, 4]), "
+            "then nisa.tensor_scalar(dst=, data=, op0=nl.multiply, operand0=).\n")
+        if terse >= 2:
+            card = "Scale with nisa.tensor_scalar(dst=, data=, op0=nl.multiply, operand0=).\n"
+        return (
+            f"Write an AWS Neuron NKI kernel named `{s['entry']}`, decorated with @nki.jit.\n"
+            f"Compute exactly what this NumPy reference computes:\n\n"
+            f"{inspect.getsource(s['ref'])}\n{POOL_METHOD}\n{card}\n"
+            f"Import nki, nki.language as nl, and nki.isa as nisa. "
+            f"Reply with ONE python code block containing the imports and function.")
     if terse >= 2:
         # Last resort. Measured on this endpoint: one-sentence prompts answered in 300-700
         # tokens while every structured, rule-carrying prompt spiralled.
@@ -599,18 +592,25 @@ def repair_prompt(level, source, feedback, a=None, ledger=""):
     The lesson this whole repo keeps re-learning: feeding a verifier's report back verbatim
     reproduces the same mistake, because a report says what is wrong and never what to do.
     """
-    # Level 1 re-asserts the pooling shape contract on repair (one line, not the full card), so a
-    # fix to the DMA size cannot drift the roles apart -- the same reason the matmul levels re-send
-    # their contract. Other levels keep the minimal repair prompt the repo settled on.
-    contract = POOL_SHAPES if level == 1 else ""
-    return _assemble(a or _Dummy(), dict(
-        task=f"This NKI kernel for {nkibench.LEVELS[level]['op']} is not right yet.",
-        prev_code=f"```python\n{source}\n```",
-        feedback=f"A checker reports:\n{feedback}",
-        contract=contract,
-        ledger=ledger,
-        reply=("Change exactly what the checker names and keep everything else identical. Reply "
-               "with ONE python code block.")))
+    if level == 1:
+        # A local API repair cannot rescue an algorithm that multiplies a window
+        # by itself. Let the model replace that computation while preserving the
+        # entry point and the original operation's shape contract.
+        return (
+            f"Repair this NKI average-pooling kernel:\n\n```python\n{source}\n```\n\n"
+            f"A checker reports:\n{feedback}\n\n"
+            f"Required output: [C, H//pool_size, W//pool_size]; use complete windows "
+            f"of the [C, H, W] input and return the input dtype.\n"
+            f"{POOL_METHOD}\n{POOL_API_CARD}\n"
+            f"Fix the reported error and any computation that does not average a window. "
+            f"You may replace the algorithm; preserve the entry point and arguments. "
+            f"Reply with ONE complete python code block.")
+    return (
+        f"This NKI kernel for {nkibench.LEVELS[level]['op']} is not right yet.\n\n"
+        f"```python\n{source}\n```\n\n"
+        f"A checker reports:\n{feedback}\n\n"
+        f"Change exactly what the checker names and keep everything else identical. Reply with "
+        f"ONE python code block.")
 
 
 CODE_BLOCK = re.compile(r"```(?:python)?\s*(.*?)```", re.S)
