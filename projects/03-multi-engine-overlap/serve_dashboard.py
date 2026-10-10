@@ -16,26 +16,7 @@ PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 COMMANDS = {
     "selftest": [sys.executable, "overlap_bench.py", "--selftest"],
-    "eval": [
-        sys.executable,
-        "-c",
-        (
-            "import overlap_bench, json; "
-            "code = open('best_kernel.py').read(); "
-            "score, m, diag = overlap_bench.grade(code); "
-            "print('================================================================='); "
-            "print('     EVALUATING SYNTHESIZED KERNEL (best_kernel.py)'); "
-            "print('================================================================='); "
-            "print(f'  Grader Score:        {score:.2f} / 1.00 (PASS)'); "
-            "print(f'  AST Rules Clean:     {m.get(\"rules_clean\")} (No illegal whole-array ops, SBUF clamped)'); "
-            "print(f'  Hostile Test Cases:  {m.get(\"correctness\")*100:.0f}% Pass (7/7 cases exact match)'); "
-            "print(f'  Overlap Efficiency:  {m.get(\"overlap_efficiency\")*100:.0f}% Concurrency (0% Memory Stalls)'); "
-            "print(f'  Hazard Type:         {m.get(\"hazard_type\")}'); "
-            "print('================================================================='); "
-            "print('  VERDICT: 100% PRODUCTION-READY HARDWARE PIPELINE'); "
-            "print('=================================================================')"
-        )
-    ],
+    "eval": [sys.executable, "eval_best_kernel.py"],
     "agent": [sys.executable, "agent.py", "--offline", "--rounds", "3"],
     "speedup": [sys.executable, "visualize_pipeline.py", "--rows", "1024", "--cols", "128"],
     "all": [sys.executable, "run_local_demo.py"]
