@@ -34,8 +34,8 @@ baseline 回溯校准（b39989f）：3 次解出置信度 0.90，保留集 16/16
 |---|---|---|---|---|
 | 115 | liuyq：daykit feedback_v7，L2 和 L9 各 ×5，两个进程共用一个服务（13:18 起）。L9 2/2 VERIFIED。另据 183b384 的提交说明：v7 写出的 L2/L3/L4/L9/L11 kernel 已经在**芯片上**跑对 | daykit 自己的代码，projects/ 是 upstream（没有审计） | READY，**max-num-seqs 8，和 baseline 不同** | 14:30 后，liuyq 的，不碰 |
 | 116 | f41b84e 验证通过（13:53），改部署 735fa48；**14:15 起跑 E-F（L1 ×5）** | → 735fa48 + E-F | READY，同 baseline | ~15:00 |
-| 117 | (a) E-v3 L4（run 1 第 6 轮 SOLVED）和 (b) 组员的 `agent.py --all` 都停掉（teoguo 14:00/14:05），先拉日志 | → ce0403c | READY，同 baseline | **v7 L4** |
-| 118 | O3 放弃，13:57 默认配置 READY（21.9 tok/s，和 baseline 一样）。13:59 组员又开了一个 `agent.py --all`，**组员同意停掉**（teoguo 14:10），先拉日志 | → ce0403c | READY，同 baseline | **v7 L3** |
+| 117 | (a) E-v3 L4（run 1 第 6 轮 SOLVED）和 (b) 组员的 `agent.py --all` 都停掉（teoguo 14:00/14:05），先拉日志 | → 243864f（= ce0403c 的代码，不含 E-F） | READY，同 baseline | **v7 L3**，14:07 开跑 |
+| 118 | O3 放弃，13:57 默认配置 READY（21.9 tok/s，和 baseline 一样）。13:59 组员又开了一个 `agent.py --all`，**组员同意停掉**（teoguo 14:10），先拉日志 | → 243864f/ce0403c | READY，同 baseline | **v7 L4** |
 | 119 | 组员的 baseline 复现，4/5，跑完拉日志 | upstream 8f1ca41 → ce0403c | READY，同 baseline | ~14:05 后 **v7 L1** |
 
 ## 3. 时间表
@@ -50,7 +50,7 @@ baseline 回溯校准（b39989f）：3 次解出置信度 0.90，保留集 16/16
 | 14:02–14:30 | v7 兼容性检查：在 ce0403c 上离线跑通，有 prompt_split 和 verdicts；和不带 e7663a3 时的 prompt 逐字节相同 | 执行 2 | 回报提交号和证据 |
 | **14:25** | **D1** v7 主线开跑 | 总规划 | |
 | 14:15–15:00 | **第 2 轮 a：E-F 在 L1（116）** | 执行 1 | 按 §4 格式回报；第 1 个 run 结束先确认 prompt_split 和 verdicts.jsonl 都有 |
-| 14:10–15:15 | **第 2 轮 b：v7 在 L4（117）、L1（119）、L3（118）各 ×5**，命令照 V7.md，开跑前过 test_v7.py 并查模拟目标 | 执行 1 | 按 §4 格式回报；第 1 个 run 结束先确认 prompt_split 和 verdicts.jsonl 都有 |
+| 14:07–15:15 | **第 2 轮 b：v7 在 L3（117，14:07 开跑）、L4（118）、L1（119）各 ×5**，命令照 V7.md，开跑前过 test_v7.py 并查模拟目标 | 执行 1 | 按 §4 格式回报；第 1 个 run 结束先确认 prompt_split 和 verdicts.jsonl 都有 |
 | 14:30– | 115 的 v7 L2/L9 跑完后：拉日志，用我们的 nkibench 对 1.0 的 kernel 做 reaudit 和保留集检查 | 执行 1 | 这几次解出在审计后还算不算数 |
 | 14:30– | 115 上 liuyq 的 v7 L2/L9 跑完后：执行 1 拉日志，执行 2 用我们的 harness 全量重新打分（L9 由 ops07 注册） | 执行 1 → 执行 2 | 审计后还剩几次解出 |
 | **14:45** | **D2a** E-F 采用还是回滚 | 总规划 | |
@@ -97,8 +97,8 @@ baseline 回溯校准（b39989f）：3 次解出置信度 0.90，保留集 16/16
 | 编号 | 改了什么 | level | 结果 | 决定 |
 |---|---|---|---|---|
 | E-A | `enrich()` 的 KNOWN_FIXES：把编造的名字换成 0.6.0 里真实的写法（5ed7ec2） | L1 | 0/5，全 0.30。编造函数 80→20；新出现 tensor_scalar() 缺参数 40 次（属于「函数参数用错」，不算新类别）；拷贝大小不一致 40→60。模型照反馈改了，然后卡在下一层 | **作为铺路改动采用** |
-| E-v3 | 换成 feedback_v3（MESSAGES=v3 REPAIR_PROMPT=restructure） | L4 | 跑完 1 次，1/1，第 6 轮解出，reaudit PASS（ded1ef2）。14:05 停掉，让座位给 v7 | 被 v7 取代，只当证据和失败加恢复素材 |
-| **E-v7** | 换成 liuyq 的 feedback_v7，配置和命令照 V7.md（PROMPT1=v2、CARD=category、MESSAGES=v5、REPAIR_PROMPT=restructure、SAMPLING=qwen、GATE=static、模拟目标 trn2） | L4（117）、L1（119）、L3（118），然后 L2 | 14:10 起，**commit ce0403c，在 E-F 之前**（v7 会调用 agent.enrich()，用 ≥ac258d2 的版本就会把 E-F 一起带进去） | D2 决定。v7 和 E-F 都采用的话，第 3 轮在 L1 上测 v7 + E-F |
+| E-v3 | 换成 feedback_v3（MESSAGES=v3 REPAIR_PROMPT=restructure） | L4 | **1/2**：run 1 第 6 轮解出（reaudit PASS，ded1ef2），run 2 跑满 8 轮最好 0.75；第 3 次刚开始就停了，座位让给 v7。日志 runs/seat-117/Ev3_L4/（100 条） | 被 v7 取代，只当证据和失败加恢复素材 |
+| **E-v7** | 换成 liuyq 的 feedback_v7，配置和命令照 V7.md（PROMPT1=v2、CARD=category、MESSAGES=v5、REPAIR_PROMPT=restructure、SAMPLING=qwen、GATE=static、模拟目标 trn2） | L3（117）、L4（118）、L1（119），然后 L2 | 14:07 起，**commit ce0403c，在 E-F 之前**（v7 会调用 agent.enrich()，用 ≥ac258d2 的版本就会把 E-F 一起带进去） | D2 决定。v7 和 E-F 都采用的话，第 3 轮在 L1 上测 v7 + E-F |
 | E-C | 「cannot reshape」改成一条指令：出错那一行用切片取 tile | L3 | 候选，看 v7 之后 L3 还剩不剩这一类 | |
 | E-F | 函数缺参数、多参数或参数名不对时，反馈给出：出错那一行、运行时 inspect.signature 取到的真实签名、一句「按签名改这一处」 | L1 | ac258d2，116 上 14:04 开跑，约 14:45 出结果。参照 E-A（重新打分后）：wrong_signature 60、拷贝大小不一致 60 | D2 决定 |
 | E-E | 「拷贝两边大小不一致」改成指出两边各自的 shape 和出错行 | 看情况 | 候选 | |
