@@ -1,0 +1,59 @@
+features ['facts', 'locate', 'origin', 'state']
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.62  best so far 0.62  (78.9s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: line 15, `nisa.dma_copy(dst=sbuf_lhsT, src=lhsT)`, raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 At that line: `sbuf_lhsT` is (256, 256) in sbuf; `lhsT` is (256, 256) in HBM (an input). A tile on the chip may have at most 128 rows, since its first dimension is the partition dimension: dst has 256. The tile to change is 
+round 1: same failure again (0.62, best so far 0.62)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+round 2: same failure again (0.62, best so far 0.62)
+  same failure 3x — adding a ledger of 1 failed attempts to break the repeat
+round 3: same failure again (0.62, best so far 0.62)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  1 of 4 shapes passed. On K=256 M=256 N=1024: raised AssertionError: dma_copy dst partition dimension 256 excee
+
+=========== summary ===========
+  level 4  reward 0.62 after 4 round(s)
+  solved 0/1
+
+################ run 2 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.62  best so far 0.62  (76.7s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: line 19, `nisa.dma_copy(dst=sbuf_stationary, src=lhsT)`, raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 At that line: `sbuf_stationary` is (256, 256) in sbuf; `lhsT` is (256, 256) in HBM (an input). A tile on the chip may have at most 128 rows, since its first dimension is the partition dimension: dst has 256. The tile t
+round 1: same failure again (0.62, best so far 0.62)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+round 2: same failure again (0.62, best so far 0.62)
+  same failure 3x — adding a ledger of 1 failed attempts to break the repeat
+round 3: same failure again (0.62, best so far 0.62)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  1 of 4 shapes passed. On K=256 M=256 N=1024: raised AssertionError: dma_copy dst partition dimension 256 excee
+
+=========== summary ===========
+  level 4  reward 0.62 after 4 round(s)
+  solved 0/1
+
+################ run 3 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.62  best so far 0.62  (68.9s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: line 19, `nisa.dma_copy(dst=sbuf_stationary, src=lhsT)`, raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 At that line: `sbuf_stationary` is (256, 256) in sbuf; `lhsT` is (256, 256) in HBM (an input). A tile on the chip may have at most 128 rows, since its first dimension is the partition dimension: dst has 256. The tile t
+round 1: same failure again (0.62, best so far 0.62)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+round 2: same failure again (0.62, best so far 0.62)
+  same failure 3x — adding a ledger of 1 failed attempts to break the repeat
+round 3: same failure again (0.62, best so far 0.62)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  1 of 4 shapes passed. On K=256 M=256 N=1024: raised AssertionError: dma_copy dst partition dimension 256 excee
+
+=========== summary ===========
+  level 4  reward 0.62 after 4 round(s)
+  solved 0/1
+
+################ run 4 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.62  best so far 0.62  (65.5s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: line 19, `nisa.dma_copy(dst=sbuf_stationary, src=lhsT)`, raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 At that line: `sbuf_stationary` is (256, 256) in sbuf; `lhsT` is (256, 256) in HBM (an input). A tile on the chip may have at most 128 rows, since its first dimension is the partition dimension: dst has 256. The tile t

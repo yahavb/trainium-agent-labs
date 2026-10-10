@@ -1,0 +1,45 @@
+features none
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 5 ################
+
+=========== level 1: average pooling 2D ===========
+round 0: this round 0.30  best so far 0.30  (45.8s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=32768, dst=524288 The tile you allocated holds 524288 elements but you copied 32768 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a bigg
+round 1: this round 0.30  best so far 0.30  (47.4s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: Out-of-bound access for tensor `unnamed` on dimension 1: index range [0, 127] exceed dimension size of 32. You indexed up to 127 on dimension 1, which is only 32 long. Tile limits are a MAXIMUM, not a target. Derive every bound from the tensor's own shape -- use min(limit, size) and let the final chunk be partial -- rather 
+round 2: this round 0.30  best so far 0.30  (48.6s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=32768, dst=524288 The tile you allocated holds 524288 elements but you copied 32768 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a bigg
+round 3: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 2 failed attempts to break the repeat
+round 4: same failure again (0.30, best so far 0.30)
+  STOPPING this level: this failure for the 4th time, alternating with 1 other(s). The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: dma_copy requires src and dst to ha
+    1x  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: Out-of-bound access for tensor `unn
+
+=========== level 2: 2D transpose ===========
+round 0: this round 0.30  best so far 0.30  (60.0s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised AssertionError: Matmul contraction dimension mismatch: stationary[0]=32 != moving[0]=1
+round 1: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+round 2: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 1 failed attempts to break the repeat
+round 3: same failure again (0.30, best so far 0.30)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised AssertionError: Matmul contraction dimension mismatch: 
+
+=========== level 3: matmul, single tile ===========
+round 0: this round 0.30  best so far 0.30  (57.7s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: raised AssertionError: SBUF and PSUM tensors must have at least 2 dimensions (partition-dim and free-dim) Every SBUF and PSUM tile needs two dimensions: a partition dimension first, then a free dimension. A 1-D tile is not allowed, so write nl.ndarray((rows, cols), ...) and give a length-N vector the shape (1, N) or (N, 1) depending on which axis you are 
+round 1: this round 0.30  best so far 0.30  (60.7s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=64 The tile you allocated holds 64 elements but you copied 8192 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a bigger tensor, write t 
+round 2: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 2 failed attempts to break the repeat
+round 3: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 2 failed attempts to break the repeat
+round 4: same failure again (0.30, best so far 0.30)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 1 shapes passed. On K=128 M=64 N=512: raised AssertionError: dma_copy requires src and dst to have the sa
+    1x  0 of 1 shapes passed. On K=128 M=64 N=512: raised AssertionError: SBUF and PSUM tensors must have at least 2 d
+
+=========== level 4: matmul, tiled ===========

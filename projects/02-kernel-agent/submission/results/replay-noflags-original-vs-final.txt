@@ -1,0 +1,14 @@
+# Run on a laptop at 2026-10-10 16:40, stand-in simulator. Command: python devtools/compare_feedback.py original
+Feedback under flags none
+  old: organisers original, d11ccdf
+  new: working tree at 32f6055
+  simulator: nki 0.0-fake  <-- THE STAND-IN, not the real simulator
+  kernels: 433 distinct, from 45 logs
+
+  level 1:   35 kernels, feedback differs on 0
+  level 2:  139 kernels, feedback differs on 0
+  level 3:   93 kernels, feedback differs on 0
+  level 4:  166 kernels, feedback differs on 0
+
+  TOTAL: 433 kernels, feedback differs on 0
+exit 0

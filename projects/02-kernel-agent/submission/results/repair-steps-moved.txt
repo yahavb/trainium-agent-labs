@@ -1,0 +1,7 @@
+# 2026-10-10 17:35. python devtools/repair_steps.py. Share of repair steps that moved.
+condition                                             level 1          level 2          level 3          level 4
+baseline                                          40/70 (57%)       5/30 (17%)        2/34 (6%)        0/30 (0%)
+line only (locate)                                          -                -       5/17 (29%)                -
+line + shapes (state)                                       -                -       5/20 (25%)      10/25 (40%)
+reportable checker (internal,origin)              27/35 (77%)        1/19 (5%)      59/87 (68%)      10/25 (40%)
+ahead v1 (internal,origin,ahead @16dcf94)                   -                -      32/36 (89%)                -

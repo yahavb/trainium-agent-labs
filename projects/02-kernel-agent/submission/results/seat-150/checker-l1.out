@@ -1,0 +1,134 @@
+features ['internal', 'locate', 'origin', 'state']
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 5 ################
+
+=========== level 1: average pooling 2D ===========
+round 0: this round 0.30  best so far 0.30  (54.6s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 18, `nisa.dma_copy(dst=tile, src=x[c, h*p:(h+1)*p, w*p:(w+1)*p])`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=4, dst=16384 The tile you allocated holds 16384 elements but you copied 4 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of t
+round 1: this round 0.30  best so far 0.30  (51.8s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 19, `nisa.nc_matmul(dst=tile2, stationary=tile, moving=tile, transpose_moving=True)`, raised TypeError: nc_matmul() got an unexpected keyword argument 'transpose_moving' Remove the `transpose_moving=` argument. The real signature is isa.nc_matmul(dst: 'NkiTensor', stationary: 'NkiTensor', moving: 'NkiTensor', is_stationary_onezero=False, is_
+round 2: this round 0.30  best so far 0.30  (51.6s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 19, `nisa.nc_matmul(dst=tile2, stationary=tile, moving=tile, is_transpose=False)`, raised AssertionError: dst must be in ['psum'], got sbuf Allocate the `dst` tile with buffer=nl.psum instead of nl.sbuf. For nisa.nc_matmul: dst must be in nl.psum, and stationary and moving must both be in nl.sbuf. Copy between them with nisa.tensor_copy. At 
+round 3: this round 0.30  best so far 0.30  (51.6s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 21, `nisa.tensor_scalar(dst=tile, data=0.5, op0=nisa.multiply)`, raised AttributeError: module 'nki.isa' has no attribute 'multiply' `nki.isa` has no `multiply`, and nothing similar exists. Its real names include: NkiInstruction, NkiValidationError, VirtualRegister, activate2, activation, activation_reduce, affine_select, bn_aggr, bn_stats, 
+round 4: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 4 failed attempts to break the repeat
+round 5: this round 0.30  best so far 0.30  (51.3s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 21, `nisa.tensor_scalar(dst=tile, data=0.5, op=nisa.scalar_mul)`, raised AttributeError: module 'nki.isa' has no attribute 'scalar_mul' `nki.isa` has no `scalar_mul`. The closest real names are: scalar_engine, tensor_scalar_cumulative, tensor_scalar_reduce, nc_matmul, tensor_scalar, scalar_tensor_tensor. Pick one of those or use a different 
+round 6: this round 0.30  best so far 0.30  (48.7s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 20, `nisa.tensor_scalar(dst=tile, data=0.5, op=nisa.tensor_scalar_cumulative)`, raised TypeError: tensor_scalar() got an unexpected keyword argument 'op'. Did you mean 'op0'? Remove the `op=` argument. The real signature is isa.tensor_scalar(dst: 'NkiTensor', data: 'NkiTensor', op0, operand0: 'float | NkiTensor', reverse0=False, op1=None, op
+round 7: this round 0.30  best so far 0.30  (48.8s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 20, `nisa.tensor_scalar(dst=tile, data=0.5, op0=nisa.tensor_scalar_cumulative)`, raised TypeError: tensor_scalar() missing 1 required positional argument: 'operand0' At that line: `tile` is (2, 2) in sbuf.
+  not solved in 8 rounds; best reward 0.30
+
+=========== summary ===========
+  level 1  reward 0.30 after 8 round(s)
+  solved 0/1
+
+################ run 2 of 5 ################
+
+=========== level 1: average pooling 2D ===========
+round 0: this round 0.30  best so far 0.30  (53.4s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 18, `nisa.dma_copy(dst=tile, src=x[c, h*p:(h+1)*p, w*p:(w+1)*p])`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=4, dst=16384 The tile you allocated holds 16384 elements but you copied 4 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of t
+round 1: this round 0.30  best so far 0.30  (51.7s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 19, `nisa.nc_matmul(dst=tile2, stationary=tile, moving=tile, transpose_moving=True)`, raised TypeError: nc_matmul() got an unexpected keyword argument 'transpose_moving' Remove the `transpose_moving=` argument. The real signature is isa.nc_matmul(dst: 'NkiTensor', stationary: 'NkiTensor', moving: 'NkiTensor', is_stationary_onezero=False, is_
+round 2: this round 0.30  best so far 0.30  (51.6s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 19, `nisa.nc_matmul(dst=tile2, stationary=tile, moving=tile, is_transpose=False)`, raised AssertionError: dst must be in ['psum'], got sbuf Allocate the `dst` tile with buffer=nl.psum instead of nl.sbuf. For nisa.nc_matmul: dst must be in nl.psum, and stationary and moving must both be in nl.sbuf. Copy between them with nisa.tensor_copy. At 
+round 3: this round 0.30  best so far 0.30  (51.7s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 21, `nisa.tensor_scalar(dst=tile, data=0.5, op0=nisa.multiply)`, raised AttributeError: module 'nki.isa' has no attribute 'multiply' `nki.isa` has no `multiply`, and nothing similar exists. Its real names include: NkiInstruction, NkiValidationError, VirtualRegister, activate2, activation, activation_reduce, affine_select, bn_aggr, bn_stats, 
+round 4: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 4 failed attempts to break the repeat
+round 5: this round 0.30  best so far 0.30  (51.2s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 21, `nisa.tensor_scalar(dst=tile, data=0.5, op=nisa.tensor_scalar_multiply)`, raised AttributeError: module 'nki.isa' has no attribute 'tensor_scalar_multiply' `nki.isa` has no `tensor_scalar_multiply`. The closest real names are: tensor_scalar_cumulative, tensor_scalar, tensor_scalar_reduce, tensor_copy, tensor_reduce, tensor_tensor_scan. P
+round 6: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 5 failed attempts to break the repeat
+round 7: this round 0.30  best so far 0.30  (49.3s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 19, `nisa.tensor_reduce(dst=tile2, src=tile, op=nisa.tensor_reduce_sum)`, raised AttributeError: module 'nki.isa' has no attribute 'tensor_reduce_sum' `nki.isa` has no `tensor_reduce_sum`. The closest real names are: tensor_reduce, tensor_scalar_reduce, tensor_partition_reduce, tensor_copy_predicated, tensor_tensor, tensor_engine. Pick one o
+  not solved in 8 rounds; best reward 0.30
+
+=========== summary ===========
+  level 1  reward 0.30 after 8 round(s)
+  solved 0/1
+
+################ run 3 of 5 ################
+
+=========== level 1: average pooling 2D ===========
+round 0: this round 0.30  best so far 0.30  (53.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 18, `nisa.dma_copy(dst=tile, src=x[c, h*p:(h+1)*p, w*p:(w+1)*p])`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=4, dst=16384 The tile you allocated holds 16384 elements but you copied 4 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of t
+round 1: this round 0.30  best so far 0.30  (51.6s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 19, `nisa.nc_matmul(dst=tile2, stationary=tile, moving=tile, transpose_moving=True)`, raised TypeError: nc_matmul() got an unexpected keyword argument 'transpose_moving' Remove the `transpose_moving=` argument. The real signature is isa.nc_matmul(dst: 'NkiTensor', stationary: 'NkiTensor', moving: 'NkiTensor', is_stationary_onezero=False, is_
+round 2: this round 0.30  best so far 0.30  (51.7s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 19, `nisa.nc_matmul(dst=tile2, stationary=tile, moving=tile, is_transpose=False)`, raised AssertionError: dst must be in ['psum'], got sbuf Allocate the `dst` tile with buffer=nl.psum instead of nl.sbuf. For nisa.nc_matmul: dst must be in nl.psum, and stationary and moving must both be in nl.sbuf. Copy between them with nisa.tensor_copy. At 
+round 3: this round 0.30  best so far 0.30  (51.7s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 21, `nisa.tensor_scalar(dst=tile, data=0.5, op0=nisa.multiply)`, raised AttributeError: module 'nki.isa' has no attribute 'multiply' `nki.isa` has no `multiply`, and nothing similar exists. Its real names include: NkiInstruction, NkiValidationError, VirtualRegister, activate2, activation, activation_reduce, affine_select, bn_aggr, bn_stats, 
+round 4: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 4 failed attempts to break the repeat
+round 5: this round 0.30  best so far 0.30  (51.2s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 21, `nisa.tensor_scalar(dst=tile, data=0.5, op=nisa.scalar_mul)`, raised AttributeError: module 'nki.isa' has no attribute 'scalar_mul' `nki.isa` has no `scalar_mul`. The closest real names are: scalar_engine, tensor_scalar_cumulative, tensor_scalar_reduce, nc_matmul, tensor_scalar, scalar_tensor_tensor. Pick one of those or use a different 
+round 6: this round 0.30  best so far 0.30  (48.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 20, `nisa.tensor_scalar(dst=tile, data=0.5, op=nisa.tensor_scalar_cumulative)`, raised TypeError: tensor_scalar() got an unexpected keyword argument 'op'. Did you mean 'op0'? Remove the `op=` argument. The real signature is isa.tensor_scalar(dst: 'NkiTensor', data: 'NkiTensor', op0, operand0: 'float | NkiTensor', reverse0=False, op1=None, op
+round 7: this round 0.30  best so far 0.30  (48.7s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 20, `nisa.tensor_scalar(dst=tile, data=0.5, op0=nisa.tensor_scalar_cumulative)`, raised TypeError: tensor_scalar() missing 1 required positional argument: 'operand0' At that line: `tile` is (2, 2) in sbuf.
+  not solved in 8 rounds; best reward 0.30
+
+=========== summary ===========
+  level 1  reward 0.30 after 8 round(s)
+  solved 0/1
+
+################ run 4 of 5 ################
+
+=========== level 1: average pooling 2D ===========
+round 0: this round 0.30  best so far 0.30  (53.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 18, `nisa.dma_copy(dst=tile, src=x[c, h*p:(h+1)*p, w*p:(w+1)*p])`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=4, dst=16384 The tile you allocated holds 16384 elements but you copied 4 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of t
+round 1: this round 0.30  best so far 0.30  (51.6s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 19, `nisa.nc_matmul(dst=tile2, stationary=tile, moving=tile, transpose_moving=True)`, raised TypeError: nc_matmul() got an unexpected keyword argument 'transpose_moving' Remove the `transpose_moving=` argument. The real signature is isa.nc_matmul(dst: 'NkiTensor', stationary: 'NkiTensor', moving: 'NkiTensor', is_stationary_onezero=False, is_
+round 2: this round 0.30  best so far 0.30  (51.7s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 19, `nisa.nc_matmul(dst=tile2, stationary=tile, moving=tile, is_transpose=False)`, raised AssertionError: dst must be in ['psum'], got sbuf Allocate the `dst` tile with buffer=nl.psum instead of nl.sbuf. For nisa.nc_matmul: dst must be in nl.psum, and stationary and moving must both be in nl.sbuf. Copy between them with nisa.tensor_copy. At 
+round 3: this round 0.30  best so far 0.30  (51.7s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 21, `nisa.tensor_scalar(dst=tile, data=0.5, op0=nisa.multiply)`, raised AttributeError: module 'nki.isa' has no attribute 'multiply' `nki.isa` has no `multiply`, and nothing similar exists. Its real names include: NkiInstruction, NkiValidationError, VirtualRegister, activate2, activation, activation_reduce, affine_select, bn_aggr, bn_stats, 
+round 4: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 4 failed attempts to break the repeat
+round 5: this round 0.30  best so far 0.30  (51.3s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 21, `nisa.tensor_scalar(dst=tile, data=0.5, op=nisa.tensor_scalar_multiply)`, raised AttributeError: module 'nki.isa' has no attribute 'tensor_scalar_multiply' `nki.isa` has no `tensor_scalar_multiply`. The closest real names are: tensor_scalar_cumulative, tensor_scalar, tensor_scalar_reduce, tensor_copy, tensor_reduce, tensor_tensor_scan. P
+round 6: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 5 failed attempts to break the repeat
+round 7: this round 0.30  best so far 0.30  (49.3s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 19, `nisa.tensor_reduce(dst=tile2, src=tile, op=nisa.tensor_add)`, raised AttributeError: module 'nki.isa' has no attribute 'tensor_add' `nki.isa` has no `tensor_add`. The closest real names are: tensor_scalar, tensor_reduce, tensor_copy, tensor_tensor, tensor_engine, tensor_scalar_reduce. Pick one of those or use a different approach. At th
+  not solved in 8 rounds; best reward 0.30
+
+=========== summary ===========
+  level 1  reward 0.30 after 8 round(s)
+  solved 0/1
+
+################ run 5 of 5 ################
+
+=========== level 1: average pooling 2D ===========
+round 0: this round 0.30  best so far 0.30  (53.4s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 18, `nisa.dma_copy(dst=tile, src=x[c, h*p:(h+1)*p, w*p:(w+1)*p])`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=4, dst=16384 The tile you allocated holds 16384 elements but you copied 4 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of t
+round 1: this round 0.30  best so far 0.30  (51.6s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 19, `nisa.nc_matmul(dst=tile2, stationary=tile, moving=tile, transpose_moving=True)`, raised TypeError: nc_matmul() got an unexpected keyword argument 'transpose_moving' Remove the `transpose_moving=` argument. The real signature is isa.nc_matmul(dst: 'NkiTensor', stationary: 'NkiTensor', moving: 'NkiTensor', is_stationary_onezero=False, is_
+round 2: this round 0.30  best so far 0.30  (51.7s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 19, `nisa.nc_matmul(dst=tile2, stationary=tile, moving=tile, is_transpose=False)`, raised AssertionError: dst must be in ['psum'], got sbuf Allocate the `dst` tile with buffer=nl.psum instead of nl.sbuf. For nisa.nc_matmul: dst must be in nl.psum, and stationary and moving must both be in nl.sbuf. Copy between them with nisa.tensor_copy. At 
+round 3: this round 0.30  best so far 0.30  (51.7s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 21, `nisa.tensor_scalar(dst=tile, data=0.5, op0=nisa.multiply)`, raised AttributeError: module 'nki.isa' has no attribute 'multiply' `nki.isa` has no `multiply`, and nothing similar exists. Its real names include: NkiInstruction, NkiValidationError, VirtualRegister, activate2, activation, activation_reduce, affine_select, bn_aggr, bn_stats, 
+round 4: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 4 failed attempts to break the repeat
+round 5: this round 0.30  best so far 0.30  (50.9s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 21, `nisa.tensor_scalar(dst=tile, data=0.5, op=nisa.scalar_mul)`, raised AttributeError: module 'nki.isa' has no attribute 'scalar_mul' `nki.isa` has no `scalar_mul`. The closest real names are: scalar_engine, tensor_scalar_cumulative, tensor_scalar_reduce, nc_matmul, tensor_scalar, scalar_tensor_tensor. Pick one of those or use a different 
+round 6: this round 0.30  best so far 0.30  (48.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 20, `nisa.tensor_scalar(dst=tile, data=0.5, op=nisa.tensor_scalar)`, raised TypeError: tensor_scalar() got an unexpected keyword argument 'op'. Did you mean 'op0'? Remove the `op=` argument. The real signature is isa.tensor_scalar(dst: 'NkiTensor', data: 'NkiTensor', op0, operand0: 'float | NkiTensor', reverse0=False, op1=None, operand1: 'fl
+round 7: this round 0.30  best so far 0.30  (49.7s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 20, `nisa.tensor_scalar(dst=tile, data=0.5, op0=nisa.tensor_scalar, operand0=0.5)`, raised AttributeError: 'float' object has no attribute 'shape' A float is not a numpy array, so it has no `shape`. Use the nl/nisa functions instead. At that line: `tile` is (2, 2) in sbuf.
+  not solved in 8 rounds; best reward 0.30
+
+=========== summary ===========
+  level 1  reward 0.30 after 8 round(s)
+  solved 0/1
+
+=========== over 5 runs ===========
+  level 1: solved 0/5  best 0.30  worst 0.30  mean 0.30  all=[0.3, 0.3, 0.3, 0.3, 0.3]
+
+  Report the rate, not your best run. A level that solves 1 in 3 times is not solved.
+
+attempts logged to checker-l1.jsonl

@@ -1,0 +1,10 @@
+features ['locate', 'state']
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 5 ################
+
+=========== level 1: average pooling 2D ===========
+round 0: this round 0.30  best so far 0.30  (54.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 18, `nisa.dma_copy(dst=tile, src=x[c, h*p:(h+1)*p, w*p:(w+1)*p])`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=4, dst=16384 The tile you allocated holds 16384 elements but you copied 4 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of t
+round 1: this round 0.30  best so far 0.30  (51.6s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: line 19, `nisa.nc_matmul(dst=tile2, stationary=tile, moving=tile, transpose_moving=True)`, raised TypeError: nc_matmul() got an unexpected keyword argument 'transpose_moving' Remove the `transpose_moving=` argument. The real signature is isa.nc_matmul(dst: 'NkiTensor', stationary: 'NkiTensor', moving: 'NkiTensor', is_stationary_onezero=False, is_

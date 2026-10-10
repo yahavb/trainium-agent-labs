@@ -1,0 +1,50 @@
+features ['ahead', 'internal', 'layout', 'locate', 'names', 'origin', 'state', 'strict']
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 5 ################
+
+=========== level 3: matmul, single tile ===========
+round 0: this round 0.30  best so far 0.30  (57.2s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 16, `psum = nl.ndarray(shape=out.shape, dtype=out.dtype, buffer=nl.psum)`, raised AssertionError: SBUF and PSUM tensors must have at least 2 dimensions (partition-dim and free-dim) At that line: `out` is (64,) in HBM. A tile on the chip needs at least 2 dimensions, the partition dimension first: this shape has 1. `psum` is used on line 18 as the resu
+round 1: this round 0.30  best so far 0.30  (55.3s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 20, `nisa.tensor_copy(dst=sbuf_lhsT, src=psum)`, raised ValueError: shape mismatch: value array of shape (32768,) could not be broadcast to indexing result of shape (8192,) At that line: `sbuf_lhsT` is (128, 64) in sbuf; `psum` is (64, 512) in psum. The two sides of a tensor_copy must hold the same number of elements, because it does not slice, resha
+round 2: this round 0.30  best so far 0.30  (62.0s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 24, `nisa.dma_copy(dst=out, src=sbuf_psum)`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=32768, dst=64 The tile you allocated holds 64 elements but you copied 32768 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If y
+round 3: this round 1.00  best so far 1.00  (63.4s)
+  Correct on every shape. MEMORY BOUND: 19.7 Flops/Byte against a ridge of 222, so 9% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 11.3x more reuse needed.
+  SOLVED on round 3. Correct on every shape. MEMORY BOUND: 19.7 Flops/Byte against a ridge of 222, so 9% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 11.3x more reuse needed.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_matmul_basic_(lhsT, rhs):
+      # Allocate output buffer in shared HBM with correct shape
+      out = nl.ndarray(shape=(lhsT.shape[1], rhs.shape[1]), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+      # Allocate SBUF for lhsT and rhs
+      sbuf_lhsT = nl.ndarray(shape=lhsT.shape, dtype=lhsT.dtype, buffer=nl.sbuf)
+      sbuf_rhs = nl.ndarray(shape=rhs.shape, dtype=rhs.dtype, buffer=nl.sbuf)
+      # Copy lhsT and rhs from HBM to SBUF
+      nisa.dma_copy(dst=sbuf_lhsT, src=lhsT)
+      nisa.dma_copy(dst=sbuf_rhs, src=rhs)
+      # Allocate PSUM for result
+      psum = nl.ndarray(shape=(lhsT.shape[1], rhs.shape[1]), dtype=out.dtype, buffer=nl.psum)
+      # Perform matrix multiplication
+      nisa.nc_matmul(dst=psum, stationary=sbuf_lhsT, moving=sbuf_rhs)
+      # Allocate temporary SBUF for psum result
+      sbuf_psum = nl.ndarray(shape=psum.shape, dtype=psum.dtype, buffer=nl.sbuf)
+      # Copy result from PSUM to temporary SBUF
+      nisa.tensor_copy(dst=sbuf_psum, src=psum)
+      # Copy result from temporary SBUF to HBM
+      nisa.dma_copy(dst=out, src=sbuf_psum)
+      return out
+  -------------------------------------------
+
+=========== summary ===========
+  level 3  reward 1.00 after 4 round(s)  SOLVED
+  solved 1/1
+
+################ run 2 of 5 ################
+
+=========== level 3: matmul, single tile ===========

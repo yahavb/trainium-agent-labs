@@ -1,0 +1,34 @@
+# Run on a laptop at 2026-10-10 16:40, stand-in simulator. Command: python devtools/compare_feedback.py 39b8e5a --features internal,origin
+Feedback under flags ['internal', 'locate', 'origin', 'state']
+  old: 39b8e5a
+  new: working tree at 32f6055
+  simulator: nki 0.0-fake  <-- THE STAND-IN, not the real simulator
+  kernels: 433 distinct, from 45 logs
+
+  level 1:   35 kernels, feedback differs on 0
+  level 2:  139 kernels, feedback differs on 0
+  level 3:   93 kernels, feedback differs on 0
+  level 4:  166 kernels, feedback differs on 7
+
+  TOTAL: 433 kernels, feedback differs on 7
+
+  level 4, first difference at character 863:
+    old: ...nce its first dimension is the partition dimension: src has 256. `sbuf_out` is the wrong size here: it has 256 rows, too many: at most 128. But do not resize it: line 44, `nisa.tensor_copy(dst=sbuf_out, src=psum)`, already ran with the shap
+    new: ...nce its first dimension is the partition dimension: src has 256. `sbuf_out` is too tall: it has 256 rows, too many: at most 128. It got its shape on line 43, `sbuf_out = nl.ndarray((M, N), dtype=lhsT.dtype, buffer=nl.sbuf)`. No single tile 
+
+  level 4, first difference at character 863:
+    old: ...nce its first dimension is the partition dimension: src has 256. `sbuf_out` is the wrong size here: it has 256 rows, too many: at most 128. But do not resize it: line 44, `nisa.tensor_copy(dst=sbuf_out, src=psum)`, already ran with the shap
+    new: ...nce its first dimension is the partition dimension: src has 256. `sbuf_out` is too tall: it has 256 rows, too many: at most 128. It got its shape on line 43, `sbuf_out = nl.ndarray((M, N), dtype=lhsT.dtype, buffer=nl.sbuf)`. No single tile 
+
+  level 4, first difference at character 863:
+    old: ...nce its first dimension is the partition dimension: src has 256. `sbuf_out` is the wrong size here: it has 256 rows, too many: at most 128. But do not resize it: line 51, `nisa.tensor_copy(dst=sbuf_out, src=psum)`, already ran with the shap
+    new: ...nce its first dimension is the partition dimension: src has 256. `sbuf_out` is too tall: it has 256 rows, too many: at most 128. It got its shape on line 50, `sbuf_out = nl.ndarray(shape=out.shape, dtype=out.dtype, buffer=nl.sbuf)`. No sing
+
+  level 4, first difference at character 863:
+    old: ...nce its first dimension is the partition dimension: src has 256. `sbuf_out` is the wrong size here: it has 256 rows, too many: at most 128. But do not resize it: line 51, `nisa.tensor_copy(dst=sbuf_out, src=psum)`, already ran with the shap
+    new: ...nce its first dimension is the partition dimension: src has 256. `sbuf_out` is too tall: it has 256 rows, too many: at most 128. It got its shape on line 50, `sbuf_out = nl.ndarray(shape=(M, N), dtype=out.dtype, buffer=nl.sbuf)`. No single 
+
+  level 4, first difference at character 863:
+    old: ...nce its first dimension is the partition dimension: src has 256. `sbuf_out` is the wrong size here: it has 256 rows, too many: at most 128. But do not resize it: line 44, `nisa.tensor_copy(dst=sbuf_out, src=psum)`, already ran with the shap
+    new: ...nce its first dimension is the partition dimension: src has 256. `sbuf_out` is too tall: it has 256 rows, too many: at most 128. It got its shape on line 43, `sbuf_out = nl.ndarray((M, N), dtype=lhsT.dtype, buffer=nl.sbuf)`. No single tile 
+exit 1
