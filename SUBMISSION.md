@@ -47,8 +47,10 @@ into one repair instruction, and tries again: at most 8 rounds of 4 samples per 
 organizers' `agent.py`, and our v8 layer on top ([V7.md](projects/02-kernel-agent/V7.md),
 [V8.md](projects/02-kernel-agent/V8.md)). Its numbers come from three commits that send byte-identical
 requests wherever they overlap: levels 1, 3 and 4 were run on v8.2 (96a9fc9), level 2 on v8.3 (5c3aba2, which
-adds error distillation for level 2), levels 5–7 on v8.4 (15fb0d5, which adds a warm start for levels 5–7)
-([PLAN.md](PLAN.md) §3, [analysis/v83_l134_identity.md](analysis/v83_l134_identity.md)).
+adds error distillation for level 2) and v8.5 (0eb2695, the tag, which adds one sentence for a level-2
+kernel that returns nothing), levels 5–7 on v8.4 (15fb0d5, which adds a warm start for levels 5–7)
+([PLAN.md](PLAN.md) §3, [analysis/v83_l134_identity.md](analysis/v83_l134_identity.md): three independent
+byte-level comparisons).
 
 **On what.**
 
