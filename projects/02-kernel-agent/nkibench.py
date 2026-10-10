@@ -622,9 +622,11 @@ def check_inputs_untouched(before, args):
 # ran -- a kernel the chip cannot execute, which would have scored 1.0 had it been numerically
 # right. So every on-chip allocation is recorded during simulation and judged against the limits.
 #
-# The hook goes in BEFORE the kernel file is imported (load_kernel does it): nki.jit may bind the
-# API when it decorates, so a patch applied afterwards would never be seen. It stays installed;
-# outside a simulation nothing here calls nl.ndarray. NKIBENCH_NO_ALLOC_AUDIT=1 turns it off.
+# The hook is installed only for the length of one simulation (simulate_and_count) and removed in its
+# finally. Left installed, it made neuronx-cc fail on every kernel in the process ("failed to resolve
+# name 'nkibench._install_alloc_audit...'", seat-115), so in-process compiles and on-chip runs broke.
+# Installing it after the kernel is imported still sees every allocation: the references give
+# 12/12/5/90, as before. NKIBENCH_NO_ALLOC_AUDIT=1 turns it off.
 
 _ALLOC_LOG = []
 _AUDIT = {"installed": False}
@@ -676,6 +678,24 @@ def _install_alloc_audit():
         if home is not None and getattr(home, fn_name, None) is original:
             setattr(home, fn_name, audited)
     _AUDIT["installed"] = True
+
+
+def _uninstall_alloc_audit():
+    """Put the real allocators back. The compiler resolves them by name, and a wrapper left installed
+    makes every kernel fail to lower ("failed to resolve name 'nkibench._install_alloc_audit...'")."""
+    if not _AUDIT["installed"]:
+        return
+    import nki.language as nl
+    for fn_name in _ALLOCATORS:
+        cur = getattr(nl, fn_name, None)
+        orig = getattr(cur, "__wrapped__", None)
+        if orig is None:
+            continue
+        setattr(nl, fn_name, orig)
+        home = sys.modules.get(getattr(orig, "__module__", "") or "")
+        if home is not None and getattr(home, fn_name, None) is cur:
+            setattr(home, fn_name, orig)
+    _AUDIT["installed"] = False
 
 
 def illegal_allocations(log):
@@ -765,6 +785,7 @@ def simulate_and_count(kernel, args):
         nisa.dma_copy = original
         counter["allocations"] = len(_ALLOC_LOG)
         counter["illegal"] = illegal_allocations(_ALLOC_LOG)
+        _uninstall_alloc_audit()
     return out, counter
 
 
@@ -784,7 +805,6 @@ def candidate_path(stem):
 
 
 def load_kernel(path, entry):
-    _install_alloc_audit()        # must precede the import; see layer 1d
     if path in _LOADED_PATHS:
         print(f"nkibench WARNING: {path} was already loaded in this process; nki caches by path, "
               f"so the allocation audit may report the earlier kernel. Use candidate_path().",
@@ -855,7 +875,7 @@ def verify(path, level_n, tol=2e-2, seed=0):
                                 counted, f, minimum_hbm_bytes(args, want)))
 
     print(f"  numerics   {passed}/{len(spec['shapes'])} shapes passed")
-    if not _AUDIT["installed"]:
+    if os.environ.get("NKIBENCH_NO_ALLOC_AUDIT") or not audited:
         print("  allocation audit OFF (NKIBENCH_NO_ALLOC_AUDIT set, or nki missing)")
     elif audited and not any(audited):
         # every kernel allocates at least its result, so silence means the hook saw nothing
