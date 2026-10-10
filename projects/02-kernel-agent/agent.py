@@ -29,6 +29,7 @@ import re
 import sys
 import textwrap
 import time
+import traceback
 
 import numpy as np
 
@@ -50,6 +51,96 @@ REASONING_KEYS = ("reasoning", "reasoning_content")
 # until the kernel is right.
 
 WEIGHTS = dict(parses=0.1, rules=0.2, runs=0.2, correct=0.5)
+
+
+# ---------------------------------------------------------------- locating the failure
+#
+# The checker used to hand back only the exception text: "cannot reshape array of size 32768 into
+# shape (1,64)". True, and it never says WHICH of the model's lines did it. So the model rewrites
+# something else and the same error returns -- levels 1, 3 and 4 each repeat one error on every run.
+# "located" feedback quotes the model's own failing line back to it.
+#
+#   raw       the bare exception, nothing added        (the ablation's floor)
+#   enriched  the exception plus the fix instruction   (the repo's original behaviour)
+#   located   enriched, plus the failing line quoted   (the default)
+
+FEEDBACK_MODE = "located"
+LOCATED = " The failing line is line "
+
+# Used only when the traceback has no frame inside the candidate file. (error pattern, pattern to
+# look for in the source). `{0}` is the first group captured from the error.
+GUESSES = [
+    (r"cannot reshape", r"reshape"),
+    (r"'MemoryRegion' object is not callable", r"nl\.(?:sbuf|psum|shared_hbm|hbm)\s*\("),
+    (r"has no attribute '(\w+)'", r"\.{0}\b"),
+    (r"got an unexpected keyword argument '(\w+)'", r"\b{0}\s*="),
+]
+
+
+def locate(exc, path, source):
+    """(line number, line text) of the model's own line that raised, or None.
+
+    Reads line text from `source`, never from linecache: every candidate is written to the same
+    path, so linecache would quote a PREVIOUS candidate's line under this one's number.
+    """
+    lines = source.splitlines()
+    hit, seen, e = None, set(), exc
+    while e is not None and id(e) not in seen and hit is None:
+        seen.add(id(e))
+        for frame, lineno in traceback.walk_tb(e.__traceback__):
+            if frame.f_code.co_filename == path and 1 <= lineno <= len(lines):
+                hit = lineno                      # keep walking: the innermost frame wins
+        e = e.__cause__ or e.__context__
+    if hit is None:
+        # No frame of ours in the traceback. Guess from the error text, but ONLY when exactly one
+        # line matches: pointing at the wrong line is worse than pointing at none.
+        text = str(exc)
+        for err_pat, src_pat in GUESSES:
+            m = re.search(err_pat, text)
+            if not m:
+                continue
+            pat = re.compile(src_pat.format(*[re.escape(g) for g in m.groups()]))
+            matches = [i for i, ln in enumerate(lines, 1)
+                       if pat.search(ln) and not ln.lstrip().startswith("#")]
+            if len(matches) == 1:
+                hit = matches[0]
+            break
+    if hit is None or not lines[hit - 1].strip():
+        return None
+    return hit, lines[hit - 1].strip()[:160]
+
+
+def explain(exc, path, source, prefix="raised ", add_fix=True):
+    """Turn an exception from the candidate into feedback, at the current FEEDBACK_MODE."""
+    text = f"{prefix}{type(exc).__name__}: {exc}"
+    if FEEDBACK_MODE == "raw":
+        return text
+    if add_fix:
+        text = enrich(text)
+    if FEEDBACK_MODE == "located":
+        where = locate(exc, path, source)
+        if where:
+            text += f"{LOCATED}{where[0]} of your kernel: `{where[1]}`. That is the line to change."
+        elif not explain.warned:
+            explain.warned = True
+            frames = [f"{os.path.basename(f.f_code.co_filename)}:{n}"
+                      for f, n in traceback.walk_tb(exc.__traceback__)]
+            print(f"    (could not locate the failing line for {type(exc).__name__}; the traceback "
+                  f"passes through {' > '.join(frames[-6:]) or 'no frames'}. Shown once per run.)")
+    return text
+
+
+explain.warned = False
+
+
+def signature(feedback):
+    """The failure with the quoted line removed, for the repeat detector and the ledger.
+
+    The quoted line changes whenever the code does, so comparing whole messages would never see a
+    repeat and the give-up rule would stop firing. Two attempts hitting the same error on different
+    lines are the same failure.
+    """
+    return feedback.split(LOCATED)[0]
 
 
 def grade(source, level):
@@ -85,7 +176,9 @@ def grade(source, level):
     parts["rules"] = True
 
     spec = nkibench.LEVELS[level]
-    path = f"/tmp/_agent_level{level}.py"
+    # One file per PROCESS. With a shared name, two runs in the same pod (a baseline and an
+    # experiment, say) overwrite each other's candidate between the write and the load.
+    path = f"/tmp/_agent_{os.getpid()}_level{level}.py"
     with open(path, "w") as f:
         f.write(source)
     try:
@@ -111,8 +204,9 @@ def grade(source, level):
                 f"Use exactly those three.")
     except Exception as e:
         return (sum(WEIGHTS[k] for k, v in parts.items() if v), parts,
-                f"The file imports but {spec['entry']} could not be loaded: "
-                f"{type(e).__name__}: {e}")
+                explain(e, path, source,
+                        prefix=f"The file imports but {spec['entry']} could not be loaded: ",
+                        add_fix=False))
 
     failures, passed, intensity = [], 0, None
     for case in spec["shapes"]:
@@ -125,8 +219,7 @@ def grade(source, level):
             return (sum(WEIGHTS[k] for k, v in parts.items() if v), parts,
                     f"CANNOT SIMULATE: {e}")
         except Exception as e:
-            failures.append((nkibench.label(case, level),
-                             enrich(f"raised {type(e).__name__}: {e}")))
+            failures.append((nkibench.label(case, level), explain(e, path, source)))
             continue
         parts["runs"] = True
         m = (nkibench.check_inputs_untouched(before, args)
@@ -406,6 +499,24 @@ def repair_prompt(level, source, feedback):
         f"ONE python code block.")
 
 
+def prompt_shape(prompt, kind, level, terse=0, code="", feedback="", ledger=""):
+    """Where this prompt's characters went, for the token-budget instrumentation.
+
+    reference = the NumPy reference, docs = the API card, code = the previous kernel,
+    feedback = the checker's message, ledger = the list of failed attempts,
+    instructions = everything else (the task wording).
+    """
+    import inspect
+    shape = dict(kind=kind, total=len(prompt), reference=0, docs=0,
+                 code=len(code), feedback=len(feedback), ledger=len(ledger))
+    if kind == "first":
+        shape["reference"] = len(inspect.getsource(nkibench.LEVELS[level]["ref"]))
+        shape["docs"] = len(API_CARD) if terse == 0 else 0
+    shape["instructions"] = max(0, shape["total"] - shape["reference"] - shape["docs"]
+                                - shape["code"] - shape["feedback"] - shape["ledger"])
+    return shape
+
+
 CODE_BLOCK = re.compile(r"```(?:python)?\s*(.*?)```", re.S)
 
 
@@ -429,6 +540,17 @@ def extract_code(text):
 
 
 # ---------------------------------------------------------------- the model
+
+class Reply(str):
+    """The answer text, carrying what the server reported about it (tokens, finish reason).
+
+    A str subclass so everything that already treats a reply as text keeps working.
+    """
+    def __new__(cls, text, **meta):
+        obj = super().__new__(cls, text)
+        obj.meta = meta
+        return obj
+
 
 def ask(a, prompt):
     import httpx
@@ -466,7 +588,10 @@ def ask(a, prompt):
         print(f"    (empty answer, {len(reasoning)} chars of hidden reasoning, "
               f"finish={ch.get('finish_reason')} — shorten the prompt rather than raising the "
               f"budget)")
-    return content
+    usage = payload.get("usage") or {}
+    return Reply(content, prompt_tokens=usage.get("prompt_tokens"),
+                 completion_tokens=usage.get("completion_tokens"),
+                 finish=finish, reasoning_chars=len(reasoning))
 
 
 def ask_parallel(a, prompt, n):
@@ -491,6 +616,7 @@ def solve(a, level, log):
     print(f"\n=========== level {level}: {nkibench.LEVELS[level]['op']} ===========")
     terse = a.terse
     prompt = first_prompt(level, terse)
+    shape = prompt_shape(prompt, "first", level, terse)
     best = (0.0, None, "")
     tried, streak, seen = [], 0, {}
     latest = ("", "")
@@ -498,14 +624,26 @@ def solve(a, level, log):
         t0 = time.perf_counter()
         replies = (offline_answers(level, a.samples, rnd) if a.offline
                    else ask_parallel(a, prompt, a.samples))
+        gen_s = round(time.perf_counter() - t0, 1)
         graded = []
-        for reply in replies:
+        for i, reply in enumerate(replies):
             src = extract_code(reply)
             reward, parts, feedback = grade(src, level)
             graded.append((reward, src, feedback, parts))
+            meta = getattr(reply, "meta", {})
             log.write(json.dumps(dict(level=level, round=rnd, reward=reward, parts=parts,
                                       prompt_chars=len(prompt), reply_chars=len(reply),
-                                      code=src, feedback=feedback)) + "\n")
+                                      code=src, feedback=feedback,
+                                      session=getattr(a, "session", ""),
+                                      run=getattr(a, "run", 0), sample=i, model=a.model,
+                                      feedback_mode=FEEDBACK_MODE,
+                                      failure=signature(feedback),
+                                      located=LOCATED in feedback,
+                                      prompt_shape=shape, gen_seconds=gen_s,
+                                      prompt_tokens=meta.get("prompt_tokens"),
+                                      completion_tokens=meta.get("completion_tokens"),
+                                      finish=meta.get("finish"),
+                                      reasoning_chars=meta.get("reasoning_chars"))) + "\n")
         log.flush()
         graded.sort(key=lambda g: g[0], reverse=True)
         top = graded[0]
@@ -517,7 +655,8 @@ def solve(a, level, log):
         # stuck at 0.10 for four rounds while the prompt still carried the 0.50 code.
         if (top[1] or "").strip():
             latest = (top[1], top[2])
-        same = top[2] == (tried[-1] if tried else None)
+        sig = signature(top[2])
+        same = sig == (tried[-1] if tried else None)
         if same:
             # Collapse. Fifteen identical multi-line blocks is noise, not information.
             print(f"round {rnd}: same failure again ({top[0]:.2f}, best so far {best[0]:.2f})")
@@ -531,18 +670,18 @@ def solve(a, level, log):
             print(textwrap.indent(top[1], "  "))
             print("  -------------------------------------------")
             return top[0], rnd + 1
-        seen[top[2]] = seen.get(top[2], 0) + 1
+        seen[sig] = seen.get(sig, 0) + 1
         streak = streak + 1 if same else 1
-        if seen[top[2]] >= a.give_up_after:
+        if seen[sig] >= a.give_up_after:
             how = ("the identical failure %d rounds running" % streak if streak >= a.give_up_after
                    else "this failure for the %dth time, alternating with %d other(s)"
-                        % (seen[top[2]], len(seen) - 1))
+                        % (seen[sig], len(seen) - 1))
             print(f"  STOPPING this level: {how}. The agent is cycling between a fixed set of "
                   f"mistakes rather than converging, so more rounds will not help. Failures seen:")
             for f, n in sorted(seen.items(), key=lambda kv: -kv[1]):
                 print(f"    {n}x  {f[:110]}")
             return best[0], rnd + 1
-        tried.append(top[2])
+        tried.append(sig)
         repeats = streak
         if repeats >= 2 and (best[1] or "").strip():
             # Sampling on this endpoint is greedy, so an unchanged prompt returns an unchanged
@@ -552,6 +691,8 @@ def solve(a, level, log):
             prompt = (repair_prompt(level, latest[0], latest[1])
                       + f"\n\nThese approaches have already failed, so do something different:\n"
                         f"{ledger}")
+            shape = prompt_shape(prompt, "repair+ledger", level, code=latest[0],
+                                 feedback=latest[1], ledger=ledger)
             print(f"  same failure {repeats}x — adding a ledger of {len(set(tried))} failed "
                   f"attempts to break the repeat")
             continue
@@ -561,9 +702,11 @@ def solve(a, level, log):
             # rounds running. Shorten and re-ask instead.
             terse = min(terse + 1, 2)
             prompt = first_prompt(level, terse)
+            shape = prompt_shape(prompt, "first", level, terse)
             print(f"  no code yet, so re-asking with a shorter prompt (terseness {terse})")
         else:
             prompt = repair_prompt(level, latest[0], latest[1])
+            shape = prompt_shape(prompt, "repair", level, code=latest[0], feedback=latest[1])
     print(f"  not solved in {a.rounds} rounds; best reward {best[0]:.2f}")
     return best[0], a.rounds
 
@@ -596,7 +739,15 @@ def main():
     ap.add_argument("--think", action="store_true",
                     help="let the model reason first; costs budget, and it ran out")
     ap.add_argument("--offline", action="store_true")
+    ap.add_argument("--feedback", default="located", choices=("raw", "enriched", "located"),
+                    help="what the checker sends back when the kernel raises. raw: the bare "
+                         "exception. enriched: plus the fix instruction (the original behaviour). "
+                         "located: plus the model's own failing line, quoted. Run the same level "
+                         "under each to measure what the feedback is worth.")
     a = ap.parse_args()
+    global FEEDBACK_MODE
+    FEEDBACK_MODE = a.feedback
+    a.session = time.strftime("%Y%m%d-%H%M%S")
 
     if not a.offline:
         # Validate before the first request. An empty or scheme-less value produces a hostname
@@ -616,7 +767,8 @@ def main():
             sys.exit(f"base URL {raw!r} is not usable. It needs a scheme and a host, e.g. "
                      f"http://qwen3-8b:8000/v1.")
         a.base = raw.rstrip("/") + a.path
-        print(f"endpoint {a.base}  model {a.model}")
+        print(f"endpoint {a.base}  model {a.model}  feedback {FEEDBACK_MODE}  "
+              f"session {a.session}")
     else:
         print("*** OFFLINE: replaying the reference kernel. Numbers are meaningless. ***")
 
@@ -628,6 +780,7 @@ def main():
         for rep in range(a.repeat):
             if a.repeat > 1:
                 print(f"\n################ run {rep + 1} of {a.repeat} ################")
+            a.run = rep
             results = []
             for level in levels:
                 results.append((level,) + solve(a, level, log))
