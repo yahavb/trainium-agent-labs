@@ -742,7 +742,9 @@ def ask(a, prompt, messages=None, tools=None, raw=False):
                        for m in messages)
     if tools:
         prompt_chars += len(json.dumps(tools))
-    est_prompt = prompt_chars // 4
+    # chars/3, not /4: the NKI guide is code and markdown, which tokenizes denser than prose. With /4 a
+    # 5,693-token repair prompt was estimated low and the request overflowed the 8,192 context (HTTP 400).
+    est_prompt = prompt_chars // 3
     remaining = a.context - est_prompt - 64
     if remaining < 256:
         raise SystemExit(f"prompt is ~{est_prompt} tokens; fewer than 256 answer tokens fit "
@@ -758,6 +760,20 @@ def ask(a, prompt, messages=None, tools=None, raw=False):
         body["tools"] = tools
     r = httpx.post(f"{a.base.rstrip('/')}/chat/completions", json=body,
                    timeout=900, verify=False)
+    # If the server still says the request is too long, shrink the answer budget to what it reports and retry
+    # instead of ending the whole run on a budget estimate.
+    for _ in range(3):
+        if r.status_code != 400 or "maximum context length" not in r.text:
+            break
+        mm = re.search(r"prompt contains at least (\d+) input tokens", r.text)
+        if not mm:
+            break
+        body["max_tokens"] = a.context - int(mm.group(1)) - 64
+        if body["max_tokens"] < 256:
+            break
+        print(f"    (context overflow: retrying with max_tokens={body['max_tokens']})")
+        r = httpx.post(f"{a.base.rstrip('/')}/chat/completions", json=body,
+                       timeout=900, verify=False)
     if r.status_code != 200:
         raise SystemExit(f"the endpoint returned HTTP {r.status_code}:\n{r.text[:600]}")
     payload = r.json()

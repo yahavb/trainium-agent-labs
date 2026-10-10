@@ -4,7 +4,7 @@ import agent
 
 
 class A:
-    model = "m"; base = "http://x/v1"; max_tokens = 100; context = 4096; think = False
+    model = "m"; base = "http://x/v1"; max_tokens = 100; context = 8192; think = False
     sampling = "organizer"
 
 
@@ -54,15 +54,15 @@ def test_system_guide(monkeypatch):
 
 def test_budget_counts_system_guide_and_message_history(monkeypatch):
     seen = capture(monkeypatch); reset(monkeypatch, SYSTEM_GUIDE=True)
-    class Small(A): max_tokens = 3000
+    class Small(A): max_tokens = 3000; context = 6000
     agent.ask(Small, "short")
-    expected = min(3000, max(256, Small.context - (len(agent.nki_guide()) + len("short")) // 4 - 64))
+    expected = min(3000, max(256, Small.context - (len(agent.nki_guide()) + len("short")) // 3 - 64))
     assert seen[-1]["max_tokens"] == expected < 3000
 
     reset(monkeypatch, SYSTEM_GUIDE=False)
     messages = [{"role": "user", "content": "x" * 8000}]
     agent.ask(Small, "short", messages=messages)
-    assert seen[-1]["max_tokens"] == min(3000, max(256, Small.context - 8000 // 4 - 64))
+    assert seen[-1]["max_tokens"] == min(3000, max(256, Small.context - 8000 // 3 - 64))
 
 
 def test_tagged(monkeypatch):
