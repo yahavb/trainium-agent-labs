@@ -6,10 +6,10 @@ Status: **design draft, nothing here is implemented.** Names are provisional. Ev
 
 | level | what it is | instruction spelling | where it lives |
 |---|---|---|---|
-| **ns** (nki-sched IR) | the explicit loop program the schedule rewrites; engine-explicit | `nc.<engine>.<inst>(...)`, e.g. `nc.tensor.matmul`, `nc.vector.tensor_copy`, `nc.sync.dma_copy` | what `print(k.ir)` shows; what `replace`/`stage_*` create |
+| **ns** (nki-sched IR) | the explicit loop program the schedule rewrites; engine-explicit | `ns.<engine>.<inst>(...)`, e.g. `ns.tensor.matmul`, `ns.vector.tensor_copy`, `ns.sync.dma_copy` | what `print(k.ir)` shows; what `replace`/`stage_*` create |
 | **NKI source** (emitted) | Python that `@nki.jit` compiles | `nisa.<inst>(...)`, `nl.<...>` (real NKI names, e.g. `nisa.nc_matmul`, `nisa.tensor_copy(..., engine=...)`) | `k.source`; what `nkibench` checks |
 
-The engine is part of the ns-level call, not an annotation: `nc.tensor` (PE array), `nc.vector`, `nc.scalar`, `nc.gpsimd`, `nc.sync` (DMA queues; an IR label — NKI has no such name, it maps to `dma_copy(..., engine=…)`/`dge_mode`, `[verify]`). The lowering ns → NKI source is a table lookup (PLAN §8). Why the real NKI names are kept at the lowest level: the emitted code must be exactly what `reference_level4.py` looks like. (`nl` is *not* used as the name of this level: it is already `nki.language`, and emitted code uses both `nl.*` and `nisa.*`.)
+The engine is part of the ns-level call, not an annotation: `ns.tensor` (PE array), `ns.vector`, `ns.scalar`, `ns.gpsimd`, `ns.sync` (DMA queues; an IR label — NKI has no such name, it maps to `dma_copy(..., engine=…)`/`dge_mode`, `[verify]`). The lowering ns → NKI source is a table lookup (PLAN §8). Why the real NKI names are kept at the lowest level: the emitted code must be exactly what `reference_level4.py` looks like. (`nl` is *not* used as the name of this level: it is already `nki.language`, and emitted code uses both `nl.*` and `nisa.*`.)
 
 Design rule: *the syntax is Halide/TVM-flavoured names (`split`, `reorder`, `compute_at`, `stage_in`) on top of Exo-style semantics (each call is a checked rewrite of an explicit loop IR, references are cursors that forward).*
 
@@ -23,7 +23,7 @@ The high-level spec is plain torch. It is both the **input to the compiler** (tr
 import torch, nki_sched as nks
 from nki_sched import hw
 from nki_sched.mem import HBM, SBUF, PSUM
-from nki_sched import nc                      # the ns-level instruction namespace: nc.<engine>.<inst>
+from nki_sched import ns                      # the ns-level instruction namespace: ns.<engine>.<inst>
 
 # Dims are symbolic in the IR; the example shapes are only used to trace and to run the oracle.
 K, M, N = 512, 256, 1024
@@ -109,7 +109,7 @@ Every primitive: `(preconditions checked) → rewrite → (cursor forwarding fn)
 | `fission(loop, at=stmt)` / `fuse_stmts` | split/merge loop bodies | stmt-level commutativity |
 | `compute_at(stage, at=loop)` | Halide `f.compute_at(g, y)` / TVM `s[f].compute_at(s[g], ax)`: move the producer's loop nests from the root to *inside* the consumer loop `at`; each iteration computes only the region the consumer needs there (interval analysis), and by default its storage shrinks/moves with it | producer region ⊆ computed region (Halide bounds inference) |
 | `store_at(stage_or_buf, at=loop)` | allocation granularity | enclosing; live range covers uses |
-| `stage_in(tensor, at=loop, mem=, name=, window=None)` | cache_read: copy window of `tensor` into new buffer in `mem` before `loop` body; rewrite uses. **The copy is created directly as the right ns instruction** from (src mem → dst mem): HBM→SBUF `nc.sync.dma_copy`, PSUM→SBUF `nc.vector.tensor_copy` (cast implied by dst dtype); no copy loop nest, no separate lowering step | window inferred (interval analysis) or checked ⊇ accesses; capacity check |
+| `stage_in(tensor, at=loop, mem=, name=, window=None)` | cache_read: copy window of `tensor` into new buffer in `mem` before `loop` body; rewrite uses. **The copy is created directly as the right ns instruction** from (src mem → dst mem): HBM→SBUF `ns.sync.dma_copy`, PSUM→SBUF `ns.vector.tensor_copy` (cast implied by dst dtype); no copy loop nest, no separate lowering step | window inferred (interval analysis) or checked ⊇ accesses; capacity check |
 | `stage_out(tensor, at=loop, mem=, name=)` | cache_write/write-back (same implicit instruction choice) | same; `accum=True` form = zero/accumulate/add-back (Exo `stage_mem(accum=)`) |
 | `set_memory(buf, HBM\|SBUF\|PSUM)` | memory space of an allocation | partition-dim rule (axis 0 ≤128 on SBUF/PSUM), PSUM ⇒ fp32 and ≤ bank size, accessed only by allowed instrs |
 | `expand_dim(buf, size, idx)` / `lift_alloc` / `sink_alloc` | give a buffer a leading rotating dim; move alloc | indexing in bounds |
@@ -126,7 +126,7 @@ Every primitive: `(preconditions checked) → rewrite → (cursor forwarding fn)
 | `multibuffer(buf, depth, along=loop)` | `expand_dim` + index by `loop % depth` | rotating buffers (SBUF double-buffer, PSUM ping-pong) |
 | `pipeline(loop, stages=[[...],[...]], lag=1)` | `fission` + `shift_loop` + peel prologue/epilogue + `multibuffer` | software pipelining; legality = WAR/RAW distance < depth |
 | `overlap(stmtA, stmtB)` | `reorder_stmts` + engine annotation | assert independent & on different engines/queues, interleave in program order |
-| `set_engine(stmt, nc.vector\|nc.scalar\|nc.gpsimd)` | move a statement whose instruction exists on several engines (e.g. `tensor_copy`) | instr must be legal on that engine; verified in 0.6.0: `tensor_copy`/`dma_copy` accept `engine=`, `activation` does not (fixed engine) |
+| `set_engine(stmt, ns.vector\|ns.scalar\|ns.gpsimd)` | move a statement whose instruction exists on several engines (e.g. `tensor_copy`) | instr must be legal on that engine; verified in 0.6.0: `tensor_copy`/`dma_copy` accept `engine=`, `activation` does not (fixed engine) |
 | `transpose_input(arg, via="dma"\|"pe")` | insert layout stage | `A[M,K] → lhsT[K,M]` (`nisa.dma_transpose` / `nisa.nc_transpose` exist in 0.6.0) |
 
 ---
@@ -160,7 +160,7 @@ def l4(s: nks.Sched):
 
     # instruction selection
     s.fold_init("acc")
-    s.replace(s.find("for ki in _: _"), nc.tensor.matmul)   # k=partition, m=stationary free, n=moving free
+    s.replace(s.find("for ki in _: _"), ns.tensor.matmul)   # k=partition, m=stationary free, n=moving free
 
 ```
 
@@ -174,15 +174,15 @@ for mo in affine(M/128):
     for ko in affine(K/128):
       alloc lhsT_sb : bf16[128,128] @ SBUF
       alloc rhs_sb  : bf16[128,512] @ SBUF
-      nc.sync.dma_copy(lhsT_sb, lhsT[ko*128:+128, mo*128:+128])
-      nc.sync.dma_copy(rhs_sb,  rhs [ko*128:+128, no*512:+512])
-      nc.tensor.matmul(dst=acc, stationary=lhsT_sb, moving=rhs_sb)      # accumulate=None
+      ns.sync.dma_copy(lhsT_sb, lhsT[ko*128:+128, mo*128:+128])
+      ns.sync.dma_copy(rhs_sb,  rhs [ko*128:+128, no*512:+512])
+      ns.tensor.matmul(dst=acc, stationary=lhsT_sb, moving=rhs_sb)      # accumulate=None
     alloc C_sb : bf16[128,512] @ SBUF
-    nc.vector.tensor_copy(C_sb, acc)                                 # PSUM→SBUF + cast
-    nc.sync.dma_copy(C[mo*128:+128, no*512:+512], C_sb)
+    ns.vector.tensor_copy(C_sb, acc)                                 # PSUM→SBUF + cast
+    ns.sync.dma_copy(C[mo*128:+128, no*512:+512], C_sb)
 ```
 
-The emitter lowers each `nc.<engine>.<inst>` to its NKI form (`nc.tensor.matmul` → `nisa.nc_matmul`, `nc.vector.tensor_copy` → `nisa.tensor_copy(..., engine=nisa.vector_engine)`, `nc.sync.dma_copy` → `nisa.dma_copy`). Emitted Python is the same shape as `reference_level4.py` (`nl.affine_range`, `nl.ndarray(..., buffer=nl.psum)`, `nisa.dma_copy(dst=, src=)`, `nisa.nc_matmul(dst=, stationary=, moving=)`, `nisa.tensor_copy`). **Acceptance test #1 is that this passes `nkibench.py --level 4 --check` and models ≈2.0× the HBM byte floor.**
+The emitter lowers each `ns.<engine>.<inst>` to its NKI form (`ns.tensor.matmul` → `nisa.nc_matmul`, `ns.vector.tensor_copy` → `nisa.tensor_copy(..., engine=nisa.vector_engine)`, `ns.sync.dma_copy` → `nisa.dma_copy`). Emitted Python is the same shape as `reference_level4.py` (`nl.affine_range`, `nl.ndarray(..., buffer=nl.psum)`, `nisa.dma_copy(dst=, src=)`, `nisa.nc_matmul(dst=, stationary=, moving=)`, `nisa.tensor_copy`). **Acceptance test #1 is that this passes `nkibench.py --level 4 --check` and models ≈2.0× the HBM byte floor.**
 
 ### 4.2 Level 5 — hoist the big operand's loads out of the loop that doesn't index it (bar: ≤1.6× floor)
 
@@ -223,7 +223,7 @@ def l7(s, BM=None, BN=None, BK=None):
     s.stage_in("rhs",  at=kb, mem=SBUF, name="rhs_sb")       # [BK*128, BN*512] folded to [128, BK, BN*512]
     s.stage_out("C",   at=nb, mem=SBUF, name="C_sb")
     s.fold_init("acc")
-    s.replace(s.find("for ki in _: _"), nc.tensor.matmul)
+    s.replace(s.find("for ki in _: _"), ns.tensor.matmul)
 ```
 
 `l6` is the same schedule with `BK = K//128` (a single `kb` iteration — no K blocking). `l4` ≡ `BM=BN=1`, one `kb` per `ko`.
@@ -254,13 +254,13 @@ def l8(s, depth=2):
     l7(s)                                              # shape-derived BM,BN,BK defaults
     # SBUF double-buffering of loads against the matmul that consumes the previous block
     s.multibuffer("lhsT_sb", depth, along="kb"); s.multibuffer("rhs_sb", depth, along="kb")
-    s.pipeline("kb", stages=[s.find_all("nc.sync.dma_copy(lhsT_sb, _)") + s.find_all("nc.sync.dma_copy(rhs_sb, _)"),
-                             s.find_all("nc.tensor.matmul(_)")], lag=1)
+    s.pipeline("kb", stages=[s.find_all("ns.sync.dma_copy(lhsT_sb, _)") + s.find_all("ns.sync.dma_copy(rhs_sb, _)"),
+                             s.find_all("ns.tensor.matmul(_)")], lag=1)
     # PSUM ping-pong: evacuate tile t while TensorE accumulates t+1
     s.multibuffer("acc", 2, along="nb")
     s.pipeline("nb", stages=[[s.find("for mo in _: _")], [s.find("tensor_copy(C_sb, _)"),
                                                         s.find("dma_copy(C[_], C_sb)")]], lag=1)
-    s.set_engine(s.find("nc.vector.tensor_copy(C_sb, _)"), nc.scalar)   # e.g. rebalance evacuation off the vector engine; tensor_copy accepts engine= (verified)
+    s.set_engine(s.find("ns.vector.tensor_copy(C_sb, _)"), ns.scalar)   # e.g. rebalance evacuation off the vector engine; tensor_copy accepts engine= (verified)
 ```
 
 What `pipeline` *means on NKI 0.6.0*: no explicit sync API exists, so it is a **program-order + buffer-rotation transform**: the stage-0 work of iteration *i+lag* is emitted before the stage-1 work of iteration *i*, with `depth` rotating buffers so no WAR hazard exists; NKI's own dependence tracking then lets DMA/PE/Vector run concurrently. Whether we actually get overlap is an empirical question answered on device (PLAN §11, M5), not by the simulator.

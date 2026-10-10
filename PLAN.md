@@ -136,8 +136,8 @@ Instr   := name, semantic_body: Proc, emit: template, legal_mems: per-arg, shape
 Key properties:
 * **Immutable, persistent tree with stable node ids** (structural sharing). A rewrite returns `(new_proc, forward_fn)`; this is what makes cursors work (§6.3) and makes `history[i]` free.
 * **Explicit and executable**: the interpreter runs *any* version of the IR (including with `Call(instr)` nodes, by executing the instr's `semantic_body`). Correctness of intermediate states is therefore testable at every step, not only at the end.
-* **Two instruction spellings.** The ns-level IR names instructions `nc.<engine>.<inst>` (engine is part of the call: `nc.tensor.matmul`, `nc.vector.tensor_copy`, `nc.sync.dma_copy`, `nc.scalar.activation`…). The final NKI source uses real NKI names (`nisa.nc_matmul`, …). Lowering ns → NKI source is a table lookup in the `Instr` entry (see §8).
-* **Instruction table as data** (Exo/TVM): `nc.tensor.matmul` is an `Instr` with semantic body `for k,m,n: dst[m,n] += st[k,m]*mv[k,n]`, arg memories `(PSUM, SBUF, SBUF)`, caps `k≤128, m≤128, n≤512`, emit template `nisa.nc_matmul(dst=…, stationary=…, moving=…)`. Likewise `dma_copy`, `tensor_copy` (PSUM→SBUF + cast), later `nc_transpose`, `activation`, `tensor_reduce`, `exponential`.
+* **Two instruction spellings.** The ns-level IR names instructions `ns.<engine>.<inst>` (engine is part of the call: `ns.tensor.matmul`, `ns.vector.tensor_copy`, `ns.sync.dma_copy`, `ns.scalar.activation`…). The final NKI source uses real NKI names (`nisa.nc_matmul`, …). Lowering ns → NKI source is a table lookup in the `Instr` entry (see §8).
+* **Instruction table as data** (Exo/TVM): `ns.tensor.matmul` is an `Instr` with semantic body `for k,m,n: dst[m,n] += st[k,m]*mv[k,n]`, arg memories `(PSUM, SBUF, SBUF)`, caps `k≤128, m≤128, n≤512`, emit template `nisa.nc_matmul(dst=…, stationary=…, moving=…)`. Likewise `dma_copy`, `tensor_copy` (PSUM→SBUF + cast), later `nc_transpose`, `activation`, `tensor_reduce`, `exponential`.
 * **Stage structure is retained as metadata** (which loops belong to which Func) so that Halide-style `compute_at` and name-based references (`"acc.k"`) remain available after lowering.
 * Small affine simplifier (`expr.py`) to keep indices canonical so interval analysis and `replace` unification stay simple. Where affine isn't enough (tail guards), use explicit `If` + `cut`.
 
@@ -191,9 +191,9 @@ Order of passes after scheduling:
    | `Alloc(mem=HBM, output)` | `nl.ndarray(shape, dtype=…, buffer=nl.shared_hbm)` |
    | `Alloc(mem=SBUF/PSUM)` | `nl.ndarray(shape, dtype=…, buffer=nl.sbuf / nl.psum)` |
    | `For(kind)` | `for i in nl.affine_range(n):` etc. |
-   | `nc.sync.dma_copy(dst, src)` | `nisa.dma_copy(dst=…, src=…)` with window → slice syntax `x[a:b, c:d]` |
-   | `nc.tensor.matmul(dst, stationary, moving)` | `nisa.nc_matmul(dst=…, stationary=…, moving=…)` (+ `accumulate=` when explicit) |
-   | `nc.vector.tensor_copy(dst, src)` (or `nc.scalar/gpsimd`) | `nisa.tensor_copy(dst=…, src=…, engine=nisa.<engine>_engine)` (cast implied by dst dtype) |
+   | `ns.sync.dma_copy(dst, src)` | `nisa.dma_copy(dst=…, src=…)` with window → slice syntax `x[a:b, c:d]` |
+   | `ns.tensor.matmul(dst, stationary, moving)` | `nisa.nc_matmul(dst=…, stationary=…, moving=…)` (+ `accumulate=` when explicit) |
+   | `ns.vector.tensor_copy(dst, src)` (or `ns.scalar/gpsimd`) | `nisa.tensor_copy(dst=…, src=…, engine=nisa.<engine>_engine)` (cast implied by dst dtype) |
    | Rotating buffer index `b[i % d]` | emitted as `b[i % d]` / or `d` separately named buffers via `static_range` unroll `[verify which form NKI accepts]` |
 5. **Self-check**: re-parse emitted source with `ast`, run nkibench `check_rules` (no banned calls/framework modules, correct `@nki.jit` entry name), assert no tile exceeds caps.
 
