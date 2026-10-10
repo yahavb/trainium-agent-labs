@@ -1,0 +1,17 @@
+level1.3 round 0: rewards [0.6, 0.6], errors 0
+level1.3 round 1: rewards [0.6, 0.6], errors 0
+level1.3 round 2: rewards [0.6, 0.6], errors 0
+[
+  {
+    "problem": "level1.3",
+    "seed": 1,
+    "status": "unsolved",
+    "reward": 0.6,
+    "rounds": 3,
+    "requests": 12,
+    "errors": 0,
+    "seconds": 60.24564499199914,
+    "answer": "1.03205*exp(-2*pi**2*t)*sin(pi*x/2) + 0.038224*exp(-9*pi**2*t)*sin(3*pi*x/2) + 0.00825639*exp(-50*pi**2*t)*sin(5*pi*x/2) + 0.00300889*exp(-98*pi**2*t)*sin(7*pi*x/2)"
+  }
+]
+Artifacts: benchmark-results/20261010T160554Z/improved-level1.3-seed1/20261010T162249Z-1edd609a

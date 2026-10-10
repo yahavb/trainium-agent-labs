@@ -1,0 +1,34 @@
+{
+  "run_id": "20261010T161726Z-a62e56fc",
+  "settings": {
+    "level": 1,
+    "sub": 2,
+    "all": false,
+    "seed": 0,
+    "repeat": 1,
+    "samples": 2,
+    "workers": 2,
+    "rounds": 3,
+    "retries": 2,
+    "timeout": 180,
+    "max_tokens": 512,
+    "tool_steps": 1,
+    "no_tools": false,
+    "model": "Qwen/Qwen3-8B",
+    "base": "http://localhost:8000/v1",
+    "output": "benchmark-results/20261010T160554Z/improved-level1.2-seed0"
+  },
+  "results": [
+    {
+      "problem": "level1.2",
+      "seed": 0,
+      "status": "unsolved",
+      "reward": 0.8,
+      "rounds": 3,
+      "requests": 12,
+      "errors": 0,
+      "seconds": 28.899894753994886,
+      "answer": "3*exp(- (3/2)*(pi**2/36)*t )*sin(pi*x/6) + 3/(5*pi)*exp(- (3/2)*(25*pi**2/36)*t )*sin(5*pi*x/6)"
+    }
+  ]
+}

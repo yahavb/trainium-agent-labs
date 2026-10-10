@@ -1,0 +1,17 @@
+level0.1 round 0: rewards [0.0, 0.0], errors 0
+level0.1 round 1: rewards [0.8, 0.8], errors 0
+level0.1 round 2: rewards [0.8, 0.8], errors 0
+[
+  {
+    "problem": "level0.1",
+    "seed": 0,
+    "status": "unsolved",
+    "reward": 0.8,
+    "rounds": 3,
+    "requests": 12,
+    "errors": 0,
+    "seconds": 22.635544607997872,
+    "answer": "3*exp(-9*pi**2*t)*sin(3*pi*x)"
+  }
+]
+Artifacts: benchmark-results/20261010T160554Z/improved-level0.1-seed0/20261010T160635Z-c96c2333
