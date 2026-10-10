@@ -22,7 +22,8 @@ MAX_NAMES = 6
 # competing formats, and an 8B model follows the last one: run 1 of the pull design made 4 lookups.
 CHOICE = ("Reply in one of two ways.\n"
           "- To read documentation before you answer, reply with only this one line:\n"
-          "  LOOKUP: <up to 6 nisa / nl names or tile methods (t.xxx), or the topic 'rules'>\n"
+          "  LOOKUP: <up to 6 nisa / nl names or tile methods (t.xxx), or the topic 'rules', or 'all' "
+          "for every nki name>\n"
           "- Otherwise, give your answer. {answer}")
 ANSWER_NOW = "You have the documentation you asked for. No more lookups: answer now. {answer}"
 
@@ -31,7 +32,8 @@ ANSWER_NOW = "You have the documentation you asked for. No more lookups: answer 
 # (nothing is suggested), so the system still pulls; it just has to decide what to pull.
 REQUEST = ("Before you plan, choose the documentation you need. Which NKI functions, tile methods or "
            "topics will this kernel use? Reply with only this one line:\n"
-           "LOOKUP: <up to 6 names from the NKI names above, or the topic 'rules'>")
+           "LOOKUP: <up to 6 names from the NKI names above, or the topic 'rules', or 'all' for every "
+           "nki name>")
 REQUEST_MAX_TOKENS = 60
 
 
@@ -49,8 +51,15 @@ def parse_lookup(text):
 
 def index_section(retriever, level):
     """The names, without an invitation: whether a lookup is allowed is said in the reply format,
-    so a prompt that allows none (--no-lookup, the last round) doesn't contradict itself."""
-    return Section("index", "NKI names:\n" + retriever.api_map(level), priority=3)
+    so a prompt that allows none (--no-lookup, the last round) doesn't contradict itself.
+
+    By default ~20 curated names, each with one line on what it does (agents2/index.py has the
+    measurements). `retriever.index_mode = "names"` (agent2.py --index names) gives every public
+    name instead, names only, as in the first runs."""
+    if getattr(retriever, "index_mode", "described") == "names":
+        return Section("index", "NKI names:\n" + retriever.api_map(level), priority=3)
+    from agents2.index import described
+    return Section("index", described(retriever, level), priority=3)
 
 
 def _sections(sections, retriever, level, pulled, final, looked):

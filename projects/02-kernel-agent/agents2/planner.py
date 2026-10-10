@@ -120,6 +120,10 @@ class Planner:
         plan = parse_plan(text)
         if plan is None:
             return None, meta
+        # A real name under the wrong prefix (nl.tensor_reduce, nl.reshape) is corrected, not dropped:
+        # 31% of all names in names-only plans on seat-198 (agents2/index.py).
+        from agents2.index import fix_name
+        plan.calls = list(dict.fromkeys(fix_name(self.retriever, c, level) for c in plan.calls))
         plan.unknown = [c for c in plan.calls if not self.retriever.exists(c)]
         plan.calls = [c for c in plan.calls if c not in plan.unknown]
         plan.docs = pulled

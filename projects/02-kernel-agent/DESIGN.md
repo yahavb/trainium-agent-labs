@@ -6,7 +6,7 @@ that plan. Numbers marked *measured* come from runs on the seat pods today.
 
 The roles: **manager**, **planner**, **retriever**, **coder**, **debugger**, **reviewer**.
 
-## Implementation status (2026-10-10 ~22:15 UTC)
+## Implementation status (2026-10-10 ~22:40 UTC)
 
 `agent.py` is unchanged and stays the baseline.
 
@@ -21,7 +21,7 @@ The roles: **manager**, **planner**, **retriever**, **coder**, **debugger**, **r
 | `events.jsonl` (every call from every role, with prompt and reply), `attempts.jsonl` in agent.py's schema | built |
 | zero-byte traffic bypass closed (levels 5–7) | built, in `agents2/checks.py` |
 | thread ends judged by stage reached as well as reward | built, `manager.progress()` |
-| `--classify`, `--dry-run`, `--no-lookup`, `--no-skeleton`, `--no-docs-request`, `--cards introspect`, `--hint` | built |
+| `--classify`, `--dry-run`, `--no-lookup`, `--no-skeleton`, `--no-docs-request`, `--index names`, `--cards introspect`, `--hint` | built |
 | profiler layer 2 (bytes per operand), profiling as a tool, edit mode, LLM manager, device profiling | not built |
 
 **Pull, not push.** A first prompt is the problem statement as `agent.py` gives it (operation, entry
@@ -64,6 +64,24 @@ signature", a poor closest name), and the hot retry of the same change echoed 6 
   different one, once per failure (it was once per thread). A second echo for that failure ends the
   thread.
 
+**Described index** (since ~22:40 UTC, from another session's patch). The index in the planner,
+coder-write and debugger prompts is now ~18 hand-picked entries, each with one line on what it does
+(`agents2/index.py`: about 430 tokens, against 784 for every public name). `--index names` restores
+the old list, and the LOOKUP topic `all` returns it. Entries follow the level: matmul and
+`nc_transpose` from level 3, `t.permute` not at level 2. Measured by that session on seat-198
+(Qwen3-32B, planner only, LOOKUP off, 8 plans per arm):
+- names that exist, in the right module: level 1 48% -> 100%, level 4 55% -> 91%;
+- plans choosing `nisa.tensor_partition_reduce` (it reduces across partitions, the wrong axis for
+  pooling): level 1 5/8 -> 1/8, level 4 4/8 -> 0/8.
+Not yet measured with the 8B, or on solve rate. `fix_name()` keeps a real name written under the wrong
+prefix in a plan (`nl.tensor_reduce` -> `nisa.tensor_reduce`, `nl.reshape` -> `t.reshape`) instead of
+dropping it and re-planning, and never maps to a name withheld at the level.
+
+The descriptions are pushed into every first prompt. At level 1 they describe `t.reshape`,
+`t.permute`, `t.ap` and `nl.sum` / `nl.mean` "over free (trailing) axes", the pieces of both known
+level-1 routes. That's milder than the cards pushed earlier (no examples, no recipe), and the names
+list already named all of them, but it is a push: whether it's the default is the user's call.
+
 What the planner pulled goes to the coder with the plan. A failed check pulls what the error names (the
 function's card, a checked fix example), as checker feedback does. Withheld cards are enforced in
 `Retriever.shown()` and `withhold.json` in `Retriever.allowed()`; the debugger's rules pass on no
@@ -76,7 +94,8 @@ API facts for every transpose route at level 2, or withhold patterns only (the K
 pooling view) and drop `withhold=2` from `agents2/cards.md`.
 
 Measured on seat-35:
-- 30/30 unit tests, on the laptop and on seat-35 (~22:15 UTC); the checks below were re-run then too.
+- 30/30 unit tests and `tests/test_index.py` 4/4, on the laptop and on seat-35 (~22:40 UTC); the checks
+  below were re-run then too.
 - Lint is clean on the reference kernels and the checked fragments.
 - `--offline --all` scores 4/4.
 - Our 4 cards are backed by 7 simulator checks, all holding. The cheat-sheet's 37 hold, and so do the 8

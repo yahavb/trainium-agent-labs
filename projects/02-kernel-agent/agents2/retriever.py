@@ -242,7 +242,8 @@ class Retriever:
         return "\n".join(out)
 
     def lookup(self, names, level, max_chars=3000):
-        """Answer a LOOKUP: a card per name, 'rules' for the core card, close matches for a name that
+        """Answer a LOOKUP: a card per name, 'rules' for the core card, 'all' for every public name
+        (the names-only map, which the described index leaves out), close matches for a name that
         doesn't exist, and a keyword search over the cards for anything that isn't a name."""
         out, seen = [], set()
         for raw in names:
@@ -253,6 +254,9 @@ class Retriever:
             seen.add(key)
             if q.lower() in ("rules", "core", "nki rules"):
                 text = self.core(level)
+            elif q.lower() in ("all", "all names", "index"):
+                text = self.api_map(level)
+                max_chars += len(text)               # the whole map, on top of the other answers
             elif self.exists(key) or key in self.card_text:
                 text = self.cards([key], level) or f"{q}: no documentation at this level."
             elif re.fullmatch(r"[\w.]+", q):

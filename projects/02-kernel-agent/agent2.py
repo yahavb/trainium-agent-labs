@@ -55,6 +55,9 @@ def parse_args(argv=None):
     ap.add_argument("--cards", choices=("checked", "introspect"), default="checked",
                     help="checked: the cheat-sheet and agents2/cards.md cards first (default); "
                          "introspect: signatures and docstrings only, as in the first runs")
+    ap.add_argument("--index", choices=("described", "names"), default="described",
+                    help="described: ~20 curated names, each with one line on what it does (default; "
+                         "agents2/index.py); names: every public name, names only, as in the first runs")
     ap.add_argument("--no-docs-request", action="store_true",
                     help="the planner's first call plans straight away instead of first choosing the "
                          "documentation it needs (offered, a lookup was never taken: 0 in 39 calls)")
@@ -141,6 +144,7 @@ def dry_run(cfg, levels, a):
     from agents2.planner import Planner
     tokens = Tokens(cfg.roles["planner"].model)
     retr = Retriever(aws_docs=cfg.aws_docs, cards=a.cards == "checked")
+    retr.index_mode = a.index
     shown = []
 
     class Capture:
@@ -187,10 +191,11 @@ def main(argv=None):
     llm = (OfflineLLM if a.offline else LLM)(cfg, tokens)
     contexts = llm.connect()
     retr = Retriever(aws_docs=cfg.aws_docs, cards=a.cards == "checked")
+    retr.index_mode = a.index
     with open(os.path.join(tag, "config.json"), "w") as f:
         json.dump(dict(argv=sys.argv, config=cfg.as_dict(), contexts={f"{b}|{m}": c for (b, m), c
                   in contexts.items()}, tokenizer=tokens.how, nki=retr.version, cards=a.cards,
-                  card_names=sorted(retr.card_text)), f, indent=1)
+                  index=a.index, card_names=sorted(retr.card_text)), f, indent=1)
     events = Events(os.path.join(tag, "events.jsonl"), os.path.join(tag, "attempts.jsonl"))
     llm.events = events
     checks = InlineChecks() if a.check_workers == 0 else CheckPool(a.check_workers, cfg.check_timeout)
@@ -203,7 +208,7 @@ def main(argv=None):
                   f"T={r.temperature} top_p={r.top_p} max_out={r.max_tokens}")
     print(f"lookup rounds {cfg.lookup}")
     print(f"threads {cfg.threads}, approaches {cfg.max_approaches}, hint {cfg.hint}, "
-          f"skeleton {cfg.skeleton}, docs request {cfg.docs_request}, cards {a.cards} "
+          f"skeleton {cfg.skeleton}, docs request {cfg.docs_request}, index {a.index}, cards {a.cards} "
           f"({len(retr.card_text)}), aws-docs {cfg.aws_docs}, tokens: {tokens.how}, nki {retr.version}"
           f"\nlog: {tag}/")
 
