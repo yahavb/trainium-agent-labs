@@ -39,6 +39,7 @@ import importlib.util
 import json
 import os
 import random
+import re
 import socket
 import sys
 import tempfile
@@ -257,13 +258,97 @@ def alone_prompt(src, time_us, first):
 
 # ---------------------------------------------------------------- the loop
 
-def says(r, referee):
-    """What the model may be told. speedcheck: instruction_given ONLY -- referee_message can quote the
+DMA_COUNT_MISMATCH = re.compile(
+    r"dma_copy requires src and dst to have the same number of elements, got src=(\d+), dst=(\d+)")
+SAFE_NAME = re.compile(r"^[A-Za-z_]\w{0,30}$")
+
+
+def _dotted(node):
+    parts = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if isinstance(node, ast.Name):
+        parts.append(node.id)
+    return ".".join(reversed(parts))
+
+
+def hoisted_psum(src):
+    """Rule B's static check: the name of a PSUM accumulator `X = nl.ndarray(..., buffer=nl.psum)` assigned
+    OUTSIDE every for loop enclosing an nc_matmul that accumulates into X, and never re-assigned inside
+    those loops. Parses only; never imports or runs the candidate. None if there is no such X."""
+    try:
+        tree = ast.parse(src)
+    except (SyntaxError, ValueError):
+        return None
+    parent = {}
+    for node in ast.walk(tree):
+        for child in ast.iter_child_nodes(node):
+            parent[child] = node
+
+    def loops_around(node):
+        out = []
+        while node in parent:
+            node = parent[node]
+            if isinstance(node, (ast.For, ast.AsyncFor, ast.While)):
+                out.append(node)
+        return out
+
+    def inside(node, loop):
+        return any(n is loop for n in loops_around(node))
+
+    psum = []   # (name, assign node)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) \
+                and isinstance(node.value, ast.Call) and _dotted(node.value.func).endswith("ndarray") \
+                and any(k.arg == "buffer" and _dotted(k.value).endswith("psum") for k in node.value.keywords):
+            psum.append((node.targets[0].id, node))
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call) and _dotted(node.func).endswith("nc_matmul")):
+            continue
+        dst = next((k.value for k in node.keywords if k.arg == "dst"), node.args[0] if node.args else None)
+        if not isinstance(dst, ast.Name):
+            continue
+        loops = loops_around(node)
+        if not loops:
+            continue
+        mine = [a for name, a in psum if name == dst.id]
+        if mine and all(not any(inside(a, l) for l in loops) for a in mine) and SAFE_NAME.match(dst.id):
+            return dst.id
+    return None
+
+
+def says(r, referee, src=""):
+    """What the model may be told. speedcheck: instruction_given, never referee_message -- it can quote the
     kernel's own exception text, which is attacker-controlled, and names held-out shapes (REFEREE.md
-    section 5). stage12's messages are our own nkibench text, so they may fall back to the message."""
-    if referee[1] is not None:
-        return r.get("instruction_given") or ""
-    return agent02.enrich(r.get("instruction_given") or r.get("referee_message") or "")
+    section 5). stage12's messages are our own nkibench text, so they may fall back to the message.
+
+    v2 (seat 101 + 100 logs at 15:50: all 30 wrong verdicts of the referee arm were one of two mistakes,
+    and the model was never told what to change): for a speedcheck `wrong`, two rules name the change in
+    OUR OWN sentence. Only integers and a validated identifier are carried over, never message text.
+      A  the crash "dma_copy requires src and dst to have the same number of elements" (14x): the model
+         got "fix the error named in the referee message", which it is never shown.
+      B  NUMERICAL MISMATCH with a PSUM accumulator hoisted out of the output-tile loops (16x).
+    """
+    if referee[1] is None:
+        return agent02.enrich(r.get("instruction_given") or r.get("referee_message") or "")
+    if r.get("verdict") == "wrong":
+        msg = r.get("referee_message") or ""
+        m = DMA_COUNT_MISMATCH.search(msg)
+        if m and int(m.group(2)) > 0:
+            n_src, n_dst = int(m.group(1)), int(m.group(2))
+            return (f"Your dma_copy moves {n_src} elements into a destination of {n_dst}: the source slice is "
+                    f"{n_src // n_dst}x the tile. Make each dma_copy's source slice exactly the destination "
+                    f"tile's shape (copy one tile-sized piece per call and loop over the rest), or allocate the "
+                    f"destination with the source slice's shape.")
+        if "NUMERICAL MISMATCH" in msg:
+            x = hoisted_psum(src or "")
+            if x:
+                return (f"Your PSUM accumulator {x} is allocated once, before the loops over output tiles, so "
+                        f"nc_matmul keeps adding every output tile into the same sum. Allocate {x} inside the n "
+                        f"loop, one fresh accumulator per (m, n) output tile, before the k loop. Keep everything "
+                        f"else identical.")
+    return r.get("instruction_given") or ""
 
 
 def better(rec, waste, best):
@@ -277,13 +362,13 @@ def better(rec, waste, best):
 def run_once(a, referee, start_path, rep, log, workdir, search):
     model_arm = a.arm != "random_search"
     tag = "offline-" if (a.offline or a.dry) else ""
-    run_id = f"{OP}-{a.arm}-{tag}{time.strftime('%H%M%S')}-{rep}"
+    run_id = f"{OP}-{a.arm}-{a.tag + '-' if a.tag else ''}{tag}{time.strftime('%H%M%S')}-{rep}"
     start_src = open(start_path).read()
     start, start_waste = grade(start_src, referee, a.dry, os.path.join(workdir, f"{run_id}_start.py"))
     if start is None:
         sys.exit("the referee failed 3 times on the START kernel (no free core? see REFEREE.md section 7). "
                  "Nothing was logged.")
-    status = says(start, referee)
+    status = says(start, referee, start_src)
     print(f"\n=========== run {run_id} ===========")
     print(f"start kernel {os.path.relpath(start_path, HERE)}: verdict {start.get('verdict') or 'PASS (untimed)'}"
           + (f", {start['time_us_median']:.1f} us (chip)" if start.get("time_us_median") else "")
@@ -325,7 +410,7 @@ def run_once(a, referee, start_path, rep, log, workdir, search):
                 print("    skipped: the referee stayed down. Not logged, not counted against the budget.")
                 continue
             out["attempts"] += 1
-            referee_says = says(r, referee)
+            referee_says = says(r, referee, src)
             instruction = {"referee": referee_says, "model_alone": MAKE_FASTER}.get(a.arm)
             rec = {k: None for k in schema.ATTEMPT_FIELDS}
             rec.update({k: v for k, v in r.items() if k in schema.ATTEMPT_FIELDS})   # the referee's fields
@@ -408,6 +493,7 @@ def main():
     ap.add_argument("--start", default=None, help="start kernel; default P2's kernels/matmul_start.py "
                                                   "if it exists, else reference_level4.py")
     ap.add_argument("--search", default=P2_SEARCH, help="arm random_search: P2's search.py")
+    ap.add_argument("--tag", default="", help="prefixed onto the run id, e.g. v2 -> matmul-referee-v2-...")
     ap.add_argument("--seat", type=int, default=seat_from_hostname())
     ap.add_argument("--max-tokens", type=int, default=agent02.MIN_ANSWER_TOKENS)
     ap.add_argument("--context", type=int, default=8192, help="the server's max-model-len")
