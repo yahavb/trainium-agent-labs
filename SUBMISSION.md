@@ -260,7 +260,9 @@ held-out set, which neither has seen.
 | v7, round 2 | 4 | 5/5 VERIFIED | 0.90, 0.010 | 0.88, 0.014 | 0 and 0 |
 | [[TBD: final run, every level]] | | | | | |
 
-Neither verdict ever claimed a kernel that then failed. Ours is too cautious on level 3 (§9).
+Neither verdict ever claimed a kernel that then failed. Ours is too cautious on level 3 (§9). The first
+level-1 solve (v8) was claimed VERIFIED by both verdicts, and it holds: held-out 20/20, 35 extra hostile
+cases, lowered for trn2, re-audit PASS.
 ([analysis/round2_v7/](analysis/round2_v7/README.md))
 
 Baseline, scored after the fact with the same confidence function: the 3 solved runs said 0.90 and all
@@ -287,6 +289,12 @@ out-of-bounds (16) failures do not occur, the 7 failures left are all a tile in 
 run solves in round 0. Level 4 still meets the baseline's wall first (partition over 128, 20 attempts in round
 0; the baseline never got past it), then a broadcast shape mismatch (20 in round 1), and solves in round 2.
 [[TBD: final table from scripts/taxonomy.py]]
+
+**A failure mode we only found by reading the repairs: transposing the whole input.** On level 2 the repair
+rounds never once succeeded, in the baseline or under v7. In 81 of 134 failed repairs the model was
+transposing all of `x` instead of the small matrix inside each row: index out of range on the second axis, or
+"Partition dim size must be preserved, got 32 -> 3". The checker reported the symptom each time and never
+the misreading, so v8.1 adds one sentence restating the task when these errors appear (no code).
 
 Baseline, 424 attempts in 25 named modes: index and size
 arithmetic 52%, unfamiliar API 24%, tiling rules 18%, memory placement 5%. Four modes were never fixed by the
@@ -338,7 +346,8 @@ The solving kernel is correct, not fast: 36.6 Flops/Byte, memory-bound.
   that were all right.
 - **Part of each solution comes from the checker.** Code-form messages are pasted by the model (§3, §8),
   and the level-1 example is a strong hint (§3).
-- **v7 is a bundle of layers.** [[TBD: what the ablation says about which layers matter]]
+- **v7 is a bundle of layers**, and only part of it is explained: the ablation (§3) shows level 3 rests on the
+  worked example alone and level 4 on no single layer; what each layer does on levels 1 and 2 we did not ablate.
 - **Levels 9–14 are liuyq's own held-out operations**, not the official ladder, and are reported apart from it.
 - **The SBUF limit is conservative**: 192 KiB per partition, below trn2's 224 KiB.
 
