@@ -136,6 +136,8 @@ def grade(source, level):
         # numbers happen to match on CPU: the kernel would be wrong on the device.
         hazards = [w for w in counted.get("warnings", [])
                    if "incorrect results on hardware" in w]
+        if m and level == 2:
+            m = transpose_result_hint(m)
         if hazards and not m:
             m = ("CORRECT ON CPU BUT WRONG ON HARDWARE: " + hazards[0]
                  + ". Fix that before anything else -- the simulator agrees with the reference here "
@@ -211,6 +213,10 @@ in a flattened F2-by-F1 output row. Derive each flat offset using that row's wid
 """
 
 TRANSPOSE_API_CARD = """NKI transpose primitives:
+  Work tiles live in SBUF: nl.ndarray((rows, F), dtype=x.dtype, buffer=nl.sbuf). Only the
+    returned `out` uses shared_hbm. Never write to x, and end with `return out`.
+  Move ALL rows at once with full-partition column views tile[:, nl.ds(c, 1)]; a view that
+    covers only partition 0 leaves the other rows unwritten (NaN).
   Allocate input and output SBUF tiles with shape (rows, F), where F=x.shape[1].
   Use the actual partition count: rows=min(128, P-start), using Python min.
   nisa.dma_copy(dst=input_tile, src=x[start:start+rows, :]) loads a matching tile.
@@ -222,6 +228,33 @@ TRANSPOSE_API_CARD = """NKI transpose primitives:
   out is nl.ndarray(x.shape, dtype=x.dtype, buffer=nl.shared_hbm).
 Shape sizes and offsets are Python integers; nl.min/nl.max reduce tensors.
 """
+
+
+def transpose_result_hint(msg):
+    """Level 2 only: say WHY the checker's generic verdict happened for a transpose kernel.
+
+    Measured on seat 21: kernels wrote the result back into x with dma_copy(dst=x[...]) and
+    returned x or nothing ("MODIFIED ITS INPUT"), and kernels that copied only partition 0 with
+    tile[nl.ds(0, 1), c] left every other row uninitialised ("NON-FINITE", first NaN at row 1).
+    The generic messages blame PSUM or give no cause, so the model repeated both.
+    """
+    if "THE KERNEL MODIFIED ITS INPUT" in msg:
+        return (msg + " For this level: do not use x as a destination anywhere (no "
+                "dma_copy(dst=x[...]), no x[...] = ...). Load x into an SBUF tile, build the "
+                "transposed row layout in a SECOND SBUF tile, then "
+                "out = nl.ndarray(x.shape, dtype=x.dtype, buffer=nl.shared_hbm); "
+                "nisa.dma_copy(dst=out, src=output_tile); return out.")
+    if "NON-FINITE OUTPUT" in msg:
+        return (msg + " For this level the cause is output memory that was never written, not "
+                "PSUM. Two common ways: (1) a view like tile[nl.ds(0, 1), c] or "
+                "output_tile[i, c] touches one partition only; (2) the copies write into the "
+                "INPUT tile (e.g. input_tile[...] = input_tile[...]) so the output tile that is "
+                "stored stays empty. Every copy must read from the input tile and write the "
+                "output tile, on whole-partition column views: "
+                "nisa.tensor_copy(dst=output_tile[:, nl.ds(j*F1+i, 1)], "
+                "src=input_tile[:, nl.ds(i*F2+j, 1)]) for each (i, j). Then "
+                "nisa.dma_copy(dst=out, src=output_tile) with the full (rows, F) tile.")
+    return msg
 
 
 def available_names(dotted):
@@ -364,6 +397,12 @@ def enrich(error_text, level=None):
                 f"nisa.tensor_copy. Do not allocate a new psum tile per chunk and do not write partial "
                 f"results to HBM.")
     m = re.search(r"(\w+) (?:dst|src)? ?must be in \['sbuf', 'psum'\], got shared_hbm", error_text)
+    if m and level == 2:
+        return (error_text + f" `nisa.{m.group(1)}` needs on-chip tiles, but the tile you passed "
+                f"was allocated with buffer=nl.shared_hbm. Change the INPUT and OUTPUT WORK tiles "
+                f"to buffer=nl.sbuf: nl.ndarray((rows, F), dtype=x.dtype, buffer=nl.sbuf). Keep "
+                f"shared_hbm only for the single `out` tensor you return. Do not replace "
+                f"tensor_copy with dma_copy for the element moves.")
     if m:
         return (error_text + f" `nisa.{m.group(1)}` only moves data between on-chip buffers, sbuf and "
                 f"psum. To reach HBM -- the tensor you allocated with buffer=nl.shared_hbm and will "
