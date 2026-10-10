@@ -5,7 +5,11 @@
       "start_us": 960.5,
       "expert_us": 385.1,
       "floor_us": null,
-      "source": "chip"
+      "source": "chip",
+      "best_blocking_us": 280.3,
+      "best_blocking": "m1 n12 k4: best of all 62 block settings (exhaustive sweep)",
+      "lnc2_us": 192.2,
+      "lnc2": "matmul_expert_lnc2.py launched as kernel[2]: both physical cores of one NeuronCore"
     },
     "rmsnorm": {
       "start_us": 518.2,
@@ -17,7 +21,7 @@
   "detail": {
     "source": "chip",
     "seat": 102,
-    "measured": "2026-10-10, seat-102, branch kernels-search, P1's speedcheck.py (device clock, interleaved A/B, 3 rounds). Matmul 13:25; RMSNorm and copy at the 2048-token timing shapes 13:55.",
+    "measured": "2026-10-10, seat-102, branch kernels-search. Matmul start/expert 13:25; arm c, the sweep and LNC=2 15:00-15:30 on P1's referee 76b2227. RMSNorm/copy at 2048 tokens 13:55.",
     "times_are": "the sum over each op's time_shapes in shapes.py, the same sum the referee's speedup uses",
     "matmul": {
       "gate_up 4096x256x6144": {
@@ -30,7 +34,44 @@
       },
       "expert": "kernels/matmul_expert.py: AWS's SDK 2.32 fully optimised tutorial matmul, accumulating K-blocks in fp32. Correct on 8 chip shapes, worst 0.50 bf16 ulps.",
       "expert_as_published": "kernels/matmul_expert_aws.py: same kernel with AWS's bf16 K-block accumulation. Referee verdict WRONG: 5.3 bf16 ulps at K=2048 (limit 4).",
-      "floor": "not measured: no matmul floor is claimed"
+      "floor": "not measured: no matmul floor is claimed",
+      "arm_c_random_search": {
+        "runs": 3,
+        "budget": 24,
+        "best_verified": [
+          3.303,
+          3.367,
+          3.425
+        ],
+        "median": 3.367,
+        "ranks_in_sweep": [
+          4,
+          3,
+          1
+        ],
+        "share_of_ground_truth": [
+          0.964,
+          0.983,
+          1.0
+        ]
+      },
+      "sweep": {
+        "settings": 62,
+        "best": "m1 n12 k4 280.3 us 3.426x",
+        "aws_default_rank": "m2 n2 k8 385.6 us 2.492x, #29 of 62"
+      },
+      "lnc2": {
+        "gate_up 4096x256x6144": {
+          "lnc1_us": 206.5,
+          "lnc2_us": 131.9
+        },
+        "q_proj 4096x256x2048": {
+          "lnc1_us": 81.8,
+          "lnc2_us": 60.2
+        },
+        "total": "288.3 -> 192.2 us = 1.50x; host-clock cross-check agrees on both shapes",
+        "label": "P1's timer + the referee's correctness check at the timing shapes; not a full referee verdict"
+      }
     },
     "rmsnorm": {
       "input_layernorm 2048x4096": {
