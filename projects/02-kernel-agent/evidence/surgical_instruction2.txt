@@ -1,0 +1,7 @@
+Apply exactly the same treatment to the rhs operand that you already applied to lhsT, symmetric and nothing else:
+
+1. Allocate a rhs cache with row width N: nl.ndarray((TILE_K, k_tiles * N), dtype=rhs.dtype, buffer=nl.sbuf)
+2. Copy each chunk once, before the m/n loops: nisa.dma_copy(dst=rhs_cache[:, kk * N:(kk + 1) * N], src=rhs[kk * TILE_K:(kk + 1) * TILE_K, :])
+3. Inside the k loop, use the moving operand rhs_cache[:, k * N + n * TILE_N : k * N + (n + 1) * TILE_N], and delete the per-iteration rhs dma_copy.
+
+Keep the lhs cache, the single-PSUM accumulation, the loop order and the stores exactly as they are. Both operands are now read exactly once and both operand views keep their K dimension on the partition axis.

@@ -570,15 +570,34 @@ def reuse_report(counted, args, want):
 def check_traffic_bar(level_n, counted, args, want):
     """Levels 5 to 7 must MOVE FEWER BYTES, not merely be correct.
 
-    Returns None if the bar is met or there is no bar. Otherwise a message that says how far over it
-    is and what buys the difference -- which is the only thing separating these levels from level 4.
+    Fail closed. Returns None only when the bar is met or the level has no bar. A missing, zero,
+    or incomplete measurement on a bar level is a FAILURE, not a skip: a kernel that moves data
+    through a path the counter cannot see must not pass an optimization gate by accident.
     """
     bar = LEVELS[level_n].get("max_waste")
-    if not bar or not counted.get("bytes"):
+    if not bar:
         return None
+    if counted.get("unmeasured"):
+        return (f"TRAFFIC UNVERIFIED: {counted['unmeasured']} HBM transfer(s) could not be sized, "
+                f"so the byte count is a lower bound and this level's {bar:.2f}x gate cannot be "
+                f"evaluated. Move data with nisa.dma_copy in whole tiles so every transfer is "
+                f"measurable.")
+    if not counted.get("bytes"):
+        return (f"TRAFFIC UNMEASURED: this level requires HBM traffic <= {bar:.2f}x the byte floor, "
+                f"but zero HBM bytes were counted, so the gate cannot be evaluated. Either the data "
+                f"movement uses a path the counter does not see (move it with nisa.dma_copy), or "
+                f"the kernel does no real work. Both fail this level.")
     floor = minimum_hbm_bytes(args, want)
     if not floor:
-        return None
+        return ("TRAFFIC ACCOUNTING FAILED: the byte floor for this case could not be computed, so "
+                "the level gate cannot be evaluated. Treat this as an environment failure, not a "
+                "kernel failure.")
+    if counted["bytes"] < floor:
+        return (f"TRAFFIC BELOW THE BYTE FLOOR: counted {counted['bytes']:,} bytes against a floor "
+                f"of {floor:,}. Reading each input once and writing the output once costs at least "
+                f"the floor, so a lower count means the accounting missed part of the movement. "
+                f"This is an accounting failure, not an optimization win: make all HBM movement "
+                f"use nisa.dma_copy so the counter can see it.")
     waste = counted["bytes"] / floor
     if waste <= bar:
         return None
@@ -606,6 +625,40 @@ def check_inputs_untouched(before, args):
                     f"nl.ndarray(shape, dtype=..., buffer=nl.shared_hbm), write the result there, "
                     f"and return that. The input tensor belongs to the caller.")
     return None
+
+
+def accept_case(level_n, got, counted, args, before, want, tol=2e-2):
+    """The single acceptance decision, shared by the CLI verify path and the agent loop.
+
+    Order matters and mirrors agent evaluation exactly: an input mutation is reported first,
+    then numerics, then the traffic gate (fail closed), and a simulator hazard about hardware
+    correctness is a failure even when the CPU numbers happen to match. Returns
+    (ok, message, checks) where checks keeps each component separate so callers can report
+    independent fields instead of one boolean.
+    """
+    checks = dict(inputs_ok=True, numerics_ok=True, traffic_ok=True, hazard_ok=True)
+    m = check_inputs_untouched(before, args)
+    if m:
+        checks["inputs_ok"] = False
+    else:
+        m = describe_mismatch(got, want, tol)
+        if m:
+            checks["numerics_ok"] = False
+        else:
+            m = check_traffic_bar(level_n, counted, args, want)
+            if m:
+                checks["traffic_ok"] = False
+            else:
+                hazards = [w for w in counted.get("warnings", [])
+                           if "incorrect results on hardware" in w]
+                if hazards:
+                    checks["hazard_ok"] = False
+                    m = ("CORRECT ON CPU BUT WRONG ON HARDWARE: " + hazards[0]
+                         + ". Fix that before anything else -- the simulator agrees with the "
+                           "reference here and the device would not.")
+    if m:
+        return False, m, checks
+    return True, None, checks
 
 
 def simulate_and_count(kernel, args):
@@ -646,7 +699,24 @@ def simulate_and_count(kernel, args):
     # They are also not noise: one of them says the pattern produces INCORRECT RESULTS on hardware,
     # which the agent should be told rather than have scrolled past.
     import warnings
+    # Record each matmul's tile shape (contraction rows, stationary width, moving width) so the
+    # latency model can predict speed from the kernel's real tiling -- see latency_hint.py.
+    counter["matmul_tiles"] = []
+    original_mm = getattr(nisa, "nc_matmul", None)
+
+    def counting_nc_matmul(*a, **kw):
+        try:
+            stat = kw.get("stationary", a[1] if len(a) > 1 else None)
+            mov = kw.get("moving", a[2] if len(a) > 2 else None)
+            counter["matmul_tiles"].append(
+                (int(mov.shape[0]), int(stat.shape[-1]), int(mov.shape[-1])))
+        except Exception:
+            pass
+        return original_mm(*a, **kw)
+
     nisa.dma_copy = counting_dma_copy
+    if original_mm is not None:
+        nisa.nc_matmul = counting_nc_matmul
     try:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
@@ -659,6 +729,8 @@ def simulate_and_count(kernel, args):
         counter["warnings"] = seen[:3]
     finally:
         nisa.dma_copy = original
+        if original_mm is not None:
+            nisa.nc_matmul = original_mm
     return out, counter
 
 
@@ -695,6 +767,7 @@ def verify(path, level_n, tol=2e-2, seed=0):
     passed, failures, intensities = 0, [], []
     for case in spec["shapes"]:
         args, _ = make_inputs(case, level_n, seed)
+        before = [x.copy() if isinstance(x, np.ndarray) else x for x in args]
         want = spec["ref"](*args)
         try:
             got, counted = simulate_and_count(kernel, args)
@@ -705,8 +778,8 @@ def verify(path, level_n, tol=2e-2, seed=0):
             failures.append((label(case, level_n),
                              f"RAISED during simulation: {type(e).__name__}: {e}"))
             continue
-        m = describe_mismatch(got, want, tol)
-        if m:
+        ok, m, _checks = accept_case(level_n, got, counted, args, before, want, tol)
+        if not ok:
             failures.append((label(case, level_n), m))
             continue
         passed += 1
@@ -726,7 +799,8 @@ def verify(path, level_n, tol=2e-2, seed=0):
             intensities.append((label(case, level_n), roofline(f, counted["bytes"]),
                                 counted, f, minimum_hbm_bytes(args, want)))
 
-    print(f"  numerics   {passed}/{len(spec['shapes'])} shapes passed")
+    print(f"  accepted   {passed}/{len(spec['shapes'])} shapes passed "
+          f"(rules, numerics, input preservation, traffic gate)")
     for lbl, m in failures[:3]:
         print(f"\n  case {lbl}:")
         print(textwrap.indent(m, "    "))

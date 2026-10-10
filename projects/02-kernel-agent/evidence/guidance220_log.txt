@@ -1,0 +1,40 @@
+start kernel: guidance_start_stacked.py -> runs/traffic/guidance220/start_kernel.py
+menu: guidance_menu.py (9 options)
+
+round 0: worst=1.0 progress=0.7 valid=False accepted=False
+- K=128 M=128 N=512: 589824 bytes vs floor 589824 = 1.00x
+- K=256 M=256 N=1024: None bytes vs floor None = ?  [not accepted: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=32768, dst=16384]
+- K=512 M=128 N=512: 1572864 bytes vs floor 1572864 = 1.00x
+- K=256 M=512 N=1024: None bytes vs floor None = ?  [not accepted: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=65536, dst=16384]
+classifier: chose fix_cache_stride_and_width (expected fix_cache_stride_and_width, match=True, confidence=5) -- The kernel fails with "requires src and dst to have the same number of elements" due to mismatched cache dimensions.
+
+round 1: worst=1.0 progress=0.7 valid=False accepted=False
+- K=128 M=128 N=512: 589824 bytes vs floor 589824 = 1.00x
+- K=256 M=256 N=1024: None bytes vs floor None = ?  [not accepted: raised AssertionError: Matmul stationary free dimension 256 exceeds gemm_stationary_fmax=128]
+- K=512 M=128 N=512: 1572864 bytes vs floor 1572864 = 1.00x
+- K=256 M=512 N=1024: None bytes vs floor None = ?  [not accepted: raised AssertionError: Matmul stationary free dimension 512 exceeds gemm_stationary_fmax=128]
+classifier: chose stack_stationary_operand (expected continue_from_best, match=False, confidence=5) -- The kernel fails with a stationary operand dimension exceeding the maximum allowed, indicating the stationary operand is not properly stacked.
+
+round 2: worst=1.0 progress=0.7 valid=False accepted=False
+- K=128 M=128 N=512: 589824 bytes vs floor 589824 = 1.00x
+- K=256 M=256 N=1024: None bytes vs floor None = ?  [not accepted: raised AssertionError: Matmul stationary free dimension 256 exceeds gemm_stationary_fmax=128]
+- K=512 M=128 N=512: 1572864 bytes vs floor 1572864 = 1.00x
+- K=256 M=512 N=1024: None bytes vs floor None = ?  [not accepted: raised AssertionError: Matmul stationary free dimension 512 exceeds gemm_stationary_fmax=128]
+classifier: chose stack_stationary_operand (expected continue_from_best, match=False, confidence=5) -- The kernel has numerical failures due to the stationary operand being stuck on its first k-chunk.
+
+round 3: worst=1.0 progress=0.7 valid=False accepted=False
+- K=128 M=128 N=512: 589824 bytes vs floor 589824 = 1.00x
+- K=256 M=256 N=1024: None bytes vs floor None = ?  [not accepted: raised AssertionError: Matmul stationary free dimension 256 exceeds gemm_stationary_fmax=128]
+- K=512 M=128 N=512: 1572864 bytes vs floor 1572864 = 1.00x
+- K=256 M=512 N=1024: None bytes vs floor None = ?  [not accepted: raised AssertionError: Matmul stationary free dimension 512 exceeds gemm_stationary_fmax=128]
+classifier: chose stack_stationary_operand (expected continue_from_best, match=False, confidence=5) -- The kernel fails with an assertion about the stationary operand's dimension exceeding the maximum allowed, indicating a need to stack the stationary operand again.
+
+round 4: worst=1.0 progress=0.7 valid=False accepted=False
+- K=128 M=128 N=512: 589824 bytes vs floor 589824 = 1.00x
+- K=256 M=256 N=1024: None bytes vs floor None = ?  [not accepted: raised AssertionError: Matmul stationary free dimension 256 exceeds gemm_stationary_fmax=128]
+- K=512 M=128 N=512: 1572864 bytes vs floor 1572864 = 1.00x
+- K=256 M=512 N=1024: None bytes vs floor None = ?  [not accepted: raised AssertionError: Matmul stationary free dimension 512 exceeds gemm_stationary_fmax=128]
+classifier: chose stack_stationary_operand (expected continue_from_best, match=False, confidence=5) -- The kernel has numerical failures due to the stationary operand being stuck on its first k-chunk.
+
+no solve in 5 rounds; best progress 0.70, best worst-case waste 1.0. Best kernel written to runs/traffic/guidance220/best.py -- honest failure.
+classifier: 1/5 matches, 0 parse fallbacks, choices=['fix_cache_stride_and_width', 'stack_stationary_operand', 'stack_stationary_operand', 'stack_stationary_operand', 'stack_stationary_operand']

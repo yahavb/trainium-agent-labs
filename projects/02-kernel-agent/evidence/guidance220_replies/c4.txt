@@ -1,0 +1,3 @@
+CHOICE: stack_stationary_operand
+REASON: The kernel has numerical failures due to the stationary operand being stuck on its first k-chunk.
+CONFIDENCE: 5

@@ -1,0 +1,3 @@
+CHOICE: stack_stationary_operand
+REASON: The checker diagnosed the stationary operand as stuck on its first k-chunk, indicating a need to stack and reuse it properly.
+CONFIDENCE: 5

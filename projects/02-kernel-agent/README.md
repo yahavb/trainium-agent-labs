@@ -3,21 +3,131 @@
 **An agent writes small programs that run directly on the chip, and keeps verifying its own output
 as it goes.**
 
-> ## STATUS: RUNNABLE, NOT YET SOLVED
+> ## STATUS: LEVELS 5, 6 AND 7 CLEARED BY THE AGENT — SIMULATOR-VERIFIED
 >
-> **Works today, verified on a trn2 node:** the ladder, the checker (`nkibench.py`), four reference
-> kernels that pass it, and the agent loop (`agent.py`) writing kernels against a live model.
+> In this fork, the agent loop produced kernels that the official checker accepts at **exactly the
+> byte floor (1.00x) on all four shapes**, at two evaluation seeds, with the `nkibench.py` CLI
+> exiting 0 — one native kernel per level. Two verified **1.857x** intermediates also exist, both
+> below the seed's 2.00x. The full story is in the next section; the evidence is in
+> [`evidence/FORMAL-CHECK.md`](evidence/FORMAL-CHECK.md).
 >
-> **Not there yet:** the agent has not solved a single level. Its best score is 0.30 of 1.0 — code
-> that parses, obeys the rules and runs, but computes the wrong numbers. The transcripts below show
-> exactly where it stalls, and that is the problem you are being handed.
+> **Unchanged caveats:** everything is throughput reasoning from the simulator (no device
+> execution); the declared *ragged* shapes still fail (partial-final-tile handling is not
+> implemented); the repair menu's texts and the expected-choice rules are team-authored and
+> disclosed as such.
 >
-> **Also missing:** reference kernels for levels 5 to 7, so the optimization half of the ladder is
-> unmarked; and layers 2 and 3 of the checker, so **latency cannot be measured at all yet** — every
-> number here is throughput reasoning from the simulator.
->
-> This is a genuinely open problem, not a tidied-up exercise with a hidden answer. If you get a level
-> to 1.0, you have done something nobody here has.
+> The original text here ("RUNNABLE, NOT YET SOLVED") described the shipped state of the repo. It
+> is superseded by the run below and kept in git history.
+
+---
+
+## Our run: the approach, the attempts, the results
+
+### The short version
+
+A small loop — checker first, model second — took the **model's own best wrong kernel** and turned
+it into a kernel that hits the byte floor on levels 5–7. The loop's final form is simple: each
+round, the model reads the checker's state and **picks one repair from a fixed menu** (it writes
+no code for this), then a second call **applies exactly that repair**. Everything is logged, and
+every choice is scored against a deterministic expectation, so the claims below are measurable
+rather than narrative.
+
+### The final working approach
+
+1. **The checker carries the constraints** — [`nkibench.py`](nkibench.py) plus the fail-closed gate
+   in [`traffic_eval.py`](traffic_eval.py). Wrong numbers, mutated inputs, unmeasured or below-floor
+   traffic all score zero, and a correct-but-over-the-gate kernel says exactly how many bytes over
+   it is. No rule lists go into the prompt — the prompt stays short and the checker objects.
+2. **Start from a near-miss, not from scratch.** The unguided loop's 90 failed attempts were not
+   wasted: several already found the byte-saving idea but compute wrong numbers. Repairing the
+   model's own 1.857x kernel is much easier than inventing the optimization from the shipped 2.00x
+   seed — and it is what every successful run here did.
+3. **Give the model a menu, not a lecture** ([`guidance_menu.py`](guidance_menu.py)). The repair
+   knowledge (15 options: stack an operand into a reused cache, fix a cache's geometry, keep K on
+   the partition axis, split the K contraction, place tiles in the right memory region, …) lives in
+   a fixed list. The model's job is **classification**: read the state and the diagnosis, pick one
+   id. A second call then applies **only** that guidance's exact text
+   ([`guidance_repair.py`](guidance_repair.py)). This is the "System One" split — the bounded choice
+   goes to the classifier, the generative model only executes the chosen action.
+
+### What we tried first — the honest history
+
+| # | attempt | outcome | lesson that stuck |
+|---|---|---|---|
+| 1 | The plain agent loop: pilots plus 5 frozen repeats, 90 attempts, four strategy arms, memory, population | **0 valid improvements.** Many kernels beat the seed's bytes but computed wrong numbers; the best *correct* kernel was the seed (2.00x) | writing fast-but-wrong kernels is easy; **repairing arithmetic is the hard part** |
+| 2 | Feeding the checker's verdict back verbatim | the model reproduced the same violation | a verdict is not an instruction — the prompt needs a *named change* |
+| 3 | Line-guided surgical repair: a human wrote the exact few lines each round | **1.857x valid, then 1.00x** — the fixes work, but the guidance was human-written per round | proof of the target; not yet an agent skill |
+| 4 | Menu-guided classifier loop (level 5, near-miss start) | **solved: 1.00x accepted, re-verified at two seeds**; 2 of 3 choices matched the expected guidance, one misread absorbed by the back-out control | selection can be delegated to the model over a fixed menu |
+| 5 | The same loop from the restacked kernel (level 5) | not solved: the applier overshot a fix (`gemm_stationary_fmax`), then the classifier repeated one choice | the applier's *placement* of code is the weak point |
+| 6 | Context slimming: remove the worked-example block from the applier prompt | botched application, no solve — the check failed, the block was kept | "useless-looking" context is decided by a run, not by reading |
+| 7 | From the shipped 2.00x seed, all three levels | all failed: the applier broke the kernel (`UnboundLocalError`, fmax overshoot); the classifier misread the broken state and repeated | the seed→floor transformation is still beyond this applier |
+| 8 | Precondition-fixed menu, seed retries | the applier added **both caches — inside the tile loops** → traffic got *worse* (2.67x / 4.00x) | a real placement error, not a concept error; the clean-seed path is still open |
+| 9 | Recovery runs: near-miss starts with each level's native entry point | **levels 6 and 7 solved at 1.00x** (level 6 on a disclosed retry); level 5 was already solved at step 4 | the near-miss start is **load-bearing** |
+
+### Results — levels 5, 6, 7
+
+| level | kernel (native entry point) | worst waste | formal acceptance |
+|---|---|---|---|
+| 5 | [`evidence/agent_kernel_menu_guided_1p00x.py`](evidence/agent_kernel_menu_guided_1p00x.py) (`nki_matmul_hoist_load_`) | **1.00x** | accepted, seeds 0 and 1; `nkibench.py --level 5 --check` exit 0 on both |
+| 6 | [`evidence/agent_kernel_l6_nearmiss_1p00x.py`](evidence/agent_kernel_l6_nearmiss_1p00x.py) (`nki_matmul_block_free_dimension_`) | **1.00x** | accepted, seeds 0 and 1; CLI exit 0 on both |
+| 7 | [`evidence/agent_kernel_l7_nearmiss_1p00x.py`](evidence/agent_kernel_l7_nearmiss_1p00x.py) (`nki_matmul_fully_optimized_`) | **1.00x** | accepted, seeds 0 and 1; CLI exit 0 on both |
+
+Per shape — what the seed moved, and what the agent kernel moves:
+
+| shape (K, M, N) | shipped seed | agent kernel | floor bytes |
+|---|---:|---:|---:|
+| 128, 128, 512 | 589,824 (1.00x) | 589,824 (1.00x) | 589,824 |
+| 256, 256, 1024 | 3,670,016 (1.56x) | 2,359,296 (1.00x) | 2,359,296 |
+| 512, 128, 512 | 1,572,864 (1.00x) | 1,572,864 (1.00x) | 1,572,864 |
+| 256, 512, 1024 | 7,340,032 (2.00x) | 3,670,016 (1.00x) | 3,670,016 |
+
+Verified intermediates below 2.00x: **1.857x** ([`evidence/agent_kernel_l6_best_1p86x.py`](evidence/agent_kernel_l6_best_1p86x.py),
+[`evidence/agent_kernel_verified_1p86x.py`](evidence/agent_kernel_verified_1p86x.py)).
+
+![Levels 5-7 results](evidence/levels_results.png)
+
+*Left: each shape starts at-or-above the seed and ends at the floor, under the three gates.
+Right: how the classifier behaved in the three solved runs — three decisions for level 5 (one
+misfire absorbed by the back-out control), one for the level-6 retry, two for level 7.*
+
+### Robustness — the same checker, on cases never used for optimization
+
+[`robust_check.py`](robust_check.py) re-judges the winning algorithm with the checker's own
+internals, across processes (`--jobs`), on the declared cases from
+[`traffic_cases.json`](traffic_cases.json):
+
+| case family | passed | note |
+|---|---|---|
+| optimization shapes, level-5/6/7 bars | **24/24** | 4 shapes × 2 seeds × 3 bars |
+| held-out aligned shapes (seeds 17/29/43) | **9/9** | never used for optimization |
+| hostile value families (zeros, negatives, repeated rows, cancellation, large finite) | **20/20** | 5 families × 4 shapes |
+| **ragged correctness shapes (seeds 7/11/23)** | **0/9** | **the honest failure: the kernel assumes tile-multiple shapes; partial final tiles are not handled** |
+
+![Robust check](evidence/robust_matrix.png)
+
+### Honest limitations — read these before quoting the numbers
+
+- **The near-miss start is load-bearing.** The loop repairs the model's own partially-found
+  optimization; from the clean 2.00x seed it has not yet produced even a below-2.00x result
+  (attempts 7–8 above).
+- **Ragged shapes fail.** Partial-final-tile handling is not implemented; the challenge's
+  "handle shapes that don't divide evenly" trap is open.
+- **Human-authored knowledge is disclosed:** the menu texts, the demo example, and the
+  expected-choice rules are the team's; selection and application are the model's. The per-round
+  logs (`evidence/*_rounds.jsonl`) show every choice, reason and confidence.
+- **Simulator only.** No device execution; the numbers are HBM byte accounting from
+  `nki.simulate`.
+- **Single runs per configuration**, not a rate; the applier is near-deterministic, not
+  deterministic — the level-6 floor landed on a retry, and that is said rather than hidden.
+
+### Where the evidence lives
+
+[`evidence/FORMAL-CHECK.md`](evidence/FORMAL-CHECK.md) (the full formal write-up) ·
+[`evidence/GUIDANCE-CLASSIFIER.md`](evidence/GUIDANCE-CLASSIFIER.md) (the classifier experiment,
+including its failures) · [`evidence/ERROR-CATALOG.md`](evidence/ERROR-CATALOG.md) (every failure
+message that can reach the agent, with fixes) · [`evidence/progress.png`](evidence/progress.png)
+(all 96 unguided attempts on the largest shape) ·
+[`REPORT.md`](REPORT.md) (short report) · [`PAPER.pdf`](PAPER.pdf) (research-paper PDF).
 
 ---
 

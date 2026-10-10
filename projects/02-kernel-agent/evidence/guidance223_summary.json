@@ -1,0 +1,13 @@
+{
+  "solved": true,
+  "rounds": 4,
+  "asked": 3,
+  "matches": 2,
+  "fallbacks": 0,
+  "choices": [
+    "stack_stationary_operand",
+    "continue_from_best",
+    "stack_moving_operand_symmetrically"
+  ],
+  "final_worst": 1.0
+}

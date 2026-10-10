@@ -1,0 +1,39 @@
+{
+  "note": "Declared evaluation cases for the minimum-traffic experiment. Held-out cases are evaluated only after the controller is frozen and are never fed back into optimization. Do not weaken tolerances.",
+  "optimization": {
+    "shapes": [
+      {"K": 128, "M": 128, "N": 512},
+      {"K": 256, "M": 256, "N": 1024},
+      {"K": 512, "M": 128, "N": 512},
+      {"K": 256, "M": 512, "N": 1024}
+    ],
+    "seeds": [0, 1]
+  },
+  "heldout_aligned": {
+    "shapes": [
+      {"K": 384, "M": 256, "N": 512},
+      {"K": 128, "M": 384, "N": 1024},
+      {"K": 512, "M": 256, "N": 1536}
+    ],
+    "seeds": [17, 29, 43]
+  },
+  "ragged_correctness": {
+    "shapes": [
+      {"K": 1, "M": 1, "N": 1},
+      {"K": 129, "M": 127, "N": 513},
+      {"K": 257, "M": 131, "N": 519}
+    ],
+    "seeds": [7, 11, 23]
+  },
+  "hostile_value_families": [
+    "zeros",
+    "negative_mixed_sign",
+    "repeated_rows",
+    "alternating_signs_cancellation",
+    "moderate_finite_magnitudes"
+  ],
+  "tolerances": {
+    "default": 2e-2,
+    "note": "nkibench default. Preserve; add checks instead of weakening acceptance."
+  }
+}

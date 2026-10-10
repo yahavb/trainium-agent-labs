@@ -1,0 +1,48 @@
+start kernel: guidance_start_raw.py -> runs/traffic/guidance223_nodemo/start_kernel.py
+menu: guidance_menu.py (9 options)
+
+round 0: worst=1.8571 progress=0.775 valid=False accepted=False
+- K=128 M=128 N=512: 589824 bytes vs floor 589824 = 1.00x
+- K=256 M=256 N=1024: 3407872 bytes vs floor 2359296 = 1.44x  [not accepted: NUMERICAL MISMATCH: worst error 4.73 of the output's RMS (15.98), tolerance 0.02. at index (222, 687): expected +35.2621]
+- K=512 M=128 N=512: 1376256 bytes vs floor 1572864 = 0.88x  [not accepted: NUMERICAL MISMATCH: worst error 5.26 of the output's RMS (22.62), tolerance 0.02. at index (36, 75): expected -94.7585, ]
+- K=256 M=512 N=1024: 6815744 bytes vs floor 3670016 = 1.86x  [not accepted: NUMERICAL MISMATCH: worst error 4.78 of the output's RMS (15.99), tolerance 0.02. at index (167, 404): expected -28.4302]
+diagnosis: On K=256 M=256 N=1024: the numbers equal a computation in which the STATIONARY operand never advanced past its first k-chunk: lhsT chunk 0 was multiplied against every rhs chunk (your load index is stuck at 0*K, or the slice uses the wrong axis). Give the stationary operand one tile per k chunk, and
+classifier: chose stack_stationary_operand (expected stack_stationary_operand, match=True, confidence=5) -- The checker diagnosed the stationary operand as stuck on its first k-chunk, indicating a need to stack and reuse it properly.
+
+round 1: worst=1.2857 progress=0.775 valid=False accepted=False
+- K=128 M=128 N=512: 589824 bytes vs floor 589824 = 1.00x
+- K=256 M=256 N=1024: 2359296 bytes vs floor 2359296 = 1.00x  [not accepted: NUMERICAL MISMATCH: worst error 5.35 of the output's RMS (15.98), tolerance 0.02. at index (97, 54): expected -22.1603, ]
+- K=512 M=128 N=512: 786432 bytes vs floor 1572864 = 0.50x  [not accepted: NUMERICAL MISMATCH: worst error 5.37 of the output's RMS (22.62), tolerance 0.02. at index (80, 14): expected -53.2654, ]
+- K=256 M=512 N=1024: 4718592 bytes vs floor 3670016 = 1.29x  [not accepted: NUMERICAL MISMATCH: worst error 4.87 of the output's RMS (15.99), tolerance 0.02. at index (124, 280): expected +50.6158]
+classifier: chose stack_stationary_operand (expected continue_from_best, match=False, confidence=5) -- The kernel has numerical mismatches with the stationary operand stuck on its first k-chunk
+
+round 2: worst=1.2857 progress=0.775 valid=False accepted=False
+- K=128 M=128 N=512: 589824 bytes vs floor 589824 = 1.00x
+- K=256 M=256 N=1024: 2359296 bytes vs floor 2359296 = 1.00x  [not accepted: NUMERICAL MISMATCH: worst error 5.35 of the output's RMS (15.98), tolerance 0.02. at index (97, 54): expected -22.1603, ]
+- K=512 M=128 N=512: 786432 bytes vs floor 1572864 = 0.50x  [not accepted: NUMERICAL MISMATCH: worst error 5.37 of the output's RMS (22.62), tolerance 0.02. at index (80, 14): expected -53.2654, ]
+- K=256 M=512 N=1024: 4718592 bytes vs floor 3670016 = 1.29x  [not accepted: NUMERICAL MISMATCH: worst error 4.87 of the output's RMS (15.99), tolerance 0.02. at index (124, 280): expected +50.6158]
+classifier: chose stack_stationary_operand (expected continue_from_best, match=False, confidence=5) -- Numerical mismatches with stationary operand stuck on first k-chunk
+
+round 3: worst=1.2857 progress=0.775 valid=False accepted=False
+- K=128 M=128 N=512: 589824 bytes vs floor 589824 = 1.00x
+- K=256 M=256 N=1024: 2359296 bytes vs floor 2359296 = 1.00x  [not accepted: NUMERICAL MISMATCH: worst error 5.35 of the output's RMS (15.98), tolerance 0.02. at index (97, 54): expected -22.1603, ]
+- K=512 M=128 N=512: 786432 bytes vs floor 1572864 = 0.50x  [not accepted: NUMERICAL MISMATCH: worst error 5.37 of the output's RMS (22.62), tolerance 0.02. at index (80, 14): expected -53.2654, ]
+- K=256 M=512 N=1024: 4718592 bytes vs floor 3670016 = 1.29x  [not accepted: NUMERICAL MISMATCH: worst error 4.87 of the output's RMS (15.99), tolerance 0.02. at index (124, 280): expected +50.6158]
+classifier: chose stack_stationary_operand (expected continue_from_best, match=False, confidence=5) -- The kernel has numerical mismatches with the stationary operand stuck on its first k-chunk, as evidenced by the error messages.
+
+round 4: worst=1.2857 progress=0.775 valid=False accepted=False
+- K=128 M=128 N=512: 589824 bytes vs floor 589824 = 1.00x
+- K=256 M=256 N=1024: 2359296 bytes vs floor 2359296 = 1.00x  [not accepted: NUMERICAL MISMATCH: worst error 5.35 of the output's RMS (15.98), tolerance 0.02. at index (97, 54): expected -22.1603, ]
+- K=512 M=128 N=512: 786432 bytes vs floor 1572864 = 0.50x  [not accepted: NUMERICAL MISMATCH: worst error 5.37 of the output's RMS (22.62), tolerance 0.02. at index (80, 14): expected -53.2654, ]
+- K=256 M=512 N=1024: 4718592 bytes vs floor 3670016 = 1.29x  [not accepted: NUMERICAL MISMATCH: worst error 4.87 of the output's RMS (15.99), tolerance 0.02. at index (124, 280): expected +50.6158]
+classifier: chose stack_stationary_operand (expected continue_from_best, match=False, confidence=5) -- Numerical mismatches with stationary operand stuck on first k-chunk
+
+round 5: worst=1.2857 progress=0.775 valid=False accepted=False
+- K=128 M=128 N=512: 589824 bytes vs floor 589824 = 1.00x
+- K=256 M=256 N=1024: 2359296 bytes vs floor 2359296 = 1.00x  [not accepted: NUMERICAL MISMATCH: worst error 5.35 of the output's RMS (15.98), tolerance 0.02. at index (97, 54): expected -22.1603, ]
+- K=512 M=128 N=512: 786432 bytes vs floor 1572864 = 0.50x  [not accepted: NUMERICAL MISMATCH: worst error 5.37 of the output's RMS (22.62), tolerance 0.02. at index (80, 14): expected -53.2654, ]
+- K=256 M=512 N=1024: 4718592 bytes vs floor 3670016 = 1.29x  [not accepted: NUMERICAL MISMATCH: worst error 4.87 of the output's RMS (15.99), tolerance 0.02. at index (124, 280): expected +50.6158]
+classifier: chose stack_stationary_operand (expected continue_from_best, match=False, confidence=5) -- Numerical mismatches with stationary operand stuck on first k-chunk
+
+no solve in 6 rounds; best progress 0.78, best worst-case waste 1.8571. Best kernel written to runs/traffic/guidance223_nodemo/best.py -- honest failure.
+classifier: 1/6 matches, 0 parse fallbacks, choices=['stack_stationary_operand', 'stack_stationary_operand', 'stack_stationary_operand', 'stack_stationary_operand', 'stack_stationary_operand', 'stack_stationary_operand']

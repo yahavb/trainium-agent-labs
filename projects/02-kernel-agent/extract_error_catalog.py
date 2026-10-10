@@ -1,0 +1,220 @@
+#!/usr/bin/env python3
+"""extract_error_catalog.py -- compile the error catalog for the kernel-repair loop.
+
+Two sources:
+  1. Curated families: every failure message the checker/simulator can emit to the agent,
+     with its cause and its fix (compiled from nkibench.py, agent.py, traffic_agent.py).
+  2. Observed failures: each failure string actually logged in run directories
+     (rounds.jsonl -> per_case[].failure / feedback), normalized and counted, so the catalog
+     is ranked by what really happens on this task.
+
+    python3 extract_error_catalog.py runs --out error_catalog.json
+"""
+import argparse
+import collections
+import glob
+import json
+import os
+import re
+
+CURATED = [
+    {
+        "signature": "dma_copy requires src and dst to have the same number of elements, got src=N, dst=N",
+        "cause": "the destination tile does not hold exactly the elements of the source slice "
+                 "(a cache sized by a tile where the full-width chunk is required)",
+        "fix": "size the cache by k_tiles * W (the operand's full width) and copy full-width "
+               "chunks; operand views then slide inside that cache",
+    },
+    {
+        "signature": "dma_copy <dst|src> partition dimension N exceeds maximum M",
+        "cause": "one tile was allocated for more rows than the partition axis allows (max 128)",
+        "fix": "loop over the partition dimension in <=128-row chunks, allocate the tile per "
+               "chunk; never pad a smaller dimension up to 128",
+    },
+    {
+        "signature": "Out-of-bound access ... index range [a, b] exceeds dimension size N",
+        "cause": "a bound or slice end was computed past the tensor's extent",
+        "fix": "derive bounds from the tensor's own shape; the final chunk may be partial; "
+               "partition <= 128",
+    },
+    {
+        "signature": "Matmul contraction dimension N exceeds pmax=M",
+        "cause": "one nc_matmul was given a K chunk larger than the hardware contraction limit",
+        "fix": "split K into pmax-sized chunks and accumulate all chunks into ONE psum tile",
+    },
+    {
+        "signature": "Matmul stationary free dimension N exceeds gemm_stationary_fmax=M",
+        "cause": "the stationary operand slice is wider than the stationary free limit (128); "
+                 "typical overshoot: slicing the full operand width instead of a TILE_M window",
+        "fix": "slice the stationary operand in TILE_M-wide windows (<=128); keep K on the "
+               "partition axis",
+    },
+    {
+        "signature": "<op> must be in ['sbuf', 'psum'], got shared_hbm",
+        "cause": "an on-chip operation was pointed at HBM",
+        "fix": "dma_copy is the only HBM bridge; go psum -> sbuf with tensor_copy, then "
+               "dma_copy sbuf -> shared_hbm",
+    },
+    {
+        "signature": "<op> must be in ['psum'], got <region> / must be in ['sbuf'], got <region>",
+        "cause": "a tile sits in the wrong memory region for its operation",
+        "fix": "nc_matmul: dst in nl.psum, stationary and moving in nl.sbuf; move tiles with "
+               "tensor_copy",
+    },
+    {
+        "signature": "value array of shape (N, N) could not be broadcast to indexing result of shape (N, N)",
+        "cause": "an assignment wrote a value whose shape differs from the destination slice",
+        "fix": "match both sides exactly; nothing broadcasts or reshapes",
+    },
+    {
+        "signature": "module 'nki.language' has no attribute 'X'",
+        "cause": "the model invented an API name (nl.value, nl.scalar, nl.dot, tile.mean)",
+        "fix": "use only real names: nl.ndarray, nl.affine_range, nl.sum(view, axis=[...]), "
+               "nisa.dma_copy, nisa.nc_matmul, nisa.tensor_copy, nisa.tensor_scalar, tile.ap",
+    },
+    {
+        "signature": "'X' object has no attribute 'Y'",
+        "cause": "a numpy-ism was applied to a tile",
+        "fix": "use nl/nisa operations instead of numpy attributes",
+    },
+    {
+        "signature": "got multiple values for argument",
+        "cause": "one argument was passed twice (positionally and by keyword)",
+        "fix": "pass every argument exactly once, by keyword",
+    },
+    {
+        "signature": "must have at least 2 dimensions",
+        "cause": "a 1-D tile was allocated",
+        "fix": "every tile is (rows, cols); a length-N vector is (1, N) or (N, 1)",
+    },
+    {
+        "signature": "cannot reshape array of size",
+        "cause": "the kernel attempted a reshape",
+        "fix": "do not reshape; slice the given shapes into tiles",
+    },
+    {
+        "signature": "'MemoryRegion' object is not callable",
+        "cause": "nl.sbuf / nl.psum / nl.shared_hbm were called like functions",
+        "fix": "pass the region as buffer= to nl.ndarray",
+    },
+    {
+        "signature": "unsupported operand type(s) for <op>: 'NkiTensor' and ...",
+        "cause": "a python operator was used on a tile",
+        "fix": "accumulate in a psum tile via nc_matmul, or use nisa ops",
+    },
+    {
+        "signature": "UnboundLocalError: cannot access local variable 'k' where it is not associated with a value",
+        "cause": "a loop variable (or any local) is used outside the loop or on a path where it "
+                 "was never assigned -- usually a restructure moved the code but not the binding",
+        "fix": "initialize the variable before the loop, or restructure so every path assigns it "
+               "before use; keep loop bodies self-contained",
+    },
+    {
+        "signature": "NUMERICAL MISMATCH: worst error X of the output's RMS (Y), tolerance Z",
+        "cause": "the kernel runs but computes wrong numbers",
+        "fix": "run the behavioral diagnosis: stationary operand stuck / only one k-chunk / "
+               "dtype or layout fault; apply the matching menu guidance",
+    },
+    {
+        "signature": "CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL",
+        "cause": "the numbers are right but the kernel moves more bytes than the level gate "
+                 "allows (1.60x / 1.25x / 1.05x)",
+        "fix": "find the operand still re-read per outer-loop pass and give it the cached "
+               "treatment (stack_stationary_operand / stack_moving_operand_symmetrically)",
+    },
+    {
+        "signature": "TRAFFIC UNMEASURED / bytes below the byte floor",
+        "cause": "the measurement is incomplete, or the kernel moves fewer bytes than any "
+                 "correct kernel can (it skips required reads -- the computation is broken)",
+        "fix": "fail closed: restore the full computation, then re-measure; never accept a "
+               "below-floor count",
+    },
+    {
+        "signature": "THE KERNEL MODIFIED ITS INPUT (argument N)",
+        "cause": "the kernel wrote into one of its input tensors",
+        "fix": "allocate a new output with buffer=nl.shared_hbm and return that",
+    },
+    {
+        "signature": "CORRECT ON CPU BUT WRONG ON HARDWARE: <simulator warning>",
+        "cause": "the simulator flagged a pattern that is numerically correct on CPU and "
+                 "incorrect on the device",
+        "fix": "restructure the flagged pattern (most often the accumulation/psum scheme)",
+    },
+    {
+        "signature": "RULE VIOLATIONS (banned framework call / entry point missing / @nki.jit missing)",
+        "cause": "a level rule was broken; this scores zero however fast the kernel is",
+        "fix": "remove the framework call (matmul/dot/einsum/@/.T), define the level's entry "
+               "point, keep it decorated with @nki.jit",
+    },
+    {
+        "signature": "the file imports but <entry> could not be loaded / defines no `<entry>`",
+        "cause": "the kernel does not define the entry name this level checks through",
+        "fix": "keep the level's entry-point name exactly as the checker expects it",
+    },
+]
+
+
+def normalize(msg):
+    msg = str(msg)
+    msg = re.sub(r"0x[0-9a-f]+", "0xH", msg)
+    msg = re.sub(r"[-+]?\d+\.?\d*(e[-+]?\d+)?", "N", msg)
+    msg = re.sub(r"[\w./-]+\.py", "FILE.py", msg)
+    return " ".join(msg.split())
+
+
+def scan(paths):
+    counts = collections.Counter()
+    examples = {}
+    for root in paths:
+        if os.path.isdir(root):
+            files = sorted(glob.glob(os.path.join(root, "**", "*rounds.jsonl"), recursive=True))
+        else:
+            files = [root]
+        for f in files:
+            try:
+                lines = open(f).read().splitlines()
+            except OSError:
+                continue
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except Exception:
+                    continue
+                msgs = []
+                for c in rec.get("per_case") or []:
+                    if c.get("failure"):
+                        msgs.append(c["failure"])
+                if rec.get("failure"):
+                    msgs.append(rec["failure"])
+                if isinstance(rec.get("feedback"), str):
+                    msgs.append(rec["feedback"])
+                for msg in msgs:
+                    key = normalize(msg).split(".")[0][:120]
+                    counts[key] += 1
+                    examples.setdefault(key, str(msg)[:220])
+    return counts, examples
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("paths", nargs="*", default=["runs"])
+    ap.add_argument("--out", default="error_catalog.json")
+    a = ap.parse_args()
+    counts, examples = scan(a.paths or ["runs"])
+    observed = [{"signature": k, "count": v, "example": examples[k]}
+                for k, v in counts.most_common()]
+    out = {"curated_families": CURATED, "observed_failures": observed}
+    with open(a.out, "w") as f:
+        json.dump(out, f, indent=1)
+    print(f"curated families: {len(CURATED)}")
+    print(f"observed distinct signatures: {len(observed)}")
+    for o in observed[:20]:
+        print(f"  {o['count']:>4}x  {o['signature'][:110]}")
+    print(f"wrote {a.out}")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,81 @@
+{
+  "accepted": false,
+  "bytes_total": 12386304,
+  "failure_kind": "traffic",
+  "feedback": "3 of 4 shapes passed. On K=256 M=512 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.86x the byte floor, and level 5 requires 1.60x or better. Correctness alone is level 4; this level is about the bytes. Hoist the operand loads out of the innermost loop; the same tiles are being re-read on every pass.",
+  "hazards_ok": true,
+  "inputs_ok": true,
+  "numerics_ok": true,
+  "passed": 3,
+  "per_case": [
+    {
+      "bytes": 589824,
+      "case": "K=128 M=128 N=512",
+      "checks": {
+        "hazard_ok": true,
+        "inputs_ok": true,
+        "numerics_ok": true,
+        "traffic_ok": true
+      },
+      "failure": null,
+      "floor": 589824,
+      "ok": true,
+      "transfers": 3,
+      "unmeasured": 0,
+      "waste": 1.0
+    },
+    {
+      "bytes": 3407872,
+      "case": "K=256 M=256 N=1024",
+      "checks": {
+        "hazard_ok": true,
+        "inputs_ok": true,
+        "numerics_ok": true,
+        "traffic_ok": true
+      },
+      "failure": null,
+      "floor": 2359296,
+      "ok": true,
+      "transfers": 14,
+      "unmeasured": 0,
+      "waste": 1.4444
+    },
+    {
+      "bytes": 1572864,
+      "case": "K=512 M=128 N=512",
+      "checks": {
+        "hazard_ok": true,
+        "inputs_ok": true,
+        "numerics_ok": true,
+        "traffic_ok": true
+      },
+      "failure": null,
+      "floor": 1572864,
+      "ok": true,
+      "transfers": 9,
+      "unmeasured": 0,
+      "waste": 1.0
+    },
+    {
+      "bytes": 6815744,
+      "case": "K=256 M=512 N=1024",
+      "checks": {
+        "hazard_ok": true,
+        "inputs_ok": true,
+        "numerics_ok": true,
+        "traffic_ok": false
+      },
+      "failure": "CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.86x the byte floor, and level 5 requires 1.60x or better. Correctness alone is level 4; this level is about the bytes. Hoist the operand loads out of the innermost loop; the same tiles are being re-read on every pass.",
+      "floor": 3670016,
+      "ok": false,
+      "transfers": 26,
+      "unmeasured": 0,
+      "waste": 1.8571
+    }
+  ],
+  "resource_status": "unestimated",
+  "rules_ok": true,
+  "total": 4,
+  "traffic_ok": false,
+  "worst_waste": 1.8571
+}
