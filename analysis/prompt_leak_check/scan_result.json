@@ -1,0 +1,113 @@
+{
+ "requests": 80,
+ "prompts": 35,
+ "first": 12,
+ "repair": 23,
+ "levels": [
+  1,
+  2,
+  3,
+  4,
+  9,
+  10,
+  11,
+  12,
+  13,
+  14
+ ],
+ "per_level": {
+  "1": [
+   3,
+   2
+  ],
+  "2": [
+   1,
+   2
+  ],
+  "3": [
+   1,
+   2
+  ],
+  "4": [
+   1,
+   2
+  ],
+  "9": [
+   1,
+   3
+  ],
+  "10": [
+   1,
+   3
+  ],
+  "11": [
+   1,
+   2
+  ],
+  "12": [
+   1,
+   3
+  ],
+  "13": [
+   1,
+   2
+  ],
+  "14": [
+   1,
+   2
+  ]
+ },
+ "forbidden_files": {
+  "tutorial kernels": [
+   "neuron-agentic-development/skills/neuron-nki-docs/references/downloads/average_pool2d_nki_kernels.py",
+   "neuron-agentic-development/skills/neuron-nki-docs/references/downloads/mamba_nki_kernels.py",
+   "neuron-agentic-development/skills/neuron-nki-docs/references/downloads/matrix_multiplication_nki_kernels.py",
+   "neuron-agentic-development/skills/neuron-nki-docs/references/downloads/spmd_multiple_nc_tensor_addition_nki_kernels.py",
+   "neuron-agentic-development/skills/neuron-nki-docs/references/downloads/spmd_tensor_addition_nki_kernels.py",
+   "neuron-agentic-development/skills/neuron-nki-docs/references/downloads/tensor_addition_nki_kernels.py",
+   "neuron-agentic-development/skills/neuron-nki-docs/references/downloads/transpose2d_nki_kernels.py"
+  ],
+  "organizers' reference kernels": [
+   "tal-deliv/projects/02-kernel-agent/reference_level1.py",
+   "tal-deliv/projects/02-kernel-agent/reference_level2.py",
+   "tal-deliv/projects/02-kernel-agent/reference_level3.py",
+   "tal-deliv/projects/02-kernel-agent/reference_level4.py"
+  ],
+  "our answers (levels 9-14)": [
+   "tal-deliv/projects/02-kernel-agent/answers/ans_level9.py",
+   "tal-deliv/projects/02-kernel-agent/answers/ans_level10.py",
+   "tal-deliv/projects/02-kernel-agent/answers/ans_level11.py",
+   "tal-deliv/projects/02-kernel-agent/answers/ans_level12.py",
+   "tal-deliv/projects/02-kernel-agent/answers/ans_level13.py",
+   "tal-deliv/projects/02-kernel-agent/answers/ans_level14.py"
+  ]
+ },
+ "forbidden_lines": 716,
+ "distinct_forbidden": 417,
+ "constants": 2851,
+ "code_files": [
+  "agent.py",
+  "feedback_v2.py",
+  "feedback_v3.py",
+  "feedback_v4.py",
+  "feedback_v5.py",
+  "feedback_v6.py",
+  "feedback_v7.py",
+  "gate_nki.py",
+  "verdict_nki.py",
+  "hidden_eval.py",
+  "ops07.py",
+  "ops08.py"
+ ],
+ "hits": [],
+ "ap": {
+  "prompts": 10,
+  "constants": [
+   "agent.py:174"
+  ],
+  "forbidden": [
+   "neuron-agentic-development/skills/neuron-nki-docs/references/downloads/average_pool2d_nki_kernels.py",
+   "tal-deliv/projects/02-kernel-agent/reference_level1.py"
+  ]
+ }
+}
