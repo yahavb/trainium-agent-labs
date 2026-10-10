@@ -1,4 +1,4 @@
-# Held-out eval set, tolerance, and token accounting
+# Held-out eval set, tolerance, confidence, and token accounting
 
 Everything here runs in the NKI 0.6.0 CPU simulator (`nki.simulate`), on a seat pod or in the
 `python:3.12-slim` container from `SETUP_PYTHON.md`. No number below comes from the device.
@@ -8,10 +8,10 @@ Everything here runs in the NKI 0.6.0 CPU simulator (`nki.simulate`), on a seat 
 | | shapes | values | who sees the result |
 |---|---|---|---|
 | **loop set** (`LEVELS[n]["shapes"]`) | 4 per level (1 for level 3) | standard normal, seed 0 | the model, as feedback every round |
-| **held-out set** (`EVAL_SHAPES`, `VALUE_KINDS`) | 4–5 new shapes per level (level 3: the same one) | 4 kinds, seed 1000 | **nobody during the loop**; run on a finished kernel with `--eval` |
+| **held-out set** (`EVAL_SHAPES`, `VALUE_KINDS`) | 4–5 new shapes per level (level 3: the same one) | 4 kinds, seed 1000 | **nobody during the loop**; run once per level after the loop (`agent.py`), or by hand with `--eval` |
 
 The held-out result is never put in a prompt. If it were, it would turn into part of the loop set
-and stop telling us anything. `agent.py` and the loop's grading do not touch it.
+and stop telling us anything. The loop's grading does not touch it.
 
 ```bash
 python nkibench.py --level 4 --eval my_kernel.py      # 16 cases: 4 shapes x 4 value kinds
@@ -67,6 +67,31 @@ legitimately uses bf16 (1.5× margin) and rejects real bugs by a factor of 20 or
 above bf16 is thin: a kernel that also *accumulates* in bf16 instead of float32 PSUM would land
 close to the limit.
 
+## Confidence and calibration
+
+When a level ends, `agent.py` states a confidence **before** the held-out check runs: the
+probability that the kernel passes shapes and values it has not seen. The confidence comes only
+from what the loop saw:
+
+- not solved on the loop set → 0.0
+- solved → start at 0.9, then
+  - × 0.7 if the loop tested a single shape (level 3)
+  - × 0.5 if the code contains a literal size taken from the test shapes (64, 32, ...; 128 and 512
+    are hardware limits and don't count)
+  - × 0.6 if the output allocation hard-codes a dtype
+
+Then the held-out set runs, and the verdict is one of:
+
+- `VERIFIED`: passes the loop set and every held-out case
+- `PASSES THE LOOP'S SHAPES ONLY`: solved, but some held-out case fails; the first failure is named
+- `NOT SOLVED`
+- (a kernel that breaks a rule fails held-out outright, since a rule violation scores zero)
+- `UNVERIFIED`: no simulator, or `--no-eval`
+
+Each verdict goes to `verdicts.jsonl` (claim, confidence, reasons, held-out result, tokens). At the
+end of a run, `calibration_report` prints confidence buckets against the held-out outcome, a Brier
+score, and the number of "confident (≥ 0.5) but wrong" cases. The heuristic weights are stated,
+not fitted. Whether they are calibrated is what the report measures.
 
 ## Token accounting
 

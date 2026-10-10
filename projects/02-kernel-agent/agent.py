@@ -690,6 +690,110 @@ def solve(a, level, log):
     return best[0], a.rounds, best[1], spent
 
 
+# ---------------------------------------------------------------- knowing when it failed
+#
+# Passing the loop's shapes is evidence, not proof: the judges grade on shapes and values the loop
+# never saw. So each level ends with a confidence, stated from what the loop saw, and only THEN is
+# the kernel run on nkibench's held-out set. The held-out result is never fed back to the model;
+# it is what the confidence is scored against.
+
+def confidence(level, source, solved):
+    """(probability this kernel passes unseen shapes and values, [reasons]) -- before held-out."""
+    import ast
+    spec = nkibench.LEVELS[level]
+    if not solved:
+        return 0.0, ["it still fails shapes the loop tested"]
+    p, why = 0.9, []
+    if len(spec["shapes"]) == 1:
+        p *= 0.7
+        why.append("the loop tested a single shape")
+    dims = set()
+    for case in spec["shapes"]:
+        for v in case.values():
+            dims.update(x for x in (v if isinstance(v, tuple) else (v,)) if isinstance(x, int))
+    literals = {n.value for n in ast.walk(ast.parse(source))
+                if isinstance(n, ast.Constant) and type(n.value) is int}
+    tile_limits = {nkibench.PMAX, nkibench.GEMM_STATIONARY_FMAX, nkibench.GEMM_MOVING_FMAX}
+    hard = sorted(x for x in literals & dims if x > 4 and x not in tile_limits)
+    if hard:
+        p *= 0.5
+        why.append(f"hard-codes {hard}, sizes taken from the test shapes")
+    if re.search(r"nl\.ndarray\(.*nl\.(?:float32|float16|bfloat16).*shared_hbm", source):
+        p *= 0.6
+        why.append("hard-codes the output dtype instead of following the input's")
+    if not why:
+        why.append("passed every loop shape and nothing in the code is shape-specific")
+    return round(p, 2), why
+
+
+def verdict(a, level, reward, rounds, source, spent):
+    """What the agent claims about this level, and whether the held-out set agrees."""
+    full = sum(WEIGHTS.values())
+    solved = reward >= full - 1e-9
+    conf, why = confidence(level, source, solved) if (source or "").strip() else (0.0, ["no code"])
+    v = dict(type="verdict", level=level, run=getattr(a, "run", 0), solved=solved,
+             reward=round(reward, 3), rounds=rounds, confidence=conf, reasons=why,
+             prompt_tokens=spent["prompt"], completion_tokens=spent["completion"],
+             heldout_passed=None, heldout_total=None, heldout_failures=[])
+    if a.no_eval or not (source or "").strip() or level not in nkibench.EVAL_SHAPES:
+        status = "UNVERIFIED (no held-out check ran)"
+    else:
+        violations = nkibench.check_rules(source, level)
+        try:
+            if violations:
+                # A rule violation scores zero whatever the numbers say, so it fails held-out too.
+                raise RuntimeError("rule violation: " + " ".join(violations))
+            path = nkibench.candidate_path(f"_heldout_level{level}")
+            with open(path, "w") as f:
+                f.write(source)
+            res = nkibench.evaluate(nkibench.load_kernel(path, nkibench.LEVELS[level]["entry"]),
+                                    level)
+        except nkibench.NkiMissing:
+            res = None
+        except Exception as e:
+            res = [dict(case="load", kind="-", ok=False, why=f"{type(e).__name__}: {e}"[:300])]
+        if res is None:
+            status = "UNVERIFIED (no simulator here)"
+        else:
+            ok = sum(r["ok"] for r in res)
+            v.update(heldout_passed=ok, heldout_total=len(res),
+                     heldout_failures=[r for r in res if not r["ok"]][:8])
+            if solved and ok == len(res):
+                status = f"VERIFIED: loop shapes and {ok}/{len(res)} held-out cases"
+            elif solved:
+                bad = v["heldout_failures"][0]
+                status = (f"PASSES THE LOOP'S SHAPES ONLY: held-out {ok}/{len(res)}, e.g. "
+                          f"{bad['case']} {bad['kind']}: {bad['why'][:100]}")
+            else:
+                status = f"NOT SOLVED (best reward {reward:.2f}; held-out {ok}/{len(res)})"
+    v["status"] = status
+    print(f"\n  VERDICT level {level}: {status}")
+    print(f"    confidence stated before the held-out check: {conf:.2f} ({'; '.join(why)})")
+    print(f"    tokens spent: {spent['prompt']:,} prompt + {spent['completion']:,} answer over "
+          f"{spent['rounds']} round(s)")
+    return v
+
+
+def calibration_report(verdicts):
+    """Did the stated confidence predict the held-out result? Brier score: 0 is perfect, 0.25 is
+    what always saying 0.5 earns."""
+    scored = [v for v in verdicts if v["heldout_total"]]
+    if not scored:
+        print("\n  calibration: nothing to score (no held-out check ran)")
+        return
+    outcome = lambda v: 1.0 if v["heldout_passed"] == v["heldout_total"] else 0.0
+    brier = sum((v["confidence"] - outcome(v)) ** 2 for v in scored) / len(scored)
+    print(f"\n=========== calibration, {len(scored)} verdict(s) ===========")
+    for lo, hi in ((0.0, 0.01), (0.01, 0.5), (0.5, 0.8), (0.8, 1.01)):
+        b = [v for v in scored if lo <= v["confidence"] < hi]
+        if b:
+            print(f"  said {lo:.2f}-{min(hi, 1):.2f}: {len(b):3d} verdicts, mean confidence "
+                  f"{sum(v['confidence'] for v in b) / len(b):.2f}, actually passed held-out "
+                  f"{sum(outcome(v) for v in b):.0f}/{len(b)}")
+    over = [v for v in scored if v["confidence"] >= 0.5 and not outcome(v)]
+    print(f"  Brier score {brier:.3f}.  Confident (>=0.5) but wrong: {len(over)}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--level", type=int, choices=sorted(nkibench.LEVELS))
@@ -718,6 +822,10 @@ def main():
     ap.add_argument("--think", action="store_true",
                     help="let the model reason first; costs budget, and it ran out")
     ap.add_argument("--offline", action="store_true")
+    ap.add_argument("--verdicts", default="verdicts.jsonl",
+                    help="one line per level per run: claim, confidence, held-out result, tokens")
+    ap.add_argument("--no-eval", action="store_true",
+                    help="skip the held-out check after each level")
     a = ap.parse_args()
 
     if not a.offline:
@@ -746,22 +854,33 @@ def main():
     full = sum(WEIGHTS.values())
     history = {lv: [] for lv in levels}
 
-    with open(a.log, "a") as log:
+    verdicts = []
+    with open(a.log, "a") as log, open(a.verdicts, "a") as vlog:
         for rep in range(a.repeat):
             a.run = rep
             if a.repeat > 1:
                 print(f"\n################ run {rep + 1} of {a.repeat} ################")
             results = []
             for level in levels:
-                reward, rounds, _, spent = solve(a, level, log)
+                reward, rounds, source, spent = solve(a, level, log)
                 results.append((level, reward, rounds, spent))
                 history[level].append(reward)
+                try:
+                    verdicts.append(verdict(a, level, reward, rounds, source, spent))
+                except Exception as e:   # bookkeeping must never end a long run
+                    print(f"  (verdict failed: {type(e).__name__}: {e})")
+                    verdicts.append(dict(type="verdict", level=level, run=rep, confidence=0.0,
+                                         status=f"UNVERIFIED (verdict error: {e})"[:120],
+                                         heldout_total=None, reward=round(reward, 3)))
+                vlog.write(json.dumps(verdicts[-1]) + "\n")
+                vlog.flush()
 
             print("\n=========== summary ===========")
-            for level, reward, rounds, spent in results:
+            for (level, reward, rounds, spent), v in zip(results, verdicts[-len(results):]):
                 print(f"  level {level}  reward {reward:.2f} after {rounds} round(s)"
                       + ("  SOLVED" if reward >= full - 1e-9 else "")
-                      + f"  tokens {spent['prompt']:,} prompt + {spent['completion']:,} answer")
+                      + f"  tokens {spent['prompt']:,} prompt + {spent['completion']:,} answer"
+                      + f"  confidence {v['confidence']:.2f}  {v['status'][:60]}")
             print(f"  solved {sum(1 for _, r, _, _ in results if r >= full - 1e-9)}/{len(results)}")
 
     if a.repeat > 1:
@@ -775,7 +894,8 @@ def main():
                   f"best {max(got):.2f}  worst {min(got):.2f}  "
                   f"mean {sum(got) / len(got):.2f}  all={[round(r, 2) for r in got]}")
         print("\n  Report the rate, not your best run. A level that solves 1 in 3 times is not solved.")
-    print(f"\nattempts logged to {a.log}")
+    calibration_report(verdicts)
+    print(f"\nattempts logged to {a.log}, verdicts to {a.verdicts}")
 
 
 if __name__ == "__main__":
