@@ -1,0 +1,86 @@
+Checker : checkerprompts
+Rounds  : up to 5
+Threshold: reward >= 0.9
+Output  : runs/checkerprompts-5rounds.jsonl
+
+[yeast_01]
+
+[yeast_02]
+
+[yeast_03]
+
+[yeast_04]
+  [yeast_01] round 1: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_04] round 1: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_02] round 1: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_03] round 1: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_01] round 2: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_04] round 2: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_02] round 2: best reward=0.571 (sample 1/1) h=0.429 label=hallucination_unverified → retrying (method=cr-k1)
+  [yeast_01] round 3: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_04] round 3: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_03] round 2: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_04] round 4: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_02] round 3: best reward=0.5 (sample 1/1) h=0.5 label=hallucination_unverified → retrying (method=cr-k1)
+  [yeast_01] round 4: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_04] round 5: best reward=0.167 (sample 1/1) h=0.833 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_04] reached max_rounds=5, best reward=0.167
+
+[yeast_05]
+  [yeast_03] round 3: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_01] round 5: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_01] reached max_rounds=5, best reward=0.0
+
+[yeast_06]
+  [yeast_02] round 4: best reward=0.5 (sample 1/1) h=0.5 label=hallucination_unverified → retrying (method=cr-k1)
+  [yeast_05] round 1: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_06] round 1: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_contradicted → retrying (method=cr-k2)
+  [yeast_03] round 4: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_05] round 2: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_02] round 5: best reward=0.3 (sample 1/1) h=0.7 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_02] reached max_rounds=5, best reward=0.3
+
+[yeast_07]
+  [yeast_06] round 2: best reward=0.143 (sample 1/1) h=0.857 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_05] round 3: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_07] round 1: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_05] round 4: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_03] round 5: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_03] reached max_rounds=5, best reward=0.0
+
+[yeast_08]
+  [yeast_06] round 3: best reward=0.333 (sample 1/1) h=0.667 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_07] round 2: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_07] round 3: best reward=0.5 (sample 1/1) h=0.5 label=hallucination_unverified → retrying (method=cr-k1)
+  [yeast_08] round 1: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_05] round 5: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_05] reached max_rounds=5, best reward=0.0
+  [yeast_07] round 4: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_06] round 4: best reward=0.333 (sample 1/1) h=0.667 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_08] round 2: best reward=0.2 (sample 1/1) h=0.8 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_07] round 5: best reward=0.0 (sample 1/1) h=1.0 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_07] reached max_rounds=5, best reward=0.0
+  [yeast_06] round 5: best reward=0.222 (sample 1/1) h=0.778 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_06] reached max_rounds=5, best reward=0.222
+  [yeast_08] round 3: best reward=0.125 (sample 1/1) h=0.875 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_08] round 4: best reward=0.125 (sample 1/1) h=0.875 label=hallucination_unverified → retrying (method=cr-k2)
+  [yeast_08] round 5: best reward=0.778 (sample 1/1) h=0.222 label=hallucination_unverified → retrying (method=pe-1)
+  [yeast_08] reached max_rounds=5, best reward=0.778
+
+════════════════════════════════════════════════════
+  Run summary — checker: checkerprompts
+════════════════════════════════════════════════════
+  Items              : 8
+  Threshold          : reward >= 0.9
+  Reached threshold  : 0/8
+  Improved over r1   : 4/8
+  Max rounds hit     : 8/8
+  Avg reward round-1 : 0.000
+  Avg reward final   : 0.183
+  Avg rounds used    : 4.5
+
+  Final label breakdown:
+    hallucination_unverified         8
+════════════════════════════════════════════════════
+
+Full results in runs/checkerprompts-5rounds.jsonl
