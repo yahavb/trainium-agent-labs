@@ -1,6 +1,6 @@
 # VeriLoop — 2-minute demo script
 
-> **DRAFT — numbers marked ⏳ come from the last runs (~4:45 pm).** The case below is a real run:
+> All numbers are final (runs finished 3:51 pm). The case below is a real run:
 > `s31-05_mac-C-r1-182546` in `results/2026-10-10_s31_attempts.jsonl`.
 
 ## 0:00 — the one-line pitch (say it)
@@ -35,12 +35,12 @@ wrong. The hard levels are where we hoped C would matter."*
 
 - Easy blocks (mux, adder, counter): solved on the first try with **any** feedback — 72/72.
 - MAC: fixed on round 2 with any feedback — 9/9.
-- Traffic light and FIFO: **0 solved with any feedback**; C scores slightly higher on the traffic light
-  (0.69 vs 0.65). ⏳ 12-round runs.
+- Traffic light and FIFO: **0 solved with any feedback** — even with 12 rounds (0/15). C's small edge at
+  6 rounds (0.69 vs 0.65) disappeared at 12. Honest headline: better feedback did not rescue this model.
 
 ## 1:30 — what we learned (pick two)
 
-- The model's mistakes are **systematic**: 67% of traffic-light failures hold a light one phase too long;
+- The model's mistakes are **systematic**: 69% of traffic-light failures hold a light one phase too long;
   every MAC failure was the same 9-bit port. (`results/TAXONOMY.md`)
 - The model **goes in circles** without being told it repeated itself — identical design 6 rounds running.
 - "8 runs" can be **2 runs**: the model is nearly deterministic, so we fingerprinted every design to prove

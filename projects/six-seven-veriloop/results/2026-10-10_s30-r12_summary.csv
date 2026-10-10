@@ -1,2 +1,4 @@
 date,tag,seat,model,level,feedback,run,solved,rounds_used,best_score,attempts,distinct_designs,prompt_tokens,completion_tokens,seconds,offline,run_id,max_rounds
 2026-10-10,s30-r12,seat-30,Qwen/Qwen3-8B,04_traffic_fsm,A,1,False,12,0.653,48,8,30208,20013,908.3,False,s30-r12-04_traffic_fsm-A-r1-184105,12
+2026-10-10,s30-r12,seat-30,Qwen/Qwen3-8B,04_traffic_fsm,B,1,False,12,0.612,48,8,39900,27392,1237.2,False,s30-r12-04_traffic_fsm-B-r1-185615,12
+2026-10-10,s30-r12,seat-30,Qwen/Qwen3-8B,04_traffic_fsm,C,1,False,12,0.669,48,6,42592,26394,1202.1,False,s30-r12-04_traffic_fsm-C-r1-191653,12
