@@ -1,0 +1,44 @@
+
+=== run 1/5  level 10: conv1d  [ours, ve27b32ff47] ===
+L10 #1 in=189 [task=177] out=324 23.3s  PASS dev; holdout 8/8
+   => verified (confidence 0.95) after 1 attempt(s), 189 in / 324 out tokens
+
+=== run 2/5  level 10: conv1d  [ours, ve27b32ff47] ===
+L10 #1 in=181 [task=169] out=289 20.8s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (130, 2), larger than one 128x512 tile)
+L10 #2 in=597 [task=159 code=288 feed=137] out=683 48.9s  FAIL rule:linalg
+      -> Replace `np.dot` with explicit python loops: accumulate products one index at a time, e.g
+L10 #3 in=608 [task=159 code=347 feed=89] out=368 26.5s  FAIL crash:ValueError
+      -> A whole array is assigned to a single element (e.g
+L10 #4 in=640 [task=159 code=367 feed=101] out=554 39.8s  FAIL rule:linalg
+      -> Replace `np.dot` with explicit python loops: accumulate products one index at a time, e.g
+L10 #5 in=695 [task=159 code=369 feed=87 ledg=67] out=585 42.0s  FAIL rule:fancy-index
+      -> Index only with integers and slices (index list or boolean mask)
+L10 #6 in=683 [task=150 code=433 feed=87] out=444 31.9s  FAIL rule:fancy-index
+      -> Index only with integers and slices (index of type list (index arrays/lists))
+L10 #7 in=732 [task=150 code=443 feed=74 ledg=52] out=578 41.5s  FAIL rule:broadcast
+      -> Elementwise operands must have identical shapes; scalars are fine (assigning shape (7,) into a region of shape ())
+L10 #8 in=699 [task=159 code=429 feed=98] out=658 47.2s  FAIL crash:IndexError
+      -> Index 1 on axis 0 is past the end of an array of size 1
+L10 #9 in=848 [task=159 code=456 feed=220] out=735 52.7s  FAIL crash:IndexError
+      -> Index 1 on axis 0 is past the end of an array of size 1
+L10 #10 in=887 [task=159 code=445 feed=208 ledg=62] out=526 37.8s  FAIL crash:IndexError
+      -> Index 1 on axis 0 is past the end of an array of size 1
+   STUCK: 'crash:IndexError' 3 attempts in a row without progress; more of the same won't help
+   => stuck (confidence 0.00) after 10 attempt(s), 6570 in / 5420 out tokens
+
+=== run 3/5  level 10: conv1d  [ours, ve27b32ff47] ===
+L10 #1 in=179 [task=167] out=168 12.2s  PASS dev; holdout 8/8
+   => verified (confidence 0.95) after 1 attempt(s), 179 in / 168 out tokens
+
+=== run 4/5  level 10: conv1d  [ours, ve27b32ff47] ===
+L10 #1 in=180 [task=168] out=179 13.0s  PASS dev; holdout 8/8
+   => verified (confidence 0.95) after 1 attempt(s), 180 in / 179 out tokens
+
+=== run 5/5  level 10: conv1d  [ours, ve27b32ff47] ===
+L10 #1 in=180 [task=168] out=160 11.6s  PASS dev; holdout 8/8
+   => verified (confidence 0.95) after 1 attempt(s), 180 in / 160 out tokens
+
+=== summary over 5 run(s) ===
+  L10 conv1d       verified 4/5  mean attempts when verified 1.0  statuses ['verified', 'stuck', 'verified', 'verified', 'verified']
+log: runs/ours-L10-seat-245.jsonl  (code version e27b32ff47)

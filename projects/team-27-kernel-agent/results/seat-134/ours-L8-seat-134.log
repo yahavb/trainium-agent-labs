@@ -1,0 +1,72 @@
+
+=== run 1/5  level 8: layernorm  [ours, ve995dda977] ===
+L8 #1 in=178 [task=166] out=206 14.9s cached  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (6 violations: broadcast, sum-like), so patching it one line at a time will not f...
+L8 #2 in=606 [task=148 code=205 feed=240] out=562 40.3s cached  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (8 violations: broadcast, sum-like, whole-array), so patching it one line at a ti...
+L8 #3 in=828 [task=148 code=386 feed=243 ledg=38] out=637 45.6s cached  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (700,), larger than one 128x512 tile)
+L8 #4 in=713 [task=148 code=404 feed=148] out=475 34.1s cached  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (5 violations: broadcast, sum-like), so patching it one line at a time will not f...
+L8 #5 in=767 [task=148 code=294 feed=240 ledg=72] out=733 52.5s cached  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (700,), larger than one 128x512 tile)
+L8 #6 in=860 [task=148 code=481 feed=158 ledg=60] out=554 39.7s cached  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (7 violations: broadcast, layout, newaxis, sum-like), so patching it one line at ...
+L8 #7 in=839 [task=148 code=327 feed=245 ledg=106] out=762 54.6s cached  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L8 #8 in=835 [task=148 code=526 feed=148] out=685 49.1s cached  PASS dev; holdout 18/18
+   => verified (confidence 0.95) after 8 attempt(s), 5626 in / 4614 out tokens
+
+=== run 2/5  level 8: layernorm  [ours, ve995dda977] ===
+L8 #1 in=170 [task=158] out=393 28.2s cached  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (10 violations: broadcast, keepdims, layout, newaxis, sum-like), so patching it o...
+L8 #2 in=803 [task=148 code=392 feed=250] out=766 54.8s cached  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (13 violations: broadcast, layout, newaxis, sum-like), so patching it one line at...
+L8 #3 in=1027 [task=148 code=581 feed=247 ledg=38] out=871 62.3s cached  PASS dev; holdout 18/18
+   => verified (confidence 0.95) after 3 attempt(s), 2000 in / 2030 out tokens
+
+=== run 3/5  level 8: layernorm  [ours, ve995dda977] ===
+L8 #1 in=168 [task=156] out=269 19.4s cached  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (10 violations: broadcast, keepdims, layout, newaxis, sum-like), so patching it o...
+L8 #2 in=679 [task=148 code=268 feed=250] out=916 65.5s cached  FAIL numeric:other
+      -> The results are wrong
+L8 #3 in=981 [task=148 code=650 feed=170] out=758 54.3s cached  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (11 violations: broadcast, keepdims, sum-like, whole-array), so patching it one l...
+L8 #4 in=575 [task=148 code=144 feed=248 ledg=22] out=626 44.9s cached  FAIL numeric:other
+      -> The results are wrong
+L8 #5 in=642 [task=148 code=288 feed=133 ledg=60] out=541 38.8s cached  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (11 violations: broadcast, keepdims, sum-like, whole-array), so patching it one l...
+L8 #6 in=687 [task=148 code=250 feed=248 ledg=28] out=623 44.6s cached  PASS dev; holdout 18/18
+   => verified (confidence 0.95) after 6 attempt(s), 3732 in / 3733 out tokens
+
+=== run 4/5  level 8: layernorm  [ours, ve995dda977] ===
+L8 #1 in=169 [task=157] out=259 18.7s cached  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (8 violations: broadcast, keepdims, layout, newaxis, sum-like), so patching it on...
+L8 #2 in=667 [task=148 code=258 feed=248] out=668 47.9s cached  PASS dev; holdout 18/18
+   => verified (confidence 0.95) after 2 attempt(s), 836 in / 927 out tokens
+
+=== run 5/5  level 8: layernorm  [ours, ve995dda977] ===
+L8 #1 in=169 [task=157] out=274 19.7s cached  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (10 violations: broadcast, keepdims, layout, newaxis, sum-like), so patching it o...
+L8 #2 in=684 [task=148 code=273 feed=250] out=621 44.5s cached  FAIL numeric:other
+      -> The results are wrong
+L8 #3 in=687 [task=148 code=382 feed=144] out=769 55.1s cached  FAIL numeric:other
+      -> The results are wrong
+L8 #4 in=638 [task=148 code=289 feed=144 ledg=44] out=472 33.9s  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (8 violations: broadcast, keepdims, sum-like, whole-array), so patching it one li...
+L8 #5 in=578 [task=148 code=149 feed=246 ledg=22] out=611 43.8s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L8 #6 in=658 [task=148 code=382 feed=115] out=622 44.6s  FAIL numeric:tag:partial-col-tile
+      -> The kernel is right except when N is not a multiple of 512, so the last column tile is partial
+L8 #7 in=836 [task=148 code=486 feed=189] out=583 41.8s  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (9 violations: broadcast, keepdims, sum-like, whole-array), so patching it one li...
+L8 #8 in=687 [task=148 code=232 feed=246 ledg=48] out=774 55.4s  FAIL numeric:nonfinite
+      -> Some outputs are nan or inf although the true answer is finite: a step overflows for these inputs
+L8 #9 in=802 [task=148 code=413 feed=228] out=764 54.7s  FAIL numeric:tag:multi-row-tile
+      -> Results are wrong exactly when there is more than one row tile
+L8 #10 in=863 [task=148 code=450 feed=252] out=690 49.4s  PASS dev; holdout 18/18
+   => verified (confidence 0.95) after 10 attempt(s), 6602 in / 6180 out tokens
+
+=== summary over 5 run(s) ===
+  L8 layernorm    verified 5/5  mean attempts when verified 5.8  statuses ['verified', 'verified', 'verified', 'verified', 'verified']
+log: runs/ours-L8-seat-134.jsonl  (code version e995dda977)

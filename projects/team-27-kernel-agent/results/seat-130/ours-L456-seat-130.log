@@ -1,0 +1,10 @@
+
+=== run 1/5  level 4: rmsnorm  [ours, veddb241adf] ===
+L4 #1 in=155 [task=143] out=198 83.9s cached  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L4 #2 in=456 [task=125 code=197 feed=121] out=253 18.2s cached  FAIL rule:layout
+      -> Remove `np.newaxis`
+L4 #3 in=487 [task=125 code=252 feed=97] out=275 19.8s cached  FAIL numeric:per-tile-stat
+      -> Each column tile is normalised with a statistic (max, sum or mean of squares) of that tile alone
+L4 #4 in=611 [task=125 code=274 feed=199] out=572 41.0s cached  FAIL numeric:tag:huge-magnitude
+      -> Values around 1e18 overflow float32 when squared (float32 max is 3.4e38)

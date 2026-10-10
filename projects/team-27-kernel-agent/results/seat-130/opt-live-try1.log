@@ -1,0 +1,11 @@
+L1 run0: start  time 1.00x min  reads 1.00x  flops 1.00x  intensity 0.38 FLOP/B  ops 18
+   nothing left to optimise
+   final: time 1.00x -> 1.00x of the roofline minimum (reads 1.00x -> 1.00x, flops 1.00x -> 1.00x, ops 18 -> 18)
+L2 run0: start  time 1.00x min  reads 1.00x  flops 1.00x  intensity 0.25 FLOP/B  ops 2068
+   #1 target=ops   -> violation
+   #2 target=ops   -> violation
+   #3 target=ops   -> violation
+   #4 target=ops   -> violation
+   final: time 1.00x -> 1.00x of the roofline minimum (reads 1.00x -> 1.00x, flops 1.00x -> 1.00x, ops 2068 -> 2068)
+L3 run0: start  time 1.02x min  reads 1.02x  flops 0.01x  intensity 0.00 FLOP/B  ops 12
+   #1 target=ops   -> violation

@@ -1,0 +1,100 @@
+
+=== run 1/5  level 5: softmax  [naive, ve22ccab872] ===
+L5 #1 in=125 [task=113] out=183 13.2s cached  FAIL rule:sum-like
+L5 #2 in=850 [task=81 code=182 feed=573] out=334 24.0s cached  FAIL rule:whole-array
+L5 #3 in=628 [task=81 code=114 feed=420] out=462 33.2s cached  FAIL rule:sum-like
+L5 #4 in=451 [task=81 code=114 feed=243] out=314 22.6s cached  FAIL rule:whole-array
+L5 #5 in=644 [task=81 code=126 feed=424] out=496 35.6s cached  FAIL rule:whole-array
+L5 #6 in=614 [task=81 code=150 feed=370] out=449 32.2s cached  FAIL rule:whole-array
+   STUCK: 'rule:whole-array' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 6 attempt(s), 3312 in / 2238 out tokens
+
+=== run 1/5  level 6: transpose  [naive, ve22ccab872] ===
+L6 #1 in=112 [task=100] out=136 9.9s cached  FAIL rule:layout
+L6 #2 in=296 [task=68 code=135 feed=80] out=356 25.6s cached  FAIL crash:ValueError
+L6 #3 in=549 [task=68 code=134 feed=334] out=419 30.1s cached  FAIL rule:layout
+L6 #4 in=312 [task=68 code=143 feed=88] out=1376 98.4s cached  FAIL rule:layout (repeat code)
+L6 #5 in=312 [task=68 code=143 feed=88] out=453 32.5s cached  FAIL crash:ValueError
+L6 #6 in=581 [task=68 code=142 feed=358] out=422 30.3s cached  FAIL rule:layout (repeat code)
+L6 #7 in=312 [task=68 code=143 feed=88] out=451 32.4s cached  FAIL crash:ValueError
+L6 #8 in=444 [task=68 code=142 feed=221] out=328 23.6s cached  FAIL rule:layout
+   => failed (confidence 0.00) after 8 attempt(s), 2918 in / 3941 out tokens
+
+=== run 2/5  level 5: softmax  [naive, ve22ccab872] ===
+L5 #1 in=117 [task=105] out=266 19.2s  FAIL rule:escape
+L5 #2 in=866 [task=81 code=265 feed=506] out=463 33.2s  FAIL rule:escape
+L5 #3 in=869 [task=81 code=268 feed=506] out=516 37.0s  FAIL rule:escape
+   STUCK: 'rule:escape' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 3 attempt(s), 1852 in / 1245 out tokens
+
+=== run 2/5  level 6: transpose  [naive, ve22ccab872] ===
+L6 #1 in=104 [task=92] out=213 15.4s  FAIL rule:layout
+L6 #2 in=374 [task=68 code=212 feed=81] out=495 35.5s  FAIL crash:ValueError
+L6 #3 in=496 [task=68 code=212 feed=203] out=457 32.8s  FAIL rule:layout
+L6 #4 in=389 [task=68 code=227 feed=81] out=488 35.0s  FAIL crash:ValueError (repeat code)
+L6 #5 in=496 [task=68 code=212 feed=203] out=417 30.0s  FAIL rule:layout
+L6 #6 in=385 [task=68 code=223 feed=81] out=524 37.6s  FAIL crash:ValueError
+L6 #7 in=507 [task=68 code=223 feed=203] out=427 30.7s  FAIL rule:layout (repeat code)
+L6 #8 in=385 [task=68 code=223 feed=81] out=644 46.2s  FAIL crash:ValueError (repeat code)
+   => failed (confidence 0.00) after 8 attempt(s), 3136 in / 3665 out tokens
+
+=== run 3/5  level 5: softmax  [naive, ve22ccab872] ===
+L5 #1 in=115 [task=103] out=241 17.4s  FAIL rule:sum-like
+L5 #2 in=685 [task=81 code=240 feed=351] out=593 42.5s  FAIL rule:sum-like
+L5 #3 in=913 [task=81 code=252 feed=566] out=607 43.5s  FAIL rule:whole-array
+L5 #4 in=693 [task=81 code=156 feed=443] out=476 34.2s  FAIL rule:whole-array
+L5 #5 in=693 [task=81 code=156 feed=443] out=537 38.5s  FAIL rule:whole-array
+   STUCK: 'rule:whole-array' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 5 attempt(s), 3099 in / 2454 out tokens
+
+=== run 3/5  level 6: transpose  [naive, ve22ccab872] ===
+L6 #1 in=102 [task=90] out=167 12.1s  FAIL rule:layout
+L6 #2 in=328 [task=68 code=166 feed=81] out=405 29.1s  FAIL crash:ValueError
+L6 #3 in=559 [task=68 code=141 feed=337] out=373 26.8s  FAIL rule:layout
+L6 #4 in=313 [task=68 code=151 feed=81] out=411 29.6s  FAIL crash:ValueError (repeat code)
+L6 #5 in=559 [task=68 code=141 feed=337] out=379 27.3s  FAIL rule:layout (repeat code)
+L6 #6 in=313 [task=68 code=151 feed=81] out=1002 71.7s  FAIL rule:layout
+L6 #7 in=316 [task=68 code=154 feed=81] out=358 25.8s  FAIL rule:layout
+   STUCK: 'rule:layout' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 7 attempt(s), 2490 in / 3095 out tokens
+
+=== run 4/5  level 5: softmax  [naive, ve22ccab872] ===
+L5 #1 in=116 [task=104] out=194 14.1s  FAIL rule:sum-like
+L5 #2 in=661 [task=81 code=193 feed=374] out=565 40.5s  FAIL rule:sum-like
+L5 #3 in=918 [task=81 code=227 feed=596] out=555 39.8s  FAIL rule:sum-like
+   STUCK: 'rule:sum-like' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 3 attempt(s), 1695 in / 1314 out tokens
+
+=== run 4/5  level 6: transpose  [naive, ve22ccab872] ===
+L6 #1 in=103 [task=91] out=253 18.2s  FAIL rule:whole-array
+L6 #2 in=446 [task=68 code=252 feed=113] out=542 38.9s  FAIL rule:whole-array
+L6 #3 in=486 [task=68 code=310 feed=95] out=594 42.6s  FAIL crash:ValueError
+L6 #4 in=601 [task=68 code=311 feed=209] out=454 32.6s  FAIL crash:ValueError
+L6 #5 in=571 [task=68 code=310 feed=180] out=567 40.6s  FAIL rule:whole-array
+L6 #6 in=501 [task=68 code=326 feed=94] out=672 48.1s  FAIL crash:ValueError
+L6 #7 in=585 [task=68 code=326 feed=178] out=551 39.5s  FAIL crash:ValueError
+L6 #8 in=620 [task=68 code=323 feed=216] out=501 35.9s  FAIL crash:ValueError
+   STUCK: 'crash:ValueError' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 8 attempt(s), 3913 in / 4134 out tokens
+
+=== run 5/5  level 5: softmax  [naive, ve22ccab872] ===
+L5 #1 in=116 [task=104] out=199 14.4s  FAIL rule:sum-like
+L5 #2 in=867 [task=81 code=198 feed=574] out=393 28.2s  FAIL rule:whole-array
+L5 #3 in=659 [task=81 code=127 feed=438] out=515 37.0s  FAIL rule:whole-array
+L5 #4 in=565 [task=81 code=169 feed=302] out=410 29.5s  FAIL rule:whole-array
+   STUCK: 'rule:whole-array' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 4 attempt(s), 2207 in / 1517 out tokens
+
+=== run 5/5  level 6: transpose  [naive, ve22ccab872] ===
+L6 #1 in=103 [task=91] out=145 10.6s  FAIL rule:layout
+L6 #2 in=305 [task=68 code=144 feed=80] out=429 30.8s  FAIL crash:ValueError
+L6 #3 in=558 [task=68 code=143 feed=334] out=457 32.8s  FAIL rule:layout
+L6 #4 in=313 [task=68 code=144 feed=88] out=476 34.2s  FAIL crash:ValueError
+L6 #5 in=578 [task=68 code=142 feed=355] out=304 21.9s  FAIL rule:layout (repeat code)
+L6 #6 in=313 [task=68 code=144 feed=88] out=376 27.1s  PASS dev; holdout 8/8
+   => verified (confidence 0.95) after 6 attempt(s), 2170 in / 2187 out tokens
+
+=== summary over 5 run(s) ===
+  L5 softmax      verified 0/5  mean attempts when verified nan  statuses ['stuck', 'stuck', 'stuck', 'stuck', 'stuck']
+  L6 transpose    verified 1/5  mean attempts when verified 6.0  statuses ['failed', 'failed', 'stuck', 'stuck', 'verified']
+log: runs/naive-L56-seat-134.jsonl  (code version e22ccab872)

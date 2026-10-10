@@ -1,0 +1,68 @@
+
+=== run 1/5  level 9: band_attention  [ours, ve27b32ff47] ===
+L9 #1 in=181 [task=169] out=418 30.0s  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (8 violations: layout, linalg, max-like, sum-like, whole-array), so patching it o...
+L9 #2 in=885 [task=151 code=417 feed=304] out=590 42.3s  FAIL rule:broadcast
+      -> Elementwise operands must have identical shapes; scalars are fine (np.add on operands of shapes (1,) and (8,))
+L9 #3 in=665 [task=151 code=401 feed=100] out=668 47.9s  FAIL rule:broadcast (repeat code)
+      -> Elementwise operands must have identical shapes; scalars are fine (np.add on operands of shapes (1,) and (8,))
+L9 #4 in=746 [task=166 code=401 feed=100 ledg=66] out=600 43.0s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (257, 8), larger than one 128x512 tile)
+L9 #5 in=753 [task=151 code=445 feed=144] out=888 63.5s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (130, 16), larger than one 128x512 tile)
+L9 #6 in=1005 [task=151 code=584 feed=177 ledg=80] out=1126 80.5s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (130, 16), larger than one 128x512 tile)
+   STUCK: 'rule:whole-array' 3 attempts in a row without progress; more of the same won't help
+   => stuck (confidence 0.00) after 6 attempt(s), 4235 in / 4290 out tokens
+
+=== run 2/5  level 9: band_attention  [ours, ve27b32ff47] ===
+L9 #1 in=173 [task=161] out=253 18.2s  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (7 violations: fancy-index, layout, linalg, max-like, sum-like), so patching it o...
+L9 #2 in=720 [task=151 code=252 feed=304] out=538 38.6s  PASS dev; holdout 7/7
+   => verified (confidence 0.95) after 2 attempt(s), 893 in / 791 out tokens
+
+=== run 3/5  level 9: band_attention  [ours, ve27b32ff47] ===
+L9 #1 in=171 [task=159] out=335 24.1s  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (9 violations: broadcast, max-like, sum-like, whole-array), so patching it one li...
+L9 #2 in=799 [task=151 code=334 feed=301] out=617 44.2s  FAIL rule:broadcast
+      -> Elementwise operands must have identical shapes; scalars are fine (np.multiply on operands of shapes (1, 8) and (8,))
+L9 #3 in=719 [task=151 code=437 feed=118] out=604 43.3s  FAIL rule:linalg
+      -> Replace `np.dot` with explicit python loops: accumulate products one index at a time, e.g
+L9 #4 in=631 [task=151 code=378 feed=89] out=573 41.1s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L9 #5 in=678 [task=151 code=409 feed=105] out=587 42.1s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L9 #6 in=758 [task=151 code=411 feed=117 ledg=66] out=530 38.0s  FAIL rule:linalg
+      -> Replace `np.dot` with explicit python loops: accumulate products one index at a time, e.g
+L9 #7 in=626 [task=151 code=307 feed=84 ledg=71] out=471 33.8s  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L9 #8 in=580 [task=151 code=324 feed=92] out=495 35.5s  FAIL rule:broadcast
+      -> Elementwise operands must have identical shapes; scalars are fine (assigning shape (1,) into a region of shape (8,))
+L9 #9 in=674 [task=151 code=352 feed=91 ledg=67] out=591 42.4s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (257, 8), larger than one 128x512 tile)
+L9 #10 in=564 [task=151 code=246 feed=154] out=751 53.8s  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (5 violations: linalg, max-like, whole-array), so patching it one line at a time ...
+L9 #11 in=916 [task=151 code=400 feed=299 ledg=53] out=754 54.0s  PASS dev; holdout 7/7
+   => verified (confidence 0.95) after 11 attempt(s), 7116 in / 6308 out tokens
+
+=== run 4/5  level 9: band_attention  [ours, ve27b32ff47] ===
+L9 #1 in=172 [task=160] out=191 13.8s  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (5 violations: fancy-index, linalg, max-like, sum-like), so patching it one line ...
+L9 #2 in=656 [task=151 code=190 feed=302] out=657 47.1s  FAIL numeric:other
+      -> The results are wrong
+L9 #3 in=813 [task=151 code=473 feed=176] out=895 64.0s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L9 #4 in=507 [task=151 code=238 feed=105] out=402 28.9s  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L9 #5 in=514 [task=151 code=272 feed=78] out=417 29.9s  PASS dev; holdout 7/7
+   => verified (confidence 0.95) after 5 attempt(s), 2662 in / 2562 out tokens
+
+=== run 5/5  level 9: band_attention  [ours, ve27b32ff47] ===
+L9 #1 in=172 [task=160] out=228 16.4s  FAIL rule:rewrite
+      -> This draft computes the whole operation with array operations the rules ban (11 violations: broadcast, layout, linalg, max-like, sum-like, whole-array), so p...
+L9 #2 in=699 [task=151 code=227 feed=308] out=572 41.0s  PASS dev; holdout 7/7
+   => verified (confidence 0.95) after 2 attempt(s), 871 in / 800 out tokens
+
+=== summary over 5 run(s) ===
+  L9 band_attention verified 4/5  mean attempts when verified 5.0  statuses ['stuck', 'verified', 'verified', 'verified', 'verified']
+log: runs/ours-L9-seat-245.jsonl  (code version e27b32ff47)
