@@ -27,10 +27,11 @@ this container, which has no `neuron-ls`:
 | `NEURON_PLATFORM_TARGET_OVERRIDE=trn2` | trn2 | 3 (gen3) |
 | unset | **trn3** | 4 (gen4) |
 
-On a seat pod, `neuron-ls` exists. If it prints `instance-type: trn2...`, the **unset default there is
-trn2 too**, and the baseline, E-A and E-F simulated trn2 anyway. That has to be read on the pod
-(executor 1 is checking): `neuron-ls | grep instance-type`, and
-`python -c "from nki.compiler.target import resolve_target as r; print(r())"` with the variable unset.
+**"Unset means trn3" holds only on a machine without a Neuron device**, like this container. On a seat
+pod, `neuron-ls` exists, and executor 1 confirmed there with a probe kernel that, with the variable
+unset, nki picks **trn2 (gen3)** from the hardware. So the baseline, E-A and E-F, all run on seats,
+simulated trn2, the same target as the v7 runs that set it explicitly. The trn3 column below is what an
+off-seat machine (a laptop, this container, CI) would get.
 
 ## Re-grading in both modes
 
@@ -66,8 +67,8 @@ solve** under trn3. Nothing in the baseline or E-A did this, which is why their 
   scores and feedback are identical under both targets.
 - Any **1.0 from a run without the override** should be re-graded with the override set before it is
   quoted: `NEURON_PLATFORM_TARGET_OVERRIDE=trn2 python scripts/calibrate.py <attempts.jsonl> -o ...`
-  (its re-grade section lists every changed score). That is moot if the pod check shows the unset
-  default resolves to trn2 there.
+  (its re-grade section lists every changed score). On a seat this is moot: the unset default
+  resolves to trn2 there (executor 1's probe). It matters for anything graded off a seat.
 - Every check in `analysis/` from this branch (calibration, E-A re-grade, v7 compatibility, held-out
   sets) was run with the override set to trn2.
 
