@@ -81,6 +81,7 @@ PREFLIGHT = " Reading the whole kernel, the checker also found "
 # The model's failing line, set by explain() from directed4 on, so that a message can depend on what
 # the line IS (a copy, an assignment) and name the variable on it.
 FAILING_LINE = ""
+KERNEL_SOURCE = ""      # the whole candidate, set by explain() from directed5 on
 
 
 def at_least(mode):
@@ -131,15 +132,16 @@ def locate(exc, path, source):
 
 def explain(exc, path, source, prefix="raised ", add_fix=True):
     """Turn an exception from the candidate into feedback, at the current FEEDBACK_MODE."""
-    global FAILING_LINE
+    global FAILING_LINE, KERNEL_SOURCE
     text = f"{prefix}{type(exc).__name__}: {exc}"
     if FEEDBACK_MODE == "raw":
         return text
     where = locate(exc, path, source) if at_least("located") else None
     FAILING_LINE = where[1] if where and at_least("directed4") else ""
+    KERNEL_SOURCE = source if at_least("directed5") else ""
     if add_fix:
         text = enrich(text)
-    FAILING_LINE = ""
+    FAILING_LINE = KERNEL_SOURCE = ""
     if at_least("located"):
         if where:
             # A size mismatch can be fixed at either end, so do not point at the copy alone.
@@ -752,12 +754,27 @@ def directed(error_text):
                 # The older wording below says "allocate the destination as nl.ndarray(...,
                 # buffer=nl.sbuf)". When the destination is the array the kernel returns, that is
                 # an instruction to move the output out of HBM. Say the shape and nothing else.
+                # Seen on a seat, level 3, the directed5 probe (session 20261010-202354): the
+                # model repaired four different faults in four rounds and reached this one, with
+                # `out = nl.ndarray(shape=lhsT.shape[1:], ...)` on line 8 and the copy on line 22.
+                # The message named the right shape and quoted the copy. For three rounds the
+                # model edited the copy and never touched line 8. Quote the allocation.
+                alloc = ""
+                name = re.search(r"\bdst\s*=\s*([A-Za-z_]\w*)", FAILING_LINE)
+                if name and KERNEL_SOURCE:
+                    for n, line in enumerate(KERNEL_SOURCE.splitlines(), 1):
+                        if re.match(rf"\s*{re.escape(name.group(1))}\s*=\s*nl\.ndarray\(", line):
+                            alloc = (f" `{name.group(1)}` is allocated on line {n} of your "
+                                     f"kernel: `{line.strip()}`. THAT is the line to change, not "
+                                     f"the copy: its shape must be {src}, written with every "
+                                     f"dimension, not as a slice of another array's shape.")
+                            break
                 return (error_text + f" The destination has shape {dst} but the piece copied "
                         f"into it has shape {src}, which is larger. nisa.dma_copy needs IDENTICAL "
                         f"shapes. If the source is the whole result, the destination was "
                         f"allocated too small: allocate it with shape {src}, with every "
                         f"dimension written out, and keep its buffer as it is. Only if you meant "
-                        f"to copy a part, slice the source down to {dst}.")
+                        f"to copy a part, slice the source down to {dst}." + alloc)
             return (error_text + f" The destination has shape {dst} but the piece copied into it "
                     f"has shape {src}, which is larger. nisa.dma_copy needs IDENTICAL shapes. "
                     f"Either allocate the destination as nl.ndarray({src}, dtype=..., "
