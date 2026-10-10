@@ -1,0 +1,53 @@
+{
+  "owner": "P2",
+  "kernels": {
+    "matmul": {
+      "start_us": 960.5,
+      "expert_us": 385.1,
+      "floor_us": null,
+      "source": "chip"
+    },
+    "rmsnorm": {
+      "start_us": 518.2,
+      "expert_us": null,
+      "floor_us": 140.7,
+      "source": "chip"
+    }
+  },
+  "detail": {
+    "source": "chip",
+    "seat": 102,
+    "measured": "2026-10-10, seat-102, branch kernels-search, P1's speedcheck.py (device clock, interleaved A/B, 3 rounds). Matmul 13:25; RMSNorm and copy at the 2048-token timing shapes 13:55.",
+    "times_are": "the sum over each op's time_shapes in shapes.py, the same sum the referee's speedup uses",
+    "matmul": {
+      "gate_up 4096x256x6144": {
+        "start_us": 691.7,
+        "expert_us": 280.4
+      },
+      "q_proj 4096x256x2048": {
+        "start_us": 268.8,
+        "expert_us": 104.7
+      },
+      "expert": "kernels/matmul_expert.py: AWS's SDK 2.32 fully optimised tutorial matmul, accumulating K-blocks in fp32. Correct on 8 chip shapes, worst 0.50 bf16 ulps.",
+      "expert_as_published": "kernels/matmul_expert_aws.py: same kernel with AWS's bf16 K-block accumulation. Referee verdict WRONG: 5.3 bf16 ulps at K=2048 (limit 4).",
+      "floor": "not measured: no matmul floor is claimed"
+    },
+    "rmsnorm": {
+      "input_layernorm 2048x4096": {
+        "start_us": 163.1,
+        "floor_us": 89.7
+      },
+      "q_norm 32768x128": {
+        "start_us": 355.0,
+        "floor_us": 51.1
+      },
+      "floor": "kernels/copy_floor.py: the same bytes copied through SBUF, rows packed into partitions in >= 2 overlapping chunks. Against the one-tile-per-DMA copy (kernels/copy_tiled.py): 89.7 vs 91.3 us at 2048x4096, 51.1 vs 344.2 us at 32768x128 (256-byte rows).",
+      "room": "start / floor = 1.82x at input_layernorm, 6.95x at q_norm, 3.68x on the sum",
+      "history_256_tokens": {
+        "start_us": 114.3,
+        "floor_us": 38.4,
+        "why_replaced": "at 256 tokens a 4 MiB copy took ~20 us, mostly the ~17 us launch cost"
+      }
+    }
+  }
+}

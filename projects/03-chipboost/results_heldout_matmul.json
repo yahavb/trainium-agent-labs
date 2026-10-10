@@ -1,0 +1,171 @@
+{
+ "owner": "P2 heldout_grid.py",
+ "source": "chip",
+ "seed": 20261010,
+ "measured": "2026-10-10 17:46:35",
+ "seat": "102",
+ "heldout": [
+  {
+   "kernel": "matmul",
+   "which": "start",
+   "shape": "256x6144x4096",
+   "passed": true,
+   "speedup": 1.0,
+   "time_us": 770.3,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "start",
+   "shape": "256x2048x4096",
+   "passed": true,
+   "speedup": 1.0,
+   "time_us": 230.7,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "start",
+   "shape": "512x4096x2048",
+   "passed": true,
+   "speedup": 1.0,
+   "time_us": 522.9,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "start",
+   "shape": "128x4096x6144",
+   "passed": true,
+   "speedup": 1.0,
+   "time_us": 353.9,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "start",
+   "shape": "640x1280x2560",
+   "passed": true,
+   "speedup": 1.0,
+   "time_us": 156.6,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "start",
+   "shape": "1024x4096x512",
+   "passed": true,
+   "speedup": 1.0,
+   "time_us": 243.7,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "expert",
+   "shape": "256x6144x4096",
+   "passed": true,
+   "speedup": 2.824,
+   "time_us": 272.7,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "expert",
+   "shape": "256x2048x4096",
+   "passed": true,
+   "speedup": 2.081,
+   "time_us": 110.9,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "expert",
+   "shape": "512x4096x2048",
+   "passed": true,
+   "speedup": 3.785,
+   "time_us": 138.1,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "expert",
+   "shape": "128x4096x6144",
+   "passed": true,
+   "speedup": 1.277,
+   "time_us": 277.2,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "expert",
+   "shape": "640x1280x2560",
+   "passed": true,
+   "speedup": 1.568,
+   "time_us": 99.9,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "expert",
+   "shape": "1024x4096x512",
+   "passed": true,
+   "speedup": 3.061,
+   "time_us": 79.6,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "aws as published",
+   "shape": "256x6144x4096",
+   "passed": false,
+   "speedup": null,
+   "time_us": null,
+   "message": "at held-out 256x6144x4096: PRECISION LOSS: errors up to 4.9 bf16 ulps against an fp32 reference (the limit is 4; honest bf16 output rounding is ~1). Accumulate in an fp32 PSUM tile across the whole contraction and round to bf16 once, at the end."
+  },
+  {
+   "kernel": "matmul",
+   "which": "aws as published",
+   "shape": "256x2048x4096",
+   "passed": true,
+   "speedup": 2.131,
+   "time_us": 108.3,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "aws as published",
+   "shape": "512x4096x2048",
+   "passed": true,
+   "speedup": 3.808,
+   "time_us": 137.3,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "aws as published",
+   "shape": "128x4096x6144",
+   "passed": true,
+   "speedup": 1.281,
+   "time_us": 276.3,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "aws as published",
+   "shape": "640x1280x2560",
+   "passed": true,
+   "speedup": 1.588,
+   "time_us": 98.6,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "aws as published",
+   "shape": "1024x4096x512",
+   "passed": true,
+   "speedup": 2.951,
+   "time_us": 82.6,
+   "message": ""
+  }
+ ]
+}

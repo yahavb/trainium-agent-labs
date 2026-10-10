@@ -1,0 +1,161 @@
+# CHIPBOOST status: P2 (`kernels-search`)
+
+*Updated Oct 10 2026, about 13:30. Measured on seat-102 with P1's referee (`speedcheck.py`: device clock,
+interleaved A/B), branch `kernels-search` at 2fb343c. Every number below is from the chip unless marked.*
+
+## REVIEW.md items for P2: status
+
+`REVIEW.md` (on master, merged into this branch) listed five items for P2. Where each stands:
+
+| # | Item | Status |
+|---|---|---|
+| 1 | Measure the expert on the chip; drop it if under ~1.3x | **Done.** 2.494x faster, correct on 8 chip shapes. Numbers below and in `results_p2.json` |
+| 2 | Strip the hints from the start kernels: they leak the fix into the model-alone arm | **Done.** Their docstrings now say only what they compute: matmul_start ~320 tokens, rmsnorm_start ~410. The "why slow" analysis is below, where the model never reads it |
+| 3 | RMSNorm and copy timing shapes too small: a ~17 us launch cost hides any speedup | **Done.** Timing is now at 2048 tokens: 2048x4096 and q_norm's 32768x128. 256 tokens moved to held-out. **The RMSNorm numbers below are the old 256-token ones; re-measure** |
+| 4 | The score sums the timing shapes, so gate_up dominates | **Stated.** gate_up is 72% of the start kernel's 960 us (here and in `shapes.py`) |
+| 5 | Cut `matmul_expert_aws.py`; fix the expert's docstring | **Docstring fixed.** The AWS kernel is **kept on purpose**: it is AWS's own published tutorial kernel, not a planted cheat, and rerunning it is the evidence for finding 1. No loop runs it, so it costs nothing |
+
+Loop items for `search.py` (on the second agent's `p2-tools` branch): `heldout=False` inside the loop and
+one held-out check of the best kernel at the end; `--budget` counted in referee calls, shared with
+`agent.py`; logs in `logs/seat-102/`. The SBUF filter leaves 62 of 72 triples, matching REVIEW's count.
+
+## Summary
+
+| Item | State |
+|---|---|
+| `shapes.py`: dev / timing / held-out shapes, in the referee's spec format | Done. The referee runs `--op matmul, rmsnorm, copy, swiglu` |
+| `kernels/matmul_start.py` (the baseline) | Done. Correct on the chip |
+| `kernels/matmul_expert.py` (the expert ceiling) | Done. **2.49x faster** than start; correct on 8 chip shapes, worst 0.50 ulps |
+| `kernels/matmul_expert_aws.py` (AWS as published) | Done. **Fails the referee**: 5.3 bf16 ulps (limit 4) |
+| `kernels/rmsnorm_start.py` | Done. Correct on 7 chip shapes: ragged rows, the eps trap, a 1-token decode |
+| `kernels/copy_tiled.py`, `kernels/copy_floor.py` (RMSNorm's floor) | Tiled floor measured; packed floor written, not yet run |
+| `search.py` (arm c: random search, no AI) | **Done**, tested (5 tests, stub run). Ready to run in the pod |
+| `check_kernels.py`, `pod_check.sh` | **Done**: every kernel x dev / held-out shape in the simulator |
+| `heldout_grid.py` (panel 5) | **Done, run on the chip**: `results_heldout_matmul.json`, 18 cells, 1 failing (AWS at K=6144) |
+| Hardened referee (P1) | Merged into this branch; `shapes.py` meets its contract (`out`, `heldout` samplers) |
+| `results_p2.json` (for the dashboard) | Done, from the numbers below |
+
+## Measured
+
+**Matmul**, Qwen3-8B per-core shapes at 256 prompt tokens:
+
+| Kernel | gate_up 4096x256x6144 | q_proj 4096x256x2048 | Sum | Verdict |
+|---|---|---|---|---|
+| `matmul_start` | 691.7 us (18.6 TFLOP/s) | 268.8 us (16.0 TFLOP/s) | 960.5 us | baseline |
+| `matmul_expert` | **280.4 us (45.9 TFLOP/s)** | **104.7 us (41.0 TFLOP/s)** | **385.1 us** | **faster, 2.494x** |
+| `matmul_expert_aws` | not timed | not timed | not timed | **wrong: 5.3 bf16 ulps** |
+
+**RMSNorm** against its floor (a copy of the same bytes). **Old timing shapes (256 tokens), kept for the
+record; the timing shapes are now 2048 tokens, re-measure:**
+
+| Kernel | input_layernorm 256x4096 | q_norm 4096x128 | Sum |
+|---|---|---|---|
+| `rmsnorm_start` | 46.8 us | 67.2 us | 114.3 us |
+| `copy_tiled` (floor) | 20.5 us | 51.6 us | 72.1 us |
+| **Room left** | **2.28x** | **1.30x** | 1.59x |
+
+- **Reproducible across seats:** the start kernel measured 691.7 / 268.8 us here and 691.7 / 268.4 us on P1's
+  seat-100.
+- **Correctness was checked everywhere, not only where the timing was taken.** That covers the 6 held-out
+  matmul shapes with hostile values: odd 10/5/5 tile counts, a single N-tile, K=6144 in 6 blocks. For RMSNorm,
+  the 5 held-out shapes are 127, 129 and 1 rows, a ragged 1000x128, and 2048 rows, all with quiet, loud and
+  silent rows.
+
+**Held-out grid on the chip** (`heldout_grid.py`, hostile inputs, seed 20261010, timed A/B against start at
+each shape; 18 cells in 55 s). None of these shapes was used to tune anything:
+
+| Held-out shape (MxKxN) | start | expert | aws as published |
+|---|---|---|---|
+| 256x6144x4096 (down_proj, 6 K-blocks) | 770.3 us | 272.7 us, **2.82x** | **FAIL: 4.9 bf16 ulps** |
+| 256x2048x4096 (o_proj) | 230.7 us | 110.9 us, 2.08x | 108.3 us, 2.13x |
+| 512x4096x2048 (q_proj, 512 tokens) | 522.9 us | 138.1 us, **3.79x** | 137.3 us, 3.81x |
+| 128x4096x6144 (gate_up, one M-tile) | 353.9 us | 277.2 us, 1.28x | 276.3 us, 1.28x |
+| 640x1280x2560 (odd tile counts 5/10/5) | 156.6 us | 99.9 us, 1.57x | 98.6 us, 1.59x |
+| 1024x4096x512 (kv_proj, one N-tile) | 243.7 us | 79.6 us, 3.06x | 82.6 us, 2.95x |
+
+**Why the start kernels are slow** (kept out of their docstrings so the model never reads it):
+
+- **matmul_start:** every (m, n) output tile reloads its whole row of lhsT tiles and column of rhs tiles,
+  so the same bytes are fetched M/128 and N/512 times. The expert blocks M, N and K to reuse them.
+- **rmsnorm_start:**
+  - the weight row reaches the 128 partitions through 128 separate DMAs;
+  - the row tiles run in a plain Python loop, so one tile's load cannot overlap the previous tile's compute;
+  - every tile takes three full passes (square-and-sum, scale, weight);
+  - at q_norm's 128 columns, each row is only 256 bytes.
+
+## Findings worth telling the room
+
+0. **The held-out grid confirmed the precision finding on the chip, at the predicted shape.**
+   - AWS's published kernel fails only at K=6144 (down_proj, 6 K-blocks), with 4.9 bf16 ulps under hostile
+     inputs. The laptop emulation predicted 4.7.
+   - Everywhere else, our fp32-accumulating expert and AWS's bf16 version are within 3% of each other in
+     time, so **the precision fix costs no measurable speed.**
+   - The expert's speedup depends on the shape: 1.28x with a single M-tile, where there is nothing to reuse
+     across M, up to 3.79x at 512 tokens. One number would hide that; the grid does not.
+
+1. **AWS's published fully optimised matmul loses precision at Qwen3's sizes.**
+   - The SDK 2.32 tutorial adds each K-block's result into a tile of the *output* dtype. In bf16, every
+     output is rounded once per block.
+   - Its own test uses K=1024, a single block, so that path is never exercised.
+   - The referee measured **5.3 bf16 ulps at K=2048** (limit 4, honest rounding is about 1).
+   - Emulated on the laptop, it reaches **9 to 13 ulps at K=4096 and 6144**. Our fp32-accumulating version
+     measured 0.50.
+   - The fix costs SBUF, not speed. Our version is the 2.49x one.
+2. **Hostile inputs hide precision loss.** Under P1's hostile pattern (large magnitudes, zeros, sign flips),
+   the same bf16 accumulation measured only 3.4 to 3.5 ulps at K=4096 (emulated), under the limit. A
+   referee must judge precision on ordinary inputs too. Ours does, at the timing shapes.
+3. **The precision catch happened in the simulator** because the dev shapes include K=2048, which is two
+   K-blocks. Without that shape it would have been found only on the chip.
+4. **The byte counter overstated dtype-converting DMAs by 2x.**
+   - A float32 SBUF -> bf16 HBM store was counted at its float32 size, so the expert matmul looked like
+     1.29x the floor while moving exactly the floor.
+   - Fixed in nkibench (count `min(src, dst)`). The referee's own counter still counts `src`.
+5. **Narrow rows starve the DMAs.**
+   - Copying 4096x128 bf16 (2 MB) took 51.6 us; 256x4096 (4 MB) took 20.5 us.
+   - q_norm's rows are 256 bytes, so a 128-row tile moves 32 KB per DMA.
+   - Packing 32 rows per partition is the obvious fix. It is the packed `copy_floor`, and later an RMSNorm
+     move.
+6. **A float32 tolerance rejects correct bf16 kernels.** A correct bf16 matmul one rounding step from the
+   reference measured 2.2% of the output's RMS, over the old 2e-2 bar. Levels 9-12 carry their own
+   tolerance, and the referee judges bf16 in ulps.
+
+## Reproduce (in the seat pod)
+
+```bash
+cd /workspace/chipboost/projects/03-chipboost && export CHIPBOOST_SEAT=102
+python tools/probe_nki.py --sim-only                                           # every kernel, simulator
+python speedcheck.py --op matmul  --check kernels/matmul_expert.py             # 2.49x, correct
+python speedcheck.py --op matmul  --check kernels/matmul_expert_aws.py         # wrong: precision loss
+python speedcheck.py --op rmsnorm --check kernels/rmsnorm_start.py             # start time (vs itself)
+python speedcheck.py --op copy --check kernels/copy_tiled.py --baseline kernels/copy_tiled.py
+python speedcheck.py --op copy --check kernels/copy_floor.py --baseline kernels/copy_tiled.py
+```
+
+## Not claimed
+
+- **No matmul floor and no end-to-end Qwen number.** The expert is measured against our start kernel, not
+  against the production kernels vLLM-Neuron uses.
+- **The Amdahl share of matmul in a Qwen3 layer needs a profile of the served model, which we have not
+  taken.** Any end-to-end figure we quote will be labelled a projection.
+
+## The random-search arm (arm c)
+
+`search.py` searches the expert kernel's three block caps. It does not write kernels.
+- **The space:** at the primary shape (K=4096, M=256, N=6144) the tile counts are M 2, N 12, K 32, giving
+  72 triples. 62 fit SBUF.
+- **The order:** attempt 0 is the expert as shipped (caps 16, 2, 8, which run as 2, 2, 8), then 23 distinct
+  random triples.
+- **The budget:** 24 referee evaluations, the team's unit (agent.py's too).
+- **The asymmetry, said plainly:** random search starts from AWS's kernel design and only tunes its knobs,
+  so its curve starts near 2.5x. The model arms start from the slow tiled kernel and must find the design.
+  That is the comparison as TEAM.md defines it, and the note must say so.
+
+    nohup python search.py --budget 24 --seed 0 > logs/seat-102/search_s0.log 2>&1 < /dev/null &
+
+## Next
+
+1. Run arm c (seed 0), then repeats with seeds 1 and 2 for the spread. Copy `logs/seat-102/` out of the
+   pod and commit it.
+2. Re-run `heldout_grid.py` at the end with every arm's best: its rows come from the logs.
+3. No code goes to master, only docs: teammates who need P2's code merge `kernels-search` into their own
+   branch.
