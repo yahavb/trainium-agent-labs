@@ -1,0 +1,12 @@
+level 10: row softmax of one tile
+  rules      clean
+
+  case seq=128 dim=64:
+    HBM traffic is 65,536 bytes against a floor of 65,536 (1.00x) -- essentially optimal. Every byte is read about once.
+
+  case seq=64 dim=128:
+    HBM traffic is 65,536 bytes against a floor of 65,536 (1.00x) -- essentially optimal. Every byte is read about once.
+
+  case seq=96 dim=32:
+    HBM traffic is 24,576 bytes against a floor of 24,576 (1.00x) -- essentially optimal. Every byte is read about once.
+  numerics   3/3 shapes passed

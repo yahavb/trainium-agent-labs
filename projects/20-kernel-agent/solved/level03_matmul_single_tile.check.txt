@@ -1,0 +1,12 @@
+level 3: matmul, single tile
+  rules      clean
+
+  case K=128 M=64 N=512:
+    HBM traffic is 425,984 bytes against a floor of 425,984 (1.00x) -- essentially optimal. Every byte is read about once.
+  numerics   1/1 shapes passed
+
+  K=128 M=64 N=512: 425,984 HBM bytes in 3 transfers (via nki.simulate, dtype float32)
+    NOTE: the 222 Flops/Byte ridge is the published bfloat16 figure, and this ran in float32. Treat the verdict as indicative and re-measure in bfloat16 before quoting a number.
+    arithmetic intensity 19.7 Flops/Byte. Ceiling at this shape is 19.7 (every byte read once); the hardware ridge is 222.
+    YOUR KERNEL: at the byte floor already, so there is no reuse left to find.
+    THIS SHAPE: even a perfect kernel reaches only 19.7, which is 11.3x under the ridge, so the operation is memory bound here however it is written. Do not chase compute-bound at this size -- for a square bfloat16 matmul you need about n >= 667 before the ceiling clears the ridge.
