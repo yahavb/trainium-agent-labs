@@ -340,6 +340,7 @@ stack five programmers tend to lose these.
 |---|---|---|
 | **1** | [**The heat-rod agent**](projects/01-heat-rod-pde/) — a small model solves heat-equation problems under a checker that grades the physics, with a calculator it aims itself. | **solved 6/6** |
 | **2** | [**The kernel agent**](projects/02-kernel-agent/) — an agent writes NKI kernels that run on the chip and keeps verifying its own output. | runs; **unsolved** |
+| **3** | [**Chip Builder**](projects/03-chip-builder/) — gpt-oss-20b on the seat redesigns the chip it runs on for a serving problem, graded by a checker calibrated from live vLLM, neuron-monitor and Neuron system-trace measurements. | runs; cost-down **−36% die area** in one real run |
 
 Both project READMEs open with a real transcript of what the loop prints, so you can judge a project — and
 tell progress from flailing — before starting.

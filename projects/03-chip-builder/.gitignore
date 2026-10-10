@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+data/
+.preview/
+.tmp-e2e*/
+.env
+

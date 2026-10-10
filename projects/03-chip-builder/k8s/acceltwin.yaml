@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: acceltwin-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: acceltwin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: acceltwin
+  template:
+    metadata:
+      labels:
+        app: acceltwin
+    spec:
+      containers:
+        - name: acceltwin
+          image: acceltwin:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: ACCELTWIN_LLM_BASE_URL
+              value: http://vllm:8000/v1
+            - name: ACCELTWIN_LLM_MODEL
+              value: openai/gpt-oss-20b
+            - name: ACCELTWIN_VLLM_METRICS_URL
+              value: http://vllm:8000/metrics
+            - name: ACCELTWIN_DB_PATH
+              value: /data/acceltwin.db
+            - name: ACCELTWIN_EVENT_LOG
+              value: /data/events.jsonl
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: "500m"
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: acceltwin-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: acceltwin
+spec:
+  selector:
+    app: acceltwin
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+

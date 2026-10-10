@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Pick a serving problem, measure it on a live Trainium chip, and let an agent design and check a better chip.">
+  <title>Chip Builder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css?v=5.0.0">
+  <script src="/static/app.js?v=5.0.0" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"></span>Chip Builder</a>
+      <ol class="rail" id="rail" aria-label="Progress">
+        <li data-step="problem">Problem</li>
+        <li data-step="measure">Measure</li>
+        <li data-step="explore">Explore</li>
+        <li data-step="solution">Solution</li>
+      </ol>
+      <span class="badge model-badge" id="model-badge"><span class="dot"></span><span id="model-label">gpt-oss-20b</span></span>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="hero">
+      <h1>Find a better chip for the model you are serving.</h1>
+      <p class="lede">Pick a problem. The agent measures it on your live Trainium, proposes chip changes, and a checker grades every attempt until one wins.</p>
+    </section>
+
+    <section class="step" id="problem">
+      <div class="step-head"><span class="eyebrow">01 · Problem</span><h2>What should the chip be better at?</h2></div>
+      <div class="scenarios" id="scenarios" role="radiogroup" aria-label="Design scenarios"></div>
+      <form class="brief" id="brief-form">
+        <input id="goal" type="text" aria-label="Design brief" autocomplete="off">
+        <button type="submit" class="btn" id="start">Run on Trainium <span aria-hidden="true">→</span></button>
+      </form>
+      <p class="status" id="status" hidden></p>
+    </section>
+
+    <section class="step" id="measure" hidden>
+      <div class="step-head"><span class="eyebrow">02 · Measure</span><h2>Replaying real requests on your chip</h2>
+        <p class="sub" id="measure-sub">Streaming requests to the live model while vLLM, neuron-monitor and the Neuron trace record what the hardware does.</p></div>
+      <div class="live-grid">
+        <div class="card lanes-card">
+          <div class="card-head"><span>Requests to <b id="lanes-model">the model</b></span>
+            <ul class="lane-legend"><li class="queued">queued</li><li class="prefill">prefill</li><li class="decode">decoding</li><li class="done">done</li></ul></div>
+          <ol class="lanes" id="lanes"></ol>
+        </div>
+        <div class="tiles-live" id="live-metrics"></div>
+      </div>
+      <div class="finding" id="finding" hidden></div>
+      <details class="more" id="judging" hidden>
+        <summary>How designs are judged: what was measured, how the simulator was fitted, and the checks</summary>
+        <div class="checker-grid" id="checker-grid"></div>
+      </details>
+    </section>
+
+    <section class="step" id="explore" hidden>
+      <div class="step-head"><span class="eyebrow">03 · Explore</span><h2>The agent proposes, the checker grades</h2>
+        <div class="judge" id="judge"></div></div>
+      <div class="card calls" id="calls"></div>
+      <div class="card chart-card" id="chart" hidden></div>
+      <div class="tiles-head">
+        <span class="hint">Click a design for its reasoning, checks and the feedback the model received.</span>
+        <ul class="legend" aria-label="Diagram legend">
+          <li><span class="swatch compute"></span>Compute</li><li><span class="swatch hbm"></span>HBM</li>
+          <li><span class="swatch sbuf"></span>SRAM</li><li><span class="swatch dma"></span>DMA</li>
+          <li><span class="swatch changed"></span>Changed</li><li><span class="swatch ghost"></span>Was here</li>
+        </ul>
+      </div>
+      <ol class="tiles" id="iterations"></ol>
+      <div class="detail" id="detail" hidden></div>
+    </section>
+
+    <section class="step" id="solution" hidden>
+      <div class="step-head"><span class="eyebrow">04 · Solution</span><h2 id="solution-title">The winning chip</h2>
+        <p class="sub" id="solution-sub"></p></div>
+      <div id="solution-body"></div>
+    </section>
+  </main>
+</body>
+</html>
