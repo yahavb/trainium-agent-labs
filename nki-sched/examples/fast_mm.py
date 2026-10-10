@@ -1,0 +1,100 @@
+"""Fast bf16 matmul: a BM x BN output block lives in PSUM (several banks) while K streams past it.
+
+    python examples/fast_mm.py out.py          # emit the kernel
+    python examples/fast_mm.py --tiny          # replay on the tiny chip, checked after every call
+
+Per k-group (KT x 128 rows of K) one DMA per tile brings lhsT[:, block of M] and rhs[:, block of N]
+into SBUF; every (k tile, m tile, n tile) is one nc_matmul into its own PSUM bank.
+"""
+
+import sys
+
+import _common as c
+from nki_sched import NC_DEFAULT, NC_TINY, Sched
+from nki_sched.ir import PSUM, SBUF
+
+
+def fast(s: Sched, hw, mt=4, nt=2, kt=4, cores=1, dma=None, order="mn", resident=None, shard_on=None):
+    """mt x nt PSUM tiles (mt*nt <= hw.psum_banks), kt k-tiles per load group.
+
+    order     "mn": m blocks outer, n blocks inner;  "nm": the other way round
+    resident  None | "lhsT" | "rhs": keep that operand's whole K strip in SBUF across the inner block loop
+              (needs kt == 1: the strip is one SBUF tile growing along K)
+    shard_on  "m" | "n": which block loop is split over `cores` NeuronCores (default: the outer one)
+    """
+    P, SF, MF = hw.pmax, hw.stationary_fmax, hw.moving_fmax
+    BM, BN = mt * SF, nt * MF
+    mo, mi = s.split("C.m", BM, names=("mo", "mi"), perfect=True)
+    mti, mp = s.split(mi, SF, names=("mt", "mp"), perfect=True)
+    no, ni = s.split("C.n", BN, names=("no", "ni"), perfect=True)
+    outer, inner = (mo, no) if order == "mn" else (no, mo)
+    s.reorder(outer, inner, mti, mp, ni)
+    s.compute_at("matmul", at=inner)
+    # the accumulator block: [BM, BN] -> [128, MT, BN] across PSUM banks
+    s.split("matmul.init.m", SF, names=("im_t", "im_p"), perfect=True)
+    if kt > 1:
+        km, kr = s.split("matmul.k", P * kt, names=("kb", "kr"), perfect=True)
+        ktl, kp = s.split(kr, P, names=("kt", "kp"), perfect=True)
+    else:
+        km, kp = s.split("matmul.k", P, names=("kb", "kp"), perfect=True)
+        ktl = km
+    a, b = s.split("matmul.m", SF, names=("um_t", "um_p"), perfect=True)
+    d, e = s.split("matmul.n", MF, names=("un_t", "un_q"), perfect=True)
+    if kt > 1:
+        s.reorder(km, ktl, a, d, kp, b, e)
+    else:
+        s.reorder(km, a, d, kp, b, e)
+    s.fold("matmul")
+    s.set_memory("matmul", PSUM)
+    s.stage_in("lhsT", at=ktl, mem=SBUF, name="lhsT_sb")
+    s.stage_in("rhs", at=ktl, mem=SBUF, name="rhs_sb")
+    if kt > 1:
+        assert resident is None, "resident operands need kt == 1"
+        s.hoist("lhsT_sb", to=km)
+        s.hoist("rhs_sb", to=km)
+    elif resident:
+        s.hoist(resident + "_sb", to=outer)
+    s.stage_out("C", at=mti, mem=SBUF, name="C_sb")
+    s.replace(kp, "ns.tensor.matmul")
+    s.fold_init("matmul")
+    if dma:   # {buffer: (dge, engine)}
+        for buf, (dge, eng) in dma.items():
+            s.set_dma(buf, dge, eng)
+    if cores > 1:
+        s.shard({"m": mo, "n": no}[shard_on] if shard_on else outer, cores)
+
+
+def main():
+    if "--tiny" in sys.argv:
+        from nki_sched import verify
+        import numpy as np
+        shapes = [dict(K=16, M=32, N=32)]
+        oracle = verify.torch_oracle(c.matmul_spec)
+        sch = Sched(c.matmul_proc(name="mm"), NC_TINY, check=verify.make_checker(oracle, shapes))
+        fast(sch, NC_TINY, mt=2, nt=2, kt=2)
+        print(sch.show())
+        return
+    sch = Sched(c.matmul_proc(dtype="bf16", name="mm"), NC_DEFAULT)
+    fast(sch, NC_DEFAULT)
+    open(sys.argv[1], "w").write(sch.source())
+
+
+
+DMA_PLANS = {
+    "sw": None,
+    "hw1": {"lhsT_sb": ("hwdge", "sync"), "rhs_sb": ("hwdge", "sync"), "C_sb": ("hwdge", "sync")},
+    "hw2": {"lhsT_sb": ("hwdge", "sync"), "rhs_sb": ("hwdge", "scalar"), "C_sb": ("hwdge", "sync")},
+    "hw3": {"lhsT_sb": ("hwdge", "scalar"), "rhs_sb": ("hwdge", "sync"), "C_sb": ("hwdge", "scalar")},
+}
+
+
+def fast_env(s, hw):
+    """fast() with block shape from MT / NT / KT environment variables (sweeps)."""
+    import os
+    fast(s, hw, mt=int(os.environ.get("MT", 4)), nt=int(os.environ.get("NT", 2)), kt=int(os.environ.get("KT", 4)), cores=int(os.environ.get("CORES", 1)),
+         dma=DMA_PLANS[os.environ.get("DMA", "sw")],
+         order=os.environ.get("ORDER", "mn"), resident=os.environ.get("RES") or None, shard_on=os.environ.get("SHARD") or None)
+
+
+if __name__ == "__main__":
+    main()
