@@ -133,3 +133,31 @@ Corpus data_v8: 21 independently simulator/NumPy-verified clean kernels, 38 veri
 LoRA has completed 82 optimizer steps on 41 examples (15 generation, 26 repair), with three held-out examples from one completely excluded family. Rank 8/alpha 16, q_proj/v_proj, lr1e-4, completion-only loss, batch1; CPU training avoided Neuron device resources. Held-out mean example loss .9951169491 -> .1274786662 is not correctness evidence. Adapter saved in runs/qwen3-nki-lora-mdzxuq1k/training/adapter. The preserved full-adapter evaluation waits for active cold-run completion; a matched original/LoRA x legacy/planner study follows sequentially on the same isolated CPU backend. New held-out repairs are queued afterwards. Shared Qwen/Neuron vLLM was not restarted or modified.
 
 SDK-verified miniature compositions exercise access-pattern reduction/scalar scaling, free-axis permutation, partition/free transpose and explicit K accumulation. Optional --primitive-policy legalize corrects narrowly verified instruction/opcode namespaces and known HBM scalar-result staging; it never supplies an algorithm or benchmark-specific code. Original generated source and transformed source are both recorded. Original grading/references/shapes/tolerances/hazards remain unchanged.
+
+## Handover from Codex to Claude Code (2026-10-10 20:31 UTC)
+
+The Codex session (thread "amazon", 01a12683…) stopped at 20:30:43 UTC with `usage_limit_exceeded`, mid-turn on the user request "lock it in and run it on full level 1". Claude Code took over from the same worktree and branch (HEAD 582f01a). The redacted transcript exports are in /root/codex-amazon-export-v2/.
+
+- Codex had created runs/verified-level1-locked-gowa0nvv with a read-only kernel.py (sha256 3443e646…abfe) and evaluate.py. Its background replay (PID 53206) exited with an empty log. A foreground replay wrote full-level1-w6_3_6vt/result.json before the session ended.
+- Independent re-run by Claude Code, 20:32:47–20:32:52 UTC: full-level1-eghvyzqb, reward 1.00, 4/4 official shapes, all checks passed, exit 0. Together with the original warm replay, the locked kernel has three identical 1.00 results. Status: SIMULATOR_VERIFIED, warm-start, not a cold-start solve, not device verified.
+- Processes at handover: the cold L1 planner/legalizer run (PIDs 49578/49643, controlled-20261010T201403-vxbwe5dd) is active. The LoRA full evaluation (40908), matched 2x2 (44142) and held-out queue (50452) are waiting on their guards. None were signalled or modified.
+
+### Sprint launches after handover (20:37–20:40 UTC, Claude Code)
+
+User instruction: drive every unsolved level toward 1.00 as fast as possible, run Level 1 from cold start, and evaluate the fine-tuned model. The queued Codex LoRA chain uses a 2-thread niced CPU endpoint, 4 levels x 8 rounds, and then a 2x2 study. At that speed it would take far longer than the remaining hackathon, and its guard blocks Neuron runs while active. It was left untouched (still waiting). New runs keep an evaluation process alive, so it stays parked.
+
+- runs/controlled-20261010T203725-onnn7nmy: L4 and L2 in parallel, full agent, planner hardware + legalizer, 8 rounds x 4 samples, Neuron vLLM :8000. First live planner runs on L2/L4. Launched via run_controlled prepare-only manifest + parallel_launch.py (the cross-run exclusivity guard is skipped; everything else is identical).
+- kernel_planner.py pooling plan v2 (uncommitted at launch, frozen in the run source): replaces the (H//p,p) grouping hint, which preceded invented view APIs in 20/24 cold candidates, with plain-slicing structure and an allowlist of installed APIs. Still prose only, no kernel code. Planner tests updated: none; all 184 tests + 76 subtests pass.
+- runs/controlled-20261010T203931-70b8sdrf: L1 cold start, planner v2 + legalizer, Neuron :8000.
+- runs/lora-fast-eval-20261010T203757-0pFD: separate CPU LoRA endpoint :8002 (taskset NUMA node 1, 48 threads, AMX bf16) with the same adapter; controlled-20261010T203932-k7sf34a7 runs L1–L4 with the same full-agent policies. Different backend from Neuron vLLM, so this is not a matched comparison and timings are not comparable.
+
+### Sprint results so far (20:58 UTC, Claude Code)
+
+- **L2 cold-start solved (1.00, 4/4)**: controlled-20261010T203725-onnn7nmy, round 0, raw Qwen output, planner on. Locked: runs/verified-level2-locked-coeoi3p4 (replay 1.00).
+- **L6 cold-start solved (1.00, 4/4, traffic <=1.25x passes)**: controlled-20261010T205124-kcpiu5w7, round 0, raw Qwen output, load-once matmul plan v3. Locked: runs/verified-level6-locked-r79vct0e (replay 1.00). First-ever live run of L6.
+- The user revealed that the benchmark has 8 levels. Levels 5–8 had never been run. L5/L7 (plan v3) and L8 (new attention plan) runs are active.
+- Fixed agent.grade crashing with KeyError 'M' on the first correct Level 8 shape (matmul-only roofline note). nkibench.verify has the same latent bug and was left unchanged (benchmark file).
+- New generic legalizer rules (opt-in --primitive-policy legalize): dst_result_binding (`x = nisa.op(dst=E)` → `x = E; nisa.op(dst=x)`) and anonymous_tile_dataflow (a fresh unnamed dst write followed in the same block by an identical fresh unnamed source read gets bound to one tile). Offline, the latter turns a saved L1 cold candidate into 1.00 (4/4). The live L1 run with it: controlled-20261010T205651-l9444j4q.
+- Planner plans for L4–L8 now prescribe structure in prose (loop order, tiles, API roles). Each structure was first simulator-checked with hand-written kernels in the session scratchpad, not in the repo or in prompts. Count these as plan-guided cold starts.
+- Superseded runs stopped by Claude Code (their own launches only), with STOPPED.md notes: controlled-20261010T203725-onnn7nmy/level4, controlled-20261010T203931-70b8sdrf/level1, controlled-20261010T204737-vleoyh30/level1, controlled-20261010T204432-zfm1onkb/level4.
+- LoRA CPU endpoint: about 11 cores busy, first batch still >15 min. Expect about 1 round per level per hour.

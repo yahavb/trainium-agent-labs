@@ -36,3 +36,23 @@ class PrimitiveLegalizerTests(unittest.TestCase):
   with patch.object(agent,'ask',return_value=s) as ask,patch.object(agent,'grade',return_value=(.3,{},'unknown')),contextlib.redirect_stdout(io.StringIO()):agent.solve(opts,1,log)
   rows=[json.loads(x) for x in log.getvalue().splitlines()];self.assertEqual(ask.call_count,4)
   self.assertEqual(rows[0]['generated_source'],s.strip());self.assertTrue(rows[0]['primitive_changes']['applied']);self.assertIn('nisa.tensor_scalar',rows[0]['code'])
+ def test_dst_style_result_bound_to_destination(self):
+  s=specs()[0]
+  self.assertIn('    z=nl.ndarray(y.shape,a.dtype,buffer=nl.sbuf)\n    nisa.tensor_scalar(dst=z,data=y',s['source'])
+  broken=s['source'].replace('    z=nl.ndarray(y.shape,a.dtype,buffer=nl.sbuf)\n    nisa.tensor_scalar(dst=z,data=y','    z=nisa.tensor_scalar(dst=nl.ndarray(y.shape,a.dtype,buffer=nl.sbuf),data=y')
+  self.assertFalse(validate(broken,s)['passed'])
+  fixed,meta=legalize(broken)
+  self.assertIn('dst_result_binding',{c['kind'] for c in meta['changes']});self.assertTrue(validate(fixed,s)['passed'])
+ def test_dst_binding_skips_self_reference_and_non_dst_calls(self):
+  source='import nki.language as nl\nimport nki.isa as ni\ndef f(a):\n a=ni.tensor_scalar(dst=a,data=a,op0=nl.multiply,operand0=.5)\n b=nl.sum(a,axis=1)\n return b'
+  self.assertEqual(legalize(source)[0],source)
+ def test_anonymous_write_then_identical_anonymous_read_bound(self):
+  s=specs()[0]
+  self.assertIn('    z=nl.ndarray(y.shape,a.dtype,buffer=nl.sbuf)\n    nisa.tensor_scalar(dst=z,data=y',s['source'])
+  broken=s['source'].replace('    z=nl.ndarray(y.shape,a.dtype,buffer=nl.sbuf)\n    nisa.tensor_scalar(dst=z,data=y','    nisa.tensor_scalar(dst=nl.ndarray(y.shape,a.dtype,buffer=nl.sbuf),data=y').replace('src=z','src=nl.ndarray(y.shape,a.dtype,buffer=nl.sbuf)')
+  self.assertFalse(validate(broken,s)['passed'])
+  fixed,meta=legalize(broken)
+  self.assertIn('anonymous_tile_dataflow',{c['kind'] for c in meta['changes']});self.assertTrue(validate(fixed,s)['passed'])
+ def test_unmatched_anonymous_read_untouched(self):
+  source='import nki.language as nl\nimport nki.isa as ni\ndef f(a):\n ni.dma_copy(dst=a,src=nl.ndarray((1,1),a.dtype,buffer=nl.sbuf))\n return a'
+  self.assertEqual(legalize(source)[0],source)

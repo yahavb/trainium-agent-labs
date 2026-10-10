@@ -172,7 +172,9 @@ def grade(source, level):
             failures.append((nkibench.label(case, level), m))
             continue
         passed += 1
-        if level >= 3 and counted["bytes"]:
+        # The roofline note is matmul-shaped; Level 8 cases (seq/dim) have no M/K/N and
+        # previously raised KeyError on their first correct shape.
+        if level >= 3 and counted["bytes"] and all(k in case for k in ("M", "K", "N")):
             intensity = nkibench.roofline(
                 nkibench.matmul_flops(case["M"], case["K"], case["N"]), counted["bytes"])
 

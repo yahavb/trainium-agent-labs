@@ -1,6 +1,7 @@
 """Optional conservative instruction lowering, without algorithm reconstruction.
 
-Only tensor_scalar namespace/opcode and known HBM-result staging are supported.
+Only tensor_scalar namespace/opcode, known HBM-result staging and binding the
+result name of dst-style instructions to their dst are supported.
 No benchmark-specific names/shapes, source execution, or complete kernels. The
 unchanged checker must verify every transformed candidate; no static correctness
 or device-execution claim follows from these edits.
@@ -52,7 +53,66 @@ def legalize(source):
     def attr(name,member):return ast.Attribute(ast.Name(name,ast.Load()),member,ast.Load())
     # The transformer visits existing statement lists; newly added statements do
     # not match scalar calls and do not induce recursion or evaluation.
+    import inspect
+    def dst_style(namespace,member):
+        # nl.tensor_scalar is lowered to the nisa instruction by visit_Expr below.
+        target=isa if namespace==instruction or (namespace==language and member=='tensor_scalar') else None
+        function=getattr(target,'tensor_scalar' if namespace==language else member,None) if target else None
+        try:return function is not None and 'dst' in inspect.signature(function).parameters
+        except (TypeError,ValueError):return False
+    def fresh_tile(node):
+        return isinstance(node,ast.Call) and isinstance(node.func,ast.Attribute) and isinstance(node.func.value,ast.Name) and node.func.value.id==language and node.func.attr=='ndarray'
+    def instruction_call(stmt):
+        call=stmt.value if isinstance(stmt,ast.Expr) else None
+        if isinstance(call,ast.Call) and isinstance(call.func,ast.Attribute) and isinstance(call.func.value,ast.Name) and call.func.value.id in (instruction,language) and not any(k.arg is None for k in call.keywords):return call
+    def bind_anonymous_tiles(statements):
+        # A fresh unnamed nl.ndarray passed as dst is unreadable afterwards, and a fresh
+        # unnamed nl.ndarray passed as a source was never written. When the same block
+        # writes into one and later reads an identical allocation expression, bind both
+        # to one named tile. Unmatched reads are left for the checker to report.
+        written={};plan=[]
+        for index,stmt in enumerate(statements):
+            call=instruction_call(stmt)
+            if call is None:continue
+            for keyword in call.keywords:
+                if keyword.arg!='dst' and fresh_tile(keyword.value) and ast.dump(keyword.value) in written:
+                    plan.append((written[ast.dump(keyword.value)],keyword,stmt))
+            dst=next((k for k in call.keywords if k.arg=='dst'),None)
+            if dst is not None and fresh_tile(dst.value):written[ast.dump(dst.value)]=(index,dst,stmt)
+        if not plan:return statements
+        used={n.id for n in ast.walk(tree) if isinstance(n,ast.Name)};names={}
+        for (index,dst,writer),keyword,reader in plan:
+            if id(dst) not in names:
+                name=f'_nki_tile_{writer.lineno}'
+                while name in used:name+='x'
+                used.add(name);names[id(dst)]=(name,index,ast.copy_location(ast.Assign(targets=[ast.Name(name,ast.Store())],value=dst.value),writer))
+                dst.value=ast.Name(name,ast.Load())
+            keyword.value=ast.Name(names[id(dst)][0],ast.Load())
+            metadata['changes'].append({'line':reader.lineno,'kind':'anonymous_tile_dataflow','writer_line':writer.lineno,'tile':names[id(dst)][0]})
+        result=list(statements)
+        for name,index,assign in sorted(names.values(),key=lambda item:-item[1]):result.insert(index,assign)
+        return result
+    for node in list(ast.walk(function)):
+        for field in ('body','orelse'):
+            block=getattr(node,field,None)
+            if isinstance(block,list) and block and all(isinstance(s,ast.stmt) for s in block):setattr(node,field,bind_anonymous_tiles(block))
     class Lower(ast.NodeTransformer):
+        def visit_Assign(self,node):
+            # Installed NKI 0.6.0 dst-style instructions write into dst and return an
+            # instruction handle, not a tensor. `x = op(dst=E, ...)` becomes
+            # `x = E; op(dst=x, ...)`, so later uses of x read the written tensor.
+            call=node.value
+            if len(node.targets)!=1 or not isinstance(node.targets[0],ast.Name) or not isinstance(call,ast.Call):return self.generic_visit(node)
+            if not isinstance(call.func,ast.Attribute) or not isinstance(call.func.value,ast.Name) or not dst_style(call.func.value.id,call.func.attr):return self.generic_visit(node)
+            dst=next((k for k in call.keywords if k.arg=='dst'),None)
+            if dst is None or any(k.arg is None for k in call.keywords) or call.args:return node
+            name=node.targets[0].id
+            if any(isinstance(n,ast.Name) and n.id==name for n in ast.walk(dst.value)):return node
+            alias=ast.copy_location(ast.Assign(targets=[ast.Name(name,ast.Store())],value=dst.value),node)
+            dst.value=ast.Name(name,ast.Load())
+            metadata['changes'].append({'line':node.lineno,'kind':'dst_result_binding','instruction':ast.unparse(call.func),'target':name})
+            lowered=self.visit_Expr(ast.copy_location(ast.Expr(call),node))
+            return [alias]+(lowered if isinstance(lowered,list) else [lowered])
         def visit_Expr(self,node):
             call=node.value
             if not isinstance(call,ast.Call) or not isinstance(call.func,ast.Attribute) or not isinstance(call.func.value,ast.Name):return self.generic_visit(node)
