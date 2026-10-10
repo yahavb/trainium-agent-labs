@@ -51,10 +51,21 @@ def evaluate_file(path, level_n, tol=2e-2, seed=0):
     try:
         kernel = nkibench.load_kernel(path, spec["entry"])
     except ModuleNotFoundError as e:
-        result["failure_kind"] = "environment"
-        result["feedback"] = (f"there is no module named {e.name!r}. The only imports that "
-                              f"exist are `import nki`, `import nki.language as nl`, and "
-                              f"`import nki.isa as nisa`.")
+        try:
+            import nki  # noqa: F401
+            sdk_present = True
+        except ImportError:
+            sdk_present = False
+        if sdk_present:
+            # The SDK is here, so a missing module is the candidate's fault, not the environment's.
+            result["failure_kind"] = "load"
+            result["feedback"] = (f"there is no module named {e.name!r}. The only imports that "
+                                  f"exist are `import nki`, `import nki.language as nl`, and "
+                                  f"`import nki.isa as nisa`. Use exactly those three.")
+        else:
+            result["failure_kind"] = "environment"
+            result["feedback"] = (f"cannot import {e.name!r}, and nki itself is not importable "
+                                  f"here. Run this where the Neuron SDK exists.")
         return result
     except Exception as e:
         result["failure_kind"] = "load"
@@ -64,6 +75,7 @@ def evaluate_file(path, level_n, tol=2e-2, seed=0):
 
     ok_inputs = ok_numerics = ok_traffic = ok_hazards = True
     worst = 0.0
+    saw_floor = False
     for case in spec["shapes"]:
         label = nkibench.label(case, level_n)
         entry = dict(case=label, ok=False, bytes=None, floor=None, waste=None,
@@ -90,6 +102,7 @@ def evaluate_file(path, level_n, tol=2e-2, seed=0):
         entry["transfers"] = int(counted.get("transfers") or 0)
         entry["unmeasured"] = int(counted.get("unmeasured") or 0)
         if entry["floor"]:
+            saw_floor = True
             entry["waste"] = round(entry["bytes"] / entry["floor"], 4)
             worst = max(worst, entry["waste"])
 
@@ -111,7 +124,7 @@ def evaluate_file(path, level_n, tol=2e-2, seed=0):
     result["numerics_ok"] = ok_numerics
     result["traffic_ok"] = ok_traffic
     result["hazards_ok"] = ok_hazards
-    result["worst_waste"] = worst or None
+    result["worst_waste"] = worst if saw_floor else None
     result["accepted"] = result["passed"] == result["total"] and result["total"] > 0
 
     if result["accepted"]:

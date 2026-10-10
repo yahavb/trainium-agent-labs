@@ -179,19 +179,19 @@ python nkibench.py --level 4 --check reference_level4.py --seed 0
 - [x] In `traffic_eval.py`, return independent fields: `rules_ok`, `numerics_ok`, `inputs_ok`, `traffic_ok`, `hazards_ok`, `resource_status`, `per_case`, `failure_kind`, `feedback`. Preserve bytes as integers.
 - [ ] Record static resource estimates as estimates. Compiler/device results alone can upgrade hardware status.
 - [x] Check that an unchanged level-4 source, adapted only to the required level-7 entry name, fails the original level-7 traffic bar on the multi-tile cases.
-- [ ] Add focused regression cases for the learning layer: an invalid candidate earns reward 0; the population never admits an invalid member; UCB tie-breaks are deterministic across reruns.
+- [x] Add focused regression cases for the learning layer: an invalid candidate earns reward 0; the population never admits an invalid member; UCB tie-breaks are deterministic across reruns.
 - [x] Run the focused regression checks and existing selftest once after the changes; repeat only after relevant edits/failures.
 
 **Exit condition:** the CLI and loop cannot disagree about whether a numerically correct but traffic-heavy candidate passed.
 
 ## 8. Task 3 — implement the real agent loop (hour 1–3, agent owner)
 
-- [ ] Give `traffic_agent.py` explicit options: `--seed-kernel`, `--rounds`, `--samples`, `--repeat`, `--context`, `--cases`, `--output`, `--max-tokens`, `--base`, `--model`, `--population-size`, `--memory-k`, and `--learning on|off`. Use the existing endpoint environment defaults.
-- [ ] Count the rendered request with the provided model's tokenizer/chat template before dispatch. Keep input at or below 8,192 tokens and reserve the configured completion budget inside server context. Use API `usage` for actual request/completion accounting. Do not present character counts as token counts.
-- [ ] Budget approximately 4,500 input tokens and 3,000 completion tokens within an 8,192-token server context, adjusting from exact counts. Trim old history, oldest memory lines, and redundant API guidance first; never silently truncate the kernel.
-- [ ] Ask the model for one complete candidate kernel, a short strategy label, and confidence of passing unseen cases. Provide the current kernel, shape/dtype contract, traffic breakdown, capacity facts, relevant API guidance, and the most recent useful failure.
-- [ ] The initial optimization instruction is: reduce repeated input loads, retain data in on-chip memory when it fits, and store completed output tiles once. Allow known optimization recipes; do not substitute a finished human-written optimized candidate for the model response.
-- [ ] Implement the following control flow:
+- [x] Give `traffic_agent.py` explicit options: `--seed-kernel`, `--rounds`, `--samples`, `--repeat`, `--context`, `--cases`, `--output`, `--max-tokens`, `--base`, `--model`, `--population-size`, `--memory-k`, and `--learning on|off`. Use the existing endpoint environment defaults.
+- [x] Count the rendered request with the provided model's tokenizer/chat template before dispatch. Keep input at or below 8,192 tokens and reserve the configured completion budget inside server context. Use API `usage` for actual request/completion accounting. Do not present character counts as token counts.
+- [x] Budget approximately 4,500 input tokens and 3,000 completion tokens within an 8,192-token server context, adjusting from exact counts. Trim old history, oldest memory lines, and redundant API guidance first; never silently truncate the kernel.
+- [x] Ask the model for one complete candidate kernel, a short strategy label, and confidence of passing unseen cases. Provide the current kernel, shape/dtype contract, traffic breakdown, capacity facts, relevant API guidance, and the most recent useful failure.
+- [x] The initial optimization instruction is: reduce repeated input loads, retain data in on-chip memory when it fits, and store completed output tiles once. Allow known optimization recipes; do not substitute a finished human-written optimized candidate for the model response.
+- [x] Implement the following control flow:
 
 ```text
 For each independent run (fresh bandit table, empty memory, population = {seed}):
@@ -214,10 +214,10 @@ For each independent run (fresh bandit table, empty memory, population = {seed})
     report success/failure and verification scope
 ```
 
-- [ ] Use float32 input/output and float32 accumulators. No dtype change may count as reducing transfer waste in this experiment.
-- [ ] Record `run_id`, `round`, `sample`, `strategy_arm`, `parent_hash`, `source_hash`, `population_snapshot`, the model's strategy label, confidence, raw reply path, code path, per-case bytes/floor/error, failure category, input/completion tokens, prompt-section token estimates (including memory lines), bandit-state reference, elapsed time, and acceptance decision.
-- [ ] Keep a failed latest candidate separate from the best valid kernel so repair can progress without losing the current winner. Hash duplicates to avoid cycling.
-- [ ] Stop at the byte floor rather than the first threshold pass; derive level 5/6/7 status from the same verified per-shape measurements.
+- [x] Use float32 input/output and float32 accumulators. No dtype change may count as reducing transfer waste in this experiment.
+- [x] Record `run_id`, `round`, `sample`, `strategy_arm`, `parent_hash`, `source_hash`, `population_snapshot`, the model's strategy label, confidence, raw reply path, code path, per-case bytes/floor/error, failure category, input/completion tokens, prompt-section token estimates (including memory lines), bandit-state reference, elapsed time, and acceptance decision.
+- [x] Keep a failed latest candidate separate from the best valid kernel so repair can progress without losing the current winner. Hash duplicates to avoid cycling.
+- [x] Stop at the byte floor rather than the first threshold pass; derive level 5/6/7 status from the same verified per-shape measurements.
 
 **Exit condition:** a live model-produced candidate is evaluated and its result is used in the next request. Offline replay is only a wiring check and is excluded from results.
 

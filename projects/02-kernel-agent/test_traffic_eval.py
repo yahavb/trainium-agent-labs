@@ -9,6 +9,7 @@ use, so the two can never disagree about what passed.
 import unittest
 
 import nkibench
+import test_time_learning as ttl
 
 
 class TrafficGateTests(unittest.TestCase):
@@ -124,6 +125,134 @@ class AcceptCaseTests(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("WRONG ON HARDWARE", m)
         self.assertFalse(checks["hazard_ok"])
+
+
+class BanditTests(unittest.TestCase):
+    def test_untried_arms_first_alphabetical(self):
+        b = ttl.Bandit()
+        seen = []
+        for _ in range(len(ttl.ARMS)):
+            arm = b.select()
+            seen.append(arm)
+            b.update(arm, 0.0)
+        self.assertEqual(seen, sorted(ttl.ARMS))
+
+    def test_equal_means_break_ties_alphabetically(self):
+        b1, b2 = ttl.Bandit(), ttl.Bandit()
+        for arm in sorted(ttl.ARMS):
+            b1.update(arm, 0.5)
+            b2.update(arm, 0.5)
+        self.assertEqual(b1.select(), sorted(ttl.ARMS)[0])
+        self.assertEqual(b2.select(), sorted(ttl.ARMS)[0])
+
+    def test_best_mean_wins_without_exploration(self):
+        b = ttl.Bandit(exploration=0.0)
+        for arm in ttl.ARMS:
+            b.update(arm, 0.0)
+        b.update("retain_both", 1.0)
+        self.assertEqual(b.select(), "retain_both")
+
+    def test_reward_clamped_to_unit_interval(self):
+        b = ttl.Bandit()
+        b.update("retain_both", 5.0)
+        self.assertEqual(b.totals["retain_both"], 1.0)
+        b.update("retain_both", -2.0)
+        self.assertEqual(b.totals["retain_both"], 1.0)
+        self.assertEqual(b.counts["retain_both"], 2)
+
+
+class MemoryTests(unittest.TestCase):
+    def test_best_lines_and_recent_failures(self):
+        m = ttl.Memory(cap=10)
+        m.append(dict(ok=True, improvement=0.5, lesson="big win"))
+        m.append(dict(ok=True, improvement=0.1, lesson="small win"))
+        m.append(dict(ok=False, improvement=0.0, lesson="failed A"))
+        m.append(dict(ok=False, improvement=0.0, lesson="failed B"))
+        lines = m.prompt_lines(best_k=1, failures_k=1)
+        self.assertEqual(lines["best"], ["big win"])
+        self.assertEqual(lines["failures"], ["failed B"])
+
+    def test_cap_enforced(self):
+        m = ttl.Memory(cap=3)
+        for i in range(5):
+            m.append(dict(ok=True, improvement=i, lesson=f"l{i}"))
+        self.assertEqual(len(m.items), 3)
+        self.assertEqual(m.items[0]["lesson"], "l2")
+
+
+class PopulationTests(unittest.TestCase):
+    @staticmethod
+    def member(name, worst, valid=True):
+        return dict(hash=name, source=name, strategy="tidy_only", worst_waste=worst,
+                    valid=valid)
+
+    def test_invalid_never_admitted(self):
+        p = ttl.Population(size=2)
+        self.assertFalse(p.insert(self.member("a", 2.0, valid=False)))
+        self.assertEqual(p.members, [])
+
+    def test_worst_replaced_only_if_better(self):
+        p = ttl.Population(size=2)
+        self.assertTrue(p.insert(self.member("a", 1.5)))
+        self.assertTrue(p.insert(self.member("b", 2.0)))
+        self.assertFalse(p.insert(self.member("c", 2.5)))
+        self.assertTrue(p.insert(self.member("d", 1.2)))
+        self.assertEqual([m["hash"] for m in p.members], ["d", "a"])
+
+    def test_duplicate_hash_rejected(self):
+        p = ttl.Population(size=2)
+        p.insert(self.member("a", 1.5))
+        self.assertFalse(p.insert(self.member("a", 1.0)))
+        self.assertEqual(len(p.members), 1)
+
+    def test_parent_deterministic_without_diversity(self):
+        import random
+        p = ttl.Population(size=2)
+        p.insert(self.member("a", 1.5))
+        p.insert(self.member("b", 2.0))
+        rng = random.Random(0)
+        self.assertEqual(p.pick_parent(rng, second_prob=0.0)["hash"], "a")
+
+
+class RewardTests(unittest.TestCase):
+    """The loop's reward and stopping rule, exercised on synthetic evaluations."""
+
+    @staticmethod
+    def _ev(bytes_, floor, checks_ok=True, accepted=False, worst=1.0):
+        checks = dict(inputs_ok=checks_ok, numerics_ok=checks_ok, hazard_ok=checks_ok,
+                      traffic_ok=False)
+        return dict(rules_ok=checks_ok, numerics_ok=checks_ok, inputs_ok=checks_ok,
+                    hazards_ok=checks_ok, passed=1 if checks_ok else 0, accepted=accepted,
+                    per_case=[dict(bytes=bytes_, floor=floor, waste=bytes_ / floor,
+                                   checks=checks)],
+                    worst_waste=worst if checks_ok else None)
+
+    def test_invalid_candidate_earns_zero_reward(self):
+        import traffic_agent
+        bad = self._ev(2_000_000, 2_000_000, checks_ok=False)
+        self.assertEqual(traffic_agent.improvement(2.0, bad), 0.0)
+
+    def test_improvement_clamped_to_unit_interval(self):
+        import traffic_agent
+        good = self._ev(2_000_000, 2_000_000, worst=1.0)
+        self.assertEqual(traffic_agent.improvement(2.0, good), 1.0)
+        self.assertEqual(traffic_agent.improvement(1.5, good), 0.5)
+        self.assertEqual(traffic_agent.improvement(None, good), 0.0)
+
+    def test_below_floor_candidate_is_not_valid(self):
+        import traffic_agent
+        under = self._ev(1_000_000, 2_000_000, worst=0.5)
+        self.assertFalse(traffic_agent.candidate_valid(under))
+        self.assertEqual(traffic_agent.improvement(2.0, under), 0.0)
+
+    def test_at_floor_requires_acceptance_and_exact_floor(self):
+        import traffic_agent
+        self.assertTrue(traffic_agent.at_floor(dict(accepted=True,
+                                                    per_case=[dict(bytes=100, floor=100)])))
+        self.assertFalse(traffic_agent.at_floor(dict(accepted=True,
+                                                     per_case=[dict(bytes=101, floor=100)])))
+        self.assertFalse(traffic_agent.at_floor(dict(accepted=False,
+                                                     per_case=[dict(bytes=100, floor=100)])))
 
 
 if __name__ == "__main__":
