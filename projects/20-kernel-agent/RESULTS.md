@@ -70,8 +70,11 @@ stage-by-stage plan in the prompt.
    0, all 4 samples correct**. The kernel also passes 24 extra simulator cases (zero-Q, constant-V,
    permuted K/V, large logits, odd shapes) and the official shapes on the real chip
    ([results/seat97-repair/](results/seat97-repair/)).
-7. **Make the loop fast.** The model server used half the chip. On the whole chip: **5.6 → 39 tokens/s per
-   request**, a round went from **~120 s to 18–30 s**.
+7. **Make the loop fast.** The model server used half the chip (TP=2). On the whole chip (TP=4), level 11 went
+   from **5.6 to 37.7 tokens/s per request** and from **109 s to 15 s per round** (medians of 96 and 256
+   logged requests) [R9].
+
+![Inference speed](assets/chart_6_inference.png)
 
 ## Kernels we optimized by hand (separate from the agent's)
 
@@ -91,14 +94,24 @@ Every attempt logs its real prompt and completion tokens (`logs/attempts.tar.gz`
 level 11 **954**, level 8 with four building blocks **2,903** (repair prompts to ~3,300 of 8,192), level 8
 with the stage plan **1,441**. The bloated level-8 prompt failed; the shorter, explicit one solved it.
 
-## What we measured about the loop itself (866 logged attempts)
+## What we measured about the loop itself
+
+Every chart below is computed from the attempt log in this repo (`analysis/make_charts.py`).
 
 ![Where effort was wasted](assets/chart_3_waste.png)
 
-* **70%** of rounds had 4 identical tries, and sampling is deterministic across servers: four seats ran
+* **40%** of rounds had identical samples, and sampling is deterministic across servers: four seats ran
   **byte-identical** level-8 traces. Per-request seeds crash this vLLM-Neuron build and per-server `--seed`
   did not change the samples, so parallel seats did not add independent tries. **Open problem.**
-* **39%** of retries returned the code unchanged — the loop now says "you changed nothing".
+* **17%** of retries returned the code unchanged — the loop now says "you changed nothing"; **30%** of rounds
+  failed exactly like the round before; **18%** of failures were invented API calls (now caught by lint
+  against the installed NKI).
+
+![Failure taxonomy](assets/chart_4_failures.png)
+
+**Failure taxonomy** (2,372 failed attempts, by the first problem reported): wrong shape or layout dominates
+every matmul and attention level; invented APIs dominate level 1 and 10; level 8's 1,096 failures are mostly
+the q·kᵀ layout (476, `logs/level8_failures_summary.json`).
 * A cut-off reply that looped on one comment line "ran", returned nothing and **outscored honest attempts**.
   Fixed: returning nothing is not running, and cut-off replies rank last.
 
@@ -162,6 +175,39 @@ projects/20-kernel-agent/
 └── reference_level1-4.py, kernelbench.py, try_level.py, CHALLENGE-kernel-agent.md   (from the original repo)
 ```
 
+## References
+
+**AWS Neuron documentation** (the rules the checker and lint enforce, and the source of their doc excerpts)
+
+* [R1] `nki.isa.nc_matmul` — computes stationaryᵀ·moving; SBUF operands, PSUM result; accumulation rules:
+  https://awsdocs-neuron.readthedocs-hosted.com/en/latest/nki/api/generated/nki.isa.nc_matmul.html
+* [R2] `nki.isa.nc_transpose` — Tensor engine (SBUF → PSUM, ≤128×128) vs Vector engine (≤32×32):
+  https://awsdocs-neuron.readthedocs-hosted.com/en/latest/nki/api/generated/nki.isa.nc_transpose.html
+* [R3] `nki.isa.activation` / `activation_reduce` — fused bias and row reduction (used in `optimized/`):
+  https://awsdocs-neuron.readthedocs-hosted.com/en/latest/nki/api/generated/nki.isa.activation.html
+* [R4] `nki.isa.dma_copy`, `nki.isa.tensor_copy` — which memories each may touch, element-count rules:
+  https://awsdocs-neuron.readthedocs-hosted.com/en/latest/nki/api/generated/nki.isa.dma_copy.html
+* [R5] NKI programming guide and tiling (128-partition limit, PSUM bank size):
+  https://awsdocs-neuron.readthedocs-hosted.com/en/latest/nki/
+* [R6] AWS agent skills for NKI (memory patterns, transpose and layout, language constraints):
+  https://github.com/aws-neuron/neuron-agentic-development
+* [R7] Neuron Runtime configuration (`NEURON_RT_NUM_CORES`, used to grab a free core for the device runs):
+  https://awsdocs-neuron.readthedocs-hosted.com/en/latest/neuron-runtime/guides/configuration-guide.html
+
+**Evidence in this repo** (every headline number, and where to check it)
+
+| claim | evidence |
+|---|---|
+| levels solved, rounds needed | `logs/attempts.tar.gz` (per-attempt `reward`, `round`, `selected`); `solved/*.check.txt` |
+| level 8 solved with the stage plan | `results/seat97-repair/agent-planned.jsonl`, `.log`, `solved/level08_attention.provenance.json` |
+| 210/228 unseen and hostile inputs | `checks/holdout_check.py` |
+| 37/37 on the real chip; optimized 14/14 | `results/device/all_levels.json`, `results/device/level11_resolve_and_optimized.json` |
+| 13/13 seeded bugs caught | `checks/mutation_check.py` (re-runs in ~1 min on a seat) |
+| tolerance margins | `solved/*.check.txt`, `results/device/*.json` (`max_rel_err`), mutation suite output |
+| [R8] lint has no false alarm on correct kernels | lint returns nothing on all 11 `solved/` and 4 `optimized/` kernels |
+| [R9] 7× faster inference | `chart_6_inference.png`, computed from `prompt_tokens`/`completion_tokens`/`seconds` in the log |
+| failure taxonomy | `chart_4_failures.png` + `logs/level8_failures_summary.json`, computed by `analysis/make_charts.py` |
+
 ## Rubric checklist
 
 | asked for | where |
@@ -170,7 +216,7 @@ projects/20-kernel-agent/
 | verification harness, tolerance and reasoning | `nkibench.py`; tolerance and its justification under "Is it real?" |
 | eval set incl. hostile values | `checks/holdout_check.py` (228 cases), `checks/check_attention.py` (24), `checks/mutation_check.py` (13 bugs) |
 | failure taxonomy with counts | chart "What the model got wrong" (`assets/chart_4_failures.png`), `logs/level8_failures_summary.json`, `analysis/trace_analysis.py` |
-| token instrumentation | "Token budget" above; per attempt in the log |
+| token instrumentation | "Token budget" and the inference chart above; per attempt in the log |
 | attempt log | `logs/attempts.tar.gz` (+ `logs/level8_failures_summary.json`), `results/seat97-repair/agent-planned.jsonl` |
 | one-page reproduction note | "Rerun it" above |
 | does the agent know when it failed? | it reports SOLVED only when every shape passes the harness, otherwise the best score and the failure; nothing is called verified that the harness did not pass |
