@@ -219,6 +219,8 @@ MATMUL_API_CARD = """Allocate separate tiles for these roles:
   output: shape (M, N), dtype lhsT.dtype, buffer nl.shared_hbm
 Use nl.ndarray(shape, dtype=..., buffer=...) for allocations.
 Load each input into its own matching SBUF tile with nisa.dma_copy(dst=, src=).
+Keep both input tiles alive until matmul: loading rhs into the left tile overwrites
+lhsT. Allocate from each input shape, not fixed hardware maxima.
 Call nisa.nc_matmul(dst=accum, stationary=left, moving=right).
 Copy accum to the separate result SBUF tile with nisa.tensor_copy(dst=, src=),
 then store result to output with nisa.dma_copy(dst=, src=) and return output.
@@ -295,7 +297,9 @@ def enrich(error_text, level=None):
                     "For this single-tile matmul, load lhsT into a (K, M) SBUF tile and rhs "
                     "into a different (K, N) SBUF tile. The PSUM result, result SBUF tile "
                     "and returned HBM output must all be (M, N). Derive K and M from "
-                    "lhsT.shape and N from rhs.shape[1]; match each copy to its own tensor.")
+                    "lhsT.shape and N from rhs.shape[1]; match each copy to its own tensor. "
+                    "Keep the two input buffers distinct: loading rhs into the same "
+                    "buffer or an overlapping view destroys lhsT before matmul.")
         return (error_text + f" The tile you allocated holds {dst} elements but you copied {src} "
                 f"into it. nisa.dma_copy does not slice or broadcast: allocate the destination with "
                 f"EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a "

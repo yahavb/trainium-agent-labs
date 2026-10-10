@@ -36,3 +36,11 @@ The live solve-rate improvement is **not yet measured**. Compare the five-run
 solve rate against an unchanged baseline. The harness uses a shared
 `/tmp/_agent_level3.py` path, so separate working directories alone do not make
 concurrent agent runs safe.
+
+## Baseline runs 2 and 3
+
+Run 2 repeats the one-dimensional result allocation. Run 3 instead allocates
+a fixed (128, 512) tile for the (128, 64) left input, then loads the right
+input into that same buffer. Guidance now explicitly preserves two distinct
+input allocations until matmul; fixing only the first DMA size would still
+overwrite the left operand. Live model comparison remains pending.
