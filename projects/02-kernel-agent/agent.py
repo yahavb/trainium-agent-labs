@@ -425,7 +425,47 @@ def enrich(error_text):
                 f"`{m.group(2)}`. Use the nl/nisa functions instead.")
     return error_text
 
-def first_prompt(level, terse=0):
+# --spec words: the first prompt describes the operation in WORDS instead of showing the NumPy
+# reference. The words are written by the model itself from the reference, once per level, so no
+# human writes any explanation and any level -- or a new one -- works without hand-written text.
+# The reference stays the definition the checker grades against; only what the model is SHOWN
+# changes. Measured under --plan on level 1: the model copied the reference's
+# reshape(...).mean(axis=(2, 4)) into NKI, where that does not work, and stalled there.
+DESCRIBE_PROMPT = """Here is a Python function:
+
+{code}
+Describe in plain English exactly what it computes, so that someone who never sees this code could
+implement it from your description alone. Cover the inputs (names, shapes, meaning), the output
+(shape and dtype), and precisely which input elements each output element is computed from and how,
+including what happens to any input elements that are left over or ignored.
+
+Do not write any code, do not name any NumPy function or method, and do not describe how the
+function is implemented -- only what result it produces. Reply with the description only."""
+
+
+def describe_reference(a, level):
+    """Ask the model, thinking off, to turn the level's NumPy reference into a plain description."""
+    import inspect
+    code = inspect.getsource(nkibench.LEVELS[level]["ref"])
+    r = chat(a, DESCRIBE_PROMPT.format(code=code), False, a.summary_tokens)
+    text = re.sub(r"```.*?```", "", r["content"], flags=re.S).strip()   # drop any code it wrote anyway
+    return text, r
+
+
+def what_to_compute(level, spec, described=None):
+    """The part of the first prompt that defines the operation. spec='code' is byte-for-byte what
+    the prompt always contained, so runs with and without --spec stay comparable."""
+    import inspect
+    s = nkibench.LEVELS[level]
+    if spec == "code" or not described:
+        return inspect.getsource(s["ref"])
+    # The signature is read from the reference, not written by hand: the model needs the argument
+    # names and order, which the code used to show.
+    sig = f"def {s['entry']}({', '.join(inspect.signature(s['ref']).parameters)}):"
+    return f"The function signature is:\n    {sig}\n\n{described}\n"
+
+
+def first_prompt(level, terse=0, spec="code", described=None):
     """Deliberately short, and it does NOT list the rules.
 
     Measured twice in this repo: hand a model an enumerated list of prohibitions and it audits
@@ -440,7 +480,7 @@ def first_prompt(level, terse=0):
         # tokens while every structured, rule-carrying prompt spiralled.
         return (f"Write a Python function `{s['entry']}` decorated with @nki.jit that computes "
                 f"the same thing as this, using nki.language as nl and nki.isa as nisa:\n\n"
-                f"{inspect.getsource(s['ref'])}\n"
+                f"{what_to_compute(level, spec, described)}\n"
                 f"Reply with one python code block.")
     if terse >= 1:
         # The matmul memory rules are the substance of levels 3 and 4, and the short prompt has to
@@ -453,7 +493,7 @@ def first_prompt(level, terse=0):
               if level >= 3 else "")
         return (f"Write an AWS Neuron NKI kernel: a function `{s['entry']}` decorated with "
                 f"@nki.jit that computes what this reference computes.\n\n"
-                f"{inspect.getsource(s['ref'])}\n"
+                f"{what_to_compute(level, spec, described)}\n"
                 f"Allocate with nl.ndarray(shape, dtype=..., buffer=nl.sbuf), move data with "
                 f"nisa.dma_copy(dst=, src=), loop with nl.affine_range(n). A tile's partition "
                 f"dimension is at most {nkibench.PMAX}.\n{mm}\n"
@@ -462,8 +502,9 @@ def first_prompt(level, terse=0):
         f"Write an AWS Neuron NKI kernel.\n\n"
         f"Operation: {s['op']}\n"
         f"Entry point: a function named `{s['entry']}`, decorated with `@nki.jit`.\n"
-        f"It must compute exactly what this NumPy reference computes:\n\n"
-        f"{inspect.getsource(s['ref'])}\n"
+        + (f"It must compute exactly what this NumPy reference computes:\n\n"
+           if spec == "code" or not described else "It must compute exactly this:\n\n")
+        + f"{what_to_compute(level, spec, described)}\n"
         f"Hardware limits: a tile's partition dimension is at most {nkibench.PMAX}. For matmul, "
         f"the stationary free dimension is at most {nkibench.GEMM_STATIONARY_FMAX} and the "
         f"moving free dimension at most {nkibench.GEMM_MOVING_FMAX}.\n\n"
@@ -787,7 +828,16 @@ def write_transcript(out, run, level, rnd, prompt, records):
 def solve(a, level, log, transcript=None, run=0):
     print(f"\n=========== level {level}: {nkibench.LEVELS[level]['op']} ===========")
     terse = a.terse
-    prompt = first_prompt(level, terse)
+    described = None
+    if a.spec == "words" and not a.offline:
+        described, r = describe_reference(a, level)
+        print(f"  --spec words: the model described the reference in {len(described)} chars "
+              f"({r['seconds']}s):\n" + textwrap.indent(described, "    | "))
+        if transcript is not None:
+            print("=" * 80 + f"\nlevel {level}: DESCRIPTION OF THE REFERENCE, written by the model "
+                  f"(replaces the NumPy code in the first prompt)\n" + "-" * 80 + f"\n{described}",
+                  file=transcript)
+    prompt = first_prompt(level, terse, a.spec, described)
     best = (0.0, None, "")
     tried, streak, seen = [], 0, {}
     latest = ("", "")
@@ -862,7 +912,7 @@ def solve(a, level, log, transcript=None, run=0):
             # 202-character prompt and, under greedy sampling, the identical non-answer six
             # rounds running. Shorten and re-ask instead.
             terse = min(terse + 1, 2)
-            prompt = first_prompt(level, terse)
+            prompt = first_prompt(level, terse, a.spec, described)
             print(f"  no code yet, so re-asking with a shorter prompt (terseness {terse})")
         else:
             prompt = repair_prompt(level, latest[0], latest[1], a.repair_card)
@@ -898,6 +948,11 @@ def main():
     ap.add_argument("--repair-card", type=int, default=1, choices=(0, 1),
                     help="1 (default) puts the API card in every repair prompt as well as the first "
                          "one; 0 is the original behaviour, for comparison")
+    ap.add_argument("--spec", default="code", choices=("code", "words"),
+                    help="how the first prompt defines the operation: code = the NumPy reference "
+                         "(default, unchanged); words = the model first describes the reference in "
+                         "plain English, and the first prompt shows that description and the "
+                         "signature instead of the code")
     ap.add_argument("--think", action="store_true",
                     help="let the model reason first; costs budget, and it ran out")
     ap.add_argument("--plan", action="store_true",
