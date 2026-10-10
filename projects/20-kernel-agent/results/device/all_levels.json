@@ -1,0 +1,329 @@
+[
+ {
+  "level": 1,
+  "case": "C,H,W=(32, 32, 32) pool=2",
+  "kernel": "solved/level01_avgpool.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 2.4440041102025134e-07,
+  "mismatch": ""
+ },
+ {
+  "level": 1,
+  "case": "C,H,W=(128, 16, 16) pool=4",
+  "kernel": "solved/level01_avgpool.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 4.815482839148899e-07,
+  "mismatch": ""
+ },
+ {
+  "level": 1,
+  "case": "C,H,W=(8, 24, 24) pool=3",
+  "kernel": "solved/level01_avgpool.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 3.45740801321881e-07,
+  "mismatch": ""
+ },
+ {
+  "level": 1,
+  "case": "C,H,W=(64, 8, 8) pool=2",
+  "kernel": "solved/level01_avgpool.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 2.414464006506023e-07,
+  "mismatch": ""
+ },
+ {
+  "level": 2,
+  "case": "shape=(32, 12) as 3x4",
+  "kernel": "solved/level02_transpose.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 0.0,
+  "mismatch": ""
+ },
+ {
+  "level": 2,
+  "case": "shape=(128, 64) as 8x8",
+  "kernel": "solved/level02_transpose.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 0.0,
+  "mismatch": ""
+ },
+ {
+  "level": 2,
+  "case": "shape=(64, 128) as 4x32",
+  "kernel": "solved/level02_transpose.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 0.0,
+  "mismatch": ""
+ },
+ {
+  "level": 2,
+  "case": "shape=(8, 35) as 5x7",
+  "kernel": "solved/level02_transpose.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 0.0,
+  "mismatch": ""
+ },
+ {
+  "level": 3,
+  "case": "K=128 M=64 N=512",
+  "kernel": "solved/level03_matmul_single_tile.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 2.0057004803675227e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 4,
+  "case": "K=128 M=128 N=512",
+  "kernel": "solved/level04_matmul_tiled.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 2.35970856010681e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 4,
+  "case": "K=256 M=256 N=1024",
+  "kernel": "solved/level04_matmul_tiled.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 3.1114989269553917e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 4,
+  "case": "K=512 M=128 N=512",
+  "kernel": "solved/level04_matmul_tiled.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 2.187620339100249e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 4,
+  "case": "K=256 M=512 N=1024",
+  "kernel": "solved/level04_matmul_tiled.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 2.8639738047786523e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 5,
+  "case": "K=128 M=128 N=512",
+  "kernel": "solved/level05_matmul_hoisted.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 1.679623323980195e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 5,
+  "case": "K=256 M=256 N=1024",
+  "kernel": "solved/level05_matmul_hoisted.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 2.8642555207625264e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 5,
+  "case": "K=512 M=128 N=512",
+  "kernel": "solved/level05_matmul_hoisted.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 3.1627091630070936e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 5,
+  "case": "K=256 M=512 N=1024",
+  "kernel": "solved/level05_matmul_hoisted.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 3.339958766446216e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 6,
+  "case": "K=128 M=128 N=512",
+  "kernel": "solved/level06_matmul_blocked.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 2.357385028517456e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 6,
+  "case": "K=256 M=256 N=1024",
+  "kernel": "solved/level06_matmul_blocked.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 2.855309730875888e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 6,
+  "case": "K=512 M=128 N=512",
+  "kernel": "solved/level06_matmul_blocked.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 2.5212739274138585e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 6,
+  "case": "K=256 M=512 N=1024",
+  "kernel": "solved/level06_matmul_blocked.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 3.5658208616951015e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 7,
+  "case": "K=128 M=128 N=512",
+  "kernel": "solved/level07_matmul_fully_blocked.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 2.031725671258755e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 7,
+  "case": "K=256 M=256 N=1024",
+  "kernel": "solved/level07_matmul_fully_blocked.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 3.1078268420969835e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 7,
+  "case": "K=512 M=128 N=512",
+  "kernel": "solved/level07_matmul_fully_blocked.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 2.1957266653771512e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 7,
+  "case": "K=256 M=512 N=1024",
+  "kernel": "solved/level07_matmul_fully_blocked.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 3.3451190120104e-06,
+  "mismatch": ""
+ },
+ {
+  "level": 9,
+  "case": "seq=128 dim=64",
+  "kernel": "solved/level09_transpose_tensor_engine.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 0.0,
+  "mismatch": ""
+ },
+ {
+  "level": 9,
+  "case": "seq=64 dim=128",
+  "kernel": "solved/level09_transpose_tensor_engine.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 0.0,
+  "mismatch": ""
+ },
+ {
+  "level": 9,
+  "case": "seq=96 dim=32",
+  "kernel": "solved/level09_transpose_tensor_engine.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 0.0,
+  "mismatch": ""
+ },
+ {
+  "level": 10,
+  "case": "seq=128 dim=64",
+  "kernel": "solved/level10_row_softmax.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 2.458710878272541e-05,
+  "mismatch": ""
+ },
+ {
+  "level": 10,
+  "case": "seq=64 dim=128",
+  "kernel": "solved/level10_row_softmax.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 2.426631181151606e-05,
+  "mismatch": ""
+ },
+ {
+  "level": 10,
+  "case": "seq=96 dim=32",
+  "kernel": "solved/level10_row_softmax.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 1.0510790161788464e-05,
+  "mismatch": ""
+ },
+ {
+  "level": 11,
+  "case": "seq=128 dim=64",
+  "kernel": "solved/level11_attention_scores.py",
+  "ok": false,
+  "error": "RuntimeError: error: failed to compile NKI kernel:\nCollected 1 different diagnostics:\n- [x2] error: cannot call object of type 'numpy.ufunc'\n"
+ },
+ {
+  "level": 11,
+  "case": "seq=64 dim=128",
+  "kernel": "solved/level11_attention_scores.py",
+  "ok": false,
+  "error": "RuntimeError: error: failed to compile NKI kernel:\nCollected 1 different diagnostics:\n- [x2] error: cannot call object of type 'numpy.ufunc'\n"
+ },
+ {
+  "level": 11,
+  "case": "seq=96 dim=32",
+  "kernel": "solved/level11_attention_scores.py",
+  "ok": false,
+  "error": "RuntimeError: error: failed to compile NKI kernel:\nCollected 1 different diagnostics:\n- [x2] error: cannot call object of type 'numpy.ufunc'\n"
+ },
+ {
+  "level": 8,
+  "case": "seq=128 dim=64",
+  "kernel": "reference_level8.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 1.1995490240224171e-05,
+  "mismatch": ""
+ },
+ {
+  "level": 8,
+  "case": "seq=64 dim=128",
+  "kernel": "reference_level8.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 1.0580577509244904e-05,
+  "mismatch": ""
+ },
+ {
+  "level": 8,
+  "case": "seq=96 dim=32",
+  "kernel": "reference_level8.py",
+  "ok": true,
+  "repeatable": true,
+  "max_rel_err": 1.2221260476508178e-05,
+  "mismatch": ""
+ }
+]
