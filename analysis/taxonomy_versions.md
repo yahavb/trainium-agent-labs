@@ -49,6 +49,60 @@ L1FIX + TRUNCFIX + MIXSAMP + L2HINT. Files: `runs/seat-*/` as listed in the comm
    cleared by repair, not prevented. Level 1 is still the hardest: one solve in all of today's logs (v8,
    analysis/recovery_v8_L1.md), against 0 for the baseline, v7 and v7+E-div.
 
+## How SKELETON broke level 4 (the v8 L4 column)
+
+Round by round, the attempt each round carried forward (`runs/seat-118/v8_L4/v8_L4.jsonl` and
+`runs/seat-118/Ediv_L4/Ediv_L4.jsonl`, same seat, same E-div sampling; v8 adds SKELETON, L1FIX, TRUNCFIX):
+
+| version | run | rounds |
+|---|---|---|
+| v8 | 1 | r0 0.30 `broadcast` → r1 0.62 `partition_over_128` (message blanked) → r2 0.30 `out_of_bounds` → r3 0.30 `out_of_bounds` → r4 0.30 `out_of_bounds` → r5 0.30 `out_of_bounds` → r6 0.30 `out_of_bounds` → r7 0.30 `out_of_bounds` |
+| v8 | 2 | r0 0.30 `broadcast` → r1 0.62 `partition_over_128` (message blanked) |
+| v7+E-div | 1 | r0 0.30 `broadcast` → r1 0.62 `partition_over_128` → r2 1.00 `solved` |
+| v7+E-div | 2 | r0 0.30 `broadcast` → r1 0.62 `partition_over_128` → r2 1.00 `solved` |
+| v7+E-div | 3 | r0 0.30 `broadcast` → r1 0.62 `partition_over_128` → r2 1.00 `solved` |
+| v7+E-div | 4 | r0 0.30 `broadcast` → r1 0.62 `partition_over_128` → r2 1.00 `solved` |
+| v7+E-div | 5 | r0 0.30 `broadcast` → r1 0.62 `partition_over_128` → r2 1.00 `solved` |
+
+Rounds 0 and 1 are the same in every run of both. The fork is the message sent after round 1, v5's "Tile all three
+dimensions at once" code. With E-div alone it arrives whole:
+
+```text
+Replace everything between the def line and the return with this code, so the return stays `return out`:
+
+    out = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+    TK = min(128, lhsT.shape[0])
+    TM = min(128, lhsT.shape[1])
+    TN = min(512, rhs.shape[1])
+    for m in nl.affine_range(lhsT.shape[1] // TM):
+        for n in nl.affine_range(rhs.shape[1] // TN):
+            psum_tile = nl.ndarray((TM, TN), dtype=nl.float32, buffer=nl.psum)
+            for k in nl.affine_range(lhs
+```
+
+Under SKELETON the same message arrives with every shape and loop bound blanked:
+
+```text
+Replace everything between the def line and the return with this code, so the return stays `return out`:
+
+    out = nl.ndarray(<…>, dtype=lhsT.dtype, buffer=nl.shared_hbm)
+    TK = min(128, lhsT.shape[0])
+    TM = min(128, lhsT.shape[1])
+    TN = min(512, rhs.shape[1])
+    for m in nl.affine_range(<…>):
+        for n in nl.affine_range(<…>):
+            psum_tile = nl.ndarray(<…>, dtype=nl.float32, buffer=nl.psum)
+            for k in nl.affine_range(<…>):
+                lhs_tile = nl.ndarray(<…>, dtype=lhsT.dtype
+```
+
+v8's round-2 kernel shows what the model filled in. It wrote `nl.affine_range(0, lhsT.shape[1], TM)` as if it
+were Python's `range(start, stop, step)` and used `m`, `n`, `k` as element offsets (`lhsT[k:k+TK, m:m+TM]`).
+It also indexed `rhs` the wrong way round, `rhs[n:n+TN, k:k+TK]` on a (K, N) tensor. The result is
+"Out-of-bound access ... on dimension 0: index range [0, 511]". The same error carried rounds 2 to 7 of run 1.
+Our snapshot has run 1 complete and run 2 at round 1; executor 1 reports that both runs ended at 0.62. Without
+SKELETON, all five runs solved in round 2. The final candidate, v8.2 (96a9fc9), runs with SKELETON=0.
+
 ## Reproduce
 
 ```bash
