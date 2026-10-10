@@ -2,7 +2,7 @@
 
 **Headline:** Our autonomous NKI agent (Qwen3-8B + planner + automatic legalizer) produced simulator-verified 1.00 kernels on Levels 1–7 of 8 (Level 1 via warm start). Each kernel is locked and re-verified with the unchanged checker.
 
-## Current system: generated planner + legalizer, base Qwen3-8B on Trainium2 (as of 21:50 UTC; L4/L7/L8 use the reordered generator)
+## Current commit: generated planner + legalizer, base Qwen3-8B on Trainium2 (as of 21:50 UTC)
 
 | Level | Score | Shapes | Run |
 |---|---:|---:|---|
@@ -15,7 +15,7 @@
 | 7 Matmul, M/N/K blocked | running | – | runs/controlled-20261010T214914-viaau8h0 |
 | 8 Single-head attention | running | – | runs/controlled-20261010T214914-viaau8h0 |
 
-The tables below are earlier runs; each run directory records the exact source revision used.
+Tables below: earlier runs on this branch; each run directory records the exact source revision used.
 
 Observed results on seat-265 only. Original five-repeat baseline: zero of five solved on each level. Official checker unchanged. No device-verified kernels.
 
@@ -30,7 +30,7 @@ Observed results on seat-265 only. Original five-repeat baseline: zero of five s
 | 7 | Matmul, M/N/K blocked (traffic <=1.05x) | **1.00** | 4/4 | **Cold-start solve**, round 0, raw Qwen (legalizer no-op): controlled-20261010T205124-kcpiu5w7; locked verified-level7-locked-nriea9vh, replay 1.00, traffic passes every shape. |
 | 8 | Single-head attention | 0.30 (active) | 0/3 | Two parallel cold runs active: controlled-20261010T205302-lg75w1b2 (round 0: 0.30, invented nc_matmul kwargs) and controlled-20261010T210530-i_w0aqpz. agent.grade crashed (KeyError 'M') on any correct L8 shape before the fix in this sprint; nkibench.py --check has the same latent bug (benchmark file left unchanged). |
 
-Planner: `kernel_planner.py` generates each level's compact plan from the benchmark specification (reference signature and reference outputs on the official shapes), the installed NKI tile limits and instruction signatures named by the task prompt, and the level's HBM traffic budget. Every score in these tables is tied to its run directory, which freezes the exact source used. Generated-planner re-run of Levels 2–8: in progress. Fine-tuned (LoRA) runs on L1–L4 are active on a separate CPU endpoint (runs/lora-fast-eval-20261010T203757-0pFD); no LoRA scores yet.
+Planner: `kernel_planner.py` generates each level's compact plan from the benchmark specification (reference signature and reference outputs on the official shapes), the installed NKI tile limits and instruction signatures named by the task prompt, and the level's HBM traffic budget. Every score in these tables is tied to its run directory, which freezes the exact source used. Fine-tuned (LoRA) model: no level solved so far (Level 3: 0.30 on CPU; Level 8: 0.30 on Trainium).
 
 Locked simulator-verified kernels (warm-start or cold-start, preserved read-only):
 
