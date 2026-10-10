@@ -162,6 +162,8 @@ def grade(source, level):
             m += psum_accumulation_hint(counted, case)
         if m and is_transpose(level):
             m += transpose_hint(got, args)
+        if m and is_pool(level):
+            m += pool_hint(got, want, args[1])
         if m:
             failures.append((nkibench.label(case, level), m))
             progress.append(1.0 + fraction_right(got, want))
@@ -241,6 +243,25 @@ def transpose_hint(got, args):
     return ""
 
 
+def pool_hint(got, want, p):
+    """Name the pooling mistakes that run cleanly: the wrong scale, and rows swapped with columns."""
+    got, want = np.asarray(got, np.float64), np.asarray(want, np.float64)
+    if got.shape != want.shape or not np.isfinite(got).all():
+        return ""
+    scale = float(np.sqrt((want ** 2).mean())) or 1.0
+    close = lambda a, b: float(np.abs(a - b).max()) / scale <= 2e-2  # noqa: E731
+    if close(got, want * p * p):
+        return (f"\n  Every output is exactly {p * p} times the mean: these are the window SUMS. "
+                f"Multiply them by 1.0 / (p * p) before storing.")
+    if p > 1 and close(got, want * p):
+        return (f"\n  Every output is exactly {p} times the mean: the sums were divided by p, but a "
+                f"window holds p * p = {p * p} elements. Multiply by 1.0 / (p * p).")
+    if want.ndim == 3 and want.shape[1] == want.shape[2] and close(got, want.transpose(0, 2, 1)):
+        return ("\n  The output has rows and columns swapped. In the access pattern the window-row "
+                "entry, stride p * W, comes before the window-column entry, stride p.")
+    return ""
+
+
 _SCRATCH = []
 
 
@@ -307,7 +328,37 @@ def copy_kernel(a):
 # One card per handled level, appended to the generation and repair prompts by card_for(). A card
 # says HOW this level's operation maps onto NKI -- which tiles, which copies, in which order --
 # because each wall below was a missing idiom rather than a missing rule. Levels without a card
-# (1, and 8) see exactly the prompt they were measured with.
+# (8, and levels added later) see exactly the prompt they were measured with.
+
+# Level 1. Every sample of the final five-run measurement scored 0.30, and the samples show why: 54
+# of 80 reached for nc_matmul -- the operation the API card spends most of its words on -- to compute
+# a mean, none used the strided .ap() view the card lists "for reductions", and the rest moved one
+# element per DMA or invented names (nisa.multiply). The pieces were on the card; how they compose
+# into a pooling was not. This is the tutorial's composition -- a DMA in, one reduction over a view
+# that groups each window's elements into its last two axes, one scale, a DMA out -- run over
+# chunks of channels and bands of rows. The first version loaded each image whole, as the tutorial
+# does: 5/5, 28 samples of one kernel, and wrong past 128 channels or ~180x180 pixels, sizes the
+# tests did not reach until level 1 got a 200-channel and a 240x240 shape.
+POOL_CARD = """How to do this pooling: let C, H, W = x.shape, p = pool_size, Ho = H // p and Wo = W // p.
+Channels go on the partition axis, at most 128 at a time, and no matmul is involved. A whole image
+may not fit on chip, so move the input through in bands of output rows, R rows per band:
+  - Allocate out as nl.ndarray((C, Ho, Wo), dtype=x.dtype, buffer=nl.shared_hbm) and set
+    R = max(1, min(Ho, 16384 // (p * W))).
+  - Loop with plain Python ranges, since the last chunk and band can be partial:
+    for c0 in range(0, C, 128), with cs = min(128, C - c0), and inside it
+    for r0 in range(0, Ho, R), with rs = min(R, Ho - r0).
+  - Per band, load its input rows: a = nl.ndarray((cs, rs * p, W), dtype=x.dtype, buffer=nl.sbuf)
+    and nisa.dma_copy(dst=a, src=x[c0:c0 + cs, r0 * p:(r0 + rs) * p, :]).
+  - View the band as windows with an access pattern of [stride, count] pairs -- partition, window
+    row, window column, row inside the window, column inside the window -- and sum every window
+    in one reduction:
+    view = a.ap([[rs * p * W, cs], [p * W, rs], [p, Wo], [W, p], [1, p]])
+    s = nl.sum(view, axis=[3, 4])   # shape (cs, rs, Wo)
+  - Scale to the mean: res = nl.ndarray((cs, rs, Wo), dtype=x.dtype, buffer=nl.sbuf), then
+    nisa.tensor_scalar(dst=res, data=s, op0=nl.multiply, operand0=1.0 / (p * p)).
+  - Store the band: nisa.dma_copy(dst=out[c0:c0 + cs, r0:r0 + rs, :], src=res). Return out.
+Two DMAs and two instructions per band. Never move single elements."""
+
 
 # Level 2. Level 2 was the one level whose result was luck: 2/5 in one five-run measurement and 4/5
 # in another, 0.30 to 1.00 run to run, and 2/3 with the level-3/4 loop before any card. The reverted
@@ -375,6 +426,10 @@ def is_transpose(level):
     return nkibench.LEVELS[level]["ref"] is nkibench.ref_transpose2d
 
 
+def is_pool(level):
+    return nkibench.LEVELS[level]["ref"] is nkibench.ref_avgpool2d
+
+
 def needs_tiling(level):
     """A matmul level whose test shapes do not all fit one nc_matmul call."""
     return is_matmul(level) and any(
@@ -388,6 +443,8 @@ def card_for(level):
         return TILED_MATMUL_CARD if needs_tiling(level) else MATMUL_CARD
     if is_transpose(level):
         return TRANSPOSE_CARD
+    if is_pool(level):
+        return POOL_CARD
     return ""
 
 
@@ -414,6 +471,17 @@ def available_names(dotted):
         mod = importlib.import_module(mod_name)
     except Exception:
         return ""
+    # Measured on level 1, 10 samples of 80: op0=nisa.multiply. The name is real -- in the OTHER
+    # module -- and "nothing similar exists" in nki.isa sent the model hunting through the list.
+    sibling = {"nki.isa": ("nki.language", "nl"), "nki.language": ("nki.isa", "nisa")}.get(mod_name)
+    if sibling:
+        try:
+            if hasattr(importlib.import_module(sibling[0]), attr):
+                short = "nisa" if mod_name == "nki.isa" else "nl"
+                return (f" `{attr}` is not in {mod_name} but in {sibling[0]}: write "
+                        f"{sibling[1]}.{attr}, not {short}.{attr}.")
+        except Exception:
+            pass
     names = [n for n in dir(mod) if not n.startswith("_")]
     close = difflib.get_close_matches(attr, names, n=6, cutoff=0.4)
     if close:
@@ -716,6 +784,17 @@ def shape_advice(loc, want_shape, level):
                     f"nl.ndarray({(s[1], m[1])}, dtype=nl.float32, buffer=nl.psum).")
         return None
 
+    if op in ("tensor_scalar", "tensor_tensor") and "dst" in T:
+        # Element-wise: dst gets one element per input element, so its shape is the input's.
+        d = _shape_of(T["dst"])
+        for k in ("data", "data1", "data2"):
+            if k in T and _shape_of(T[k]) and _shape_of(T[k]) != d:
+                s = _shape_of(T[k])
+                return (f"{op} writes one element per input element, so dst {nm('dst')} must have "
+                        f"the shape of {k} {nm(k)}, {s}; it is {d}. Allocate dst as "
+                        f"nl.ndarray({s}, dtype=..., buffer=nl.sbuf).")
+        return None
+
     if op in ("dma_copy", "tensor_copy") and {"dst", "src"} <= set(T):
         d, s = _shape_of(T["dst"]), _shape_of(T["src"])
         db, sb = _buffer_of(T["dst"]), _buffer_of(T["src"])
@@ -808,6 +887,26 @@ def swapped_unpack(source, level):
     return None
 
 
+def pool_size_advice(raw, level):
+    """The two ways a level-1 kernel outgrows the chip, answered in the card's terms.
+
+    The generic hints are wrong here: the partition hint says to loop with nl.affine_range in fixed
+    chunks of 128, and 200 channels leave a partial chunk of 72 that a fixed slice reads past.
+    """
+    if not is_pool(level):
+        return None
+    if re.search(r"partition dimension \d+ exceeds maximum", raw):
+        return ("C is larger than the 128 partitions. Loop over channel chunks with a plain Python "
+                "range -- for c0 in range(0, C, 128), cs = min(128, C - c0) -- and move "
+                "x[c0:c0 + cs, ...] and out[c0:c0 + cs, ...] one chunk at a time.")
+    if "SBUF capacity exceeded" in raw:
+        return ("The image does not fit on chip whole. Move it through in bands of R output rows, "
+                "R = max(1, min(Ho, 16384 // (p * W))): inside for r0 in range(0, Ho, R), with "
+                "rs = min(R, Ho - r0), load x[c0:c0 + cs, r0 * p:(r0 + rs) * p, :] into a "
+                "(cs, rs * p, W) tile and store the band to out[c0:c0 + cs, r0:r0 + rs, :].")
+    return None
+
+
 def explain_exception(exc, path, source, level, want_shape):
     """(feedback, progress) for a kernel that raised in the simulator."""
     entry = nkibench.LEVELS[level]["entry"]
@@ -819,7 +918,8 @@ def explain_exception(exc, path, source, level, want_shape):
     if loc["tiles"]:
         where += "\n  where " + "; ".join(f"`{n}` is {_shape_of(t)} in {_buffer_of(t)}"
                                           for n, t in loc["tiles"].items())
-    advice = swapped_unpack(source, level) or shape_advice(loc, want_shape, level)
+    advice = (swapped_unpack(source, level) or pool_size_advice(raw, level)
+              or shape_advice(loc, want_shape, level))
     if advice:
         # The specific diagnosis replaces the generic hint, which for these errors points the wrong way.
         return f"{raw}{where}\n  FIX: {advice}", loc["progress"]
