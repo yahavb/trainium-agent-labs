@@ -156,7 +156,8 @@ settings (`tools/bo_replay.py`, 500 seeds each, the same 24-evaluation budget, a
    shapes** (bugs in AWS's code; P2's fixes).
    - It rounds every K-block's partial sum to bf16.
    - Its own test (K=1024, one block) never takes that path.
-   - The referee measured 5.3 ulps at K=2048, and 4.9 at K=6144 under hostile inputs.
+   - The referee measured 5.3 ulps at K=2048 in its simulator stage [sim], and 4.9 at K=6144 under hostile
+     inputs on the chip [chip].
    - fp32 accumulation fixes it at no measurable speed cost (within 3%).
    - **Confirmed on AWS's own kernel in the CPU simulator** (`tools/aws_matmul_bf16_repro.py --sim`, 16:40,
      the file unmodified). At K=8192, the K of AWS's own benchmark, it reaches 19.4 bf16 ulps on normal
