@@ -217,6 +217,17 @@ quoted untrusted candidate text (see §5).
 
 ## 5. Feeding results to the model
 
+**Outer-loop reuse feedback:** for recognized tiled matmuls with measured excess traffic,
+`instruction_given` names the operand and reuse axis. Repeated rhs loads across `m` lead to staging
+distinct rhs K tiles before `m`; after rhs reuse is present, repeated lhsT loads across `n` lead to
+retaining lhsT tiles across an `n` sweep. Existing operand reuse and the K contraction loop must be
+preserved. The source is parsed as an AST, never imported for diagnosis; unfamiliar indexing,
+conditional loads, changed tile sizes, or incomplete counters get conservative generic advice.
+The old instruction to move loads out of the innermost loop was ambiguous and is removed.
+
+This feedback is in the field the agent actually receives. It does not require forwarding
+`referee_message`, candidate exception text, or held-out shape information.
+
 - **Referee arm:** send the current kernel plus **`instruction_given`**: one change, written by the referee.
   Every verdict has one. A timed kernel gets advice chosen from its chip result: block M/N, block K, full-size
   matmuls, double-buffer, fewer and larger DMAs. **Exception:** for `rules`, the sentence can echo a Python

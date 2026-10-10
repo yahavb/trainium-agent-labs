@@ -14,6 +14,24 @@
 | Throughput implementation | Done in `76b2227`: worker, parallel compilation, threaded inputs |
 | Current signoff | See `P1-HANDOFF.md` for scope, evidence, and remaining limitations |
 
+### Feedback correction
+
+The outer-loop reuse diagnosis now lives in `speedcheck.py`'s `instruction_given`, rather than only
+in the simulator fallback used by P3. Recognized excess rhs traffic is tied to reuse across `m`;
+remaining lhsT traffic is tied to reuse across `n`. The instruction explicitly preserves distinct
+K tiles and the contraction loop. Conservative AST guards avoid guessing for unfamiliar kernels.
+CPU coverage: `python projects/03-chipboost/tests/test_feedback.py`.
+
+Hardware verification on seat-100/core 2 passed all four representative cases: baseline, reordered
+loops, lhsT already hoisted, and rhs already hoisted. Each remained correct on the chip and returned
+the expected diagnosis through `instruction_given`; records and source hash are in `feedback_validation.json`.
+Repeat with `CHIPBOOST_SEAT=100 python verify_feedback.py --core 2 --out /tmp/feedback-validation.json`
+from this directory after checking that core 2 is free. These are feedback acceptance checks, not model
+optimization results.
+
+The comparison launched from `434e5f9` remains pinned to the earlier feedback and cannot establish
+whether this correction improves model outcomes. Its results must be labeled accordingly.
+
 ## Environment facts (measured, not assumed)
 
 | Fact | Value | Why it matters |
