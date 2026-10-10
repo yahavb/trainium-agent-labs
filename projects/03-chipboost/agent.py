@@ -318,7 +318,7 @@ def hoisted_psum(src):
     return None
 
 
-def says(r, referee, src=""):
+def says(r, referee, src="", rules=True):
     """What the model may be told. speedcheck: instruction_given, never referee_message -- it can quote the
     kernel's own exception text, which is attacker-controlled, and names held-out shapes (REFEREE.md
     section 5). stage12's messages are our own nkibench text, so they may fall back to the message.
@@ -332,7 +332,7 @@ def says(r, referee, src=""):
     """
     if referee[1] is None:
         return agent02.enrich(r.get("instruction_given") or r.get("referee_message") or "")
-    if r.get("verdict") == "wrong":
+    if rules and r.get("verdict") == "wrong":
         msg = r.get("referee_message") or ""
         m = DMA_COUNT_MISMATCH.search(msg)
         if m and int(m.group(2)) > 0:
@@ -368,7 +368,7 @@ def run_once(a, referee, start_path, rep, log, workdir, search):
     if start is None:
         sys.exit("the referee failed 3 times on the START kernel (no free core? see REFEREE.md section 7). "
                  "Nothing was logged.")
-    status = says(start, referee, start_src)
+    status = says(start, referee, start_src, not a.no_p3_rules)
     print(f"\n=========== run {run_id} ===========")
     print(f"start kernel {os.path.relpath(start_path, HERE)}: verdict {start.get('verdict') or 'PASS (untimed)'}"
           + (f", {start['time_us_median']:.1f} us (chip)" if start.get("time_us_median") else "")
@@ -410,7 +410,7 @@ def run_once(a, referee, start_path, rep, log, workdir, search):
                 print("    skipped: the referee stayed down. Not logged, not counted against the budget.")
                 continue
             out["attempts"] += 1
-            referee_says = says(r, referee, src)
+            referee_says = says(r, referee, src, not a.no_p3_rules)
             instruction = {"referee": referee_says, "model_alone": MAKE_FASTER}.get(a.arm)
             rec = {k: None for k in schema.ATTEMPT_FIELDS}
             rec.update({k: v for k, v in r.items() if k in schema.ATTEMPT_FIELDS})   # the referee's fields
@@ -493,6 +493,8 @@ def main():
     ap.add_argument("--start", default=None, help="start kernel; default P2's kernels/matmul_start.py "
                                                   "if it exists, else reference_level4.py")
     ap.add_argument("--search", default=P2_SEARCH, help="arm random_search: P2's search.py")
+    ap.add_argument("--no-p3-rules", action="store_true",
+                    help="send speedcheck's instruction_given only (no v2 Rule A/B), e.g. to test P1's own feedback")
     ap.add_argument("--tag", default="", help="prefixed onto the run id, e.g. v2 -> matmul-referee-v2-...")
     ap.add_argument("--seat", type=int, default=seat_from_hostname())
     ap.add_argument("--max-tokens", type=int, default=agent02.MIN_ANSWER_TOKENS)
