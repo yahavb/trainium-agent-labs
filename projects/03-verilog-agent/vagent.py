@@ -228,7 +228,35 @@ Rules:
 - Compare with !== so undriven/x outputs count as wrong.
 - On each wrong output print one line: MISMATCH <inputs> expected=<value> got=<value>
 - At the very end print exactly: ERRORS=<n> TOTAL=<m>   and then call $finish.
-- Plain Verilog-2005 only (no classes, no $urandom_range)."""
+- Plain Verilog-2005 only: declare EVERY variable at the top of module tb (never inside begin/end or for),
+  no int/logic/bit, no i++ or +=, write i = i + 1. Inputs are reg, outputs are wire.
+- Clocked designs: always #5 clk = ~clk;  then for each step: set inputs, @(posedge clk); #1; check.
+
+Follow this structure exactly (example for a different design, an AND gate):
+```verilog
+`timescale 1ns/1ps
+module tb;
+  reg [3:0] a, b;
+  wire [3:0] y;
+  reg [3:0] expected;
+  integer i, j, errs;
+  and4 dut(.a(a), .b(b), .y(y));
+  initial begin
+    errs = 0;
+    for (i = 0; i < 16; i = i + 1)
+      for (j = 0; j < 16; j = j + 1) begin
+        a = i; b = j; #1;
+        expected = i & j;
+        if (y !== expected) begin
+          errs = errs + 1;
+          $display("MISMATCH a=%0d b=%0d expected=%0d got=%0d", a, b, expected, y);
+        end
+      end
+    $display("ERRORS=%0d TOTAL=%0d", errs, 256);
+    $finish;
+  end
+endmodule
+```"""
 
 def header(code):
     """Pull 'module name(...ports...);' out of the code, even if the body is broken."""
@@ -247,7 +275,10 @@ def validate_tb(tb, stub):
                        capture_output=True, text=True, timeout=30)
     if c.returncode:
         errs = [l for l in (c.stderr + c.stdout).replace(d + "/", "").splitlines() if l.strip()]
-        return False, "it does not compile: " + " | ".join(errs[:4])[:600]
+        src = tb.splitlines()
+        bad = sorted({int(x) for x in re.findall(r"tb\.v:(\d+)", " ".join(errs))})[:3]
+        shown = "; ".join(f"line {n}: `{src[n-1].strip()}`" for n in bad if 0 < n <= len(src))
+        return False, ("it does not compile: " + " | ".join(errs[:3])[:300] + (f"  -> broken code: {shown}" if shown else ""))
     try:
         s = subprocess.run(["vvp", f"{d}/sim"], capture_output=True, text=True, timeout=10)
     except subprocess.TimeoutExpired:
