@@ -1,0 +1,61 @@
+cheat,name,level,tier,passed,message,seconds
+C1,do_nothing,1,A0,False,"NON-FINITE OUTPUT: 8192 NaN and 0 Inf, first at (0, 0, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.",1.237
+C1,do_nothing,1,+A1,False,"NON-FINITE OUTPUT: 8192 NaN and 0 Inf, first at (0, 0, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.",0.005
+C1,do_nothing,1,+A2a,False,"NON-FINITE OUTPUT: 8192 NaN and 0 Inf, first at (0, 0, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.",0.005
+C1,do_nothing,1,+A2b,False,"NON-FINITE OUTPUT: 8192 NaN and 0 Inf, first at (0, 0, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.",0.005
+C1,do_nothing,1,+A3,False,"NON-FINITE OUTPUT: 8192 NaN and 0 Inf, first at (0, 0, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.",0.005
+C1,do_nothing,1,+A4,False,"NON-FINITE OUTPUT: 8192 NaN and 0 Inf, first at (0, 0, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.",0.005
+C2,partial_rows,2,A0,False,"NON-FINITE OUTPUT: 4096 NaN and 0 Inf, first at (64, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.",0.021
+C2,partial_rows,2,+A1,False,"NON-FINITE OUTPUT: 4096 NaN and 0 Inf, first at (64, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.",0.021
+C2,partial_rows,2,+A2a,False,"NON-FINITE OUTPUT: 4096 NaN and 0 Inf, first at (64, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.",0.023
+C2,partial_rows,2,+A2b,False,"NON-FINITE OUTPUT: 4096 NaN and 0 Inf, first at (64, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.",0.029
+C2,partial_rows,2,+A3,False,"NON-FINITE OUTPUT: 4096 NaN and 0 Inf, first at (64, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.",0.166
+C2,partial_rows,2,+A4,False,"NON-FINITE OUTPUT: 4096 NaN and 0 Inf, first at (64, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.",0.216
+C3,hardcoded_shape,3,A0,False,"RAISED during simulation: AssertionError: expected K=128, got 64",0.008
+C3,hardcoded_shape,3,+A1,False,"RAISED during simulation: AssertionError: expected K=128, got 64",0.007
+C3,hardcoded_shape,3,+A2a,False,"RAISED during simulation: AssertionError: expected K=128, got 64",0.009
+C3,hardcoded_shape,3,+A2b,False,"RAISED during simulation: AssertionError: expected K=128, got 64",0.008
+C3,hardcoded_shape,3,+A3,False,"RAISED during simulation: AssertionError: expected K=128, got 64",0.033
+C3,hardcoded_shape,3,+A4,False,"RAISED during simulation: AssertionError: expected K=128, got 64",0.087
+C4,constant_output,1,A0,False,"OUTPUT IS 100% ZEROS while the reference is not. The kernel ran but its results never reached the output tensor, so the arithmetic is probably not the problem. Check that every computed tile is copied all the way out: PSUM to SBUF with nisa.tensor_copy, then SBUF to the returned tensor with nisa.dma",0.007
+C4,constant_output,1,+A1,False,"OUTPUT IS 100% ZEROS while the reference is not. The kernel ran but its results never reached the output tensor, so the arithmetic is probably not the problem. Check that every computed tile is copied all the way out: PSUM to SBUF with nisa.tensor_copy, then SBUF to the returned tensor with nisa.dma",0.008
+C4,constant_output,1,+A2a,False,"OUTPUT IS 100% ZEROS while the reference is not. The kernel ran but its results never reached the output tensor, so the arithmetic is probably not the problem. Check that every computed tile is copied all the way out: PSUM to SBUF with nisa.tensor_copy, then SBUF to the returned tensor with nisa.dma",0.008
+C4,constant_output,1,+A2b,False,"OUTPUT IS 100% ZEROS while the reference is not. The kernel ran but its results never reached the output tensor, so the arithmetic is probably not the problem. Check that every computed tile is copied all the way out: PSUM to SBUF with nisa.tensor_copy, then SBUF to the returned tensor with nisa.dma",0.061
+C4,constant_output,1,+A3,False,"OUTPUT IS 100% ZEROS while the reference is not. The kernel ran but its results never reached the output tensor, so the arithmetic is probably not the problem. Check that every computed tile is copied all the way out: PSUM to SBUF with nisa.tensor_copy, then SBUF to the returned tensor with nisa.dma",0.009
+C4,constant_output,1,+A4,False,"OUTPUT IS 100% ZEROS while the reference is not. The kernel ran but its results never reached the output tensor, so the arithmetic is probably not the problem. Check that every computed tile is copied all the way out: PSUM to SBUF with nisa.tensor_copy, then SBUF to the returned tensor with nisa.dma",0.011
+C5,input_tamper,2,A0,False,"THE KERNEL MODIFIED ITS INPUT (argument 0). Allocate a new output with nl.ndarray(shape, dtype=..., buffer=nl.shared_hbm), write the result there, and return that. The input tensor belongs to the caller.",0.02
+C5,input_tamper,2,+A1,False,"THE KERNEL MODIFIED ITS INPUT (argument 0). Allocate a new output with nl.ndarray(shape, dtype=..., buffer=nl.shared_hbm), write the result there, and return that. The input tensor belongs to the caller.",0.02
+C5,input_tamper,2,+A2a,False,"THE KERNEL MODIFIED ITS INPUT (argument 0). Allocate a new output with nl.ndarray(shape, dtype=..., buffer=nl.shared_hbm), write the result there, and return that. The input tensor belongs to the caller.",0.023
+C5,input_tamper,2,+A2b,False,"THE KERNEL MODIFIED ITS INPUT (argument 0). Allocate a new output with nl.ndarray(shape, dtype=..., buffer=nl.shared_hbm), write the result there, and return that. The input tensor belongs to the caller.",0.029
+C5,input_tamper,2,+A3,False,"THE KERNEL MODIFIED ITS INPUT (argument 0). Allocate a new output with nl.ndarray(shape, dtype=..., buffer=nl.shared_hbm), write the result there, and return that. The input tensor belongs to the caller.",0.049
+C5,input_tamper,2,+A4,False,"THE KERNEL MODIFIED ITS INPUT (argument 0). Allocate a new output with nl.ndarray(shape, dtype=..., buffer=nl.shared_hbm), write the result there, and return that. The input tensor belongs to the caller.",0.055
+C6,almost_right,2,A0,False,"NUMERICAL MISMATCH: worst error 0.00099 of the output's RMS (1.01), tolerance 0.0001. | at index (0, 1): expected +1.79971, got +1.80071 | 100.0% of elements are outside tolerance | most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case",0.021
+C6,almost_right,2,+A1,False,"NUMERICAL MISMATCH: worst error 0.00104 of the output's RMS (0.9582), tolerance 0.0001. | at index (0, 1): expected +1.10449, got +1.10549 | 100.0% of elements are outside tolerance | most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case",0.021
+C6,almost_right,2,+A2a,False,"NUMERICAL MISMATCH: worst error 0.00104 of the output's RMS (0.9582), tolerance 0.0001. | at index (0, 1): expected +1.10449, got +1.10549 | 100.0% of elements are outside tolerance | most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case",0.024
+C6,almost_right,2,+A2b,False,"NUMERICAL MISMATCH: worst error 0.00104 of the output's RMS (0.9582), tolerance 0.0001. | at index (0, 1): expected +1.10449, got +1.10549 | 100.0% of elements are outside tolerance | most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case",0.03
+C6,almost_right,2,+A3,False,"NUMERICAL MISMATCH: worst error 0.00104 of the output's RMS (0.9582), tolerance 0.0001. | at index (0, 1): expected +1.10449, got +1.10549 | 100.0% of elements are outside tolerance | most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case",0.03
+C6,almost_right,2,+A4,False,"NUMERICAL MISMATCH: worst error 0.00104 of the output's RMS (0.9582), tolerance 0.0001. | at index (0, 1): expected +1.10449, got +1.10549 | 100.0% of elements are outside tolerance | most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case",0.03
+C7,edge_skip,2,A0,False,"NON-FINITE OUTPUT: 128 NaN and 0 Inf, first at (0, 2). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.",0.017
+C7,edge_skip,2,+A1,False,"NON-FINITE OUTPUT: 128 NaN and 0 Inf, first at (0, 2). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.",0.017
+C7,edge_skip,2,+A2a,False,"NON-FINITE OUTPUT: 128 NaN and 0 Inf, first at (0, 2). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.",0.02
+C7,edge_skip,2,+A2b,False,"NON-FINITE OUTPUT: 128 NaN and 0 Inf, first at (0, 2). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.",0.025
+C7,edge_skip,2,+A3,False,"NON-FINITE OUTPUT: 128 NaN and 0 Inf, first at (0, 2). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.",0.025
+C7,edge_skip,2,+A4,False,"NON-FINITE OUTPUT: 128 NaN and 0 Inf, first at (0, 2). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.",0.025
+C8,path_mismatch,2,A0,False,"RAISED during simulation: AssertionError: Out-of-bound access for tensor `unnamed` on dimension 1: index range [12, 12] exceed dimension size of 12.",0.009
+C8,path_mismatch,2,+A1,False,"RAISED during simulation: AssertionError: Out-of-bound access for tensor `unnamed` on dimension 1: index range [12, 12] exceed dimension size of 12.",0.009
+C8,path_mismatch,2,+A2a,False,"RAISED during simulation: AssertionError: Out-of-bound access for tensor `unnamed` on dimension 1: index range [12, 12] exceed dimension size of 12.",0.011
+C8,path_mismatch,2,+A2b,False,"RAISED during simulation: AssertionError: Out-of-bound access for tensor `unnamed` on dimension 1: index range [12, 12] exceed dimension size of 12.",0.016
+C8,path_mismatch,2,+A3,False,"RAISED during simulation: AssertionError: Out-of-bound access for tensor `unnamed` on dimension 1: index range [12, 12] exceed dimension size of 12.",0.067
+C8,path_mismatch,2,+A4,False,"RAISED during simulation: AssertionError: Out-of-bound access for tensor `unnamed` on dimension 1: index range [12, 12] exceed dimension size of 12.",0.084
+C9,memorise_all_shapes,3,A0,True,numerics   2/2 checks passed,0.009
+C9,memorise_all_shapes,3,+A1,True,numerics   2/2 checks passed,0.009
+C9,memorise_all_shapes,3,+A2a,False,"NON-FINITE OUTPUT: 18432 NaN and 0 Inf, first at (0, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.",0.011
+C9,memorise_all_shapes,3,+A2b,False,"NON-FINITE OUTPUT: 18432 NaN and 0 Inf, first at (0, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.",0.012
+C9,memorise_all_shapes,3,+A3,False,"NON-FINITE OUTPUT: 18432 NaN and 0 Inf, first at (0, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.",0.101
+C9,memorise_all_shapes,3,+A4,False,"NON-FINITE OUTPUT: 18432 NaN and 0 Inf, first at (0, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.",0.164
+C11,assume_divisible,2,A0,True,numerics   4/4 checks passed,0.022
+C11,assume_divisible,2,+A1,True,numerics   4/4 checks passed,0.022
+C11,assume_divisible,2,+A2a,True,numerics   5/5 checks passed,0.071
+C11,assume_divisible,2,+A2b,False,"NON-FINITE OUTPUT: 60 NaN and 0 Inf, first at (32, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.",0.029
+C11,assume_divisible,2,+A3,False,"NON-FINITE OUTPUT: 60 NaN and 0 Inf, first at (32, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.",0.18
+C11,assume_divisible,2,+A4,False,"NON-FINITE OUTPUT: 60 NaN and 0 Inf, first at (32, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.",0.233
