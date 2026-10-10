@@ -214,7 +214,16 @@ written down before the results came in ([PLAN.md](PLAN.md) §4).
 | E-v3 | feedback_v3 | L4 | 1/2 before the seat went to v7: solved on round 6, then a 0.75 | superseded by v7 |
 | E-F | wrong argument list: failing line + real signature + one instruction | L1 | 0/5, all 0.30, one trajectory; wrong-signature errors 8 → 3 per run, the run then stalls on copy sizes | not carried into v7: v7's level-1 failures are different, and with a deterministic server any message change can move v7's solved trajectories |
 | E-v7 | feedback_v7 as a whole | L1, L3, L4, L2 | L3 5/5 (round 1), L4 4/4 (round 3, one trajectory), L1 [[TBD]], L2 [[TBD]]; all solves VERIFIED [[TBD: final after re-audit]] | adopted |
-| E-div | v7, plus a one-line `(attempt k of n, run r)` tag on samples 2–4 so a deterministic server returns different samples | L1–L4 | [[TBD]] | [[TBD]] |
+| E-div | v7, plus a one-line `(attempt k of n, run r)` tag on samples 2–4 so a deterministic server returns different samples | L3, L4 | L3 5/5 (3 distinct runs, was 1 under v7's L4), L4 4/4 | kept (in v8) |
+| v8 | E-div + skeleton feedback + cut-off answers not graded + level-1 call fixes; liuyq's level-1 compiler gate in the base | L1–L4 | **L1: first solve of the day**, in its first repair round; VERIFIED by both verdicts, held-out 20/20, lowers for trn2, re-audit PASS (1 of 3 runs). L4: 0.62 twice (v7: 5/5). L3: solved, two rounds later than v7. L2, round 0 only: 0/20 | skeleton dropped (see below); the rest kept |
+| L2 sampling | v8 with the first prompt and the sampling settings back to the organizers' | L2, round 0, 20 samples | 2/20, the same as the organizers' agent re-run today (2/20); with v7's sampling settings 0/20 | the level-2 regression was v7's sampling settings |
+| v8.1 | v8 without the skeleton, plus samples 1 and 3 on the original sampling and 2 and 4 on v7's, plus one sentence restating the level-2 task when the model transposes the whole input | L1–L4 | [[TBD]] | [[TBD]] |
+
+**The skeleton gamble, and why it lost.** v8 hollowed out the code in the repair messages (`t[<…>]`) so that the
+model would have to work out slices and shapes itself. On level 4 it could not: it filled the holes with
+out-of-range slices twice and stalled at 0.62 both times, where v7, given the lines, solved every run. So the
+code in v7's messages is not decoration; on level 4 it is the part of the solution the model does not find
+on its own. We report that rather than claim the model wrote it.
 
 What did not work, kept here because each one cost us time:
 
