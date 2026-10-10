@@ -773,10 +773,13 @@ _CANDIDATE_IDS = iter(range(1, 10 ** 9))
 
 
 def candidate_path(stem):
-    """A path no kernel in this process has been loaded from. nki 0.6.0 caches by file path:
-    loading a second candidate from the same path left the allocation audit seeing the first
-    candidate's tiles (a (256, 128) sbuf tile went unflagged), even though the numerics were
-    fresh. Unique per process and per call, so agents sharing a pod do not collide either."""
+    """A path no kernel in this process has been loaded from. nki 0.6.0 caches by file path: a
+    second candidate of the SAME BYTE SIZE written to the same path is simulated as the FIRST one
+    -- numerics and allocations both. Measured: the level-4 reference with its nc_matmul operands
+    swapped (same length, raises when run alone) scored 4/4 when loaded from the path the reference
+    had just used. Pure Python's import cache does not do this; nki does. Unique per process and
+    per call, so agents sharing a pod do not collide either. Any 1.0 from a run on older code must
+    be re-graded in a fresh process: scripts/reaudit.py."""
     return f"/tmp/{stem}_{os.getpid()}_{next(_CANDIDATE_IDS)}.py"
 
 
