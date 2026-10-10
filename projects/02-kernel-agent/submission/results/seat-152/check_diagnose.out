@@ -1,0 +1,40 @@
+Planting known bugs in the reference kernels and checking the located line.
+
+  statement_at: split call whole, loop as its header -> ok
+  shown / key: located text shown, then removed     -> ok
+
+  simulator: nki 0.6.0+31049202112.g85070674 from /opt/conda/lib/python3.13/site-packages/nki
+
+  control: reference level 3 on K=128 M=64 N=512 -> runs
+           and gives the same output while watched -> ok  (5 tile allocations seen)
+  control: reference level 4 on K=256 M=256 N=1024 -> runs
+           and gives the same output while watched -> ok  (25 tile allocations seen)
+
+  tile too small for the copy: ok
+      raised   AssertionError: dma_copy requires src and dst to have the same number of elements, got src=65536, dst=32768
+      located  line 57, `nisa.dma_copy(dst=rhs_tile, src=rhs)`
+      state   At that line: `rhs_tile` is (128, 256) in sbuf; `rhs` is (128, 512) in HBM (an input). The two sides of a dma_copy must hold the same number of elements, because it does not slice, reshape or broadcast: dst holds 32768 elements and src holds 65536.
+      state reports every planted fact -> ok
+  1-D tile: ok
+      raised   AssertionError: SBUF and PSUM tensors must have at least 2 dimensions (partition-dim and free-dim)
+      located  line 50, `lhs_tile = nl.ndarray((lhsT.shape[0] * lhsT.shape[1],), dtype=lhsT.dtype, buffer=nl.sbuf)`
+      state   At that line: `lhsT` is (128, 64) in HBM (an input). A tile on the chip needs at least 2 dimensions, the partition dimension first: this shape has 1.
+      state reports every planted fact -> ok
+  whole tensor in one tile: ok
+      raised   AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128
+      located  line 58, `nisa.dma_copy(dst=whole, src=lhsT)`
+      state   At that line: `whole` is (256, 256) in sbuf; `lhsT` is (256, 256) in HBM (an input). A tile on the chip may have at most 128 rows, since its first dimension is the partition dimension: dst has 256.
+      state reports every planted fact -> ok
+  tile too small, call split over lines, inside three loops: ok
+      raised   AssertionError: dma_copy requires src and dst to have the same number of elements, got src=65536, dst=32768
+      located  line 73, `nisa.dma_copy(dst=rhs_tile, src=rhs[k * TILE_K:(k + 1) * TILE_K, n * TILE_N:(n + 1) * TILE_N])`
+      state   At that line: `rhs_tile` is (128, 256) in sbuf; `rhs` is (256, 1024) in HBM (an input); `k` = 0; `TILE_K` = 128; `n` = 0; `TILE_N` = 512; src `rhs[k * TILE_K:(k + 1) * TILE_K, n * TILE_N:(n + 1) * TILE_N]` is (128, 512) in HBM (an input). The two sides of a dma_copy must hold the same number of elements, because it does not slice, reshape or broadcast: dst holds 32768 elements and src holds 65536.
+      state reports every planted fact -> ok
+  QUESTION, result tile of the wrong shape:
+      raised   ValueError: cannot reshape array of size 32768 into shape (1,64)
+      located  line 64, `nisa.nc_matmul(result_psum, lhs_tile, rhs_tile)`
+      state   At that line: `result_psum` is (1, 64) in psum; `lhs_tile` is (128, 64) in sbuf; `rhs_tile` is (128, 512) in sbuf. The result of nc_matmul has stationary's second dimension as its first and moving's second dimension as its second, and dst must be exactly that shape: dst is (1, 64).
+      (facts not reported: none)
+
+Located lines: all are the planted ones.
+State on the line: every planted fact was reported.

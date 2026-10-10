@@ -23,6 +23,7 @@ Every attempt is appended to a JSONL file with its reward, so the log is the del
 """
 
 import argparse
+import contextlib
 import json
 import os
 import re
@@ -32,6 +33,7 @@ import time
 
 import numpy as np
 
+import diagnose
 import nkibench
 
 MODEL = os.environ.get("KERNEL_AGENT_MODEL", "Qwen/Qwen3-8B")
@@ -51,8 +53,87 @@ REASONING_KEYS = ("reasoning", "reasoning_content")
 
 WEIGHTS = dict(parses=0.1, rules=0.2, runs=0.2, correct=0.5)
 
+# Checker features that are OFF unless asked for with --features. A run without the flag is the
+# unmodified loop, and a run with one is that loop plus exactly that change -- so two runs can be
+# compared and the difference attributed. One feature per measured run.
+#
+#   locate   name the line of the kernel that was executing when the simulator raised
+#   state    also say what was true on that line: the shape and buffer of every tile it names,
+#            and any rule those shapes break. Implies locate, since "that line" needs naming.
+#   facts    when the shapes on the line break a rule, send that rule INSTEAD of the advice
+#            written for the error text, not as well as. The advice is keyed on what the
+#            simulator said, and the same sentence comes out of different mistakes: a result
+#            tile of the wrong shape is told "Do not reshape" by a kernel that never reshapes.
+#            With no rule to state the advice stays, since it is then all there is. Implies state.
+#   origin   also follow the tile that broke the rule back to the line that gave it its shape,
+#            and say which of its dimensions is off and which way. The line that fails is often
+#            not the line that is wrong. Implies state.
+#   internal like facts, but only for errors that come from INSIDE the simulator (a numpy
+#            ValueError about reshaping or broadcasting). Those describe the simulator, and
+#            advice keyed on them misses: "Do not reshape" to a kernel with no reshape. The
+#            simulator's own checks (AssertionError: partition dimension 256 exceeds 128) do
+#            describe the kernel, and the advice for them carries the how-to, so it stays.
+#            Measured: dropping it there left level 4 at 0.62; keeping it reached 0.75.
+#            Implies state.
+#   pieces   the two cases where the answer is more pieces and not a different size: a tensor
+#            in HBM that is larger than the tile it is copied to or from (slice it), and a
+#            matmul operand whose free dimension is over the limit (cut that dimension too).
+#            Implies origin.
+#   shapes   list which test shapes pass and which fail, not only the first failure. What the
+#            passing shapes have in common is often the whole diagnosis.
+#   ahead    explain a tile by what the kernel goes on to do with it: a tile that could not
+#            be allocated is told what it is the result of or copied with, and a tile used for
+#            several things is told each needs its own. Where it speaks, the old hint for that
+#            error is not sent, since the hint is what led the model wrong. Implies origin.
+#   strict   fail a kernel that allocates an on-chip tile with more than 128 rows, even when
+#            it only ever uses 128-row slices of it and so runs correctly on the simulator; and
+#            one that returns an on-chip tile as its output instead of a tensor in HBM.
+#            The harness's own rule forbids this but can only see a literal number in the
+#            source. This is the one feature that changes a SCORE and not only a message: it
+#            fails kernels the harness passes. Implies state, whose watcher it uses.
+#   names    for a name that is not defined, list the tensors that do exist at that line and
+#            say what the missing one is needed for. Implies state.
+#   example  when the checker has just reported a tile too tall for the chip, add a worked
+#            example of tiling to that repair prompt -- a COPY, not this operation -- and ask
+#            for a rewrite rather than a one-line change. The repo tried a chunked-copy
+#            example in the FIRST prompt of every level and reverted it: it made everything
+#            worse. This shows it only on the error it answers. A prompt change, not a
+#            checker change, and it must be reported as one.
+#   layout   when a matmul's operands disagree on the contraction dimension, check how each
+#            was loaded: a tile allocated (M, K) and filled from a (K, M) input holds the same
+#            elements in the wrong layout, and the copy that did it was accepted. Implies origin.
+KNOWN_FEATURES = {"locate", "state", "facts", "origin", "internal", "pieces", "shapes", "ahead",
+                  "strict", "names", "example", "layout"}
+FEATURES = set()
+
+# Where a candidate kernel is written before it is loaded. Anything that grades kernels while a
+# measured run is going on the same machine MUST use another path, or it overwrites the file the
+# run is about to load and the run grades the wrong kernel. diagnose.py --replay does.
+CANDIDATE_PATH = "/tmp/_agent_level{level}.py"
+
+# Every grade gets a file of its own. The original wrote every candidate to ONE path and loaded it
+# with importlib, which caches bytecode and checks the cache only by the source's size and its
+# modification time to the second. Two different kernels of the same length graded within the
+# same second -- four samples of a round often are -- so the second was graded as the first. Found
+# when one commit, replayed against itself, gave two results for one kernel. Reproduced in five
+# lines; see the note.
+_GRADED = [0]
+
 
 def grade(source, level):
+    """Returns (reward, parts, feedback, key).
+
+    `feedback` is what the model is sent. `key` is the same text without the located line, which
+    is exactly what a run without --features would have produced. The loop counts repeats and
+    builds its ledger from `key`, so naming the line changes what the model is TOLD and nothing
+    about when the loop stops or escalates. Otherwise a level could move because it was given
+    more rounds, and the measurement could not tell that from the feedback being better.
+    """
+    reward, parts, text = _grade(source, level)
+    return reward, parts, diagnose.shown(text), diagnose.key(text)
+
+
+def _grade(source, level):
     """Returns (reward, parts, feedback). Feedback is an INSTRUCTION, never just a verdict."""
     parts = dict(parses=False, rules=False, runs=False, correct=False)
 
@@ -85,7 +166,9 @@ def grade(source, level):
     parts["rules"] = True
 
     spec = nkibench.LEVELS[level]
-    path = f"/tmp/_agent_level{level}.py"
+    _GRADED[0] += 1
+    base = CANDIDATE_PATH.format(level=level)
+    path = f"{base[:-3]}_{os.getpid()}_{_GRADED[0]}.py"
     with open(path, "w") as f:
         f.write(source)
     try:
@@ -115,18 +198,38 @@ def grade(source, level):
                 f"{type(e).__name__}: {e}")
 
     failures, passed, intensity = [], 0, None
+    passed_labels = []
     for case in spec["shapes"]:
         args, _ = nkibench.make_inputs(case, level)
         before = [x.copy() if isinstance(x, np.ndarray) else x for x in args]
         want = spec["ref"](*args)
+        watch = diagnose.watching(path) if "state" in FEATURES else contextlib.nullcontext()
         try:
-            got, counted = nkibench.simulate_and_count(kernel, args)
+            with watch:
+                got, counted = nkibench.simulate_and_count(kernel, args)
         except nkibench.NkiMissing as e:
             return (sum(WEIGHTS[k] for k, v in parts.items() if v), parts,
                     f"CANNOT SIMULATE: {e}")
         except Exception as e:
-            failures.append((nkibench.label(case, level),
-                             enrich(f"raised {type(e).__name__}: {e}")))
+            if "strict" in FEATURES and getattr(watch, "tall", None):
+                # The tile comes first in the kernel and is the structural mistake; whatever
+                # raised afterwards was raised by a kernel built on it.
+                failures.append((nkibench.label(case, level), diagnose.tall(watch, source)))
+                continue
+            raised = f"raised {type(e).__name__}: {e}"
+            where = diagnose.where(e, path, source) if "locate" in FEATURES else ""
+            state, rules, replaces = (diagnose.state_and_rules(e, path, source, watch,
+                                                               origin="origin" in FEATURES,
+                                                               pieces="pieces" in FEATURES,
+                                                               ahead="ahead" in FEATURES,
+                                                               names="names" in FEATURES,
+                                                               layout="layout" in FEATURES)
+                                      if "state" in FEATURES else ("", 0, False))
+            drop = rules and ("facts" in FEATURES
+                              or ("internal" in FEATURES and not isinstance(e, AssertionError))
+                              or ("ahead" in FEATURES and replaces))
+            told = raised if drop else enrich(raised)
+            failures.append((nkibench.label(case, level), where + told + state))
             continue
         parts["runs"] = True
         m = (nkibench.check_inputs_untouched(before, args)
@@ -140,19 +243,28 @@ def grade(source, level):
             m = ("CORRECT ON CPU BUT WRONG ON HARDWARE: " + hazards[0]
                  + ". Fix that before anything else -- the simulator agrees with the reference here "
                    "and the device would not.")
+        if "strict" in FEATURES and getattr(watch, "tall", None):
+            m = diagnose.tall(watch, source)
+        if "strict" in FEATURES and not m:
+            m = diagnose.output_on_chip(source, spec["entry"]) or None
         if m:
             failures.append((nkibench.label(case, level), m))
             continue
         passed += 1
+        passed_labels.append(nkibench.label(case, level))
         if level >= 3 and counted["bytes"]:
             intensity = nkibench.roofline(
                 nkibench.matmul_flops(case["M"], case["K"], case["N"]), counted["bytes"])
 
     if failures:
         lbl, first = failures[0]
+        which = ""
+        if "shapes" in FEATURES and len(spec["shapes"]) > 1:
+            which = (f"{diagnose.MARK} Shapes that pass: {'; '.join(passed_labels) or 'none'}. "
+                     f"Shapes that fail: {'; '.join(l for l, _ in failures)}.{diagnose.MARK}")
         return (sum(WEIGHTS[k] for k, v in parts.items() if v)
                 + WEIGHTS["correct"] * passed / len(spec["shapes"]), parts,
-                f"{passed} of {len(spec['shapes'])} shapes passed. On {lbl}: {first}")
+                f"{passed} of {len(spec['shapes'])} shapes passed. On {lbl}: {first}{which}")
 
     parts["correct"] = True
     reward = sum(WEIGHTS.values())
@@ -379,12 +491,22 @@ def first_prompt(level, terse=0):
                 f"nisa.dma_copy(dst=, src=), loop with nl.affine_range(n). A tile's partition "
                 f"dimension is at most {nkibench.PMAX}.\n{mm}\n"
                 f"Reply with one python code block.")
+    pool_hint = (
+        "For average pooling only: do NOT use nisa.nc_matmul or nl.psum. "
+        "Use this exact plan: DMA the 3-D input into nl.sbuf; create a strided "
+        "5-D pooling view with .ap(...); reduce the two pooling axes with "
+        "nl.sum(..., axis=[3, 4]); scale it with nisa.tensor_scalar using "
+        "1.0 / (pool_size * pool_size) into an nl.sbuf output; then DMA the "
+        "output to HBM.\n\n"
+        if level == 1 else ""
+    )
     return (
         f"Write an AWS Neuron NKI kernel.\n\n"
         f"Operation: {s['op']}\n"
         f"Entry point: a function named `{s['entry']}`, decorated with `@nki.jit`.\n"
         f"It must compute exactly what this NumPy reference computes:\n\n"
         f"{inspect.getsource(s['ref'])}\n"
+        f"{pool_hint}"
         f"Hardware limits: a tile's partition dimension is at most {nkibench.PMAX}. For matmul, "
         f"the stationary free dimension is at most {nkibench.GEMM_STATIONARY_FMAX} and the "
         f"moving free dimension at most {nkibench.GEMM_MOVING_FMAX}.\n\n"
@@ -404,6 +526,47 @@ def repair_prompt(level, source, feedback):
         f"A checker reports:\n{feedback}\n\n"
         f"Change exactly what the checker names and keep everything else identical. Reply with "
         f"ONE python code block.")
+
+
+# A different operation on purpose: it carries the structure -- loops over pieces, one tile per
+# piece allocated INSIDE the loops, the matching slice read and written -- and nothing about
+# matmul. `diagnose.py --selftest` runs it on the simulator: an example that is wrong, or that
+# itself allocates a tile too tall, would teach the mistake.
+TILING_EXAMPLE = """import nki
+import nki.isa as nisa
+import nki.language as nl
+
+@nki.jit
+def copy_in_pieces(a):
+    rows, cols = a.shape
+    out = nl.ndarray((rows, cols), dtype=a.dtype, buffer=nl.shared_hbm)
+    for i in nl.affine_range(rows // 128):          # pieces of at most 128 rows
+        for j in nl.affine_range(cols // 512):      # pieces of at most 512 columns
+            # ONE piece, allocated inside the loops. Never a tile for the whole tensor.
+            tile = nl.ndarray((128, 512), dtype=a.dtype, buffer=nl.sbuf)
+            nisa.dma_copy(dst=tile, src=a[i * 128:(i + 1) * 128, j * 512:(j + 1) * 512])
+            nisa.dma_copy(dst=out[i * 128:(i + 1) * 128, j * 512:(j + 1) * 512], src=tile)
+    return out
+"""
+
+TOO_TALL = ("RUNS ON THE SIMULATOR, NOT ON THE CHIP", "is too tall:")
+
+
+def repair(level, source, feedback):
+    """repair_prompt, and with --features example the worked tiling example as well, but only
+    when the checker has just said a tile is too tall for the chip."""
+    prompt = repair_prompt(level, source, feedback)
+    one_change = "Change exactly what the checker names and keep everything else identical."
+    if "example" not in FEATURES or not any(t in feedback for t in TOO_TALL) \
+            or one_change not in prompt:
+        return prompt
+    return prompt.replace(
+        one_change,
+        "A different number will not fix this; the kernel needs a different structure. Handle "
+        "the data in pieces, with every on-chip tile allocated inside the loops and holding one "
+        "piece. This kernel copies a tensor that way. It is a different operation, shown only "
+        f"for its structure:\n\n```python\n{TILING_EXAMPLE}```\n\nRewrite your kernel with that "
+        "structure, keeping what it computes.")
 
 
 CODE_BLOCK = re.compile(r"```(?:python)?\s*(.*?)```", re.S)
@@ -501,13 +664,18 @@ def solve(a, level, log):
         graded = []
         for reply in replies:
             src = extract_code(reply)
-            reward, parts, feedback = grade(src, level)
-            graded.append((reward, src, feedback, parts))
+            reward, parts, feedback, key = grade(src, level)
+            graded.append((reward, src, feedback, parts, key))
             log.write(json.dumps(dict(level=level, round=rnd, reward=reward, parts=parts,
                                       prompt_chars=len(prompt), reply_chars=len(reply),
-                                      code=src, feedback=feedback)) + "\n")
+                                      code=src, feedback=feedback,
+                                      rep=getattr(a, "rep", 0),
+                                      features=sorted(FEATURES))) + "\n")
         log.flush()
         graded.sort(key=lambda g: g[0], reverse=True)
+        distinct_feedback = len({g[2] for g in graded})
+        print(f"  sample diversity: {distinct_feedback}/{len(graded)} distinct feedback outcome(s)")
+
         top = graded[0]
         if top[0] > best[0]:
             best = (top[0], top[1], top[2])
@@ -517,7 +685,7 @@ def solve(a, level, log):
         # stuck at 0.10 for four rounds while the prompt still carried the 0.50 code.
         if (top[1] or "").strip():
             latest = (top[1], top[2])
-        same = top[2] == (tried[-1] if tried else None)
+        same = top[4] == (tried[-1] if tried else None)
         if same:
             # Collapse. Fifteen identical multi-line blocks is noise, not information.
             print(f"round {rnd}: same failure again ({top[0]:.2f}, best so far {best[0]:.2f})")
@@ -531,25 +699,25 @@ def solve(a, level, log):
             print(textwrap.indent(top[1], "  "))
             print("  -------------------------------------------")
             return top[0], rnd + 1
-        seen[top[2]] = seen.get(top[2], 0) + 1
+        seen[top[4]] = seen.get(top[4], 0) + 1
         streak = streak + 1 if same else 1
-        if seen[top[2]] >= a.give_up_after:
+        if seen[top[4]] >= a.give_up_after:
             how = ("the identical failure %d rounds running" % streak if streak >= a.give_up_after
                    else "this failure for the %dth time, alternating with %d other(s)"
-                        % (seen[top[2]], len(seen) - 1))
+                        % (seen[top[4]], len(seen) - 1))
             print(f"  STOPPING this level: {how}. The agent is cycling between a fixed set of "
                   f"mistakes rather than converging, so more rounds will not help. Failures seen:")
             for f, n in sorted(seen.items(), key=lambda kv: -kv[1]):
                 print(f"    {n}x  {f[:110]}")
             return best[0], rnd + 1
-        tried.append(top[2])
+        tried.append(top[4])
         repeats = streak
         if repeats >= 2 and (best[1] or "").strip():
             # Sampling on this endpoint is greedy, so an unchanged prompt returns an unchanged
             # answer. Measured: the same TypeError 19 rounds running. Changing the prompt is the
             # only thing that can change the answer, so say what has already been tried.
             ledger = "\n".join(f"- {t[:160]}" for t in dict.fromkeys(tried))
-            prompt = (repair_prompt(level, latest[0], latest[1])
+            prompt = (repair(level, latest[0], latest[1])
                       + f"\n\nThese approaches have already failed, so do something different:\n"
                         f"{ledger}")
             print(f"  same failure {repeats}x — adding a ledger of {len(set(tried))} failed "
@@ -563,7 +731,7 @@ def solve(a, level, log):
             prompt = first_prompt(level, terse)
             print(f"  no code yet, so re-asking with a shorter prompt (terseness {terse})")
         else:
-            prompt = repair_prompt(level, latest[0], latest[1])
+            prompt = repair(level, latest[0], latest[1])
     print(f"  not solved in {a.rounds} rounds; best reward {best[0]:.2f}")
     return best[0], a.rounds
 
@@ -596,7 +764,23 @@ def main():
     ap.add_argument("--think", action="store_true",
                     help="let the model reason first; costs budget, and it ran out")
     ap.add_argument("--offline", action="store_true")
+    ap.add_argument("--features", default="",
+                    help="comma-separated checker features to switch on. None by default, so a "
+                         "plain run is the unmodified loop. Known: " + ", ".join(sorted(KNOWN_FEATURES)))
     a = ap.parse_args()
+
+    asked = {f.strip() for f in a.features.split(",") if f.strip()}
+    if asked - KNOWN_FEATURES:
+        sys.exit(f"unknown --features {sorted(asked - KNOWN_FEATURES)}. Known: "
+                 f"{sorted(KNOWN_FEATURES)}")
+    if asked & {"pieces", "ahead", "layout"}:
+        asked.add("origin")
+    if asked & {"facts", "origin", "internal", "strict", "names"}:
+        asked.add("state")
+    if "state" in asked:
+        asked.add("locate")
+    FEATURES.update(asked)
+    print(f"features {sorted(FEATURES) or 'none'}")
 
     if not a.offline:
         # Validate before the first request. An empty or scheme-less value produces a hostname
@@ -626,6 +810,7 @@ def main():
 
     with open(a.log, "a") as log:
         for rep in range(a.repeat):
+            a.rep = rep
             if a.repeat > 1:
                 print(f"\n################ run {rep + 1} of {a.repeat} ################")
             results = []

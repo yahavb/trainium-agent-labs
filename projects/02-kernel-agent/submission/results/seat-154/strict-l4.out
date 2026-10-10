@@ -1,0 +1,97 @@
+features ['internal', 'locate', 'origin', 'state', 'strict']
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.50  best so far 0.50  (69.5s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: NUMERICAL MISMATCH: worst error 51.9 of the output's RMS (11.32), tolerance 0.02.
+  at index (99, 483): expected -12.8295, got +574.899
+  99.2% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+round 1: same failure again (0.50, best so far 0.50)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+round 2: this round 0.30  best so far 0.50  (74.7s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 21, `nisa.tensor_copy(dst=out[m * tile_shape[0] : (m + 1) * tile_shape[0], n * tile_shape[1] : (n + 1) * tile_shape[1]], src=psum_tile)`, raised AssertionError: tensor_copy dst must be in ['sbuf', 'psum'], got shared_hbm `nisa.tensor_copy` only moves data between on-chip buffers, sbuf and psum. To reach HBM -- the tensor you allocated with buffer=nl
+round 3: this round 0.50  best so far 0.50  (73.2s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: NUMERICAL MISMATCH: worst error 51.9 of the output's RMS (11.32), tolerance 0.02.
+  at index (99, 483): expected -12.8295, got +574.899
+  99.2% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+round 4: same failure again (0.50, best so far 0.50)
+  STOPPING this level: this failure for the 4th time, alternating with 1 other(s). The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 4 shapes passed. On K=128 M=128 N=512: NUMERICAL MISMATCH: worst error 51.9 of the output's RMS (11.32), 
+    1x  0 of 4 shapes passed. On K=128 M=128 N=512: raised AssertionError: tensor_copy dst must be in ['sbuf', 'psum']
+
+=========== summary ===========
+  level 4  reward 0.50 after 5 round(s)
+  solved 0/1
+
+################ run 2 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.30  best so far 0.30  (76.9s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 31, `nisa.tensor_copy(dst=sbuf_stationary, src=psum)`, raised ValueError: shape mismatch: value array of shape (65536,) could not be broadcast to indexing result of shape (16384,) At that line: `sbuf_stationary` is (128, 128) in sbuf; `psum` is (128, 512) in psum. The two sides of a tensor_copy must hold the same number of elements, because it does 
+round 1: this round 0.62  best so far 0.62  (68.4s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 15, `sbuf_stationary = nl.ndarray((K, M), dtype=lhsT.dtype, buffer=nl.sbuf)`, allocates a tile in sbuf with 256 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut from. Allocate the tile
+round 2: this round 0.62  best so far 0.62  (69.4s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 17, `sbuf_psum = nl.ndarray((M, N), dtype=nl.float32, buffer=nl.sbuf)`, allocates a tile in sbuf with 256 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut from. Allocate the tile insid
+round 3: this round 0.62  best so far 0.62  (69.9s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: line 20, `nisa.dma_copy(dst=sbuf_stationary, src=lhsT)`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=65536, dst=32768 The tile you allocated holds 32768 elements but you copied 65536 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you a
+round 4: same failure again (0.62, best so far 0.62)
+  same failure 2x — adding a ledger of 4 failed attempts to break the repeat
+round 5: this round 0.30  best so far 0.62  (69.9s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 16, `sbuf_moving = nl.ndarray((N, 128), dtype=rhs.dtype, buffer=nl.sbuf)`, allocates a tile in sbuf with 512 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut from. Allocate the tile ins
+round 6: this round 0.30  best so far 0.62  (70.0s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 23, `nisa.dma_copy(dst=sbuf_moving, src=rhs)`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=65536, dst=16384 The tile you allocated holds 16384 elements but you copied 65536 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are mov
+round 7: this round 0.62  best so far 0.62  (69.6s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 15, `sbuf_stationary = nl.ndarray((K, 128), dtype=lhsT.dtype, buffer=nl.sbuf)`, allocates a tile in sbuf with 256 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut from. Allocate the ti
+  not solved in 8 rounds; best reward 0.62
+
+=========== summary ===========
+  level 4  reward 0.62 after 8 round(s)
+  solved 0/1
+
+################ run 3 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.62  best so far 0.62  (65.6s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 15, `sbuf_stationary = nl.ndarray((K, M), dtype=lhsT.dtype, buffer=nl.sbuf)`, allocates a tile in sbuf with 256 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut from. Allocate the tile
+round 1: same failure again (0.62, best so far 0.62)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+round 2: same failure again (0.62, best so far 0.62)
+  same failure 3x — adding a ledger of 1 failed attempts to break the repeat
+round 3: same failure again (0.62, best so far 0.62)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 15, `sbuf_stationary
+
+=========== summary ===========
+  level 4  reward 0.62 after 4 round(s)
+  solved 0/1
+
+################ run 4 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.62  best so far 0.62  (79.0s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 15, `sbuf_stationary = nl.ndarray((K, M), dtype=lhsT.dtype, buffer=nl.sbuf)`, allocates a tile in sbuf with 256 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut from. Allocate the tile
+round 1: same failure again (0.62, best so far 0.62)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+round 2: same failure again (0.62, best so far 0.62)
+  same failure 3x — adding a ledger of 1 failed attempts to break the repeat
+round 3: same failure again (0.62, best so far 0.62)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 15, `sbuf_stationary
+
+=========== summary ===========
+  level 4  reward 0.62 after 4 round(s)
+  solved 0/1
+
+################ run 5 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.30  best so far 0.30  (63.6s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 25, `nisa.tensor_copy(dst=sbuf_stationary, src=psum_tile)`, raised ValueError: shape mismatch: value array of shape (65536,) could not be broadcast to indexing result of shape (16384,) At that line: `sbuf_stationary` is (128, 128) in sbuf; `psum_tile` is (128, 512) in psum. The two sides of a tensor_copy must hold the same number of elements, becaus
+round 1: this round 0.62  best so far 0.62  (69.1s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: line 17, `nisa.dma_copy(dst=sbuf_stationary, src=lhsT)`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=65536, dst=16384 The tile you allocated holds 16384 elements but you copied 65536 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you a
+round 2: this round 0.30  best so far 0.62  (68.2s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 11, `sbuf_stationary = nl.ndarray(shape=(256, 256), dtype=lhsT.dtype, buffer=nl.sbuf)`, allocates a tile in sbuf with 256 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut from. Allocate

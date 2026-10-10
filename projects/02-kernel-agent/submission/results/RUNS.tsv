@@ -1,0 +1,53 @@
+started	seat	name	features	commit	args
+2026-10-10 12:13	154	baseline	none	0278dc1	--all --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 13:09	153	state-l3	state	17638cf	--level 3 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 13:23	157	state-all	state	413e595-dirty	--all --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 13:23	159	facts-all	facts	413e595-dirty	--all --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 13:23	151	facts-l3	facts	413e595-dirty	--level 3 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 13:23	156	state-l4	state	413e595-dirty	--level 4 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 13:23	158	baseline2	none	413e595-dirty	--all --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 13:23	150	locate-l3	locate	413e595-dirty	--level 3 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 13:26	157	origin-l3	facts,origin	c41a7d5	--level 3 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 13:26	159	origin-l4	facts,origin	c41a7d5	--level 4 --rounds 8 --samples 4 --context 8192 --repeat 5
+# 413e595-dirty rows: only pod.sh differed from 413e595 (a fix to launching in the background). agent.py and diagnose.py on those seats were 413e595.
+2026-10-10 13:43	153	checker-l3	internal,origin	39b8e5a	--level 3 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 13:43	159	checker-l4	internal,origin	39b8e5a	--level 4 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 13:44	150	checker-l1	internal,origin	39b8e5a	--level 1 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 13:45	151	checker-l2	internal,origin	39b8e5a	--level 2 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 14:04	157	checker-l3b	internal,origin	ec306f1	--level 3 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 14:29	153	cand-l3	internal,origin,pieces,shapes	d761cd0	--level 3 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 14:30	150	cand-l2	internal,origin,pieces,shapes	d761cd0	--level 2 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 14:30	151	cand-l1	internal,origin,pieces,shapes	d761cd0	--level 1 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 14:31	156	cand-r16-l4	internal,origin,pieces,shapes	d761cd0	--level 4 --rounds 16 --samples 4 --context 8192 --repeat 5
+2026-10-10 14:32	154	base-r16-l4	none	d761cd0	--level 4 --rounds 16 --samples 4 --context 8192 --repeat 5
+2026-10-10 14:32	159	cand-l4	internal,origin,pieces,shapes	d761cd0	--level 4 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 15:13	151	pa-r16-l4	internal,origin,pieces,ahead	16dcf94	--level 4 --rounds 16 --samples 4 --context 8192 --repeat 5
+2026-10-10 15:13	154	p-l4	internal,origin,pieces	16dcf94	--level 4 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 15:13	157	a-l3	internal,origin,ahead	16dcf94	--level 3 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 15:13	159	p-r16-l4	internal,origin,pieces	16dcf94	--level 4 --rounds 16 --samples 4 --context 8192 --repeat 5
+2026-10-10 15:13	150	a-l2	internal,origin,ahead	16dcf94	--level 2 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 15:13	153	a-l3	internal,origin,ahead	16dcf94	--level 3 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 15:13	158	pa-l3	internal,origin,pieces,ahead	16dcf94	--level 3 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 15:13	156	p-r16-l4	internal,origin,pieces	16dcf94	--level 4 --rounds 16 --samples 4 --context 8192 --repeat 5
+2026-10-10 15:40	157	a2-l2	internal,origin,ahead	11fbb86	--level 2 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 15:40	153	a2-l2	internal,origin,ahead	11fbb86	--level 2 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 15:40	150	a2-l3	internal,origin,ahead	11fbb86	--level 3 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 15:40	151	a2-l4	internal,origin,ahead	11fbb86	--level 4 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 15:40	159	a2-l4	internal,origin,ahead	11fbb86	--level 4 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 15:40	158	a2-l3	internal,origin,ahead	11fbb86	--level 3 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 15:52	154	strict-l4	internal,origin,strict	c349ec2	--level 4 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 15:52	156	strict-r16-l4	internal,origin,strict	c349ec2	--level 4 --rounds 16 --samples 4 --context 8192 --repeat 5
+2026-10-10 16:14	158	n-l3	internal,origin,ahead,names	2d87250	--level 3 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 16:14	150	n-l3	internal,origin,ahead,names	2d87250	--level 3 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 16:14	153	n-l4	internal,origin,ahead,names	2d87250	--level 4 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 16:14	157	n-l2	internal,origin,ahead,names	2d87250	--level 2 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 16:21	151	hint-checker-l1	internal,origin,ahead,names	32f6055	--level 1 --rounds 16 --samples 4 --context 8192 --repeat 5
+2026-10-10 16:21	154	ex-all-l4	internal,origin,ahead,names,strict,example	32f6055	--level 4 --rounds 16 --samples 4 --context 8192 --repeat 5
+2026-10-10 16:21	156	ex-all-l4	internal,origin,ahead,names,strict,example	32f6055	--level 4 --rounds 16 --samples 4 --context 8192 --repeat 5
+2026-10-10 16:21	159	ex-min-l4	internal,origin,strict,example	32f6055	--level 4 --rounds 16 --samples 4 --context 8192 --repeat 5
+2026-10-10 16:43	150	final-l3	internal,origin,ahead,names,layout,strict	dae55d8	--level 3 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 16:43	153	checker-l8	internal,origin	dae55d8	--level 8 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 16:43	158	final-l3	internal,origin,ahead,names,layout,strict	dae55d8	--level 3 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 16:43	157	base-l8	none	dae55d8	--level 8 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 16:48	150	checker-l3c	internal,origin	dae55d8	--level 3 --rounds 8 --samples 4 --context 8192 --repeat 5
+2026-10-10 16:48	158	checker-l3c	internal,origin	dae55d8	--level 3 --rounds 8 --samples 4 --context 8192 --repeat 5

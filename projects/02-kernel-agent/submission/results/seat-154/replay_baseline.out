@@ -1,0 +1,118 @@
+
+level 1   16 attempt(s) were this kernel   reward 0.30
+  was told : 0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=4, dst=16384 The tile you allocated holds 16384 elements but you copied 4 into it. nisa.dma_copy does not slice or broadcast: allocate the destination
+  would add: line 18, `nisa.dma_copy(dst=tile, src=x[c, h*p:(h+1)*p, w*p:(w+1)*p])`,
+  would add: At that line: `tile` is (128, 128) in sbuf; `x` is (32, 32, 32) in HBM (an input); `c` = 0; `h` = 0; `p` = 2; `w` = 0; src `x[c, h*p:(h+1)*p, w*p:(w+1)*p]` is (2, 2) in HBM (an input). The two sides of a dma_copy must hold the same number of elements, because it does not slice, reshape or broadcast: dst holds 16384 elements and src holds 4.
+
+level 1   8 attempt(s) were this kernel   reward 0.30
+  was told : 0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: nc_matmul() got an unexpected keyword argument 'transpose_moving' Remove the `transpose_moving=` argument. The real signature is isa.nc_matmul(dst: 'NkiTensor', stationary: 'NkiTensor', moving: 'NkiTensor', is_stationary_onezero=F
+  would add: line 19, `nisa.nc_matmul(dst=tile2, stationary=tile, moving=tile, transpose_moving=True)`,
+  would add: At that line: `tile2` is (2, 2) in sbuf; `tile` is (2, 2) in sbuf.
+
+level 1   8 attempt(s) were this kernel   reward 0.30
+  was told : 0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: dst must be in ['psum'], got sbuf Allocate the `dst` tile with buffer=nl.psum instead of nl.sbuf. For nisa.nc_matmul: dst must be in nl.psum, and stationary and moving must both be in nl.sbuf. Copy between them with nisa.tens
+  would add: line 19, `nisa.nc_matmul(dst=tile2, stationary=tile, moving=tile, is_transpose=True)`,
+  would add: At that line: `tile2` is (2, 2) in sbuf; `tile` is (2, 2) in sbuf.
+
+level 1   8 attempt(s) were this kernel   reward 0.30
+  was told : 0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AttributeError: module 'nki.isa' has no attribute 'multiply' `nki.isa` has no `multiply`, and nothing similar exists. Its real names include: NkiInstruction, NkiValidationError, VirtualRegister, activate2, activation, activation_reduce, affi
+  would add: line 21, `nisa.tensor_scalar(dst=tile, data=0.5, op0=nisa.multiply)`,
+  would add: At that line: `tile` is (2, 2) in sbuf.
+
+level 1   8 attempt(s) were this kernel   reward 0.30
+  was told : 0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AttributeError: module 'nki.isa' has no attribute 'multiply' `nki.isa` has no `multiply`, and nothing similar exists. Its real names include: NkiInstruction, NkiValidationError, VirtualRegister, activate2, activation, activation_reduce, affi
+  would add: line 21, `nisa.tensor_scalar(dst=tile, data=0.5, op=nisa.multiply)`,
+  would add: At that line: `tile` is (2, 2) in sbuf.
+
+level 1   8 attempt(s) were this kernel   reward 0.30
+  was told : 0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AttributeError: module 'nki.isa' has no attribute 'multiply' `nki.isa` has no `multiply`, and nothing similar exists. Its real names include: NkiInstruction, NkiValidationError, VirtualRegister, activate2, activation, activation_reduce, affi
+  would add: line 21, `nisa.tensor_scalar(dst=tile2, data=0.5, op=nisa.multiply)`,
+  would add: At that line: `tile2` is (2, 2) in psum.
+
+level 1   8 attempt(s) were this kernel   reward 0.30
+  was told : 0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AttributeError: module 'nki.isa' has no attribute 'scalar_mul' `nki.isa` has no `scalar_mul`. The closest real names are: scalar_engine, tensor_scalar_cumulative, tensor_scalar_reduce, nc_matmul, tensor_scalar, scalar_tensor_tensor. Pick one
+  would add: line 21, `nisa.tensor_scalar(dst=tile2, data=0.5, op=nisa.scalar_mul)`,
+  would add: At that line: `tile2` is (2, 2) in psum.
+
+level 2   4 attempt(s) were this kernel   reward 0.30
+  was told : 0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=12 The tile you allocated holds 12 elements but you copied 384 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with 
+  would add: line 18, `nisa.dma_copy(dst=tile, src=x)`,
+  would add: At that line: `tile` is (3, 4) in sbuf; `x` is (32, 12) in HBM (an input). The two sides of a dma_copy must hold the same number of elements, because it does not slice, reshape or broadcast: dst holds 12 elements and src holds 384.
+
+level 2   3 attempt(s) were this kernel   reward 0.30
+  was told : 0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=512 The tile you allocated holds 512 elements but you copied 384 into it. nisa.dma_copy does not slice or broadcast: allocate the destination wit
+  would add: line 18, `nisa.dma_copy(dst=tile, src=x)`,
+  would add: At that line: `tile` is (128, 4) in sbuf; `x` is (32, 12) in HBM (an input). The two sides of a dma_copy must hold the same number of elements, because it does not slice, reshape or broadcast: dst holds 512 elements and src holds 384.
+
+level 2   3 attempt(s) were this kernel   reward 0.30
+  was told : 0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=12 The tile you allocated holds 12 elements but you copied 384 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with 
+  would add: line 18, `nisa.dma_copy(dst=tile, src=x)`,
+  would add: At that line: `tile` is (3, 4) in sbuf; `x` is (32, 12) in HBM (an input). The two sides of a dma_copy must hold the same number of elements, because it does not slice, reshape or broadcast: dst holds 12 elements and src holds 384.
+
+level 2   1 attempt(s) were this kernel   reward 0.30
+  was told : 0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=16384 The tile you allocated holds 16384 elements but you copied 384 into it. nisa.dma_copy does not slice or broadcast: allocate the destination
+  would add: line 18, `nisa.dma_copy(dst=tile, src=x)`,
+  would add: At that line: `tile` is (128, 128) in sbuf; `x` is (32, 12) in HBM (an input). The two sides of a dma_copy must hold the same number of elements, because it does not slice, reshape or broadcast: dst holds 16384 elements and src holds 384.
+
+level 2   1 attempt(s) were this kernel   reward 0.30
+  was told : 0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=16384 The tile you allocated holds 16384 elements but you copied 384 into it. nisa.dma_copy does not slice or broadcast: allocate the destination
+  would add: line 28, `nisa.dma_copy(dst=sbuf_in, src=x[start_p:end_p, :])`,
+  would add: At that line: `sbuf_in` is (128, 128) in sbuf; `x` is (32, 12) in HBM (an input); `start_p` = 0; `end_p` = 32; src `x[start_p:end_p, :]` is (32, 12) in HBM (an input). The two sides of a dma_copy must hold the same number of elements, because it does not slice, reshape or broadcast: dst holds 16384 elements and src holds 384.
+
+level 2   1 attempt(s) were this kernel   reward 0.30
+  was told : 0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=512 The tile you allocated holds 512 elements but you copied 384 into it. nisa.dma_copy does not slice or broadcast: allocate the destination wit
+  would add: line 18, `nisa.dma_copy(dst=tile, src=x)`,
+  would add: At that line: `tile` is (128, 4) in sbuf; `x` is (32, 12) in HBM (an input). The two sides of a dma_copy must hold the same number of elements, because it does not slice, reshape or broadcast: dst holds 512 elements and src holds 384.
+
+level 2   1 attempt(s) were this kernel   reward 0.30
+  was told : 0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=12 The tile you allocated holds 12 elements but you copied 384 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with 
+  would add: line 18, `nisa.dma_copy(dst=tile, src=x)`,
+  would add: At that line: `tile` is (3, 4) in sbuf; `x` is (32, 12) in HBM (an input). The two sides of a dma_copy must hold the same number of elements, because it does not slice, reshape or broadcast: dst holds 12 elements and src holds 384.
+
+level 3   16 attempt(s) were this kernel   reward 0.30
+  was told : 0 of 1 shapes passed. On K=128 M=64 N=512: raised ValueError: cannot reshape array of size 32768 into shape (1,64) Do not reshape. Work with the shapes you were given and slice them into tiles, e.g. src=a[0:128, 0:64].
+  would add: line 21, `nisa.nc_matmul(dst=psum, stationary=sbuf_stationary, moving=sbuf_moving)`,
+  would add: At that line: `psum` is (1, 64) in psum; `sbuf_stationary` is (128, 64) in sbuf; `sbuf_moving` is (128, 512) in sbuf. The result of nc_matmul has stationary's second dimension as its first and moving's second dimension as its second, and dst must be exactly that shape: dst is (1, 64).
+
+level 3   4 attempt(s) were this kernel   reward 0.30
+  was told : 0 of 1 shapes passed. On K=128 M=64 N=512: raised AssertionError: SBUF and PSUM tensors must have at least 2 dimensions (partition-dim and free-dim) Every SBUF and PSUM tile needs two dimensions: a partition dimension first, then a free dimension. A 1-D tile is not allowed, so write nl.ndarray((rows
+  would add: line 10, `psum = nl.ndarray(shape=lhsT.shape[1:], dtype=nl.float32, buffer=nl.psum)`,
+  would add: At that line: `lhsT` is (128, 64) in HBM (an input). A tile on the chip needs at least 2 dimensions, the partition dimension first: this shape has 1.
+
+level 3   2 attempt(s) were this kernel   reward 0.30
+  was told : 0 of 1 shapes passed. On K=128 M=64 N=512: raised AssertionError: SBUF and PSUM tensors must have at least 2 dimensions (partition-dim and free-dim) Every SBUF and PSUM tile needs two dimensions: a partition dimension first, then a free dimension. A 1-D tile is not allowed, so write nl.ndarray((rows
+  would add: line 10, `psum = nl.ndarray(shape=lhsT.shape[1:], dtype=nl.float32, buffer=nl.psum)`,
+  would add: At that line: `lhsT` is (128, 64) in HBM (an input). A tile on the chip needs at least 2 dimensions, the partition dimension first: this shape has 1.
+
+level 3   1 attempt(s) were this kernel   reward 0.30
+  was told : 0 of 1 shapes passed. On K=128 M=64 N=512: raised AssertionError: SBUF and PSUM tensors must have at least 2 dimensions (partition-dim and free-dim) Every SBUF and PSUM tile needs two dimensions: a partition dimension first, then a free dimension. A 1-D tile is not allowed, so write nl.ndarray((rows
+  would add: line 16, `psum = nl.ndarray(shape=out.shape, dtype=out.dtype, buffer=nl.psum)`,
+  would add: At that line: `out` is (64,) in HBM. A tile on the chip needs at least 2 dimensions, the partition dimension first: this shape has 1.
+
+level 3   1 attempt(s) were this kernel   reward 0.30
+  was told : 0 of 1 shapes passed. On K=128 M=64 N=512: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=65536 The tile you allocated holds 65536 elements but you copied 8192 into it. nisa.dma_copy does not slice or broadcast: allocate the destination wi
+  would add: line 14, `nisa.dma_copy(dst=sbuf_tile, src=lhsT)`,
+  would add: At that line: `sbuf_tile` is (128, 512) in sbuf; `lhsT` is (128, 64) in HBM (an input). The two sides of a dma_copy must hold the same number of elements, because it does not slice, reshape or broadcast: dst holds 65536 elements and src holds 8192.
+
+level 4   13 attempt(s) were this kernel   reward 0.62
+  was told : 1 of 4 shapes passed. On K=256 M=256 N=1024: raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 A tile may have at most 128 rows, and you asked for 256. Do not allocate one tile for the whole tensor: loop over the partition dimension in chunks of at most 128 with nl.affi
+  would add: line 19, `nisa.dma_copy(dst=sbuf_stationary, src=lhsT)`,
+  would add: At that line: `sbuf_stationary` is (256, 256) in sbuf; `lhsT` is (256, 256) in HBM (an input). A tile on the chip may have at most 128 rows, since its first dimension is the partition dimension: dst has 256.
+
+level 4   1 attempt(s) were this kernel   reward 0.30
+  was told : 0 of 4 shapes passed. On K=128 M=128 N=512: raised AssertionError: dst must be in ['psum'], got sbuf Allocate the `dst` tile with buffer=nl.psum instead of nl.sbuf. For nisa.nc_matmul: dst must be in nl.psum, and stationary and moving must both be in nl.sbuf. Copy between them with nisa.tensor_copy.
+  would add: line 45, `nisa.nc_matmul(dst=temp, stationary=lhsT_tile, moving=rhs_tile)`,
+  would add: At that line: `temp` is (128, 512) in sbuf; `lhsT_tile` is (128, 128) in sbuf; `rhs_tile` is (128, 512) in sbuf.
+
+level 4   1 attempt(s) were this kernel   reward 0.62
+  was told : 1 of 4 shapes passed. On K=256 M=256 N=1024: raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 A tile may have at most 128 rows, and you asked for 256. Do not allocate one tile for the whole tensor: loop over the partition dimension in chunks of at most 128 with nl.affi
+  would add: line 15, `nisa.dma_copy(dst=sbuf_lhsT, src=lhsT)`,
+  would add: At that line: `sbuf_lhsT` is (256, 256) in sbuf; `lhsT` is (256, 256) in HBM (an input). A tile on the chip may have at most 128 rows, since its first dimension is the partition dimension: dst has 256.
+
+level 4   1 attempt(s) were this kernel   reward 0.30
+  was told : 0 of 4 shapes passed. On K=128 M=128 N=512: raised ValueError: shape mismatch: value array of shape (65536,) could not be broadcast to indexing result of shape (16384,) You assigned 65536 elements into a slice that holds 16384. Assignment does not reshape or broadcast either: the slice on the left a
+  would add: line 25, `nisa.tensor_copy(dst=sbuf_lhsT, src=psum)`,
+  would add: At that line: `sbuf_lhsT` is (128, 128) in sbuf; `psum` is (128, 512) in psum. The two sides of a tensor_copy must hold the same number of elements, because it does not slice, reshape or broadcast: dst holds 16384 elements and src holds 65536.
+
+23 distinct failing kernels; 23 crashed in the simulator; a line was named for 23 of those and the state for 23.
+errors inside the diagnosis itself: 0

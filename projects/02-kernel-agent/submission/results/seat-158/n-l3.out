@@ -1,0 +1,128 @@
+features ['ahead', 'internal', 'locate', 'names', 'origin', 'state']
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 5 ################
+
+=========== level 3: matmul, single tile ===========
+round 0: this round 0.30  best so far 0.30  (57.1s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 12, `nisa.dma_copy(dst=tile, src=lhsT)`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=32768 At that line: `tile` is (64, 512) in sbuf; `lhsT` is (128, 64) in HBM (an input). The two sides of a dma_copy must hold the same number of elements, because it does not slice, reshape or broadcast:
+round 1: this round 0.30  best so far 0.30  (34.9s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 15, `nisa.nc_matmul(dst=out, stationary=tile_lhs, moving=tile_rhs)`, raised AssertionError: dst must be in ['psum'], got shared_hbm Allocate the `dst` tile with buffer=nl.psum instead of nl.shared_hbm. For nisa.nc_matmul: dst must be in nl.psum, and stationary and moving must both be in nl.sbuf. Copy between them with nisa.tensor_copy. At that line: 
+round 2: this round 0.30  best so far 0.30  (34.9s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 15, `nisa.nc_matmul(dst=out, stationary=tile_lhs, moving=tile_rhs)`, raised AssertionError: Matmul contraction dimension mismatch: stationary[0]=64 != moving[0]=128 At that line: `out` is (128, 512) in psum; `tile_lhs` is (64, 128) in sbuf; `tile_rhs` is (128, 512) in sbuf. The first dimension of stationary and of moving is the one nc_matmul contract
+round 3: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 3 failed attempts to break the repeat
+round 4: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 3 failed attempts to break the repeat
+round 5: same failure again (0.30, best so far 0.30)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 1 shapes passed. On K=128 M=64 N=512: raised AssertionError: Matmul contraction dimension mismatch: stati
+    1x  0 of 1 shapes passed. On K=128 M=64 N=512: raised AssertionError: dma_copy requires src and dst to have the sa
+    1x  0 of 1 shapes passed. On K=128 M=64 N=512: raised AssertionError: dst must be in ['psum'], got shared_hbm Allo
+
+=========== summary ===========
+  level 3  reward 0.30 after 6 round(s)
+  solved 0/1
+
+################ run 2 of 5 ################
+
+=========== level 3: matmul, single tile ===========
+round 0: this round 0.30  best so far 0.30  (56.1s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 12, `nisa.dma_copy(dst=tile, src=lhsT)`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=32768 At that line: `tile` is (64, 512) in sbuf; `lhsT` is (128, 64) in HBM (an input). The two sides of a dma_copy must hold the same number of elements, because it does not slice, reshape or broadcast:
+round 1: this round 0.30  best so far 0.30  (35.0s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 15, `nisa.nc_matmul(dst=out, stationary=tile_lhs, moving=tile_rhs)`, raised AssertionError: dst must be in ['psum'], got shared_hbm Allocate the `dst` tile with buffer=nl.psum instead of nl.shared_hbm. For nisa.nc_matmul: dst must be in nl.psum, and stationary and moving must both be in nl.sbuf. Copy between them with nisa.tensor_copy. At that line: 
+round 2: this round 0.30  best so far 0.30  (34.9s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 15, `nisa.nc_matmul(dst=out, stationary=tile_lhs, moving=tile_rhs)`, raised AssertionError: Matmul contraction dimension mismatch: stationary[0]=64 != moving[0]=128 At that line: `out` is (128, 512) in psum; `tile_lhs` is (64, 128) in sbuf; `tile_rhs` is (128, 512) in sbuf. The first dimension of stationary and of moving is the one nc_matmul contract
+round 3: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 3 failed attempts to break the repeat
+round 4: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 3 failed attempts to break the repeat
+round 5: same failure again (0.30, best so far 0.30)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 1 shapes passed. On K=128 M=64 N=512: raised AssertionError: Matmul contraction dimension mismatch: stati
+    1x  0 of 1 shapes passed. On K=128 M=64 N=512: raised AssertionError: dma_copy requires src and dst to have the sa
+    1x  0 of 1 shapes passed. On K=128 M=64 N=512: raised AssertionError: dst must be in ['psum'], got shared_hbm Allo
+
+=========== summary ===========
+  level 3  reward 0.30 after 6 round(s)
+  solved 0/1
+
+################ run 3 of 5 ################
+
+=========== level 3: matmul, single tile ===========
+round 0: this round 0.30  best so far 0.30  (52.2s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 12, `nisa.dma_copy(dst=tile, src=lhsT)`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=32768 At that line: `tile` is (64, 512) in sbuf; `lhsT` is (128, 64) in HBM (an input). The two sides of a dma_copy must hold the same number of elements, because it does not slice, reshape or broadcast:
+round 1: this round 0.30  best so far 0.30  (35.7s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 15, `nisa.nc_matmul(dst=out, stationary=tile_lhs, moving=tile_rhs, K=K)`, raised TypeError: nc_matmul() got an unexpected keyword argument 'K' Remove the `K=` argument. The real signature is isa.nc_matmul(dst: 'NkiTensor', stationary: 'NkiTensor', moving: 'NkiTensor', is_stationary_onezero=False, is_moving_onezero=False, is_transpose=False, accumulat
+round 2: this round 0.00  best so far 0.30  (43.3s)
+  The code does not parse: invalid syntax on line 15. Send one complete python code block.
+round 3: this round 0.30  best so far 0.30  (42.8s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 15, `nisa.nc_matmul(dst=out, stationary=tile_lhs, moving=tile_rhs, is_stationary_onezero=False, is_moving_onezero=False, is_transpose=False, accumulate=None, tile_position=(), tile_size=(), perf_mode=nisa. ...`, raised AssertionError: dst must be in ['psum'], got shared_hbm Allocate the `dst` tile with buffer=nl.psum instead of nl.shared_hbm. For nis
+round 4: this round 1.00  best so far 1.00  (42.4s)
+  Correct on every shape. MEMORY BOUND: 28.4 Flops/Byte against a ridge of 222, so 13% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 7.8x more reuse needed.
+  SOLVED on round 4. Correct on every shape. MEMORY BOUND: 28.4 Flops/Byte against a ridge of 222, so 13% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 7.8x more reuse needed.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_matmul_basic_(lhsT, rhs):
+      M = lhsT.shape[1]
+      N = rhs.shape[1]
+      K = lhsT.shape[0]
+      tile_lhs = nl.ndarray((K, M), dtype=lhsT.dtype, buffer=nl.sbuf)
+      tile_rhs = nl.ndarray((K, N), dtype=rhs.dtype, buffer=nl.sbuf)
+      out = nl.ndarray((M, N), dtype=lhsT.dtype, buffer=nl.psum)
+      nisa.dma_copy(dst=tile_lhs, src=lhsT)
+      nisa.dma_copy(dst=tile_rhs, src=rhs)
+      nisa.nc_matmul(dst=out, stationary=tile_lhs, moving=tile_rhs, is_stationary_onezero=False, is_moving_onezero=False, is_transpose=False, accumulate=None, tile_position=(), tile_size=(), perf_mode=nisa.matmul_perf_mode.none, name=None)
+      return out
+  -------------------------------------------
+
+=========== summary ===========
+  level 3  reward 1.00 after 5 round(s)  SOLVED
+  solved 1/1
+
+################ run 4 of 5 ################
+
+=========== level 3: matmul, single tile ===========
+round 0: this round 0.30  best so far 0.30  (57.7s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 14, `nisa.dma_copy(dst=sbuf_tile, src=lhsT)`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=65536 At that line: `sbuf_tile` is (128, 512) in sbuf; `lhsT` is (128, 64) in HBM (an input). The two sides of a dma_copy must hold the same number of elements, because it does not slice, reshape or
+round 1: this round 0.30  best so far 0.30  (58.5s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 20, `nisa.nc_matmul(dst=psum_tile, stationary=sbuf_lhs_tile, moving=sbuf_rhs_tile)`, raised ValueError: cannot reshape array of size 32768 into shape (128,512) At that line: `psum_tile` is (128, 512) in psum; `sbuf_lhs_tile` is (128, 64) in sbuf; `sbuf_rhs_tile` is (128, 512) in sbuf. The result of nc_matmul has stationary's second dimension as its f
+round 2: this round 0.30  best so far 0.30  (58.5s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 23, `nisa.tensor_copy(dst=sbuf_tile, src=psum_tile)`, raised NameError: name 'sbuf_tile' is not defined At that line: `psum_tile` is (64, 512) in psum. `sbuf_tile` does not exist at this line: nothing above it assigns that name. The tensors that do exist here are `lhsT` (128, 64) in HBM (an input), `rhs` (128, 512) in HBM (an input), `out` (64,) in H
+round 3: this round 0.30  best so far 0.30  (63.8s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 27, `nisa.dma_copy(dst=out, src=sbuf_tile)`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=32768, dst=64 The tile you allocated holds 64 elements but you copied 32768 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If y
+round 4: this round 0.30  best so far 0.30  (65.4s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 27, `nisa.dma_copy(dst=out, src=sbuf_tile)`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=32768, dst=8192 The tile you allocated holds 8192 elements but you copied 32768 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. 
+round 5: this round 0.30  best so far 0.30  (65.2s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 27, `nisa.dma_copy(dst=out, src=sbuf_tile)`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=32768, dst=65536 At that line: `out` is (128, 512) in HBM; `sbuf_tile` is (64, 512) in sbuf. The two sides of a dma_copy must hold the same number of elements, because it does not slice, reshape or broadcast: 
+round 6: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 6 failed attempts to break the repeat
+round 7: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 6 failed attempts to break the repeat
+  not solved in 8 rounds; best reward 0.30
+
+=========== summary ===========
+  level 3  reward 0.30 after 8 round(s)
+  solved 0/1
+
+################ run 5 of 5 ################
+
+=========== level 3: matmul, single tile ===========
+round 0: this round 0.30  best so far 0.30  (57.7s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 14, `nisa.dma_copy(dst=sbuf_tile, src=lhsT)`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=65536 At that line: `sbuf_tile` is (128, 512) in sbuf; `lhsT` is (128, 64) in HBM (an input). The two sides of a dma_copy must hold the same number of elements, because it does not slice, reshape or
+round 1: this round 0.30  best so far 0.30  (58.5s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 20, `nisa.nc_matmul(dst=psum_tile, stationary=sbuf_lhs_tile, moving=sbuf_rhs_tile)`, raised ValueError: cannot reshape array of size 32768 into shape (128,512) At that line: `psum_tile` is (128, 512) in psum; `sbuf_lhs_tile` is (128, 64) in sbuf; `sbuf_rhs_tile` is (128, 512) in sbuf. The result of nc_matmul has stationary's second dimension as its f
+round 2: this round 0.30  best so far 0.30  (58.5s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 23, `nisa.tensor_copy(dst=sbuf_tile, src=psum_tile)`, raised NameError: name 'sbuf_tile' is not defined At that line: `psum_tile` is (64, 512) in psum. `sbuf_tile` does not exist at this line: nothing above it assigns that name. The tensors that do exist here are `lhsT` (128, 64) in HBM (an input), `rhs` (128, 512) in HBM (an input), `out` (64,) in H
+round 3: this round 0.30  best so far 0.30  (63.8s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 27, `nisa.dma_copy(dst=out, src=sbuf_tile)`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=32768, dst=64 The tile you allocated holds 64 elements but you copied 32768 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If y
+round 4: this round 0.30  best so far 0.30  (65.4s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 27, `nisa.dma_copy(dst=out, src=sbuf_tile)`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=32768, dst=8192 The tile you allocated holds 8192 elements but you copied 32768 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. 
+round 5: this round 0.30  best so far 0.30  (65.2s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 27, `nisa.dma_copy(dst=out, src=sbuf_tile)`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=32768, dst=65536 At that line: `out` is (128, 512) in HBM; `sbuf_tile` is (64, 512) in sbuf. The two sides of a dma_copy must hold the same number of elements, because it does not slice, reshape or broadcast: 
+round 6: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 6 failed attempts to break the repeat

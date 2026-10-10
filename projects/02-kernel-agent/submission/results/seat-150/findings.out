@@ -1,0 +1,106 @@
+simulator: nki 0.6.0+31049202112.g85070674
+
+==============================================================================
+tall_tile_level4.py  --  nkibench.py --level 4 --check  (exit 0)
+==============================================================================
+level 4: matmul, tiled
+  rules      clean
+
+  case K=128 M=128 N=512:
+    HBM traffic is 655,360 bytes against a floor of 589,824 (1.11x) -- essentially optimal. Every byte is read about once.
+
+  case K=256 M=256 N=1024:
+    HBM traffic is 3,932,160 bytes against a floor of 2,359,296, so 1.7x MORE THAN NECESSARY. The same bytes are crossing the bus repeatedly. For a tiled matmul the usual cause is allocating the PSUM tile inside the contraction loop and copying each partial product out: allocate one PSUM tile OUTSIDE that loop and let nisa.nc_matmul accumulate into it across every step, then copy out once. Hoisting the operand loads out of the innermost loop cuts the rest.
+
+  case K=512 M=128 N=512:
+    HBM traffic is 1,835,008 bytes against a floor of 1,572,864, so 1.2x MORE THAN NECESSARY. The same bytes are crossing the bus repeatedly. For a tiled matmul the usual cause is allocating the PSUM tile inside the contraction loop and copying each partial product out: allocate one PSUM tile OUTSIDE that loop and let nisa.nc_matmul accumulate into it across every step, then copy out once. Hoisting the operand loads out of the innermost loop cuts the rest.
+
+  case K=256 M=512 N=1024:
+    HBM traffic is 7,864,320 bytes against a floor of 3,670,016, so 2.1x MORE THAN NECESSARY. The same bytes are crossing the bus repeatedly. For a tiled matmul the usual cause is allocating the PSUM tile inside the contraction loop and copying each partial product out: allocate one PSUM tile OUTSIDE that loop and let nisa.nc_matmul accumulate into it across every step, then copy out once. Hoisting the operand loads out of the innermost loop cuts the rest.
+  numerics   4/4 shapes passed
+
+  K=128 M=128 N=512: 655,360 HBM bytes in 4 transfers (via nki.simulate, dtype float32)
+    NOTE: the 222 Flops/Byte ridge is the published bfloat16 figure, and this ran in float32. Treat the verdict as indicative and re-measure in bfloat16 before quoting a number.
+    arithmetic intensity 25.6 Flops/Byte. Ceiling at this shape is 28.4 (every byte read once); the hardware ridge is 222.
+    YOUR KERNEL: at the byte floor already, so there is no reuse left to find.
+    THIS SHAPE: even a perfect kernel reaches only 28.4, which is 7.8x under the ridge, so the operation is memory bound here however it is written. Do not chase compute-bound at this size -- for a square bfloat16 matmul you need about n >= 667 before the ceiling clears the ridge.
+
+  K=256 M=256 N=1024: 3,932,160 HBM bytes in 22 transfers (via nki.simulate, dtype float32)
+    NOTE: the 222 Flops/Byte ridge is the published bfloat16 figure, and this ran in float32. Treat the verdict as indicative and re-measure in bfloat16 before quoting a number.
+    arithmetic intensity 34.1 Flops/Byte. Ceiling at this shape is 56.9 (every byte read once); the hardware ridge is 222.
+    YOUR KERNEL: moving 1.7x the necessary bytes, which divides your intensity by 1.7. Recovering that is entirely in your hands and is the whole of levels 4 to 7.
+    THIS SHAPE: even a perfect kernel reaches only 56.9, which is 3.9x under the ridge, so the operation is memory bound here however it is written. Do not chase compute-bound at this size -- for a square bfloat16 matmul you need about n >= 667 before the ceiling clears the ridge.
+
+  K=512 M=128 N=512: 1,835,008 HBM bytes in 13 transfers (via nki.simulate, dtype float32)
+    NOTE: the 222 Flops/Byte ridge is the published bfloat16 figure, and this ran in float32. Treat the verdict as indicative and re-measure in bfloat16 before quoting a number.
+    arithmetic intensity 36.6 Flops/Byte. Ceiling at this shape is 42.7 (every byte read once); the hardware ridge is 222.
+    YOUR KERNEL: moving 1.2x the necessary bytes, which divides your intensity by 1.2. Recovering that is entirely in your hands and is the whole of levels 4 to 7.
+    THIS SHAPE: even a perfect kernel reaches only 42.7, which is 5.2x under the ridge, so the operation is memory bound here however it is written. Do not chase compute-bound at this size -- for a square bfloat16 matmul you need about n >= 667 before the ceiling clears the ridge.
+
+  K=256 M=512 N=1024: 7,864,320 HBM bytes in 42 transfers (via nki.simulate, dtype float32)
+    NOTE: the 222 Flops/Byte ridge is the published bfloat16 figure, and this ran in float32. Treat the verdict as indicative and re-measure in bfloat16 before quoting a number.
+    arithmetic intensity 34.1 Flops/Byte. Ceiling at this shape is 73.1 (every byte read once); the hardware ridge is 222.
+    YOUR KERNEL: moving 2.1x the necessary bytes, which divides your intensity by 2.1. Recovering that is entirely in your hands and is the whole of levels 4 to 7.
+    THIS SHAPE: even a perfect kernel reaches only 73.1, which is 3.0x under the ridge, so the operation is memory bound here however it is written. Do not chase compute-bound at this size -- for a square bfloat16 matmul you need about n >= 667 before the ceiling clears the ridge.
+
+==============================================================================
+psum_output_level3.py  --  nkibench.py --level 3 --check  (exit 0)
+==============================================================================
+level 3: matmul, single tile
+  rules      clean
+
+  case K=128 M=64 N=512:
+    HBM traffic is 425,984 bytes against a floor of 425,984 (1.00x) -- essentially optimal. Every byte is read about once.
+  numerics   1/1 shapes passed
+
+  K=128 M=64 N=512: 425,984 HBM bytes in 3 transfers (via nki.simulate, dtype float32)
+    NOTE: the 222 Flops/Byte ridge is the published bfloat16 figure, and this ran in float32. Treat the verdict as indicative and re-measure in bfloat16 before quoting a number.
+    arithmetic intensity 19.7 Flops/Byte. Ceiling at this shape is 19.7 (every byte read once); the hardware ridge is 222.
+    YOUR KERNEL: at the byte floor already, so there is no reuse left to find.
+    THIS SHAPE: even a perfect kernel reaches only 19.7, which is 11.3x under the ridge, so the operation is memory bound here however it is written. Do not chase compute-bound at this size -- for a square bfloat16 matmul you need about n >= 667 before the ceiling clears the ridge.
+
+==============================================================================
+misleading_reshape_level3.py  --  nkibench.py --level 3 --check  (exit 1)
+==============================================================================
+level 3: matmul, single tile
+  rules      clean
+  numerics   0/1 shapes passed
+
+  case K=128 M=64 N=512:
+    RAISED during simulation: ValueError: cannot reshape array of size 32768 into shape (1,64)
+
+  ^ feed this text back to the model. If it is not enough to locate the bug,
+    improve THIS message before you touch the prompt.
+
+==============================================================================
+misleading_moving_level4.py  --  nkibench.py --level 4 --check  (exit 1)
+==============================================================================
+level 4: matmul, tiled
+  rules      clean
+
+  case K=128 M=128 N=512:
+    HBM traffic is 589,824 bytes against a floor of 589,824 (1.00x) -- essentially optimal. Every byte is read about once.
+
+  case K=512 M=128 N=512:
+    HBM traffic is 1,572,864 bytes against a floor of 1,572,864 (1.00x) -- essentially optimal. Every byte is read about once.
+  numerics   2/4 shapes passed
+
+  case K=256 M=256 N=1024:
+    RAISED during simulation: AssertionError: Matmul moving free dimension 1024 exceeds max 512 for nc_version=nc_version.gen3
+
+  case K=256 M=512 N=1024:
+    RAISED during simulation: AssertionError: Matmul moving free dimension 1024 exceeds max 512 for nc_version=nc_version.gen3
+
+  ^ feed this text back to the model. If it is not enough to locate the bug,
+    improve THIS message before you touch the prompt.
+
+rule scan on the tall tile written as (256, M): ['line 58: partition dimension 256 exceeds the maximum of 128. Tile it.']
+rule scan on the same tile written as (K, M):   clean
+
+SUMMARY
+  REPRODUCED      tall_tile_level4             PASSES the organisers' check; actually: allocates a 256- and 512-row SBUF tile
+  REPRODUCED      psum_output_level3           PASSES the organisers' check; actually: returns its PSUM tile as the output
+  REPRODUCED      misleading_reshape_level3    check exits 1; actually: has no reshape; its result tile is (1, 64)
+  REPRODUCED      misleading_moving_level4     check exits 1; actually: both operands are within limits; the result tile is 1024 wide
+  REPRODUCED      rule scan blind spot         catches (256, M), not (K, M)
+  REPRODUCED      stale_bytecode               first kernel returned 128; second kernel returned 128, its source says 512

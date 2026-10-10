@@ -1,0 +1,32 @@
+Proving the parts that need no device. Run this on the instance too, for the rest.
+
+  roofline model vs the tutorial     -> 160 KB per 16.8 MFlops = 102.4 Flops/Byte (matches the published 160 KB / 16 MFlops / 102)
+  the tiled matmul is classified     -> memory_bound ok  (2.2x more reuse needed)
+  4x the reuse is classified         -> compute_bound ok
+
+  ref_avgpool2d                      -> ok
+  ref_transpose2d (tutorial example) -> ok
+  ref_matmul (transposed left)       -> ok
+
+  catches the @ operator                 -> caught: line 4: uses `a.T`, which transposes the input on the host. 
+  catches .T on an argument              -> caught: line 4: uses `in_tensor.T`, which transposes the input on th
+  catches np.mean                        -> caught: line 5: calls `np.mean`, which hands the whole operation to 
+  catches a 256-partition tile           -> caught: line 5: partition dimension 256 exceeds the maximum of 128. 
+  catches a missing @nki.jit             -> caught: `nki_matmul_tiled_` is not decorated with `@nki.jit`, so it 
+  catches the wrong entry-point name     -> caught: no function named `nki_matmul_tiled_` is defined; that is th
+  accepts a plausible kernel         -> ok
+
+  itemsize of a numpy float32 array    -> 4 bytes ok
+  itemsize of dtype as an object       -> 4 bytes ok
+  itemsize of dtype as a string        -> 4 bytes ok
+  itemsize of an nki-style name        -> 2 bytes ok
+  level 3 should move 589,824 bytes, giving an intensity of 14.2 in float32
+
+  mismatch names the element         -> ok
+  mismatch spots the ragged edge     -> ok
+  a correct result passes            -> ok
+  wrong shape is named as such       -> ok
+
+  nki 0.6.0+31049202112.g85070674 is importable; simulation API: nki.simulate
+
+SELFTEST PASSED

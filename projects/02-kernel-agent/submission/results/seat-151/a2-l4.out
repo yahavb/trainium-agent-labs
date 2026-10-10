@@ -1,0 +1,94 @@
+features ['ahead', 'internal', 'locate', 'origin', 'state']
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.62  best so far 0.62  (80.2s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: line 15, `nisa.dma_copy(dst=lhsT_sbuf, src=lhsT)`, raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 A tile may have at most 128 rows, and you asked for 256. Do not allocate one tile for the whole tensor: loop over the partition dimension in chunks of at most 128 with nl.affine_range, allocate the tile inside the loop with 
+round 1: this round 0.30  best so far 0.62  (86.3s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 23, `out_sbuf[m * tile_shape[0]:(m + 1) * tile_shape[0], n * tile_shape[1]:(n + 1) * tile_shape[1]] = psum`, raised AssertionError: Out-of-bound access for tensor `unnamed` on dimension 1: index range [128, 255] exceed dimension size of 128. You indexed up to 255 on dimension 1, which is only 128 long. Tile limits are a MAXIMUM, not a target. Derive
+round 2: same failure again (0.30, best so far 0.62)
+  same failure 2x — adding a ledger of 2 failed attempts to break the repeat
+round 3: this round 0.30  best so far 0.62  (83.9s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 25, `nisa.dma_copy(dst=out_hbm, src=out_sbuf)`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=16384, dst=65536 At that line: `out_hbm` is (128, 512) in HBM; `out_sbuf` is (128, 128) in sbuf. The two sides of a dma_copy must hold the same number of elements, because it does not slice, reshape or bro
+round 4: same failure again (0.30, best so far 0.62)
+  same failure 2x — adding a ledger of 3 failed attempts to break the repeat
+round 5: this round 0.50  best so far 0.62  (84.2s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: WRONG SHAPE: returned (128, 128), reference is (128, 512). Check the output-size arithmetic, not the values.
+round 6: this round 0.30  best so far 0.62  (83.7s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 25, `nisa.dma_copy(dst=out_hbm, src=out_sbuf)`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=16384, dst=65536 At that line: `out_hbm` is (128, 512) in HBM; `out_sbuf` is (128, 128) in sbuf. The two sides of a dma_copy must hold the same number of elements, because it does not slice, reshape or bro
+round 7: same failure again (0.30, best so far 0.62)
+  STOPPING this level: this failure for the 4th time, alternating with 3 other(s). The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 4 shapes passed. On K=128 M=128 N=512: raised AssertionError: dma_copy requires src and dst to have the s
+    2x  0 of 4 shapes passed. On K=128 M=128 N=512: raised AssertionError: Out-of-bound access for tensor `unnamed` on
+    1x  1 of 4 shapes passed. On K=256 M=256 N=1024: raised AssertionError: dma_copy dst partition dimension 256 excee
+    1x  0 of 4 shapes passed. On K=128 M=128 N=512: WRONG SHAPE: returned (128, 128), reference is (128, 512). Check t
+
+=========== summary ===========
+  level 4  reward 0.62 after 8 round(s)
+  solved 0/1
+
+################ run 2 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.62  best so far 0.62  (76.3s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: line 15, `nisa.dma_copy(dst=sbuf_lhsT, src=lhsT)`, raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 A tile may have at most 128 rows, and you asked for 256. Do not allocate one tile for the whole tensor: loop over the partition dimension in chunks of at most 128 with nl.affine_range, allocate the tile inside the loop with 
+round 1: this round 0.30  best so far 0.62  (82.0s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 43, `nisa.tensor_copy(dst=out, src=psum)`, raised AssertionError: tensor_copy dst must be in ['sbuf', 'psum'], got shared_hbm `nisa.tensor_copy` only moves data between on-chip buffers, sbuf and psum. To reach HBM -- the tensor you allocated with buffer=nl.shared_hbm and will return -- use nisa.dma_copy instead. The usual sequence is nc_matmul into 
+round 2: this round 0.75  best so far 0.75  (84.8s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: line 40, `nisa.nc_matmul(dst=psum, stationary=sbuf_lhsT, moving=sbuf_rhs)`, raised AssertionError: Matmul stationary free dimension 256 exceeds gemm_stationary_fmax=128 At that line: `psum` is (256, 1024) in psum; `sbuf_lhsT` is (128, 256) in sbuf; `sbuf_rhs` is (128, 1024) in sbuf. The second dimension of stationary may be at most 128: it is 256. The s
+round 3: same failure again (0.75, best so far 0.75)
+  same failure 2x — adding a ledger of 3 failed attempts to break the repeat
+round 4: this round 0.30  best so far 0.75  (82.1s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 43, `nisa.dma_copy(dst=out, src=psum)`, raised AssertionError: dma_copy requires HBM or SBUF tensors, got src=MemoryRegion.psum, dst=MemoryRegion.shared_hbm At that line: `out` is (128, 512) in HBM; `psum` is (128, 512) in psum.
+round 5: same failure again (0.30, best so far 0.75)
+  same failure 2x — adding a ledger of 4 failed attempts to break the repeat
+round 6: this round 0.30  best so far 0.75  (81.7s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 43, `nisa.tensor_copy(dst=out, src=psum)`, raised AssertionError: tensor_copy dst must be in ['sbuf', 'psum'], got shared_hbm `nisa.tensor_copy` only moves data between on-chip buffers, sbuf and psum. To reach HBM -- the tensor you allocated with buffer=nl.shared_hbm and will return -- use nisa.dma_copy instead. The usual sequence is nc_matmul into 
+round 7: this round 0.75  best so far 0.75  (84.8s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: line 40, `nisa.nc_matmul(dst=psum, stationary=sbuf_lhsT, moving=sbuf_rhs)`, raised AssertionError: Matmul stationary free dimension 256 exceeds gemm_stationary_fmax=128 At that line: `psum` is (256, 1024) in psum; `sbuf_lhsT` is (128, 256) in sbuf; `sbuf_rhs` is (128, 1024) in sbuf. The second dimension of stationary may be at most 128: it is 256. The s
+  not solved in 8 rounds; best reward 0.75
+
+=========== summary ===========
+  level 4  reward 0.75 after 8 round(s)
+  solved 0/1
+
+################ run 3 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.30  best so far 0.30  (63.6s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 31, `nisa.tensor_copy(dst=sbuf_stationary, src=psum)`, raised ValueError: shape mismatch: value array of shape (65536,) could not be broadcast to indexing result of shape (16384,) At that line: `sbuf_stationary` is (128, 128) in sbuf; `psum` is (128, 512) in psum. The two sides of a tensor_copy must hold the same number of elements, because it does 
+round 1: this round 0.62  best so far 0.62  (68.7s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: line 20, `nisa.dma_copy(dst=sbuf_stationary, src=lhsT)`, raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 A tile may have at most 128 rows, and you asked for 256. Do not allocate one tile for the whole tensor: loop over the partition dimension in chunks of at most 128 with nl.affine_range, allocate the tile inside the loop
+round 2: this round 0.62  best so far 0.62  (85.8s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: line 33, `nisa.nc_matmul(dst=psum, stationary=sbuf_stationary, moving=sbuf_moving)`, raised AssertionError: Matmul contraction dimension 256 exceeds pmax=128 The contraction dimension K is 256 and one nc_matmul can only contract 128. Split K into chunks of 128 and accumulate: allocate ONE psum tile OUTSIDE the K loop, call nisa.nc_matmul into that same 
+round 3: this round 0.30  best so far 0.62  (86.2s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 36, `nisa.tensor_copy(dst=out, src=psum)`, raised AssertionError: tensor_copy dst must be in ['sbuf', 'psum'], got shared_hbm `nisa.tensor_copy` only moves data between on-chip buffers, sbuf and psum. To reach HBM -- the tensor you allocated with buffer=nl.shared_hbm and will return -- use nisa.dma_copy instead. The usual sequence is nc_matmul into 
+round 4: this round 0.30  best so far 0.62  (91.8s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 36, `nisa.tensor_copy(dst=sbuf_moving[0, :], src=psum)`, raised ValueError: shape mismatch: value array of shape (65536,) could not be broadcast to indexing result of shape (512,) At that line: `sbuf_moving` is (128, 512) in sbuf; `psum` is (128, 512) in psum; dst `sbuf_moving[0, :]` is (1, 512) in sbuf. The two sides of a tensor_copy must hold the 
+round 5: this round 0.75  best so far 0.75  (96.2s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: line 33, `nisa.nc_matmul(dst=psum, stationary=sbuf_stationary[i:i+chunk_size, :], moving=sbuf_moving[i:i+chunk_size, :])`, raised AssertionError: Matmul stationary free dimension 256 exceeds gemm_stationary_fmax=128 At that line: `psum` is (256, 1024) in psum; `sbuf_stationary` is (256, 256) in sbuf; `i` = 0; `chunk_size` = 128; `sbuf_moving` is (256, 1
+round 6: same failure again (0.75, best so far 0.75)
+  same failure 2x — adding a ledger of 6 failed attempts to break the repeat
+round 7: same failure again (0.75, best so far 0.75)
+  same failure 3x — adding a ledger of 6 failed attempts to break the repeat
+  not solved in 8 rounds; best reward 0.75
+
+=========== summary ===========
+  level 4  reward 0.75 after 8 round(s)
+  solved 0/1
+
+################ run 4 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.62  best so far 0.62  (65.3s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: line 19, `nisa.dma_copy(dst=sbuf_stationary, src=lhsT)`, raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 A tile may have at most 128 rows, and you asked for 256. Do not allocate one tile for the whole tensor: loop over the partition dimension in chunks of at most 128 with nl.affine_range, allocate the tile inside the loop
+round 1: this round 0.62  best so far 0.62  (85.4s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: line 32, `nisa.nc_matmul(dst=psum, stationary=sbuf_stationary, moving=sbuf_moving)`, raised AssertionError: Matmul contraction dimension 256 exceeds pmax=128 The contraction dimension K is 256 and one nc_matmul can only contract 128. Split K into chunks of 128 and accumulate: allocate ONE psum tile OUTSIDE the K loop, call nisa.nc_matmul into that same 
+round 2: this round 0.75  best so far 0.75  (95.6s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: line 34, `nisa.nc_matmul(dst=psum, stationary=sbuf_stationary[i:i+chunk_size, :], moving=sbuf_moving[i:i+chunk_size, :])`, raised AssertionError: Matmul stationary free dimension 256 exceeds gemm_stationary_fmax=128 At that line: `psum` is (256, 1024) in psum; `sbuf_stationary` is (256, 256) in sbuf; `i` = 0; `chunk_size` = 128; `sbuf_moving` is (256, 1
+round 3: same failure again (0.75, best so far 0.75)
+  same failure 2x — adding a ledger of 3 failed attempts to break the repeat
+round 4: same failure again (0.75, best so far 0.75)
+  same failure 3x — adding a ledger of 3 failed attempts to break the repeat

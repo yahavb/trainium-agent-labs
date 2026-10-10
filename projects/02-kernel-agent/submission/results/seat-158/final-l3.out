@@ -1,0 +1,18 @@
+features ['ahead', 'internal', 'layout', 'locate', 'names', 'origin', 'state', 'strict']
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 5 ################
+
+=========== level 3: matmul, single tile ===========
+round 0: this round 0.30  best so far 0.30  (46.1s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 12, `nisa.dma_copy(dst=tile, src=lhsT)`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=32768 At that line: `tile` is (64, 512) in sbuf; `lhsT` is (128, 64) in HBM (an input). The two sides of a dma_copy must hold the same number of elements, because it does not slice, reshape or broadcast:
+round 1: this round 0.30  best so far 0.30  (35.7s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 15, `nisa.nc_matmul(dst=out, stationary=tile_lhs, moving=tile_rhs, K=K)`, raised TypeError: nc_matmul() got an unexpected keyword argument 'K' At that line: `out` is (64, 512) in HBM; `tile_lhs` is (64, 128) in sbuf; `tile_rhs` is (128, 512) in sbuf; `K` = 128. The first dimension of stationary and of moving is the one nc_matmul contracts, so the two
+round 2: this round 0.30  best so far 0.30  (35.8s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 15, `nisa.nc_matmul(dst=out, stationary=tile_lhs, moving=tile_rhs, K=K)`, raised TypeError: nc_matmul() got an unexpected keyword argument 'K' Remove the `K=` argument. The real signature is isa.nc_matmul(dst: 'NkiTensor', stationary: 'NkiTensor', moving: 'NkiTensor', is_stationary_onezero=False, is_moving_onezero=False, is_transpose=False, accumulat
+round 3: this round 0.00  best so far 0.30  (43.3s)
+  The code does not parse: invalid syntax on line 15. Send one complete python code block.
+round 4: this round 0.30  best so far 0.30  (42.8s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: line 15, `nisa.nc_matmul(dst=out, stationary=tile_lhs, moving=tile_rhs, is_stationary_onezero=False, is_moving_onezero=False, is_transpose=False, accumulate=None, tile_position=(), tile_size=(), perf_mode=nisa. ...`, raised AssertionError: dst must be in ['psum'], got shared_hbm Allocate the `dst` tile with buffer=nl.psum instead of nl.shared_hbm. For nis
+round 5: this round 0.50  best so far 0.50  (42.4s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: RUNS ON THE SIMULATOR, NOT ON THE CHIP: the kernel returns `out`, which line 12 allocates in psum. A kernel's output has to be in HBM: allocate it with buffer=nl.shared_hbm and copy the result into it -- from psum to sbuf with nisa.tensor_copy, then from sbuf to the output with nisa.dma_copy.

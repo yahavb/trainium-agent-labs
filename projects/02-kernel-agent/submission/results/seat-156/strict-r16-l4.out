@@ -1,0 +1,89 @@
+features ['internal', 'locate', 'origin', 'state', 'strict']
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.62  best so far 0.62  (83.0s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 15, `sbuf_stationary = nl.ndarray((K, M), dtype=lhsT.dtype, buffer=nl.sbuf)`, allocates a tile in sbuf with 256 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut from. Allocate the tile
+round 1: same failure again (0.62, best so far 0.62)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+round 2: same failure again (0.62, best so far 0.62)
+  same failure 3x — adding a ledger of 1 failed attempts to break the repeat
+round 3: same failure again (0.62, best so far 0.62)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 15, `sbuf_stationary
+
+=========== summary ===========
+  level 4  reward 0.62 after 4 round(s)
+  solved 0/1
+
+################ run 2 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.62  best so far 0.62  (65.5s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 15, `sbuf_stationary = nl.ndarray((K, M), dtype=lhsT.dtype, buffer=nl.sbuf)`, allocates a tile in sbuf with 256 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut from. Allocate the tile
+round 1: same failure again (0.62, best so far 0.62)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+round 2: same failure again (0.62, best so far 0.62)
+  same failure 3x — adding a ledger of 1 failed attempts to break the repeat
+round 3: same failure again (0.62, best so far 0.62)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 15, `sbuf_stationary
+
+=========== summary ===========
+  level 4  reward 0.62 after 4 round(s)
+  solved 0/1
+
+################ run 3 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.62  best so far 0.62  (77.6s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 15, `sbuf_stationary = nl.ndarray((K, M), dtype=lhsT.dtype, buffer=nl.sbuf)`, allocates a tile in sbuf with 256 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut from. Allocate the tile
+round 1: same failure again (0.62, best so far 0.62)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+round 2: same failure again (0.62, best so far 0.62)
+  same failure 3x — adding a ledger of 1 failed attempts to break the repeat
+round 3: same failure again (0.62, best so far 0.62)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 15, `sbuf_stationary
+
+=========== summary ===========
+  level 4  reward 0.62 after 4 round(s)
+  solved 0/1
+
+################ run 4 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.62  best so far 0.62  (74.1s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 11, `sbuf_lhsT = nl.ndarray(shape=lhsT.shape, dtype=lhsT.dtype, buffer=nl.sbuf)`, allocates a tile in sbuf with 256 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut from. Allocate the 
+round 1: this round 0.62  best so far 0.62  (93.0s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: line 15, `nisa.dma_copy(dst=sbuf_lhsT, src=lhsT)`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=65536, dst=32768 The tile you allocated holds 32768 elements but you copied 65536 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are mov
+round 2: this round 0.62  best so far 0.62  (91.7s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 11, `sbuf_lhsT = nl.ndarray(shape=(lhsT.shape[0], lhsT.shape[1]), dtype=lhsT.dtype, buffer=nl.sbuf)`, allocates a tile in sbuf with 256 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut
+round 3: this round 0.62  best so far 0.62  (92.8s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: line 15, `nisa.dma_copy(dst=sbuf_lhsT, src=lhsT)`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=65536, dst=32768 The tile you allocated holds 32768 elements but you copied 65536 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are mov
+round 4: this round 0.62  best so far 0.62  (91.8s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 11, `sbuf_lhsT = nl.ndarray(shape=(lhsT.shape[0], lhsT.shape[1]), dtype=lhsT.dtype, buffer=nl.sbuf)`, allocates a tile in sbuf with 256 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut
+round 5: this round 0.62  best so far 0.62  (92.7s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: line 15, `nisa.dma_copy(dst=sbuf_lhsT, src=lhsT)`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=65536, dst=32768 The tile you allocated holds 32768 elements but you copied 65536 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are mov
+round 6: this round 0.62  best so far 0.62  (91.5s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 11, `sbuf_lhsT = nl.ndarray(shape=(lhsT.shape[0], lhsT.shape[1]), dtype=lhsT.dtype, buffer=nl.sbuf)`, allocates a tile in sbuf with 256 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut
+round 7: this round 0.62  best so far 0.62  (92.8s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: line 15, `nisa.dma_copy(dst=sbuf_lhsT, src=lhsT)`, raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=65536, dst=32768 The tile you allocated holds 32768 elements but you copied 65536 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are mov
+  STOPPING this level: this failure for the 4th time, alternating with 2 other(s). The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  1 of 4 shapes passed. On K=256 M=256 N=1024: raised AssertionError: dma_copy requires src and dst to have the 
+    3x  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 11, `sbuf_lhsT = nl.
+    1x  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 11, `sbuf_lhsT = nl.
+
+=========== summary ===========
+  level 4  reward 0.62 after 8 round(s)
+  solved 0/1
+
+################ run 5 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.62  best so far 0.62  (70.0s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 15, `sbuf_stationary = nl.ndarray((K, M), dtype=lhsT.dtype, buffer=nl.sbuf)`, allocates a tile in sbuf with 256 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut from. Allocate the tile
+round 1: same failure again (0.62, best so far 0.62)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat

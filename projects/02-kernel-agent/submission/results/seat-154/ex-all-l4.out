@@ -1,0 +1,167 @@
+features ['ahead', 'example', 'internal', 'locate', 'names', 'origin', 'state', 'strict']
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.62  best so far 0.62  (79.6s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 11, `sbuf_lhsT = nl.ndarray(shape=lhsT.shape, dtype=lhsT.dtype, buffer=nl.sbuf)`, allocates a tile in sbuf with 256 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut from. Allocate the 
+round 1: this round 0.30  best so far 0.62  (81.7s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 39, `nisa.tensor_copy(dst=out, src=psum)`, raised AssertionError: tensor_copy dst must be in ['sbuf', 'psum'], got shared_hbm `nisa.tensor_copy` only moves data between on-chip buffers, sbuf and psum. To reach HBM -- the tensor you allocated with buffer=nl.shared_hbm and will return -- use nisa.dma_copy instead. The usual sequence is nc_matmul into 
+round 2: this round 0.75  best so far 0.75  (84.7s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 15, `psum = nl.ndarray(shape=(lhsT.shape[1], rhs.shape[1]), dtype=nl.float32, buffer=nl.psum)`, allocates a tile in psum with 256 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut from.
+round 3: this round 0.10  best so far 0.75  (80.8s)
+  Rule violations, which score zero however fast the kernel is. Fix exactly these: no function named `nki_matmul_tiled_` is defined; that is the entry point this level is checked through. Start the function with exactly this line:  def nki_matmul_tiled_(lhsT, rhs):  and put @nki.jit on the line above it.
+round 4: this round 0.62  best so far 0.75  (82.3s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 32, `psum = nl.ndarray(shape=(M, N), dtype=nl.float32, buffer=nl.psum)`, allocates a tile in psum with 256 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut from. Allocate the tile insi
+round 5: same failure again (0.62, best so far 0.75)
+  same failure 2x — adding a ledger of 5 failed attempts to break the repeat
+round 6: this round 0.10  best so far 0.75  (80.8s)
+  Rule violations, which score zero however fast the kernel is. Fix exactly these: no function named `nki_matmul_tiled_` is defined; that is the entry point this level is checked through. Start the function with exactly this line:  def nki_matmul_tiled_(lhsT, rhs):  and put @nki.jit on the line above it.
+round 7: this round 0.62  best so far 0.75  (82.5s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 32, `psum = nl.ndarray(shape=(M, N), dtype=nl.float32, buffer=nl.psum)`, allocates a tile in psum with 256 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut from. Allocate the tile insi
+round 8: same failure again (0.62, best so far 0.75)
+  STOPPING this level: this failure for the 4th time, alternating with 4 other(s). The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 32, `psum = nl.ndarr
+    2x  Rule violations, which score zero however fast the kernel is. Fix exactly these: no function named `nki_matmul
+    1x  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 11, `sbuf_lhsT = nl.
+    1x  0 of 4 shapes passed. On K=128 M=128 N=512: raised AssertionError: tensor_copy dst must be in ['sbuf', 'psum']
+    1x  2 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 15, `psum = nl.ndarr
+
+=========== summary ===========
+  level 4  reward 0.75 after 9 round(s)
+  solved 0/1
+
+################ run 2 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.62  best so far 0.62  (69.3s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 15, `sbuf_stationary = nl.ndarray((K, M), dtype=lhsT.dtype, buffer=nl.sbuf)`, allocates a tile in sbuf with 256 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut from. Allocate the tile
+round 1: this round 0.10  best so far 0.62  (95.6s)
+  Rule violations, which score zero however fast the kernel is. Fix exactly these: no function named `nki_matmul_tiled_` is defined; that is the entry point this level is checked through. Start the function with exactly this line:  def nki_matmul_tiled_(lhsT, rhs):  and put @nki.jit on the line above it.
+round 2: this round 0.30  best so far 0.62  (95.6s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 36, `nisa.tensor_copy(dst=out, src=psum)`, raised AssertionError: tensor_copy dst must be in ['sbuf', 'psum'], got shared_hbm `nisa.tensor_copy` only moves data between on-chip buffers, sbuf and psum. To reach HBM -- the tensor you allocated with buffer=nl.shared_hbm and will return -- use nisa.dma_copy instead. The usual sequence is nc_matmul into 
+round 3: this round 0.30  best so far 0.62  (96.1s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 36, `nisa.dma_copy(dst=out, src=psum)`, raised AssertionError: dma_copy requires HBM or SBUF tensors, got src=MemoryRegion.psum, dst=MemoryRegion.shared_hbm At that line: `out` is (128, 512) in HBM; `psum` is (128, 512) in psum.
+round 4: same failure again (0.30, best so far 0.62)
+  same failure 2x — adding a ledger of 4 failed attempts to break the repeat
+round 5: this round 0.10  best so far 0.62  (94.5s)
+  Rule violations, which score zero however fast the kernel is. Fix exactly these: no function named `nki_matmul_tiled_` is defined; that is the entry point this level is checked through. Start the function with exactly this line:  def nki_matmul_tiled_(lhsT, rhs):  and put @nki.jit on the line above it.
+round 6: this round 0.30  best so far 0.62  (96.3s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 36, `nisa.dma_copy(dst=out, src=psum)`, raised AssertionError: dma_copy requires HBM or SBUF tensors, got src=MemoryRegion.psum, dst=MemoryRegion.shared_hbm At that line: `out` is (128, 512) in HBM; `psum` is (128, 512) in psum.
+round 7: same failure again (0.30, best so far 0.62)
+  STOPPING this level: this failure for the 4th time, alternating with 3 other(s). The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 4 shapes passed. On K=128 M=128 N=512: raised AssertionError: dma_copy requires HBM or SBUF tensors, got 
+    2x  Rule violations, which score zero however fast the kernel is. Fix exactly these: no function named `nki_matmul
+    1x  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 15, `sbuf_stationary
+    1x  0 of 4 shapes passed. On K=128 M=128 N=512: raised AssertionError: tensor_copy dst must be in ['sbuf', 'psum']
+
+=========== summary ===========
+  level 4  reward 0.62 after 8 round(s)
+  solved 0/1
+
+################ run 3 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.62  best so far 0.62  (79.4s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 15, `sbuf_stationary = nl.ndarray((K, M), dtype=lhsT.dtype, buffer=nl.sbuf)`, allocates a tile in sbuf with 256 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut from. Allocate the tile
+round 1: this round 0.10  best so far 0.62  (89.5s)
+  Rule violations, which score zero however fast the kernel is. Fix exactly these: no function named `nki_matmul_tiled_` is defined; that is the entry point this level is checked through. Start the function with exactly this line:  def nki_matmul_tiled_(lhsT, rhs):  and put @nki.jit on the line above it.
+round 2: this round 0.30  best so far 0.62  (96.0s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 36, `nisa.tensor_copy(dst=out, src=psum)`, raised AssertionError: tensor_copy dst must be in ['sbuf', 'psum'], got shared_hbm `nisa.tensor_copy` only moves data between on-chip buffers, sbuf and psum. To reach HBM -- the tensor you allocated with buffer=nl.shared_hbm and will return -- use nisa.dma_copy instead. The usual sequence is nc_matmul into 
+round 3: this round 0.30  best so far 0.62  (96.4s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 36, `nisa.dma_copy(dst=out, src=psum)`, raised AssertionError: dma_copy requires HBM or SBUF tensors, got src=MemoryRegion.psum, dst=MemoryRegion.shared_hbm At that line: `out` is (128, 512) in HBM; `psum` is (128, 512) in psum.
+round 4: same failure again (0.30, best so far 0.62)
+  same failure 2x — adding a ledger of 4 failed attempts to break the repeat
+round 5: this round 0.10  best so far 0.62  (94.7s)
+  Rule violations, which score zero however fast the kernel is. Fix exactly these: no function named `nki_matmul_tiled_` is defined; that is the entry point this level is checked through. Start the function with exactly this line:  def nki_matmul_tiled_(lhsT, rhs):  and put @nki.jit on the line above it.
+round 6: this round 0.30  best so far 0.62  (96.1s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 36, `nisa.dma_copy(dst=out, src=psum)`, raised AssertionError: dma_copy requires HBM or SBUF tensors, got src=MemoryRegion.psum, dst=MemoryRegion.shared_hbm At that line: `out` is (128, 512) in HBM; `psum` is (128, 512) in psum.
+round 7: same failure again (0.30, best so far 0.62)
+  STOPPING this level: this failure for the 4th time, alternating with 3 other(s). The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 4 shapes passed. On K=128 M=128 N=512: raised AssertionError: dma_copy requires HBM or SBUF tensors, got 
+    2x  Rule violations, which score zero however fast the kernel is. Fix exactly these: no function named `nki_matmul
+    1x  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 15, `sbuf_stationary
+    1x  0 of 4 shapes passed. On K=128 M=128 N=512: raised AssertionError: tensor_copy dst must be in ['sbuf', 'psum']
+
+=========== summary ===========
+  level 4  reward 0.62 after 8 round(s)
+  solved 0/1
+
+################ run 4 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.62  best so far 0.62  (74.0s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 11, `sbuf_lhsT = nl.ndarray(shape=lhsT.shape, dtype=lhsT.dtype, buffer=nl.sbuf)`, allocates a tile in sbuf with 256 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut from. Allocate the 
+round 1: this round 0.10  best so far 0.62  (76.3s)
+  Rule violations, which score zero however fast the kernel is. Fix exactly these: no function named `nki_matmul_tiled_` is defined; that is the entry point this level is checked through. Start the function with exactly this line:  def nki_matmul_tiled_(lhsT, rhs):  and put @nki.jit on the line above it.
+round 2: this round 0.30  best so far 0.62  (77.5s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 39, `nisa.tensor_copy(dst=out, src=psum)`, raised AssertionError: tensor_copy dst must be in ['sbuf', 'psum'], got shared_hbm `nisa.tensor_copy` only moves data between on-chip buffers, sbuf and psum. To reach HBM -- the tensor you allocated with buffer=nl.shared_hbm and will return -- use nisa.dma_copy instead. The usual sequence is nc_matmul into 
+round 3: this round 0.75  best so far 0.75  (80.5s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 15, `psum = nl.ndarray(shape=(lhsT.shape[1], rhs.shape[1]), dtype=nl.float32, buffer=nl.psum)`, allocates a tile in psum with 256 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut from.
+round 4: this round 0.10  best so far 0.75  (79.8s)
+  Rule violations, which score zero however fast the kernel is. Fix exactly these: no function named `nki_matmul_tiled_` is defined; that is the entry point this level is checked through. Start the function with exactly this line:  def nki_matmul_tiled_(lhsT, rhs):  and put @nki.jit on the line above it.
+round 5: this round 0.62  best so far 0.75  (81.2s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 33, `psum = nl.ndarray(shape=(M, N), dtype=nl.float32, buffer=nl.psum)`, allocates a tile in psum with 256 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut from. Allocate the tile insi
+round 6: same failure again (0.62, best so far 0.75)
+  same failure 2x — adding a ledger of 5 failed attempts to break the repeat
+round 7: this round 0.10  best so far 0.75  (81.9s)
+  Rule violations, which score zero however fast the kernel is. Fix exactly these: no function named `nki_matmul_tiled_` is defined; that is the entry point this level is checked through. Start the function with exactly this line:  def nki_matmul_tiled_(lhsT, rhs):  and put @nki.jit on the line above it.
+round 8: this round 0.62  best so far 0.75  (83.3s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 33, `psum = nl.ndarray(shape=(M, N), dtype=nl.float32, buffer=nl.psum)`, allocates a tile in psum with 256 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut from. Allocate the tile insi
+round 9: this round 0.10  best so far 0.75  (81.9s)
+  Rule violations, which score zero however fast the kernel is. Fix exactly these: no function named `nki_matmul_tiled_` is defined; that is the entry point this level is checked through. Start the function with exactly this line:  def nki_matmul_tiled_(lhsT, rhs):  and put @nki.jit on the line above it.
+  STOPPING this level: this failure for the 4th time, alternating with 4 other(s). The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  Rule violations, which score zero however fast the kernel is. Fix exactly these: no function named `nki_matmul
+    3x  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 33, `psum = nl.ndarr
+    1x  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 11, `sbuf_lhsT = nl.
+    1x  0 of 4 shapes passed. On K=128 M=128 N=512: raised AssertionError: tensor_copy dst must be in ['sbuf', 'psum']
+    1x  2 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 15, `psum = nl.ndarr
+
+=========== summary ===========
+  level 4  reward 0.75 after 10 round(s)
+  solved 0/1
+
+################ run 5 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.62  best so far 0.62  (63.7s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 15, `sbuf_stationary = nl.ndarray((K, M), dtype=lhsT.dtype, buffer=nl.sbuf)`, allocates a tile in sbuf with 256 rows. A tile on the chip has at most 128 rows, and slicing it afterwards does not change that: the simulator checks the piece an instruction is given, not the tile it was cut from. Allocate the tile
+round 1: this round 0.10  best so far 0.62  (95.3s)
+  Rule violations, which score zero however fast the kernel is. Fix exactly these: no function named `nki_matmul_tiled_` is defined; that is the entry point this level is checked through. Start the function with exactly this line:  def nki_matmul_tiled_(lhsT, rhs):  and put @nki.jit on the line above it.
+round 2: this round 0.30  best so far 0.62  (97.7s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 30, `nisa.dma_copy(dst=sbuf_moving, src=rhs[k * 512:(k + 1) * 512, :])`, raised AssertionError: Out-of-bound access for tensor `unnamed` on dimension 0: index range [0, 511] exceed dimension size of 128. You indexed up to 511 on dimension 0, which is only 128 long. Tile limits are a MAXIMUM, not a target. Derive every bound from the tensor's own sha
+round 3: same failure again (0.30, best so far 0.62)
+  same failure 2x — adding a ledger of 3 failed attempts to break the repeat
+round 4: this round 0.10  best so far 0.62  (99.3s)
+  Rule violations, which score zero however fast the kernel is. Fix exactly these: no function named `nki_matmul_tiled_` is defined; that is the entry point this level is checked through. Start the function with exactly this line:  def nki_matmul_tiled_(lhsT, rhs):  and put @nki.jit on the line above it.
+round 5: this round 0.30  best so far 0.62  (100.7s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 18, `for i in nl.affine_range(nl.ceil_div(K, 128)): # Process K in chunks of 128 rows`, raised AttributeError: module 'nki.language' has no attribute 'ceil_div' `nki.language` has no `ceil_div`. The closest real names are: ceil, silu_dx, gelu_dx, tile_size, erf_dx, divide. Pick one of those or use a different approach. At that line: `K` = 128.
+round 6: this round 0.30  best so far 0.62  (99.7s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 18, `for i in nl.affine_range(nl.ceil(K, 128)): # Process K in chunks of 128 rows`, raised TypeError: ceil() got multiple values for argument 'dtype' Pass every argument by keyword, e.g. nisa.nc_matmul(dst=..., stationary=..., moving=...), so none is bound twice. At that line: `K` = 128.
+round 7: same failure again (0.30, best so far 0.62)
+  same failure 2x — adding a ledger of 5 failed attempts to break the repeat
+round 8: this round 0.10  best so far 0.62  (99.4s)
+  Rule violations, which score zero however fast the kernel is. Fix exactly these: no function named `nki_matmul_tiled_` is defined; that is the entry point this level is checked through. Start the function with exactly this line:  def nki_matmul_tiled_(lhsT, rhs):  and put @nki.jit on the line above it.
+round 9: this round 0.30  best so far 0.62  (100.6s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 18, `for i in nl.affine_range(nl.ceil_div(K, 128)): # Process K in chunks of 128 rows`, raised AttributeError: module 'nki.language' has no attribute 'ceil_div' `nki.language` has no `ceil_div`. The closest real names are: ceil, silu_dx, gelu_dx, tile_size, erf_dx, divide. Pick one of those or use a different approach. At that line: `K` = 128.
+round 10: this round 0.30  best so far 0.62  (100.0s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: line 18, `for i in nl.affine_range(nl.ceil(K, 128)): # Process K in chunks of 128 rows`, raised TypeError: ceil() got multiple values for argument 'dtype' Pass every argument by keyword, e.g. nisa.nc_matmul(dst=..., stationary=..., moving=...), so none is bound twice. At that line: `K` = 128.
+round 11: same failure again (0.30, best so far 0.62)
+  STOPPING this level: this failure for the 4th time, alternating with 4 other(s). The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 4 shapes passed. On K=128 M=128 N=512: raised TypeError: ceil() got multiple values for argument 'dtype' 
+    3x  Rule violations, which score zero however fast the kernel is. Fix exactly these: no function named `nki_matmul
+    2x  0 of 4 shapes passed. On K=128 M=128 N=512: raised AssertionError: Out-of-bound access for tensor `unnamed` on
+    2x  0 of 4 shapes passed. On K=128 M=128 N=512: raised AttributeError: module 'nki.language' has no attribute 'cei
+    1x  1 of 4 shapes passed. On K=256 M=256 N=1024: RUNS ON THE SIMULATOR, NOT ON THE CHIP: line 15, `sbuf_stationary
+
+=========== summary ===========
+  level 4  reward 0.62 after 12 round(s)
+  solved 0/1
+
+=========== over 5 runs ===========
+  level 4: solved 0/5  best 0.75  worst 0.62  mean 0.68  all=[0.75, 0.62, 0.62, 0.75, 0.62]
+
+  Report the rate, not your best run. A level that solves 1 in 3 times is not solved.
+
+attempts logged to ex-all-l4.jsonl
