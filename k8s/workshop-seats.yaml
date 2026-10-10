@@ -2,7 +2,7 @@
 # Each pod holds one chip (s-lnc2) and has this repo cloned at /workspace. The participant runs
 # ./serve.sh in one `kubectl exec -it seat-N -- bash`, and the projects in a second one.
 #
-# 105 seats: 100 participants plus 5 spares. Changing the count? Update k8s/workshop-rbac.yaml too.
+# 150 seats, one chip each; 15 trn2.48xlarge have 240 chips. Keep the top few numbers unassigned as spares. Changing the count? Update k8s/workshop-rbac.yaml too.
 ---
 apiVersion: v1
 kind: Service
@@ -21,7 +21,7 @@ metadata:
   namespace: default
 spec:
   serviceName: seat
-  replicas: 10
+  replicas: 150
   # Seat numbers start at 1, so the pod name matches the number on the participant's card.
   ordinals:
     start: 1

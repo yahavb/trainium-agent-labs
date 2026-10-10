@@ -1,4 +1,4 @@
-# Running the cluster for 100 participants
+# Running the cluster for up to 150 participants
 
 Each participant gets **one seat number** and **one pod**, `seat-<number>`, in the `default` namespace of
 one EKS cluster. They reach it from their own laptop with the AWS CLI and kubectl. The participant side is
@@ -36,7 +36,7 @@ aws eks create-access-entry --cluster-name "$CLUSTER" \
 # 2. Limit that group to listing pods and exec/logs on seat-* pods
 kubectl apply -f k8s/workshop-rbac.yaml
 
-# 3. Start the 105 seats, and wait for every one to show 1/1 READY
+# 3. Start the 150 seats, and wait for every one to show 1/1 READY
 kubectl apply -f k8s/workshop-seats.yaml
 kubectl get pods -l app=seat -w
 ```
@@ -44,8 +44,8 @@ kubectl get pods -l app=seat -w
 Step 1 needs the cluster's authentication mode to be `API` or `API_AND_CONFIG_MAP`
 (`aws eks describe-cluster --name "$CLUSTER" --query cluster.accessConfig`).
 
-* **Capacity.** One seat = one chip (`s-lnc2`) + 11 CPU + 120 GiB RAM + 100 GiB disk. A `trn2.48xlarge` holds 16 seats, so 105
-  seats need 7 of them. Pods that stay `Pending` mean the nodegroup is short.
+* **Capacity.** One seat = one chip (`s-lnc2`) + 11 CPU + 120 GiB RAM + 100 GiB disk. A `trn2.48xlarge` holds 16 seats, so 150
+  seats need 10 of them; the cluster has 15. Pods that stay `Pending` mean the nodegroup is short.
 * **The repo must be publicly cloneable** — the init container clones it without credentials. If it is
   still private, every seat sticks at `Init:Error`.
 * **Weights.** First start downloads 16 GB per node into `/opt/workshop/hf-cache`, then compiles; allow
@@ -55,9 +55,9 @@ Step 1 needs the cluster's authentication mode to be `API` or `API_AND_CONFIG_MA
 
 ## Who takes which pod
 
-1. **At check-in**, each participant gets a seat number 1–100, written on the sign-in sheet next to
-   their name and on their badge. That number is their pod: seat 42 → `seat-42`.
-2. **Seats 101–105 are spares.** Nobody starts on one.
+1. **At check-in**, each participant gets the next seat number in order, starting at 1, written on
+   the sign-in sheet next to their name and on their sticky note. That number is their pod: seat 42 → `seat-42`.
+2. **Keep the last few numbers (e.g. 146–150) as spares.** Nobody starts on one.
 3. **A broken seat** (stuck, crashed, wedged chip): give the participant a spare and note it on the
    sheet. Don't make them wait for a restart.
 4. **To recycle a broken seat**, `kubectl delete pod seat-N` with your own credentials. The StatefulSet
