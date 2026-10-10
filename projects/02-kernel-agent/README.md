@@ -12,8 +12,9 @@ as it goes.**
 > that parses, obeys the rules and runs, but computes the wrong numbers. The transcripts below show
 > exactly where it stalls, and that is the problem you are being handed.
 >
-> **Also missing:** reference kernels for levels 5 to 7, so the optimization half of the ladder is
-> unmarked; and layers 2 and 3 of the checker, so **latency cannot be measured at all yet** — every
+> **Level 5 now has a reference:** `reference_level5.py` passes the simulator's numerical and
+> memory-traffic checks; see the measured comparison below. Reference kernels for levels 6 and 7
+> are still missing, as are layers 2 and 3 of the checker, so **latency cannot be measured yet** — every
 > number here is throughput reasoning from the simulator.
 >
 > This is a genuinely open problem, not a tidied-up exercise with a hidden answer. If you get a level
@@ -179,6 +180,49 @@ It answers three questions in order, and stops at the first failure:
 `reference_level1.py` … `reference_level4.py` are the tutorial's own kernels, shipped deliberately.
 The tutorials are public, so hiding them buys nothing, and a harness whose reference nobody can read
 is a harness nobody should trust. Use them to confirm the harness works, then write your own.
+
+### Level 5 reference: reuse the right-hand tiles
+
+`reference_level5.py` extends the level-4 matmul by caching one RHS column slab before
+looping over output-row tiles. Each RHS tile is loaded once and reused across M;
+the LHS is still loaded once per N slab. Each output tile accumulates all K tiles
+in PSUM and is written once. The checker and the 1.6x traffic limit are unchanged.
+
+Run in the pod's NKI environment:
+
+```bash
+python validate_level5.py
+python agent.py --offline --level 5 --samples 1 --rounds 2 --log /tmp/level5-offline.jsonl
+```
+
+The validator checks all four registered shapes with three random seeds, compares
+against NumPy, checks that inputs are preserved, rejects simulator hardware-hazard
+warnings, and verifies the exact DMA bytes and transfer counts. It also confirms
+that the unchanged level-4 reference fails the level-5 traffic limit on the largest
+shape. Use this validator for the optimization gate: the standalone
+`nkibench.py --check` path reports traffic but does not enforce `check_traffic_bar()`.
+The agent's grader does enforce that gate.
+
+Measured on seat 21's CPU simulator, float32 inputs:
+
+| K | M | N | Level 4 bytes | Level 5 bytes | Level 5 / byte floor |
+|---|---|---|---|---|---|
+| 128 | 128 | 512 | 589,824 | 589,824 | 1.000x |
+| 256 | 256 | 1024 | 3,670,016 | 2,621,440 | 1.111x |
+| 512 | 128 | 512 | 1,572,864 | 1,572,864 | 1.000x |
+| 256 | 512 | 1024 | 7,340,032 | 4,194,304 | 1.143x |
+
+The largest case moves about 43% fewer bytes. Equal traffic on the single-M-tile
+cases is expected: there are no repeated RHS loads to remove there. For aligned
+float32 inputs, the expected traffic is `4 * (K*M*(N/512) + K*N + M*N)` bytes.
+
+Like the level-4 reference, this kernel requires positive dimensions aligned to
+the hardware tiles. Its cached RHS slab uses `K*512` elements: at most 1 MiB on the
+tested shapes. Larger K values require revisiting SBUF capacity or blocking K.
+These results establish simulated correctness and traffic, **not device latency
+or a model solve rate**. The offline command exercises the agent with a canned
+reference; a live evaluation must explicitly pass `--level 5`, since `--all`
+still selects levels 1 through 4.
 
 ### What it looks like when you run the agent
 
@@ -454,7 +498,8 @@ exposes. That last column is the point: fixing one does not finish the job, it m
 
 > **Measured vs expected.** Rows 1 to 4 are measured on a trn2 node. Rows 5 onward are **expected**
 > from the tutorial's structure — nobody has run an agent on this ladder yet, and there are no
-> reference kernels for levels 5 to 7 in this repo. Treat them as the map, not the territory.
+> reference kernels for levels 6 and 7 in this repo. Level 5's new reference has been checked
+> in CPU simulation as described above; device performance remains unmeasured.
 
 ### 1. It does not compile or run at all — *measured*
 
