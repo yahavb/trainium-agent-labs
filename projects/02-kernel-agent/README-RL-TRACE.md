@@ -136,9 +136,123 @@ Each JSONL row is `schema_version` 7. New fields: `hints_effective`, `restarts`,
 `shape_lint`, `probe_cases`, `holdout`, `config`. Older logs still load; arms are then labelled from
 `mode/hints` only.
 
+## Results: `reflect/shape`, levels 1, 3, 4 (Qwen3-8B, v6)
+
+Command (from `projects/02-kernel-agent`, seat-224 pod, simulator only, no device timing):
+
+```bash
+python run_matrix.py --levels 1 3 4 --episodes 6 --arms reflect/shape \
+    -- --context 8192 --no-seed --same-temp
+```
+
+The matrix wrapper expanded this to `--rounds 4 --samples 4 --episodes 5 --patience 3
+--independent-episodes --seed 7` per level (so **5 episodes, not 6**). Level 2 was not in this run; its
+earlier numbers are in [README.md](README.md) ("One run is not a result"). Logs:
+`matrix_runs/reflect_shape_L{1,3,4}.jsonl`.
+
+> **Level 4 is incomplete.** The console capture ends inside episode 4, after round 2. Episodes 1 to 3 are
+> complete; episode 4 is partial (best seen so far 0.62); episode 5 and the closing "Learned values" block
+> are missing. Rerun `python summarize_rl_trace.py matrix_runs/reflect_shape_L4.jsonl` from the JSONL to fill
+> the gaps; the numbers marked † below are from the partial capture.
+
+### Headline
+
+| Level | Operation | Episodes solved | Wilson 95% | Best reward per episode | Samples generated |
+|---|---|---|---|---|---|
+| 1 | average pooling 2D | **0 / 5** | [0.00, 0.43] | 0.30, 0.30, 0.30, 0.30, 0.30 | 18, 18, 21, 18, 22 = 97 |
+| 2 | transpose | **5 / 5** | [0.38, 0.67] | 1.00, 1.00, 1.00, 1.00, 1.00 | ****** |
+| 3 | matmul, single tile | **4 / 5** | [0.38, 0.96] | 1.00, 1.00, 1.00, 1.00, 0.30 | 15, 14, 21, 4, 20 = 74 |
+| 4 | matmul, tiled | **0 / 3 complete** † | [0.00, 0.56] | 0.30, 0.30, 0.30, then 0.62 (ep 4, partial) | 19, 23, 21, ... |
+
+Reward scale: 0.10 breaks a rule, 0.30 runs but is wrong, 0.62 passes 1 shape of 4, 1.00 passes every
+checker shape. A solved level 3 kernel reads `MEMORY BOUND: 19.7 Flops/Byte against a ridge of 222, so 9%
+of what the engine could sustain`, identical for every solved sample.
+
+### Where the level 3 solves came from
+
+| Source of the sample | Samples | Verified | Rate |
+|---|---|---|---|
+| Round 0, `direct` prompt | 20 | 1 (ep 4, r0.2) | 5% |
+| Repair rounds, before any restart (prompt carries the failing code) | 20 | **0** | 0% |
+| After a `STUCK-RESTART` (fresh prompt + grounded analysis) | 20 | 5 (ep 1 x2, ep 2 x1, ep 3 x2) | 25% |
+
+All three restart solves happened in the first round after the restart. The repair rounds, which are the
+core of `reflect`, produced no solve at level 3 in any episode. The restart did the work. Counts use rows
+as logged, duplicates included, so treat them as descriptive; the intervals are wide (restart [0.11, 0.47]).
+
+### Level 1: average pooling, 0/5
+
+Every kernel in every episode scored 0.30 except one 0.10 (ep 1, r2.3: called `mean`, a rule violation).
+`pass@1` at round 0 is 0/20. Every failing sample passes 0 of 4 shapes, and (32, 32, 32) with pool 2 is the
+first failure each time. The failures fall into four families, repeated across all five episodes:
+
+| Family | Representative message | Notes |
+|---|---|---|
+| Hard-coded tile | `dma_copy ... got src=32768, dst=16384` (also dst=65536, 131072, 1024, 128; `src=4, dst=16384`) | flagged `HARDCODED` / `LINT` by `kernel_lint`; the dominant failure |
+| Reduction over a non-trailing axis | `tensor_reduce axis must be the last contiguous dim(s) ... For a 5D tensor, expected axis=(3, 4) ... Got axis=(2, 4)` | model builds a (C, H/p, p, W/p, p) view and reduces `[2, 4]` or `[2, 3]` |
+| 1-D result | `SBUF and PSUM tensors must have at least 2 dimensions` | `nl.sum(view, axis=[1, 2])` collapses to 1-D |
+| One-offs | `nki.isa has no attribute 'divide'`; `+=` on two tiles; `Partition dim size must be preserved, got 1 -> 4`; out-of-bound on dimension 4 | each seen once |
+
+The same reduction error survived the grounded analysis: ep 1 r1 repeated `axis=(2, 3)` after being told
+`axis=(2, 4)` was wrong, so the located analysis changed the axes without changing the idea. The shipped
+reference works the other way round: it builds the 5D view with `in_tile.ap([...])` and puts the two pool
+axes **last**, so `nl.sum(pool_view, axis=[3, 4])` is legal. None of the failing traces shown mention `.ap()`.
+
+Learned temperature values (shrunk estimate, pulls): `t=0.3: 0.36 (4)`, `t=0.6: 0.37 (2)`, `t=0.9: 0.33 (7)`.
+Differences are within noise. Learned API fact: `nisa.nc_matmul` signature (1 hit).
+
+### Level 3: single-tile matmul, 4/5
+
+Ep 5 never solved: 20 samples, all 0.30. Its failures are a different mix from the solved episodes:
+`dma_copy` sized 32768 into 8192 (or reversed), `tensor_copy` into `shared_hbm`, `dma_copy(... dst_idx=...)`
+(not a real argument), and `value array of shape (32768,) ... indexing result of shape (65536,)`.
+Failure families across all five episodes:
+
+| Family | Representative message |
+|---|---|
+| Tile sized for the wrong tensor | `dma_copy ... got src=8192, dst=32768` (src is lhsT, 128x64 = 8192; the tile was sized 64x512 = 32768, the output shape) |
+| Wrong buffer for `nc_matmul` | `moving must be in ['sbuf'], got private_hbm / psum`; `dst must be in ['psum'], got sbuf` |
+| Wrong copy primitive | `tensor_copy dst must be in ['sbuf','psum'], got shared_hbm` (needs `dma_copy` for HBM) |
+| Invented arguments / reshape | `dma_copy() got an unexpected keyword argument 'dst_idx'`; `cannot reshape array of size 32768 into shape (128,512)`; `'range' object cannot be interpreted as an integer` |
+| Python operators on tiles | `unsupported operand type(s) for *: 'NkiTensor' and 'NkiTensor'` |
+
+Learned temperature values: `t=0.3: 0.34 (6)`, `t=0.6: 0.33 (4)`, `t=0.9: 0.33 (4)`. Learned API facts:
+`nisa.dma_copy` (9 hits), `nisa.tensor_copy` (1 hit).
+
+**Held-out shapes: 0/0 on every verified kernel.** This is not a pass. `reference_level3.py` asserts
+`K == 128`, `M == 64`, `N == 512`, so it fails both held-out shapes, `check_holdout` excludes them as
+`ref_fails`, and nothing is left to score. Level 3 also has a single checker shape (`K=128 M=64 N=512`).
+A level 3 "VERIFIED" therefore means correct on one shape and untested elsewhere.
+
+### Level 4: tiled matmul, 0/3 complete †
+
+| Episode | Best | Samples | What happened |
+|---|---|---|---|
+| 1 | 0.30 | 19 | `+=` on tiles (`TypeError ... 'NkiTensor' and 'NkiTensor'`) and `NameError: name 'n'` on the same accumulate line, in every round |
+| 2 | 0.30 | 23 | same two errors; the analysis names line 19/20, the next round rewrites it with the same operator |
+| 3 | 0.30 | 21 | moves to `Matmul contraction dimension mismatch: stationary[0]=1 != moving[0]=128` (slicing one row as the stationary operand), then after restart `'range' object ...`, `nl.ceil_div` (does not exist), `dst_idx` |
+| 4 † | **0.62** | 16+ | r0.1 passes `K=128 M=128 N=512` only; `K=256 M=256 N=1024`, `K=512 M=128 N=512`, `K=256 M=512 N=1024` raise `dma_copy dst partition dimension 256 exceeds maximum 128`. Rounds 1 repeated that kernel (REPEAT / DUP) and never fixed it. After the restart, `'DynamicSlice' object cannot be interpreted as an integer` from `nl.ndarray(shape=(nl.ds(k, 128), M))` and `tensor_copy` into `shared_hbm` |
+
+The 0.62 kernel is the same one the earlier README reports (0.62, one shape of four). It has stayed the
+ceiling for this model across README runs, `agent.py`, and now `reflect/shape`.
+
+### What the three levels show together
+
+- **`reflect` plus hint tier `shape` clears level 3 (4/5, one shape) and nothing else.** Level 1 and level 4
+  sit where the earlier README had them: 0.30, with 0.62 as the level 4 ceiling.
+- **Restarts are the productive mechanism; repair rounds are not**, at least at level 3 (0 of 20 repair
+  samples against 5 of 20 post-restart). Level 1 and level 4 restarts did not solve anything.
+- **Many rounds carry little new information.** Duplicates are common (`REPEAT DUP cached` rows in every
+  episode; 2 to 3 re-asks per group in several), and each episode ends by patience after about 4 rounds.
+- **Round-0 `pass@1`:** level 1 0/20, level 3 1/20, level 4 0/16 †. No level reaches a rate that a 5
+  episode run can resolve; intervals are wide everywhere.
+- **Not shown:** whether `shape` hints help at all (no `none` or `api` arm in this run), and whether the
+  analysis or the variants matter (no ablation arm). This table is one arm.
+
 ## Limitations
 
-- **Not run against a model or the real simulator.** The 64 tests use a NumPy stand-in that enforces the
+- **Results are now in the section above (levels 1, 3, 4, one arm).** The earlier statement that no number existed applies to the level 2 comparison in section 1, which has still not been run at 20 episodes.
+- **Original caveat, kept for the harness tests:** the 64 tests were not run against a model or the real simulator. The 64 tests use a NumPy stand-in that enforces the
   signatures and the dma element-count assertion the real verifier printed in your trace. They check the
   harness. A mock-server smoke test of the real CLI path also passed. Whether v6 raises the level-2 solve
   rate on Qwen3-8B is exactly what step 1 above measures; I have no number for it.
