@@ -22,3 +22,10 @@ planted cheating kernels.
 - Never report a number from --offline or from a single run; use --repeat and give the spread.
 - Label every number: simulator / chip / projection.
 - Never commit AWS credentials or tokens.
+
+## Results to include in the final report
+- **P3 headline (chip, seat 101): Qwen3-8B + referee feedback made the matmul kernel 1.517x faster**
+  (960.9 -> 633.2 us), verified `faster` by speedcheck (chip correctness with hostile inputs, held-out shapes)
+  and replicated by a standalone re-check. Read `projects/03-chipboost/P3_HEADLINE.md` and put it in the
+  report and slides as P3's main result, with its one-line context (one verified run, reproduced; the gain
+  is scheduling, not bytes; separate from P2's expert-tuning claim). Full history: `P3_STATUS.md`.

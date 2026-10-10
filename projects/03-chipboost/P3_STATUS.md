@@ -6,6 +6,9 @@ temporary `redteam/stage12.py`: rules + NKI simulator, no timing, used before P1
 
 ## The headline
 
+- **v5 (chip): Qwen3-8B + referee feedback produced a verified `faster` kernel, 1.517x (960.9 -> 633.2 us),**
+  correct on the chip with hostile inputs and on 3 held-out shapes, and replicated by a standalone re-check.
+  See `P3_HEADLINE.md`.
 - **Red team, chip:** the honest kernel is accepted (`no_gain`, 1.000x), and **10 of 10 real cheats are caught**.
   The 11th file, `cheat_low_precision`, is not a cheat on bf16 inputs (see 1).
 - **Model arms, chip, start kernel, 3 runs x 8 evaluations each:** **0 faster kernels in 48 attempts.** With the
