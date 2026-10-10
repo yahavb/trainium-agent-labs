@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CHIPBOOST Results</title>
+<style>
+:root{color-scheme:light;--page:#f9f9f7;--surface:#fcfcfb;--ink-1:#0b0b0b;--ink-2:#52514e;--muted:#898781;
+--grid:#e1e0d9;--axis:#c3c2b7;--border:rgba(11,11,11,.10);--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--s4:#eda100;--track:#cde2fb;
+--neutral-bar:#898781;--v-rules:#52514e;--good:#0ca30c;--warning:#fab219;--serious:#ec835a;--critical:#d03b3b;
+--good-text:#006300;--critical-text:#b02a2a;--add:rgba(12,163,12,.13);--del:rgba(208,59,59,.13);--wash:rgba(11,11,11,.04);
+--h0:#cde2fb;--h1:#9ec5f4;--h2:#6da7ec;--h3:#3987e5;--h4:#256abf;--h5:#184f95;--h6:#0d366b;
+--t0:#0b0b0b;--t1:#0b0b0b;--t2:#0b0b0b;--t3:#0b0b0b;--t4:#fff;--t5:#fff;--t6:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--page:#0d0d0d;--surface:#1a1a19;
+--ink-1:#fff;--ink-2:#c3c2b7;--grid:#2c2c2a;--axis:#383835;--border:rgba(255,255,255,.10);--s1:#3987e5;--s2:#d95926;
+--s3:#199e70;--s4:#c98500;--track:#184f95;--v-rules:#c3c2b7;--good-text:#0ca30c;--critical-text:#e66767;--add:rgba(12,163,12,.22);
+--del:rgba(208,59,59,.25);--wash:rgba(255,255,255,.05);
+--h0:#104281;--h1:#184f95;--h2:#1c5cab;--h3:#2a78d6;--h4:#3987e5;--h5:#6da7ec;--h6:#9ec5f4;
+--t0:#fff;--t1:#fff;--t2:#fff;--t3:#0b0b0b;--t4:#0b0b0b;--t5:#0b0b0b;--t6:#0b0b0b}}
+:root[data-theme="dark"]{color-scheme:dark;--page:#0d0d0d;--surface:#1a1a19;--ink-1:#fff;--ink-2:#c3c2b7;--grid:#2c2c2a;
+--axis:#383835;--border:rgba(255,255,255,.10);--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--track:#184f95;--v-rules:#c3c2b7;
+--good-text:#0ca30c;--critical-text:#e66767;--add:rgba(12,163,12,.22);--del:rgba(208,59,59,.25);--wash:rgba(255,255,255,.05);
+--h0:#104281;--h1:#184f95;--h2:#1c5cab;--h3:#2a78d6;--h4:#3987e5;--h5:#6da7ec;--h6:#9ec5f4;
+--t0:#fff;--t1:#fff;--t2:#fff;--t3:#0b0b0b;--t4:#0b0b0b;--t5:#0b0b0b;--t6:#0b0b0b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink-1);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1240px;margin:0 auto;padding:18px 16px 32px}
+.top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 24px;margin:0 0 12px}
+h1{font-size:24px;margin:0;letter-spacing:-.01em}
+.lede{color:var(--ink-2);margin:2px 0 0;font-size:13px;max-width:720px}
+.meta{color:var(--muted);font-size:12px;margin:0}
+.fake{border:1px solid var(--border);border-left:4px solid var(--critical);background:var(--surface);border-radius:8px;
+padding:8px 12px;margin:0 0 12px;font-size:13px}
+.fake strong{color:var(--critical-text)}
+.notes{font-size:12px;color:var(--ink-2);margin:0 0 12px}
+.notes summary{cursor:pointer}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(190px,100%),1fr));gap:12px;margin:0 0 14px}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+.tile-label{font-size:12px;color:var(--ink-2)}
+.tile-value{font-size:30px;font-weight:600;line-height:1.15;margin:2px 0 0}
+.tile-sub{font-size:11.5px;color:var(--muted);margin-top:6px}
+.meter{height:6px;border-radius:3px;background:var(--track);overflow:hidden;margin-top:8px}
+.meter span{display:block;height:100%;background:var(--s1);border-radius:3px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(520px,100%),1fr));gap:14px;margin:0 0 14px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;min-width:0}
+.card.wide{margin:0 0 14px}
+.card h2{font-size:16px;margin:0 0 2px}
+.how{color:var(--ink-2);font-size:12px;margin:0 0 8px}
+h3{font-size:13px;margin:8px 0 2px}
+.src{font-weight:400;font-size:11.5px;color:var(--muted);margin-left:4px}
+.kblock+.kblock{margin-top:4px}
+h3.sep{margin-top:12px;padding-top:10px;border-top:1px solid var(--grid)}
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(480px,100%),1fr));gap:4px 20px}
+.pair .kblock{max-width:640px}   /* one kernel alone must not stretch to twice its drawn size */
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--ink-2);margin:0 0 4px}
+.key{display:inline-flex;align-items:center;gap:5px}
+.key svg{width:14px;height:14px;flex:none}
+.line-key{display:inline-block;width:14px;height:2px;border-radius:1px;vertical-align:middle;margin-right:2px}
+.scroll{overflow-x:auto}
+svg{display:block;width:100%;height:auto;overflow:visible}
+svg text{fill:var(--ink-2);font-size:11px;font-family:inherit}
+svg .tick{fill:var(--muted);font-variant-numeric:tabular-nums;font-size:10.5px}
+svg .col{text-anchor:start}
+svg .row-label{fill:var(--ink-1);font-size:12px}
+svg .row-label.small{font-size:11px}
+svg .value{fill:var(--ink-1);font-size:11.5px}
+svg .strong{font-weight:600}
+svg .note{fill:var(--muted);font-style:italic}
+svg .ref-label{fill:var(--ink-2);font-size:10.5px}
+svg .cell{font-size:11px;font-weight:600;font-variant-numeric:tabular-nums}
+.grid{stroke:var(--grid);stroke-width:1}
+.axis{stroke:var(--axis);stroke-width:1}
+.ref{stroke:var(--ink-2);stroke-width:1}
+.whisker{stroke:var(--ink-1);stroke-width:1.3;fill:none}
+.line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.band{opacity:.10}
+.end-dot{stroke:var(--surface);stroke-width:2}
+.hair{stroke:var(--ink-2);stroke-width:1;visibility:hidden;pointer-events:none}
+.mark{outline:none;cursor:default}
+.mark:hover path,.mark:hover rect:not([fill=transparent]),.mark:focus-visible path,.mark:focus-visible rect{filter:brightness(1.12)}
+.dot{cursor:pointer;outline:none}
+.dot .sel{fill:none;stroke:var(--ink-1);stroke-width:1.5;visibility:hidden}
+.dot:hover .sel{visibility:visible;opacity:.45}
+.dot:focus-visible .sel,.dot.selected .sel{visibility:visible;opacity:1}
+.hc0{fill:var(--h0)}.hc1{fill:var(--h1)}.hc2{fill:var(--h2)}.hc3{fill:var(--h3)}.hc4{fill:var(--h4)}.hc5{fill:var(--h5)}.hc6{fill:var(--h6)}
+.ht0{fill:var(--t0)}.ht1{fill:var(--t1)}.ht2{fill:var(--t2)}.ht3{fill:var(--t3)}.ht4{fill:var(--t4)}.ht5{fill:var(--t5)}.ht6{fill:var(--t6)}
+.hfail{fill:var(--critical)}.htfail{fill:#fff}
+.ramp{display:inline-flex;border-radius:2px;overflow:hidden}
+.swatch{display:inline-block;width:12px;height:10px}
+.swatch.hfail{border-radius:2px}
+.swatch.hc0{background:var(--h0)}.swatch.hc1{background:var(--h1)}.swatch.hc2{background:var(--h2)}
+.swatch.hc3{background:var(--h3)}.swatch.hc4{background:var(--h4)}.swatch.hc5{background:var(--h5)}
+.swatch.hc6{background:var(--h6)}.swatch.hfail{background:var(--critical)}
+.suite+.suite{margin-top:6px}
+.wall-row{display:grid;grid-template-columns:118px 1fr 24px;gap:8px;align-items:center;padding:3px 0;
+border-top:1px solid var(--grid)}
+.wall-label{font-size:12px;color:var(--ink-2)}
+.wall-n{font-size:11.5px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:4px;font-size:11px;font-weight:700;
+color:#fff;line-height:1;cursor:default;outline:none;flex:none}
+.chip.round{border-radius:50%}
+.chip.caught,.chip.pass{background:var(--good)}
+.chip.missed,.chip.alarm{background:var(--critical)}
+.chip.nogain{background:var(--muted)}
+.chip.pending,.chip.other{background:transparent;box-shadow:inset 0 0 0 2px var(--muted);color:var(--muted)}
+.chip:hover,.chip:focus-visible{filter:brightness(1.15);box-shadow:0 0 0 2px var(--ink-1)}
+.legend .chip{width:14px;height:14px;font-size:9px}
+ul.mini{list-style:none;padding:0;margin:8px 0 0;font-size:12px;color:var(--ink-2)}
+ul.mini li{margin:2px 0}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--grid);vertical-align:top}
+th{color:var(--ink-2);font-weight:600}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.status{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.status .icon{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;color:#fff;font-size:11px;font-weight:700}
+.status.good .icon{background:var(--good)}.status.critical .icon{background:var(--critical)}
+.status.neutral .icon{background:var(--muted)}
+.status.good{color:var(--good-text)}.status.critical{color:var(--critical-text)}.status.neutral{color:var(--ink-2)}
+details.tv{margin-top:8px;font-size:12px}
+details.tv summary{cursor:pointer;color:var(--ink-2)}
+.empty{color:var(--muted);font-size:13px;margin:6px 0}
+.warn{font-size:12px;color:var(--ink-1);margin:4px 0}
+.warn .icon{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;background:var(--critical);
+color:#fff;font-size:11px;font-weight:700;margin-right:6px}
+.detail{margin-top:10px;border-top:1px solid var(--grid);padding-top:10px}
+.detail h3{margin:0 0 6px}
+.detail dl{display:grid;grid-template-columns:max-content 1fr;gap:1px 14px;font-size:12px;margin:0 0 8px}
+.detail dt{color:var(--ink-2)}
+.detail dd{margin:0;font-variant-numeric:tabular-nums}
+.detail .label{font-size:11.5px;color:var(--ink-2);margin:8px 0 2px;font-weight:600}
+.detail .text{white-space:pre-wrap;margin:0;font-size:12px}
+pre.diff{font:11.5px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;background:var(--wash);border-radius:8px;
+padding:8px 10px;overflow-x:auto;max-height:360px;margin:4px 0 0}
+pre.diff .add{background:var(--add);display:block}
+pre.diff .del{background:var(--del);display:block}
+pre.diff .hunk{color:var(--muted);display:block}
+code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em}
+#tip{position:fixed;z-index:10;pointer-events:none;background:var(--surface);color:var(--ink-1);border:1px solid var(--border);
+border-radius:8px;padding:7px 9px;font-size:12px;box-shadow:0 4px 16px rgba(0,0,0,.14);max-width:340px}
+.tip-value{font-weight:600;font-size:13px}
+.tip-label{color:var(--ink-2)}
+.tip-row{display:flex;align-items:center;gap:8px}
+.tip-key{display:inline-block;width:12px;height:2px;border-radius:1px;flex:none}
+footer{color:var(--muted);font-size:11.5px;margin-top:4px}
+.hero{margin:0 0 18px}
+.hero-nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(230px,100%),1fr));gap:12px;margin:0 0 14px}
+.hero-num{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px}
+.hero-num .n{font-size:40px;font-weight:650;line-height:1.05;letter-spacing:-.02em}
+.hero-num .c{font-size:12.5px;color:var(--ink-2);margin-top:6px;line-height:1.35}
+.hero-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(540px,100%),1fr));gap:14px}
+.hero-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;min-width:0}
+.hero-card h3{font-size:16px;margin:0 0 2px}
+.hero-card svg text.big{font-size:15px}
+.hero-card svg text.ann{fill:var(--ink-1);font-size:11px;font-weight:600}
+.hero-card svg text.dot-ok{fill:#fff;font-size:10px;font-weight:700}
+.bar-plain{fill:var(--neutral-bar);opacity:.45}.bar-top{fill:var(--s3)}.bar-default{fill:var(--ink-1)}
+.hero-wall{gap:6px;margin-top:8px}.hero-wall .chip{width:24px;height:24px;font-size:13px}
+h2.section{font-size:15px;color:var(--ink-2);font-weight:600;margin:6px 0 10px}
+main.results-only{max-width:1180px}
+.wall-key{margin:10px 0 0}
+@media (max-width:560px){.card{padding:12px}.tile-value{font-size:26px}}
+</style>
+</head>
+<body>
+<main class="results-only">
+<header class="top"><div><h1>CHIPBOOST</h1><p class="lede">Qwen3-8B, served on one Trainium2 chip, tries to make the
+matmul it is built from faster on that chip. A result counts only if the referee verifies it: correct on the chip
+and on unseen shapes, and faster than the timing noise.</p></div><p class="meta">Built 2026-10-10 17:42 · 45 files · 264 attempts · measured on chip</p></header>
+<section class="hero" aria-label="results"><div class="hero-nums"><div class="hero-num"><div class="n">0 / 12</div><div class="c">runs reached a faster kernel with the original feedback</div></div><div class="hero-num"><div class="n">1.52×</div><div class="c">best kernel Qwen3-8B wrote, verified on the chip · 2 of 3 runs with P1&#x27;s multi-change feedback</div></div><div class="hero-num"><div class="n">+35%</div><div class="c">block tuning over AWS&#x27;s default, median of 3 runs</div></div><div class="hero-num"><div class="n">34 / 36</div><div class="c">planted cheats caught · 9 / 9 honest kernels accepted</div></div></div><div class="hero-cards"><div class="hero-card"><h3>Feedback decides whether the loop works</h3><p class="how">One dot per run of Qwen3-8B (8 attempts each), from the start kernel. Green: the run produced a kernel the referee verified faster on the chip and correct on unseen shapes.</p><svg viewBox="0 0 560 206" role="img" aria-label="runs per feedback treatment"><text x="222" y="24.0" text-anchor="end" class="row-label">Model alone</text><text x="222" y="38.0" text-anchor="end" class="tick">told only “make it faster”</text><g class="mark" tabindex="0" data-tip="no faster kernel
+Model alone v1 · run 1
+8 attempts · seat 100"><circle cx="242" cy="26.0" r="11" fill="transparent"/><circle cx="242" cy="26.0" r="7" fill="none" stroke="var(--muted)" stroke-width="2"/></g><g class="mark" tabindex="0" data-tip="no faster kernel
+Model alone v1 · run 2
+8 attempts · seat 100"><circle cx="264" cy="26.0" r="11" fill="transparent"/><circle cx="264" cy="26.0" r="7" fill="none" stroke="var(--muted)" stroke-width="2"/></g><g class="mark" tabindex="0" data-tip="no faster kernel
+Model alone v1 · run 3
+8 attempts · seat 100"><circle cx="286" cy="26.0" r="11" fill="transparent"/><circle cx="286" cy="26.0" r="7" fill="none" stroke="var(--muted)" stroke-width="2"/></g><g class="mark" tabindex="0" data-tip="no faster kernel
+Model alone v1 · run 4
+8 attempts · seat 101"><circle cx="308" cy="26.0" r="11" fill="transparent"/><circle cx="308" cy="26.0" r="7" fill="none" stroke="var(--muted)" stroke-width="2"/></g><g class="mark" tabindex="0" data-tip="no faster kernel
+Model alone v1 · run 5
+8 attempts · seat 101"><circle cx="330" cy="26.0" r="11" fill="transparent"/><circle cx="330" cy="26.0" r="7" fill="none" stroke="var(--muted)" stroke-width="2"/></g><g class="mark" tabindex="0" data-tip="no faster kernel
+Model alone v1 · run 6
+8 attempts · seat 101"><circle cx="352" cy="26.0" r="11" fill="transparent"/><circle cx="352" cy="26.0" r="7" fill="none" stroke="var(--muted)" stroke-width="2"/></g><text x="556" y="24.0" text-anchor="end" class="value strong big">0 / 6</text><text x="556" y="38.0" text-anchor="end" class="tick">runs faster</text><text x="222" y="64.0" text-anchor="end" class="row-label">Referee v1</text><text x="222" y="78.0" text-anchor="end" class="tick">told to fix an error it never sees</text><g class="mark" tabindex="0" data-tip="no faster kernel
+Referee v1 · run 1
+8 attempts · seat 100"><circle cx="242" cy="66.0" r="11" fill="transparent"/><circle cx="242" cy="66.0" r="7" fill="none" stroke="var(--muted)" stroke-width="2"/></g><g class="mark" tabindex="0" data-tip="no faster kernel
+Referee v1 · run 2
+8 attempts · seat 100"><circle cx="264" cy="66.0" r="11" fill="transparent"/><circle cx="264" cy="66.0" r="7" fill="none" stroke="var(--muted)" stroke-width="2"/></g><g class="mark" tabindex="0" data-tip="no faster kernel
+Referee v1 · run 3
+8 attempts · seat 100"><circle cx="286" cy="66.0" r="11" fill="transparent"/><circle cx="286" cy="66.0" r="7" fill="none" stroke="var(--muted)" stroke-width="2"/></g><g class="mark" tabindex="0" data-tip="no faster kernel
+Referee v1 · run 4
+8 attempts · seat 101"><circle cx="308" cy="66.0" r="11" fill="transparent"/><circle cx="308" cy="66.0" r="7" fill="none" stroke="var(--muted)" stroke-width="2"/></g><g class="mark" tabindex="0" data-tip="no faster kernel
+Referee v1 · run 5
+8 attempts · seat 101"><circle cx="330" cy="66.0" r="11" fill="transparent"/><circle cx="330" cy="66.0" r="7" fill="none" stroke="var(--muted)" stroke-width="2"/></g><g class="mark" tabindex="0" data-tip="no faster kernel
+Referee v1 · run 6
+8 attempts · seat 101"><circle cx="352" cy="66.0" r="11" fill="transparent"/><circle cx="352" cy="66.0" r="7" fill="none" stroke="var(--muted)" stroke-width="2"/></g><text x="556" y="64.0" text-anchor="end" class="value strong big">0 / 6</text><text x="556" y="78.0" text-anchor="end" class="tick">runs faster</text><text x="222" y="104.0" text-anchor="end" class="row-label">P3 named-error rules (v2)</text><text x="222" y="118.0" text-anchor="end" class="tick">the error named, with its numbers</text><g class="mark" tabindex="0" data-tip="no faster kernel
+P3 named-error rules (v2) · run 1
+8 attempts · seat 101"><circle cx="242" cy="106.0" r="11" fill="transparent"/><circle cx="242" cy="106.0" r="7" fill="none" stroke="var(--muted)" stroke-width="2"/></g><g class="mark" tabindex="0" data-tip="no faster kernel
+P3 named-error rules (v2) · run 2
+8 attempts · seat 101"><circle cx="264" cy="106.0" r="11" fill="transparent"/><circle cx="264" cy="106.0" r="7" fill="none" stroke="var(--muted)" stroke-width="2"/></g><g class="mark" tabindex="0" data-tip="no faster kernel
+P3 named-error rules (v2) · run 3
+8 attempts · seat 101"><circle cx="286" cy="106.0" r="11" fill="transparent"/><circle cx="286" cy="106.0" r="7" fill="none" stroke="var(--muted)" stroke-width="2"/></g><text x="556" y="104.0" text-anchor="end" class="value strong big">0 / 3</text><text x="556" y="118.0" text-anchor="end" class="tick">runs faster</text><text x="222" y="144.0" text-anchor="end" class="row-label">P3&#x27;s agent + P1&#x27;s fixes</text><text x="222" y="158.0" text-anchor="end" class="tick">v3, v4, v5: one rule added each time</text><g class="mark" tabindex="0" data-tip="no faster kernel
+P1 instructions only (v3) · run 1
+8 attempts · seat 101"><circle cx="242" cy="146.0" r="11" fill="transparent"/><circle cx="242" cy="146.0" r="7" fill="none" stroke="var(--muted)" stroke-width="2"/></g><g class="mark" tabindex="0" data-tip="no faster kernel
+P3 rules A-C + P1 (v4) · run 2
+8 attempts · seat 101"><circle cx="264" cy="146.0" r="11" fill="transparent"/><circle cx="264" cy="146.0" r="7" fill="none" stroke="var(--muted)" stroke-width="2"/></g><g class="mark" tabindex="0" data-tip="1.52×
+P3 rules A-D + P1 (v5) · run 3
+8 attempts · seat 101"><circle cx="286" cy="146.0" r="11" fill="transparent"/><circle cx="286" cy="146.0" r="8" fill="var(--good)"/><text x="286" y="149.5" text-anchor="middle" class="dot-ok">✓</text></g><text x="556" y="144.0" text-anchor="end" class="value strong big">1 / 3</text><text x="556" y="158.0" text-anchor="end" class="tick">best 1.52×</text><text x="222" y="184.0" text-anchor="end" class="row-label">P1&#x27;s multi-change feedback</text><text x="222" y="198.0" text-anchor="end" class="tick">first run, then revised repeats</text><g class="mark" tabindex="0" data-tip="1.52×
+Referee v2 (P1) · run 1
+8 attempts · seat 100"><circle cx="242" cy="186.0" r="11" fill="transparent"/><circle cx="242" cy="186.0" r="8" fill="var(--good)"/><text x="242" y="189.5" text-anchor="middle" class="dot-ok">✓</text></g><g class="mark" tabindex="0" data-tip="1.52×
+Qwen + P1 fixes · run 2
+8 attempts · seat 100"><circle cx="264" cy="186.0" r="11" fill="transparent"/><circle cx="264" cy="186.0" r="8" fill="var(--good)"/><text x="264" y="189.5" text-anchor="middle" class="dot-ok">✓</text></g><g class="mark" tabindex="0" data-tip="no faster kernel
+Qwen + P1 fixes · run 3
+8 attempts · seat 100"><circle cx="286" cy="186.0" r="11" fill="transparent"/><circle cx="286" cy="186.0" r="7" fill="none" stroke="var(--muted)" stroke-width="2"/></g><text x="556" y="184.0" text-anchor="end" class="value strong big">2 / 3</text><text x="556" y="198.0" text-anchor="end" class="tick">best 1.52×</text></svg></div><div class="hero-card"><h3>Correct on shapes it never saw</h3><p class="how">Speedup over the start kernel at 6 held-out shapes with hostile inputs. Red: wrong at that shape (bf16 ulps against a limit of 4).</p><svg viewBox="0 0 560 182" role="img" aria-label="held-out shapes"><text transform="translate(180.8,50) rotate(-35)" class="tick col">256×6144×4096</text><text transform="translate(242.5,50) rotate(-35)" class="tick col">256×2048×4096</text><text transform="translate(304.2,50) rotate(-35)" class="tick col">512×4096×2048</text><text transform="translate(365.8,50) rotate(-35)" class="tick col">128×4096×6144</text><text transform="translate(427.5,50) rotate(-35)" class="tick col">640×1280×2560</text><text transform="translate(489.2,50) rotate(-35)" class="tick col">1024×4096×512</text><text x="140" y="77.0" text-anchor="end" class="row-label">AWS as published</text><g class="mark" tabindex="0" data-tip="✗ 4.9 ulps
+AWS as published at 256×6144×4096"><rect x="151.5" y="60" width="58.7" height="26" rx="4" class="hfail"/><text x="180.8" y="77.0" text-anchor="middle" class="cell htfail">✗ 4.9 ulps</text></g><g class="mark" tabindex="0" data-tip="2.13×
+AWS as published at 256×2048×4096"><rect x="213.2" y="60" width="58.7" height="26" rx="4" class="hc3"/><text x="242.5" y="77.0" text-anchor="middle" class="cell ht3">2.13×</text></g><g class="mark" tabindex="0" data-tip="3.79×
+AWS as published at 512×4096×2048"><rect x="274.8" y="60" width="58.7" height="26" rx="4" class="hc6"/><text x="304.2" y="77.0" text-anchor="middle" class="cell ht6">3.79×</text></g><g class="mark" tabindex="0" data-tip="1.28×
+AWS as published at 128×4096×6144"><rect x="336.5" y="60" width="58.7" height="26" rx="4" class="hc1"/><text x="365.8" y="77.0" text-anchor="middle" class="cell ht1">1.28×</text></g><g class="mark" tabindex="0" data-tip="1.59×
+AWS as published at 640×1280×2560"><rect x="398.2" y="60" width="58.7" height="26" rx="4" class="hc2"/><text x="427.5" y="77.0" text-anchor="middle" class="cell ht2">1.59×</text></g><g class="mark" tabindex="0" data-tip="2.96×
+AWS as published at 1024×4096×512"><rect x="459.8" y="60" width="58.7" height="26" rx="4" class="hc5"/><text x="489.2" y="77.0" text-anchor="middle" class="cell ht5">2.96×</text></g><text x="140" y="107.0" text-anchor="end" class="row-label">Expert (fp32 fix)</text><g class="mark" tabindex="0" data-tip="2.82×
+Expert (fp32 fix) at 256×6144×4096"><rect x="151.5" y="90" width="58.7" height="26" rx="4" class="hc5"/><text x="180.8" y="107.0" text-anchor="middle" class="cell ht5">2.82×</text></g><g class="mark" tabindex="0" data-tip="2.08×
+Expert (fp32 fix) at 256×2048×4096"><rect x="213.2" y="90" width="58.7" height="26" rx="4" class="hc3"/><text x="242.5" y="107.0" text-anchor="middle" class="cell ht3">2.08×</text></g><g class="mark" tabindex="0" data-tip="3.80×
+Expert (fp32 fix) at 512×4096×2048"><rect x="274.8" y="90" width="58.7" height="26" rx="4" class="hc6"/><text x="304.2" y="107.0" text-anchor="middle" class="cell ht6">3.80×</text></g><g class="mark" tabindex="0" data-tip="1.28×
+Expert (fp32 fix) at 128×4096×6144"><rect x="336.5" y="90" width="58.7" height="26" rx="4" class="hc1"/><text x="365.8" y="107.0" text-anchor="middle" class="cell ht1">1.28×</text></g><g class="mark" tabindex="0" data-tip="1.57×
+Expert (fp32 fix) at 640×1280×2560"><rect x="398.2" y="90" width="58.7" height="26" rx="4" class="hc2"/><text x="427.5" y="107.0" text-anchor="middle" class="cell ht2">1.57×</text></g><g class="mark" tabindex="0" data-tip="3.06×
+Expert (fp32 fix) at 1024×4096×512"><rect x="459.8" y="90" width="58.7" height="26" rx="4" class="hc5"/><text x="489.2" y="107.0" text-anchor="middle" class="cell ht5">3.06×</text></g><text x="140" y="137.0" text-anchor="end" class="row-label">Random search: best</text><g class="mark" tabindex="0" data-tip="3.99×
+Random search: best at 256×6144×4096"><rect x="151.5" y="120" width="58.7" height="26" rx="4" class="hc6"/><text x="180.8" y="137.0" text-anchor="middle" class="cell ht6">3.99×</text></g><g class="mark" tabindex="0" data-tip="2.84×
+Random search: best at 256×2048×4096"><rect x="213.2" y="120" width="58.7" height="26" rx="4" class="hc5"/><text x="242.5" y="137.0" text-anchor="middle" class="cell ht5">2.84×</text></g><g class="mark" tabindex="0" data-tip="3.80×
+Random search: best at 512×4096×2048"><rect x="274.8" y="120" width="58.7" height="26" rx="4" class="hc6"/><text x="304.2" y="137.0" text-anchor="middle" class="cell ht6">3.80×</text></g><g class="mark" tabindex="0" data-tip="2.34×
+Random search: best at 128×4096×6144"><rect x="336.5" y="120" width="58.7" height="26" rx="4" class="hc4"/><text x="365.8" y="137.0" text-anchor="middle" class="cell ht4">2.34×</text></g><g class="mark" tabindex="0" data-tip="1.46×
+Random search: best at 640×1280×2560"><rect x="398.2" y="120" width="58.7" height="26" rx="4" class="hc2"/><text x="427.5" y="137.0" text-anchor="middle" class="cell ht2">1.46×</text></g><g class="mark" tabindex="0" data-tip="1.20×
+Random search: best at 1024×4096×512"><rect x="459.8" y="120" width="58.7" height="26" rx="4" class="hc1"/><text x="489.2" y="137.0" text-anchor="middle" class="cell ht1">1.20×</text></g><text x="140" y="167.0" text-anchor="end" class="row-label">Qwen3-8B kernel (v2)</text><g class="mark" tabindex="0" data-tip="1.91×
+Qwen3-8B kernel (v2) at 256×6144×4096"><rect x="151.5" y="150" width="58.7" height="26" rx="4" class="hc3"/><text x="180.8" y="167.0" text-anchor="middle" class="cell ht3">1.91×</text></g><g class="mark" tabindex="0" data-tip="1.57×
+Qwen3-8B kernel (v2) at 256×2048×4096"><rect x="213.2" y="150" width="58.7" height="26" rx="4" class="hc2"/><text x="242.5" y="167.0" text-anchor="middle" class="cell ht2">1.57×</text></g><g class="mark" tabindex="0" data-tip="1.88×
+Qwen3-8B kernel (v2) at 512×4096×2048"><rect x="274.8" y="150" width="58.7" height="26" rx="4" class="hc3"/><text x="304.2" y="167.0" text-anchor="middle" class="cell ht3">1.88×</text></g><g class="mark" tabindex="0" data-tip="1.14×
+Qwen3-8B kernel (v2) at 128×4096×6144"><rect x="336.5" y="150" width="58.7" height="26" rx="4" class="hc1"/><text x="365.8" y="167.0" text-anchor="middle" class="cell ht1">1.14×</text></g><g class="mark" tabindex="0" data-tip="1.63×
+Qwen3-8B kernel (v2) at 640×1280×2560"><rect x="398.2" y="150" width="58.7" height="26" rx="4" class="hc2"/><text x="427.5" y="167.0" text-anchor="middle" class="cell ht2">1.63×</text></g><g class="mark" tabindex="0" data-tip="1.20×
+Qwen3-8B kernel (v2) at 1024×4096×512"><rect x="459.8" y="150" width="58.7" height="26" rx="4" class="hc1"/><text x="489.2" y="167.0" text-anchor="middle" class="cell ht1">1.20×</text></g></svg></div><div class="hero-card"><h3>Block tuning: +35% over AWS&#x27;s default</h3><p class="how">Every legal block setting of AWS&#x27;s optimised matmul, timed on the chip. Each random-search run&#x27;s best ranks #1, #3, #4.</p><svg viewBox="0 0 560 190" role="img" aria-label="every block setting ranked"><line x1="36" x2="560" y1="168.0" y2="168.0" class="grid"/><text x="30" y="172.0" text-anchor="end" class="tick">0×</text><line x1="36" x2="560" y1="120.7" y2="120.7" class="grid"/><text x="30" y="124.7" text-anchor="end" class="tick">0.5×</text><line x1="36" x2="560" y1="73.3" y2="73.3" class="grid"/><text x="30" y="77.3" text-anchor="end" class="tick">1×</text><line x1="36" x2="560" y1="26.0" y2="26.0" class="grid"/><text x="30" y="30.0" text-anchor="end" class="tick">1.5×</text><g class="mark" tabindex="0" data-tip="1.37× the default
+#1 of 62: block caps (1, 12, 4)"><rect x="36.5" y="37.9" width="6.9" height="130.1" rx="1.5" class="bar-top"/></g><g class="mark" tabindex="0" data-tip="1.36× the default
+#2 of 62: block caps (2, 6, 8)"><rect x="44.9" y="39.7" width="6.9" height="128.3" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="1.35× the default
+#3 of 62: block caps (1, 6, 4)"><rect x="53.2" y="40.1" width="6.9" height="127.9" rx="1.5" class="bar-top"/></g><g class="mark" tabindex="0" data-tip="1.33× the default
+#4 of 62: block caps (2, 4, 16)"><rect x="61.6" y="42.3" width="6.9" height="125.7" rx="1.5" class="bar-top"/></g><g class="mark" tabindex="0" data-tip="1.32× the default
+#5 of 62: block caps (2, 4, 8)"><rect x="69.9" y="42.9" width="6.9" height="125.1" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="1.32× the default
+#6 of 62: block caps (2, 6, 16)"><rect x="78.3" y="43.0" width="6.9" height="125.0" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="1.31× the default
+#7 of 62: block caps (2, 12, 4)"><rect x="86.6" y="44.2" width="6.9" height="123.8" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="1.30× the default
+#8 of 62: block caps (2, 6, 4)"><rect x="95.0" y="44.7" width="6.9" height="123.3" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="1.27× the default
+#9 of 62: block caps (1, 6, 8)"><rect x="103.3" y="48.0" width="6.9" height="120.0" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="1.25× the default
+#10 of 62: block caps (2, 3, 32)"><rect x="111.7" y="49.3" width="6.9" height="118.7" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="1.25× the default
+#11 of 62: block caps (2, 4, 4)"><rect x="120.0" y="49.4" width="6.9" height="118.6" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="1.25× the default
+#12 of 62: block caps (1, 4, 4)"><rect x="128.4" y="49.5" width="6.9" height="118.5" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="1.25× the default
+#13 of 62: block caps (2, 3, 16)"><rect x="136.8" y="50.1" width="6.9" height="117.9" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="1.24× the default
+#14 of 62: block caps (1, 6, 16)"><rect x="145.1" y="50.7" width="6.9" height="117.3" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="1.22× the default
+#15 of 62: block caps (2, 3, 8)"><rect x="153.5" y="52.9" width="6.9" height="115.1" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="1.19× the default
+#16 of 62: block caps (2, 3, 4)"><rect x="161.8" y="54.9" width="6.9" height="113.1" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="1.16× the default
+#17 of 62: block caps (1, 4, 16)"><rect x="170.2" y="58.5" width="6.9" height="109.5" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="1.14× the default
+#18 of 62: block caps (1, 4, 8)"><rect x="178.5" y="59.7" width="6.9" height="108.3" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="1.09× the default
+#19 of 62: block caps (1, 6, 2)"><rect x="186.9" y="65.2" width="6.9" height="102.8" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="1.08× the default
+#20 of 62: block caps (1, 12, 2)"><rect x="195.2" y="65.8" width="6.9" height="102.2" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="1.07× the default
+#21 of 62: block caps (1, 4, 2)"><rect x="203.6" y="66.6" width="6.9" height="101.4" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="1.04× the default
+#22 of 62: block caps (2, 6, 2)"><rect x="212.0" y="69.7" width="6.9" height="98.3" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="1.03× the default
+#23 of 62: block caps (2, 12, 2)"><rect x="220.3" y="70.2" width="6.9" height="97.8" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="1.03× the default
+#24 of 62: block caps (2, 3, 2)"><rect x="228.7" y="70.5" width="6.9" height="97.5" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="1.01× the default
+#25 of 62: block caps (2, 4, 2)"><rect x="237.0" y="72.1" width="6.9" height="95.9" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="1.01× the default
+#26 of 62: block caps (2, 2, 32)"><rect x="245.4" y="72.2" width="6.9" height="95.8" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="1.01× the default
+#27 of 62: block caps (2, 2, 16)"><rect x="253.7" y="72.7" width="6.9" height="95.3" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="1.01× the default
+#28 of 62: block caps (2, 2, 4)"><rect x="262.1" y="72.7" width="6.9" height="95.3" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="1.00× the default
+#29 of 62: block caps (16, 2, 8)"><rect x="270.4" y="73.3" width="6.9" height="94.7" rx="1.5" class="bar-default"/></g><g class="mark" tabindex="0" data-tip="0.97× the default
+#30 of 62: block caps (2, 2, 2)"><rect x="278.8" y="76.0" width="6.9" height="92.0" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.91× the default
+#31 of 62: block caps (1, 3, 32)"><rect x="287.1" y="81.9" width="6.9" height="86.1" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.91× the default
+#32 of 62: block caps (1, 3, 2)"><rect x="295.5" y="82.3" width="6.9" height="85.7" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.90× the default
+#33 of 62: block caps (1, 3, 4)"><rect x="303.9" y="82.6" width="6.9" height="85.4" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.89× the default
+#34 of 62: block caps (1, 3, 16)"><rect x="312.2" y="83.5" width="6.9" height="84.5" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.89× the default
+#35 of 62: block caps (1, 3, 8)"><rect x="320.6" y="83.7" width="6.9" height="84.3" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.71× the default
+#36 of 62: block caps (1, 2, 4)"><rect x="328.9" y="100.9" width="6.9" height="67.1" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.71× the default
+#37 of 62: block caps (1, 2, 2)"><rect x="337.3" y="101.0" width="6.9" height="67.0" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.71× the default
+#38 of 62: block caps (1, 2, 32)"><rect x="345.6" y="101.3" width="6.9" height="66.7" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.70× the default
+#39 of 62: block caps (1, 2, 16)"><rect x="354.0" y="102.0" width="6.9" height="66.0" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.68× the default
+#40 of 62: block caps (1, 2, 8)"><rect x="362.3" y="103.6" width="6.9" height="64.4" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.59× the default
+#41 of 62: block caps (1, 2, 1)"><rect x="370.7" y="112.0" width="6.9" height="56.0" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.59× the default
+#42 of 62: block caps (2, 2, 1)"><rect x="379.0" y="112.1" width="6.9" height="55.9" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.59× the default
+#43 of 62: block caps (1, 3, 1)"><rect x="387.4" y="112.1" width="6.9" height="55.9" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.59× the default
+#44 of 62: block caps (2, 3, 1)"><rect x="395.8" y="112.1" width="6.9" height="55.9" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.59× the default
+#45 of 62: block caps (1, 4, 1)"><rect x="404.1" y="112.3" width="6.9" height="55.7" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.59× the default
+#46 of 62: block caps (2, 4, 1)"><rect x="412.5" y="112.3" width="6.9" height="55.7" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.59× the default
+#47 of 62: block caps (1, 6, 1)"><rect x="420.8" y="112.5" width="6.9" height="55.5" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.59× the default
+#48 of 62: block caps (2, 1, 1)"><rect x="429.2" y="112.6" width="6.9" height="55.4" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.58× the default
+#49 of 62: block caps (1, 12, 1)"><rect x="437.5" y="112.8" width="6.9" height="55.2" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.58× the default
+#50 of 62: block caps (2, 6, 1)"><rect x="445.9" y="112.8" width="6.9" height="55.2" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.58× the default
+#51 of 62: block caps (2, 12, 1)"><rect x="454.2" y="113.1" width="6.9" height="54.9" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.54× the default
+#52 of 62: block caps (2, 1, 32)"><rect x="462.6" y="116.9" width="6.9" height="51.1" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.54× the default
+#53 of 62: block caps (2, 1, 4)"><rect x="471.0" y="117.1" width="6.9" height="50.9" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.54× the default
+#54 of 62: block caps (2, 1, 2)"><rect x="479.3" y="117.1" width="6.9" height="50.9" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.54× the default
+#55 of 62: block caps (2, 1, 16)"><rect x="487.7" y="117.1" width="6.9" height="50.9" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.54× the default
+#56 of 62: block caps (2, 1, 8)"><rect x="496.0" y="117.2" width="6.9" height="50.8" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.53× the default
+#57 of 62: block caps (1, 1, 1)"><rect x="504.4" y="118.0" width="6.9" height="50.0" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.37× the default
+#58 of 62: block caps (1, 1, 16)"><rect x="512.7" y="133.0" width="6.9" height="35.0" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.37× the default
+#59 of 62: block caps (1, 1, 32)"><rect x="521.1" y="133.1" width="6.9" height="34.9" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.37× the default
+#60 of 62: block caps (1, 1, 8)"><rect x="529.4" y="133.2" width="6.9" height="34.8" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.37× the default
+#61 of 62: block caps (1, 1, 4)"><rect x="537.8" y="133.2" width="6.9" height="34.8" rx="1.5" class="bar-plain"/></g><g class="mark" tabindex="0" data-tip="0.37× the default
+#62 of 62: block caps (1, 1, 2)"><rect x="546.1" y="133.2" width="6.9" height="34.8" rx="1.5" class="bar-plain"/></g><line x1="36" x2="560" y1="73.3" y2="73.3" class="ref"/><text x="274.1" y="65.3" text-anchor="middle" class="ann">AWS default · #29</text><text x="44.2" y="29.9" class="ann">best #1 · 1.37×</text><text x="558" y="184" text-anchor="end" class="tick">all 62 legal block settings, fastest first · green: the best of a random-search run</text></svg></div><div class="hero-card"><h3>A referee you can trust</h3><p class="how">Squares: planted cheats, by result; circles: honest kernels that must be accepted. Every candidate runs in a sandboxed process; timing is interleaved A/B on the device clock.</p><div class="chips hero-wall"><span class="chip caught" tabindex="0" data-tip="cheat_zeros
+Caught
+should be caught by simulator correctness (+ chip)">✓</span><span class="chip caught" tabindex="0" data-tip="cheat_writes_input
+Caught
+should be caught by check_inputs_untouched">✓</span><span class="chip caught" tabindex="0" data-tip="cheat_heldout_only
+Caught
+should be caught by held-out shapes">✓</span><span class="chip caught" tabindex="0" data-tip="cheat_numpy
+Caught
+should be caught by rules scan">✓</span><span class="chip caught" tabindex="0" data-tip="cheat_numpy_obfuscated
+Caught
+should be caught by simulator (passes rules by design)">✓</span><span class="chip caught" tabindex="0" data-tip="cheat_unhooked_dma
+Caught
+should be caught by byte floor (un-hooked DMA)">✓</span><span class="chip missed" tabindex="0" data-tip="cheat_low_precision
+Missed
+should be caught by correctness, fp32 tolerance 1e-3">✗</span><span class="chip caught" tabindex="0" data-tip="cheat_cached
+Caught
+should be caught by correctness, second seed">✓</span><span class="chip caught" tabindex="0" data-tip="cheat_special_inputs
+Caught
+should be caught by correctness, random K&gt;128">✓</span><span class="chip caught" tabindex="0" data-tip="cheat_noise
+Caught
+should be caught by chip timing: A/B noise -&gt; no_gain">✓</span><span class="chip caught" tabindex="0" data-tip="cheat_compile_time
+Caught
+should be caught by chip timing: compile excluded">✓</span><span class="chip caught" tabindex="0" data-tip="a1_write
+Caught
+writes an arbitrary file with np.tofile">✓</span><span class="chip caught" tabindex="0" data-tip="a2_defarg
+Caught
+runs code at import via a default argument">✓</span><span class="chip caught" tabindex="0" data-tip="a3_inject
+Caught
+prompt injection through its exception text">✓</span><span class="chip caught" tabindex="0" data-tip="a4_system
+Caught
+root shell via np._core..os.system + setsid survivor">✓</span><span class="chip caught" tabindex="0" data-tip="c10a_monkeypatch
+Caught
+monkeypatches the referee at import">✓</span><span class="chip caught" tabindex="0" data-tip="c10b_forge_stdout
+Caught
+forges a &#x27;faster&#x27; record via atexit">✓</span><span class="chip caught" tabindex="0" data-tip="c10c_stale_output
+Caught
+computes only when its output holds the poison, skips work when timed">✓</span><span class="chip caught" tabindex="0" data-tip="c1a_zeros
+Caught
+writes zeros">✓</span><span class="chip caught" tabindex="0" data-tip="c1b_nowrite
+Caught
+never writes its output">✓</span><span class="chip caught" tabindex="0" data-tip="c2a_scribble_input
+Caught
+scribbles on its input">✓</span><span class="chip caught" tabindex="0" data-tip="c2b_return_input
+Caught
+writes the result into rhs and returns it">✓</span><span class="chip caught" tabindex="0" data-tip="c2c_return_rhs
+Caught
+returns rhs untouched">✓</span><span class="chip nogain" tabindex="0" data-tip="c3a_shape_branch
+Not caught, gained nothing
+wrong only at shapes other than the dev/timing ones">–</span><span class="chip caught" tabindex="0" data-tip="c3b_known_shapes
+Caught
+correct only on the 8 published shapes">✓</span><span class="chip caught" tabindex="0" data-tip="c4a_npmatmul
+Caught
+np.matmul">✓</span><span class="chip caught" tabindex="0" data-tip="c4b_atop
+Caught
+the @ operator">✓</span><span class="chip caught" tabindex="0" data-tip="c4c_dotT
+Caught
+.T on an argument">✓</span><span class="chip caught" tabindex="0" data-tip="c4d_multidot
+Caught
+np.linalg.multi_dot">✓</span><span class="chip caught" tabindex="0" data-tip="c5d_alias_import
+Caught
+from nki.isa import dma_copy (hides DMAs from the counter)">✓</span><span class="chip caught" tabindex="0" data-tip="c6a_bf16_accum
+Caught
+accumulates in a bf16 tile">✓</span><span class="chip caught" tabindex="0" data-tip="c6b_bf16_halves
+Caught
+two fp32 halves each rounded to bf16">✓</span><span class="chip caught" tabindex="0" data-tip="c6c_fp8_inputs
+Caught
+fp8 operands">✓</span><span class="chip caught" tabindex="0" data-tip="c7_half_k
+Caught
+contracts only half of K">✓</span><span class="chip caught" tabindex="0" data-tip="c8a_clamp
+Caught
+clamps the output to +-1000">✓</span><span class="chip caught" tabindex="0" data-tip="c8b_clamp_devonly
+Caught
+clamps only at the timing shapes">✓</span><span class="chip pass round" tabindex="0" data-tip="honest reference_level4
+Honest, accepted">✓</span><span class="chip pass round" tabindex="0" data-tip="c5a_dma_compute
+Honest, accepted
+honest: dma_compute for loads">✓</span><span class="chip pass round" tabindex="0" data-tip="c5b_dma_compute_positional
+Honest, accepted
+honest: dma_compute, positional args">✓</span><span class="chip pass round" tabindex="0" data-tip="c5c_dma_transpose
+Honest, accepted
+honest: dma_transpose for lhsT">✓</span><span class="chip pass round" tabindex="0" data-tip="c5e_nl_load_store
+Honest, accepted
+honest: nl.load / nl.store">✓</span><span class="chip pass round" tabindex="0" data-tip="h1_ref
+Honest, accepted
+honest: the start kernel">✓</span><span class="chip pass round" tabindex="0" data-tip="h2_nm_order
+Honest, accepted
+honest: n-outer loop order">✓</span><span class="chip pass round" tabindex="0" data-tip="h3_hoist
+Honest, accepted
+honest: lhsT strip hoisted">✓</span><span class="chip pass round" tabindex="0" data-tip="h4_fp32_halves
+Honest, accepted
+honest: K split into two fp32 PSUM halves">✓</span></div><p class="how wall-key">✓ caught · ✗ missed · – not caught, gained no speed · round ✓ honest kernel accepted</p></div></div></section>
+</main>
+<div id="tip" role="tooltip" hidden></div>
+<script type="application/json" id="attempt-data">[]</script>
+<script>
+(() => {
+  const tip = document.getElementById('tip');
+  const data = JSON.parse(document.getElementById('attempt-data').textContent);
+  function place(x, y) {
+    tip.hidden = false;
+    const r = tip.getBoundingClientRect();
+    let left = x + 14, top = y + 14;
+    if (left + r.width > innerWidth - 8) left = x - r.width - 14;
+    if (top + r.height > innerHeight - 8) top = y - r.height - 14;
+    tip.style.left = Math.max(8, left) + 'px';
+    tip.style.top = Math.max(8, top) + 'px';
+  }
+  function showLines(lines, x, y) {
+    tip.replaceChildren();
+    lines.forEach((l, i) => {
+      const d = document.createElement('div');
+      d.className = i ? 'tip-label' : 'tip-value';
+      d.textContent = l;
+      tip.appendChild(d);
+    });
+    place(x, y);
+  }
+  const hide = () => { tip.hidden = true; };
+  document.addEventListener('pointerover', e => {
+    const t = e.target.closest('[data-tip]');
+    if (t) showLines(t.dataset.tip.split('\n'), e.clientX, e.clientY);
+  });
+  document.addEventListener('pointermove', e => {
+    if (e.target.closest('[data-tip]') && !tip.hidden) place(e.clientX, e.clientY);
+  });
+  document.addEventListener('pointerout', e => {
+    const t = e.target.closest('[data-tip]');
+    if (t && !t.contains(e.relatedTarget)) hide();
+  });
+  document.addEventListener('focusin', e => {
+    const t = e.target.closest && e.target.closest('[data-tip]');
+    if (t) { const r = t.getBoundingClientRect(); showLines(t.dataset.tip.split('\n'), r.right, r.top); }
+  });
+  document.addEventListener('focusout', hide);
+
+  // Progress curves: a crosshair that snaps to the nearest attempt and reads out every arm.
+  document.querySelectorAll('svg[data-curves]').forEach(svg => {
+    const c = JSON.parse(svg.dataset.curves);
+    const hair = svg.querySelector('.hair'), overlay = svg.querySelector('.overlay');
+    const pt = svg.createSVGPoint();
+    overlay.addEventListener('pointermove', e => {
+      pt.x = e.clientX; pt.y = e.clientY;
+      const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+      const xv = c.dx0 + (p.x - c.px0) / (c.px1 - c.px0) * (c.dx1 - c.dx0);
+      const i = Math.max(0, Math.min(c.xs.length - 1, Math.round(xv) - c.xs[0]));
+      const x = c.px0 + (c.xs[i] - c.dx0) / (c.dx1 - c.dx0) * (c.px1 - c.px0);
+      hair.setAttribute('x1', x); hair.setAttribute('x2', x); hair.style.visibility = 'visible';
+      tip.replaceChildren();
+      const head = document.createElement('div');
+      head.className = 'tip-label';
+      head.textContent = 'after ' + c.xs[i] + ' attempt' + (c.xs[i] === 1 ? '' : 's');
+      tip.appendChild(head);
+      c.series.forEach(s => {
+        const v = s.med[i];
+        if (v === null || v === undefined) return;
+        const row = document.createElement('div'); row.className = 'tip-row';
+        const key = document.createElement('span'); key.className = 'tip-key'; key.style.background = s.color;
+        const val = document.createElement('strong'); val.textContent = v.toFixed(2) + '×';
+        const lab = document.createElement('span'); lab.className = 'tip-label';
+        lab.textContent = s.label + (s.n[i] > 1
+          ? ' · runs ' + s.lo[i].toFixed(2) + '–' + s.hi[i].toFixed(2) + ', n=' + s.n[i] : ' · 1 run');
+        row.append(key, val, lab); tip.appendChild(row);
+      });
+      place(e.clientX, e.clientY);
+    });
+    overlay.addEventListener('pointerleave', () => { hair.style.visibility = 'hidden'; hide(); });
+  });
+
+  // Attempt timeline: click or Enter on a mark shows the attempt.
+  const detail = document.getElementById('detail');
+  function add(parent, tag, cls, text) {
+    const el = document.createElement(tag);
+    if (cls) el.className = cls;
+    if (text !== undefined) el.textContent = text;
+    parent.appendChild(el);
+    return el;
+  }
+  function open(id) {
+    const a = data[id];
+    if (!a || !detail) return;
+    detail.hidden = false;
+    detail.replaceChildren();
+    add(detail, 'h3', '', a.title);
+    const dl = add(detail, 'dl');
+    a.facts.forEach(([k, v]) => { add(dl, 'dt', '', k); add(dl, 'dd', '', v); });
+    add(detail, 'div', 'label', "Referee's message");
+    add(detail, 'p', 'text', a.message || '–');
+    add(detail, 'div', 'label', 'Instruction sent back');
+    add(detail, 'p', 'text', a.instruction || '–');
+    add(detail, 'div', 'label', 'Code: ' + a.diff_base);
+    if (a.diff) {
+      const pre = add(detail, 'pre', 'diff');
+      a.diff.split('\n').forEach(line => {
+        const cls = line.startsWith('@@') ? 'hunk'
+          : line.startsWith('+') && !line.startsWith('+++') ? 'add'
+          : line.startsWith('-') && !line.startsWith('---') ? 'del' : '';
+        add(pre, 'span', cls, line + (cls ? '' : '\n'));
+      });
+    }
+    document.querySelectorAll('.dot.selected').forEach(d => d.classList.remove('selected'));
+    const dot = document.querySelector('.dot[data-id="' + id + '"]');
+    if (dot) dot.classList.add('selected');
+    detail.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+  }
+  document.addEventListener('click', e => {
+    const d = e.target.closest('.dot[data-id]');
+    if (d) open(+d.dataset.id);
+  });
+  document.addEventListener('keydown', e => {
+    const d = e.target.closest && e.target.closest('.dot[data-id]');
+    if (d && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); open(+d.dataset.id); }
+  });
+})();
+</script>
+</body>
+</html>

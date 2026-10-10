@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
 """
-EXPERIMENTAL research_beam_v4: two distinct correct parents, distinct branch strategies, bounded history.
-Uses latest P1 feedback plus API examples and explicit sampling; multiple changes, not the DMA-only v2 ablation.
-Never pool with original comparison or label as model-alone. All generated candidates,
-including duplicates, consume one normal referee evaluation. No expert kernel is supplied.
+P3's agent loop: redteam-agent 9d8cc8b (17:25), the branch's version when P3's v5 run started at 17:26.
+agent.py is the integrated version (P1's centralised feedback).
 
-Copied from integrated agent.py -- CHIPBOOST's loop and its three arms, on one budget. Owner: P3.
+agent.py -- CHIPBOOST's loop and its three arms, on one budget. Owner: P3.
 
     --arm referee        Qwen3 + the referee's ONE named change each round        (arm a)
     --arm model_alone    Qwen3, told only "Make it faster." (plus its time, once   (arm b)
                          P1 can time); it never sees the referee's messages
-    arm c (random_search) is not run from here: P2's search.py runs it and logs arm=random_search to the
-                         same seat log, e.g.  python search.py --budget 8 --seed 0
+    --arm random_search  no model: candidates from P2's search.py                 (arm c)
 
     controller  start kernel + budget                    this file
     generator   Qwen3-8B on this seat                    KERNEL_AGENT_BASE_URL (the pod sets it)
@@ -24,11 +21,9 @@ Copied from integrated agent.py -- CHIPBOOST's loop and its three arms, on one b
     python agent.py --dry --arm model_alone                                   # no model, rules only, anywhere
     python schema.py --check attempts.jsonl
 
-FAIRNESS. The two model arms: same start kernel, same referee, same --budget, where one referee evaluation
-= one attempt = one unit whatever its verdict. --give-up-after defaults to 0, so no arm stops early and
-every arm spends exactly its budget; the run checks that it did. Arm c (search.py) is NOT like for like: it
-tunes the expert kernel's blocking, starts from the expert (already ~2.5x the start kernel), and counts
-that as its attempt 0. Say so wherever the three arms are compared.
+FAIRNESS. Every arm: same start kernel, same referee, same --budget, where one referee evaluation = one
+attempt = one unit whatever its verdict. For a comparison pass --give-up-after 0, so no arm stops early
+and every arm spends exactly its budget; the run checks that it did.
 
 REFEREE. P1's speedcheck.check_isolated whenever speedcheck.py is present (REFEREE.md): sandboxed, on the
 chip, held-out shapes included; a None (referee failure) is retried and never counted. The model is sent
@@ -46,6 +41,8 @@ import hashlib
 import importlib.util
 import json
 import os
+import random
+import re
 import socket
 import sys
 import tempfile
@@ -56,21 +53,11 @@ AGENT02_DIR = os.path.join(os.path.dirname(HERE), "02-kernel-agent")
 sys.path.insert(0, AGENT02_DIR)
 sys.path.insert(0, os.path.join(HERE, "redteam"))
 sys.path.insert(0, HERE)
-# diagnose.py and redteam/stage12.py are P3's and live only on redteam-agent. CHIPBOOST_P3 names P3's
-# projects/03-chipboost; appended last, so this tree's referee, schema and nkibench still win.
-P3_DIR = os.environ.get("CHIPBOOST_P3")
-if P3_DIR:
-    sys.path += [P3_DIR, os.path.join(P3_DIR, "redteam")]
 
+import diagnose  # noqa: E402
 import nkibench  # noqa: E402
 import schema    # noqa: E402
-try:
-    import diagnose  # noqa: E402
-    import stage12   # noqa: E402
-except ModuleNotFoundError as exc:
-    raise ModuleNotFoundError(
-        f"{exc.name} is P3's (redteam-agent), not on this branch: set CHIPBOOST_P3 to P3's "
-        f"projects/03-chipboost (now {P3_DIR!r}), or run from a tree merged with redteam-agent") from exc
+import stage12   # noqa: E402
 
 
 def _load_module(name, path):
@@ -84,9 +71,9 @@ def _load_module(name, path):
 agent02 = _load_module("agent02", os.path.join(AGENT02_DIR, "agent.py"))
 
 OP = "matmul"
-EXPERIMENT = "research_beam_v4"
 ENTRY = nkibench.LEVELS[stage12.LEVEL]["entry"]   # nki_matmul_tiled_
 P2_START = os.path.join(HERE, "kernels", "matmul_start.py")
+P2_SEARCH = os.path.join(HERE, "search.py")
 FALLBACK_START = os.path.join(AGENT02_DIR, "reference_level4.py")
 MAKE_FASTER = "Make it faster."
 
@@ -192,25 +179,11 @@ def ask(a, prompt):
     import httpx
     budget = min(a.max_tokens, max(256, a.context - len(prompt) // 4 - 64))
     body = dict(model=a.model, messages=[{"role": "user", "content": prompt}],
-                max_tokens=budget, temperature=a.temperature, top_p=a.top_p,
+                max_tokens=budget, temperature=0.6, top_p=0.95,
                 chat_template_kwargs={"enable_thinking": a.think})
-    # One vLLM hiccup must not end a run that has spent an hour of budget: retry a server error, a 429,
-    # a timeout or a dropped connection. A 4xx is the request itself (e.g. the prompt is too long), so stop.
-    for attempt, wait in enumerate((10, 30, 60, None)):
-        try:
-            r = httpx.post(f"{a.base.rstrip('/')}/chat/completions", json=body, timeout=900, verify=False)
-        except httpx.HTTPError as e:
-            err = f"{type(e).__name__}: {e}"
-        else:
-            if r.status_code == 200:
-                break
-            err = f"HTTP {r.status_code}: {r.text[:600]}"
-            if r.status_code < 500 and r.status_code != 429:
-                raise SystemExit(f"the endpoint rejected the request, {err}")
-        if wait is None:
-            raise SystemExit(f"the endpoint failed 4 times; last error {err}")
-        print(f"    (the model endpoint failed, {err[:200]}; retry {attempt + 1}/3 in {wait} s)")
-        time.sleep(wait)
+    r = httpx.post(f"{a.base.rstrip('/')}/chat/completions", json=body, timeout=900, verify=False)
+    if r.status_code != 200:
+        raise SystemExit(f"the endpoint returned HTTP {r.status_code}:\n{r.text[:600]}")
     payload = r.json()
     ch = payload["choices"][0]
     if ch.get("finish_reason") == "length":
@@ -230,6 +203,18 @@ def offline_answers(start_src, n, rnd):
     the referee path and the log can be exercised. Never report these."""
     src = start_src.replace("@nki.jit", "", 1) if rnd == 0 else start_src
     return [(f"```python\n{src}\n```", None)] * n
+
+
+def load_search(path):
+    """Arm (c) is P2's. The contract asked of P2: search.sample(rng) -> kernel source (str), where rng is a
+    random.Random. Without it the arm stops rather than invent candidates."""
+    if not os.path.exists(path):
+        sys.exit(f"--arm random_search needs P2's search.py at {path}, providing sample(rng) -> source. "
+                 f"It is not there yet.")
+    mod = _load_module("chipboost_search", path)
+    if not callable(getattr(mod, "sample", None)):
+        sys.exit(f"{path} has no sample(rng) function. Arm (c) calls search.sample(rng) -> kernel source.")
+    return mod
 
 
 # ---------------------------------------------------------------- prompts
@@ -266,86 +251,6 @@ def repair_prompt(src, instruction):
             f"Make exactly that change and keep everything else identical. {KEEP}")
 
 
-def code_identity(src):
-    """Ignore formatting/comments when identifying repeated generated programs; never execute them."""
-    try:
-        normalized = ast.dump(ast.parse(src), include_attributes=False)
-    except SyntaxError:
-        normalized = src.strip()
-    return hashlib.sha256(normalized.encode()).hexdigest()[:16]
-
-
-SHAPE_CONTRACT = (
-    "Before writing code, check every dma_copy source and destination have identical shapes. "
-    "A source [128, 512] cannot be copied into [128, 128]. Copy a matching [128, 128] slice "
-    "or allocate a matching [128, 512] destination, according to the operand. "
-    "For each nc_matmul, stationary is [128, 128], moving is [128, 512], and dst is [128, 512]. "
-    "The per-k source slices are lhsT[k*128:(k+1)*128, m*128:(m+1)*128] and "
-    "rhs[k*128:(k+1)*128, n*512:(n+1)*512]. lhsT's first axis is K, not M. "
-    "Preserve the sum over all K // 128 contraction tiles; distinct K tiles cannot overwrite "
-    "one shared slot before their consumers use them."
-)
-
-
-def recovery_prompt(src, instruction, history, reset=False):
-    """Bounded trusted feedback ledger: no raw exceptions or held-out details are exposed."""
-    ledger = "\n".join(
-        f"- attempt {h['attempt']}: program {h['identity']}; {h['verdict']}; "
-        f"{'repeated program; ' if h['duplicate'] else ''}{h['instruction'][:500]}"
-        for h in history[-4:]
-    )
-    origin = ("Two consecutive candidates failed correctness. The code below is the best correct "
-              "kernel, restored as the starting point. Apply its optimization instruction using "
-              "the failure history to avoid the same invalid change."
-              if reset else "The code below is the latest candidate. Apply the specific referee instruction.")
-    return (f"EXPERIMENT: {EXPERIMENT}; separate treatment, not the original comparison.\n"
-            f"{TASK}\n{origin}\n\n```python\n{src}\n```\n\n"
-            f"Referee instruction: {instruction}\n\n{SHAPE_CONTRACT}\n\n"
-            f"Recent evaluated attempts (every duplicate still used one evaluation):\n{ledger or '(none)'}\n\n"
-            "Do not return a previous program unchanged or with only formatting/comments changed. "
-            "Make one concrete algorithmic change addressing the instruction, preserving correctness.\n\n"
-            f"{agent02.API_CARD}\n{KEEP}")
-
-
-STRATEGIES = (
-    "Explore reusing RHS tiles across m iterations, without dropping any contraction tile.",
-    "Explore reusing LHS tiles across n iterations, without dropping any contraction tile.",
-    "Explore bounded blocking of m/n reuse to limit SBUF storage; preserve all K contributions.",
-)
-STORAGE_API = """NKI storage API example (not a complete optimized kernel):
-Use one ndarray with partition axis first, not a Python list of ndarray allocations:
-    rhs_tiles = nl.ndarray((128, 2, 512), dtype=rhs.dtype, buffer=nl.sbuf)
-    # Inside a bounded block, slot is 0 or 1 and k is a valid contraction-tile index:
-    nisa.dma_copy(dst=rhs_tiles[:, slot, :],
-                  src=rhs[k*128:(k+1)*128, n*512:(n+1)*512])
-    # Each rhs_tiles[:, slot, :] view is [128, 512].
-Process all K // 128 tiles in bounded blocks; handle a final partial block without out-of-range copies.
-The example only documents allocation/slicing; derive the loop schedule yourself.
-"""
-
-
-def update_frontier(frontier, src, rec, instruction, waste):
-    """Keep two AST-distinct correct programs with their OWN trusted feedback."""
-    if rec.get("verdict") in REJECTED:
-        return frontier
-    identity = code_identity(src)
-    if any(c["identity"] == identity for c in frontier):
-        return frontier  # timing noise on duplicate programs must not churn the beam
-    candidate = dict(identity=identity, src=src, instruction=instruction,
-                     time=rec.get("time_us_median"), speedup=rec.get("speedup"), waste=waste)
-    return sorted(frontier + [candidate],
-                  key=lambda c: (c["speedup"] if c["speedup"] is not None else 0.0),
-                  reverse=True)[:2]
-
-
-def branch_prompt(candidate, history, strategy, a):
-    return (recovery_prompt(candidate["src"], candidate["instruction"], history)
-            + f"\n\nResearch branch direction: {STRATEGIES[strategy % len(STRATEGIES)]}\n"
-            "Use the referee feedback as evidence, but explore this branch's alternative direction.\n"
-            + STORAGE_API
-            + f"\nSampling: model={a.model}; thinking={a.think}; temperature={a.temperature}; top_p={a.top_p}.")
-
-
 def alone_prompt(src, time_us, first):
     """Arm (b): the same task and code, no referee. The API card goes in the first prompt only, as in
     arm (a), so both model arms get the same documentation."""
@@ -356,13 +261,184 @@ def alone_prompt(src, time_us, first):
 
 # ---------------------------------------------------------------- the loop
 
-def says(r, referee):
-    """What the model may be told. speedcheck: instruction_given ONLY -- referee_message can quote the
+DMA_COUNT_MISMATCH = re.compile(
+    r"dma_copy requires src and dst to have the same number of elements, got src=(\d+), dst=(\d+)")
+SAFE_NAME = re.compile(r"^[A-Za-z_]\w{0,30}$")
+
+
+def _dotted(node):
+    parts = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if isinstance(node, ast.Name):
+        parts.append(node.id)
+    return ".".join(reversed(parts))
+
+
+def hoisted_psum(src):
+    """Rule B's static check: the name of a PSUM accumulator `X = nl.ndarray(..., buffer=nl.psum)` assigned
+    OUTSIDE every for loop enclosing an nc_matmul that accumulates into X, and never re-assigned inside
+    those loops. Parses only; never imports or runs the candidate. None if there is no such X."""
+    try:
+        tree = ast.parse(src)
+    except (SyntaxError, ValueError):
+        return None
+    parent = {}
+    for node in ast.walk(tree):
+        for child in ast.iter_child_nodes(node):
+            parent[child] = node
+
+    def loops_around(node):
+        out = []
+        while node in parent:
+            node = parent[node]
+            if isinstance(node, (ast.For, ast.AsyncFor, ast.While)):
+                out.append(node)
+        return out
+
+    def inside(node, loop):
+        return any(n is loop for n in loops_around(node))
+
+    psum = []   # (name, assign node)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) \
+                and isinstance(node.value, ast.Call) and _dotted(node.value.func).endswith("ndarray") \
+                and any(k.arg == "buffer" and _dotted(k.value).endswith("psum") for k in node.value.keywords):
+            psum.append((node.targets[0].id, node))
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call) and _dotted(node.func).endswith("nc_matmul")):
+            continue
+        dst = next((k.value for k in node.keywords if k.arg == "dst"), node.args[0] if node.args else None)
+        if not isinstance(dst, ast.Name):
+            continue
+        loops = loops_around(node)
+        if not loops:
+            continue
+        mine = [a for name, a in psum if name == dst.id]
+        if mine and all(not any(inside(a, l) for l in loops) for a in mine) and SAFE_NAME.match(dst.id):
+            return dst.id
+    return None
+
+
+CONTRACTION_MISMATCH = re.compile(r"Matmul contraction dimension mismatch: stationary\[0\]=(\d+) != moving\[0\]=(\d+)")
+
+
+def count_first_buffer(src):
+    """Rule C's static check: the name of an SBUF buffer `X = nl.ndarray((A // B, C, D), ...)` -- three axes
+    with a floor-division FIRST, i.e. the tile count where the partition axis belongs. Parse only."""
+    try:
+        tree = ast.parse(src)
+    except (SyntaxError, ValueError):
+        return None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) \
+                and isinstance(node.value, ast.Call) and _dotted(node.value.func).endswith("ndarray") \
+                and node.value.args and isinstance(node.value.args[0], ast.Tuple) \
+                and len(node.value.args[0].elts) == 3 \
+                and isinstance(node.value.args[0].elts[0], ast.BinOp) \
+                and isinstance(node.value.args[0].elts[0].op, ast.FloorDiv) \
+                and SAFE_NAME.match(node.targets[0].id):
+            return node.targets[0].id
+    return None
+
+
+def stale_operand(src):
+    """Rule D's static check: an nc_matmul operand X (stationary or moving) whose ONLY loads are dma_copy
+    calls OUTSIDE the matmul's innermost loop (variable k), from a source slice that never mentions k -- so
+    every pass of k multiplies by the same tile. Returns (X, k) or None. Parse only; never runs anything."""
+    try:
+        tree = ast.parse(src)
+    except (SyntaxError, ValueError):
+        return None
+    parent = {}
+    for node in ast.walk(tree):
+        for child in ast.iter_child_nodes(node):
+            parent[child] = node
+
+    def ancestors(node):
+        while node in parent:
+            node = parent[node]
+            yield node
+
+    def names_in(node):
+        return {n.id for n in ast.walk(node) if isinstance(n, ast.Name)}
+
+    copies = [n for n in ast.walk(tree) if isinstance(n, ast.Call) and _dotted(n.func).endswith("dma_copy")]
+    for mm in ast.walk(tree):
+        if not (isinstance(mm, ast.Call) and _dotted(mm.func).endswith("nc_matmul")):
+            continue
+        loop = next((a for a in ancestors(mm) if isinstance(a, ast.For)), None)
+        if loop is None or not isinstance(loop.target, ast.Name):
+            continue
+        k = loop.target.id
+        for kw in mm.keywords:
+            if kw.arg not in ("stationary", "moving") or not isinstance(kw.value, ast.Name):
+                continue
+            x = kw.value.id
+            loads = [c for c in copies
+                     if any(a.arg == "dst" and isinstance(a.value, ast.Name) and a.value.id == x for a in c.keywords)]
+            if not loads:
+                continue
+            stale = all(loop not in set(ancestors(c))
+                        and any(a.arg == "src" and isinstance(a.value, ast.Subscript)
+                                and k not in names_in(a.value.slice) for a in c.keywords)
+                        for c in loads)
+            if stale and SAFE_NAME.match(x) and SAFE_NAME.match(k):
+                return x, k
+    return None
+
+
+def says(r, referee, src="", rules=True):
+    """What the model may be told. speedcheck: instruction_given, never referee_message -- it can quote the
     kernel's own exception text, which is attacker-controlled, and names held-out shapes (REFEREE.md
-    section 5). stage12's messages are our own nkibench text, so they may fall back to the message."""
-    if referee[1] is not None:
-        return r.get("instruction_given") or ""
-    return agent02.enrich(r.get("instruction_given") or r.get("referee_message") or "")
+    section 5). stage12's messages are our own nkibench text, so they may fall back to the message.
+
+    v2 (seat 101 + 100 logs at 15:50: all 30 wrong verdicts of the referee arm were one of two mistakes,
+    and the model was never told what to change): for a speedcheck `wrong`, two rules name the change in
+    OUR OWN sentence. Only integers and a validated identifier are carried over, never message text.
+      A  the crash "dma_copy requires src and dst to have the same number of elements" (14x): the model
+         got "fix the error named in the referee message", which it is never shown.
+      B  NUMERICAL MISMATCH with a PSUM accumulator hoisted out of the output-tile loops (16x).
+    """
+    if referee[1] is None:
+        return agent02.enrich(r.get("instruction_given") or r.get("referee_message") or "")
+    if rules and r.get("verdict") == "wrong":
+        msg = r.get("referee_message") or ""
+        m = DMA_COUNT_MISMATCH.search(msg)
+        if m and int(m.group(2)) > 0:
+            n_src, n_dst = int(m.group(1)), int(m.group(2))
+            return (f"Your dma_copy moves {n_src} elements into a destination of {n_dst}: the source slice is "
+                    f"{n_src // n_dst}x the tile. Make each dma_copy's source slice exactly the destination "
+                    f"tile's shape (copy one tile-sized piece per call and loop over the rest), or allocate the "
+                    f"destination with the source slice's shape.")
+        m = CONTRACTION_MISMATCH.search(msg)
+        if m and int(m.group(2)) < int(m.group(1)):
+            # Rule C (seat-101 v3, 7x): a multi-tile SBUF buffer with the tile count first, so tile k is one row.
+            n_stat, n_mov = int(m.group(1)), int(m.group(2))
+            x = count_first_buffer(src or "")
+            buf = f"Your buffer {x}" if x else "Your multi-tile SBUF buffer"
+            return (f"nc_matmul's moving operand has {n_mov} row(s) on the partition axis, but it needs {n_stat}. "
+                    f"{buf} puts the tile count first, so each tile you take from it is a one-row slice. Put the "
+                    f"partition axis first: allocate it with shape (TILE_K, K // TILE_K, TILE_N), copy tile k into "
+                    f"[:, k, :], and pass [:, k, :] to nc_matmul. Keep everything else identical.")
+        if "NUMERICAL MISMATCH" in msg:
+            x = hoisted_psum(src or "")
+            if x:
+                return (f"Your PSUM accumulator {x} is allocated once, before the loops over output tiles, so "
+                        f"nc_matmul keeps adding every output tile into the same sum. Allocate {x} inside the n "
+                        f"loop, one fresh accumulator per (m, n) output tile, before the k loop. Keep everything "
+                        f"else identical.")
+            s = stale_operand(src or "")
+            if s:
+                # Rule D (seat-101 v4, 6x): lhsT loaded once per m from rows 0:128, before the k loop.
+                x, k = s
+                return (f"Your {x} tile is loaded once, before the {k} loop, from a slice that does not depend on "
+                        f"{k}, so every pass of the {k} loop multiplies by the same 128 rows of K. Move that load "
+                        f"inside the {k} loop: allocate {x} there and dma_copy the {k}-th 128-row slice, "
+                        f"[{k} * TILE_K:({k} + 1) * TILE_K, ...], before each nc_matmul. Keep everything else "
+                        f"identical.")
+    return r.get("instruction_given") or ""
 
 
 def better(rec, waste, best):
@@ -373,16 +449,16 @@ def better(rec, waste, best):
     return waste is not None and best["waste"] is not None and waste < best["waste"] - 1e-9
 
 
-def run_once(a, referee, start_path, rep, log, workdir):
+def run_once(a, referee, start_path, rep, log, workdir, search):
+    model_arm = a.arm != "random_search"
     tag = "offline-" if (a.offline or a.dry) else ""
-    run_id = f"{OP}-{EXPERIMENT}-{tag}{time.strftime('%H%M%S')}-{rep}"
-    with open(start_path) as start_file:
-        start_src = start_file.read()
+    run_id = f"{OP}-{a.arm}-{a.tag + '-' if a.tag else ''}{tag}{time.strftime('%H%M%S')}-{rep}"
+    start_src = open(start_path).read()
     start, start_waste = grade(start_src, referee, a.dry, os.path.join(workdir, f"{run_id}_start.py"))
     if start is None:
         sys.exit("the referee failed 3 times on the START kernel (no free core? see REFEREE.md section 7). "
                  "Nothing was logged.")
-    status = says(start, referee)
+    status = says(start, referee, start_src, not a.no_p3_rules)
     print(f"\n=========== run {run_id} ===========")
     print(f"start kernel {os.path.relpath(start_path, HERE)}: verdict {start.get('verdict') or 'PASS (untimed)'}"
           + (f", {start['time_us_median']:.1f} us (chip)" if start.get("time_us_median") else "")
@@ -395,11 +471,12 @@ def run_once(a, referee, start_path, rep, log, workdir):
 
     shown = strip_module_docstring(start_src)
     # The best CORRECT kernel so far: model_alone always builds on it (it gets no other signal).
-    best = dict(src=shown, time=start.get("time_us_median"), speedup=start.get("speedup"),
-                waste=start_waste, instruction=status)
-    frontier = [dict(best, identity=code_identity(shown))]
-    history, identities = [], {code_identity(shown)}
-    strategy_offset, last_invalid, invalid_repeats = 0, None, 0
+    best = dict(src=shown, time=start.get("time_us_median"), speedup=start.get("speedup"), waste=start_waste)
+    prompt = (first_prompt(shown, status) if a.arm == "referee"
+              else alone_prompt(shown, best["time"], first=True) if a.arm == "model_alone" else None)
+    latest = (shown, status)
+    rng = random.Random(1000 + rep)
+    tried, seen, streak = [], {}, 0
     rounds = a.rounds or -(-a.budget // a.samples)
     rnd = -1
     # Referee failures are not counted, so allow a few extra rounds to still spend the whole budget.
@@ -408,45 +485,28 @@ def run_once(a, referee, start_path, rep, log, workdir):
         n = min(a.samples, a.budget - out["attempts"])
         t0 = time.perf_counter()
         # Generation finishes for the whole round BEFORE the referee runs, so vLLM is idle while timing.
-        if a.offline or a.dry:
+        if not model_arm:
+            replies = [(search.sample(rng), None) for _ in range(n)]
+        elif a.offline or a.dry:
             replies = offline_answers(start_src, n, rnd)
-        # All generation completes before chip timing. Branches have distinct prompts.
-        prompts = [branch_prompt(frontier[i % len(frontier)], history,
-                                 strategy_offset + i, a) for i in range(n)]
-        if not (a.offline or a.dry):
-            import concurrent.futures as cf
-            with cf.ThreadPoolExecutor(max_workers=n) as ex:
-                replies = list(ex.map(lambda p: ask(a, p), prompts))
+        else:
+            replies = ask_parallel(a, prompt, n)
         graded = []
-        for prompt, (reply, prompt_tokens) in zip(prompts, replies):
-            src = agent02.extract_code(reply)
+        for reply, prompt_tokens in replies:
+            src = agent02.extract_code(reply) if model_arm else reply
             r, waste = grade(src, referee, a.dry,
                              os.path.join(workdir, f"{run_id}_{out['attempts'] + 1:04d}_{rnd}.py"))
             if r is None:
                 print("    skipped: the referee stayed down. Not logged, not counted against the budget.")
                 continue
             out["attempts"] += 1
-            referee_says = says(r, referee)
-            identity = code_identity(src)
-            history.append(dict(attempt=out["attempts"], identity=identity,
-                                duplicate=identity in identities, verdict=r.get("verdict"),
-                                instruction=referee_says))
-            identities.add(identity)
-            if r.get("verdict") in REJECTED:
-                invalid_repeats = invalid_repeats + 1 if identity == last_invalid else 1
-                last_invalid = identity
-                if invalid_repeats >= 2:
-                    strategy_offset = (strategy_offset + 1) % len(STRATEGIES)
-                    invalid_repeats = 0
-            else:
-                last_invalid, invalid_repeats = None, 0
-                frontier = update_frontier(frontier, src, r, referee_says, waste)
-            instruction = referee_says
+            referee_says = says(r, referee, src, not a.no_p3_rules)
+            instruction = {"referee": referee_says, "model_alone": MAKE_FASTER}.get(a.arm)
             rec = {k: None for k in schema.ATTEMPT_FIELDS}
             rec.update({k: v for k, v in r.items() if k in schema.ATTEMPT_FIELDS})   # the referee's fields
             rec.update(kernel=OP, arm=a.arm, run_id=run_id, attempt_no=out["attempts"],
                        round=rnd, prompt_tokens=prompt_tokens, code=src,
-                       prompt=prompt, response=reply, instruction_given=instruction)
+                       prompt=prompt, response=reply if model_arm else None, instruction_given=instruction)
             rec["seat"] = a.seat if a.seat is not None else rec["seat"]
             rec["code_hash"] = rec["code_hash"] or hashlib.sha1(src.encode()).hexdigest()[:12]
             rec["timestamp"] = rec["timestamp"] or time.time()
@@ -459,7 +519,7 @@ def run_once(a, referee, start_path, rep, log, workdir):
                 out["correct"] += 1
                 if better(rec, waste, best):
                     best.update(src=src, time=rec.get("time_us_median"), speedup=rec.get("speedup"),
-                                waste=waste, instruction=referee_says)
+                                waste=waste)
                     if waste is not None:
                         out["improved"], out["best_waste"] = True, waste
                 if rec["verdict"] == "faster":   # beyond the noise threshold, held-out passed (chip)
@@ -478,8 +538,29 @@ def run_once(a, referee, start_path, rep, log, workdir):
               + (f", speedup {speedup:.3f} ({rec['source']})" if rec.get("speedup") else "")
               + f"  [{out['attempts']}/{a.budget} evaluations, {time.perf_counter() - t0:.1f}s]")
 
-        continue
+        if a.arm == "model_alone":
+            prompt = alone_prompt(best["src"], best["time"], first=False)
+            continue
+        if a.arm == "random_search":
+            continue
 
+        # Arm (a): repair the latest attempt with the referee's one instruction; 02's anti-cycling.
+        if src.strip():
+            latest = (src, referee_says)
+        same = referee_says == (tried[-1] if tried else None)
+        if not same:
+            print(f"  {referee_says[:300]}")
+        seen[referee_says] = seen.get(referee_says, 0) + 1
+        streak = streak + 1 if same else 1
+        if a.give_up_after and seen[referee_says] >= a.give_up_after:
+            print(f"  STOPPING: the same instruction {seen[referee_says]} times; more rounds will not help.")
+            break
+        tried.append(referee_says)
+        prompt = repair_prompt(*latest)
+        if streak >= 2:
+            ledger = "\n".join(f"- {t[:160]}" for t in dict.fromkeys(tried))
+            prompt += f"\n\nThese have already been tried and did not work, so do something different:\n{ledger}"
+            print(f"  same instruction {streak}x -- adding a ledger of {len(set(tried))} earlier ones")
     return out
 
 
@@ -490,51 +571,46 @@ def seat_from_hostname():
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--arm", default="referee", choices=schema.ARMS,
-                    help="referee or model_alone; random_search runs from P2's search.py")
+    ap.add_argument("--arm", default="referee", choices=schema.ARMS)
     ap.add_argument("--budget", type=int, default=8, help="referee evaluations per run, every arm")
     # Measured on seat-101: the samples of one round came back identical every time, so a second sample
     # spent budget on a repeat. One sample per round: every evaluation is a new attempt.
-    ap.add_argument("--samples", type=int, default=2, choices=(1, 2), help="research branch width (default 2)")
+    ap.add_argument("--samples", type=int, default=1)
     ap.add_argument("--rounds", type=int, default=None, help="default: enough to spend the budget")
     ap.add_argument("--repeat", type=int, default=1)
-    ap.add_argument("--give-up-after", type=int, default=0,
-                    help="arm referee only: stop after the same instruction this many times. 0 (default) = "
-                         "never, so every arm spends its whole budget, which a fair comparison needs")
+    ap.add_argument("--give-up-after", type=int, default=4,
+                    help="arm referee only; 0 = never, which a fair three-arm comparison needs")
     ap.add_argument("--start", default=None, help="start kernel; default P2's kernels/matmul_start.py "
                                                   "if it exists, else reference_level4.py")
+    ap.add_argument("--search", default=P2_SEARCH, help="arm random_search: P2's search.py")
+    ap.add_argument("--no-p3-rules", action="store_true",
+                    help="send speedcheck's instruction_given only (no v2 Rule A/B), e.g. to test P1's own feedback")
+    ap.add_argument("--tag", default="", help="prefixed onto the run id, e.g. v2 -> matmul-referee-v2-...")
     ap.add_argument("--seat", type=int, default=seat_from_hostname())
     ap.add_argument("--max-tokens", type=int, default=agent02.MIN_ANSWER_TOKENS)
     ap.add_argument("--context", type=int, default=8192, help="the server's max-model-len")
     ap.add_argument("--think", action="store_true")
-    ap.add_argument("--temperature", type=float, default=None)
-    ap.add_argument("--top-p", type=float, default=None)
     ap.add_argument("--model", default=agent02.MODEL)
     ap.add_argument("--base", default=os.environ.get("KERNEL_AGENT_BASE_URL"))
     ap.add_argument("--log", default=None, help="default logs/seat-<seat>/attempts.jsonl (P4 collects it)")
     ap.add_argument("--offline", action="store_true", help="no model; the simulator grades (needs nki)")
     ap.add_argument("--dry", action="store_true", help="no model, rules stage only (no nki needed)")
     a = ap.parse_args()
-    a.temperature = a.temperature if a.temperature is not None else (0.6 if a.think else 0.7)
-    a.top_p = a.top_p if a.top_p is not None else (0.95 if a.think else 0.8)
-    if a.arm != "referee":
-        sys.exit(f"{EXPERIMENT} is a separately labelled referee-only treatment; use agent.py for original arms")
-    if False:  # original random-search help retained below
-        sys.exit("arm random_search runs from P2's search.py, which logs arm=random_search to the same seat "
-                 "log:\n    python search.py --budget <same budget> --seed <rep>\nagent.py runs the two model "
-                 "arms, referee and model_alone.")
 
     start_path = a.start or (P2_START if os.path.exists(P2_START) else FALLBACK_START)
     # --dry never touches the real referee (importing speedcheck needs the pod's ml_dtypes).
     referee = ("stage12 rules only (--dry)", None) if a.dry else pick_referee()
     # First line on purpose: the team checks `head -1 run.log` says "referee: speedcheck".
     print(f"referee: {referee[0]}")
+    search = load_search(a.search) if a.arm == "random_search" else None
     if a.seat is not None:
         os.environ["CHIPBOOST_SEAT"] = str(a.seat)   # speedcheck writes it into `seat`
     a.log = a.log or os.path.join(HERE, "logs", f"seat-{a.seat if a.seat is not None else 'unknown'}",
                                   "attempts.jsonl")
     os.makedirs(os.path.dirname(os.path.abspath(a.log)), exist_ok=True)
-    if a.offline or a.dry:
+    if a.arm == "random_search":
+        print(f"arm random_search: candidates from {a.search}")
+    elif a.offline or a.dry:
         print("*** OFFLINE: replaying the start kernel, no model. Numbers are meaningless. ***")
     else:
         if not (a.base or "").strip():
@@ -549,7 +625,7 @@ def main():
     try:
         with open(a.log, "a") as log:
             for rep in range(a.repeat):
-                results.append(run_once(a, referee, start_path, rep, log, workdir))
+                results.append(run_once(a, referee, start_path, rep, log, workdir, search))
     except nkibench.NkiMissing as e:
         sys.exit(f"{e}\nThe simulator needs the seat pod. Use --dry here.")
 

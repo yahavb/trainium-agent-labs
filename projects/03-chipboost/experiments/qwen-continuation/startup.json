@@ -1,0 +1,29 @@
+{
+  "record": {
+    "seat": 100,
+    "kernel": "matmul",
+    "arm": null,
+    "run_id": null,
+    "attempt_no": null,
+    "round": null,
+    "prompt_tokens": null,
+    "code_hash": "57044ec26245",
+    "code": null,
+    "prompt": null,
+    "response": null,
+    "verdict": "faster",
+    "referee_message": "correct everywhere, including 5 undisclosed held-out shapes; 632.6 us vs baseline 959.9 us = 1.517x; per shape (4096, 256, 6144) 1.540x, (4096, 256, 2048) 1.461x: FASTER, beating the noise threshold 1.010x with no shape slower.",
+    "instruction_given": "Faster on the chip (1.52x, 27.2 TFLOP/s). Next step: the simulator measures 1.16x the byte floor. The lhsT slice depends on k and m, but is loaded again for every n. Keep the lhsT tiles for a block of m in distinct SBUF slots while sweeping n, and reuse the slot indexed by k and m. Preserve any existing rhs reuse and the k contraction loop.",
+    "sim_ok": true,
+    "chip_ok": true,
+    "time_us_median": 632.614,
+    "time_us_iqr": 0.3930000000000575,
+    "baseline_us_same_session": 959.8600000000001,
+    "speedup": 1.517291745045162,
+    "source": "chip",
+    "timestamp": 1791665409.2629917
+  },
+  "acceptance_reused": false,
+  "counted_as_kernel_attempt": false,
+  "start_path": "/tmp/p1-qwen-winner-replication/first_winner.py"
+}

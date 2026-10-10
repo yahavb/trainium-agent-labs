@@ -1,3 +1,19 @@
 # Fake data (schema.py --fake) is for building the dashboard layout only; never commit it.
 fake_*
 dashboard/collected/
+
+# Internal notes: kept locally, not part of the submission
+PLAN.md
+P2_TASKS.md
+COMPARISON-RUN.md
+IMPROVEMENT-PILOT.md
+REPORTING.md
+REVIEW.md
+TEAM.md
+research/RESEARCH-PLAN.md
+research/debug-compile-pilot.md
+research/kernel-research.md
+research/model-options.md
+experiments/astra-trial/GENERATION.md
+P1-HANDOFF.md
+REFEREE-V2.md

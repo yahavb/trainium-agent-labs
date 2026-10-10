@@ -6,6 +6,9 @@ temporary `redteam/stage12.py`: rules + NKI simulator, no timing, used before P1
 
 ## The headline
 
+- **v5 (chip): Qwen3-8B + referee feedback produced a verified `faster` kernel, 1.517x (960.9 -> 633.2 us),**
+  correct on the chip with hostile inputs and on 3 held-out shapes, and replicated by a standalone re-check.
+  See `P3_HEADLINE.md`.
 - **Red team, chip:** the honest kernel is accepted (`no_gain`, 1.000x), and **10 of 10 real cheats are caught**.
   The 11th file, `cheat_low_precision`, is not a cheat on bf16 inputs (see 1).
 - **Model arms, chip, start kernel, 3 runs x 8 evaluations each:** **0 faster kernels in 48 attempts.** With the
@@ -90,6 +93,35 @@ So v2 fixed the instruction, but not the outcome:
 
 Rule B never fired, because this path never produced the shared-accumulator kernel.
 
+### v3: P1's improved referee feedback alone (chip, 1 run x 8, `--no-p3-rules`)
+
+*speedcheck at `referee-timing` 7da33ee (self-contained failure instructions); `agent.py` e471033;
+`logs/seat-101/attempts_referee_v3.jsonl`.* **8 wrong, 0 correct, 2 distinct kernels.**
+
+1. Attempt 1 held the rhs tiles in a Python list. P1's referee named the NKI layout exactly: "one `nl.ndarray`
+   of shape (TILE_K, K // TILE_K, TILE_N), partition axis first, access `rhs_tiles[:, k, :]`".
+2. Attempt 2 followed most of it: one buffer, n outer, rhs loaded once per n and reused across m. That is the
+   right restructure. But it put the axes in the wrong order, `(K // TILE_K, TILE_K, TILE_N)` indexed
+   `[k, :, :]`. The result was "Matmul contraction dimension mismatch: stationary[0]=128 != moving[0]=1".
+3. The instruction was then the generic "tracing failed ... check operand shapes", and the same kernel came back
+   for attempts 3 to 8.
+
+**Closest of the day: one axis order away from a correct restructured kernel.** Same lesson as v2: a precise
+instruction changes the code, and a generic one does not.
+
+### v4: P1's improved feedback + P3 Rules A/B/C (chip, 1 run x 8)
+
+*speedcheck 7da33ee; `agent.py` 00cae3e; `logs/seat-101/attempts_referee_v4.jsonl`.* **8 wrong, 0 correct.**
+The model cleared **two bugs in a row**, each after a precise instruction:
+1. The Python tile list was fixed after P1's NKI_TILE_LIST instruction.
+2. The shared accumulator was fixed after P1's PSUM_OUTPUT_TILE_LIFETIME instruction.
+
+From attempt 3 on, the kernel ran but gave wrong numbers. Its structure is the right restructure: n outer,
+rhs staged once per n in `(TILE_K, K // TILE_K, TILE_N)` and reused across m, and the accumulator per (m, n).
+The one bug left is that lhsT is loaded once per m, from rows 0:128, **before** the k loop, so every k uses
+the first lhsT tile. That is one load away from correct. Under the generic mismatch instruction, attempts
+3 to 8 were variations of this one kernel.
+
 ## 4. Failure taxonomy (`redteam/taxonomy.py`, 73 attempts)
 
 | Mode | model_alone, chip | referee, chip | referee, sim |
@@ -113,6 +145,8 @@ case.
    sent Qwen to the k loop, which has no waste. The result was 8/8 crashes (sim). In this kernel, the
    re-reading is rhs once per m (4x) and lhsT once per n (2x).
 3. **An instruction that points at a message the model cannot see is no instruction** (v1 crashes; fixed in v2).
+   **And only a precise instruction changes the code.** In v2 and v3, Qwen acted on the named fixes (the NKI
+   layout from P1's referee in v3) and returned the identical kernel after every generic one.
 4. **On this chip, bf16 accumulation is impossible** ("nc_matmul dst dtype must be float32 on gen3"), so a
    precision cheat has to round the operands instead.
 5. **The model is effectively deterministic here:** samples within a round were identical, and in v2 all 3 repeats
