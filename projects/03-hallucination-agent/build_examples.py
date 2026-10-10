@@ -54,6 +54,8 @@ def main():
             r = json.loads(line)
             if isinstance(r["level"], int) and r["seed"] >= 1000:
                 raise SystemExit(f"{path} holds judging seed {r['seed']}; refusing to use it")
+            if r.get("note") == "verify":
+                continue   # the verifier's verdict, not an answer
             if r.get("examples"):
                 continue   # replies written with examples in the prompt would echo them
             by_item[(r["item"], r["seed"])].append(r)

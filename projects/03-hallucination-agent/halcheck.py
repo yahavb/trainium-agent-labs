@@ -110,7 +110,19 @@ def matches(item, given):
 
 
 def quote_is_verbatim(q, passage):
-    return _norm(q).strip(" .") in _norm(passage)
+    """Word for word. A quote that skips words with "..." passes if every piece is verbatim and the
+    pieces appear in order: "The Normans ... gave their name to Normandy" is an honest quote."""
+    pieces = [p.strip(" .,;") for p in re.split(r"\.\.\.|\u2026", q)]
+    pieces = [p for p in pieces if p]
+    if not pieces:
+        return False
+    text, at = _norm(passage), 0
+    for p in pieces:
+        i = text.find(_norm(p), at)
+        if i < 0:
+            return False
+        at = i + len(_norm(p))
+    return True
 
 # ---------------------------------------------------------------- the label-free check
 
@@ -290,8 +302,10 @@ def check(item, reply):
                             f"Your quote is about {', '.join(quoted)}, not {ent}. Check whether any "
                             f"sentence states this for {ent} itself.")
         return done("answered_unanswerable", sc_reason if not sc_ok else
-                    "Your quote does not state what the question asks. Check whether any sentence "
-                    "actually does.")
+                    "Your quote is real, but compare it with the question detail by detail: who did "
+                    "what to whom, when, and how. The quote leaves at least one of those out or "
+                    "says something different. If no sentence states every detail, the answer is "
+                    "NOT_IN_CONTEXT.")
 
     # ---- gold says: the question's premise is contradicted
     if ans == "FALSE_PREMISE":
@@ -395,6 +409,16 @@ def selftest():
         expect(name, g, rw, lb)
         print(f"  {'ok  ' if g['reward'] == rw and g['label'] == lb else 'FAIL'} {name:<36} "
               f"{g['reward']:.1f}  {g['label']:<24} {g['feedback'][:70]}")
+
+    # quotes that skip words with "..."
+    P = "The Normans (Norman: Nourmands) were the people who gave their name to Normandy, a region in France."
+    for q, want in [("The Normans ... gave their name to Normandy, a region in France.", True),
+                    ("The Normans \u2026 gave their name to Normandy", True),
+                    ("gave their name to Normandy ... The Normans", False),
+                    ("The Normans ... gave their name to Brittany", False)]:
+        got = quote_is_verbatim(q, P)
+        fails += got != want
+        print(f"  {'ok  ' if got == want else 'FAIL'} ellipsis quote {q[:44]!r:48} -> {got}")
 
     print("\nSELFTEST " + ("PASSED" if fails == 0 else f"FAILED ({fails})"))
     return 0 if fails == 0 else 1

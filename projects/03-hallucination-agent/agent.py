@@ -26,6 +26,10 @@ Three inference-time levers for the label-free agent, each off by default so you
                          this is one way to look for one without the answer key.
     --examples FILE      prepend K worked examples (--k) from a bank built by build_examples.py.
                          The loop's successes, reused as in-context examples on unseen items.
+    --verify             before accepting a real answer, ask the model in a FRESH call whether the
+                         quoted evidence states every detail of the question (Chain-of-Verification,
+                         factored). Catches a real quote that misses one detail, which selfcheck
+                         cannot. Costs one call per accepted answer. Off by default; measure it.
 
     export HALLU_BASE_URL=http://localhost:8000/v1        # falls back to HEATROD_BASE_URL
     python agent.py --offline --level 1                    # no model; proves the plumbing
@@ -157,6 +161,39 @@ def challenge_abstention(a, item, prompt, rng):
     reply = ask_many(a, item, follow, 1, rng, 1)[0]
     return reply, halcheck.check(item, reply)
 
+# ---------------------------------------------------------------- verification (label-free)
+
+VERIFY_PROMPT = """You are checking someone else's answer. Read only the evidence below.
+
+QUESTION: {question}
+PROPOSED ANSWER: {answer}
+EVIDENCE: {evidence}
+
+Does the evidence, read literally, state that the proposed answer is the answer to this exact
+question? Check every detail the question asks: who did what to whom, when, where, and how.
+A related fact is not enough.
+
+Reply with exactly two lines:
+VERDICT: SUPPORTED or VERDICT: NOT_SUPPORTED
+MISSING: <the detail of the question the evidence does not state, or NONE>"""
+
+
+def verify(a, item, reply, rnd, rng):
+    """A fresh call that sees only the question, the answer and the quotes: not the passage, not
+    the model's own reasoning. Returns (supported, missing_detail, raw_text)."""
+    import re
+    p = halcheck.parse(reply)
+    evidence = " ".join(f'"{q}"' for q in p["quotes"]) or "(none)"
+    if a.offline:   # plumbing only: the fake verifier peeks at the answer key
+        ok = halcheck.matches(item, p["answer"])
+        return ok, ("NONE" if ok else "(offline fake)"), "VERDICT: " + ("SUPPORTED" if ok else "NOT_SUPPORTED")
+    text = ask_once(a, VERIFY_PROMPT.format(question=item["question"], answer=p["answer"],
+                                            evidence=evidence))
+    m = re.search(r"VERDICT\s*:\s*\**\s*(NOT[_ ]SUPPORTED|SUPPORTED)", text, re.I)
+    miss = re.search(r"MISSING\s*:\s*(.+)", text, re.I)
+    supported = bool(m) and not m.group(1).upper().startswith("NOT")
+    return supported, (miss.group(1).strip() if miss else "no verdict given"), text
+
 # ---------------------------------------------------------------- the loop
 
 
@@ -206,16 +243,37 @@ def solve(item, a, log, run, rng, bank):
                         print(f"  challenged the abstention -> {g2['label']}")
                     if g2["selfcheck"][0] and g2["parsed"]["answer"] not in halcheck.ABSTAIN:
                         r, g = r2, g2
-                final, claimed = g, True
-                break
-            passing = [g for g in graded if g["selfcheck"][0]]
-            if passing:
+                rejected = None
+                if a.verify and g["parsed"]["answer"] not in halcheck.ABSTAIN:
+                    ok, missing, vtext = verify(a, item, r, rnd, rng)
+                    log.write(json.dumps(dict(
+                        run=run, item=item["id"], level=item["level"], sub=item["sub"],
+                        seed=item["seed"], kind=item["kind"], round=rnd, mode="label_free",
+                        note="verify", verdict="SUPPORTED" if ok else "NOT_SUPPORTED",
+                        missing=missing, reply=vtext, label="verifier_call", reward=None,
+                        candidate_label=g["label"])) + "\n")
+                    if a.verbose:
+                        print(f"  verify: {'SUPPORTED' if ok else 'NOT_SUPPORTED'} "
+                              f"(missing: {missing})  candidate was {g['label']}")
+                    if not ok:
+                        rejected = missing
+                if rejected is None:
+                    final, claimed = g, True
+                    break
+                feedback = (f"A separate check of your answer found that the quoted evidence does "
+                            f"not state this detail of the question: {rejected}. Find a sentence "
+                            f"that states every detail. If there is none, answer NOT_IN_CONTEXT.")
+                shown = r
+                final, claimed = best, False
+            elif any(g["selfcheck"][0] for g in graded):
+                passing = [g for g in graded if g["selfcheck"][0]]
                 feedback = (f"Your samples disagreed: {sorted({g['parsed']['answer'] for g in passing})}. "
                             f"At most one of these is right. Reread the sentences and answer again.")
                 shown = replies[graded.index(passing[0])]
+                final, claimed = best, False
             else:
                 feedback, shown = graded[0]["selfcheck"][1], replies[0]
-            final, claimed = best, False
+                final, claimed = best, False
         else:
             final = best
             if best["reward"] == 1.0:
@@ -283,6 +341,8 @@ def build_parser():
                     help="label-free: samples that must pass selfcheck with the same answer")
     ap.add_argument("--challenge-abstain", action="store_true",
                     help="label-free: make the model show its search before accepting NOT_IN_CONTEXT")
+    ap.add_argument("--verify", action="store_true",
+                    help="label-free: a fresh call checks the quote states every detail before accepting")
     ap.add_argument("--examples", help="example bank from build_examples.py")
     ap.add_argument("--k", type=int, default=3, help="worked examples per prompt")
     ap.add_argument("--model", default=os.environ.get("HALLU_MODEL",
