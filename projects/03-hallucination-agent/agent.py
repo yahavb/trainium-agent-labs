@@ -26,10 +26,18 @@ Three inference-time levers for the label-free agent, each off by default so you
                          this is one way to look for one without the answer key.
     --examples FILE      prepend K worked examples (--k) from a bank built by build_examples.py.
                          The loop's successes, reused as in-context examples on unseen items.
-    --verify             before accepting a real answer, ask the model in a FRESH call whether the
+    --verify [basic|checklist]
+                         before accepting a real answer, ask the model in a FRESH call whether the
                          quoted evidence states every detail of the question (Chain-of-Verification,
                          factored). Catches a real quote that misses one detail, which selfcheck
                          cannot. Costs one call per accepted answer. Off by default; measure it.
+                         basic:     one yes/no judgement. Measured on 12 dev items: caught 1 of 3
+                                    hallucinations, wrongly rejected 1 of 5 correct answers.
+                         checklist: the verifier first lists every detail the question requires
+                                    (who, what, to whom, when, where, how), marks each STATED or
+                                    NOT STATED, and paraphrase counts as stated. Any NOT STATED
+                                    line overrides a SUPPORTED verdict. A rejection asks for a
+                                    better quote before suggesting NOT_IN_CONTEXT.
 
     export HALLU_BASE_URL=http://localhost:8000/v1        # falls back to HEATROD_BASE_URL
     python agent.py --offline --level 1                    # no model; proves the plumbing
@@ -178,21 +186,60 @@ VERDICT: SUPPORTED or VERDICT: NOT_SUPPORTED
 MISSING: <the detail of the question the evidence does not state, or NONE>"""
 
 
+CHECKLIST_PROMPT = """You are checking someone else's answer. Read only the evidence below.
+
+QUESTION: {question}
+PROPOSED ANSWER: {answer}
+EVIDENCE: {evidence}
+
+Step 1. List every detail the question requires, one per line:
+DETAIL: <detail>
+Include each who, what, to whom, when (dates, years, decades, centuries), where and how that the
+question mentions. A question that names a time period has a "when" detail.
+
+Step 2. Check each detail against the evidence, one per line:
+CHECK: <detail> -> STATED
+CHECK: <detail> -> NOT STATED
+The same meaning in different words counts as STATED. A different time, place, person, or
+direction (who did what to whom) counts as NOT STATED. Compare dates and periods exactly,
+converting centuries to years where needed.
+
+Step 3. End with exactly two lines:
+VERDICT: SUPPORTED (only if every detail is STATED) or VERDICT: NOT_SUPPORTED
+MISSING: <the first detail that is NOT STATED, or NONE>"""
+
+
+def parse_verdict(text, mode="basic"):
+    """-> (supported, missing). For checklist mode, any 'NOT STATED' check overrides a SUPPORTED
+    verdict: the model's own itemised check is trusted over its summary line."""
+    import re
+    m = re.search(r"VERDICT\s*:\s*\**\s*(NOT[_ ]SUPPORTED|SUPPORTED)", text, re.I)
+    miss = re.search(r"MISSING\s*:\s*(.+)", text, re.I)
+    supported = bool(m) and not m.group(1).upper().startswith("NOT")
+    missing = miss.group(1).strip() if miss else "no verdict given"
+    if mode == "checklist":
+        bad = re.findall(r"CHECK\s*:\s*(.+?)\s*-+>\s*NOT[_ ]STATED", text, re.I)
+        if bad:
+            supported = False
+            if missing.upper().startswith("NONE") or missing == "no verdict given":
+                missing = bad[0].strip()
+    if supported:
+        missing = "NONE"
+    return supported, missing
+
+
 def verify(a, item, reply, rnd, rng):
     """A fresh call that sees only the question, the answer and the quotes: not the passage, not
     the model's own reasoning. Returns (supported, missing_detail, raw_text)."""
-    import re
     p = halcheck.parse(reply)
     evidence = " ".join(f'"{q}"' for q in p["quotes"]) or "(none)"
     if a.offline:   # plumbing only: the fake verifier peeks at the answer key
         ok = halcheck.matches(item, p["answer"])
         return ok, ("NONE" if ok else "(offline fake)"), "VERDICT: " + ("SUPPORTED" if ok else "NOT_SUPPORTED")
-    text = ask_once(a, VERIFY_PROMPT.format(question=item["question"], answer=p["answer"],
-                                            evidence=evidence))
-    m = re.search(r"VERDICT\s*:\s*\**\s*(NOT[_ ]SUPPORTED|SUPPORTED)", text, re.I)
-    miss = re.search(r"MISSING\s*:\s*(.+)", text, re.I)
-    supported = bool(m) and not m.group(1).upper().startswith("NOT")
-    return supported, (miss.group(1).strip() if miss else "no verdict given"), text
+    tmpl = CHECKLIST_PROMPT if a.verify == "checklist" else VERIFY_PROMPT
+    text = ask_once(a, tmpl.format(question=item["question"], answer=p["answer"], evidence=evidence))
+    ok, missing = parse_verdict(text, a.verify)
+    return ok, missing, text
 
 # ---------------------------------------------------------------- the loop
 
@@ -249,7 +296,8 @@ def solve(item, a, log, run, rng, bank):
                     log.write(json.dumps(dict(
                         run=run, item=item["id"], level=item["level"], sub=item["sub"],
                         seed=item["seed"], kind=item["kind"], round=rnd, mode="label_free",
-                        note="verify", verdict="SUPPORTED" if ok else "NOT_SUPPORTED",
+                        note="verify", verify_mode=a.verify,
+                        verdict="SUPPORTED" if ok else "NOT_SUPPORTED",
                         missing=missing, reply=vtext, label="verifier_call", reward=None,
                         candidate_label=g["label"])) + "\n")
                     if a.verbose:
@@ -260,9 +308,15 @@ def solve(item, a, log, run, rng, bank):
                 if rejected is None:
                     final, claimed = g, True
                     break
-                feedback = (f"A separate check of your answer found that the quoted evidence does "
-                            f"not state this detail of the question: {rejected}. Find a sentence "
-                            f"that states every detail. If there is none, answer NOT_IN_CONTEXT.")
+                if a.verify == "checklist":
+                    feedback = (f"A separate check found that your quoted evidence does not state "
+                                f"this detail of the question: {rejected}. Look for another "
+                                f"sentence in the passage that does state it, and quote that one. "
+                                f"Only if no sentence states it, answer NOT_IN_CONTEXT.")
+                else:
+                    feedback = (f"A separate check of your answer found that the quoted evidence does "
+                                f"not state this detail of the question: {rejected}. Find a sentence "
+                                f"that states every detail. If there is none, answer NOT_IN_CONTEXT.")
                 shown = r
                 final, claimed = best, False
             elif any(g["selfcheck"][0] for g in graded):
@@ -341,8 +395,10 @@ def build_parser():
                     help="label-free: samples that must pass selfcheck with the same answer")
     ap.add_argument("--challenge-abstain", action="store_true",
                     help="label-free: make the model show its search before accepting NOT_IN_CONTEXT")
-    ap.add_argument("--verify", action="store_true",
-                    help="label-free: a fresh call checks the quote states every detail before accepting")
+    ap.add_argument("--verify", nargs="?", const="basic", choices=["basic", "checklist"],
+                    help="label-free: a fresh call checks the quote states every detail before "
+                         "accepting. --verify alone = basic; --verify checklist = itemised")
+    ap.add_argument("--selftest", action="store_true", help="test the verdict parser; no model")
     ap.add_argument("--examples", help="example bank from build_examples.py")
     ap.add_argument("--k", type=int, default=3, help="worked examples per prompt")
     ap.add_argument("--model", default=os.environ.get("HALLU_MODEL",
@@ -368,8 +424,38 @@ def items_for(a):
             for seed in range(a.seed, a.seed + a.seeds) for sub in halworld.SUBS]
 
 
+def selftest():
+    """The verdict parser, on replies shaped like the ones Qwen3-8B wrote on seat-17."""
+    cases = [
+        ("basic", "VERDICT: SUPPORTED\nMISSING: NONE", True, "NONE"),
+        ("basic", "VERDICT: NOT_SUPPORTED\nMISSING: the year", False, "the year"),
+        ("basic", "**VERDICT:** NOT SUPPORTED\nMISSING: who", False, "who"),
+        ("basic", "I think it is fine.", False, "no verdict given"),
+        ("checklist", "DETAIL: region\nDETAIL: in the 2000s\nCHECK: region -> STATED\n"
+                      "CHECK: in the 2000s -> NOT STATED\nVERDICT: SUPPORTED\nMISSING: NONE",
+         False, "in the 2000s"),                       # itemised check overrides the summary
+        ("checklist", "CHECK: who -> STATED\nCHECK: when -> STATED\nVERDICT: SUPPORTED\nMISSING: NONE",
+         True, "NONE"),
+        ("checklist", "CHECK: originated from -> STATED\nVERDICT: NOT_SUPPORTED\nMISSING: origin",
+         False, "origin"),
+        ("checklist", "CHECK: drug -> STATED\nCHECK: signal transduction --> NOT STATED\n"
+                      "VERDICT: NOT_SUPPORTED\nMISSING: signal transduction pathways", False,
+         "signal transduction pathways"),
+    ]
+    fails = 0
+    for mode, text, want_ok, want_miss in cases:
+        ok, miss = parse_verdict(text, mode)
+        good = ok == want_ok and miss == want_miss
+        fails += not good
+        print(f"  {'ok  ' if good else 'FAIL'} {mode:<9} -> supported={ok!s:<5} missing={miss!r}")
+    print("\nSELFTEST " + ("PASSED" if not fails else f"FAILED ({fails})"))
+    return 1 if fails else 0
+
+
 def main():
     a = build_parser().parse_args()
+    if a.selftest:
+        sys.exit(selftest())
 
     if not a.base and not a.offline:
         sys.exit("set HALLU_BASE_URL (or HEATROD_BASE_URL) to your vLLM endpoint, or pass --offline")
