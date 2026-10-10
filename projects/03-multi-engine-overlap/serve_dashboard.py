@@ -201,34 +201,62 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
         if parsed.path == "/api/run":
             query = urllib.parse.parse_qs(parsed.query)
-            cmd_key = query.get("cmd", ["all"])[0]
+            cmd_key = query.get("cmd", [None])[0]
+            custom_cmd = query.get("custom", [None])[0]
 
-            cmd_args = COMMANDS.get(cmd_key)
-            if not cmd_args:
+            if custom_cmd:
+                custom_cmd = custom_cmd.strip()
+                if not custom_cmd:
+                    self.send_response(400)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": "Empty command"}).encode("utf-8"))
+                    return
+
+                if os.name == "nt":
+                    cmd_args = ["powershell", "-NoProfile", "-Command", custom_cmd]
+                else:
+                    cmd_args = ["/bin/bash", "-c", custom_cmd]
+                exec_display = custom_cmd
+                run_id = "custom"
+            elif cmd_key:
+                cmd_args = COMMANDS.get(cmd_key)
+                if not cmd_args:
+                    self.send_response(400)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": f"Unknown command: {cmd_key}"}).encode("utf-8"))
+                    return
+                exec_display = " ".join(cmd_args)
+                run_id = cmd_key
+            else:
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json")
                 self.end_headers()
-                self.wfile.write(json.dumps({"error": f"Unknown command: {cmd_key}"}).encode("utf-8"))
+                self.wfile.write(json.dumps({"error": "No command specified"}).encode("utf-8"))
                 return
 
             self.protocol_version = "HTTP/1.1"
+            self.close_connection = True
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
             self.send_header("Cache-Control", "no-cache")
-            self.send_header("Connection", "keep-alive")
+            self.send_header("Connection", "close")
             self.end_headers()
 
             # Announce start
             start_payload = json.dumps({
                 "type": "start",
-                "cmd": cmd_key,
-                "exec": " ".join(cmd_args)
+                "cmd": run_id,
+                "exec": exec_display
             })
             self.wfile.write(f"data: {start_payload}\n\n".encode("utf-8"))
             self.wfile.flush()
 
             env = dict(os.environ)
             env["PYTHONUNBUFFERED"] = "1"
+            pythonpath = env.get("PYTHONPATH", "")
+            env["PYTHONPATH"] = f"{PROJECT_DIR};{pythonpath}" if os.name == "nt" else f"{PROJECT_DIR}:{pythonpath}"
 
             try:
                 proc = subprocess.Popen(
@@ -255,7 +283,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 done_payload = json.dumps({
                     "type": "done",
                     "code": exit_code,
-                    "cmd": cmd_key
+                    "cmd": run_id
                 })
                 self.wfile.write(f"data: {done_payload}\n\n".encode("utf-8"))
                 self.wfile.flush()

@@ -425,6 +425,39 @@
 
     @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 
+    .term-input-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.35rem;
+      width: 100%;
+    }
+
+    .term-cmd-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #f8fafc;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 600;
+      caret-color: #38bdf8;
+      padding: 0;
+      margin: 0;
+    }
+
+    .term-cmd-input::placeholder {
+      color: rgba(100, 116, 139, 0.7);
+      font-style: italic;
+      font-weight: 400;
+    }
+
+    .term-cmd-input:disabled {
+      color: #64748b;
+      cursor: not-allowed;
+    }
+
     /* Gantt Visualizer Graphic Container */
     .gantt-container {
       background: rgba(8, 10, 16, 0.9);
@@ -923,19 +956,19 @@
           </div>
 
           <div class="controls-group">
-            <button class="btn btn-primary" id="btn-run-all" onclick="startFullSimulation()">
+            <button class="btn btn-primary" id="btn-run-all" onclick="submitPresetCommand('python run_local_demo.py')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
               ▶ Run Full Suite
             </button>
-            <button class="btn" onclick="runSimScript('selftest')">1. Grader Selftest</button>
-            <button class="btn" onclick="runSimScript('eval')">2. Best Kernel</button>
-            <button class="btn" onclick="runSimScript('agent')">3. Agent Loop</button>
-            <button class="btn" onclick="runSimScript('speedup')">4. Profiler</button>
+            <button class="btn" onclick="submitPresetCommand('python overlap_bench.py --selftest')">1. Grader Selftest</button>
+            <button class="btn" onclick="submitPresetCommand('python eval_best_kernel.py')">2. Best Kernel</button>
+            <button class="btn" onclick="submitPresetCommand('python agent.py --offline --rounds 3')">3. Agent Loop</button>
+            <button class="btn" onclick="submitPresetCommand('python visualize_pipeline.py --rows 1024 --cols 128')">4. Profiler</button>
           </div>
         </div>
 
         <!-- Terminal Box -->
-        <div class="terminal-container">
+        <div class="terminal-container" onclick="focusTerminalInput()">
           <div class="terminal-header">
             <div class="terminal-dots">
               <div class="dot dot-red"></div>
@@ -951,10 +984,15 @@
             </div>
           </div>
 
-          <div class="terminal-body" id="terminalOutput">
-            <div class="term-line"><span class="term-dim">AWS Trainium NeuronCore-v2 Simulation Environment Initialized.</span></div>
-            <div class="term-line"><span class="term-dim">Click </span><strong class="term-pass">[▶ Run Full Suite]</strong><span class="term-dim"> above to execute commands live.</span></div>
-            <div class="term-line"><span class="term-prompt">root@seat-140:/workspace$ </span><span class="term-cursor"></span></div>
+          <div class="terminal-body" id="terminalOutput" onclick="focusTerminalInput()">
+            <div id="terminalLines">
+              <div class="term-line"><span class="term-dim">AWS Trainium NeuronCore-v2 Interactive Shell Initialized.</span></div>
+              <div class="term-line"><span class="term-dim">Type any shell command below (e.g. </span><span class="term-cyan">ls</span><span class="term-dim">, </span><span class="term-cyan">python overlap_bench.py --selftest</span><span class="term-dim">, </span><span class="term-cyan">git status</span><span class="term-dim">, </span><span class="term-cyan">help</span><span class="term-dim">) or click presets above.</span></div>
+            </div>
+            <div class="term-input-row" id="term-input-row">
+              <span class="term-prompt">root@seat-140:/workspace$&nbsp;</span>
+              <input type="text" id="term-cmd-input" class="term-cmd-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="type any command (e.g. ls, cat best_kernel.py, python overlap_bench.py --selftest)...">
+            </div>
           </div>
         </div>
       </div>
@@ -1266,6 +1304,9 @@
       if (tabId === 'overview') {
         updateAllDashboardMetrics();
       }
+      if (tabId === 'terminal') {
+        setTimeout(focusTerminalInput, 50);
+      }
       if (tabId === 'gantt') {
         renderGantt();
       }
@@ -1276,30 +1317,39 @@
       document.getElementById('btn-speed').innerText = `Speed: ${simSpeed}x`;
     }
 
+    let cmdHistory = [];
+    let historyIdx = -1;
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function focusTerminalInput() {
+      const input = document.getElementById('term-cmd-input');
+      if (input && !input.disabled) {
+        input.focus();
+      }
+    }
+
     function clearTerminal() {
-      const term = document.getElementById('terminalOutput');
-      term.innerHTML = '<div class="term-line"><span class="term-prompt">root@seat-140:/workspace$ </span><span class="term-cursor"></span></div>';
+      const lines = document.getElementById('terminalLines');
+      if (lines) lines.innerHTML = '';
       document.getElementById('term-status').innerText = 'IDLE';
+      document.getElementById('term-status').style.color = 'var(--text-dim)';
+      focusTerminalInput();
     }
 
     function appendTermLine(html) {
-      const term = document.getElementById('terminalOutput');
-      const cursor = term.querySelector('.term-cursor');
-      if (cursor && cursor.parentElement) {
-        cursor.parentElement.remove();
+      const lines = document.getElementById('terminalLines');
+      if (lines) {
+        const line = document.createElement('div');
+        line.className = 'term-line';
+        line.innerHTML = html;
+        lines.appendChild(line);
       }
-      const line = document.createElement('div');
-      line.className = 'term-line';
-      line.innerHTML = html;
-      term.appendChild(line);
-
-      // Re-append cursor prompt
-      const newPrompt = document.createElement('div');
-      newPrompt.className = 'term-line';
-      newPrompt.innerHTML = '<span class="term-prompt">root@seat-140:/workspace$ </span><span class="term-cursor"></span>';
-      term.appendChild(newPrompt);
-
-      term.scrollTop = term.scrollHeight;
+      const term = document.getElementById('terminalOutput');
+      if (term) term.scrollTop = term.scrollHeight;
     }
 
     function sleep(ms) {
@@ -1351,66 +1401,181 @@
       return false;
     }
 
-    // ================= SCRIPT RUNNERS =================
-    async function runSimScript(type) {
-      if (isRunning) return;
-      isRunning = true;
+    // ================= COMMAND EXECUTION ENGINE =================
+    function submitPresetCommand(cmd) {
       switchTab('terminal');
-      
+      executeCommand(cmd);
+    }
+
+    async function startFullSimulation() {
+      clearTerminal();
+      await executeCommand('python run_local_demo.py');
+    }
+
+    function runSimScript(type) {
+      const map = {
+        'selftest': 'python overlap_bench.py --selftest',
+        'eval': 'python eval_best_kernel.py',
+        'agent': 'python agent.py --offline --rounds 3',
+        'speedup': 'python visualize_pipeline.py --rows 1024 --cols 128',
+        'all': 'python run_local_demo.py'
+      };
+      submitPresetCommand(map[type] || type);
+    }
+
+    async function executeCommand(rawCmd) {
+      if (isRunning) return;
+      const cmd = (rawCmd || '').trim();
+      const input = document.getElementById('term-cmd-input');
+
+      if (!cmd) {
+        appendTermLine('<span class="term-prompt">root@seat-140:/workspace$&nbsp;</span>');
+        if (input) input.value = '';
+        return;
+      }
+
+      if (cmdHistory.length === 0 || cmdHistory[cmdHistory.length - 1] !== cmd) {
+        cmdHistory.push(cmd);
+      }
+      historyIdx = cmdHistory.length;
+
+      if (input) {
+        input.value = '';
+      }
+
+      if (cmd === 'clear' || cmd === 'cls') {
+        clearTerminal();
+        return;
+      }
+
+      if (cmd === 'help') {
+        appendTermLine('<span class="term-prompt">root@seat-140:/workspace$&nbsp;</span><span class="term-cmd">help</span>');
+        appendTermLine('<span class="term-header-line">=================================================================</span>');
+        appendTermLine('      <strong class="term-cyan">AWS Trainium NeuronCore Overlap Interactive Shell</strong>');
+        appendTermLine('<span class="term-header-line">=================================================================</span>');
+        appendTermLine('  Arbitrary shell execution supported. You can type any command:');
+        appendTermLine('    <span class="term-cyan">python overlap_bench.py --selftest</span>    10-test AST, boundary & hazard suite');
+        appendTermLine('    <span class="term-cyan">python eval_best_kernel.py</span>            Grade synthesized best_kernel.py');
+        appendTermLine('    <span class="term-cyan">python agent.py --offline --rounds 3</span>  Run recalibration loop');
+        appendTermLine('    <span class="term-cyan">python visualize_pipeline.py</span>          Generate concurrency Gantt chart');
+        appendTermLine('    <span class="term-cyan">python run_local_demo.py</span>              Run end-to-end hackathon suite');
+        appendTermLine('    <span class="term-cyan">ls / dir</span>                              List files in project directory');
+        appendTermLine('    <span class="term-cyan">cat best_kernel.py</span>                    Inspect synthesized kernel source');
+        appendTermLine('    <span class="term-cyan">git status / git diff</span>                 Inspect git repository state');
+        appendTermLine('    <span class="term-cyan">clear / cls</span>                           Clear terminal screen');
+        appendTermLine('<span class="term-header-line">=================================================================</span>');
+        return;
+      }
+
+      appendTermLine('<span class="term-prompt">root@seat-140:/workspace$&nbsp;</span><span class="term-cmd">' + escapeHtml(cmd) + '</span>');
+
+      isRunning = true;
+      if (input) {
+        input.disabled = true;
+        input.placeholder = 'Running: ' + (cmd.length > 35 ? cmd.slice(0, 32) + '...' : cmd) + '...';
+      }
+
+      document.getElementById('term-status').innerText = 'EXECUTING: ' + (cmd.length > 25 ? cmd.slice(0, 22) + '...' : cmd);
+      document.getElementById('term-status').style.color = '#38bdf8';
+
       const isLive = await checkBackendStatus();
       if (isLive) {
-        runLiveSubprocess(type);
+        runLiveSubprocessCustom(cmd);
       } else {
-        runPlaybackScript(type);
+        await runFallbackCommand(cmd);
       }
     }
 
-    function runLiveSubprocess(type) {
-      document.getElementById('term-status').innerText = 'EXECUTING LIVE PROCESS...';
-      document.getElementById('term-status').style.color = '#38bdf8';
-
-      const es = new EventSource('/api/run?cmd=' + type);
+    function runLiveSubprocessCustom(cmd) {
+      const es = new EventSource('/api/run?custom=' + encodeURIComponent(cmd));
 
       es.onmessage = function(event) {
         try {
           const data = JSON.parse(event.data);
           if (data.type === 'start') {
-            appendTermLine('<span class="term-prompt">$ </span><span class="term-cmd">' + data.exec + '</span>');
+            // Started
           } else if (data.type === 'line') {
             appendTermLine(formatTerminalLine(data.text));
           } else if (data.type === 'done') {
             es.close();
-            document.getElementById('term-status').innerText = 'EXIT 0 (LIVE SUBPROCESS FINISHED)';
-            document.getElementById('term-status').style.color = '#4ade80';
-            isRunning = false;
-
-            // Trigger comprehensive dashboard dynamic update
+            if (data.code === 0) {
+              document.getElementById('term-status').innerText = 'EXIT 0 (SUCCESS)';
+              document.getElementById('term-status').style.color = '#4ade80';
+            } else {
+              document.getElementById('term-status').innerText = 'EXIT ' + data.code;
+              document.getElementById('term-status').style.color = '#ef4444';
+              appendTermLine('<span class="term-err">[Process completed with exit code ' + data.code + ']</span>');
+            }
+            finishCommandExecution();
             updateAllDashboardMetrics();
           } else if (data.type === 'error') {
             es.close();
-            appendTermLine('<span class="term-err">[PROCESS ERROR] ' + data.error + '</span>');
-            document.getElementById('term-status').innerText = 'PROCESS ERROR';
+            appendTermLine('<span class="term-err">[PROCESS ERROR] ' + escapeHtml(data.error) + '</span>');
+            document.getElementById('term-status').innerText = 'ERROR';
             document.getElementById('term-status').style.color = '#ef4444';
-            isRunning = false;
+            finishCommandExecution();
           }
         } catch (e) {
-          appendTermLine(event.data);
+          appendTermLine(formatTerminalLine(event.data));
         }
       };
 
       es.onerror = function() {
         es.close();
-        document.getElementById('term-status').innerText = 'PROCESS CLOSED';
-        isRunning = false;
+        document.getElementById('term-status').innerText = 'CONNECTION CLOSED';
+        document.getElementById('term-status').style.color = '#64748b';
+        finishCommandExecution();
       };
     }
 
-    async function runPlaybackScript(type) {
-      document.getElementById('term-status').innerText = 'REPLAYING CAPTURED SILICON RUN';
+    function finishCommandExecution() {
+      isRunning = false;
+      const input = document.getElementById('term-cmd-input');
+      if (input) {
+        input.disabled = false;
+        input.value = '';
+        input.placeholder = 'type any command (e.g. ls, cat best_kernel.py, python overlap_bench.py --selftest)...';
+        input.focus();
+      }
+      const term = document.getElementById('terminalOutput');
+      if (term) term.scrollTop = term.scrollHeight;
+    }
+
+    async function runFallbackCommand(cmd) {
+      document.getElementById('term-status').innerText = 'REPLAYING CAPTURED RUN';
       document.getElementById('term-status').style.color = '#fb923c';
 
+      if (cmd.includes('selftest')) {
+        await runPlaybackScript('selftest');
+      } else if (cmd.includes('eval') || cmd.includes('best_kernel')) {
+        await runPlaybackScript('eval');
+      } else if (cmd.includes('agent')) {
+        await runPlaybackScript('agent');
+      } else if (cmd.includes('visualize') || cmd.includes('speedup')) {
+        await runPlaybackScript('speedup');
+      } else if (cmd.includes('demo') || cmd.includes('all')) {
+        await runPlaybackScript('all');
+      } else if (cmd === 'ls' || cmd === 'dir') {
+        appendTermLine('<span class="term-cyan">Directory: C:\\workspace\\projects\\03-multi-engine-overlap</span>');
+        appendTermLine('Mode        Length Name');
+        appendTermLine('----        ------ ----');
+        appendTermLine('-a----       16197 agent.py');
+        appendTermLine('-a----       11000 best_kernel.py');
+        appendTermLine('-a----        1459 eval_best_kernel.py');
+        appendTermLine('-a----       21381 overlap_attempts.jsonl');
+        appendTermLine('-a----       26822 overlap_bench.py');
+        appendTermLine('-a----        6410 visualize_pipeline.py');
+        appendTermLine('-a----        5910 run_local_demo.py');
+        appendTermLine('-a----       10576 serve_dashboard.py');
+        finishCommandExecution();
+      } else {
+        appendTermLine('<span class="term-warn">[OFFLINE FALLBACK] Arbitrary commands require the live backend server. Run "python serve_dashboard.py" to execute "' + escapeHtml(cmd) + '".</span>');
+        finishCommandExecution();
+      }
+    }
+
+    async function runPlaybackScript(type) {
       if (type === 'selftest' || type === 'all') {
-        appendTermLine('<span class="term-prompt">$ </span><span class="term-cmd">python overlap_bench.py --selftest</span>');
         await sleep(200);
         appendTermLine('<span class="term-header-line">=================================================================</span>');
         appendTermLine('      <strong class="term-cyan">overlap_bench.py — COMPREHENSIVE HARNESS SELFTEST</strong>');
@@ -1442,7 +1607,6 @@
       }
 
       if (type === 'eval' || type === 'all') {
-        appendTermLine('<span class="term-prompt">$ </span><span class="term-cmd">python -c "import overlap_bench; code = open(\'best_kernel.py\').read(); print(overlap_bench.grade(code))"</span>');
         await sleep(250);
         appendTermLine('Loading synthesized kernel: <span class="term-cyan">best_kernel.py</span>...');
         await sleep(200);
@@ -1455,7 +1619,6 @@
       }
 
       if (type === 'agent' || type === 'all') {
-        appendTermLine('<span class="term-prompt">$ </span><span class="term-cmd">python agent.py --live --rounds 3</span>');
         await sleep(200);
         appendTermLine('<span class="term-header-line">=================================================================</span>');
         appendTermLine('      <strong class="term-purple">MULTI-ENGINE OVERLAP AGENT — RECALIBRATION LOOP</strong>');
@@ -1486,7 +1649,6 @@
       }
 
       if (type === 'speedup' || type === 'all') {
-        appendTermLine('<span class="term-prompt">$ </span><span class="term-cmd">python visualize_pipeline.py --rows 1024 --cols 128</span>');
         await sleep(200);
         appendTermLine('Profiling AWS Trainium (NeuronCore-v2) physical engine events...');
         await sleep(200);
@@ -1500,15 +1662,8 @@
 
       document.getElementById('term-status').innerText = 'COMPLETED (100% GREEN)';
       document.getElementById('term-status').style.color = '#4ade80';
-      isRunning = false;
-
-      // Trigger full metric update
+      finishCommandExecution();
       updateAllDashboardMetrics();
-    }
-
-    async function startFullSimulation() {
-      clearTerminal();
-      await runSimScript('all');
     }
 
     // ================= DYNAMIC METRIC SYNCHRONIZATION =================
@@ -1730,6 +1885,40 @@
       renderGantt();
       checkBackendStatus();
       updateAllDashboardMetrics();
+
+      const input = document.getElementById('term-cmd-input');
+      if (input) {
+        input.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            executeCommand(input.value);
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (cmdHistory.length > 0 && historyIdx > 0) {
+              historyIdx--;
+              input.value = cmdHistory[historyIdx];
+            }
+          } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (cmdHistory.length > 0 && historyIdx < cmdHistory.length - 1) {
+              historyIdx++;
+              input.value = cmdHistory[historyIdx];
+            } else {
+              historyIdx = cmdHistory.length;
+              input.value = '';
+            }
+          } else if (e.key === 'c' && e.ctrlKey) {
+            e.preventDefault();
+            if (!isRunning) {
+              appendTermLine('<span class="term-prompt">root@seat-140:/workspace$&nbsp;</span>' + escapeHtml(input.value) + '^C');
+              input.value = '';
+            }
+          } else if (e.key === 'l' && e.ctrlKey) {
+            e.preventDefault();
+            clearTerminal();
+          }
+        });
+      }
     });
   </script>
 </body>
