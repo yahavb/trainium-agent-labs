@@ -1,7 +1,7 @@
 # CHIPBOOST: one-page note
 
-*Hack the Chip, NYU × Annapurna Labs, Oct 10 2026. Final numbers, 17:30: 265 logged attempts from three
-seats, through P3's v4. Every speedup is against the start kernel timed in the same session, on the chip, unless labelled
+*Hack the Chip, NYU × Annapurna Labs, Oct 10 2026. Final numbers, 17:40: 264 logged attempts from three
+seats. Every speedup is against the start kernel timed in the same session, on the chip, unless labelled
 [sim]. Nothing here is projected.*
 
 **Question.** Can Qwen3-8B, served on one Trainium2 chip, make the matmul it is built from faster on that
@@ -11,8 +11,8 @@ same chip, under a referee strict enough that no speedup can be faked?
 
 | Seat | Owner | Ran | Runs × budget |
 |---|---|---|---|
-| 100 | P1 | Pinned three-arm comparison on one referee process (core 3); multi-change feedback (core 2) | 3 × 8 per arm; 1 + 2 revised runs × 8; 2 runs from the winner (4 + 5) |
-| 101 | P3 | Model arms on its own loop; named-error rules (v2); P1's instructions alone (v3); rules A–C on them (v4) | 3 × 8 per arm; v2 3 × 8; v3, v4 1 × 8 |
+| 100 | P1 | Pinned three-arm comparison on one referee process (core 3); multi-change feedback (core 2) | 3 × 8 per arm; 1 + 2 revised runs × 8 |
+| 101 | P3 | Model arms on its own loop; named-error rules (v2); P1's instructions alone (v3); rules A–C (v4), A–D (v5) on them | 3 × 8 per arm; v2 3 × 8; v3, v4, v5 1 × 8 |
 | 102 | P2 | Random search over the expert's block sizes; exhaustive sweep of all 62 settings | 3 × 24; 62 |
 
 Shapes: Qwen3-8B per-core matmuls at tensor parallelism 2, 256 tokens (gate_up 4096×256×6144 plus q_proj
@@ -59,14 +59,16 @@ speed does not transfer: +84% at 128 tokens, −61% at kv_proj with 1024 tokens.
   (`kernels/qwen_v2_best.py`, sha1 57044ec26245, verbatim from the model's reply; no prompt contained a
   solution) re-timed twice at 1.517× and is **correct on 6 of 6 held-out shapes, faster than start on all
   6 (1.14–1.91×, geometric mean 1.52×)**; see `results_heldout_matmul.json`.
-- *Isolating the instructions has not reproduced it.* Naming the error (P3's rules, 3 runs): 0 faster in
-  24 attempts, the same `dma_copy` crash 21 times. P1's instructions alone on P3's agent (v3, 1 run): 8 of
-  8 wrong. P3's rules A–C on top (v4, 1 run): 8 of 8 wrong, now wrong numbers rather than crashes.
-- *Starting from the winner itself* (P1's continuation, 4 attempts; P3's recovery rules, 5): neither went
-  beyond 1.517×. One recovery edit kept that speed (different code, re-verified); the other 8 were wrong.
+- *P3's agent, one rule at a time, reproduced it.* Naming the error (v2, 3 runs): 0 faster in 24 attempts,
+  the same `dma_copy` crash 21 times. P1's instructions alone (v3): 8 of 8 crashed. Rules A–C on top
+  (v4): 8 of 8 wrong, now wrong numbers rather than crashes. Rule D on top (v5): **1.517× on attempt 2**
+  and again on attempt 3, from the start kernel, correct on 3 held-out shapes, no solution code in any
+  prompt. Its attempt-2 code is byte-identical to P1's second success (sha1 05be45c6c037).
 
-So the gain came from P1's combined treatment, 2 of 3 runs against 0 of 12; which of its changes matter
-is open. A first result, not yet a rate.
+So Qwen3-8B reached the same 1.517× from the start kernel under two different agents (P1's: 2 of 3 runs;
+P3's v5: 1 of 1), each time once the feedback named the change and the bugs it kept making. The earlier
+feedback went 0 of 17 runs (the original 12, P3's v2 to v4). Which ingredient matters most is open. A
+first result, not yet a rate.
 
 ## Also measured, not a referee verdict
 Half of every NeuronCore sits idle under a plain launch: running the expert across both physical cores of
