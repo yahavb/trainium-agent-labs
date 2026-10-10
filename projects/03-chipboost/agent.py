@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """
-agent.py -- CHIPBOOST's loop: Qwen3 rewrites a kernel to run faster, the referee grades it and names ONE
-change, and that change is the next prompt. Owner: P3.
+agent.py -- CHIPBOOST's loop and its three arms, on one budget. Owner: P3.
+
+    --arm referee        Qwen3 + the referee's ONE named change each round        (arm a)
+    --arm model_alone    Qwen3, told only "Make it faster." (plus its time, once   (arm b)
+                         P1 can time); it never sees the referee's messages
+    --arm random_search  no model: candidates from P2's search.py                 (arm c)
 
     controller  start kernel + budget                    this file
     generator   Qwen3-8B on this seat                    KERNEL_AGENT_BASE_URL (the pod sets it)
@@ -9,22 +13,22 @@ change, and that change is the next prompt. Owner: P3.
                 else redteam/stage12.check (simulator only, TEMPORARY)
     log         one schema.py line per attempt           attempts.jsonl
 
-    python agent.py --rounds 4 --samples 2 --context 8192          # in the seat pod
-    python agent.py --offline                                       # no model; simulator grades (pod)
-    python agent.py --dry                                           # no model, rules only (any machine)
+    python agent.py --arm referee --budget 8 --repeat 3 --give-up-after 0     # in the seat pod
+    python agent.py --offline                                                 # no model; simulator grades
+    python agent.py --dry --arm model_alone                                   # no model, rules only, anywhere
     python schema.py --check attempts.jsonl
 
+FAIRNESS. Every arm: same start kernel, same referee, same --budget, where one referee evaluation = one
+attempt = one unit whatever its verdict. For a comparison pass --give-up-after 0, so no arm stops early
+and every arm spends exactly its budget; the run checks that it did.
+
+"BETTER" UNTIL P1 MERGES. stage12 has no timer, so a correct kernel gets verdict None ("passed,
+untimed"). Then the measure is the simulator's HBM traffic over the byte floor on the largest dev shape:
+correct on every shape AND fewer bytes than the start kernel. It is printed per arm, labelled sim. With
+speedcheck.py present the same runs report chip speedups instead.
+
 Reused from projects/02-kernel-agent/agent.py: extract_code, enrich, API_CARD, and the loop's mechanics
-(samples per round, repair the LATEST attempt, a ledger of failed approaches when a failure repeats,
-give up after N identical failures, --repeat). The prompts are new because the task is new: make a
-correct kernel faster, rather than write one from a reference.
-
-BUDGET: one referee evaluation = one attempt = one unit of --budget, whatever the verdict. Phase 4's
-arms share this counter, so every arm gets the same number of evaluations.
-
-Until P1's speedcheck.py merges there is NO TIMING: a correct kernel gets verdict None ("passed,
-untimed"), never faster/slower, and its next instruction comes from the simulator's byte count
-(source "sim"). The loop runs; it cannot produce a speedup until then.
+(samples per round, repair the LATEST attempt, a ledger when a failure repeats, give-up, --repeat).
 """
 
 import argparse
@@ -33,6 +37,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import random
 import socket
 import sys
 import tempfile
@@ -50,20 +55,22 @@ import schema    # noqa: E402
 import stage12   # noqa: E402
 
 
-def _load_agent02():
-    """02's agent.py, under another name: `import agent` here would import this file."""
-    spec = importlib.util.spec_from_file_location("agent02", os.path.join(AGENT02_DIR, "agent.py"))
+def _load_module(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
 
 
-agent02 = _load_agent02()
+# 02's agent.py, under another name: `import agent` here would import this file.
+agent02 = _load_module("agent02", os.path.join(AGENT02_DIR, "agent.py"))
 
 OP = "matmul"
 ENTRY = nkibench.LEVELS[stage12.LEVEL]["entry"]   # nki_matmul_tiled_
 P2_START = os.path.join(HERE, "kernels", "matmul_start.py")
+P2_SEARCH = os.path.join(HERE, "search.py")
 FALLBACK_START = os.path.join(AGENT02_DIR, "reference_level4.py")
+MAKE_FASTER = "Make it faster."
 
 # Best first. None = correct on every shape the referee ran, but untimed (stage12 has no timer).
 RANK = {"faster": 6, "no_gain": 5, None: 4, "slower": 3, "heldout_fail": 2, "wrong": 1, "rules": 0}
@@ -103,33 +110,32 @@ def byte_instruction(waste, lbl):
             f"further speedup has to come from the engine schedule.")
 
 
-def sim_instruction(path):
-    """ONE named change for a correct kernel when there is no timer, from the simulator's byte count on
-    the largest dev shape, where redundant traffic shows."""
+def measure_waste(path):
+    """Simulator HBM bytes / byte floor on the largest dev shape, where redundant traffic shows."""
     kernel = nkibench.load_kernel(path, ENTRY)
     case = max(stage12.SHAPES["dev"], key=lambda c: c["M"] * c["K"] * c["N"])
     args, _ = nkibench.make_inputs(case, stage12.LEVEL)
     want = nkibench.LEVELS[stage12.LEVEL]["ref"](*args)
     _, counted = nkibench.simulate_and_count(kernel, args)
-    waste = counted["bytes"] / nkibench.minimum_hbm_bytes(args, want)
-    return byte_instruction(waste, nkibench.label(case, stage12.LEVEL))
+    return counted["bytes"] / nkibench.minimum_hbm_bytes(args, want), nkibench.label(case, stage12.LEVEL)
 
 
-def grade(src, referee, dry, workdir, n):
-    """Dev shapes, then held-out shapes if dev passed. Returns the referee's schema fields."""
-    path = os.path.join(workdir, f"attempt_{n:04d}.py")
+def grade(src, referee, dry, path):
+    """Dev shapes, then held-out shapes if dev passed. Returns (referee schema fields, waste or None)."""
     with open(path, "w") as f:
         f.write(src)
     if dry:
-        return stage12.run(path, "dev", rules_only=True)[0]
+        return stage12.run(path, "dev", rules_only=True)[0], None
     name, check = referee
+    waste = None
     r = check(path, op=OP, shapes="dev")
     if r.get("verdict") not in ("rules", "wrong"):
         h = check(path, op=OP, shapes="heldout")
         if h.get("verdict") in REJECTED:
             r = dict(h, verdict="heldout_fail")
         elif name.startswith("stage12") and r.get("verdict") is None:
-            r = dict(r, instruction_given=sim_instruction(path))
+            waste, lbl = measure_waste(path)
+            r = dict(r, instruction_given=byte_instruction(waste, lbl))
         # else: the dev result carries the timing
     if r.get("verdict") in ("wrong", "heldout_fail"):
         # The referee says what is wrong; name the change when the output matches a known mistake.
@@ -137,7 +143,7 @@ def grade(src, referee, dry, workdir, n):
         named = diagnose.diagnose(path)
         if named:
             r = dict(r, instruction_given=named)
-    return r
+    return r, waste
 
 
 # ---------------------------------------------------------------- the model
@@ -174,6 +180,18 @@ def offline_answers(start_src, n, rnd):
     return [(f"```python\n{src}\n```", None)] * n
 
 
+def load_search(path):
+    """Arm (c) is P2's. The contract asked of P2: search.sample(rng) -> kernel source (str), where rng is a
+    random.Random. Without it the arm stops rather than invent candidates."""
+    if not os.path.exists(path):
+        sys.exit(f"--arm random_search needs P2's search.py at {path}, providing sample(rng) -> source. "
+                 f"It is not there yet.")
+    mod = _load_module("chipboost_search", path)
+    if not callable(getattr(mod, "sample", None)):
+        sys.exit(f"{path} has no sample(rng) function. Arm (c) calls search.sample(rng) -> kernel source.")
+    return mod
+
+
 # ---------------------------------------------------------------- prompts
 
 TASK = ("This AWS Neuron NKI kernel computes a matrix multiplication: result = lhsT.T @ rhs, with lhsT of "
@@ -208,80 +226,122 @@ def repair_prompt(src, instruction):
             f"Make exactly that change and keep everything else identical. {KEEP}")
 
 
+def alone_prompt(src, time_us, first):
+    """Arm (b): the same task and code, no referee. The API card goes in the first prompt only, as in
+    arm (a), so both model arms get the same documentation."""
+    t = f"It currently takes {time_us:.1f} microseconds on the chip.\n\n" if time_us else ""
+    return (f"{TASK}\n\n```python\n{src}\n```\n\n{t}{MAKE_FASTER}\n\n"
+            + (f"{agent02.API_CARD}\n" if first else "") + KEEP)
+
+
 # ---------------------------------------------------------------- the loop
 
-def run_once(a, referee, start_path, rep, log, workdir):
+def better(rec, waste, best):
+    """Is this correct attempt better than the best so far? Chip time first; else simulator bytes."""
+    if rec.get("time_us_median") is not None and best["time"] is not None:
+        return rec["time_us_median"] < best["time"]
+    return waste is not None and best["waste"] is not None and waste < best["waste"] - 1e-9
+
+
+def run_once(a, referee, start_path, rep, log, workdir, search):
+    model_arm = a.arm != "random_search"
     tag = "offline-" if (a.offline or a.dry) else ""
     run_id = f"{OP}-{a.arm}-{tag}{time.strftime('%H%M%S')}-{rep}"
     start_src = open(start_path).read()
-    start = grade(start_src, referee, a.dry, workdir, 0)
+    start, start_waste = grade(start_src, referee, a.dry, os.path.join(workdir, f"{run_id}_start.py"))
     status = start.get("instruction_given") or start.get("referee_message") or ""
     print(f"\n=========== run {run_id} ===========")
-    print(f"start kernel {os.path.relpath(start_path, HERE)}: verdict {start.get('verdict') or 'PASS (untimed)'}")
+    print(f"start kernel {os.path.relpath(start_path, HERE)}: verdict {start.get('verdict') or 'PASS (untimed)'}"
+          + (f", {start_waste:.2f}x the byte floor (sim)" if start_waste else ""))
+    out = dict(run_id=run_id, arm=a.arm, attempts=0, verdicts={}, correct=0, start_waste=start_waste,
+               best_waste=start_waste, improved=False, best_speedup=None)
     if start.get("verdict") in REJECTED:
         print(f"  THE START KERNEL IS REJECTED BY THE REFEREE, so there is nothing to speed up:\n  {status}")
-        return dict(run_id=run_id, attempts=0, verdicts={}, best=None)
+        return out
 
     shown = strip_module_docstring(start_src)
-    prompt = first_prompt(shown, status)
+    # The best CORRECT kernel so far: model_alone always builds on it (it gets no other signal).
+    best = dict(src=shown, time=start.get("time_us_median"), waste=start_waste)
+    prompt = (first_prompt(shown, status) if a.arm == "referee"
+              else alone_prompt(shown, best["time"], first=True) if a.arm == "model_alone" else None)
     latest = (shown, status)
+    rng = random.Random(1000 + rep)
     tried, seen, streak = [], {}, 0
-    attempt_no, verdicts, best = 0, {}, None
-    for rnd in range(a.rounds):
-        n = min(a.samples, a.budget - attempt_no)
+    rounds = a.rounds or -(-a.budget // a.samples)
+    for rnd in range(rounds):
+        n = min(a.samples, a.budget - out["attempts"])
         if n <= 0:
-            print(f"  budget of {a.budget} referee evaluations used up")
             break
         t0 = time.perf_counter()
         # Generation finishes for the whole round BEFORE the referee runs, so vLLM is idle while timing.
-        replies = offline_answers(start_src, n, rnd) if (a.offline or a.dry) else ask_parallel(a, prompt, n)
+        if not model_arm:
+            replies = [(search.sample(rng), None) for _ in range(n)]
+        elif a.offline or a.dry:
+            replies = offline_answers(start_src, n, rnd)
+        else:
+            replies = ask_parallel(a, prompt, n)
         graded = []
         for reply, prompt_tokens in replies:
-            src = agent02.extract_code(reply)
-            attempt_no += 1
-            r = grade(src, referee, a.dry, workdir, attempt_no)
-            instruction = agent02.enrich(r.get("instruction_given") or r.get("referee_message") or "")
+            src = agent02.extract_code(reply) if model_arm else reply
+            out["attempts"] += 1
+            r, waste = grade(src, referee, a.dry,
+                             os.path.join(workdir, f"{run_id}_{out['attempts']:04d}.py"))
+            referee_says = agent02.enrich(r.get("instruction_given") or r.get("referee_message") or "")
+            instruction = {"referee": referee_says, "model_alone": MAKE_FASTER}.get(a.arm)
             rec = {k: None for k in schema.ATTEMPT_FIELDS}
             rec.update({k: r.get(k) for k in stage12.REFEREE_FIELDS if k in r})
-            rec.update(seat=a.seat, kernel=OP, arm=a.arm, run_id=run_id, attempt_no=attempt_no,
+            rec.update(seat=a.seat, kernel=OP, arm=a.arm, run_id=run_id, attempt_no=out["attempts"],
                        round=rnd, prompt_tokens=prompt_tokens,
                        code_hash=hashlib.sha1(src.encode()).hexdigest(), code=src,
-                       prompt=prompt, response=reply, instruction_given=instruction,
-                       timestamp=time.time())
+                       prompt=prompt, response=reply if model_arm else None,
+                       instruction_given=instruction, timestamp=time.time())
             problems = schema.validate(rec)
             if problems:
                 raise SystemExit(f"BUG: this log line breaks the shared schema: {problems}")
             log.write(json.dumps(rec) + "\n")
-            verdicts[rec["verdict"]] = verdicts.get(rec["verdict"], 0) + 1
-            graded.append((RANK[rec["verdict"]], rec.get("speedup") or 0.0, src, instruction, rec))
+            out["verdicts"][rec["verdict"]] = out["verdicts"].get(rec["verdict"], 0) + 1
+            if rec["verdict"] not in REJECTED:
+                out["correct"] += 1
+                if better(rec, waste, best):
+                    best.update(src=src, time=rec.get("time_us_median"), waste=waste)
+                    out["improved"] = True
+                    out["best_waste"] = waste if waste is not None else out["best_waste"]
+                if rec.get("speedup") and (out["best_speedup"] is None or rec["speedup"] > out["best_speedup"]):
+                    out["best_speedup"] = rec["speedup"]
+            graded.append((RANK[rec["verdict"]], rec.get("speedup") or 0.0, src, referee_says, rec, waste))
         log.flush()
 
         graded.sort(key=lambda g: (g[0], g[1]), reverse=True)
-        _, speedup, src, instruction, rec = graded[0]
-        if rec["verdict"] == "faster" and (best is None or speedup > best[0]):
-            best = (speedup, rec["source"], attempt_no)
-        if src.strip():
-            latest = (src, instruction)
-        same = instruction == (tried[-1] if tried else None)
+        _, speedup, src, referee_says, rec, waste = graded[0]
         print(f"round {rnd}: best this round {rec['verdict'] or 'PASS (untimed)'}"
-              + (f" speedup {speedup:.3f} ({rec['source']})" if rec.get("speedup") else "")
-              + f"  [{attempt_no}/{a.budget} evaluations, {time.perf_counter() - t0:.1f}s]")
-        if not same:
-            print(f"  {instruction[:300]}")
+              + (f", {waste:.2f}x the byte floor (sim)" if waste else "")
+              + (f", speedup {speedup:.3f} ({rec['source']})" if rec.get("speedup") else "")
+              + f"  [{out['attempts']}/{a.budget} evaluations, {time.perf_counter() - t0:.1f}s]")
 
-        # 02's anti-cycling: give up on a fixed set of repeating failures; break a repeat with a ledger.
-        seen[instruction] = seen.get(instruction, 0) + 1
+        if a.arm == "model_alone":
+            prompt = alone_prompt(best["src"], best["time"], first=False)
+            continue
+        if a.arm == "random_search":
+            continue
+
+        # Arm (a): repair the latest attempt with the referee's one instruction; 02's anti-cycling.
+        if src.strip():
+            latest = (src, referee_says)
+        same = referee_says == (tried[-1] if tried else None)
+        if not same:
+            print(f"  {referee_says[:300]}")
+        seen[referee_says] = seen.get(referee_says, 0) + 1
         streak = streak + 1 if same else 1
-        if seen[instruction] >= a.give_up_after:
-            print(f"  STOPPING: the same instruction {seen[instruction]} times; more rounds will not help.")
+        if a.give_up_after and seen[referee_says] >= a.give_up_after:
+            print(f"  STOPPING: the same instruction {seen[referee_says]} times; more rounds will not help.")
             break
-        tried.append(instruction)
+        tried.append(referee_says)
         prompt = repair_prompt(*latest)
         if streak >= 2:
             ledger = "\n".join(f"- {t[:160]}" for t in dict.fromkeys(tried))
             prompt += f"\n\nThese have already been tried and did not work, so do something different:\n{ledger}"
             print(f"  same instruction {streak}x -- adding a ledger of {len(set(tried))} earlier ones")
-    return dict(run_id=run_id, attempts=attempt_no, verdicts=verdicts, best=best)
+    return out
 
 
 def seat_from_hostname():
@@ -291,17 +351,18 @@ def seat_from_hostname():
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--arm", default="referee", choices=["referee"],
-                    help="model_alone and random_search arrive in Phase 4")
+    ap.add_argument("--arm", default="referee", choices=schema.ARMS)
+    ap.add_argument("--budget", type=int, default=8, help="referee evaluations per run, every arm")
     # Measured on seat-101: the samples of one round came back identical every time, so a second sample
-    # spent budget on a repeat. One sample, more rounds: every evaluation is a new attempt.
-    ap.add_argument("--rounds", type=int, default=8)
+    # spent budget on a repeat. One sample per round: every evaluation is a new attempt.
     ap.add_argument("--samples", type=int, default=1)
-    ap.add_argument("--budget", type=int, default=24, help="referee evaluations per run, every arm")
+    ap.add_argument("--rounds", type=int, default=None, help="default: enough to spend the budget")
     ap.add_argument("--repeat", type=int, default=1)
-    ap.add_argument("--give-up-after", type=int, default=4)
+    ap.add_argument("--give-up-after", type=int, default=4,
+                    help="arm referee only; 0 = never, which a fair three-arm comparison needs")
     ap.add_argument("--start", default=None, help="start kernel; default P2's kernels/matmul_start.py "
                                                   "if it exists, else reference_level4.py")
+    ap.add_argument("--search", default=P2_SEARCH, help="arm random_search: P2's search.py")
     ap.add_argument("--seat", type=int, default=seat_from_hostname())
     ap.add_argument("--max-tokens", type=int, default=agent02.MIN_ANSWER_TOKENS)
     ap.add_argument("--context", type=int, default=8192, help="the server's max-model-len")
@@ -314,36 +375,44 @@ def main():
     a = ap.parse_args()
 
     start_path = a.start or (P2_START if os.path.exists(P2_START) else FALLBACK_START)
+    search = load_search(a.search) if a.arm == "random_search" else None
     referee = pick_referee()
-    if a.offline or a.dry:
+    if a.arm == "random_search":
+        print(f"arm random_search: candidates from {a.search}")
+    elif a.offline or a.dry:
         print("*** OFFLINE: replaying the start kernel, no model. Numbers are meaningless. ***")
     else:
         if not (a.base or "").strip():
             sys.exit("KERNEL_AGENT_BASE_URL is unset. The seat pods set it; or pass --offline / --dry.")
         print(f"endpoint {a.base}  model {a.model}")
     print(f"referee: {'stage12 rules only (--dry)' if a.dry else referee[0]}")
-    print(f"start:   {os.path.relpath(start_path, HERE)}   arm: {a.arm}   budget: {a.budget}   log: {a.log}")
+    print(f"start:   {os.path.relpath(start_path, HERE)}   arm: {a.arm}   budget: {a.budget}   "
+          f"give-up: {a.give_up_after or 'never'}   log: {a.log}")
 
     results = []
     workdir = tempfile.mkdtemp(prefix="chipboost_")
     try:
         with open(a.log, "a") as log:
             for rep in range(a.repeat):
-                results.append(run_once(a, referee, start_path, rep, log, workdir))
+                results.append(run_once(a, referee, start_path, rep, log, workdir, search))
     except nkibench.NkiMissing as e:
         sys.exit(f"{e}\nThe simulator needs the seat pod. Use --dry here.")
 
-    print("\n=========== summary ===========")
+    print(f"\n=========== summary: arm {a.arm}, budget {a.budget} ===========")
     for r in results:
-        best = (f"best speedup {r['best'][0]:.3f} ({r['best'][1]}) at attempt {r['best'][2]}"
-                if r["best"] else "no verified speedup")
         counts = ", ".join(f"{k or 'pass-untimed'}={v}" for k, v in sorted(r["verdicts"].items(),
                                                                            key=lambda kv: str(kv[0])))
-        print(f"  {r['run_id']}: {r['attempts']} evaluations; {counts}; {best}")
+        gain = (f"best speedup {r['best_speedup']:.3f} (chip)" if r["best_speedup"]
+                else f"best {r['best_waste']:.2f}x the byte floor vs start {r['start_waste']:.2f}x (sim)"
+                if r["improved"] and r["best_waste"] else "no improvement over the start kernel")
+        spent = "" if r["attempts"] == a.budget else f"  (spent {r['attempts']} of {a.budget})"
+        print(f"  {r['run_id']}: {r['attempts']} evaluations{spent}; {counts}; {r['correct']} correct; {gain}")
     if a.repeat > 1:
-        got = [r["best"][0] if r["best"] else 1.0 for r in results]
-        print(f"\n  over {a.repeat} runs: best speedup min {min(got):.3f} / max {max(got):.3f}; "
-              f"{sum(1 for r in results if r['best'])}/{a.repeat} runs found one. Report the spread.")
+        n_imp = sum(1 for r in results if r["improved"])
+        print(f"\n  over {a.repeat} runs: {n_imp}/{a.repeat} found a correct kernel better than the start; "
+              f"correct attempts per run {[r['correct'] for r in results]}. Report the rate and the spread.")
+    if a.give_up_after == 0 and any(r["attempts"] != a.budget for r in results):
+        print("  WARNING: a run did not spend its full budget, so this arm is not comparable as is.")
     print(f"\nattempts logged to {a.log}")
 
 
