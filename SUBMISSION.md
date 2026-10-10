@@ -43,9 +43,12 @@ rate and changed the agent so its samples actually differ.
 
 **What we ran.** An agent loop that asks a model for an NKI kernel, grades it, turns the checker's verdict
 into one repair instruction, and tries again: at most 8 rounds of 4 samples per level, inside an
-8,192-token context. The final agent is `feedback_v8.py` at v8.2 (commit 96a9fc9, tag `v82`): liuyq's v2–v7
-layers over the organizers' `agent.py`, and our v8 layer on top ([V7.md](projects/02-kernel-agent/V7.md),
-[V8.md](projects/02-kernel-agent/V8.md)). [[TBD: v8.3 (5c3aba2) if it replaces v8.2 on level 2]]
+8,192-token context. The final agent is `feedback_v8.py` at tag `final`: liuyq's v2–v7 layers over the
+organizers' `agent.py`, and our v8 layer on top ([V7.md](projects/02-kernel-agent/V7.md),
+[V8.md](projects/02-kernel-agent/V8.md)). Its numbers come from three commits that send byte-identical
+requests wherever they overlap: levels 1, 3 and 4 were run on v8.2 (96a9fc9), level 2 on v8.3 (5c3aba2, which
+adds error distillation for level 2), levels 5–7 on v8.4 (15fb0d5, which adds a warm start for levels 5–7)
+([PLAN.md](PLAN.md) §3, [analysis/v83_l134_identity.md](analysis/v83_l134_identity.md)).
 
 **On what.**
 
@@ -109,7 +112,7 @@ is the organizers' repository; put ours next to it:
 ```bash
 git config --global --add safe.directory '*'
 git clone https://github.com/liuyq123/trainium-agent-labs.git /workspace/team
-git -C /workspace/team checkout v82     # the final version [[TBD: tag final]]
+git -C /workspace/team checkout final   # the final version
 cd /workspace && MAX_MODEL_LEN=8192 ./serve.sh      # the model server: about 4 minutes, keeps this shell
 ```
 
@@ -513,10 +516,10 @@ repository from a logged run.
 
 | what | where |
 |---|---|
-| attempt logs, every attempt with its score | earlier runs: [analysis/logs/](analysis/logs/README.md) (baseline, replication, experiments; what each is, its code version, md5, and whether it is comparable); final run: [[TBD: analysis/logs/final/]] |
-| results table | [[TBD: analysis/summary_final.md]] |
+| attempt logs, every attempt with its score | earlier runs: [analysis/logs/](analysis/logs/README.md) (baseline, replication, experiments; what each is, its code version, md5, and whether it is comparable); final run: [analysis/logs/final/](analysis/logs/final/) |
+| results tables | [analysis/final/](analysis/final/) (summary, checks, taxonomy, token chart and the version comparison, from `scripts/final_auto.py`) |
 | checker, eval set, tolerance | [CHECKER.md](projects/02-kernel-agent/CHECKER.md), [EVAL.md](projects/02-kernel-agent/EVAL.md), `nkibench.py` |
 | agent | `agent.py`, `feedback_v2.py` … `feedback_v7.py`, [V7.md](projects/02-kernel-agent/V7.md); `feedback_v8.py` (v8.2: commit `96a9fc9` and its switches), [V8.md](projects/02-kernel-agent/V8.md) (run command and every switch) |
-| hand-in kernels, one per level | [[TBD: nki_kernels/]]; candidates already built and run on the chip: [analysis/seat115_chip_and_l1rule.md](analysis/seat115_chip_and_l1rule.md) |
+| the solving kernels | every one is in the attempt logs (the `code` field of each 1.0 attempt); liuyq's hand-in candidates, built and run on the chip: [analysis/seat115_chip_and_l1rule.md](analysis/seat115_chip_and_l1rule.md) |
 | full builds and chip runs, with the exact kernels | [analysis/logs/chip_seat115/](analysis/logs/chip_seat115/), `seat115_v7/compile.txt`, `task15_4090_l1rule/*_solves.log` |
 | how we ran the day | [PLAN.md](PLAN.md), [NOTES.md](NOTES.md) |
