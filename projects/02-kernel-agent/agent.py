@@ -232,6 +232,42 @@ Store it with nisa.dma_copy into the matching M and N slice of the HBM output.
 """
 
 
+# Escalation aid for repeated level-4 failures. This is a scaffold, not a fallback
+# implementation: the model must complete it, and every candidate still goes through
+# the normal rules, simulator and numeric checks.
+TILED_MATMUL_SKELETON = """Use this structure to repair the kernel. Fill every TODO; do not use
+fixed test-shape sizes. The level's shapes are divisible by these hardware tile limits.
+
+```python
+@nki.jit
+def nki_matmul_tiled_(lhsT, rhs):
+    K, M = lhsT.shape
+    K_rhs, N = rhs.shape
+    assert K == K_rhs
+    TILE_M = nl.tile_size.gemm_stationary_fmax
+    TILE_K = nl.tile_size.pmax
+    TILE_N = nl.tile_size.gemm_moving_fmax
+    out = nl.ndarray((M, N), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+
+    for mi in nl.affine_range(M // TILE_M):
+        m0 = mi * TILE_M
+        for ni in nl.affine_range(N // TILE_N):
+            n0 = ni * TILE_N
+            # Allocate this ONCE per output tile, before the K loop.
+            acc = nl.ndarray((TILE_M, TILE_N), dtype=nl.float32, buffer=nl.psum)
+            for ki in nl.affine_range(K // TILE_K):
+                k0 = ki * TILE_K
+                # TODO: allocate SBUF operands (TILE_K,TILE_M) and (TILE_K,TILE_N),
+                # then DMA matching lhsT and rhs slices into them.
+                # TODO: nc_matmul adds this K tile into the same acc PSUM.
+                pass
+            # TODO: allocate a result SBUF (TILE_M,TILE_N), tensor_copy acc into it,
+            # then DMA it to out[m0:m0+TILE_M, n0:n0+TILE_N].
+    return out
+```
+"""
+
+
 def available_names(dotted):
     """Turn 'no attribute X' into 'here are the real ones'.
 
@@ -461,7 +497,7 @@ def first_prompt(level, terse=0):
         f"Reply with ONE python code block containing the imports and the function. No prose.")
 
 
-def repair_prompt(level, source, feedback):
+def repair_prompt(level, source, feedback, scaffold=False):
     """One named change, and the previous code. No rules list, no reference re-sent.
 
     The lesson this whole repo keeps re-learning: feeding a verifier's report back verbatim
@@ -472,6 +508,7 @@ def repair_prompt(level, source, feedback):
             f"Repair this tiled NKI matmul:\n\n```python\n{source}\n```\n\n"
             f"A checker reports:\n{feedback}\n\n"
             f"{TILED_MATMUL_METHOD}\n{TILED_MATMUL_API_CARD}\n"
+            f"{TILED_MATMUL_SKELETON if scaffold else ''}\n"
             f"Fix the reported failure, buffer allocations and missing or zero-iteration tile loops. "
             f"Preserve the entry point, arguments and required output dtype. "
             f"Reply with ONE complete python code block.")
@@ -571,6 +608,7 @@ def solve(a, level, log):
     best = (0.0, None, "")
     tried, streak, seen = [], 0, {}
     latest = ("", "")
+    scaffolded = False
     for rnd in range(a.rounds):
         t0 = time.perf_counter()
         replies = (offline_answers(level, a.samples, rnd) if a.offline
@@ -582,6 +620,7 @@ def solve(a, level, log):
             graded.append((reward, src, feedback, parts))
             log.write(json.dumps(dict(level=level, round=rnd, reward=reward, parts=parts,
                                       prompt_chars=len(prompt), reply_chars=len(reply),
+                                      scaffolded=scaffolded,
                                       code=src, feedback=feedback)) + "\n")
         log.flush()
         graded.sort(key=lambda g: g[0], reverse=True)
@@ -621,16 +660,25 @@ def solve(a, level, log):
             return best[0], rnd + 1
         tried.append(top[2])
         repeats = streak
-        if repeats >= 2 and (best[1] or "").strip():
+        repeated_level4_failure = level == 4 and seen[top[2]] >= 2
+        if (repeats >= 2 or repeated_level4_failure) and (best[1] or "").strip():
             # Sampling on this endpoint is greedy, so an unchanged prompt returns an unchanged
             # answer. Measured: the same TypeError 19 rounds running. Changing the prompt is the
             # only thing that can change the answer, so say what has already been tried.
             ledger = "\n".join(f"- {t[:160]}" for t in dict.fromkeys(tried))
-            prompt = (repair_prompt(level, latest[0], latest[1])
+            add_scaffold = level == 4 and not scaffolded
+            scaffolded = scaffolded or add_scaffold
+            prompt = (repair_prompt(level, latest[0], latest[1], scaffold=scaffolded)
                       + f"\n\nThese approaches have already failed, so do something different:\n"
                         f"{ledger}")
-            print(f"  same failure {repeats}x — adding a ledger of {len(set(tried))} failed "
-                  f"attempts to break the repeat")
+            if repeats >= 2:
+                print(f"  same failure {repeats}x — adding a ledger of {len(set(tried))} failed "
+                      f"attempts to break the repeat")
+            else:
+                print(f"  recurring level 4 failure seen {seen[top[2]]}x — adding the failure "
+                      "ledger and scaffold escalation")
+            if add_scaffold:
+                print("  level 4 escalation: adding an explicitly scaffolded 3D tile loop")
             continue
         if not (latest[0] or "").strip():
             # Nothing came back to repair. Asking it to "fix" an empty code block produced a
@@ -640,7 +688,7 @@ def solve(a, level, log):
             prompt = first_prompt(level, terse)
             print(f"  no code yet, so re-asking with a shorter prompt (terseness {terse})")
         else:
-            prompt = repair_prompt(level, latest[0], latest[1])
+            prompt = repair_prompt(level, latest[0], latest[1], scaffold=scaffolded)
     print(f"  not solved in {a.rounds} rounds; best reward {best[0]:.2f}")
     return best[0], a.rounds
 
