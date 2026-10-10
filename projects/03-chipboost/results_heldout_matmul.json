@@ -1,0 +1,279 @@
+{
+ "owner": "P2 heldout_grid.py",
+ "source": "chip",
+ "seed": 20261010,
+ "measured": "2026-10-10 21:02:05",
+ "seat": "102",
+ "heldout": [
+  {
+   "kernel": "matmul",
+   "which": "start",
+   "shape": "256x6144x4096",
+   "passed": true,
+   "speedup": 1.0,
+   "time_us": 770.3,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "start",
+   "shape": "256x2048x4096",
+   "passed": true,
+   "speedup": 1.0,
+   "time_us": 231.0,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "start",
+   "shape": "512x4096x2048",
+   "passed": true,
+   "speedup": 1.0,
+   "time_us": 522.9,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "start",
+   "shape": "128x4096x6144",
+   "passed": true,
+   "speedup": 1.0,
+   "time_us": 353.9,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "start",
+   "shape": "640x1280x2560",
+   "passed": true,
+   "speedup": 1.0,
+   "time_us": 156.6,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "start",
+   "shape": "1024x4096x512",
+   "passed": true,
+   "speedup": 1.0,
+   "time_us": 243.8,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "expert",
+   "shape": "256x6144x4096",
+   "passed": true,
+   "speedup": 2.824,
+   "time_us": 272.7,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "expert",
+   "shape": "256x2048x4096",
+   "passed": true,
+   "speedup": 2.082,
+   "time_us": 111.0,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "expert",
+   "shape": "512x4096x2048",
+   "passed": true,
+   "speedup": 3.797,
+   "time_us": 137.7,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "expert",
+   "shape": "128x4096x6144",
+   "passed": true,
+   "speedup": 1.276,
+   "time_us": 277.4,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "expert",
+   "shape": "640x1280x2560",
+   "passed": true,
+   "speedup": 1.566,
+   "time_us": 100.0,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "expert",
+   "shape": "1024x4096x512",
+   "passed": true,
+   "speedup": 3.059,
+   "time_us": 79.7,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "aws as published",
+   "shape": "256x6144x4096",
+   "passed": false,
+   "speedup": null,
+   "time_us": null,
+   "message": "at held-out 256x6144x4096: PRECISION LOSS: errors up to 4.9 bf16 ulps against an fp32 reference (the limit is 4; honest bf16 output rounding is ~0.5). Accumulate in an fp32 PSUM tile across the whole contraction and round to bf16 once, at the end."
+  },
+  {
+   "kernel": "matmul",
+   "which": "aws as published",
+   "shape": "256x2048x4096",
+   "passed": true,
+   "speedup": 2.129,
+   "time_us": 108.5,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "aws as published",
+   "shape": "512x4096x2048",
+   "passed": true,
+   "speedup": 3.794,
+   "time_us": 137.9,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "aws as published",
+   "shape": "128x4096x6144",
+   "passed": true,
+   "speedup": 1.281,
+   "time_us": 276.4,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "aws as published",
+   "shape": "640x1280x2560",
+   "passed": true,
+   "speedup": 1.591,
+   "time_us": 98.5,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "aws as published",
+   "shape": "1024x4096x512",
+   "passed": true,
+   "speedup": 2.961,
+   "time_us": 82.3,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "best random_search",
+   "shape": "256x6144x4096",
+   "passed": true,
+   "speedup": 3.987,
+   "time_us": 193.2,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "best random_search",
+   "shape": "256x2048x4096",
+   "passed": true,
+   "speedup": 2.837,
+   "time_us": 81.4,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "best random_search",
+   "shape": "512x4096x2048",
+   "passed": true,
+   "speedup": 3.797,
+   "time_us": 137.7,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "best random_search",
+   "shape": "128x4096x6144",
+   "passed": true,
+   "speedup": 2.342,
+   "time_us": 151.1,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "best random_search",
+   "shape": "640x1280x2560",
+   "passed": true,
+   "speedup": 1.463,
+   "time_us": 107.2,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "best random_search",
+   "shape": "1024x4096x512",
+   "passed": true,
+   "speedup": 1.2,
+   "time_us": 203.3,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "referee_v2",
+   "shape": "256x6144x4096",
+   "passed": true,
+   "speedup": 1.909,
+   "time_us": 403.6,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "referee_v2",
+   "shape": "256x2048x4096",
+   "passed": true,
+   "speedup": 1.57,
+   "time_us": 147.0,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "referee_v2",
+   "shape": "512x4096x2048",
+   "passed": true,
+   "speedup": 1.877,
+   "time_us": 278.5,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "referee_v2",
+   "shape": "128x4096x6144",
+   "passed": true,
+   "speedup": 1.135,
+   "time_us": 311.8,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "referee_v2",
+   "shape": "640x1280x2560",
+   "passed": true,
+   "speedup": 1.632,
+   "time_us": 96.0,
+   "message": ""
+  },
+  {
+   "kernel": "matmul",
+   "which": "referee_v2",
+   "shape": "1024x4096x512",
+   "passed": true,
+   "speedup": 1.196,
+   "time_us": 203.8,
+   "message": ""
+  }
+ ]
+}

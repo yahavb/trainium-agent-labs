@@ -1,0 +1,30 @@
+{
+  "phase": "complete",
+  "pid": 901631,
+  "core": 3,
+  "budget": 4,
+  "samples": 1,
+  "treatment": "qwen_verified_winner_continuation",
+  "tag": "continuation",
+  "think": false,
+  "max_tokens": 2500,
+  "start_path": "/tmp/p1-qwen-winner-replication/first_winner.py",
+  "start_sha256": "18a59e54ce2d293c5b68651d50fd2dcaab2aab4e2876570e0893c71b991165d6",
+  "start_text_sha256": "18a59e54ce2d293c5b68651d50fd2dcaab2aab4e2876570e0893c71b991165d6",
+  "baseline_path": "/tmp/p1-qwen-continuation-288250b/projects/02-kernel-agent/reference_level4.py",
+  "startup_counted_as_kernel_attempt": false,
+  "warning": "Exploratory multi-change treatment; not DMA-only v2 or original comparison",
+  "model": "Qwen/Qwen3-8B",
+  "sources": {
+    "03-chipboost/speedcheck.py": "805f81cca6ec4904f04df5038fb381fb45e1d690caacb2c02a0edb18b46a15fe",
+    "03-chipboost/agent.py": "9ecb816beb6db38b8510d4db59afdfc2e6919726b15f78a6c400fb3b422d7340",
+    "02-kernel-agent/reference_level4.py": "0dde78bd65e0a724a4fab05b2b893b215c8335e2086bc6c945ed43250a1f728b",
+    "02-kernel-agent/agent.py": "a5e147d71d7d25e422516eaad1fef1873ae6269f9df1fec279048e8246d727cf",
+    "02-kernel-agent/nkibench.py": "5f291dd455c435c924cf3799efeef6981933c2df9f84a6e4b74961039b8806a9",
+    "03-chipboost/schema.py": "d0ac871a344a7c496bcaa5561eb0796675acc0fb82860fb87e0b945d10d8d89e"
+  },
+  "worker_pid": 901695,
+  "attempts": 4,
+  "faster": 0,
+  "best_valid_speedup": null
+}
