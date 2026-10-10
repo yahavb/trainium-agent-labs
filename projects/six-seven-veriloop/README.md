@@ -41,8 +41,7 @@ COULD NOT VERIFY -- best design passes 0.68 of the score; not solved
 - **The model does not know when it is wrong** — designs it rated 80–100% confident were right only half the
   time, so only the checker may declare success (`results/calibration.txt`).
 
-Full one-page note: **[`SUBMISSION.md`](SUBMISSION.md)** · the checker: **[`CHECKER.md`](CHECKER.md)** ·
-demo script: [`DEMO.md`](DEMO.md)
+Full one-page note: **[`SUBMISSION.md`](SUBMISSION.md)** · the checker: **[`CHECKER.md`](CHECKER.md)**
 
 ## What is where
 
@@ -53,7 +52,6 @@ demo script: [`DEMO.md`](DEMO.md)
 | [`veriloop/`](veriloop/) | the code: `checker.py`, `agent.py`, `run_experiment.py`, `selftest.py`, `calibrate.py`, `taxonomy.py`, `plot.py` |
 | [`veriloop/levels/`](veriloop/levels/) | the six hardware levels: spec, Python reference, a correct design, 3–5 broken designs each |
 | [`results/`](results/) | every run and every attempt; what is counted and what is excluded is in `results/README.md` |
-| [`DEMO.md`](DEMO.md) | the 2-minute demo |
 | [`TASKS.md`](TASKS.md) | the task board we used: every task, its files, and who did it |
 | [`SETUP.md`](SETUP.md) | get on a seat, start the model, install Icarus Verilog, run long jobs |
 

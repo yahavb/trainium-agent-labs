@@ -1,6 +1,6 @@
 # VeriLoop — one-page note
 
-**Team:** Six Seven (team 7) — Krish Mehta (km6152@nyu.edu, built the project with Claude Code), Dhriti
+**Team:** Six Seven (team 7) — Krish Mehta (km6152@nyu.edu, built the project), Dhriti
 Vaidya, Smruthi Ramesh, Manish Reddy, Bhagavan Madala, Ankit Singh — names, emails and contributions in `README.md` · **Event:** Hack the Chip, NYU × Annapurna Labs, 2026-10-10
 **Code, data and every attempt:** this repo · checker write-up: [`CHECKER.md`](CHECKER.md)
 
