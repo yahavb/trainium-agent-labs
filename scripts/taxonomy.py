@@ -116,7 +116,7 @@ def _samples_per_round(rows):
 def load_attempts(paths):
     """Attempts grouped into episodes: one (file, run, level) is one attempt at one level.
 
-    New logs carry a run field. Older ones are split by order: a new run starts when the level goes
+    New logs carry a run field (offset when a file holds several invocations). Older ones are split by order: a new run starts when the level goes
     down (--all starts over), when the round goes down (--level N --repeat starts over), or when a
     round already holds --samples attempts (two runs solved in round 0 back to back, which happens
     once a log is split by level)."""
@@ -125,10 +125,15 @@ def load_attempts(paths):
         rows = [json.loads(line) for line in open(path) if line.strip()]
         per_round = _samples_per_round(rows)
         run, prev, filled = 0, None, 0
+        offset, last_logged = 0, None
         for r in rows:
             key = (r["level"], r["round"])
             if "run" in r:
-                run = r["run"]
+                # a second invocation appended to the same file numbers its runs from 0 again
+                if last_logged is not None and r["run"] < last_logged:
+                    offset = run + 1
+                last_logged = r["run"]
+                run = offset + r["run"]
             elif prev is not None and (key[0] < prev[0] or
                                        (key[0] == prev[0] and key[1] < prev[1]) or
                                        (key == prev and filled >= per_round)):
