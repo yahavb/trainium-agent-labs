@@ -883,6 +883,116 @@ def verify(path, level_n, tol=2e-2, seed=0):
     return 0
 
 
+# ---------------------------------------------------------------- held-out eval set
+#
+# The loop only ever sees LEVELS[n]["shapes"] filled with standard-normal data from seed 0. The
+# judges grade on shapes and values the agent never saw, so passing the loop's shapes is evidence,
+# not proof. This set is what the agent checks its own claim against, ONCE, after the loop. Nothing
+# here is ever fed back to the model, or it would stop being held out.
+#
+# Shapes: new ones, inside each level's contract -- the shipped reference kernel passes every one
+# (python nkibench.py --level N --eval reference_levelN.py). Level 3's reference asserts
+# K=128 M=64 N=512, so its contract is that one shape and only the values change. Shapes outside a
+# reference's contract (M not a multiple of 128 on level 4, say) are left out: the reference itself
+# rejects them, so failing them would say nothing about the agent.
+
+EVAL_SHAPES = {
+    1: [dict(shape=(128, 32, 32), pool_size=2), dict(shape=(16, 30, 30), pool_size=5),
+        dict(shape=(1, 64, 64), pool_size=8), dict(shape=(96, 20, 12), pool_size=4),
+        dict(shape=(7, 10, 11), pool_size=3)],
+    2: [dict(shape=(128, 128), shape2D=(16, 8)), dict(shape=(1, 24), shape2D=(4, 6)),
+        dict(shape=(100, 60), shape2D=(6, 10)), dict(shape=(17, 77), shape2D=(7, 11))],
+    3: [dict(K=128, M=64, N=512)],
+    4: [dict(K=384, M=256, N=512), dict(K=128, M=384, N=1536),
+        dict(K=640, M=128, N=1024), dict(K=128, M=128, N=2048)],
+}
+for _n in (5, 6, 7):
+    EVAL_SHAPES[_n] = EVAL_SHAPES[4]
+
+# Values, each chosen to expose a wrong kernel that standard-normal data lets through.
+VALUE_KINDS = {
+    "normal": "standard normal from a seed the loop never used",
+    "ramp": "every element distinct and ordered (linspace -1..1), so an element read from or "
+            "written to the wrong place cannot cancel out",
+    "large": "standard normal x 1e4: a kernel computing in float16 overflows (max 65504)",
+    "float16": "inputs arrive as float16: a kernel that hard-codes float32 returns the wrong dtype "
+               "(the simulator casts silently in dma_copy, so only the dtype check catches it)",
+}
+EVAL_SEED = 1000
+
+
+def make_eval_inputs(case, level_n, kind):
+    args, _ = make_inputs(case, level_n, EVAL_SEED)
+    out = []
+    for a in args:
+        if isinstance(a, np.ndarray) and a.dtype.kind == "f":
+            if kind == "ramp":
+                a = np.linspace(-1, 1, a.size, dtype=np.float32).reshape(a.shape)
+            elif kind == "large":
+                a = a * np.float32(1e4)
+            elif kind == "float16":
+                a = a.astype(np.float16)
+        out.append(a)
+    return tuple(out)
+
+
+def check_case(kernel, args, level_n, tol=2e-2):
+    """Run one case through every check the loop applies. Returns None if it passes, else why."""
+    want = LEVELS[level_n]["ref"](*args)
+    before = [x.copy() if isinstance(x, np.ndarray) else x for x in args]
+    try:
+        got, counted = simulate_and_count(kernel, args)
+    except NkiMissing:
+        raise
+    except Exception as e:
+        return f"raised {type(e).__name__}: {str(e)[:300]}"
+    # Eval only, so the loop's grading stays comparable with the baseline: every reference returns
+    # its input's dtype, and the simulator's dma_copy casts silently, so without this a kernel that
+    # hard-codes float32 passes float16 inputs.
+    wrong_dtype = (f"WRONG DTYPE: returned {np.asarray(got).dtype}, reference returns "
+                   f"{np.asarray(want).dtype}" if np.asarray(got).dtype != np.asarray(want).dtype
+                   else None)
+    m = (check_inputs_untouched(before, args) or describe_illegal(counted) or wrong_dtype
+         or describe_mismatch(got, want, tol) or check_traffic_bar(level_n, counted, args, want))
+    if not m and any("incorrect results on hardware" in w for w in counted.get("warnings", [])):
+        m = "CORRECT ON CPU BUT WRONG ON HARDWARE"
+    return m
+
+
+def evaluate(kernel, level_n, tol=2e-2):
+    """The held-out set: every EVAL_SHAPES case with every VALUE_KINDS fill.
+    Returns a list of dict(case, kind, ok, why)."""
+    results = []
+    for case in EVAL_SHAPES.get(level_n, []):
+        for kind in VALUE_KINDS:
+            why = check_case(kernel, make_eval_inputs(case, level_n, kind), level_n, tol)
+            results.append(dict(case=label(case, level_n), kind=kind, ok=why is None,
+                                why=(why or "")[:300]))
+    return results
+
+
+def run_eval(path, level_n, tol=2e-2):
+    spec = LEVELS[level_n]
+    if level_n not in EVAL_SHAPES:
+        print(f"level {level_n} has no held-out eval set")
+        return 3
+    violations = check_rules(open(path).read(), level_n)
+    if violations:
+        print("RULE VIOLATIONS: " + " ".join(violations))
+        return 2
+    kernel = load_kernel(path, spec["entry"])
+    try:
+        res = evaluate(kernel, level_n, tol)
+    except NkiMissing as e:
+        print(f"SKIPPED: {e}")
+        return 3
+    print(f"level {level_n} held-out eval: {sum(r['ok'] for r in res)}/{len(res)} cases passed "
+          f"({len(EVAL_SHAPES[level_n])} shapes x {len(VALUE_KINDS)} value kinds)")
+    for r in res:
+        print(f"  {'pass' if r['ok'] else 'FAIL'}  {r['case']:<28} {r['kind']:<8} {r['why'][:120]}")
+    return 0 if all(r["ok"] for r in res) else 1
+
+
 # ---------------------------------------------------------------- selftest
 
 def selftest():
@@ -1071,6 +1181,8 @@ def main():
     ap.add_argument("--level", type=int)
     ap.add_argument("--show", action="store_true")
     ap.add_argument("--check", metavar="FILE.py")
+    ap.add_argument("--eval", metavar="FILE.py",
+                    help="run the held-out eval set (new shapes, hostile values) on a kernel")
     ap.add_argument("--roofline", nargs=3, type=int, metavar=("M", "K", "N"),
                     help="what the tiled matmul's roofline says for this shape")
     ap.add_argument("--dtype", default="bfloat16",
@@ -1108,6 +1220,9 @@ def main():
 
     if a.level and a.check:
         sys.exit(verify(a.check, a.level, a.tol, a.seed))
+
+    if a.level and a.eval:
+        sys.exit(run_eval(a.eval, a.level, a.tol))
 
     print("THE LEVELS — difficulty and optimization headroom rise together.\n")
     for n, s in LEVELS.items():
