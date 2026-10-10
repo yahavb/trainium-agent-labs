@@ -13,7 +13,10 @@ but the slices and indices in [...], the shapes given to nl.ndarray / nl.zeros, 
 affine_range(...) become <…>, and one sentence after the code says what goes there. The prose of the
 message is unchanged; messages without code are unchanged; the API-name corrections (v3's R7, "Only the
 token ... is wrong", and agent.py's KNOWN_FIXES) are unchanged. `.shape[i]` (choosing a dimension) is
-not a slice and stays.
+not a slice and stays. Messages from the compiler gate (they contain gate_nki.MARK, "the trn2 compiler
+rejects") are left whole: they only come after a kernel is correct on every shape, and their code is the
+model's own lines rewritten for the trn2 compiler, so the slices are the fix. Level 1's rewrite is
+`t[:, ...]` (all channels); blanked to `t[<…>]`, the model has only its per-channel form to go back to.
 
 L1FIX=1. Three level-1 errors that v7 still answers with a generic sentence get the real usage, each name
 checked with inspect in nki 0.6.0 on a seat: nisa.memset(dst, value), nl.zeros(shape, dtype, buffer),
@@ -158,10 +161,15 @@ if L1FIX:
     agent.enrich = enrich_l1            # v2's feedback() and v6's tips call agent.enrich at call time
 
 if SKELETON:
+    import gate_nki                     # its messages carry gate_nki.MARK
     _grade = agent.grade                # v7's outermost grade (v6's timeout, then the gate)
 
     def grade_skeleton(source, level):
         reward, parts, feedback = _grade(source, level)
+        # The compiler gate's code is the model's own lines rewritten for trn2 (all channels at once,
+        # a reciprocal for divide); its slices are the fix, so its messages are left whole.
+        if gate_nki.MARK in (feedback or ""):
+            return reward, parts, feedback
         return reward, parts, skeletonize(feedback)
 
     agent.grade = grade_skeleton
