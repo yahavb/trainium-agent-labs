@@ -174,6 +174,99 @@ MENU = [
         ),
     },
     {
+        "id": "split_k_contraction",
+        "name": "Split the K contraction into pmax-sized chunks",
+        "when": (
+            "nc_matmul fails with 'Matmul contraction dimension <n> exceeds pmax=<m>': the K "
+            "chunk given to one matmul call is larger than the hardware contraction limit."
+        ),
+        "exact": (
+            "Split the K dimension into chunks of the hardware limit (pmax, usually 128) and "
+            "accumulate:\n"
+            "1) k_tiles = K // pmax.\n"
+            "2) Allocate ONE psum tile before the k loop.\n"
+            "3) For each chunk k, load the operand rows k*pmax:(k+1)*pmax and call nc_matmul "
+            "into that same psum tile so partial products accumulate.\n"
+            "4) Copy the psum out once after the loop. Change nothing else."
+        ),
+    },
+    {
+        "id": "fix_tile_memory_region",
+        "name": "Place every tile in the memory region its operation needs",
+        "when": (
+            "A placement error: 'must be in [psum]', 'must be in [sbuf]', or '<op> must be in "
+            "[sbuf, psum], got shared_hbm' -- a tile is allocated in the wrong region, or an "
+            "on-chip operation was pointed at HBM."
+        ),
+        "exact": (
+            "Place tiles in the region each operation requires:\n"
+            "1) nc_matmul: dst in nl.psum; stationary and moving in nl.sbuf.\n"
+            "2) dma_copy moves data between HBM and SBUF only.\n"
+            "3) To go PSUM -> HBM: tensor_copy(psum -> sbuf), then dma_copy(sbuf -> the "
+            "shared_hbm output).\n"
+            "4) nl.sbuf, nl.psum and nl.shared_hbm are regions, not functions: pass them as "
+            "buffer= to nl.ndarray. Change nothing else."
+        ),
+    },
+    {
+        "id": "match_assignment_shapes",
+        "name": "Make both sides of an assignment the same shape",
+        "when": (
+            "A shape error on a store or assignment: 'value array of shape ... could not be "
+            "broadcast to indexing result of shape ...' -- the value and the destination slice "
+            "have different shapes."
+        ),
+        "exact": (
+            "Make the two sides of the mismatched assignment identical in shape:\n"
+            "1) The destination slice and the source tile must have exactly the same shape.\n"
+            "2) Nothing broadcasts: if the value is bigger, index the destination to match; if "
+            "it is smaller, you are writing the wrong tile.\n"
+            "3) Change only the mismatched assignment."
+        ),
+    },
+    {
+        "id": "use_real_nki_names",
+        "name": "Replace an invented NKI name with a real one",
+        "when": (
+            "An attribute error naming an NKI symbol that does not exist: 'module nki.language "
+            "has no attribute X' (typical inventions: nl.value, nl.scalar, nl.dot, tile.mean)."
+        ),
+        "exact": (
+            "Use only real NKI names: nl.ndarray, nl.affine_range, nl.sum(view, axis=[...]), "
+            "nl.float32, nl.bfloat16, nisa.dma_copy, nisa.nc_matmul, nisa.tensor_copy, "
+            "nisa.tensor_scalar, tile.ap.\n"
+            "Replace the invented name with the real one that performs the intended operation "
+            "(a reduction is nl.sum). Change nothing else."
+        ),
+    },
+    {
+        "id": "keyword_args",
+        "name": "Pass every argument once, by keyword",
+        "when": (
+            "'got multiple values for argument' -- one argument was passed both positionally "
+            "and by keyword."
+        ),
+        "exact": (
+            "Pass every argument exactly once, by keyword:\n"
+            "nisa.nc_matmul(dst=..., stationary=..., moving=...), "
+            "nisa.dma_copy(dst=..., src=...).\n"
+            "Remove the duplicate. Change nothing else."
+        ),
+    },
+    {
+        "id": "two_dimensional_tiles",
+        "name": "Give every tile two dimensions",
+        "when": (
+            "'must have at least 2 dimensions' -- a 1-D tile was allocated; every SBUF and "
+            "PSUM tile needs a partition dimension and a free dimension."
+        ),
+        "exact": (
+            "Give every tile two dimensions: nl.ndarray((rows, cols), dtype=..., buffer=...).\n"
+            "A length-N vector gets shape (1, N) or (N, 1), whichever matches the axis being "
+            "reduced. Change nothing else."
+        ),
+    },
+    {
         "id": "continue_from_best",
         "name": "No match -- back out and try a different option",
         "when": (

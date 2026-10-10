@@ -50,12 +50,30 @@ def expected_guidance(src, ev, diag):
     low = fb.lower()
     if "same number of elements" in low:
         return "fix_cache_stride_and_width"
+    if "contraction dimension" in low:
+        return "split_k_contraction"
+    if "must be in" in low:
+        return "fix_tile_memory_region"
+    if "could not be broadcast" in low:
+        return "match_assignment_shapes"
+    if "no attribute" in low:
+        return "use_real_nki_names"
+    if "multiple values for argument" in low:
+        return "keyword_args"
+    if "at least 2 dimensions" in low:
+        return "two_dimensional_tiles"
+    if "free dimension" in low and "exceeds" in low:
+        return "keep_k_on_partition_axis"
     if "out of bounds" in low or "oob" in low:
         return "fix_slice_bounds"
     if "partition" in low:
         return "keep_k_on_partition_axis"
     if candidate_valid(ev) and ev.get("worst_waste") is not None:
-        return "stack_moving_operand_symmetrically"
+        has_rhs = "rhs_cache" in src
+        has_lhs = re.search(r"(?<!rhs_)\bcache\b", src) is not None
+        if has_lhs and not has_rhs:
+            return "stack_moving_operand_symmetrically"
+        return "stack_stationary_operand"
     return "continue_from_best"
 
 
