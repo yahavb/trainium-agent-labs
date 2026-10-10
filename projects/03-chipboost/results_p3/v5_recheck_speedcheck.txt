@@ -1,0 +1,17 @@
+# Standalone re-check of Qwen3-8B's v5 kernel (run matmul-referee-v5-212632-0, attempt 2), seat 101, chip.
+# Command (in the seat pod, after the agent run finished):
+#   CHIPBOOST_SEAT=101 python speedcheck.py --op matmul --check /tmp/qwen_faster_kernel.py
+# speedcheck at referee-timing 7da33ee. Output, verbatim:
+
+  rules      clean
+  simulator  2 shapes correct; 3,670,016 bytes in 40 transfers {'dma_copy': 40, 'nc_matmul': 16}
+  chip       correct on 2 shapes, hostile and normal (worst 0.50 bf16 ulps)
+  timing     (4096, 256, 2048): baseline 269.0 us, candidate 183.8 us -> 1.463x
+  timing     (4096, 256, 6144): baseline 691.9 us, candidate 449.4 us -> 1.540x
+  verdict    1.5174x against the noise band 0.9901-1.0100
+  held-out   correct on 3 undisclosed shapes
+
+VERDICT: FASTER
+correct everywhere, including 3 undisclosed held-out shapes; 633.2 us vs baseline 960.9 us = 1.517x; per shape (4096, 256, 2048) 1.463x, (4096, 256, 6144) 1.540x: FASTER, beating the noise threshold 1.010x with no shape slower.
+
+ONE CHANGE: Faster on the chip (1.52x, 27.1 TFLOP/s). Next step: the simulator measures 2.00x the byte floor. The rhs slice depends on k and n, but is loaded again for every m. Make n the outer loop and stage that n tile's K // 128 rhs tiles in distinct SBUF slots before the m loop; reuse the slot indexed by k for each m. Keep the k contraction loop and the lhsT loads inside m: successive k values need different tiles.
