@@ -1,0 +1,7 @@
+# written on the seat by autopilot.sh and bundle.sh; never part of the submission
+.seat-results/
+.queue-done/
+.autopilot.pid
+autopilot.log
+handover.log
+report.err

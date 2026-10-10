@@ -1,0 +1,30 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B  feedback located  session 20261010-154431
+
+################ run 1 of 3 ################
+
+=========== level 1: average pooling 2D ===========
+round 0: this round 0.30  best so far 0.30  (189.0s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=4, dst=16384 The tile you allocated holds 16384 elements but you copied 4 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a bigger tensor,
+round 1: this round 0.30  best so far 0.30  (265.7s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: nc_matmul() got an unexpected keyword argument 'transpose_moving' Remove the `transpose_moving=` argument. The real signature is isa.nc_matmul(dst: 'NkiTensor', stationary: 'NkiTensor', moving: 'NkiTensor', is_stationary_onezero=False, is_moving_onezero=False, is_transpose=False, accumulate=None, tile_position=(), tile_size=(), 
+round 2: this round 0.30  best so far 0.30  (245.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: dst must be in ['psum'], got sbuf Allocate the `dst` tile with buffer=nl.psum instead of nl.sbuf. For nisa.nc_matmul: dst must be in nl.psum, and stationary and moving must both be in nl.sbuf. Copy between them with nisa.tensor_copy. The failing line is line 19 of your kernel: `nisa.nc_matmul(dst=tile2, stationary=tile, mov
+round 3: this round 0.30  best so far 0.30  (88.4s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AttributeError: module 'nki.isa' has no attribute 'multiply' `nki.isa` has no `multiply`, and nothing similar exists. Its real names include: NkiInstruction, NkiValidationError, VirtualRegister, activate2, activation, activation_reduce, affine_select, bn_aggr, bn_stats, core_barrier, dge_mode, dma_compute, dma_copy, dma_engine, dma_transpo
+round 4: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 4 failed attempts to break the repeat
+round 5: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 4 failed attempts to break the repeat
+round 6: this round 0.30  best so far 0.30  (67.9s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AttributeError: module 'nki.isa' has no attribute 'scalar_mul' `nki.isa` has no `scalar_mul`. The closest real names are: scalar_engine, tensor_scalar_cumulative, tensor_scalar_reduce, nc_matmul, tensor_scalar, scalar_tensor_tensor. Pick one of those or use a different approach. The failing line is line 21 of your kernel: `nisa.tensor_scal
+round 7: this round 0.30  best so far 0.30  (57.6s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: tensor_scalar() got an unexpected keyword argument 'op'. Did you mean 'op0'? Remove the `op=` argument. The real signature is isa.tensor_scalar(dst: 'NkiTensor', data: 'NkiTensor', op0, operand0: 'float | NkiTensor', reverse0=False, op1=None, operand1: 'float | NkiTensor | None' = None, reverse1=False, engine=<engine.unknown: 0>
+  not solved in 8 rounds; best reward 0.30
+
+=========== level 2: 2D transpose ===========
+round 0: this round 0.30  best so far 0.30  (66.0s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=512 The tile you allocated holds 512 elements but you copied 384 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a bigger tensor, wri
+round 1: this round 0.30  best so far 0.30  (49.1s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised AssertionError: Out-of-bound access for tensor `unnamed` on dimension 0: index 3 exceed dimension size of 3. The failing line is line 23 of your kernel: `tile[i, j] = tile[j, i]`. That is the line to change.
+round 2: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 2 failed attempts to break the repeat

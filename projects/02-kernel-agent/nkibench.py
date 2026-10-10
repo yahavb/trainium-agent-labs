@@ -608,6 +608,11 @@ def check_inputs_untouched(before, args):
     return None
 
 
+# Shapes of the most recent nisa.dma_copy, kept so that when one raises, the feedback can say what
+# the two shapes actually WERE instead of only that their element counts differ.
+LAST_DMA = {}
+
+
 def simulate_and_count(kernel, args):
     """Run the kernel on the CPU and count the HBM traffic it asked for.
 
@@ -629,7 +634,10 @@ def simulate_and_count(kernel, args):
     counter = dict(bytes=0, transfers=0, api=api, dtypes=set())
     original = nisa.dma_copy
 
+    LAST_DMA.clear()
+
     def counting_dma_copy(dst=None, src=None, **kw):
+        LAST_DMA.update(dst=getattr(dst, "shape", None), src=getattr(src, "shape", None))
         try:
             nbytes = getattr(src, "nbytes", None)
             if not isinstance(nbytes, int) or nbytes <= 0:
