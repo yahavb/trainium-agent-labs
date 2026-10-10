@@ -338,9 +338,149 @@ level(8, "single-head attention", "nki_attention_",
       label=lambda sp: f"seq={sp['seq']} dim={sp['dim']}")
 
 
+# ---------------------------------------------------------------- HELD-OUT and HOSTILE levels
+#
+# Levels >= 10 are the generalisation set: operations and shapes NEVER tuned on, run with
+# `python agent.py --heldout`. The point is that feedback messages overfit to levels 1-4 will not
+# help here, so these measure whether the agent generalises. Every level below picks a shape that
+# does NOT divide evenly by the tile size, and hostile values where the operation has a trap.
+
+# --- held-out matmul on RAGGED shapes. Same op as level 4, but the test shapes are not multiples
+# of 128/512, which is exactly what a kernel that is right in the interior and wrong on the last
+# partial tile fails. The level-4 shapes are all clean multiples and the shipped reference even
+# asserts divisibility, so this is the obvious thing a judge holds back.
+_MM_RAGGED = [dict(K=200, M=100, N=700), dict(K=130, M=65, N=513), dict(K=1, M=1, N=1)]
+
+level(10, "matmul, tiled, RAGGED shapes", "nki_matmul_tiled_",
+      "the ragged edge: shapes that do not divide by the tile size, where interior-correct and "
+      "edge-wrong kernels diverge",
+      "held out from the level-4 tuning set. No new idiom, only the discipline of deriving every "
+      "bound from the tensor's own shape with min(limit, size) rather than a fixed number.",
+      ref_matmul, _MM_RAGGED,
+      {"matmul", "dot", "einsum", "tensordot", "inner", "vdot"})
+
+
+def ref_relu_affine(x, w, b):
+    """Elementwise relu(w*x + b), the control: no reductions, no layout tricks. If an agent cannot
+    do this, the problem is the API, not the operation."""
+    return np.maximum(x.astype(np.float32) * w + b, 0.0).astype(x.dtype)
+
+
+def _args_relu_affine(spec, r):
+    n, m = spec["rows"], spec["cols"]
+    return (r.standard_normal((n, m)).astype(np.float32),
+            np.float32(r.standard_normal()), np.float32(r.standard_normal()))
+
+
+level(11, "elementwise relu(w*x+b)", "nki_relu_affine_",
+      "the control: a pure elementwise op with no reduction and no transpose",
+      "almost none. This exists so a failure on the harder held-out ops can be told apart from a "
+      "failure to emit any legal NKI at all.",
+      ref_relu_affine,
+      [dict(rows=128, cols=64), dict(rows=100, cols=70), dict(rows=64, cols=200)],
+      {"relu", "maximum", "clip", "where"},
+      make_args=_args_relu_affine,
+      label=lambda sp: f"rows={sp['rows']} cols={sp['cols']}")
+
+
+def ref_softmax_rows(x):
+    """Row-wise softmax with the max subtracted first. The trap, like attention: a naive exp()
+    overflows on large inputs, so a kernel that skips the max subtraction returns NaN on the
+    hostile shape even though it looks fine on friendly data."""
+    x = x.astype(np.float32)
+    x = x - x.max(axis=-1, keepdims=True)
+    e = np.exp(x)
+    return (e / e.sum(axis=-1, keepdims=True)).astype(np.float32)
+
+
+def _args_softmax(spec, r):
+    n, m = spec["rows"], spec["cols"]
+    x = r.standard_normal((n, m)).astype(np.float32)
+    if spec.get("hostile"):
+        x *= np.float32(60.0)          # ~[-180, 180]: exp overflows without the max subtraction
+    return (x,)
+
+
+level(12, "row-wise softmax", "nki_softmax_",
+      "a reduction that must be numerically stable: subtract the row max before exp()",
+      "the stability trap. A kernel that skips the max subtraction looks correct on friendly data "
+      "and returns NaN on the hostile row -- fast and wrong, which scores zero.",
+      ref_softmax_rows,
+      [dict(rows=128, cols=64), dict(rows=100, cols=70, hostile=True), dict(rows=64, cols=200)],
+      {"softmax", "logsumexp"},
+      "nl.max and nl.sum over the free axis are the intended route; the partition axis is the rows.",
+      make_args=_args_softmax,
+      label=lambda sp: f"rows={sp['rows']} cols={sp['cols']}"
+                       + (" HOSTILE" if sp.get("hostile") else ""))
+
+
+def ref_rmsnorm(x, g):
+    """RMSNorm over the last axis: x / sqrt(mean(x^2) + eps) * g. The trap is accumulation order
+    and the eps; a kernel that divides by the count wrong, or forgets eps on an all-zero row,
+    diverges."""
+    x = x.astype(np.float32)
+    rms = np.sqrt((x * x).mean(axis=-1, keepdims=True) + 1e-6)
+    return (x / rms * g).astype(np.float32)
+
+
+def _args_rmsnorm(spec, r):
+    n, m = spec["rows"], spec["cols"]
+    x = r.standard_normal((n, m)).astype(np.float32)
+    if spec.get("hostile"):
+        x[0] = 0.0                      # an all-zero row: eps is what keeps it finite
+    return (x, r.standard_normal((m,)).astype(np.float32))
+
+
+level(13, "RMSNorm over the last axis", "nki_rmsnorm_",
+      "a reduction plus a reciprocal-sqrt, with an eps that only matters on a degenerate row",
+      "accumulation order and the eps. Ban mean/norm so the reduction is written in the kernel; "
+      "the all-zero hostile row is where a missing eps turns into a division by zero.",
+      ref_rmsnorm,
+      [dict(rows=128, cols=64), dict(rows=100, cols=70, hostile=True), dict(rows=64, cols=200)],
+      {"mean", "norm", "rms_norm", "layer_norm", "normalize"},
+      "nl.sum of x*x over the free axis, then scale; add eps=1e-6 before the sqrt.",
+      make_args=_args_rmsnorm,
+      label=lambda sp: f"rows={sp['rows']} cols={sp['cols']}"
+                       + (" HOSTILE" if sp.get("hostile") else ""))
+
+
 # ---------------------------------------------------------------- layer 1a: static rules
 
 FRAMEWORK_MODULES = {"np", "numpy", "torch", "jnp", "jax", "F", "nn"}
+
+# The real framework packages, independent of whatever name they are imported under. A head name
+# like `np` only means numpy by convention; `import numpy as xp` makes `xp` mean it just as much.
+FRAMEWORK_PACKAGES = {"numpy", "torch", "jax", "jax.numpy", "tensorflow", "tf",
+                      "torch.nn.functional", "torch.nn"}
+
+
+def _framework_aliases(tree):
+    """Resolve import aliases so a renamed framework cannot slip past the banned-call scan.
+
+    Two bypasses this closes, both observed to be possible against the bare-name check:
+      `import numpy as xp; xp.mean(...)`   -- the head `xp` was not in FRAMEWORK_MODULES
+      `from numpy import mean as m; m(...)` -- the bare call `m` resolved to nothing
+
+    Returns (module_aliases, imported_banned_names):
+      module_aliases          names bound to a whole framework module, e.g. {"xp", "np"}
+      imported_banned_names   bare names pulled out of a framework module, mapped to their origin,
+                              e.g. {"m": "numpy.mean", "mean": "numpy.mean"}
+    """
+    module_aliases, imported = set(), {}
+    root = lambda dotted: dotted.split(".")[0]
+    is_fw = lambda dotted: dotted in FRAMEWORK_PACKAGES or root(dotted) in {"numpy", "torch", "jax",
+                                                                            "tensorflow"}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for a in node.names:
+                if is_fw(a.name):
+                    module_aliases.add(a.asname or root(a.name))
+        elif isinstance(node, ast.ImportFrom) and node.module and is_fw(node.module):
+            for a in node.names:
+                if a.name == "*":
+                    continue
+                imported[a.asname or a.name] = f"{node.module}.{a.name}"
+    return module_aliases, imported
 
 
 def _dotted(node):
@@ -372,6 +512,10 @@ def check_rules(src, level_n):
     except SyntaxError as e:
         return [f"the file does not parse: {e}"]
 
+    # Framework imports resolved to the module they really are, so a rename cannot hide a cheat.
+    module_aliases, imported_banned = _framework_aliases(tree)
+    framework_heads = FRAMEWORK_MODULES | module_aliases
+
     names, decorated, params = set(), set(), set()
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef):
@@ -387,7 +531,15 @@ def check_rules(src, level_n):
             dotted = _dotted(node.func)
             head = dotted.split(".")[0] if dotted else ""
             leaf = dotted.split(".")[-1] if dotted else ""
-            if leaf in spec["banned"] and (head in FRAMEWORK_MODULES or head == leaf):
+            # A banned op reached through a framework module (np.mean, xp.mean, torch.matmul).
+            flagged = leaf in spec["banned"] and head in framework_heads
+            # A banned op imported bare from a framework (`from numpy import mean [as m]`): the
+            # call name is a local alias, so resolve it to the origin leaf before judging.
+            origin = imported_banned.get(dotted)
+            if origin and origin.split(".")[-1] in spec["banned"]:
+                flagged = True
+                dotted = f"{dotted} (= {origin})"
+            if flagged:
                 bad.append(f"line {node.lineno}: calls `{dotted}`, which hands the whole "
                            f"operation to a framework. This level is about computing it in "
                            f"the kernel.")
@@ -418,8 +570,12 @@ def check_rules(src, level_n):
 
 # ---------------------------------------------------------------- layer 1b: numerics
 
-def describe_mismatch(got, want, tol=2e-2):
-    """The message the agent learns from. Vague here is slow there."""
+def describe_mismatch(got, want, tol=2e-2, op=""):
+    """The message the agent learns from. Vague here is slow there.
+
+    `op` is the level's operation string (e.g. "matmul, tiled"); when nearly everything is wrong
+    on a matmul level, the message names the operand-layout fix instead of leaving it as a verdict.
+    """
     got = np.asarray(got, np.float64)
     want = np.asarray(want, np.float64)
     if got.shape != want.shape:
@@ -478,6 +634,18 @@ def describe_mismatch(got, want, tol=2e-2):
         elif float((err / scale > tol).mean()) > 0.5:
             msg.append("  most elements are wrong, so this is the core arithmetic or the "
                        "operand layout, not an edge case")
+            if "matmul" in op:
+                # Measured: level 4 came back 100% wrong with errors ~300x the RMS -- the
+                # signature of multiplying the operands in the wrong orientation. Name the fix
+                # (direction only, never the target values) rather than leaving it a verdict.
+                msg.append(
+                    "  on a matmul this large an error almost always means the operand ORIENTATION "
+                    "is wrong, not the loop. nisa.nc_matmul(dst, stationary, moving) computes "
+                    "stationary.T @ moving and contracts over the PARTITION axis of BOTH operands. "
+                    "lhsT already arrives as [K, M] and rhs as [K, N], so pass them straight in: "
+                    "stationary=lhsT_tile ([K, M]), moving=rhs_tile ([K, N]), giving [M, N]. Do "
+                    "NOT transpose either operand yourself and do NOT swap stationary/moving -- if "
+                    "the result looks like rhs.T @ lhsT or lhsT @ rhs, that swap is the bug.")
         else:
             msg.append("  inside a full tile, so look at the accumulation rather than the "
                        "edges")
@@ -553,7 +721,17 @@ def reuse_report(counted, args, want):
     loop. The arithmetic intensity drops, but 'memory bound' does not say why. This does.
     """
     floor = minimum_hbm_bytes(args, want)
-    if not floor or not counted.get("bytes"):
+    # FAIL CLOSED. The byte counter only sees traffic routed through nisa.dma_copy. A kernel that
+    # moved its data another way (nl.load/nl.store, a wrapper we did not patch) can produce output
+    # while this counts ZERO bytes -- and silence would read as "no redundant traffic", i.e. a
+    # perfect score for a kernel we never measured. Say that we could not measure it instead.
+    if not counted.get("bytes") or not counted.get("transfers"):
+        return ("    HBM TRAFFIC NOT MEASURED: this kernel produced output but issued no transfers "
+                "the counter could see. The byte count instruments nisa.dma_copy only, so moving "
+                "data another way (e.g. nl.load / nl.store) is invisible here. The traffic verdict "
+                "is UNKNOWN, not optimal -- route HBM<->SBUF moves through nisa.dma_copy so they can "
+                "be counted.")
+    if not floor:
         return ""
     ratio = counted["bytes"] / floor
     if ratio < 1.15:
@@ -574,8 +752,16 @@ def check_traffic_bar(level_n, counted, args, want):
     is and what buys the difference -- which is the only thing separating these levels from level 4.
     """
     bar = LEVELS[level_n].get("max_waste")
-    if not bar or not counted.get("bytes"):
+    if not bar:
         return None
+    # FAIL CLOSED on an unmeasurable kernel: a level graded on bytes must not pass when no bytes
+    # were counted. Zero measured transfers on a kernel that produced output means the traffic went
+    # somewhere the counter cannot see, so the bar is UNMET-by-default, not met.
+    if not counted.get("bytes") or not counted.get("transfers"):
+        return (f"CANNOT CONFIRM THE TRAFFIC BAR FOR LEVEL {level_n}: this kernel issued no "
+                f"transfers the counter could measure (it instruments nisa.dma_copy only). Levels "
+                f"5-7 are graded on HBM bytes, so an unmeasured kernel cannot pass. Route every "
+                f"HBM<->SBUF move through nisa.dma_copy so the traffic can be counted.")
     floor = minimum_hbm_bytes(args, want)
     if not floor:
         return None
@@ -705,7 +891,7 @@ def verify(path, level_n, tol=2e-2, seed=0):
             failures.append((label(case, level_n),
                              f"RAISED during simulation: {type(e).__name__}: {e}"))
             continue
-        m = describe_mismatch(got, want, tol)
+        m = describe_mismatch(got, want, tol, op=spec["op"])
         if m:
             failures.append((label(case, level_n), m))
             continue
@@ -716,12 +902,14 @@ def verify(path, level_n, tol=2e-2, seed=0):
                   f"{counted['transfers']:,} transfers for {elements:,} output elements, "
                   f"{counted['bytes'] / max(counted['transfers'], 1):.0f} bytes each. The cost here "
                   f"is the NUMBER of transfers, not the bytes. Move whole tiles, not elements.")
-        if counted.get("bytes"):
-            rep = reuse_report(counted, args, want)
-            if rep:
-                print(f"\n  case {label(case, level_n)}:")
-                print(rep)
-        if level_n >= 3 and counted["bytes"]:
+        # Always report traffic for a shape that passed numerics -- reuse_report fails CLOSED and
+        # says "not measured" when no transfers were counted, so skipping it on zero bytes would
+        # hide exactly the kernels that moved data where the counter cannot see it.
+        rep = reuse_report(counted, args, want)
+        if rep:
+            print(f"\n  case {label(case, level_n)}:")
+            print(rep)
+        if level_n >= 3 and counted["bytes"] and {"M", "K", "N"} <= set(case):
             f = matmul_flops(case["M"], case["K"], case["N"])
             intensities.append((label(case, level_n), roofline(f, counted["bytes"]),
                                 counted, f, minimum_hbm_bytes(args, want)))
@@ -795,6 +983,26 @@ def selftest():
     print(f"  ref_matmul (transposed left)       -> {'ok' if ok else 'FAIL'}")
     rc |= 0 if ok else 1
 
+    # Held-out references (levels 10-13). Checked here so a mislabelled reference cannot grade.
+    xr = np.random.default_rng(3).standard_normal((5, 7)).astype(np.float32)
+    ok = np.allclose(ref_relu_affine(xr, np.float32(2.0), np.float32(-1.0)),
+                     np.maximum(2.0 * xr - 1.0, 0.0), atol=1e-5)
+    print(f"  ref_relu_affine                    -> {'ok' if ok else 'FAIL'}")
+    rc |= 0 if ok else 1
+    # softmax must stay finite and sum to 1 per row even on hostile (large) inputs.
+    big = (np.random.default_rng(4).standard_normal((3, 6)) * 60).astype(np.float32)
+    sm = ref_softmax_rows(big)
+    ok = np.all(np.isfinite(sm)) and np.allclose(sm.sum(axis=-1), 1.0, atol=1e-5)
+    print(f"  ref_softmax_rows (hostile, stable) -> {'ok' if ok else 'FAIL'}")
+    rc |= 0 if ok else 1
+    # rmsnorm must stay finite on an all-zero row thanks to eps.
+    xz = np.random.default_rng(5).standard_normal((3, 6)).astype(np.float32)
+    xz[0] = 0.0
+    rn = ref_rmsnorm(xz, np.ones(6, np.float32))
+    ok = np.all(np.isfinite(rn))
+    print(f"  ref_rmsnorm (all-zero row, eps)    -> {'ok' if ok else 'FAIL'}")
+    rc |= 0 if ok else 1
+
     # The rule checker has to catch the cheats and accept a plausible kernel.
     print()
     cheats = [
@@ -805,6 +1013,15 @@ def selftest():
         (1, "import nki\nimport numpy as np\n@nki.jit\n"
             "def tensor_avgpool_kernel(x, p):\n    return np.mean(x, axis=(1, 2))\n",
          "np.mean"),
+        (1, "import nki\nimport numpy as xp\n@nki.jit\n"
+            "def tensor_avgpool_kernel(x, p):\n    return xp.mean(x, axis=(1, 2))\n",
+         "numpy renamed to xp"),
+        (1, "import nki\nfrom numpy import mean\n@nki.jit\n"
+            "def tensor_avgpool_kernel(x, p):\n    return mean(x, axis=(1, 2))\n",
+         "a bare `from numpy import mean`"),
+        (4, "import nki\nfrom numpy import matmul as mm\n@nki.jit\n"
+            "def nki_matmul_tiled_(a, b):\n    return mm(a.T, b)\n",
+         "matmul imported under an alias"),
         (4, "import nki\nimport nki.language as nl\n@nki.jit\n"
             "def nki_matmul_tiled_(a, b):\n"
             "    t = nl.ndarray((256, 512), buffer=nl.sbuf)\n    return t\n",
