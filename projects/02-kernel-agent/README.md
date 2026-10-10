@@ -9,24 +9,47 @@ splits the work into six roles.
   operation): [README-task.md](README-task.md).
 - **Why agent2 is built this way**, and its implementation status: [DESIGN.md](DESIGN.md).
 
-## Status (2026-10-10 ~22:45 UTC)
+## Status (2026-10-10 ~22:55 UTC)
 
-- **No level is solved yet, by either agent.**
-- `agent.py`: of 428 logged attempts at levels 1–4 (seat-35), none was correct. The best was 0.62, at
-  level 4: an untiled matmul that passes only the one test shape small enough for a single tile.
-- agent2: level 1 only so far, in single runs. Its best is 0.50 (the kernel runs; the values or shape are
-  wrong), and the newest run, `agent2-v4-l1-1010-2215`, reached 0.30. None of its 100 attempts was correct.
-  Levels 2–4 (seat-35) and 5–8 (seat-199) started for the first time at ~22:30–22:41 UTC. Read those
-  results before quoting anything here.
-- One run is not a result. Report solve rates over `--repeat N`, with the spread.
-- agent2 on **Qwen3-32B** (seat-198): see the next section.
+- **agent2 solved levels 1 and 3 on Qwen3-8B**, in its first run of levels 1–4. `agent.py` solved none
+  of the four in any of its 3 runs on the same server.
+- That is **one run**, so a signal, not a solve rate. Report rates over `--repeat N`, with the spread.
+- Levels 5–8 so far only on Qwen3-32B: level 5 not solved (0.62).
 
-## Results on Qwen3-32B (seat-198, 2026-10-10, still running)
+## Results
+
+### agent2 on Qwen3-8B, levels 1–4 (seat-35)
+
+Both agents ran on the same Qwen3-8B server (TP=2, 8K context). agent2 at `e4edc8c`, default settings,
+one run (`agent2-v5-all-1010-2230`). `agent.py` with its defaults (8 rounds × 4 samples), 3 runs
+(`baseline-1010-1700`).
+
+| Level | Operation | agent2 (1 run) | `agent.py` (3 runs) |
+|---|---|---|---|
+| 1 | average pooling 2D | **solved**, 5 checks, 83 s | 0.30 every run |
+| 2 | 2D transpose | 0.30, 14 checks | 0.30 every run |
+| 3 | matmul, single tile | **solved**, 3 checks, 120 s | 0.30 every run |
+| 4 | matmul, tiled | 0.62, 23 checks | 0.62 at best |
+| | all four | 16.5 min | about 22 min per run |
+
+- Both solved kernels pass `nkibench.py --check` (rules clean, every shape). They are in
+  [`kernels/`](kernels/).
+- **Level 1 caveat:** the kernel copies the input into SBUF, reshapes it to `(C, H/p, p, W/p, p)`,
+  permutes the window axes last and takes `nl.mean` over them. It then returns that SBUF tile, with no
+  HBM output and no `dma_copy` out. The simulator and `nkibench` accept this. The device is untested.
+- **Level 3** is clean (an HBM output, exactly the minimum bytes), but hard-codes the level's one test
+  shape.
+- **Level 2:** every plan tried to transpose within a partition (`nl.transpose`, `t.ap`). The name index
+  offers no transpose instruction at level 2: `nc_transpose` is listed from level 3, and `t.permute` and
+  `dma_transpose` are withheld.
+- **Level 4** stopped at 0.62, like `agent.py`, mostly on copy-size and output-shape errors.
+
+### agent2 on Qwen3-32B (seat-198)
 
 All of these use Qwen3-32B on seat-198 (TP=4, the whole chip, 8K context). Every check is
 `nki.simulate` on the CPU.
 
-### The planner's name index, levels 1 and 4 (planner only)
+#### The planner's name index, levels 1 and 4 (planner only)
 
 - **Setup:** 8 single-plan calls per arm and level, with LOOKUP off. The two arms differ only in the
   index: every nki name with no descriptions (`--index names`), against the described index
@@ -47,7 +70,7 @@ All of these use Qwen3-32B on seat-198 (TP=4, the whole chip, 8K context). Every
   `fix_name()` now corrects. 7 of 8 described plans also added `t.reshape` / `t.permute`, which a
   tiled matmul doesn't need.
 
-### The whole agent, levels 5–8
+#### The whole agent, levels 5–8
 
 - **Agent:** agent2 at `e4edc8c`, with the default settings: 2 threads, up to 4 approaches and 80
   model calls per level.
@@ -56,9 +79,9 @@ All of these use Qwen3-32B on seat-198 (TP=4, the whole chip, 8K context). Every
 | Level | Operation | Result | Best | Why it stopped | Checks | Model calls | Time |
 |---|---|---|---|---|---|---|---|
 | 5 | matmul, loads hoisted | **not solved** | 0.62 (1 of 4 shapes) | all 4 approaches used up | 28 | 52 (planner 8, coder 28, debugger 16) | 14 min |
-| 6 | matmul, M and N blocked | running since 22:43 UTC | 0.62 so far: right values on 2 of 4 shapes (it loops over K), but one moves 1.5× the minimum bytes, over the 1.25× limit | | | | |
-| 7 | matmul, M, N and K blocked | queued | | | | | |
-| 8 | single-head attention | queued | | | | | |
+| 6 | matmul, M and N blocked | not finished at ~22:50 UTC | 0.62 so far: right values on 2 of 4 shapes (it loops over K), but one moves 1.5× the minimum bytes, over the 1.25× limit | | | | |
+| 7 | matmul, M, N and K blocked | not run yet | | | | | |
+| 8 | single-head attention | not run yet | | | | | |
 
 **Level 5 hit the same wall as `agent.py` at level 4:**
 - All 4 approaches ran one `nc_matmul` on whole-input tiles.
@@ -67,11 +90,11 @@ All of these use Qwen3-32B on seat-198 (TP=4, the whole chip, 8K context). Every
   128`.
 - No plan tiled M, N and K.
 
-**The whole agent on levels 1–4** (`agent2.py --all`, same settings) started at 22:47 UTC. Its results
-go here when it finishes.
+A 32B run of levels 1–4 started at 22:47 UTC and had not finished when this was written.
 
 **Kernels:** each level's best kernel is in [`kernels/`](kernels/), with its score and the checker's
-message in the header. They are the agent's output, not reference kernels.
+message in the header (`_8b` in the name for the Qwen3-8B runs). They are the agent's output, not
+reference kernels.
 
 ## The ladder
 
@@ -114,7 +137,7 @@ python agent.py --all --rounds 8 --samples 4 --repeat 3              # the basel
 
 Switches for A/B runs: `--no-lookup`, `--no-docs-request`, `--no-skeleton`, `--index names`,
 `--cards introspect`, `--hint` and `--aws-docs`. Each one is described in `python agent2.py --help`.
-A run takes several minutes per level on the 8B server (a level-1 run: ~6 minutes, 39 model calls).
+On the 8B server, levels 1–4 took 16.5 minutes in one run (level 4 alone took 10).
 
 ## How agent2 works
 
@@ -122,8 +145,8 @@ agent2 works on one level at a time. A **manager** runs a few **threads**, each 
 it plans, writes a kernel, checks it, fixes it and checks again, until the kernel is correct or a stop
 rule ends the thread. The manager then starts a new approach, telling the planner what has failed.
 
-Four of the six roles are plain code. Only the planner, coder and debugger call the model, and the
-reviewer does at levels 5–7.
+The manager and the retriever are plain code. The planner and coder always call the model. The
+debugger and reviewer try a rule first, and call the model only when no rule fits.
 
 ```mermaid
 flowchart TD
@@ -187,9 +210,9 @@ STEPS: <3 to 6 numbered steps>
 ```
 
 A real name written under the wrong module (`nl.reshape` for the tile method `t.reshape`) is corrected.
-A plan with names that don't exist is sent back with the closest real names. A plan using the same set
-of functions as another thread's is sent back with "choose a different algorithm". The plan is the one
-place threads are made to differ.
+A plan with names that don't exist is sent back with the closest real names. A plan too close to another
+thread's (a near-identical description, or the same functions and a similar one) is sent back with
+"choose a different algorithm". The plan is the one place threads are made to differ.
 
 **Retriever** (`agents2/retriever.py`, `agents2/lookup.py`, code). Answers each `LOOKUP: a, b, c`.
 Sources, most trusted first:
@@ -199,8 +222,9 @@ Sources, most trusted first:
 
 AWS's docs in `third_party/` are written for nki 0.4.0 and are off unless `--aws-docs` is set. Cards that
 come close to a level's answer are withheld at that level. Lookup rounds: planner 2, coder 1, debugger 1.
-The agents **pull** documentation. Nothing is pushed into a first prompt beyond the problem statement:
-an API card in every prompt once sent 100% of level-1 attempts to `nc_matmul`.
+The agents **pull** documentation. Beyond the problem statement, a first prompt carries only the name
+index and, for the coder, the organisers' example kernel: an API card in every prompt once sent 100% of
+level-1 attempts to `nc_matmul`.
 
 **Coder** (`agents2/coder.py`, model, temperature 0.7). Three modes, each a fresh prompt:
 - **write:** the task, the organisers' example kernel (a copy kernel that computes nothing), the plan, and
@@ -208,7 +232,8 @@ an API card in every prompt once sent 100% of level-1 attempts to `nc_matmul`.
 - **apply:** the current kernel, the error and its line, and exactly one change from the debugger;
 - **improve** (levels 5–7): a correct kernel, its byte counts, and one improvement from the reviewer.
 
-If the coder returns the kernel unchanged (an *echo*), it is retried once, hotter, with a different change.
+If the coder returns the kernel unchanged (an *echo*), the debugger is asked for a different change and
+the coder tries again, hotter. This happens once per distinct failure.
 
 **Checks** (`agents2/checks.py`, code). Run in worker processes with a 180 s timeout, and stop at the first
 failure. Each failure is given a kind (`agents2/errors.py`: invented name, wrong keyword, shape mismatch,
@@ -275,7 +300,7 @@ Each run writes `runs/<tag>/`:
 | `agent.py` | the organisers' agent, with our fixes on branch `31p`: the baseline |
 | `nkibench.py` | the organisers' ladder and checker (layer 1, the simulator) |
 | `reference_level1.py` … `reference_level4.py` | reference kernels for levels 1–4 |
-| `kernels/` | the best kernel agent2 wrote at each level (Qwen3-32B runs), with its score; not references |
+| `kernels/` | the best kernel agent2 wrote at each level (`_8b`: Qwen3-8B; others: Qwen3-32B), with its score; not references |
 | `tests/` | unit tests |
 
 Never show `nki_cheatsheet_check.py` or `agents2/cards_check.py` to the agent: their test kernels are close
@@ -288,8 +313,13 @@ to answers.
 - **Checks to debugger:** a rule matches the wording of an error, not its cause. On one level-1 thread,
   `nl.copy(tile, x)` (written in `nisa` style; `nl` calls return a tile) was read as "`dtype` given twice".
   The coder added an argument, then removed it, and the thread ended `cycling`.
-- **Debugger to coder:** a change that only describes the failure is often echoed back unchanged.
-  Echoes ended 3 of 4 threads in one level-1 run.
+- **Debugger to coder:** a change that only describes the failure was often echoed back unchanged:
+  echoes ended 3 of 4 threads in one level-1 run. Since `bd24ef1` such failures go to the debugger's
+  model, and the next level-1 run had 4 echoes instead of 12.
+- **Where the data lives:** half the failures in one level-1 run computed on data still in HBM. The
+  kernel allocated an SBUF tile, then reused the name for a reshaped view of the input.
+- **The checker is lenient about the output:** the solved level-1 kernel returns an SBUF tile, and
+  `nkibench` accepts it.
 - **Unrecognised errors:** 24 of 100 agent2 attempts had errors no rule knows, such as `dma_transpose`
   axes and `nl.tile_size` used as a number.
 - **The score:** 0.50 only means the kernel ran. One 0.50 kernel never read its input.
