@@ -1,6 +1,7 @@
 # VeriLoop — one-page note
 
-**Team:** Six_Seven (registered as The Token Wasters), with **Claude** (Anthropic, via Claude Code) as an AI teammate · **Event:** Hack the Chip, NYU × Annapurna Labs, 2026-10-10
+**Team:** Six Seven (team 7) — Krish Mehta (km6152@nyu.edu, built the project with Claude Code), Dhriti
+Vaidya, Smruthi Ramesh, Manish Reddy, Bhagavan Madala, Ankit Singh — names, emails and contributions in `README.md` · **Event:** Hack the Chip, NYU × Annapurna Labs, 2026-10-10
 **Code, data and every attempt:** this repo · checker write-up: [`CHECKER.md`](CHECKER.md)
 
 > **DRAFT — only the 12-round level-4 row (⏳) is still to fill, when those runs finish (~4:45 pm).**
