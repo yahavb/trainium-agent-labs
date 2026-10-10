@@ -36,11 +36,12 @@ SOURCES = {
 }
 # run_comparison.py names its per-arm logs <arm>-r<repeat>.jsonl: attempt logs, though not named attempts*.
 COMPARISON_LOG = re.compile(r"^(referee|model_alone|random_search)-r\d+\.jsonl$")
-# Single log files, by glob, copied one by one: P1's v2, continuation and recovery runs each write
-# pilot.jsonl into their own /tmp folder, beside full repo snapshots whose results files must not be
-# collected twice.
+# Single log files, by glob, copied one by one: P1's v2 runs each write pilot.jsonl into their own /tmp
+# folder, beside full repo snapshots whose results files must not be collected twice. P1's continuation
+# and recovery runs (/tmp/p1-qwen-continuation-*, /tmp/redteam-recovery-*) are left out on purpose: they
+# start from the 1.517x winner, not the start kernel, and neither went beyond it.
 POD_FILES = {
-    100: ("/tmp/p1-qwen-v2-*/pilot.jsonl", "/tmp/p1-qwen-continuation-*/pilot.jsonl", "/tmp/redteam-recovery-*/pilot.jsonl"),
+    100: ("/tmp/p1-qwen-v2-*/pilot.jsonl",),
 }
 
 

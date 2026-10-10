@@ -70,7 +70,7 @@ OPTIONAL_ARMS = {"referee_continuation", "referee_redteam_recovery", "referee_v2
                  "referee_v5", "referee_later", "model_alone_v2"}
 ARM_LABEL = {"referee_continuation": "Qwen winner continuation", "referee_redteam_recovery": "Qwen P3 recovery", "referee": "Referee v1", "referee_v2": "Referee v2 (P1)",
              "referee_v2_p1fix": "Qwen + P1 fixes", "referee_v2_p3": "P3 named-error rules (v2)",
-             "referee_v3": "P1 instructions only (v3)", "referee_v4": "P3 rules A-C + P1 (v4)", "referee_v5": "Referee v5",
+             "referee_v3": "P1 instructions only (v3)", "referee_v4": "P3 rules A-C + P1 (v4)", "referee_v5": "P3 rules A-D + P1 (v5)",
              "referee_later": "Referee v6+", "model_alone": "Model alone v1", "model_alone_v2": "Model alone v2",
              "random_search": "Random search"}
 ARM_COLOR = {"referee_continuation": "#ad4d7b", "referee_redteam_recovery": "#697332", "referee": "var(--s1)", "referee_v2": "var(--s4)",
@@ -690,7 +690,7 @@ def panel_progress(summary, results, tune):
         for a in MODEL_ARMS if a not in OPTIONAL_ARMS or any_runs(a)) + "</div>")
     return card("Progress: the model improves the start kernel",
                 "Best verified speedup so far, from the start kernel (1×). Line: median over runs; band: fastest to "
-                "slowest run within each version. Same x = same budget; v1, v2, P1-fix trials, v3, P3 recovery and winner continuation are never pooled. Continuation and P3 recovery start from the verified 1.517x winner, a different prior." + continuation_note(summary),
+                "slowest run within each version. Same x = same budget; treatments are never pooled. A run seeded with the verified 1.517x winner starts from a different prior." + continuation_note(summary),
                 legend + body + tuning_block(tune) + table_view(table(
                     ["Kernel", "Arm", "Runs", "Attempts", "After 25%", "After 50%", "After 75%", "At the end",
                      "Spread at the end"], rows_t, numeric=(2, 3, 4, 5, 6, 7))))
@@ -1406,7 +1406,7 @@ FEEDBACK_ROWS = (
     ("referee_v2_p3", "the error named, with its numbers"),
     ("referee_v3", "P1's named fixes alone, P3's agent"),
     ("referee_v4", "P3's rules A–C on P1's fixes"),
-    ("referee_v5", "a later P3 treatment"),
+    ("referee_v5", "P3's rules A–D on P1's fixes"),
     ("referee_later", "later treatments"),
     ("referee_v2", "P1's multi-change treatment"),
     ("referee_v2_p1fix", "P1's multi-change, revised"),
@@ -1448,7 +1448,7 @@ def hero_feedback(s):
         if a not in BASELINE_ARMS:
             families.setdefault(FAMILY.get(a, ARM_LABEL[a]), []).extend(rs)
     top = max(((name, [x for x in rs if won(x)], rs) for name, rs in families.items()),
-              key=lambda t: (max((x["best_x"] for x in t[1]), default=0), len(t[1])), default=None)
+              key=lambda t: (round(max((x["best_x"] for x in t[1]), default=0), 3), len(t[1])), default=None)   # 3 decimals: timing noise never outranks more successes
     svg = f'<svg viewBox="0 0 {W} {H}" role="img" aria-label="runs per feedback treatment">{"".join(g)}</svg>'
     return svg, dict(base_n=len(base), base_k=sum(1 for x in base if x["best_x"] > 1.0 and x["n_verified"]),
                      top=top)
@@ -1637,7 +1637,7 @@ and on unseen shapes, and faster than the timing noise.</p></div><p class="meta"
 <main>
 <header class="top">
 <div><h1>CHIPBOOST</h1><p class="lede">Qwen3-8B kernel optimization on Trainium: model alone and referee-guided runs.
-V1, consolidated v2, Qwen + P1 fixes, P1 instructions only (v3) and P3 recovery are shown separately; template random search uses an expert prior. Winner continuation and P3 recovery start from the verified 1.517x candidate, a different prior from start-kernel trials; speedups remain relative to the original baseline.
+V1, P1's v2, Qwen + P1 fixes and P3's v2 to v5 are shown separately; template random search uses an expert prior. A run seeded with the verified 1.517x candidate would be a different prior from start-kernel trials; speedups remain relative to the original baseline.
 A speedup counts only if the referee verifies it: correct on the chip and on unseen shapes, and faster than the noise.</p></div>
 <p class="meta">{esc(meta)}</p>
 </header>
