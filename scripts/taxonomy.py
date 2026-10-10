@@ -97,20 +97,45 @@ def error_line(feedback):
     return re.sub(r"\s+", " ", s)[:110]
 
 
+def _samples_per_round(rows):
+    """The usual number of attempts in one (level, round): --samples. Each round logs exactly that
+    many, so it marks where a run ends when two runs meet at the same round number."""
+    sizes, prev = collections.Counter(), None
+    n = 0
+    for r in rows:
+        key = (r["level"], r["round"])
+        if key != prev and prev is not None:
+            sizes[n] += 1
+            n = 0
+        prev, n = key, n + 1
+    if n:
+        sizes[n] += 1
+    return sizes.most_common(1)[0][0] if sizes else 1
+
+
 def load_attempts(paths):
-    """Attempts grouped into episodes: one (file, run, level) is one attempt at one level."""
+    """Attempts grouped into episodes: one (file, run, level) is one attempt at one level.
+
+    New logs carry a run field. Older ones are split by order: a new run starts when the level goes
+    down (--all starts over), when the round goes down (--level N --repeat starts over), or when a
+    round already holds --samples attempts (two runs solved in round 0 back to back, which happens
+    once a log is split by level)."""
     episodes = collections.OrderedDict()
     for fi, path in enumerate(paths):
-        run, prev = 0, None
-        for line in open(path):
-            r = json.loads(line)
+        rows = [json.loads(line) for line in open(path) if line.strip()]
+        per_round = _samples_per_round(rows)
+        run, prev, filled = 0, None, 0
+        for r in rows:
+            key = (r["level"], r["round"])
             if "run" in r:
                 run = r["run"]
-            elif prev is not None and (r["level"] < prev[0] or
-                                       (r["level"] == prev[0] and r["round"] < prev[1])):
-                run += 1          # older logs: --all starts over at the lowest level, and
-                                  # --level N --repeat starts over at round 0
-            prev = (r["level"], r["round"])
+            elif prev is not None and (key[0] < prev[0] or
+                                       (key[0] == prev[0] and key[1] < prev[1]) or
+                                       (key == prev and filled >= per_round)):
+                run += 1
+                filled = 0
+            filled = filled + 1 if key == prev else 1
+            prev = key
             episodes.setdefault((fi, run, r["level"]), []).append(r)
     return episodes
 
