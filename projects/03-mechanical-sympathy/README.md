@@ -3,6 +3,17 @@
 This project checks Samudra inference against a CPU reference and then improves
 the same workload on AWS Trainium.
 
+
+### Temperature
+
+![Eight-year ocean temperature evaluation at 2.5 m, 105 m, and 550 m: OM4, Samudra v2, and their difference](results/eight-year-evaluation-2026-10-10/samudra_v2_temperature_three_depths.gif)
+
+### Current speed
+
+![Eight-year current-speed evaluation at 2.5 m, 105 m, and 550 m: OM4, Samudra v2, and their difference](results/eight-year-evaluation-2026-10-10/samudra_v2_speed_three_depths.gif)
+
+
+
 ## Experiment contract
 
 The CPU implementation defines correctness. The first correct Trainium result
@@ -199,14 +210,6 @@ These animations compare the saved NVIDIA Samudra v2 baseline rollout
 The columns show **surface (2.5 m), shallow (105 m), and mid-depth (550 m)**.
 The rows show the OM4 reference, Samudra v2, and the model minus the reference,
 with an area-weighted RMSE for each depth.
-
-### Temperature
-
-![Eight-year ocean temperature evaluation at 2.5 m, 105 m, and 550 m: OM4, Samudra v2, and their difference](results/eight-year-evaluation-2026-10-10/samudra_v2_temperature_three_depths.gif)
-
-### Current speed
-
-![Eight-year current-speed evaluation at 2.5 m, 105 m, and 550 m: OM4, Samudra v2, and their difference](results/eight-year-evaluation-2026-10-10/samudra_v2_speed_three_depths.gif)
 
 Temperature is in °C; current speed is `sqrt(uo² + vo²)` in m/s. Colors stay
 fixed through time. Current speed uses square-root colors to make weak currents
