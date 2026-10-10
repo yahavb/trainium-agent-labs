@@ -158,6 +158,14 @@ def grade(source, level):
             failures.append((nkibench.label(case, level),
                              enrich(f"raised {type(e).__name__}: {e}{loc}", level)))
             continue
+        if got is None or np.ndim(got) == 0:
+            # Measured on level 8: a reply that looped on one comment line until the token limit left
+            # a body that does nothing; it "ran", returned nothing, and scored 0.50 -- above every
+            # honest attempt at 0.30, so the loop carried it forward. Returning nothing is not running.
+            failures.append((nkibench.label(case, level),
+                             "returned nothing: the kernel must compute into an nl.shared_hbm tensor and "
+                             "end with `return out`."))
+            continue
         parts["runs"] = True
         m = (nkibench.check_inputs_untouched(before, args)
              or nkibench.describe_mismatch(got, want)
@@ -971,6 +979,13 @@ def solve(a, level, log):
             if not dup:   # review finding: identical samples were each simulated again
                 cache[src] = grade(src, level)
             reward, parts, feedback = cache[src]
+            if getattr(reply, "meta", {}).get("finish") == "length":
+                # Cut off at the token limit: measured, these are repetition loops (one comment line
+                # written ~100 times), never a finished kernel. Keep them below honest attempts.
+                reward = min(reward, WEIGHTS["parses"] + WEIGHTS["rules"])
+                feedback = ("Your reply was cut off at the token limit: it repeated the same lines instead "
+                            "of finishing the kernel. Send the complete kernel, with short or no comments. "
+                            "Last checker result: " + feedback)
             graded.append((reward, src, feedback, parts, k))
             records.append(dict(level=level, run=getattr(a, "_run", 0), round=rnd, sample=k,
                                 temperature=temps[k], framing=(k % len(FRAMINGS)) if getattr(a, "prompt_portfolio", False) else 0,

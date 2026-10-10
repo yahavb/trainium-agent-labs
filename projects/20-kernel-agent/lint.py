@@ -329,6 +329,11 @@ def lint_kernel(source):
                 issues.append(f"{at(node)} -- psum tile {t} has {size(dims[1])} columns; one psum bank holds "
                               f"at most 512 fp32 per row. Split the free axis into blocks of 512.")
 
+    for fn in kernels:                 # a cut-off reply leaves a kernel that never returns its output
+        if not any(isinstance(n, ast.Return) and n.value is not None for n in ast.walk(fn)):
+            issues.append(f"line {fn.lineno}: `def {fn.name}(...)` -- the kernel never returns. Write the "
+                          f"result into an nl.shared_hbm tensor and end with `return out`.")
+
     # Invented instructions and keywords. Measured: ~15% of failures were names the model made up
     # (nisa.sum, transpose_stationary=True), and the simulator reports only the first one per round.
     if _nisa is not None:
