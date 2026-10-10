@@ -273,6 +273,30 @@ level-1 solve (v8) was claimed VERIFIED by both verdicts, and it holds: held-out
 cases, lowered for trn2, re-audit PASS.
 ([analysis/round2_v7/](analysis/round2_v7/README.md))
 
+**Beyond the simulator: the full build and the chip.** The simulator accepts kernels that trn2 cannot run.
+We found four such forms: `nl.divide`, a (rows, 1) column passed to `tensor_tensor`, a compute
+instruction on one partition starting at partition c (level 1's per-channel reduce, a level-2 per-row
+copy), and tiles beyond on-chip limits (the allocation audit, §2). So solves were also built in full for
+trn2 (neuronx-cc to a NEFF, then birsim, the compiler's instruction-level simulator) and run on a
+NeuronCore of seat-115. Over three chip runs, 63 kernel-shapes with the organizers' references: every
+kernel that builds ran correctly, every kernel that does not build failed on the chip, and the simulator
+alone passed all of them. This caught our own false claims. v7's verdict lowers but does not build, and it
+called a seat-115 level-2 solve VERIFIED that the full build rejects; all 7 level-1 simulator solves of the
+4090 rehearsal fail the full build too. Hand-in candidates, each written by the model in an agent run and
+not edited:
+
+| level | generated on | simulator | full build + birsim | NeuronCore | held-out |
+|---|---|---|---|---|---|
+| 1 | 4090 stand-in, v7 + level-1 rule | 4/4 | yes | 4/4 | 20/20 |
+| 1 | Trainium (seat-115), v7 + rule (rule not fired) | 4/4 | yes | not run | 20/20 |
+| 2 | 4090 stand-in, v7 | 4/4 | yes | 4/4 | 16/16 |
+| 3 | Trainium (seat-115), v7 | 1/1 | yes | 1/1 | 4/4 |
+| 4 | Trainium (seat-115), v7 | 4/4 | yes | 4/4 | 16/16 |
+
+Levels 9 and 11 (liuyq's operations) pass the first three as well. The level-1 rule turned held kernels
+into ones that build: 4/10 runs vs 0/30 without it (4090 generation, every solve built on seat-115).
+([analysis/seat115_chip_and_l1rule.md](analysis/seat115_chip_and_l1rule.md))
+
 Baseline, scored after the fact with the same confidence function: the 3 solved runs said 0.90 and all
 passed the held-out set; the 17 unsolved said 0. Brier 0.001, or 0.010 over the 3 real predictions; no
 confident-but-wrong claim. The replication adds 2 more solves, both 0.90 and both passing the held-out set.
@@ -377,9 +401,14 @@ took 81 s.
   explicitly and re-graded earlier runs under it. ([analysis/sim_target_check.md](analysis/sim_target_check.md))
 - **A deterministic server.** The seat's model server returns the same text for the same request, whatever the
   temperature, so repeated runs of one configuration are mostly copies, and "5/5" can mean one trajectory five times. We report distinct
-  trajectories next to every rate. A request with a `seed` parameter returned HTTP 500 and took the server down once.
-- **Simulator numbers.** Every score comes from `nki.simulate` on a CPU. [[TBD: which hand-in kernels were
-  also compiled for trn2 and run on a NeuronCore]]
+  trajectories next to every rate. On seat-115 (`--max-num-seqs 8`) sampling was applied (six identical
+  requests at temperature 1.0 gave six different answers), but samples still repeated far more than on a
+  GPU: 50% of sample pairs identical in first rounds and 87% in repair rounds, against 1% and 54% on an
+  RTX 4090. A request with a `seed` parameter returned HTTP 500 and took the server down once.
+- **Simulator numbers.** Every score comes from `nki.simulate` on a CPU. The hand-in candidates for
+  levels 1-4, 9 and 11 were also built in full for trn2 and run on a NeuronCore (§5); no other score was.
+  [[TBD: the final run's kernels, if built]] Chip timing was not measured: a standalone call costs ~1.5 s
+  of launch.
 - **Five runs per cell, and fewer distinct trajectories.** A 3/5 against a 4/5 is noise.
 - **Level 3 has one loop shape**, because the organizers' reference asserts it; its held-out cases change
   only the values.
@@ -388,7 +417,10 @@ took 81 s.
   been tested on a single loop shape, which the level's own contract fixes, so it said 0.63 for five kernels
   that were all right.
 - **Part of each solution comes from the checker.** Code-form messages are pasted by the model (§3, §8),
-  and the level-1 example is a strong hint (§3).
+  and the level-1 example is a strong hint (§3). The compiler gate goes furthest: once a kernel passes every
+  shape, a form trn2 rejects is rewritten as code from the model's own lines (for level 1, the
+  per-channel loop as one instruction over all channels). Rules come from logged failures and were checked
+  with the full trn2 build; no reference or answer kernel is used.
 - **v7 is a bundle of layers**, and only part of it is explained: the ablation (§3) shows level 3 rests on the
   worked example alone and level 4 on no single layer; what each layer does on levels 1 and 2 we did not ablate.
 - **Levels 9–14 are liuyq's own held-out operations**, not the official ladder, and are reported apart from it.
@@ -402,6 +434,7 @@ took 81 s.
 | feedback layers v2–v7, the compiler gate with its level-1 rule, the verdict, levels 9–14 | liuyq | `feedback_v2.py` … `feedback_v7.py`, `gate_nki.py`, `verdict_nki.py`, `ops07.py`, `ops08.py`, [V7.md](projects/02-kernel-agent/V7.md) |
 | checker additions: allocation audit, a fresh file per candidate, the held-out set and its mutants, confidence and calibration, token accounting, taxonomy and reports | teoguo | `nkibench.py`, `agent.py`, `scripts/`, [EVAL.md](projects/02-kernel-agent/EVAL.md), [CHECKER.md](projects/02-kernel-agent/CHECKER.md) |
 | experiments A, E-F, E-div, v8 and v8.1, the ablation, this write-up | teoguo | `feedback_v8.py`, [V8.md](projects/02-kernel-agent/V8.md), [PLAN.md](PLAN.md), [NOTES.md](NOTES.md) |
+| full trn2 builds, runs on a NeuronCore, the level-1 rule's live test (4090 stand-in), hand-in candidates | liuyq | [analysis/seat115_chip_and_l1rule.md](analysis/seat115_chip_and_l1rule.md), `check/compile_solves7.py`, `check/device_check.py` |
 | seats 115–119, runs, re-audits | the team | [analysis/logs/](analysis/logs/README.md) |
 
 Most code, analysis and text on teoguo's side was produced with Claude Code sessions that the team directed
@@ -411,9 +444,13 @@ repository from a logged run.
 **Where a number comes from.**
 
 - *Simulator* (`nki.simulate`, trn2 target): every score, solve rate and held-out result.
-- *trn2 compiler*: v7's verdict lowers each solve for trn2; the level-1 solve lowered.
+- *trn2 compiler*: v7's verdict lowers each solve for trn2; the level-1 solve lowered. A lowering is not a
+  full build: every solve of liuyq's seat-115 runs and of the 4090 level-1 test was also built in full
+  (neuronx-cc + birsim), which rejects forms the lowering passes (§5).
   [[TBD: full builds of the final solves, if run]]
-- *On a NeuronCore*: liuyq ran solved kernels for levels 2, 3, 4, 9 and 11 on the chip (183b384).
+- *On a NeuronCore*: liuyq ran 63 kernel-shapes on seat-115's chip in three runs, the hand-in candidates
+  for levels 1-4, 9 and 11 among them, with the organizers' references as controls; the full build
+  predicted every result (§5, [analysis/seat115_chip_and_l1rule.md](analysis/seat115_chip_and_l1rule.md)).
   [[TBD: final hand-in kernels, if run]]
 - *Measured or inferred.* Rates, counts and timings are measured. Explanations (why the skeleton failed, why
   level 2 repairs never succeed) are our reading of the logs, and each one points to the log it rests on.
@@ -426,5 +463,6 @@ repository from a logged run.
 | results table | [[TBD: analysis/summary_final.md]] |
 | checker, eval set, tolerance | [CHECKER.md](projects/02-kernel-agent/CHECKER.md), [EVAL.md](projects/02-kernel-agent/EVAL.md), `nkibench.py` |
 | agent | `agent.py`, `feedback_v2.py` … `feedback_v7.py`, [V7.md](projects/02-kernel-agent/V7.md) |
-| hand-in kernels, one per level | [[TBD: nki_kernels/]] |
+| hand-in kernels, one per level | [[TBD: nki_kernels/]]; candidates already built and run on the chip: [analysis/seat115_chip_and_l1rule.md](analysis/seat115_chip_and_l1rule.md) |
+| full builds and chip runs, with the exact kernels | [analysis/logs/chip_seat115/](analysis/logs/chip_seat115/), `seat115_v7/compile.txt`, `task15_4090_l1rule/*_solves.log` |
 | how we ran the day | [PLAN.md](PLAN.md), [NOTES.md](NOTES.md) |
