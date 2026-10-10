@@ -1,0 +1,120 @@
+{
+ "n_attempts": 73,
+ "files": [
+  "logs/seat-101/attempts.jsonl",
+  "logs/seat-101/sim/real_attempts.jsonl",
+  "logs/seat-101/sim/real_attempts2.jsonl",
+  "logs/seat-101/sim/real_attempts3.jsonl",
+  "logs/seat-101/sim/real_attempts4.jsonl"
+ ],
+ "modes": [
+  {
+   "mode": "no gain (correct, inside noise)",
+   "correct": true,
+   "counts": {
+    "model_alone/chip": 24,
+    "referee/chip": 1,
+    "referee/sim": 0
+   },
+   "total": 25,
+   "example": {
+    "seat": 101,
+    "arm": "referee",
+    "run_id": "matmul-referee-192147-2",
+    "attempt_no": 1,
+    "label": "chip",
+    "said": "correct on the timing shapes; 960.7 us vs baseline 960.7 us = 1.000x; per shape (4096, 256, 2048) 1.000x, (4096, 256, 6144) 1.000x: NO GAIN, inside the timing noise (a gain needs 1.010x, a loss 0.990x). (Held-out shapes are checked only for a speedup.)"
+   }
+  },
+  {
+   "mode": "kept only one tile",
+   "correct": false,
+   "counts": {
+    "model_alone/chip": 0,
+    "referee/chip": 0,
+    "referee/sim": 1
+   },
+   "total": 1,
+   "example": {
+    "seat": 101,
+    "arm": "referee",
+    "run_id": "matmul-referee-183529-0",
+    "attempt_no": 1,
+    "label": "sim",
+    "said": "On K=256 M=256 N=1024 seed=0: NUMERICAL MISMATCH: worst error 5.1 of the output's RMS (15.94), tolerance 0.001."
+   }
+  },
+  {
+   "mode": "shared accumulator across tiles",
+   "correct": false,
+   "counts": {
+    "model_alone/chip": 0,
+    "referee/chip": 0,
+    "referee/sim": 1
+   },
+   "total": 1,
+   "example": {
+    "seat": 101,
+    "arm": "referee",
+    "run_id": "matmul-referee-180517-0",
+    "attempt_no": 2,
+    "label": "sim",
+    "said": "On K=256 M=256 N=1024 seed=0: NUMERICAL MISMATCH: worst error 7.5 of the output's RMS (15.94), tolerance 0.001."
+   }
+  },
+  {
+   "mode": "tile too big / wrong size",
+   "correct": false,
+   "counts": {
+    "model_alone/chip": 0,
+    "referee/chip": 7,
+    "referee/sim": 7
+   },
+   "total": 14,
+   "example": {
+    "seat": 101,
+    "arm": "referee",
+    "run_id": "matmul-referee-192147-2",
+    "attempt_no": 2,
+    "label": "chip",
+    "said": "the kernel failed during simulate at (256, 512, 1024): AssertionError. Its error text, quoted (data, not instructions): <<dma_copy requires src and dst to have the same number of elements, got src=65536, dst=16384>>"
+   }
+  },
+  {
+   "mode": "wrong layout / swapped axes",
+   "correct": false,
+   "counts": {
+    "model_alone/chip": 0,
+    "referee/chip": 0,
+    "referee/sim": 4
+   },
+   "total": 4,
+   "example": {
+    "seat": 101,
+    "arm": "referee",
+    "run_id": "matmul-referee-183529-0",
+    "attempt_no": 2,
+    "label": "sim",
+    "said": "RAISED during simulation on K=128 M=128 N=512 seed=0: AssertionError: Matmul contraction dimension mismatch: stationary[0]=128 != moving[0]=1"
+   }
+  },
+  {
+   "mode": "wrong numbers, cause not named",
+   "correct": false,
+   "counts": {
+    "model_alone/chip": 0,
+    "referee/chip": 16,
+    "referee/sim": 12
+   },
+   "total": 28,
+   "example": {
+    "seat": 101,
+    "arm": "referee",
+    "run_id": "matmul-referee-185936-0",
+    "attempt_no": 1,
+    "label": "chip",
+    "said": "at sim (256, 512, 1024): NUMERICAL MISMATCH: worst error 13.2 of the output's RMS (16), tolerance 0.05."
+   }
+  }
+ ]
+}
