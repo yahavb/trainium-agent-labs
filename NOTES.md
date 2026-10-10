@@ -1,6 +1,6 @@
 # 黑客松笔记（Trainium agent labs）
 
-**我的座位：seat-116**（trn2，pod Running；模型 server 尚未启动）
+**座位**：每人一个 pod，命令里的 `<N>` 换成**你自己的座位号**（队长 teoguo = seat-116）。不要进别人的座位。
 
 > 来源：`README.md`、`STATE.md`、`projects/02-kernel-agent/README.md`、`projects/02-kernel-agent/CHALLENGE-kernel-agent.md`。
 > 一句话核心：**决定 agent loop 好坏的是 checker，不是模型。** 「错了，偏差 341%」是真话但没用；「sin(pi·x) 这一项根本不该出现」才是能执行的指令。
@@ -28,7 +28,7 @@
 
 **README Part 4（任何项目都要）：**
 1. **你的 checker**，以及它接受/拒绝什么的理由（这是主办方要留下的东西）。
-2. **attempt log**：每次尝试 + 分数（agent 已经写到 `attempts.jsonl`；`scripts/sync.sh 116 pull` 拉回本地 `runs/`）。
+2. **attempt log**：每次尝试 + 分数（agent 已经写到 `attempts.jsonl`；`scripts/sync.sh <N> pull` 拉回本地 `runs/`）。
 3. **一页说明**：跑了什么、在什么上跑、结果如何——**包括跑了几次、分布（spread）是多少**。
 
 **CHALLENGE-kernel-agent.md（选 kernel agent 题时）：**
@@ -86,8 +86,8 @@
 ```bash
 # 1) 粘贴频道里的 macOS/Linux 凭证块（export AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_SESSION_TOKEN）
 # 2) 连上自己的座位
-scripts/connect.sh 116
-kubectl exec -it seat-116 -- bash
+scripts/connect.sh <N>
+kubectl exec -it seat-<N> -- bash
 ```
 
 ### pod 里，终端 1：起模型
@@ -108,9 +108,9 @@ tail -f run.log                                   # 这就是 baseline，记下�
 
 ### 本机：同步
 ```bash
-DRY_RUN=1 scripts/sync.sh 116 push             # 先看会推哪些文件
-scripts/sync.sh 116 push                       # 本地改的 projects/ 文件 → pod /workspace
-scripts/sync.sh 116 pull                       # pod 的 run*.log / *.jsonl → runs/seat-116/<时间>/
+DRY_RUN=1 scripts/sync.sh <N> push             # 先看会推哪些文件
+scripts/sync.sh <N> push                       # 本地改的 projects/ 文件 → pod /workspace
+scripts/sync.sh <N> pull                       # pod 的 run*.log / *.jsonl → runs/seat-<N>/<时间>/
 ```
 
 ### 本机：不连集群也能做的 Stage A
