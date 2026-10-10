@@ -106,26 +106,49 @@ there is little M to reuse.
 - That leaves 3.68x of room.
 - At q_norm's 256-byte rows the packed copy is **6.7x** faster than one tile per DMA.
 
-**Held-out grid** (16:40, seat-102 core 2; `results_heldout_matmul.json`). 24 cells: 6 shapes never used for
-tuning, hostile inputs, each kernel timed A/B against start at that shape. Speedup vs start:
+**Held-out grid** (about 17:00, seat-102 core 2; `results_heldout_matmul.json`). 30 cells: 6 shapes never
+used for tuning, hostile inputs, each kernel timed A/B against start at that shape. The 16:36 run reproduced
+the first four rows to within 0.5%. Speedup vs start:
 
 | Kernel | down_proj@256<br>256x6144x4096 | o_proj@256<br>256x2048x4096 | q_proj@512<br>512x4096x2048 | gate_up@128<br>128x4096x6144 | 640x1280x2560 | kv_proj@1024<br>1024x4096x512 |
 |---|---|---|---|---|---|---|
-| expert (AWS's default caps) | 2.823x | 2.077x | 3.786x | 1.276x | 1.569x | 3.050x |
-| AWS as published | **FAIL**, 4.9 ulps | 2.122x | 3.795x | 1.281x | 1.587x | 2.956x |
-| **best random search** (`m1 n12 k4`, seed 2) | **3.987x** | **2.837x** | 3.800x | **2.342x** | 1.456x | 1.200x |
+| expert (AWS's default caps) | 2.824x | 2.082x | 3.797x | 1.276x | 1.566x | 3.059x |
+| AWS as published | **FAIL**, 4.9 ulps | 2.129x | 3.794x | 1.281x | 1.591x | 2.961x |
+| **best random search** (`m1 n12 k4`, seed 2) | **3.987x** | **2.837x** | 3.797x | **2.342x** | 1.463x | 1.200x |
+| **Qwen's v2 kernel** (1.517x; `kernels/qwen_v2_best.py`) | 1.909x | 1.570x | 1.877x | 1.135x | **1.632x** | 1.196x |
 
-- **The search's best is correct on all 6 unseen shapes.**
-- **Speed is mixed:**
-  - it beats AWS's default on the three other 256- and 128-token shapes: +41%, +37% and +84%;
+- **Qwen's 1.517x kernel survives unseen shapes.** It is correct on all 6 and faster than start on all 6, with
+  a geometric mean of 1.52x, the same as its 1.517x on the timing shapes. At 640x1280x2560 it is the fastest
+  kernel in the grid. It started from the start kernel, not from AWS's expert, so it is below the expert
+  elsewhere.
+- **The search's best is correct on all 6 unseen shapes, but its speed is mixed:**
+  - it beats AWS's default on the three other 256- and 128-token shapes: +41%, +36% and +84%;
   - it ties at q_proj with 512 tokens;
-  - it loses at 640x1280x2560 (-7%), and badly at kv_proj with 1024 tokens (1.20x against 3.05x).
+  - it loses at 640x1280x2560 (-7%), and badly at kv_proj with 1024 tokens (1.20x against 3.06x).
 - **Block sizes tuned at 256 tokens do not transfer to every shape.** One set of caps for all shapes is the
   wrong design; the caps should be chosen per shape, or at least per token count.
-- **Over the six shapes:** a geometric mean of 2.37x against the expert's 2.27x, and a total time of 874 us
-  against 980 us.
+- **Over the six shapes:** a geometric mean of 2.37x for the search's best against the expert's 2.27x, and a
+  total time of 874 us against 979 us.
 - **AWS as published** fails only at K=6144 (4.9 bf16 ulps), as in the earlier grid.
-- **P1's v2 kernel (1.517x)** gets a row once P4 sends its source: `heldout_grid.py --op matmul --kernel v2=<file>`.
+
+**Would Bayesian optimisation have done better?** We replayed both strategies against the sweep's 62 measured
+settings (`tools/bo_replay.py`, 500 seeds each, the same 24-evaluation budget, attempt 0 = the expert):
+
+| Strategy | best after 8 | best after 12 | best after 24 | finds the best setting | within 2% of it by |
+|---|---|---|---|---|---|
+| random search (what we ran) | 1.321x | 1.328x | 1.355x | 33% of runs | evaluation 11 |
+| Bayesian optimisation (GP, expected improvement) | 1.355x | **1.375x** | **1.375x** | **100% of runs** | **evaluation 6** |
+
+- **The replay is faithful to our real runs.** Its random arm matches them: 1 of 3 real runs found the best
+  setting, and their median was 1.352x.
+- **Bayesian optimisation cannot raise the ceiling.** We measured every setting, so 1.375x over the expert is
+  the most any search can find here. What it buys is reliability and budget: every run finds the best, and
+  it is within 2% in about half the evaluations.
+- **This is a replay on measured data, not a chip run.** It treats each setting's one sweep measurement as
+  exact. The timer's roughly 0.4% noise slightly flatters the model-based search.
+- **Where it would pay is per-shape tuning.** The held-out grid shows that tuning has to happen per shape:
+  62 settings × 6 shapes is 372 chip evaluations exhaustively, and about 12 per shape with Bayesian
+  optimisation.
 
 ## 3. Findings worth telling the room
 
@@ -144,7 +167,9 @@ tuning, hostile inputs, each kernel timed A/B against start at that shape. Speed
 2. **AWS's default blocking is mid-pack: #29 of 62 at Qwen3's 256-token shapes** (search discovery). 24 random
    tries reliably land within 4% of the best, 1.325x-1.372x over AWS's default, and one repeat found the best
    outright. **But the winner is shape-specific:** on held-out kv_proj with 1024 tokens it runs at 1.20x,
-   against the default's 3.05x. Tune per shape.
+   against the default's 3.06x. Tune per shape. In a replay on the measured sweep, Bayesian optimisation
+   finds the best setting in every run, against 1 in 3 for random search, but it cannot beat the 1.375x
+   ceiling (`tools/bo_replay.py`).
 3. **Half of every NeuronCore sits idle under a plain launch** (P2 engineering). `kernel[2]` gives 1.50x more on
    the same kernel: 5.0x the start kernel, cross-checked on two clocks. **Not a referee verdict:** P1's timer
    and the referee's correctness check at the timing shapes only.
@@ -221,8 +246,7 @@ Never `git pull` into this folder while a check is running; use a separate clone
 1. ~~Copy seat-102's logs out of the pod and commit them.~~ **Done** (commit 234d059): 134 schema-valid records,
    and `--summarize` on them reproduces the pod's numbers exactly.
 2. ~~Run `heldout_grid.py --op matmul` on each arm's best.~~ **Done** at 16:40 for every arm with a verified
-   kernel (24 cells; section 2). The model arms in git have none. Still to do: P1's v2 kernel row, once P4
-   sends its source.
+   kernel. At about 17:00 it was rerun with Qwen's v2 kernel (30 cells; section 2).
 3. **For P1, their call:** a referee option to launch `kernel[2]`, so LNC=2 kernels get full verdicts and held-out
    checks.
 4. **If time:** a random search at LNC=2. The caps apply per program; `m1 n12 k4` was best at LNC=1.
