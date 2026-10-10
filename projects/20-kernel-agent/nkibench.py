@@ -287,8 +287,8 @@ level(1, "average pooling 2D", "tensor_avgpool_kernel",
      label=lambda sp: f"C,H,W={sp['shape']} pool={sp['pool_size']}")
 
 level(2, "2D transpose", "tensor_transpose2D_kernel_",
-     "layout: a transpose has to cross partitions, and the partition axis is the constrained "
-     "one",
+     "layout: transpose the F1 x F2 matrix held in each partition row's FREE axis; the partition "
+     "axis is untouched (y[p, j*F1 + i] = x[p, i*F2 + j])",
      "the first real one, and it is NOT about compute. A naive transpose moves tiny pieces "
      "and pays a per-transfer issue cost, so the cost is the NUMBER of transfers rather than "
      "the number of bytes. 'It moves a lot of data' is a misdiagnosis here.",
@@ -725,7 +725,10 @@ def simulate_and_count(kernel, args):
             msg = str(w.message).split(". ")[0]
             if msg not in seen:
                 seen.append(msg)
-        counter["warnings"] = seen[:3]
+        # every hardware hazard is kept; only the other warnings are capped (audit: a hazard listed
+        # fourth was silently dropped)
+        hazards = [w for w in seen if "incorrect results on hardware" in w]
+        counter["warnings"] = hazards + [w for w in seen if w not in hazards][:3]
     finally:
         nisa.dma_copy = original
     return out, counter

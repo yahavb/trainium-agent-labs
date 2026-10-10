@@ -246,6 +246,9 @@ def run_case(kernel, spec, level_n, args):
     m = nb.describe_mismatch(got, want, TOL)
     if m is None:
         m = nb.check_inputs_untouched(before, args)
+    if m is None:   # a hardware hazard fails the case even when the CPU numbers match (as in grading)
+        hz = [w for w in rec["warnings"] if "incorrect results on hardware" in w]
+        m = f"CORRECT ON CPU BUT WRONG ON HARDWARE: {hz[0]}" if hz else None
     rec["ok"] = m is None
     rec["msg"] = m
     if counted.get("bytes"):
@@ -373,6 +376,8 @@ def main():
         jpath = os.path.join(a.workdir, f"level{n:02d}.json")
         print(f"=== level {n}", flush=True)
         cmd = [sys.executable, os.path.abspath(__file__), "--level", str(n), "--json", jpath]
+        if os.path.exists(jpath):   # never report an older run's file after a timeout or a crash
+            os.remove(jpath)
         try:
             subprocess.run(cmd, timeout=a.timeout, check=False)
         except subprocess.TimeoutExpired:

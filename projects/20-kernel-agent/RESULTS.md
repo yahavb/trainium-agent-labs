@@ -73,7 +73,7 @@ data, extreme values.
 
 ![Unseen tests](assets/chart_5_unseen.png)
 
-213 pass, and **not a single one gave wrong numbers**. Every failure was a size the program simply doesn't
+210 pass, and **not a single one gave wrong numbers**. Every failure was a size the program simply doesn't
 handle (the matrix programs only work when sizes are exact multiples of 128 or 512).
 
 **Run on the real chip** (`device_check.py`): the level 3, 4, 7, 9 and 10 programs ran on the actual Trainium2
