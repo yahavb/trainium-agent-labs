@@ -473,8 +473,9 @@ repository from a logged run.
 - *Simulator* (`nki.simulate`, trn2 target): every score, solve rate and held-out result.
 - *trn2 compiler*: v7's verdict lowers each solve for trn2; the level-1 solve lowered. A lowering is not a
   full build: every solve of liuyq's seat-115 runs and of the 4090 level-1 test was also built in full
-  (neuronx-cc + birsim), which rejects forms the lowering passes (§5).
-  [[TBD: full builds of the final solves, if run]]
+  (neuronx-cc + birsim), which rejects forms the lowering passes (§5). All five level-1 solves of v8.2 were
+  built in full the same way (`check/compile_solves7.py`, seat 117): 5 of 5 match in birsim, worst error
+  1.9e-7 of the output's RMS. [[TBD: full builds of the other final solves, if run]]
 - *On a NeuronCore*: liuyq ran 63 kernel-shapes on seat-115's chip in three runs, the hand-in candidates
   for levels 1-4, 9 and 11 among them, with the organizers' references as controls; the full build
   predicted every result (§5, [analysis/seat115_chip_and_l1rule.md](analysis/seat115_chip_and_l1rule.md)).
