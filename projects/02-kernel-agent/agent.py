@@ -129,18 +129,8 @@ def grade(source, level):
                              enrich(f"raised {type(e).__name__}: {e}")))
             continue
         parts["runs"] = True
-        m = (nkibench.check_inputs_untouched(before, args)
-             or nkibench.describe_mismatch(got, want)
-             or nkibench.check_traffic_bar(level, counted, args, want))
-        # A simulator warning about a hardware-correctness hazard counts as a failure even when the
-        # numbers happen to match on CPU: the kernel would be wrong on the device.
-        hazards = [w for w in counted.get("warnings", [])
-                   if "incorrect results on hardware" in w]
-        if hazards and not m:
-            m = ("CORRECT ON CPU BUT WRONG ON HARDWARE: " + hazards[0]
-                 + ". Fix that before anything else -- the simulator agrees with the reference here "
-                   "and the device would not.")
-        if m:
+        ok, m, _checks = nkibench.accept_case(level, got, counted, args, before, want)
+        if not ok:
             failures.append((nkibench.label(case, level), m))
             continue
         passed += 1
