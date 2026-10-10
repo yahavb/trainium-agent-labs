@@ -785,10 +785,10 @@ def choose_repair_base(top, best, latest, repeats, archive=None):
     best_reward, best_src, best_feedback, best_parts = best
     if not (top_src or "").strip():
         return latest, "latest_empty"
-    if repeats < 2:
+    if top_reward >= best_reward:
         return (top_src, top_feedback), "latest"
     archived = strongest_archived_candidate(archive or {})
-    if archived and (archived[1] or "").strip() and archived[2] != top_feedback:
+    if archived and (archived[1] or "").strip() and archived[0] > top_reward:
         return (archived[1], archived[2]), "candidate_archive"
     if (best_src or "").strip():
         return (best_src, best_feedback), "best"
@@ -1299,6 +1299,7 @@ def repair_doc_names(category, feedback="", source="", patch_mode=False):
         names = ["patch_format"] + names
     names += ["verifier_interpretation", "common_failures", "namespace_reference", "debugging_playbook",
               "shape_reasoning", "planning_checklist", "repair_strategy"]
+    names += initial_doc_names("full-docs")
     return dedupe(names)
 
 
