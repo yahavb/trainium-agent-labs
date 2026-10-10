@@ -111,7 +111,256 @@ def fixes(code):
                         "nl.divide: compute the reciprocal with nisa.reciprocal, then multiply "
                         "(nisa.tensor_scalar with it as operand0 when it has one value per row)"))
             done.add(node.lineno)
+    out += partition_fixes(code) + dst_shape_fixes(code)
     return sorted(out)
+
+
+# --- l1fix (task 15): two more forms the simulator accepts and the trn2 compiler rejects ---------------
+# Measured on the 17 distinct level-1 simulator solves in the 4090 rehearsal logs, full build on seat-115:
+# 6 loop over channels and give a compute instruction ONE partition starting at partition c ("Invalid
+# access of 1 partitions starting at partition 1 (TensorReduce)", BIR verification); 3 write a dst that
+# holds more elements than the result (tensor_scalar dst (C, p, p) for a (C, 1, 1) sum; tensor_reduce).
+
+LOOPS = {"affine_range", "sequential_range", "static_range", "range"}
+HBM = {"shared_hbm", "hbm", "private_hbm"}
+
+
+def _loop_var(st):
+    it = st.iter
+    if isinstance(st, ast.For) and isinstance(st.target, ast.Name) and isinstance(it, ast.Call):
+        f = it.func
+        name = f.attr if isinstance(f, ast.Attribute) else f.id if isinstance(f, ast.Name) else ""
+        if name in LOOPS and len(it.args) == 1:
+            return st.target.id
+    return None
+
+
+def _hbm_names(tree):
+    names = set()
+    for fn in ast.walk(tree):
+        if isinstance(fn, ast.FunctionDef):
+            names |= {a.arg for a in fn.args.args}
+    for st in ast.walk(tree):
+        if isinstance(st, ast.Assign) and len(st.targets) == 1 and isinstance(st.targets[0], ast.Name) \
+                and isinstance(st.value, ast.Call) and _is(st.value, "nl", "ndarray"):
+            buf = {k.arg: k.value for k in st.value.keywords}.get("buffer")
+            if isinstance(buf, ast.Attribute) and buf.attr in HBM:
+                names.add(st.targets[0].id)
+    return names
+
+
+def _uses(node, var):
+    return any(isinstance(n, ast.Name) and n.id == var for n in ast.walk(node))
+
+
+def _one_partition(sub, var):
+    """Whether subscript `sub` puts loop variable `var` on the partition axis as ONE partition:
+    t[c, ...] or t[c:c + 1, ...]."""
+    idx = sub.slice.elts[0] if isinstance(sub.slice, ast.Tuple) and sub.slice.elts else sub.slice
+    if isinstance(idx, ast.Slice):
+        lo, hi = idx.lower, idx.upper
+        return (lo is not None and hi is not None and _uses(lo, var) and isinstance(hi, ast.BinOp)
+                and isinstance(hi.op, ast.Add) and ast.dump(hi.left) == ast.dump(lo)
+                and isinstance(hi.right, ast.Constant) and hi.right.value == 1)
+    return _uses(idx, var)
+
+
+def _base(e):
+    while isinstance(e, ast.Subscript):
+        e = e.value
+    return e.id if isinstance(e, ast.Name) else None
+
+
+def _dma_only(tree, sub, parents, hbm):
+    """A view that only DMA reads or writes: an argument of nisa.dma_copy, one side of an assignment
+    whose other side is in HBM (`tile[p, i] = x[p, i]` is a DMA), or a name used only in nisa.dma_copy."""
+    par = parents.get(id(sub))
+    if isinstance(par, ast.keyword):
+        par = parents.get(id(par))
+    if isinstance(par, ast.Call) and _is(par, "nisa", "dma_copy"):
+        return True
+    if isinstance(par, ast.Assign) and len(par.targets) == 1 and isinstance(par.targets[0], ast.Subscript) \
+            and (par.targets[0] is sub or par.value is sub) \
+            and (_base(par.targets[0]) in hbm or _base(par.value) in hbm):
+        return True
+    if isinstance(par, ast.Assign) and par.value is sub and len(par.targets) == 1 \
+            and isinstance(par.targets[0], ast.Name):
+        v, uses = par.targets[0].id, []
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Name) and n.id == v and isinstance(n.ctx, ast.Load):
+                p = parents.get(id(n))
+                p = parents.get(id(p)) if isinstance(p, ast.keyword) else p
+                uses.append(isinstance(p, ast.Call) and _is(p, "nisa", "dma_copy"))
+        return bool(uses) and all(uses)
+    return False
+
+
+def _one_cell(sub, first, scalar_to_slice):
+    """sub with its first index replaced by `first`, and each other plain index i made i:i+1."""
+    elts = list(sub.slice.elts) if isinstance(sub.slice, ast.Tuple) else [sub.slice]
+    new = [first]
+    for e in elts[1:]:
+        if scalar_to_slice and isinstance(e, ast.Constant) and isinstance(e.value, int):
+            e = ast.Slice(lower=e, upper=ast.Constant(e.value + 1))
+        elif scalar_to_slice and not isinstance(e, ast.Slice):
+            e = ast.Slice(lower=e, upper=ast.BinOp(left=e, op=ast.Add(), right=ast.Constant(1)))
+        new.append(e)
+    return ast.Subscript(value=sub.value, slice=ast.Tuple(elts=new, ctx=ast.Load()), ctx=sub.ctx)
+
+
+class _AllChannels(ast.NodeTransformer):
+    """The body of `for c in nl.affine_range(C):` with every channel at once: t[c, ...] -> t[:, ...],
+    a (1, ...) allocation -> (C, ...), and `a[c, i, j] = b` -> a copy instruction into a[:, i:i+1, j:j+1]."""
+
+    def __init__(self, var, count, hbm):
+        self.var, self.count, self.hbm, self.ok = var, count, hbm, True
+
+    def visit_Subscript(self, node):
+        self.generic_visit(node)
+        elts = node.slice.elts if isinstance(node.slice, ast.Tuple) else [node.slice]
+        if elts and ((isinstance(elts[0], ast.Name) and elts[0].id == self.var) or (
+                isinstance(elts[0], ast.Slice) and isinstance(elts[0].lower, ast.Name)
+                and elts[0].lower.id == self.var and _one_partition(node, self.var))):
+            return _one_cell(node, ast.Slice(), False)
+        return node
+
+    def visit_Call(self, node):
+        self.generic_visit(node)
+        if _is(node, "nl", "ndarray") and node.args and isinstance(node.args[0], ast.Tuple) \
+                and node.args[0].elts and isinstance(node.args[0].elts[0], ast.Constant) \
+                and node.args[0].elts[0].value == 1:
+            node.args[0].elts[0] = self.count
+        return node
+
+    def visit_Assign(self, node):
+        tgt = node.targets[0] if len(node.targets) == 1 else None
+        if isinstance(tgt, ast.Subscript) and _uses(tgt, self.var):
+            elts = tgt.slice.elts if isinstance(tgt.slice, ast.Tuple) else [tgt.slice]
+            if not (elts and isinstance(elts[0], ast.Name) and elts[0].id == self.var):
+                self.ok = False
+                return node
+            dst = _one_cell(tgt, ast.Slice(), True)
+            src = node.value
+            if isinstance(src, ast.Subscript):
+                s0 = src.slice.elts[0] if isinstance(src.slice, ast.Tuple) else src.slice
+                if (isinstance(s0, ast.Name) and s0.id == self.var) or \
+                        (isinstance(s0, ast.Constant) and s0.value == 0):
+                    s_elts = src.slice.elts if isinstance(src.slice, ast.Tuple) else [src.slice]
+                    if all(isinstance(e, ast.Constant) for e in s_elts[1:]):
+                        src = _one_cell(src, ast.Slice(), True)
+                    else:
+                        src = _one_cell(src, ast.Slice(), False)
+            src = self.visit(src)
+            dst.value = self.visit(dst.value)
+            hbm = isinstance(tgt.value, ast.Name) and tgt.value.id in self.hbm
+            call = ast.Call(func=ast.Attribute(value=ast.Name("nisa", ast.Load()),
+                                               attr="dma_copy" if hbm else "tensor_copy", ctx=ast.Load()),
+                            args=[], keywords=[ast.keyword("dst", dst), ast.keyword("src", src)])
+            return ast.copy_location(ast.Expr(call), node)
+        self.generic_visit(node)
+        return node
+
+
+def partition_fixes(code):
+    """A loop variable as the partition index of an on-chip tile (t[c, ...] for c in a loop) gives a
+    compute instruction ONE partition starting at partition c; the trn2 compiler rejects that (BIR
+    verification), the simulator does not. A view that only DMA moves is fine (x[c] from HBM is too)."""
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return []
+    lines = code.splitlines()
+    parents = {}
+    for n in ast.walk(tree):
+        for ch in ast.iter_child_nodes(n):
+            parents[id(ch)] = n
+    hbm = _hbm_names(tree)
+    out = []
+    for loop in ast.walk(tree):
+        var = _loop_var(loop) if isinstance(loop, ast.For) else None
+        if not var:
+            continue
+        bad = [n for st in loop.body for n in ast.walk(st)
+               if isinstance(n, ast.Subscript) and isinstance(n.value, ast.Name) and n.value.id not in hbm
+               and _one_partition(n, var) and not _dma_only(tree, n, parents, hbm)]
+        if not bad:
+            continue
+        tile = bad[0].value.id
+        ind = re.match(r"\s*", lines[loop.lineno - 1]).group(0)
+        old = "\n".join(lines[loop.lineno - 1:loop.end_lineno])
+        fix = _AllChannels(var, loop.iter.args[0], hbm)
+        body = [fix.visit(ast.parse(ast.unparse(st)).body[0]) for st in loop.body]
+        uses_left = any(_uses(st, var) for st in body)
+        new = None
+        if fix.ok and not uses_left and not loop.orelse:
+            new = []
+            for st in body:
+                ast.fix_missing_locations(st)
+                new += [ind + l for l in ast.unparse(st).splitlines()]
+        cnt = ast.get_source_segment(code, loop.iter.args[0])
+        why = (f"`{tile}[{var}, ...]` gives an instruction one partition starting at partition `{var}`; on "
+               f"the chip every compute instruction must start at partition 0. Do all {cnt} rows at once "
+               f"with `{var}` gone: `{tile}[:, ...]`, and (1, ...) tiles become ({cnt}, ...)")
+        out.append((loop.lineno, loop.end_lineno, old, new, why))
+    return out
+
+
+def _shape(tree, name, upto):
+    """The shape of `name` as a tuple of source strings, from its last assignment before line `upto`:
+    nl.ndarray((a, b, ..)) or a keepdims reduction nl.sum/max/min/mean(t, axis=[..], keepdims=True)."""
+    best = None
+    for st in ast.walk(tree):
+        if isinstance(st, ast.Assign) and st.lineno < upto and len(st.targets) == 1 \
+                and isinstance(st.targets[0], ast.Name) and st.targets[0].id == name \
+                and isinstance(st.value, ast.Call) and (best is None or st.lineno > best.lineno):
+            best = st
+    if best is None:
+        return None
+    c = best.value
+    kw = {k.arg: k.value for k in c.keywords}
+    if _is(c, "nl", "ndarray") and c.args and isinstance(c.args[0], ast.Tuple):
+        return tuple(ast.unparse(e) for e in c.args[0].elts)
+    if any(_is(c, "nl", f) for f in ("sum", "max", "min", "mean")) and c.args and isinstance(c.args[0], ast.Name) \
+            and isinstance(kw.get("keepdims"), ast.Constant) and kw["keepdims"].value is True \
+            and isinstance(kw.get("axis"), (ast.List, ast.Tuple)):
+        src = _shape(tree, c.args[0].id, best.lineno)
+        axes = [e.value for e in kw["axis"].elts if isinstance(e, ast.Constant)]
+        if src and len(axes) == len(kw["axis"].elts) and all(0 <= a < len(src) for a in axes):
+            return tuple("1" if i in axes else d for i, d in enumerate(src))
+    return None
+
+
+def dst_shape_fixes(code):
+    """nisa.tensor_scalar / activation / tensor_copy whose dst has a different shape from its input: the
+    simulator writes the first elements, the trn2 compiler rejects it ('dst' free total elements 9 !=
+    'src' free total elements 1)."""
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return []
+    lines = code.splitlines()
+    out = []
+    for st in ast.walk(tree):
+        if not isinstance(st, ast.Expr) or not isinstance(st.value, ast.Call):
+            continue
+        call = st.value
+        kw = {k.arg: k.value for k in call.keywords if k.arg}
+        src_k = ("data" if any(_is(call, "nisa", f) for f in ("tensor_scalar", "activation")) else
+                 "src" if _is(call, "nisa", "tensor_copy") else None)
+        if not src_k or not isinstance(kw.get("dst"), ast.Name) or not isinstance(kw.get(src_k), ast.Name):
+            continue
+        d, s = kw["dst"].id, kw[src_k].id
+        ds, ss = _shape(tree, d, st.lineno), _shape(tree, s, st.lineno)
+        if not ds or not ss or len(ds) != len(ss) or ds == ss:
+            continue
+        if not any((a == "1") != (b == "1") for a, b in zip(ds, ss)):
+            continue                                  # can't tell the sizes apart from the source
+        out.append((st.lineno, st.end_lineno, "\n".join(lines[st.lineno - 1:st.end_lineno]), None,
+                    f"dst `{d}` has shape ({', '.join(ds)}) but `{s}` has shape ({', '.join(ss)}); the chip "
+                    f"needs dst to hold exactly as many elements as `{s}`. Write into a new tile, "
+                    f"`r = nl.ndarray({s}.shape, dtype={s}.dtype, buffer=nl.sbuf)`, and read the result "
+                    f"from `r` afterwards"))
+    return out
 
 
 def lower_error(kernel_src, level, agent):
