@@ -1,65 +1,86 @@
-"""Task-derived, compact hardware plans; no kernel implementations or references."""
+"""Compact task plans generated from the benchmark specification and the installed SDK.
+
+Nothing here is written per operation. Every sentence is computed from the level's
+reference signature and reference outputs on the official shapes, the installed NKI tile
+limits and instruction signatures (only instructions the task prompt itself names, plus
+data movement), and the level's HBM traffic budget. No kernel code is generated.
+"""
+import inspect
+import re
 import sympy as sp
 from nki_knowledge import installed_compatibility,local_token_counter
 from symbolic_shapes import tiling
 
 
-def plan(operation,input_shapes,*,pool_size=None,shape2D=None):
+def tile_limits():
+    import nki.language as nl
+    t=nl.tile_size
+    return dict(partition=int(t.pmax),psum_free=int(t.psum_fmax),stationary_free=int(t.gemm_stationary_fmax),moving_free=int(t.gemm_moving_fmax))
+
+
+def plan(operation,input_shapes,*,output_shape=None,output_dtype=None,max_waste=None):
     compatibility=installed_compatibility()
-    result=dict(operation=operation,input_shapes=input_shapes,hardware='trn2',sdk_version=compatibility['sdk_version'],verification='Task semantics and installed constraints; simulator verification still required.')
-    if not compatibility['sdk_version'].startswith('0.6.0'):return dict(result,status='UNKNOWN',guidance='SDK constraints not verified.')
-    name=operation.lower()
-    if 'matmul' in name:
-        if len(input_shapes)!=2 or len(input_shapes[0])!=2 or len(input_shapes[1])!=2:return dict(result,status='UNKNOWN')
-        K,M=input_shapes[0];Kr,N=input_shapes[1]
-        if K!=Kr:return dict(result,status='PROVEN_INVALID',guidance='Contraction dimensions disagree.')
-        tm,tn,tk=min(M,128),min(N,512),min(K,128)
-        counts={key:tiling(sp.Integer(d),sp.Integer(t)) for key,d,t in [('M',M,tm),('N',N,tn),('K',K,tk)]}
-        result.update(status='PROVEN_VALID',input_layout='stationary [K,M], moving [K,N]',output_shape=(M,N),tile_constraints=dict(M=128,N=512,K=128),tile_counts=counts,requires_tiling=M>128 or N>512 or K>128,requires_accumulation=K>tk)
-        # Load-once structure: simulator-checked at 1.00 with traffic passing on all L4-L7 shapes (max_waste 1.6/1.25/1.05)
-        # using a hand-written kernel that is not part of any prompt; per-(m,n,k) reloads fail L5-L7 traffic bars.
-        result['guidance']='Task plan: lhsT [K,M] stationary, rhs [K,N] moving, output [M,N] in nl.shared_hbm, returned. Read every input element from HBM exactly once (traffic is checked). TK=128, KT=K//TK, TM=min(M,128), TN=min(N,512). Allocate SBUF lhs_all (TK,KT,M) and rhs_all (TK,KT,N); for each k dma_copy rows k*TK:(k+1)*TK of lhsT and rhs into lhs_all[:,k,:] and rhs_all[:,k,:]. Then for each M tile and N tile (nl.affine_range): one FP32 PSUM tile (TM,TN); for k in nl.sequential_range(KT): nisa.nc_matmul(dst=psum, stationary=lhs_all[:,k,M-tile columns], moving=rhs_all[:,k,N-tile columns], accumulate=(k>0)). After the K loop nisa.tensor_copy PSUM to an SBUF tile of the output dtype, then dma_copy it to the matching output slice. No PSUM DMA or memset.'
-    elif 'pool' in name:
-        C,H,W=input_shapes[0];p=pool_size
-        if type(p) is not int or p<=0:return dict(result,status='UNKNOWN')
-        result.update(status='PROVEN_VALID',output_shape=(C,H//p,W//p),reduction_dimensions=('window_height','window_width'),divisor=p*p,normalization_factor=str(sp.Rational(1,p*p)),mathematical_operation='window sum divided by window element count',semantic_invariants=['Preserve channels and output positions', 'Reduce ONLY the two window axes', 'A reshape preserves element count'],appropriate_apis=['nki.language.sum','nki.isa.tensor_reduce','nki.isa.tensor_scalar'],memory_spaces={'input_tiles':'sbuf','output':'shared_hbm'},tile_constraints=dict(partition=128),requires_tiling=C>128)
-        # Cold L1 runs given the earlier (H//p,p) grouping hint invented view APIs (APView, strided_view, arena)
-        # in 20/24 candidates; plain window slicing uses only installed APIs.
-        result['guidance']='Task plan: input [C,H,W], output [C,H//p,W//p], same dtype. Each output averages its own non-overlapping p-by-p window: sum the window, then multiply by 1.0/(p*p). Simplest legal structure: dma_copy x into one SBUF tile [C,H,W] (C<=128 partitions); loop over c, output row and output column with nl.affine_range; take the window with plain Python slices of that tile; nl.sum over ONLY the two window axes (keepdims=True); scale into a new SBUF tile with nki.isa.tensor_scalar(dst=..., data=..., op0=nl.multiply, operand0=1.0/(p*p)) (nisa, NOT nl; never Python tensor division); dma_copy that tile to the matching single output element; return the nl.shared_hbm output. Use only existing APIs: nl.ndarray, nl.affine_range, nl.sum, nisa.dma_copy, nisa.tensor_scalar. No reshape, view or access-pattern helpers. Give executable code, not commentary.'
-    elif 'transpose' in name:
-        P,F=input_shapes[0]
-        if shape2D is None:return dict(result,status='UNKNOWN')
-        F1,F2=shape2D
-        if F1*F2!=F:return dict(result,status='PROVEN_INVALID',guidance='Flattened free extent disagrees with shape2D.')
-        result.update(status='PROVEN_VALID',output_shape=(P,F),input_layout='[P,F1*F2]',output_layout='same P, flattened [F2,F1]',tile_constraints=dict(partition=128))
-        result['guidance']='Task plan: each partition row contains a flattened F1-by-F2 matrix; preserve the P partition and output [P,F1*F2]. Free position r*F2+c maps to c*F1+r within the SAME partition. Load matching HBM/SBUF regions and permute free positions with legal on-chip copies, then store all rows. nl.transpose(x) and nc_transpose swap partition/free axes of a 2D tile; directly transposing the whole [P,F] input does not implement this task. tensor_copy accepts explicit dst/src on-chip views; keep copied slices at least 2D with equal extents.'
-    elif 'attention' in name:
-        if len(input_shapes)!=3 or any(len(s)!=2 for s in input_shapes) or len(set(input_shapes))!=1:return dict(result,status='UNKNOWN')
-        S,D=input_shapes[0]
-        if S>128 or D>128:return dict(result,status='UNKNOWN',guidance='Single-tile attention plan needs S,D<=128.')
-        result.update(status='PROVEN_VALID',output_shape=(S,D),intermediate_shape=(S,S),mathematical_operation='softmax(q k^T / sqrt(D)) v with row-max subtraction',tile_constraints=dict(partition=128))
-        # Structure simulator-checked at 1.00 on all L8 shapes with a hand-written kernel that is not part of any prompt.
-        result['guidance']='Task plan: q, k, v [S,D], S,D<=128; output [S,D] in nl.shared_hbm; scores [S,S] stay on chip. Load q, k, v to SBUF. nc_matmul contracts over partitions: nc_transpose q and k (SBUF to FP32 PSUM [D,S]), copy to SBUF, nc_matmul stationary qT, moving kT into PSUM [S,S], copy to SBUF. Per row: nl.max axis 1 keepdims; bias = max times -1/sqrt(D) via tensor_scalar; activation op nl.exp, that bias, scale 1/sqrt(D); nl.sum axis 1 keepdims; reciprocal. nc_transpose exp; nc_matmul stationary expT, moving v into PSUM [S,D]; tensor_scalar multiply by row reciprocal into SBUF; dma_copy out. nisa calls write dst. nc_matmul takes only dst, stationary, moving, accumulate; stationary and moving must be SBUF tiles, never PSUM; no transpose arguments. No softmax/matmul/dot.'
-    else:return dict(result,status='UNKNOWN',guidance='No verified operation semantics.')
-    result['status_note']='PROVEN_VALID means this mathematical plan is consistent, not a verified generated kernel.'
-    return result
+    result=dict(operation=operation,input_shapes=[tuple(s) for s in input_shapes],output_shape=tuple(output_shape) if output_shape is not None else None,
+                output_dtype=output_dtype,hardware='trn2',sdk_version=compatibility['sdk_version'],max_waste=max_waste,
+                verification='Derived from the benchmark specification and installed SDK; simulator verification still required.')
+    if not compatibility['sdk_version'].startswith('0.6.0'):return dict(result,status='UNKNOWN')
+    limits=tile_limits()
+    over=[dict(input=i,extent=int(shape[0]),tile_count=str(tiling(sp.Integer(int(shape[0])),sp.Integer(limits['partition']))['tile_count']))
+          for i,shape in enumerate(input_shapes) if shape and int(shape[0])>limits['partition']]
+    return dict(result,status='DERIVED',tile_limits=limits,partition_tiling=over,requires_tiling=bool(over))
 
 
 def for_level(level):
     import nkibench
-    spec=nkibench.LEVELS[level];plans=[]
+    spec=nkibench.LEVELS[level];plans=[];names=list(inspect.signature(spec['ref']).parameters)
     for case in spec['shapes']:
         args,_=nkibench.make_inputs(case,level)
-        shapes=[tuple(arg.shape) for arg in args if hasattr(arg,'shape')]
-        plans.append(plan(spec['op'],shapes,pool_size=case.get('pool_size'),shape2D=case.get('shape2D')))
-    return dict(operation=spec['op'],cases=plans,guidance=next((p['guidance'] for p in plans if p.get('guidance') and p.get('status')=='PROVEN_VALID'),''))
+        arrays=[(name,arg) for name,arg in zip(names,args) if hasattr(arg,'shape')]
+        expected=spec['ref'](*args)
+        plans.append(dict(plan(spec['op'],[tuple(a.shape) for _,a in arrays],output_shape=getattr(expected,'shape',None),
+                               output_dtype=str(getattr(expected,'dtype','')),max_waste=spec.get('max_waste')),array_names=[n for n,_ in arrays]))
+    return dict(operation=spec['op'],entry=spec['entry'],cases=plans)
+
+
+def instruction_signatures(text):
+    """Installed signatures of nisa/nl callables the task text names, plus data movement."""
+    import nki.isa as nisa
+    import nki.language as nl
+    named=re.findall(r'\b(?:nisa|nl|nki\.isa|nki\.language)\.(\w+)',text)
+    wanted=list(dict.fromkeys(named+['dma_copy','tensor_copy']))
+    out=[]
+    for name in wanted:
+        module,prefix=(nisa,'nisa') if hasattr(nisa,name) else ((nl,'nl') if hasattr(nl,name) else (None,None))
+        function=getattr(module,name,None) if module else None
+        try:parameters=[p for p in inspect.signature(function).parameters.values() if p.default is inspect.Parameter.empty and p.kind not in (p.VAR_POSITIONAL,p.VAR_KEYWORD)]
+        except (TypeError,ValueError):continue
+        out.append((f"{prefix}.{name}({', '.join(p.name for p in parameters)})",any(p.name=='dst' for p in parameters)))
+    return out
+
+
+def guidance_sentences(result,task_text):
+    cases=result['cases']
+    if not cases or any(c['status']!='DERIVED' for c in cases):return []
+    shapes='; '.join(', '.join(f"{n}{list(s)}" for n,s in zip(c['array_names'],c['input_shapes']))+f" -> output{list(c['output_shape'])}" for c in cases)
+    limits=cases[0]['tile_limits'];sentences=[f"Derived task facts for {result['entry']}: official cases {shapes}; output dtype {cases[0]['output_dtype']}, allocated in nl.shared_hbm and returned."]
+    sentences.append(f"Installed limits: on-chip tiles have partition dim <= {limits['partition']}; PSUM free dim <= {limits['psum_free']}; nc_matmul contracts over the partition dim with stationary free <= {limits['stationary_free']} and moving free <= {limits['moving_free']}.")
+    tiled=sorted({(c['array_names'][o['input']],o['extent'],o['tile_count']) for c in cases for o in c['partition_tiling']})
+    if tiled:sentences.append('Partition tiling needed before loading: '+', '.join(f"{n} first dim {e} -> {t} tiles" for n,e,t in tiled)+'.')
+    if cases[0]['max_waste']:sentences.append(f"HBM traffic is checked: stay within {cases[0]['max_waste']}x of reading each input once and writing the output once.")
+    signatures=instruction_signatures(task_text)
+    if signatures:sentences.append('Installed signatures: '+'; '.join(s for s,_ in signatures)+('. Calls with a dst parameter write into dst; their return value is not a tensor.' if any(d for _,d in signatures) else '.'))
+    return sentences
 
 
 def generation_prompt(prompt,level,*,context=8192,answer_budget=2500,model='Qwen/Qwen3-8B'):
     result=for_level(level);counter,method=local_token_counter(model)
     budget=max(0,min(240,context-answer_budget-128-counter(prompt)))
-    text=result['guidance'];result.update(applied=bool(text) and counter(text)<=budget,counting_method=method,context_token_count=counter(text) if counter(text)<=budget else 0)
-    return prompt+('\n\n'+text if result['applied'] else ''),result
+    text=''
+    for sentence in guidance_sentences(result,prompt):
+        candidate=(text+' '+sentence).strip()
+        if counter(candidate)<=budget:text=candidate
+    result.update(guidance=text,applied=bool(text),counting_method=method,context_token_count=counter(text) if text else 0)
+    return prompt+('\n\n'+text if text else ''),result
 
 
 def analyze_semantics(source, operation):
@@ -91,8 +112,6 @@ def analyze_semantics(source, operation):
             kwargs.update({k.arg:k.value for k in call.keywords if k.arg})
             same=all(k in kwargs for k in ('stationary','moving')) and ast.dump(kwargs['stationary'])==ast.dump(kwargs['moving'])
             result['matmul_calls'].append(dict(line=call.lineno,same_operand=same))
-            if 'pool' in operation.lower() and same:
-                result['findings'].append(dict(line=call.lineno,status='POSSIBLE_VIOLATION',kind='pooling_self_product',guidance='This nc_matmul multiplies the same tile by itself. A self-product generally scales quadratically with input values; average pooling is linear and needs window sums divided by p*p. Check the result dataflow and replace a contributing self-product with the required window reduction. A matmul with separately established constant weights is a different case.'))
     result['status']='POSSIBLE_VIOLATION' if result['findings'] else 'UNKNOWN'
     result['operation_selection']='reduction_present' if result['reduction_calls'] else ('matmul_present' if result['matmul_calls'] else 'UNKNOWN')
     return result
@@ -120,7 +139,7 @@ def semantic_gate(source,level):
     import ast
     specification=for_level(level)
     result=analyze_semantics(source,specification['operation'])
-    result['requirements']=[{k:p[k] for k in ('input_shapes','output_shape','reduction_dimensions','divisor','requires_accumulation') if k in p} for p in specification['cases']]
+    result['requirements']=[{k:p[k] for k in ('input_shapes','output_shape','requires_tiling','max_waste') if k in p} for p in specification['cases']]
     result['grading_policy']='Official checker remains authoritative; no reward or case changes.'
     try:tree=ast.parse(source)
     except (SyntaxError,RecursionError):return result

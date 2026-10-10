@@ -27,7 +27,7 @@ class VerifiedPrimitiveTests(unittest.TestCase):
   self.assertEqual(r['status'],'UNKNOWN')
  def test_self_product_positional_is_hypothesis(self):
   r=analyze_semantics('import nki.isa as ni\ndef f(x):\n ni.nc_matmul(out,x,x)','pool')
-  self.assertEqual(r['status'],'POSSIBLE_VIOLATION')
+  self.assertTrue(r['matmul_calls'][0]['same_operand']);self.assertEqual(r['status'],'UNKNOWN')
  def test_reduction_scaling_primitive_not_complete_pool(self):
   r=semantic_gate(specs()[0]['source'],1)
   self.assertEqual(r['status'],'UNKNOWN')

@@ -1,6 +1,6 @@
 # Operation-aware correctness sprint
 
-The original five-repeat study remains 0/5 solves on each level. The full untuned agent completed Level 1 and 2 at 0.30. Operation-aware planning corrected the observed Level 1 generation direction toward window reductions, but mathematical direction alone did not produce legal NKI execution.
+The original five-repeat study remains 0/5 solves on each level. The full untuned agent completed Level 1 and 2 at 0.30. Planner-enabled Level 1 cold runs also stayed at 0.30.
 
 ## Verified programming constraints
 
@@ -16,8 +16,7 @@ NKI integer indexing differs from NumPy: SBUF/PSUM preserve dimension zero as a 
 
 ## What changed
 
-- Compact mathematical/hardware planning before initial generation; optional semantic evidence before grading. Self-product pooling is a hypothesis, not automatically rejected: constant-weight matmul can implement a linear reduction. Only a side-effect-free identity function receives the narrow PROVEN_INVALID task proof. The official checker still runs and determines rewards.
-- Source-specific scalar-instruction/opcode namespace guidance, legal on-chip result placement, and preservation of reduction/normalization.
+- Planner: `kernel_planner.py` generates each level's compact plan from the benchmark specification (reference signature and reference outputs on the official shapes), the installed NKI tile limits and instruction signatures named by the task prompt, and the level's HBM traffic budget. Optional operation-neutral semantic evidence before grading; the official checker still determines rewards.
 - Safe binding of actual reported scalar task arguments for literal/SymPy shape analysis. First planner-run DMA diagnostics improved from zero to 17/20 resolved candidates after pool size was bound; this is offline inference coverage, not a live correctness gain.
 - Optional `--primitive-policy legalize`: deterministic instruction-role correction for tensor_scalar plus staging of a known on-chip scalar result through SBUF to its original known shared_hbm destination. It contains no task-specific dimensions, benchmark names, or algorithm templates. It never creates a missing pooling/transpose/matmul computation. Unknown operands remain untouched. Every change and both raw generated and transformed sources are logged; the unchanged checker verifies the transformed candidate. Default is off.
 - Four independent miniature compositions: grouped mean plus bias using .ap; free-axis permutation plus bias; partition/free transpose plus scaling; and three-block contraction plus bias. They cover DMA, reductions, scalar scaling, PSUM transfers, transpose, explicit accumulation and output writes.

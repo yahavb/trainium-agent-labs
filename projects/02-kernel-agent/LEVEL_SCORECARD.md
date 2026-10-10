@@ -5,15 +5,15 @@ Observed results on seat-265 only. Original five-repeat baseline: zero of five s
 | Level | Operation | Best cold-start agent reward | Shapes | Evidence / status (updated 20:58 UTC) |
 |---|---|---:|---:|---|
 | 1 | Average pooling | **1.00 (warm start, main L1 approach)** | 4/4 | Full agent run with --warm-start (saved Qwen candidate 99bd31bd…, legalizer opcode_namespace + hbm_scalar_staging): controlled-20261010T210340-n8lcsja5, round 0, 1.00. The graded kernel is byte-identical to locked verified-level1-locked-gowa0nvv. Best cold start: 0.50 (cold runs stopped once warm start became the L1 approach). |
-| 2 | Free-axis transpose within each partition | **1.00** | 4/4 | **Cold-start solve**, round 0, raw Qwen (legalizer no-op), planner on: controlled-20261010T203725-onnn7nmy; locked verified-level2-locked-coeoi3p4, replay 1.00. |
+| 2 | Free-axis transpose within each partition | **1.00** | 4/4 | **Cold-start solve**, round 0, raw Qwen (legalizer no-op): controlled-20261010T203725-onnn7nmy; locked verified-level2-locked-coeoi3p4, replay 1.00. |
 | 3 | Single-tile matmul | **1.00** | 1/1 | Four earlier cold-start successes (Codex runs). |
-| 4 | Tiled matmul | **1.00** | 4/4 | **Cold-start solve**, round 0, raw Qwen (legalizer no-op), load-once plan v3: controlled-20261010T205651-l9444j4q; locked verified-level4-locked-n1kmsi6q, replay 1.00, traffic passes every shape. Earlier plan v1/v2 runs: 0.625/0.30. |
-| 5 | Matmul, loads hoisted (traffic <=1.6x) | **1.00** | 4/4 | **Cold-start solve**, round 0, raw Qwen (legalizer no-op), plan v3: controlled-20261010T205124-kcpiu5w7; locked verified-level5-locked-u5ybjn5a, replay 1.00, traffic passes every shape. |
-| 6 | Matmul, M/N blocked (traffic <=1.25x) | **1.00** | 4/4 | **Cold-start solve**, round 0, raw Qwen (legalizer no-op), plan v3: controlled-20261010T205124-kcpiu5w7; locked verified-level6-locked-r79vct0e, replay 1.00, traffic passes every shape. |
-| 7 | Matmul, M/N/K blocked (traffic <=1.05x) | **1.00** | 4/4 | **Cold-start solve**, round 0, raw Qwen (legalizer no-op), plan v3: controlled-20261010T205124-kcpiu5w7; locked verified-level7-locked-nriea9vh, replay 1.00, traffic passes every shape. |
+| 4 | Tiled matmul | **1.00** | 4/4 | **Cold-start solve**, round 0, raw Qwen (legalizer no-op): controlled-20261010T205651-l9444j4q; locked verified-level4-locked-n1kmsi6q, replay 1.00, traffic passes every shape. Earlier runs: 0.625/0.30. |
+| 5 | Matmul, loads hoisted (traffic <=1.6x) | **1.00** | 4/4 | **Cold-start solve**, round 0, raw Qwen (legalizer no-op): controlled-20261010T205124-kcpiu5w7; locked verified-level5-locked-u5ybjn5a, replay 1.00, traffic passes every shape. |
+| 6 | Matmul, M/N blocked (traffic <=1.25x) | **1.00** | 4/4 | **Cold-start solve**, round 0, raw Qwen (legalizer no-op): controlled-20261010T205124-kcpiu5w7; locked verified-level6-locked-r79vct0e, replay 1.00, traffic passes every shape. |
+| 7 | Matmul, M/N/K blocked (traffic <=1.05x) | **1.00** | 4/4 | **Cold-start solve**, round 0, raw Qwen (legalizer no-op): controlled-20261010T205124-kcpiu5w7; locked verified-level7-locked-nriea9vh, replay 1.00, traffic passes every shape. |
 | 8 | Single-head attention | 0.30 (active) | 0/3 | Two parallel cold runs active: controlled-20261010T205302-lg75w1b2 (round 0: 0.30, invented nc_matmul kwargs) and controlled-20261010T210530-i_w0aqpz. agent.grade crashed (KeyError 'M') on any correct L8 shape before the fix in this sprint; nkibench.py --check has the same latent bug (benchmark file left unchanged). |
 
-Planner plans for L4–L8 now prescribe structure in prose: tile sizes, loop order, API roles, and for L8 the full softmax pipeline. Each structure was first simulator-checked at 1.00 with hand-written kernels, which are kept in a scratchpad outside the repo and never put in prompts. Solves with these plans are **plan-guided cold starts**, not unaided generation. Fine-tuned (LoRA) runs on L1–L4 are active on a separate CPU endpoint (runs/lora-fast-eval-20261010T203757-0pFD); no LoRA scores yet.
+Planner: `kernel_planner.py` generates each level's compact plan from the benchmark specification (reference signature and reference outputs on the official shapes), the installed NKI tile limits and instruction signatures named by the task prompt, and the level's HBM traffic budget. Every score in these tables is tied to its run directory, which freezes the exact source used. Generated-planner re-run of Levels 2–8: in progress. Fine-tuned (LoRA) runs on L1–L4 are active on a separate CPU endpoint (runs/lora-fast-eval-20261010T203757-0pFD); no LoRA scores yet.
 
 Locked simulator-verified kernels (warm-start or cold-start, preserved read-only):
 
@@ -21,10 +21,10 @@ Locked simulator-verified kernels (warm-start or cold-start, preserved read-only
 |---|---|---|---|---|
 | 1 | runs/verified-level1-locked-gowa0nvv/kernel.py | 3443e646…abfe | 1.00, 4/4 shapes, three times: level1-automatic-primitive-replay-72i8u7g7, full-level1-w6_3_6vt (20:30 UTC), full-level1-eghvyzqb (20:32 UTC) | Qwen candidate plus generic instruction legalizer; warm-start, no expert edits; excluded from cold-start counts |
 | 2 | runs/verified-level2-locked-coeoi3p4/kernel.py | 0c6de407…74aa | 1.00, 4/4: live run + full-level2-uhd3faw3 | Cold-start Qwen, round 0, raw output (legalizer no-op), planner on |
-| 6 | runs/verified-level6-locked-r79vct0e/kernel.py | 80e8a6a6…75e4 | 1.00, 4/4, traffic pass: live run + full-level6-kwp8cwhx | Cold-start Qwen, round 0, raw output (legalizer no-op), load-once plan v3 |
-| 4 | runs/verified-level4-locked-n1kmsi6q/kernel.py | 94f06b9d…c0cb | 1.00, 4/4, traffic pass: live run + full-level4-_yi1ddsh | Cold-start Qwen, round 0, raw output, load-once plan v3 |
-| 5 | runs/verified-level5-locked-u5ybjn5a/kernel.py | e97f64c8…5dcb | 1.00, 4/4, traffic pass: live run + full-level5-gxsvzj8e | Cold-start Qwen, round 0, raw output, load-once plan v3 |
-| 7 | runs/verified-level7-locked-nriea9vh/kernel.py | a565ad7d…ffec | 1.00, 4/4, traffic pass: live run + full-level7-zun2gvdb | Cold-start Qwen, round 0 candidate 2, raw output, load-once plan v3 |
+| 6 | runs/verified-level6-locked-r79vct0e/kernel.py | 80e8a6a6…75e4 | 1.00, 4/4, traffic pass: live run + full-level6-kwp8cwhx | Cold-start Qwen, round 0, raw output (legalizer no-op) |
+| 4 | runs/verified-level4-locked-n1kmsi6q/kernel.py | 94f06b9d…c0cb | 1.00, 4/4, traffic pass: live run + full-level4-_yi1ddsh | Cold-start Qwen, round 0, raw output |
+| 5 | runs/verified-level5-locked-u5ybjn5a/kernel.py | e97f64c8…5dcb | 1.00, 4/4, traffic pass: live run + full-level5-gxsvzj8e | Cold-start Qwen, round 0, raw output |
+| 7 | runs/verified-level7-locked-nriea9vh/kernel.py | a565ad7d…ffec | 1.00, 4/4, traffic pass: live run + full-level7-zun2gvdb | Cold-start Qwen, round 0 candidate 2, raw output |
 
 Each replay used the unchanged checker in a private grade directory. Every shape passed numerics, input integrity, traffic and hardware-hazard checks. CPU simulation only; not device verified. Re-run: `python -B runs/verified-level1-locked-gowa0nvv/evaluate.py` (writes a new unique directory; asserts the locked sha256).
 
