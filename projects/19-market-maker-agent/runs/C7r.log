@@ -1,0 +1,63 @@
+
+=========== level 1: calm (located feedback, rep 1) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (63s)
+   feedback: TypeError: unsupported operand type(s) for +: 'int' and 'str' on line 8 of your code, at step 0. The cause is line 4: state is a dict, and `a, b, ... = state` assigns its KEYS (the strings 't', 'T', 'best_bid', ...), not its values. Read each field by name: best_bid = state['best_bid'].
+round 1 [repair] s0 0.20 rules INVENTORY_LIMIT lcb -12 | s1 0.20 rules INVENTORY_LIMIT lcb -12  (77s)
+   feedback: Rule broken: INVENTORY_LIMIT, 528 times; 528 in total. First at step 111: inventory 10 with bid_size 5 could reach 15, over the limit 10. Any violation zeroes the profit score. Fix: cap bid_size at max_inventory - inventory and ask_size at max_inventory + inventory (0 means that side is not quoted).
+round 2 [repair] s0 0.20 rules INVENTORY_LIMIT lcb +277 | s1 0.20 rules INVENTORY_LIMIT lcb +277  (80s)
+   feedback: Rule broken: INVENTORY_LIMIT, 202 times; 202 in total. First at step 179: inventory 7 with bid_size 5 could reach 12, over the limit 10. Any violation zeroes the profit score. Fix: cap bid_size at max_inventory - inventory and ask_size at max_inventory + inventory (0 means that side is not quoted).
+round 3 [repair] s0 0.90 robust SPREAD1 lcb +276 | s1 0.20 rules INVENTORY_LIMIT lcb +277  (81s)
+   feedback: wer bound is +0; it must be above 0. 0% of episodes made money. You earned +0 at the moment of your fills and +0 from price moves while holding inventory. You traded only 0.0 times per episode: both quotes sit where nobody trades. At a 1-tick spread there is no room inside: a bid fills only at exactly best_bid (half the time) and never below it; asks mirror this. Quote at best_bid/best_ask and manage risk from there.
+round 4 [repair] s0 SOLVED | s1 SOLVED  (79s)
+=> level 1: VERIFIED on dev after 10 attempts; held-out PASS (lcb +530); 15265 tokens, 382s
+
+=========== level 2: trend (located feedback, rep 1) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (61s)
+   feedback: TypeError: unsupported operand type(s) for +: 'int' and 'str' on line 8 of your code, at step 0. The cause is line 4: state is a dict, and `a, b, ... = state` assigns its KEYS (the strings 't', 'T', 'best_bid', ...), not its values. Read each field by name: best_bid = state['best_bid'].
+round 1 [repair] s0 0.62 profit LOSS_INVENTORY lcb -267 | s1 0.62 profit LOSS_INVENTORY lcb -267  (74s)
+   feedback:  either way, and you sat at the limit on 10% of steps. The price drifts in one direction for long stretches and the order flow leans the same way, so you keep selling into a rise (or buying into a fall). Your quote centre barely moves with your inventory (correlation +0.00). Lean against your position: when long, move both quotes down; when short, move both up; and take into account which way the mid has been moving.
+round 2 [repair] s0 0.90 robust SPREAD1 lcb +85 | s1 0.10 runs EXCEPTION  (78s)
+   feedback: wer bound is +0; it must be above 0. 0% of episodes made money. You earned +0 at the moment of your fills and +0 from price moves while holding inventory. You traded only 0.0 times per episode: both quotes sit where nobody trades. At a 1-tick spread there is no room inside: a bid fills only at exactly best_bid (half the time) and never below it; asks mirror this. Quote at best_bid/best_ask and manage risk from there.
+round 3 [repair] s0 0.65 profit LOSS_INVENTORY lcb -281 | s1 0.90 robust SPREAD1 lcb +85  (73s)
+   feedback: wer bound is +0; it must be above 0. 0% of episodes made money. You earned +0 at the moment of your fills and +0 from price moves while holding inventory. You traded only 0.0 times per episode: both quotes sit where nobody trades. At a 1-tick spread there is no room inside: a bid fills only at exactly best_bid (half the time) and never below it; asks mirror this. Quote at best_bid/best_ask and manage risk from there.
+round 4 [repair] s0 0.90 robust SPREAD1 lcb +85 | s1 0.90 robust SPREAD1 lcb +85  (65s)
+   feedback: wer bound is +0; it must be above 0. 0% of episodes made money. You earned +0 at the moment of your fills and +0 from price moves while holding inventory. You traded only 0.0 times per episode: both quotes sit where nobody trades. At a 1-tick spread there is no room inside: a bid fills only at exactly best_bid (half the time) and never below it; asks mirror this. Quote at best_bid/best_ask and manage risk from there.
+round 5 [restart] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (68s)
+   feedback: TypeError: unsupported operand type(s) for +: 'int' and 'str' on line 8 of your code, at step 0. The cause is line 4: state is a dict, and `a, b, ... = state` assigns its KEYS (the strings 't', 'T', 'best_bid', ...), not its values. Read each field by name: best_bid = state['best_bid'].
+=> level 2: NOT VERIFIED, best score 0.90; held-out fail (lcb +81); 17157 tokens, 421s
+
+log: /workspace/projects/market-maker-agent/runs/C7r-1.jsonl
+
+=========== level 1: calm (located feedback, rep 2) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (66s)
+   feedback: TypeError: unsupported operand type(s) for +: 'int' and 'str' on line 8 of your code, at step 0. The cause is line 4: state is a dict, and `a, b, ... = state` assigns its KEYS (the strings 't', 'T', 'best_bid', ...), not its values. Read each field by name: best_bid = state['best_bid'].
+round 1 [repair] s0 0.20 rules INVENTORY_LIMIT lcb -12 | s1 0.20 rules INVENTORY_LIMIT lcb -12  (75s)
+   feedback: Rule broken: INVENTORY_LIMIT, 528 times; 528 in total. First at step 111: inventory 10 with bid_size 5 could reach 15, over the limit 10. Any violation zeroes the profit score. Fix: cap bid_size at max_inventory - inventory and ask_size at max_inventory + inventory (0 means that side is not quoted).
+round 2 [repair] s0 0.20 rules INVENTORY_LIMIT lcb +277 | s1 0.20 rules INVENTORY_LIMIT lcb +277  (82s)
+   feedback: Rule broken: INVENTORY_LIMIT, 202 times; 202 in total. First at step 179: inventory 7 with bid_size 5 could reach 12, over the limit 10. Any violation zeroes the profit score. Fix: cap bid_size at max_inventory - inventory and ask_size at max_inventory + inventory (0 means that side is not quoted).
+round 3 [repair] s0 0.90 robust SPREAD1 lcb +276 | s1 0.20 rules INVENTORY_LIMIT lcb +277  (82s)
+   feedback: wer bound is +0; it must be above 0. 0% of episodes made money. You earned +0 at the moment of your fills and +0 from price moves while holding inventory. You traded only 0.0 times per episode: both quotes sit where nobody trades. At a 1-tick spread there is no room inside: a bid fills only at exactly best_bid (half the time) and never below it; asks mirror this. Quote at best_bid/best_ask and manage risk from there.
+round 4 [repair] s0 SOLVED | s1 0.20 rules INVENTORY_LIMIT lcb +510  (81s)
+=> level 1: VERIFIED on dev after 10 attempts; held-out PASS (lcb +530); 15279 tokens, 388s
+
+=========== level 2: trend (located feedback, rep 2) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (64s)
+   feedback: TypeError: unsupported operand type(s) for +: 'int' and 'str' on line 8 of your code, at step 0. The cause is line 4: state is a dict, and `a, b, ... = state` assigns its KEYS (the strings 't', 'T', 'best_bid', ...), not its values. Read each field by name: best_bid = state['best_bid'].
+round 1 [repair] s0 0.20 rules INVENTORY_LIMIT lcb -556 | s1 0.20 rules INVENTORY_LIMIT lcb -556  (77s)
+   feedback: Rule broken: INVENTORY_LIMIT, 507 times; 507 in total. First at step 94: inventory 10 with bid_size 5 could reach 15, over the limit 10. Any violation zeroes the profit score. Fix: cap bid_size at max_inventory - inventory and ask_size at max_inventory + inventory (0 means that side is not quoted).
+round 2 [repair] s0 0.20 rules INVENTORY_LIMIT lcb -353 | s1 0.20 rules INVENTORY_LIMIT lcb -353  (80s)
+   feedback: Rule broken: INVENTORY_LIMIT, 352 times; 352 in total. First at step 215: inventory -9 with ask_size 5 could reach -14, under the limit -10. Any violation zeroes the profit score. Fix: cap bid_size at max_inventory - inventory and ask_size at max_inventory + inventory (0 means that side is not quoted).
+round 3 [repair] s0 0.62 profit LOSS_INVENTORY lcb -363 | s1 0.20 rules INVENTORY_LIMIT lcb -353  (82s)
+   feedback:  either way, and you sat at the limit on 23% of steps. The price drifts in one direction for long stretches and the order flow leans the same way, so you keep selling into a rise (or buying into a fall). Your quote centre barely moves with your inventory (correlation +0.00). Lean against your position: when long, move both quotes down; when short, move both up; and take into account which way the mid has been moving.
+round 4 [repair] s0 0.90 robust SPREAD1 lcb +211 | s1 0.62 profit LOSS_INVENTORY lcb -363  (87s)
+   feedback: wer bound is +0; it must be above 0. 0% of episodes made money. You earned +0 at the moment of your fills and +0 from price moves while holding inventory. You traded only 0.0 times per episode: both quotes sit where nobody trades. At a 1-tick spread there is no room inside: a bid fills only at exactly best_bid (half the time) and never below it; asks mirror this. Quote at best_bid/best_ask and manage risk from there.
+round 5 [repair] s0 SOLVED | s1 SOLVED  (82s)
+=> level 2: VERIFIED on dev after 12 attempts; held-out PASS (lcb +226); 19012 tokens, 474s
+
+log: /workspace/projects/market-maker-agent/runs/C7r-2.jsonl
+
+rep level claim              held-out
+  1     1 VERIFIED on dev    PASS
+  1     2 NOT VERIFIED       fail
+  2     1 VERIFIED on dev    PASS
+  2     2 VERIFIED on dev    PASS
