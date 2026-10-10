@@ -35,8 +35,13 @@ def main():
     except SystemExit as e:
         sys.exit(f"prompt step stopped: {e}")
 
+    outcome, history = check_and_fix(d, a.rounds, a.log)
+    summary(d, outcome, history, t0)
+
+def check_and_fix(d, rounds=3, log="attempts.jsonl", fix=True):
+    """verify -> (fix -> verify) ... until PASS, review, untestable, or out of rounds."""
     history, outcome = [], None
-    for rnd in range(a.rounds + 1):
+    for rnd in range(rounds + 1):
         print(f"\n[verify] round {rnd}", flush=True)
         r = V.verify(d, print_tb=(rnd == 0), do_mutation=True)
         if r is None:
@@ -52,16 +57,22 @@ def main():
         if not r["behaviour_tested"]:
             outcome = "NOT TESTED (no valid testbench; only syntax was checked)"
             break
-        if rnd == a.rounds:
-            outcome = f"FAIL after {a.rounds} fix round(s)"
+        if not fix:
+            outcome = "FAIL (fixing was not requested; see for_feedback.json)"
+            break
+        if rnd == rounds:
+            outcome = f"FAIL after {rounds} fix round(s)"
             break
         print(f"\n[fix] AI fixes the design from for_feedback.json (round {rnd + 1})", flush=True)
         try:
-            P.fix(argparse.Namespace(fix=d, log=a.log))
+            P.fix(argparse.Namespace(fix=d, log=log))
         except SystemExit as e:
             outcome = f"fix step stopped: {e}"
             break
 
+    return outcome, history
+
+def summary(d, outcome, history, t0):
     rep = json.load(open(os.path.join(d, "report.json"))) if os.path.exists(os.path.join(d, "report.json")) else {}
     mut = rep.get("mutation")
     print(f"\n===== RESULT: {os.path.basename(d)} =====")

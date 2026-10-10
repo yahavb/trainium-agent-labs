@@ -43,9 +43,14 @@ def verify(folder, regen=False, do_mutation=True, print_tb=True):
     print(f"\n=== verify {name} ===", flush=True)
 
     # 1. testbench: reuse a fixed one (so the target never moves), or have the AI write one FROM THE SPEC
-    if os.path.exists(tb_p) and not regen:
-        tb, report["testbench"] = open(tb_p).read(), "existing tb.v"
-        print("  using existing tb.v", flush=True)
+    user_tb = os.path.exists(os.path.join(folder, "tb_source.txt"))
+    if os.path.exists(os.path.join(folder, "syntax_only.txt")):
+        tb, report["testbench"] = None, "none (user asked for a syntax check only)"
+        print("  syntax check only (user's choice)", flush=True)
+    elif os.path.exists(tb_p) and (not regen or user_tb):
+        tb = open(tb_p).read()
+        report["testbench"] = "user-provided" if user_tb else "existing tb.v"
+        print(f"  using {'the user-provided testbench' if user_tb else 'existing tb.v'}", flush=True)
     elif not spec:
         tb, report["testbench"] = None, "none (no spec.txt, so no testbench can be written)"
         print("  no spec.txt -> cannot write a testbench; syntax check only", flush=True)
@@ -164,6 +169,64 @@ def verify(folder, regen=False, do_mutation=True, print_tb=True):
 CODE_KEYS = ("verilog", "design", "code", "verilog_code", "module", "verilog_file", "file", "path", "design_file", "out")
 SPEC_KEYS = ("spec", "prompt", "request", "description", "question", "task")
 
+TB_KEYS = ("testbench", "tb", "testbench_file", "tb_file", "testbench_code")
+
+def _code_or_file(v, base, must=None):
+    """A field holding either Verilog text or a path to a .v file."""
+    if not (isinstance(v, str) and v.strip()):
+        return ""
+    p = v.strip()
+    for cand in (p, os.path.join(base, p)):
+        if p.endswith(".v") and os.path.exists(cand):
+            return open(cand).read()
+    return v if (must or "module") in v else ""
+
+def from_request_json(path):
+    """The hand-off JSON (from the menu, the prompt step, or a teammate):
+         {"prompt": "what it should do", "verilog": "<code>" or "verilog_file": "x.v",
+          "testbench": "<code>" or "testbench_file": "tb.v"   <- optional: if given, it is used as-is}
+    Returns (verilog_code, spec_text, testbench_or_None)."""
+    code, spec = from_prompt_json(path)
+    j = json.load(open(path))
+    j = j[-1] if isinstance(j, list) else j
+    tb = next((c for k in TB_KEYS if (c := _code_or_file(j.get(k), os.path.dirname(path), "module"))), "")
+    return code, spec, (tb or None)
+
+def json_to_folder(path):
+    """Unpack a hand-off JSON into designs/<module>/ (design.v, spec.txt, and tb.v if the user gave one)."""
+    code, spec, tb = from_request_json(path)
+    m = vagent.re.search(r"\bmodule\s+(\w+)", code)
+    d = os.path.join("designs", m[1] if m else os.path.splitext(os.path.basename(path))[0])
+    os.makedirs(d, exist_ok=True)
+    sp, tp, src = (os.path.join(d, f) for f in ("spec.txt", "tb.v", "tb_source.txt"))
+    old_spec = open(sp).read().strip() if os.path.exists(sp) else None
+    open(os.path.join(d, "design.v"), "w").write(code)
+    if spec:
+        open(sp, "w").write(spec + "\n")
+    so = os.path.join(d, "syntax_only.txt")
+    if os.path.exists(so):
+        os.remove(so)
+    j = json.load(open(path))
+    if isinstance(j, dict) and j.get("syntax_only") and not tb:   # the user chose "no testbench"
+        open(so, "w").write("user asked for a syntax check only\n")
+        for f in (tp, src):
+            if os.path.exists(f):
+                os.remove(f)
+    elif tb:                                   # the user's own testbench: use it as-is
+        open(tp, "w").write(tb)
+        open(src, "w").write("user\n")
+    elif old_spec is not None and spec and old_spec != spec.strip():
+        for f in (tp, src):                    # a different circuit under the same name: old testbench is stale
+            if os.path.exists(f):
+                os.remove(f)
+    print(f"[{path}] -> {d}  (prompt: {spec[:60]!r}, testbench: {'user-provided' if tb else 'AI will write one'})",
+          flush=True)
+    return d
+
+def verify_json(path, **kw):
+    d = json_to_folder(path)
+    return d, verify(d, **kw)
+
 def from_prompt_json(path):
     """Read the prompt step's JSON. Accepts the Verilog as code or as a path to a .v file,
     and the prompt under any common key name. Returns (verilog_code, spec_text)."""
@@ -226,15 +289,7 @@ def main():
     if a.from_json:
         a.folders = []
         for jp in a.from_json:
-            code, spec = from_prompt_json(jp)
-            m = vagent.re.search(r"\bmodule\s+(\w+)", code)
-            d = os.path.join("designs", m[1] if m else os.path.splitext(os.path.basename(jp))[0])
-            os.makedirs(d, exist_ok=True)
-            open(os.path.join(d, "design.v"), "w").write(code)
-            if spec:
-                open(os.path.join(d, "spec.txt"), "w").write(spec + "\n")
-            print(f"[{jp}] -> {d}  (prompt: {spec[:60]!r})", flush=True)
-            a.folders.append(d)
+            a.folders.append(json_to_folder(jp))
     elif a.design:
         code = open(a.design).read()
         m = vagent.re.search(r"\bmodule\s+(\w+)", code)

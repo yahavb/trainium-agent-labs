@@ -1133,57 +1133,66 @@ def finish(r, code, tb, n):
     print("-" * 40 + "\n" + code.strip() + "\n" + "-" * 40)
 
 def menu(a):
-    n = 0
-    with open(a.log, "a") as log:
-        while True:
-            print("\n========== Verilog Agent ==========")
-            print(" 1) Debug my Verilog    (you give code -> AI writes a testbench -> checker runs it -> AI fixes)")
-            print(" 2) Write from a prompt (you describe it -> AI writes code + testbench -> checker -> AI fixes)")
-            print(" 3) Experiment: basic vs detailed feedback (built-in buggy modules)")
-            print(" 4) Experiment: can the AI-written testbench catch real bugs?")
-            print(" q) Quit")
-            ch = input("Choose: ").strip().lower()
-            if ch in ("q", "quit", "exit"):
-                break
-            if ch in ("1", "2"):
-                code = None
-                if ch == "1":
-                    code = read_code("Your Verilog module:")
-                    if not code:
-                        continue
-                    spec = ask_text("\nWhat should it do? (needed for the auto testbench):\n> ")
-                else:
-                    spec = ask_text("\nDescribe the module in one line (name, ports, behaviour):\n> ", min_words=3)
-                    if not spec:
-                        continue
-                tb = read_tb()
-                n += 1
-                tag = f"user{n}"
-                if tb == "auto":
-                    if not spec:
-                        print("  No description given -> can't write a testbench; syntax check only")
-                        tb = None
-                    else:
-                        if code is None:
-                            print("  [ai] writing the first version of the module...", flush=True)
-                            try:
-                                code = extract(ask(f"Write a Verilog module.\nSpec: {spec}"))
-                            except Exception as ex:
-                                print(f"  request failed: {ex}")
-                                continue
-                        print("  [ai] writing a testbench from the spec...", flush=True)
-                        tb = auto_tb(spec, code, log, tag)
-                if not tb:
-                    print("  " + NO_TB_NOTE)
-                r, code = loop(spec or "Fix every bug so the module compiles cleanly and behaves correctly.",
-                               code, tb, a.rounds, "detailed", log, tag, verbose=True)
-                finish(r, code, tb, n)
-            elif ch == "3":
-                experiment(list(P), ["basic", "detailed"], a.rounds, a.repeat, log)
-            elif ch == "4":
-                tbtest(list(P), a.repeat, log)
-            else:
-                print("Pick 1, 2, 3, 4 or q.")
+    """Front door. Both options end in the SAME hand-off: a JSON with the Verilog, what it should do,
+    and (optionally) the user's own testbench. The testbench step reads only that JSON."""
+    import prompt as P, verify as V, run as R          # imported here: they import this file too
+    os.makedirs("requests", exist_ok=True)
+    while True:
+        print("\n========== Verilog Agent ==========")
+        print(" 1) Describe a circuit -> the AI writes it")
+        print(" 2) Paste my own Verilog (+ what it should do, + my testbench if I have one)")
+        print(" 3) Run the 9-circuit testbench exam")
+        print(" q) Quit")
+        ch = input("Choose: ").strip().lower()
+        if ch in ("q", "quit", "exit"):
+            return
+        t0 = time.time()
+        if ch == "1":
+            spec = ask_text("\nDescribe the circuit in one line (what it does; name and ports if you know them):\n> ",
+                            min_words=3)
+            if not spec:
+                continue
+            print("\n[prompt] the AI writes the circuit", flush=True)
+            try:
+                d = P.generate(argparse.Namespace(request=[spec], code=None, spec=None, designs="designs",
+                                                  log=a.log, fix=None))
+            except SystemExit as e:
+                print(f"  prompt step stopped: {e}")
+                continue
+            req = dict(prompt=open(os.path.join(d, "spec.txt")).read().strip(),
+                       verilog_file=os.path.abspath(os.path.join(d, "design.v")))
+            fix = True
+        elif ch == "2":
+            code = read_code("Your Verilog module:")
+            if not code:
+                continue
+            spec = ask_text("\nWhat should it do? (the testbench checks against this):\n> ", min_words=3)
+            if not spec:
+                print("  a description is needed to test behaviour")
+                continue
+            tb = read_tb()
+            if tb is None:
+                print("  (no testbench: only syntax will be checked)")
+            req = dict(prompt=spec, verilog=code)
+            if tb not in (None, "auto"):
+                req["testbench"] = tb
+            if tb is None:
+                req["syntax_only"] = True
+            fix = input("\nIf it fails, let the AI fix your code? [Y/n] ").strip().lower() not in ("n", "no")
+        elif ch == "3":
+            import make_tests
+            make_tests.run(list(make_tests.T))
+            continue
+        else:
+            print("Pick 1, 2, 3 or q.")
+            continue
+        m = re.search(r"\bmodule\s+(\w+)", req.get("verilog") or open(req["verilog_file"]).read())
+        path = os.path.join("requests", f"{m[1] if m else 'circuit'}.json")
+        json.dump(req, open(path, "w"), indent=2)
+        print(f"\n[hand-off] {path}", flush=True)
+        d = V.json_to_folder(path)
+        outcome, history = R.check_and_fix(d, a.rounds, a.log, fix=fix)
+        R.summary(d, outcome, history, t0)
 
 def main():
     ap = argparse.ArgumentParser()
