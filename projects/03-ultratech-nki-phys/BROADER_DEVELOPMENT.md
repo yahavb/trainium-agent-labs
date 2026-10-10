@@ -1,6 +1,6 @@
 # Broader Development: Toward Physics-Engine Primitives
 
-**Track led by Devesh; source: the [teammate's six-page report](submission-assets/teammate-engine-report.pdf).** This document summarizes that report. Its underlying engine implementation and full raw logs were not independently inspected or reproduced in this submission package.
+**We developed this broader prototype as Team Ultratech; source: our [six-page engine report](submission-assets/teammate-engine-report.pdf).** This document summarizes that report. Its underlying engine implementation and full raw logs were not independently inspected or reproduced in this submission package.
 
 ## What Was Developed
 

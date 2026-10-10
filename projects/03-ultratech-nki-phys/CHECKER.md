@@ -29,4 +29,4 @@ Correctness is required before and after timing; all public cases are rechecked.
 
 Hashes detect inconsistencies with the supplied manifest, not deliberate forgery by whoever controls both evidence and manifest. Saved timing samples are auditable records, not cryptographic hardware attestations. Replaying correctness does not rerun device benchmarks or send held-out results back to Qwen.
 
-The checker covers only these force primitives. It does not verify robot trajectories, frictional gripping, conservation properties of a complete engine or equivalence to MuJoCo. Broader physical validation in the teammate PDF is separately attributed.
+The checker covers only these force primitives. It does not verify robot trajectories, frictional gripping, conservation properties of a complete engine or equivalence to MuJoCo. Broader physical validation in our engine PDF is reported separately.

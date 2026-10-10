@@ -19,7 +19,7 @@ The practical problem is that a generated accelerator kernel can be mathematical
 | Track | What We Built | Evidence Boundary |
 | --- | --- | --- |
 | Verified optimization agent | Spring-damper force and net-force accumulation, with model-selected proposals, independent checks and device throughput feedback | Raw attempts, inputs/outputs, source hashes, repeated benchmarks and a frozen held-out assessment are bundled |
-| Physics-engine extension | A teammate's prototype with integration, spring-chain forces, ground contact and fused rollouts | Results are reported in the attached teammate document; its underlying code/logs were not independently audited in this package |
+| Physics-engine extension | Our prototype with integration, spring-chain forces, ground contact and fused rollouts | Results are reported in our attached engine document; its underlying code/logs were not independently audited in this package |
 
 The narrow track demonstrates that the feedback loop can produce correct, repeatably faster kernels. The broader track explores how physics-aware checking and kernel fusion can extend toward a simulation engine. We do not claim that the agent generated a complete working engine or that these primitives replace MuJoCo.
 
@@ -119,7 +119,7 @@ Independent baseline drift was 0.01799% for spring and 0.06042% for net-force. R
 
 Earlier work on frictionless contact snapshots found that removing a redundant PSUM-to-SBUF copy improved observed throughput by approximately 1.35%, with an independent repeat. It established our original checking/benchmarking pipeline. Those proposals used explicitly supplied reviewed templates, so this is not evidence of autonomous technique discovery. Detailed earlier history is documented in `source/AWS_PROGRESS.md`; its full raw archive is separate from the four-attempt math-agent evidence package.
 
-### Broader Engine Prototype: Teammate-Reported Results
+### Broader Engine Prototype: Reported Results
 
 The attached [physics-engine report](submission-assets/teammate-engine-report.pdf) describes a simplified engine with semi-implicit integration, spring-chain forces, floor-contact projection and a fused 32-step rollout. Its spring chain is coupled across neighbors, unlike our independent spring-damper evaluations. Reported evidence includes:
 
@@ -128,7 +128,7 @@ The attached [physics-engine report](submission-assets/teammate-engine-report.pd
 - Approximately 51x less simulation-counted DMA traffic with fused rollouts.
 - Correct device outputs on seat-263, NeuronCore 2, and approximately 52x host-to-host speedup for the reported 32-step rollout comparison.
 
-These figures are **reported by the teammate, not independently verified by our narrow-track package**. The 52x primarily measures reduced launch overhead in that SDK's standalone path; device-only execution time was not isolated. The 51x is transfer accounting from simulation, not a hardware bandwidth measurement. These results must not be combined with our 3.87% and 7.55% kernel-throughput gains.
+These figures are **reported in our engine document, not independently verified by our narrow-track package**. The 52x primarily measures reduced launch overhead in that SDK's standalone path; device-only execution time was not isolated. The 51x is transfer accounting from simulation, not a hardware bandwidth measurement. These results must not be combined with our 3.87% and 7.55% kernel-throughput gains.
 
 ## 4. Where We Failed
 
@@ -152,7 +152,7 @@ The earlier gripping track now has a dedicated [failure record](GRIPPING_FAILURE
 - **Correct but slower:** an earlier contact fused-subtraction candidate passed physics yet measured 0.80905x original throughput, approximately 19.10% lower. A named optimization was not automatically an improvement.
 - **Fusion lost to a simpler change:** contact scaling/update fusion beat its original baseline by about 1.06%, but measured 0.99703x the paired copy-removal implementation. The controller retained copy removal rather than adopting the newer technique.
 - **Gripping did not reach full FP32 correctness:** a six-setting fixed-momentum search at 1024 updates scored 10, 10, 10, 6, 6 and 4 out of 16. A human-written adaptive-restart CPU reference still reached only 10/16 in FP32 at the tested budgets. Higher-precision working arithmetic passed 16/16 on the same exported inputs, implicating numerical precision without proving that an FP32 solution is impossible. We shifted to simpler primitives because of the hackathon time limit, not by loosening checker gates.
-- **Broad-track agent remained incomplete:** the teammate report states that Qwen3-8B did not fully solve its physics levels in the reported search. The working reference engine therefore does not demonstrate fully agent-generated engine success. Its reported feedback revisions advanced partial results, but the remaining issues were not solved.
+- **Broad-track agent remained incomplete:** our engine report states that Qwen3-8B did not fully solve its physics levels in the reported search. The working reference engine therefore does not demonstrate fully agent-generated engine success. Its reported feedback revisions advanced partial results, but the remaining issues were not solved.
 - **Broad-track accounting needs clarification:** the report lists a 1.5x traffic-floor acceptance bound for the fused level and a 2.0x floor in a rollout result. Different rollout lengths or denominators may explain this; they must be reconciled before asserting that particular performance gate passed.
 
 ### What We Have Not Established
@@ -176,7 +176,7 @@ The main submission archive contains:
 3. **One-page results note:** `RUN_NOTE.md`, with hardware, run counts, correctness outcomes, throughput ratios, timing spread and limitations.
 4. **Frozen final evaluation:** source/checker/input manifest, hashes, outputs and local grade under `final-evaluation/`; 64/64 cases passed with no feedback to Qwen.
 5. **Independent benchmark repeat:** raw timing samples, checks and `independent-repeat/summary.json` for both selected sources.
-6. **Broad-track appendix:** the teammate report, explicitly labeled as reported prototype evidence. Its underlying code and full logs must be provided separately if that track is submitted as an independently reproducible deliverable.
+6. **Broad-track appendix:** our engine report, explicitly labeled as reported prototype evidence. Its underlying code and full logs must be provided separately if that track is submitted as an independently reproducible deliverable.
 
 The package includes file checksums. Compiled NEFFs are omitted; reproduction requires the recorded sources and compatible installed Neuron environment. The complete-history claim covers the four-attempt distinct-math experiment, not every earlier exploratory contact/gripping run.
 

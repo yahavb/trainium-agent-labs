@@ -1,10 +1,10 @@
 {
   ".gitignore": "81ad2bc8a29cecdaf567f3606f05c556fb04c1378153f859b9c127cdfb0090fb",
   "ATTEMPTS.jsonl": "fcd5ead188f0411f3f98da6118ef3adff04a0cd8d49895c4471c41d84e0ee4ec",
-  "BROADER_DEVELOPMENT.md": "fc08c18e307392d6628908b865ceb02a4ade20ad6ae0a9daa20d3858b3b7f583",
-  "CHECKER.md": "0de2a906ff1905bf563a934bfe465572195939471ae594b7fe9e7a061be062b5",
+  "BROADER_DEVELOPMENT.md": "bca219796fac95561871403d1700886da1c6fbb373315ceb6ec596ec541a2043",
+  "CHECKER.md": "f7dcb996a28738a5d8ebd9469e3f0063323f41f055c872bc106d30ccd2cc8291",
   "GRIPPING_FAILURES.md": "ebe128d6bda48981cd3e655599772e8999888c8586d8cd5670a40215bcbcb8cf",
-  "README.md": "4a9ea530bc4d264d8acc60096203bcbcfd7033558ae049b5e84c5c39bbb28bef",
+  "README.md": "9dfbcd6f881aebdb0e362807076e45ef9f4a8be66afbd873bc5fb54c6e597e50",
   "RUN_NOTE.md": "60ec42364fd5c6c0ba02301d87fb854798fa7ee6a8816353e83004f04a161271",
   "checker.py": "20f5835180373dda18c4d5ad629acb628ea41c397ef8dda847ca1c140c413b2c",
   "development/attempt-000/commands.log": "c3794ea5b44ae801921281359881519112f3d24156083e07fe6c44e40a9351b4",
@@ -758,6 +758,6 @@
   "submission-assets/agent-flow.png": "9f158ec0def56ab5ea682ddc6237ce2df6b5f88401dbde787652d3ff8cd2452b",
   "submission-assets/evidence-flow.png": "9c201ad1353e9854eb31fd4131c18dfb18f17007a05059623701c765a4691223",
   "submission-assets/teammate-engine-report.pdf": "66294b58741ccc9df0ebda9198729a238c056d0505a84734924daf3b7cd70069",
-  "submission.md": "57e67a65e1da6ac451d299716badfb068d23199e3ff22188fad567de88551319",
+  "submission.md": "180619c9d9e208bcde29818b29a1be26ba2c7636e8cba47c9707f0cd78c60357",
   "test_checker.py": "d4351aeac4740afed38ceac7c121f53346ac73d0017178bcf89b68ee46f1e4f6"
 }

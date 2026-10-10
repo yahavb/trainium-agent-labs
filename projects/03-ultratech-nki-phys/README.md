@@ -12,7 +12,7 @@ A bounded Qwen3-8B agent proposes NKI implementations of two physics equations, 
 2. **Every attempt and score:** [ATTEMPTS.jsonl](ATTEMPTS.jsonl). The complete four-proposal math experiment is in [development/](development/), including model requests/replies, wrong-sign feedback, generated graphs and sources, outputs and timings. A rejected duplicate is unmeasured, not a zero correctness score.
 3. **One-page results note:** [RUN_NOTE.md](RUN_NOTE.md), with hardware, run counts, timing spread and independent repeat results.
 
-Read [submission.md](submission.md) for the full definition, real input examples, embedded flowcharts, successful results and failures. The broader physics-engine PDF is a clearly labeled teammate-reported appendix, not independently reproduced agent evidence.
+Read [submission.md](submission.md) for the full definition, real input examples, embedded flowcharts, successful results and failures. Our broader physics-engine PDF is a clearly labeled prototype-results appendix, not independently reproduced agent evidence.
 
 ### The Complete Agent Loop At A Glance
 
@@ -45,9 +45,9 @@ Because of the hackathon time limit, we narrowed the agent experiment to spring-
 
 ## Broader Development: Physics-Engine Prototype
 
-In parallel, Devesh developed a simplified engine covering semi-implicit integration, coupled spring-chain forces, floor-contact projection and fused rollouts. The teammate report describes **four reference certifications, four accepted reference kernels and 12 diagnosed planted bugs**, plus a 128-world, 16-mass validation scenario. It reports approximately **51x less simulation-counted DMA traffic** and **52x host-to-host rollout speedup** from reducing launches.
+In parallel, we developed a simplified engine covering semi-implicit integration, coupled spring-chain forces, floor-contact projection and fused rollouts. Our engine report describes **four reference certifications, four accepted reference kernels and 12 diagnosed planted bugs**, plus a 128-world, 16-mass validation scenario. It reports approximately **51x less simulation-counted DMA traffic** and **52x host-to-host rollout speedup** from reducing launches.
 
-These are **teammate-reported prototype results**, with a different timing boundary from our device-only agent benchmarks; they are not added to our 3.87%/7.55% throughput gains. Qwen did not fully solve the broader physics levels in that reported search. The prototype is the intended integration direction, not proof of a fully agent-generated engine. Read [BROADER_DEVELOPMENT.md](BROADER_DEVELOPMENT.md) and the [full teammate report](submission-assets/teammate-engine-report.pdf). Its underlying engine source and full logs were not available in this package.
+These are **prototype results reported in our engine document**, with a different timing boundary from our device-only agent benchmarks; they are not added to our 3.87%/7.55% throughput gains. Qwen did not fully solve the broader physics levels in that reported search. The prototype is the intended integration direction, not proof of a fully agent-generated engine. Read [BROADER_DEVELOPMENT.md](BROADER_DEVELOPMENT.md) and our [full engine report](submission-assets/teammate-engine-report.pdf). Its underlying engine source and full logs were not available in this package.
 
 ## Verify Without AWS Or A Model
 
