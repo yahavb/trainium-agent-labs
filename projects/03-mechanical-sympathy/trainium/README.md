@@ -15,7 +15,8 @@ probe and agent tools we used on seat 212.
 | `status.py` | Shows what is running and whether each `--tag` run finished, is running, or crashed |
 | `probe_ops.py` | Compiles single ops or model slices on the chip in seconds and compares them with the CPU |
 | `sweep.py` | One forward pass per grid (2, 1, 1/2 and 1/4 degree) on the CPU and on Trainium |
-| `agent_loop.py` | Kernel agent: Qwen3-8B (vLLM) writes a fused InstanceNorm + CappedGELU NKI kernel. Includes a staged checker, `--selftest`, `--feedback v1/v2` and `--repeat` |
+| `agent_loop.py` | Kernel agent: Qwen3-8B (vLLM) writes a fused InstanceNorm + CappedGELU NKI kernel. Includes a staged checker, `--selftest`, `--feedback v1/v2`, `--prompt v1/v2` and `--repeat` |
+| `card_check_kernel.py` | A correct kernel built only from the API card that `--prompt v2` adds. It proves the card's facts work in NKI 0.6 and that the task can be solved. The agent never reads it, and it is never shown to the model |
 | `analyze_attempts.py` | Turns agent attempt logs into summary, failure-breakdown, reward-by-round and wall tables |
 
 ## One-time setup on a seat
@@ -47,6 +48,27 @@ NEURON_RT_VISIBLE_CORES=2 python runners/trainium_runner.py \
 
 The first call compiles for about 5 minutes; later runs use the Neuron compile cache. Set
 `SAMUDRA_CKPT` if the checkpoint is not at the manifest's `checkpoint.path_on_seat`.
+
+## Agent experiments
+
+Each version changes one thing. All use 8 rounds x 4 samples x 3 runs with Qwen3-8B.
+
+| Version | Command flags | What changes |
+| --- | --- | --- |
+| v1 | `--feedback v1 --prompt v1` | Baseline: the organizers' error enrichment, the task, and an example kernel |
+| v2 | `--feedback v2 --prompt v1` | Feedback quotes the failing line and gives its exact rewrite (`keepdims`, `(rows, 1)`, the real function for invented names) |
+| v3 | `--feedback v2 --prompt v2` | Adds a verified NKI API card to every prompt |
+
+```bash
+python agent_loop.py --selftest      # prove the checker first: SELFTEST OK
+python agent_loop.py --rounds 8 --samples 4 --repeat 3 --feedback v2 --prompt v2 --log attempts_v3.jsonl
+python analyze_attempts.py attempts_v1.jsonl attempts_v2.jsonl attempts_v3.jsonl
+python -c "import agent_loop as al; print(al.grade(open('card_check_kernel.py').read(), 2e-2))"   # 1.0
+```
+
+The agent needs the seat's vLLM server (Qwen3-8B, `./serve.sh`) and the organizers'
+`/workspace/projects/02-kernel-agent`. It does not need a free NeuronCore, because kernels are
+graded in the NKI CPU simulator.
 
 ## Things to know
 
