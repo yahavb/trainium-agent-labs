@@ -128,7 +128,7 @@ def grade(source, level):
                     f"CANNOT SIMULATE: {e}")
         except Exception as e:
             failures.append((nkibench.label(case, level),
-                             enrich(f"raised {type(e).__name__}: {e}", failing_line(e, path))))
+                             enrich(f"raised {type(e).__name__}: {e}")))
             continue
         parts["runs"] = True
         m = (nkibench.check_inputs_untouched(before, args)
@@ -241,31 +241,11 @@ def real_signature(func_name):
         fn = getattr(mod, func_name, None)
         if fn is None:
             continue
-        short = {"nki.language": "nl", "nki.isa": "nisa"}.get(mod_name, mod_name)
         try:
-            return f"{short}.{func_name}{inspect.signature(fn)}"
+            return f"{mod_name.split('.')[-1]}.{func_name}{inspect.signature(fn)}"
         except (TypeError, ValueError):
-            return f"{short}.{func_name}"
+            return f"{mod_name.split('.')[-1]}.{func_name}"
     return ""
-
-
-def failing_line(exc, path):
-    """(line number, source text) of the deepest frame in the candidate file, or None."""
-    import traceback
-    hit = None
-    for fr in traceback.extract_tb(exc.__traceback__):
-        if fr.filename == path:
-            hit = (fr.lineno, (fr.line or "").strip())
-    return hit
-
-
-# E-F. A wrong argument list on a real nki call (missing, extra, misnamed, bound twice). Measured
-# in E-A: 40 of 160 level-1 attempts raised `tensor_scalar() missing 1 required positional
-# argument: 'operand0'` or `'data'` after switching to tensor_scalar as the feedback suggested.
-ARG_ERRORS = (r"(\w+)\(\) missing \d+ required (?:positional|keyword-only) arguments?",
-              r"(\w+)\(\) got an unexpected keyword argument '\w+'",
-              r"(\w+)\(\) takes (?:from )?\d+ (?:to \d+ )?positional arguments? but \d+ (?:was|were) given",
-              r"(\w+)\(\) got multiple values for argument '\w+'")
 
 
 # Invented names the model actually wrote, mapped to the real 0.6.0 spelling (each checked with
@@ -288,19 +268,11 @@ KNOWN_FIXES = [
 ]
 
 
-def enrich(error_text, where=None):
+def enrich(error_text):
     """Add the real names when the failure is an invented API call."""
     for pattern, fix in KNOWN_FIXES:
         if re.search(pattern, error_text):
             return error_text + fix
-    for pattern in ARG_ERRORS:
-        m = re.search(pattern, error_text)
-        sig = real_signature(m.group(1)) if m else ""
-        if sig:
-            at = f" The failing line is line {where[0]}: `{where[1]}`." if where else ""
-            return (error_text + at + f" The real signature in the installed nki is {sig}. "
-                    f"Change this one call to match that signature and keep everything else "
-                    f"unchanged.")
     if "'MemoryRegion' object is not callable" in error_text:
         return (error_text + " nl.sbuf, nl.psum and nl.shared_hbm are memory regions, not "
                 "functions. Do not call them. Allocate with "
