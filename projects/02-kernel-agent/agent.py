@@ -435,6 +435,16 @@ def enrich(error_text, level=None, shape=None):
     `level` is optional so existing callers keep working; it lets a level-specific message fire
     (used for the level-1 pooling load/reduce idiom below).
     """
+    if (level == 2 and "positional argument" in error_text.lower()
+            and "were given" in error_text.lower()):
+        import inspect
+        spec = nkibench.LEVELS[2]
+        params = ", ".join(inspect.signature(spec["ref"]).parameters)
+        return (error_text + f" The harness calls `{spec['entry']}` with exactly two arguments: "
+                f"({params}). Define the entry point as `def {spec['entry']}({params}):` "
+                "with `@nki.jit` above it. Keep `shape2D` as a runtime argument; do not drop it "
+                "or hard-code the current test shape. Return the transposed data with the same "
+                "shape and dtype as `x`.")
     if level == 4 and "NON-FINITE OUTPUT" in error_text:
         detail = (
             " Check output-tile coverage: allocate one PSUM for each (M,N) output tile "
@@ -755,6 +765,27 @@ def first_prompt(level, terse=0, a=None):
     # Optional prompt segments are shared by every level-specific prompt branch.
     tiles_seg, skill_seg = _extras(a, level) if a is not None else ("", "")
     tools_seg = _tools_preamble(a) if a is not None and getattr(a, "tools", None) else ""
+    if level == 2:
+        # The harness supplies both parameters from ref_transpose2d. Spell out the exact public
+        # entry signature so the model cannot emit a one-argument kernel that fails before NKI
+        # simulation begins.
+        return _assemble(a or _Dummy(), dict(
+            task=(f"Write an AWS Neuron NKI kernel `{s['entry']}` decorated with @nki.jit that "
+                  "transposes each row's free dimensions according to the given shape2D."),
+            signature=(f"Required function signature, exactly: `def {s['entry']}(x, shape2D):`. "
+                       "The harness calls this entry point with TWO positional arguments in this "
+                       "order: x, then shape2D. Keep both parameters; shape2D is runtime input, "
+                       "not a constant to hard-code."),
+            shapes=("x has shape (P, F), shape2D is (F1, F2), and F=F1*F2. Transpose only the "
+                    "two free dimensions within each partition row; return shape (P, F) and x.dtype."),
+            method=("Keep the partition axis P intact. Use separate SBUF input and output tiles "
+                    "with shape (rows, F), where rows=min(128, P-start). For each i in F1 and j "
+                    "in F2, copy input[:, nl.ds(i*F2+j, 1)] to output[:, "
+                    "nl.ds(j*F1+i, 1)] with nisa.tensor_copy. DMA each completed output tile "
+                    "to the returned shared-HBM tensor."),
+            imports="Import nki, nki.language as nl, and nki.isa as nisa.",
+            tiles=tiles_seg, skills=skill_seg, tools=tools_seg,
+            reply="Return one concise, complete Python code block with imports and the kernel."))
     if level == 4:
         card = TILED_MATMUL_API_CARD if terse == 0 else (
             "Use separate (tile_k,tile_m) and (tile_k,tile_n) SBUF operands, one "
@@ -874,6 +905,21 @@ def repair_prompt(level, source, feedback, a=None, ledger="", scaffold=False):
     The lesson this whole repo keeps re-learning: feeding a verifier's report back verbatim
     reproduces the same mistake, because a report says what is wrong and never what to do.
     """
+    if (level == 2 and "positional argument" in feedback.lower()
+            and "were given" in feedback.lower()):
+        import inspect
+        spec = nkibench.LEVELS[2]
+        params = ", ".join(inspect.signature(spec["ref"]).parameters)
+        return (
+            f"Repair this NKI transpose kernel. The current code is:\n\n```python\n{source}\n```\n\n"
+            f"Checker error: {feedback}\n\n"
+            f"The harness calls `{spec['entry']}` with exactly two positional arguments: "
+            f"({params}). The decorated entry-point signature must be exactly:\n"
+            f"@nki.jit\ndef {spec['entry']}({params}):\n"
+            "Preserve both parameters. Use `shape2D` at runtime; "
+            "do not hard-code the current test's (3, 4). Keep the transpose implementation and "
+            "return the output with x.shape and x.dtype. Reply with one concise, complete Python "
+            "code block including imports.")
     if level == 3:
         return (
             f"Repair this single-tile NKI matmul:\n\n```python\n{source}\n```\n\n"
