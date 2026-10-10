@@ -1,0 +1,6 @@
+{
+  "label": "TEAM-AUTHORED worked example of the loop (NOT produced by the model). It shows the two walls this checker measures and the one change that clears them. The team's calibration kernel using this exact pattern was verified at 1.00x on every shape by the same checker and is excluded from agent success counts.",
+  "change": "keep the partition dimension at 128 and stack k-chunks along the free (second) dimension; slice operands from the resident cache",
+  "measured": "calibration kernel: 589,824 / 2,359,296 / 1,572,864 / 3,670,016 bytes = exactly the byte floor on all four shapes",
+  "kernel": "# WRONG (what the checker rejects): one cache shaped [K, M]\n#   -> 'dma_copy dst partition dimension 256 exceeds maximum 128' when K > 128\n# RIGHT: the partition dimension stays 128; k-chunks live along the free dimension\ncache = nl.ndarray((128, k_tiles * M), dtype=lhsT.dtype, buffer=nl.sbuf)\nfor kk in nl.affine_range(k_tiles):\n    nisa.dma_copy(dst=cache[:, kk * M:(kk + 1) * M],\n                  src=lhsT[kk * 128:(kk + 1) * 128, :])\n# operand views for output tile m0 / n0 and k chunk kk (same rules for the rhs cache):\nlhs_tile = cache[:, kk * M + m0 * 128 : kk * M + (m0 + 1) * 128]\nrhs_tile = rhs_cache[:, kk * N + n0 * 512 : kk * N + (n0 + 1) * 512]"
+}

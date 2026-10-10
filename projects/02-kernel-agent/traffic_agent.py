@@ -229,11 +229,13 @@ def repair_prompt(src, feedback, arm):
 
 
 def demo_block(demo_path):
-    """A verified example from an EARLIER RUN of this same agent, when one exists.
+    """A worked example of the loop, injected at the start of every prompt.
 
-    Bootstrapping: the first valid improvement the loop produces is written to demo.json and
-    reused as a worked example in later runs. It is labelled as an earlier run of the same
-    model and checker, so no hand-written kernel is ever presented as the model's work.
+    Two sources, both labelled in the prompt text itself: the team's calibration example
+    (`demo.json` at the project root) shows what attempt -> checker report -> one named change
+    -> verified result looks like; once the agent produces its own first verified improvement,
+    that trace (written to the output directory) can replace it. The label always says which
+    one it is, so no hand-written kernel is ever presented as the model's work.
     """
     if not demo_path:
         return ""
@@ -243,9 +245,9 @@ def demo_block(demo_path):
         return ""
     if not d.get("kernel"):
         return ""
-    return ("A verified example from an EARLIER RUN of this same agent (same model, same "
-            "checker). It started from the 2.00x seed and made one structural change; the "
-            "checker accepted every shape:\n"
+    label = d.get("label") or ("A verified example from an earlier run of this same agent "
+                               "(same model, same checker).")
+    return (f"{label}\n"
             f"- change: {d.get('change', 'n/a')}\n"
             f"- measured: {d.get('measured', 'n/a')}\n\n"
             f"```python\n{d['kernel']}\n```")
@@ -685,6 +687,8 @@ def main():
     ap.add_argument("--demo", default="", help="path to a verified demo.json written by an "
                     "earlier successful run; reused as a worked example in prompts")
     a = ap.parse_args()
+    if not a.demo and os.path.exists("demo.json"):
+        a.demo = "demo.json"   # the team calibration example, injected by default when present
 
     if not a.base:
         raise SystemExit("set KERNEL_AGENT_BASE_URL (or GPTOSS_BASE_URL) to the model endpoint")

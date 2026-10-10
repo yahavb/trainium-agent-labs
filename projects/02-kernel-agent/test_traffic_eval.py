@@ -328,5 +328,34 @@ class ProgressTests(unittest.TestCase):
         self.assertGreater(ta.bandit_reward(0.8, self._ev(4, 4, 1.0)), 0.0)
 
 
+class DemoBlockTests(unittest.TestCase):
+    """The worked example injected at the start of prompts, with its provenance label."""
+
+    def test_demo_block_reads_labelled_example(self):
+        import json
+        import os
+        import tempfile
+
+        import traffic_agent as ta
+
+        payload = {"label": "TEAM-AUTHORED example", "change": "stack k-chunks",
+                   "measured": "1.00x", "kernel": "cache = nl.ndarray((128, k_tiles * M))"}
+        fd, path = tempfile.mkstemp(suffix=".json")
+        os.close(fd)
+        try:
+            with open(path, "w") as f:
+                json.dump(payload, f)
+            msg = ta.demo_block(path)
+            self.assertIn("TEAM-AUTHORED example", msg)
+            self.assertIn("stack k-chunks", msg)
+        finally:
+            os.unlink(path)
+
+    def test_demo_block_missing_file_is_empty(self):
+        import traffic_agent as ta
+        self.assertEqual(ta.demo_block("/nonexistent/demo.json"), "")
+        self.assertEqual(ta.demo_block(""), "")
+
+
 if __name__ == "__main__":
     unittest.main()
