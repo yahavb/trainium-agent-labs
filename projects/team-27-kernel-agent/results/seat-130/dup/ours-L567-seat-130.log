@@ -1,0 +1,206 @@
+
+=== run 1/5  level 5: softmax  [ours, ve22ccab872] ===
+L5 #1 in=125 [task=113] out=183 14.2s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L5 #2 in=397 [task=86 code=182 feed=116] out=236 18.6s  FAIL crash:IndexError
+      -> The kernel raises IndexError: index 512 is out of bounds for axis 1 with size 188 at line 20 `acc += np.exp(tile[:, col] - max_tile[:, 0])`
+L5 #3 in=452 [task=86 code=235 feed=118] out=504 39.6s  FAIL crash:IndexError
+      -> The kernel raises IndexError: index 512 is out of bounds for axis 1 with size 188 at line 25 `acc += np.exp(tile[row, col] - max_tile[row, 0])`
+L5 #4 in=580 [task=86 code=281 feed=120 ledg=80] out=482 37.8s  FAIL crash:IndexError
+      -> The kernel raises IndexError: index 512 is out of bounds for axis 1 with size 188 at line 24 `acc += np.exp(tile[row, col] - max_tile[row, 0])`
+   STUCK: 'crash:IndexError' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 4 attempt(s), 1554 in / 1405 out tokens
+
+=== run 1/5  level 6: transpose  [ours, ve22ccab872] ===
+L6 #1 in=112 [task=100] out=136 10.8s  FAIL rule:layout
+      -> Remove `.T`
+L6 #2 in=291 [task=73 code=135 feed=70] out=150 12.2s  FAIL crash:ValueError
+      -> The kernel raises ValueError: could not broadcast input array from shape (0,) into shape (188,) at line 15 `y[j:end_j, r] = tile[r - i, j:end_j]`
+L6 #3 in=355 [task=73 code=149 feed=120] out=283 22.1s  FAIL crash:ValueError
+      -> The kernel raises ValueError: could not broadcast input array from shape (0,) into shape (188,) at line 17 `y[j:end_j, r] = tile[r - i, j:end_j]`
+L6 #4 in=416 [task=73 code=160 feed=120 ledg=50] out=402 31.9s  FAIL crash:ValueError
+      -> The kernel raises ValueError: could not broadcast input array from shape (0,) into shape (188,) at line 19 `y[j:end_j, r] = tile[r - i, j:end_j]`
+   STUCK: 'crash:ValueError' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 4 attempt(s), 1174 in / 971 out tokens
+
+=== run 1/5  level 7: matmul  [ours, ve22ccab872] ===
+L7 #1 in=126 [task=114] out=259 20.6s  PASS dev; holdout 7/10
+   => dev-only (confidence 0.30) after 1 attempt(s), 126 in / 259 out tokens
+
+=== run 2/5  level 5: softmax  [ours, ve22ccab872] ===
+L5 #1 in=117 [task=105] out=298 23.5s  FAIL rule:escape
+      -> Remove `np.asarray`; work directly on slices of the input arrays
+L5 #2 in=444 [task=86 code=297 feed=48] out=660 51.3s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L5 #3 in=489 [task=86 code=275 feed=115] out=332 26.2s  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L5 #4 in=531 [task=86 code=331 feed=101] out=388 30.5s  FAIL rule:layout
+      -> Remove `np.newaxis`
+L5 #5 in=588 [task=86 code=387 feed=102] out=470 36.9s  FAIL numeric:per-tile-stat
+      -> Each column tile is normalised with a statistic (max, sum or mean of squares) of that tile alone
+L5 #6 in=833 [task=86 code=469 feed=265] out=736 57.7s  FAIL numeric:per-tile-stat
+      -> Each column tile is normalised with a statistic (max, sum or mean of squares) of that tile alone
+L5 #7 in=840 [task=86 code=494 feed=201 ledg=46] out=743 58.2s  FAIL numeric:per-tile-stat
+      -> Each column tile is normalised with a statistic (max, sum or mean of squares) of that tile alone
+   STUCK: 'numeric:per-tile-stat' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 7 attempt(s), 3842 in / 3627 out tokens
+
+=== run 2/5  level 6: transpose  [ours, ve22ccab872] ===
+L6 #1 in=104 [task=92] out=216 17.2s  FAIL rule:layout
+      -> Remove `.T`
+L6 #2 in=393 [task=73 code=215 feed=92] out=216 17.0s  FAIL crash:ValueError
+      -> The kernel raises ValueError: could not broadcast input array from shape (0,) into shape (188,) at line 25 `y[tile_y_row:tile_y_row + (end_col - j), r] = til...
+L6 #3 in=433 [task=73 code=215 feed=132] out=397 31.2s  FAIL shape
+      -> Wrong output shape: returned NoneType, expected an array of shape (1, 1) on 'index-coded 1x1'
+L6 #4 in=322 [task=73 code=203 feed=33] out=204 16.3s  FAIL shape (repeat code)
+      -> Wrong output shape: returned NoneType, expected an array of shape (1, 1) on 'index-coded 1x1'
+L6 #5 in=412 [task=89 code=203 feed=33 ledg=74] out=208 16.4s  FAIL rule:layout
+      -> Remove `.T`
+L6 #6 in=414 [task=73 code=207 feed=76 ledg=45] out=225 17.9s  FAIL crash:ValueError
+      -> The kernel raises ValueError: could not broadcast input array from shape (512,) into shape (1,) at line 27 `y[tile_y_row + r, tile_y_col:end_row] = tile_x[r,...
+L6 #7 in=459 [task=73 code=224 feed=123 ledg=26] out=563 44.0s  FAIL crash:ValueError
+      -> The kernel raises ValueError: could not broadcast input array from shape (512,) into shape (1,) at line 28 `y[tile_y_row + r, tile_y_col:end_row] = tile_x[r,...
+L6 #8 in=515 [task=73 code=244 feed=130 ledg=55] out=500 39.2s  FAIL crash:ValueError
+      -> The kernel raises ValueError: could not broadcast input array from shape (512,) into shape (1,) at line 28 `y[tile_y_row + r, tile_y_col:end_row] = tile_x[r,...
+   STUCK: 'crash:ValueError' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 8 attempt(s), 3052 in / 2529 out tokens
+
+=== run 2/5  level 7: matmul  [ours, ve22ccab872] ===
+L7 #1 in=118 [task=106] out=266 20.9s  FAIL crash:ValueError
+      -> The kernel raises ValueError: shapes (7,) and (13,) not aligned: 7 (dim 0) != 13 (dim 0) at line 30 `c[i:end_i, j:end_j] += np.dot(a[i:end_i, k], b[k, j:end_...
+L7 #2 in=524 [task=87 code=265 feed=159] out=647 50.8s  FAIL crash:ValueError
+      -> The kernel raises ValueError: shapes (7,) and (13,) not aligned: 7 (dim 0) != 13 (dim 0) at line 32 `dot_product = np.dot(a[i:end_i, k], b[k, j:end_j])`
+L7 #3 in=645 [task=87 code=332 feed=152 ledg=61] out=646 50.6s  FAIL crash:ValueError
+      -> The kernel raises ValueError: shapes (1,7) and (13,1) not aligned: 7 (dim 1) != 13 (dim 0) at line 33 `dot_product = np.dot(a_row, b_col)  # Shape: (1, 1)`
+   STUCK: 'crash:ValueError' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 3 attempt(s), 1287 in / 1559 out tokens
+
+=== run 3/5  level 5: softmax  [ours, ve22ccab872] ===
+L5 #1 in=115 [task=103] out=236 18.6s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L5 #2 in=450 [task=86 code=235 feed=116] out=288 22.8s  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (7,)  at line 33 `softmax_tile = exp_tile / row_sums`
+L5 #3 in=495 [task=86 code=287 feed=109] out=434 33.8s  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L5 #4 in=506 [task=86 code=314 feed=93] out=371 29.1s  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (7,)  at line 26 `exp_tile = np.exp(tile - max_val)`
+L5 #5 in=652 [task=86 code=370 feed=110 ledg=73] out=583 45.5s  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L5 #6 in=584 [task=86 code=316 feed=93 ledg=76] out=520 40.8s  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L5 #7 in=653 [task=86 code=354 feed=95 ledg=105] out=482 37.8s  FAIL rule:max-like (repeat code)
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+   STUCK: 'rule:max-like' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 7 attempt(s), 3455 in / 2914 out tokens
+
+=== run 3/5  level 6: transpose  [ours, ve22ccab872] ===
+L6 #1 in=102 [task=90] out=173 13.7s  FAIL rule:layout
+      -> Remove `.T`
+L6 #2 in=329 [task=73 code=172 feed=71] out=187 14.8s  FAIL crash:ValueError
+      -> The kernel raises ValueError: could not broadcast input array from shape (0,) into shape (188,) at line 17 `result[j:end_j, r] = tile_x[r - i, j:end_j]`
+L6 #3 in=393 [task=73 code=186 feed=121] out=407 32.0s  FAIL crash:ValueError
+      -> The kernel raises ValueError: could not broadcast input array from shape (0,) into shape (188,) at line 16 `result[j:end_j, r] = tile_x[r - i, j:end_j]`
+L6 #4 in=449 [task=73 code=192 feed=121 ledg=50] out=359 28.3s  FAIL crash:ValueError
+      -> The kernel raises ValueError: could not broadcast input array from shape (0,) into shape (188,) at line 18 `result[j:end_j, r] = tile_x[r - i, j:end_j]`
+   STUCK: 'crash:ValueError' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 4 attempt(s), 1273 in / 1126 out tokens
+
+=== run 3/5  level 7: matmul  [ours, ve22ccab872] ===
+L7 #1 in=116 [task=104] out=186 14.7s  PASS dev; holdout 7/10
+   => dev-only (confidence 0.30) after 1 attempt(s), 116 in / 186 out tokens
+
+=== run 4/5  level 5: softmax  [ours, ve22ccab872] ===
+L5 #1 in=116 [task=104] out=191 15.3s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L5 #2 in=404 [task=86 code=190 feed=115] out=231 18.2s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L5 #3 in=484 [task=86 code=230 feed=111 ledg=44] out=313 24.8s  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L5 #4 in=443 [task=86 code=243 feed=101] out=286 22.7s  FAIL rule:layout
+      -> Remove `.reshape()`
+L5 #5 in=485 [task=86 code=285 feed=101] out=282 22.4s  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (7,)  at line 18 `exp_tile = np.exp(tile - max_tile)`
+L5 #6 in=490 [task=86 code=281 feed=110] out=425 33.4s  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (7,)  at line 27 `y[i:i+128, j:j+512] = exp_tile / sum_tile`
+L5 #7 in=568 [task=86 code=296 feed=121 ledg=52] out=525 41.1s  FAIL rule:layout
+      -> Remove `.reshape()`
+L5 #8 in=610 [task=86 code=311 feed=125 ledg=75] out=440 34.5s  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (7,)  at line 17 `exp_tile = np.exp(tile - acc)  # No reshape here`
+   => failed (confidence 0.00) after 8 attempt(s), 3600 in / 2693 out tokens
+
+=== run 4/5  level 6: transpose  [ours, ve22ccab872] ===
+L6 #1 in=103 [task=91] out=254 20.2s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (assignment writes a region of shape (512, 1))
+L6 #2 in=471 [task=73 code=253 feed=132] out=254 20.2s  FAIL crash:ValueError
+      -> The kernel raises ValueError: could not broadcast input array from shape (512,1) into shape (1,1) at line 28 `y[start_row:end_row, start_col:end_col] = tile_y`
+L6 #3 in=457 [task=73 code=253 feed=118] out=488 38.3s  FAIL crash:ValueError
+      -> The kernel raises ValueError: could not broadcast input array from shape (1,512) into shape (1,1) at line 28 `y[start_row:end_row, start_col:end_col] = tile_y`
+L6 #4 in=546 [task=73 code=268 feed=118 ledg=74] out=493 38.7s  FAIL crash:ValueError
+      -> The kernel raises ValueError: could not broadcast input array from shape (512,1) into shape (1,1) at line 30 `y[start_row:end_row, start_col:end_col] = tile_y`
+   STUCK: 'crash:ValueError' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 4 attempt(s), 1577 in / 1489 out tokens
+
+=== run 4/5  level 7: matmul  [ours, ve22ccab872] ===
+L7 #1 in=117 [task=105] out=242 19.3s  FAIL crash:ValueError
+      -> The kernel raises ValueError: shapes (7,) and (13,) not aligned: 7 (dim 0) != 13 (dim 0) at line 24 `c[i:end_i, j:end_j] += np.dot(a[i:end_i, k], b[k, j:end_...
+L7 #2 in=500 [task=87 code=241 feed=159] out=257 20.2s  FAIL crash:ValueError
+      -> The kernel raises ValueError: shapes (7,) and (13,) not aligned: 7 (dim 0) != 13 (dim 0) at line 25 `c[i:end_i, j:end_j] += np.dot(a[i:end_i, k], b[k, j:end_...
+L7 #3 in=576 [task=87 code=256 feed=159 ledg=61] out=689 54.1s  FAIL rule:linalg
+      -> Replace `np.matmul` with explicit python loops: accumulate products one index at a time, e.g
+L7 #4 in=478 [task=87 code=265 feed=113] out=242 19.3s  FAIL timeout
+      -> The kernel is too slow on 'normal 128x128 @ 128x512'
+L7 #5 in=393 [task=87 code=241 feed=52] out=362 28.5s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (37, 521), larger than one 128x512 tile)
+L7 #6 in=509 [task=87 code=231 feed=178] out=232 18.3s  FAIL rule:whole-array (repeat code)
+      -> Do not touch more than one tile at a time (an operation produced shape (37, 521), larger than one 128x512 tile)
+L7 #7 in=606 [task=103 code=231 feed=178 ledg=81] out=232 18.5s  FAIL rule:whole-array (repeat code)
+      -> Do not touch more than one tile at a time (an operation produced shape (37, 521), larger than one 128x512 tile)
+   STUCK: 'rule:whole-array' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 7 attempt(s), 3179 in / 2256 out tokens
+
+=== run 5/5  level 5: softmax  [ours, ve22ccab872] ===
+L5 #1 in=116 [task=104] out=199 15.7s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L5 #2 in=412 [task=86 code=198 feed=115] out=242 19.0s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L5 #3 in=495 [task=86 code=241 feed=111 ledg=44] out=251 20.0s  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L5 #4 in=450 [task=86 code=250 feed=101] out=297 23.5s  FAIL rule:layout
+      -> Remove `.reshape()`
+L5 #5 in=496 [task=86 code=296 feed=101] out=293 22.9s  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (7,)  at line 20 `exp_tile = np.exp(tile - max_tile)`
+L5 #6 in=501 [task=86 code=292 feed=110] out=495 36.4s  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (7,)  at line 29 `y[i:i+tile_rows, j:j+tile_cols] = exp_tile / sum_...
+L5 #7 in=583 [task=86 code=313 feed=119 ledg=52] out=620 44.4s  FAIL rule:layout
+      -> Remove `.reshape()`
+L5 #8 in=625 [task=86 code=343 feed=108 ledg=75] out=455 32.7s  FAIL crash:ValueError
+      -> The kernel raises ValueError: operands could not be broadcast together with shapes (7,13) (7,)  at line 22 `exp_tile = np.exp(tile - max_tile)`
+   => failed (confidence 0.00) after 8 attempt(s), 3678 in / 2852 out tokens
+
+=== run 5/5  level 6: transpose  [ours, ve22ccab872] ===
+L6 #1 in=103 [task=91] out=145 10.5s  FAIL rule:layout
+      -> Remove `.T`
+L6 #2 in=300 [task=73 code=144 feed=70] out=159 11.6s  FAIL crash:ValueError
+      -> The kernel raises ValueError: could not broadcast input array from shape (0,) into shape (188,) at line 16 `y[j:end_j, r] = tile[r - i, j:end_j]`
+L6 #3 in=364 [task=73 code=158 feed=120] out=372 26.8s  FAIL crash:ValueError
+      -> The kernel raises ValueError: could not broadcast input array from shape (0,) into shape (188,) at line 16 `y[j:end_j, r] = tile[r - i, j:end_j]`
+L6 #4 in=423 [task=73 code=167 feed=120 ledg=50] out=341 24.5s  FAIL crash:ValueError (repeat code)
+      -> The kernel raises ValueError: could not broadcast input array from shape (0,) into shape (188,) at line 16 `y[j:end_j, r] = tile[r - i, j:end_j]`
+   STUCK: 'crash:ValueError' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 4 attempt(s), 1190 in / 1017 out tokens
+
+=== run 5/5  level 7: matmul  [ours, ve22ccab872] ===
+L7 #1 in=117 [task=105] out=215 15.6s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (37, 521), larger than one 128x512 tile)
+L7 #2 in=492 [task=87 code=214 feed=178] out=310 22.4s  FAIL rule:whole-array (repeat code)
+      -> Do not touch more than one tile at a time (an operation produced shape (37, 521), larger than one 128x512 tile)
+L7 #3 in=562 [task=103 code=214 feed=178 ledg=54] out=215 15.6s  FAIL rule:whole-array (repeat code)
+      -> Do not touch more than one tile at a time (an operation produced shape (37, 521), larger than one 128x512 tile)
+   STUCK: 'rule:whole-array' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 3 attempt(s), 1171 in / 740 out tokens
+
+=== summary over 5 run(s) ===
+  L5 softmax      verified 0/5  mean attempts when verified nan  statuses ['stuck', 'stuck', 'stuck', 'failed', 'failed']
+  L6 transpose    verified 0/5  mean attempts when verified nan  statuses ['stuck', 'stuck', 'stuck', 'stuck', 'stuck']
+  L7 matmul       verified 0/5  mean attempts when verified nan  statuses ['dev-only', 'stuck', 'dev-only', 'stuck', 'stuck']
+log: runs/ours-L567-seat-130.jsonl  (code version e22ccab872)

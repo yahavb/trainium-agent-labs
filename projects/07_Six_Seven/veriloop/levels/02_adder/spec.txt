@@ -1,0 +1,4 @@
+Module name: add4
+Ports: input [3:0] a, input [3:0] b, output [3:0] sum, output cout
+Behaviour: combinational. {cout, sum} is the 5-bit result of a + b: sum holds the low 4 bits and cout is 1
+when the addition carries out of bit 3.

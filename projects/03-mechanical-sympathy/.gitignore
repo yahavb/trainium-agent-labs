@@ -1,0 +1,43 @@
+# Local source checkout
+.scratch/
+
+# Model and data artifacts
+checkpoints/
+data/
+rollouts/
+runs/
+*.zarr/
+*.pt
+*.pth
+*.ckpt
+
+# Generated correctness artifacts
+fixtures/*.npz
+results/*.json
+!results/*-manifest.json
+results/*.log
+
+# Local mirrors and credentials
+pod-remote/
+.git-local-excludes
+.env
+.env.*
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Neuron compiler output
+neuronxcc-*/
+neuron_cache/
+*.neff
+*.ntff
+*.colz
+global_metric_store.json
+
+# macOS
+.DS_Store
+._*

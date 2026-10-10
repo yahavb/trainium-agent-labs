@@ -1,0 +1,41 @@
+L1 run0: start  time 1.00x min  reads 1.00x  flops 1.00x  intensity 0.38 FLOP/B  ops 18
+   nothing left to optimise
+   final: time 1.00x -> 1.00x of the roofline minimum (reads 1.00x -> 1.00x, flops 1.00x -> 1.00x, ops 18 -> 18)
+L2 run0: start  time 1.00x min  reads 1.00x  flops 1.00x  intensity 0.25 FLOP/B  ops 2068
+   #1 target=ops   -> violation
+   every direction tried
+   final: time 1.00x -> 1.00x of the roofline minimum (reads 1.00x -> 1.00x, flops 1.00x -> 1.00x, ops 2068 -> 2068)
+L3 run0: start  time 1.02x min  reads 1.02x  flops 0.01x  intensity 0.00 FLOP/B  ops 12
+   #1 target=ops   -> violation
+   every direction tried
+   final: time 1.02x -> 1.02x of the roofline minimum (reads 1.02x -> 1.02x, flops 0.01x -> 0.01x, ops 12 -> 12)
+L1 run1: start  time 1.00x min  reads 1.00x  flops 1.00x  intensity 0.38 FLOP/B  ops 18
+   nothing left to optimise
+   final: time 1.00x -> 1.00x of the roofline minimum (reads 1.00x -> 1.00x, flops 1.00x -> 1.00x, ops 18 -> 18)
+L2 run1: start  time 1.00x min  reads 1.00x  flops 0.00x  intensity 0.00 FLOP/B  ops 6
+   #1 target=ops   -> violation
+   every direction tried
+   final: time 1.00x -> 1.00x of the roofline minimum (reads 1.00x -> 1.00x, flops 0.00x -> 0.00x, ops 6 -> 6)
+L3 run1: start  time 1.00x min  reads 1.00x  flops 0.00x  intensity 0.00 FLOP/B  ops 0
+   #1 target=ops   -> violation
+   every direction tried
+   final: time 1.00x -> 1.00x of the roofline minimum (reads 1.00x -> 1.00x, flops 0.00x -> 0.00x, ops 0 -> 0)
+L1 run2: start  time 1.00x min  reads 1.00x  flops 1.00x  intensity 0.38 FLOP/B  ops 18
+   nothing left to optimise
+   final: time 1.00x -> 1.00x of the roofline minimum (reads 1.00x -> 1.00x, flops 1.00x -> 1.00x, ops 18 -> 18)
+L2 run2: start  time 1.00x min  reads 1.00x  flops 1.00x  intensity 0.25 FLOP/B  ops 135061
+   #1 target=ops   -> violation
+   every direction tried
+   final: time 1.00x -> 1.00x of the roofline minimum (reads 1.00x -> 1.00x, flops 1.00x -> 1.00x, ops 135061 -> 135061)
+L3 run2: start  time 1.00x min  reads 1.00x  flops 0.00x  intensity 0.00 FLOP/B  ops 0
+   #1 target=ops   -> violation
+   every direction tried
+   final: time 1.00x -> 1.00x of the roofline minimum (reads 1.00x -> 1.00x, flops 0.00x -> 0.00x, ops 0 -> 0)
+L5 l5_softmax: start  time 2.00x min  reads 3.00x  flops 1.40x  intensity 0.44 FLOP/B  ops 14434
+   #1 target=reads -> wrong
+   #2 target=flops -> violation
+   #3 target=ops   -> violation
+   every direction tried
+   final: time 2.00x -> 2.00x of the roofline minimum (reads 3.00x -> 3.00x, flops 1.40x -> 1.40x, ops 14434 -> 14434)
+L4 l4_rmsnorm: start  time 1.50x min  reads 2.00x  flops 1.00x  intensity 0.33 FLOP/B  ops 8256
+   #1 target=reads -> not-cheaper  time 1.50x reads 2.00x flops 1.00x ops 8256

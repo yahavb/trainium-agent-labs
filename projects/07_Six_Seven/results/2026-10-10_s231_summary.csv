@@ -1,0 +1,16 @@
+date,tag,seat,model,level,feedback,run,solved,rounds_used,best_score,attempts,distinct_designs,prompt_tokens,completion_tokens,seconds,offline,run_id
+2026-10-10,s231,seat-231,Qwen/Qwen3-8B,01_mux,A,1,True,1,1.0,4,1,503,156,7.8,False,s231-01_mux-A-r1-175236
+2026-10-10,s231,seat-231,Qwen/Qwen3-8B,01_mux,B,1,True,1,1.0,4,1,503,156,7.9,False,s231-01_mux-B-r1-175243
+2026-10-10,s231,seat-231,Qwen/Qwen3-8B,01_mux,C,1,True,1,1.0,4,1,503,156,7.9,False,s231-01_mux-C-r1-175251
+2026-10-10,s231,seat-231,Qwen/Qwen3-8B,02_adder,A,1,True,1,1.0,4,1,479,204,10.1,False,s231-02_adder-A-r1-175259
+2026-10-10,s231,seat-231,Qwen/Qwen3-8B,02_adder,B,1,True,1,1.0,4,1,479,204,10.0,False,s231-02_adder-B-r1-175310
+2026-10-10,s231,seat-231,Qwen/Qwen3-8B,02_adder,C,1,True,1,1.0,4,1,479,204,10.0,False,s231-02_adder-C-r1-175320
+2026-10-10,s231,seat-231,Qwen/Qwen3-8B,03_counter,A,1,True,1,1.0,4,3,499,364,17.3,False,s231-03_counter-A-r1-175330
+2026-10-10,s231,seat-231,Qwen/Qwen3-8B,03_counter,B,1,True,1,1.0,4,3,499,364,17.2,False,s231-03_counter-B-r1-175347
+2026-10-10,s231,seat-231,Qwen/Qwen3-8B,03_counter,C,1,True,1,1.0,4,3,499,357,17.0,False,s231-03_counter-C-r1-175404
+2026-10-10,s231,seat-231,Qwen/Qwen3-8B,04_traffic_fsm,A,1,False,6,0.74,24,9,18088,13336,606.3,False,s231-04_traffic_fsm-A-r1-175924
+2026-10-10,s231,seat-231,Qwen/Qwen3-8B,04_traffic_fsm,B,1,False,6,0.683,24,7,14920,10674,485.4,False,s231-04_traffic_fsm-B-r1-180930
+2026-10-10,s231,seat-231,Qwen/Qwen3-8B,04_traffic_fsm,C,1,False,6,0.653,24,7,17220,11531,528.7,False,s231-04_traffic_fsm-C-r1-181736
+2026-10-10,s231,seat-231,Qwen/Qwen3-8B,06_fifo,A,1,False,6,0.324,24,5,13988,7146,324.3,False,s231-06_fifo-A-r1-182631
+2026-10-10,s231,seat-231,Qwen/Qwen3-8B,06_fifo,B,1,False,6,0.356,24,7,15136,8670,395.2,False,s231-06_fifo-B-r1-183156
+2026-10-10,s231,seat-231,Qwen/Qwen3-8B,06_fifo,C,1,False,6,0.328,24,5,16600,7761,350.6,False,s231-06_fifo-C-r1-183832

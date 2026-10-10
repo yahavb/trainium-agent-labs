@@ -1,0 +1,4 @@
+Module name: mux4
+Ports: input [3:0] d, input [1:0] sel, output y
+Behaviour: combinational 4-to-1 multiplexer. y equals the bit of d selected by sel:
+sel = 0 gives d[0], sel = 1 gives d[1], sel = 2 gives d[2], sel = 3 gives d[3].

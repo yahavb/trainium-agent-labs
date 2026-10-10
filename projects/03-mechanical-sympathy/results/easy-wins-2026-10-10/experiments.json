@@ -1,0 +1,22 @@
+[
+  {
+    "label": "FP32 baseline",
+    "report": "../forward-only-2026-10-10/neuron.json"
+  },
+  {
+    "label": "BF16 matmult autocast",
+    "report": "../forward-only-2026-10-10/neuron_bf16.json"
+  },
+  {
+    "label": "BF16 + BatchNorm folding",
+    "report": "../forward-only-2026-10-10/neuron_bf16_folded.json"
+  },
+  {
+    "label": "BF16 + folding + 30-row tiling",
+    "report": "../tiling-forward-2026-10-10/neuron_bf16_folded_tiled30.json"
+  },
+  {
+    "label": "30-row tiling + 90x180 blocks",
+    "report": "tiled30_lvl1.json"
+  }
+]

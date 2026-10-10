@@ -1,0 +1,172 @@
+
+=== run 1/3  level 4: rmsnorm  [ours, v29fd8d90d5] ===
+L4 #1 in=155 [task=143] out=198 83.9s cached  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L4 #2 in=456 [task=125 code=197 feed=121] out=253 18.2s cached  FAIL rule:layout
+      -> Do not reshape, add axes or broadcast: a (rows, cols) tile cannot be combined with a per-row vector
+L4 #3 in=546 [task=125 code=252 feed=156] out=298 21.4s  FAIL numeric:per-tile-stat
+      -> Each column tile is normalised with a statistic (max, sum or mean of squares) of that tile alone
+L4 #4 in=634 [task=125 code=297 feed=199] out=560 40.1s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (1, 700), larger than one 128x512 tile)
+L4 #5 in=589 [task=125 code=315 feed=136] out=334 24.0s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (1, 700), larger than one 128x512 tile)
+L4 #6 in=684 [task=125 code=333 feed=136 ledg=77] out=604 43.3s  FAIL rule:sum-like
+      -> Replace `.sum()` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L4 #7 in=722 [task=125 code=410 feed=121 ledg=53] out=616 44.1s  FAIL rule:layout
+      -> Do not reshape, add axes or broadcast: a (rows, cols) tile cannot be combined with a per-row vector
+L4 #8 in=808 [task=125 code=443 feed=157 ledg=70] out=735 52.6s  FAIL numeric:tag:huge-magnitude
+      -> Values around 1e18 overflow float32 when squared (float32 max is 3.4e38)
+L4 #9 in=820 [task=125 code=472 feed=210] out=766 54.8s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (1, 700), larger than one 128x512 tile)
+L4 #10 in=875 [task=125 code=505 feed=127 ledg=105] out=748 53.6s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (1, 700), larger than one 128x512 tile)
+L4 #11 in=921 [task=125 code=500 feed=141 ledg=142] out=776 55.6s  FAIL rule:whole-array (repeat code)
+      -> Do not touch more than one tile at a time (an operation produced shape (1, 700), larger than one 128x512 tile)
+   STUCK: 'rule:whole-array' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 11 attempt(s), 7210 in / 5888 out tokens
+
+=== run 1/3  level 5: softmax  [ours, v29fd8d90d5] ===
+L5 #1 in=125 [task=113] out=183 14.2s cached  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L5 #2 in=406 [task=95 code=182 feed=116] out=243 17.5s cached  FAIL crash:IndexError
+      -> Index 512 on axis 1 is past the end of an array of size 188
+L5 #3 in=532 [task=95 code=242 feed=182] out=449 32.2s cached  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L5 #4 in=453 [task=95 code=244 feed=101] out=301 21.7s cached  FAIL rule:broadcast
+      -> Do not reshape, add axes or broadcast: a (rows, cols) tile cannot be combined with a per-row vector
+L5 #5 in=558 [task=95 code=300 feed=150] out=449 32.2s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L5 #6 in=532 [task=95 code=266 feed=116 ledg=42] out=559 40.1s  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L5 #7 in=591 [task=95 code=307 feed=108 ledg=68] out=556 39.9s  FAIL crash:ValueError
+      -> Do not reshape, add axes or broadcast: a (rows, cols) tile cannot be combined with a per-row vector
+L5 #8 in=653 [task=95 code=343 feed=202] out=582 41.7s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L5 #9 in=573 [task=95 code=304 feed=93 ledg=68] out=519 37.2s  FAIL numeric:nonfinite
+      -> Some outputs are nan or inf although the true answer is finite: a step overflows for these inputs
+L5 #10 in=595 [task=95 code=332 feed=155] out=527 37.8s  FAIL numeric:nonfinite (repeat code)
+      -> Some outputs are nan or inf although the true answer is finite: a step overflows for these inputs
+L5 #11 in=676 [task=110 code=332 feed=155 ledg=66] out=639 45.8s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L5 #12 in=599 [task=95 code=290 feed=111 ledg=90] out=526 37.7s  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+   => failed (confidence 0.00) after 12 attempt(s), 6293 in / 5533 out tokens
+
+=== run 1/3  level 6: transpose  [ours, v29fd8d90d5] ===
+L6 #1 in=112 [task=100] out=136 10.8s cached  FAIL rule:layout
+      -> Remove `.T`
+L6 #2 in=300 [task=82 code=135 feed=70] out=150 10.9s cached  FAIL crash:ValueError
+      -> An assignment puts a value of shape (0,) into a slot of shape (188,)
+L6 #3 in=391 [task=82 code=149 feed=147] out=624 44.8s cached  FAIL crash:ValueError (repeat code)
+      -> An assignment puts a value of shape (0,) into a slot of shape (188,)
+L6 #4 in=448 [task=97 code=149 feed=147 ledg=42] out=389 28.0s cached  FAIL crash:ValueError
+      -> An assignment puts a value of shape (0,) into a slot of shape (188,)
+   STUCK: 'crash:ValueError' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 4 attempt(s), 1251 in / 1299 out tokens
+
+=== run 2/3  level 4: rmsnorm  [ours, v29fd8d90d5] ===
+L4 #1 in=147 [task=135] out=222 16.0s cached  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L4 #2 in=480 [task=125 code=221 feed=121] out=287 20.7s cached  FAIL rule:layout
+      -> Do not reshape, add axes or broadcast: a (rows, cols) tile cannot be combined with a per-row vector
+L4 #3 in=573 [task=125 code=286 feed=149] out=488 35.0s  FAIL numeric:per-tile-stat
+      -> Each column tile is normalised with a statistic (max, sum or mean of squares) of that tile alone
+L4 #4 in=648 [task=125 code=311 feed=199] out=530 47.7s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (700,), larger than one 128x512 tile)
+L4 #5 in=566 [task=125 code=289 feed=139] out=492 59.0s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (700,), larger than one 128x512 tile)
+L4 #6 in=638 [task=125 code=287 feed=139 ledg=74] out=462 33.1s  FAIL crash:ValueError
+      -> Do not reshape, add axes or broadcast: a (rows, cols) tile cannot be combined with a per-row vector
+L4 #7 in=609 [task=125 code=258 feed=213] out=516 37.0s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L4 #8 in=582 [task=125 code=294 feed=108 ledg=42] out=457 32.8s  FAIL numeric:per-tile-stat
+      -> Each column tile is normalised with a statistic (max, sum or mean of squares) of that tile alone
+L4 #9 in=732 [task=125 code=325 feed=199 ledg=70] out=496 35.6s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (1, 700), larger than one 128x512 tile)
+L4 #10 in=663 [task=125 code=276 feed=151 ledg=98] out=583 41.8s  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L4 #11 in=596 [task=125 code=256 feed=123 ledg=79] out=565 40.5s  FAIL rule:layout
+      -> Do not reshape, add axes or broadcast: a (rows, cols) tile cannot be combined with a per-row vector
+L4 #12 in=663 [task=125 code=307 feed=148 ledg=70] out=508 36.4s  FAIL numeric:per-tile-stat
+      -> Each column tile is normalised with a statistic (max, sum or mean of squares) of that tile alone
+   => failed (confidence 0.00) after 12 attempt(s), 6897 in / 5606 out tokens
+
+=== run 2/3  level 5: softmax  [ours, v29fd8d90d5] ===
+L5 #1 in=117 [task=105] out=298 23.5s cached  FAIL rule:escape
+      -> Remove `np.asarray`; work directly on slices of the input arrays
+L5 #2 in=444 [task=86 code=297 feed=48] out=660 51.3s cached  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L5 #3 in=498 [task=95 code=275 feed=115] out=483 34.6s cached  FAIL crash:IndexError
+      -> Index 512 on axis 1 is past the end of an array of size 188
+L5 #4 in=618 [task=95 code=334 feed=176] out=584 41.9s cached  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L5 #5 in=550 [task=95 code=341 feed=101] out=574 41.1s cached  FAIL rule:layout
+      -> Do not reshape, add axes or broadcast: a (rows, cols) tile cannot be combined with a per-row vector
+L5 #6 in=676 [task=95 code=407 feed=161] out=559 40.1s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L5 #7 in=627 [task=95 code=369 feed=93 ledg=57] out=573 41.1s  FAIL crash:IndexError
+      -> Index 1 on axis 0 is past the end of an array of size 1
+L5 #8 in=759 [task=95 code=415 feed=164 ledg=72] out=566 40.6s  FAIL crash:ValueError
+      -> Do not reshape, add axes or broadcast: a (rows, cols) tile cannot be combined with a per-row vector
+L5 #9 in=635 [task=95 code=332 feed=195] out=547 39.2s  FAIL crash:ValueError
+      -> Do not reshape, add axes or broadcast: a (rows, cols) tile cannot be combined with a per-row vector
+L5 #10 in=697 [task=95 code=332 feed=195 ledg=62] out=523 37.5s  FAIL crash:ValueError
+      -> Do not reshape, add axes or broadcast: a (rows, cols) tile cannot be combined with a per-row vector
+   STUCK: 'crash:ValueError' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 10 attempt(s), 5621 in / 5367 out tokens
+
+=== run 2/3  level 6: transpose  [ours, v29fd8d90d5] ===
+L6 #1 in=104 [task=92] out=216 17.2s cached  FAIL rule:layout
+      -> Remove `.T`
+L6 #2 in=402 [task=82 code=215 feed=92] out=237 17.1s  PASS dev; holdout 8/8
+   => verified (confidence 0.95) after 2 attempt(s), 506 in / 453 out tokens
+
+=== run 3/3  level 4: rmsnorm  [ours, v29fd8d90d5] ===
+L4 #1 in=145 [task=133] out=239 17.2s cached  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L4 #2 in=494 [task=125 code=238 feed=118] out=305 21.9s  FAIL crash:ValueError
+      -> Do not reshape, add axes or broadcast: a (rows, cols) tile cannot be combined with a per-row vector
+L4 #3 in=666 [task=125 code=304 feed=224] out=320 23.0s  FAIL rule:sum-like
+      -> Replace `np.mean` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); f...
+L4 #4 in=419 [task=125 code=143 feed=96 ledg=42] out=328 23.6s  FAIL numeric:other
+      -> The results are wrong
+L4 #5 in=453 [task=125 code=177 feed=138] out=563 40.4s  FAIL rule:whole-array
+      -> Do not touch more than one tile at a time (an operation produced shape (700,), larger than one 128x512 tile)
+L4 #6 in=455 [task=125 code=168 feed=149] out=302 21.7s  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L4 #7 in=629 [task=125 code=301 feed=114 ledg=76] out=545 39.1s  FAIL rule:layout
+      -> Do not reshape, add axes or broadcast: a (rows, cols) tile cannot be combined with a per-row vector
+L4 #8 in=658 [task=125 code=360 feed=160] out=548 39.3s  FAIL numeric:per-tile-stat
+      -> Each column tile is normalised with a statistic (max, sum or mean of squares) of that tile alone
+L4 #9 in=728 [task=125 code=391 feed=199] out=384 27.6s  FAIL numeric:tag:huge-magnitude
+      -> Values around 1e18 overflow float32 when squared (float32 max is 3.4e38)
+L4 #10 in=516 [task=125 code=168 feed=210] out=392 28.1s  PASS dev; holdout 18/18
+   => verified (confidence 0.95) after 10 attempt(s), 5163 in / 3926 out tokens
+
+=== run 3/3  level 5: softmax  [ours, v29fd8d90d5] ===
+L5 #1 in=115 [task=103] out=236 18.6s cached  FAIL rule:sum-like
+      -> Replace `np.sum` with an explicit python loop over the columns of the tile that accumulates into a 1-D array of length (i1 - i0): acc = np.zeros(i1 - i0); fo...
+L5 #2 in=459 [task=95 code=235 feed=116] out=496 35.6s  FAIL rule:max-like
+      -> Replace `np.max` with an explicit python loop over the columns of the tile: start from acc = np.full(i1 - i0, -np.inf) (use +np.inf for a min) and do acc = n...
+L5 #3 in=508 [task=95 code=307 feed=93] out=363 26.1s  FAIL rule:layout
+      -> Do not reshape, add axes or broadcast: a (rows, cols) tile cannot be combined with a per-row vector
+L5 #4 in=634 [task=95 code=362 feed=164] out=471 33.8s  FAIL crash:ValueError
+      -> Do not reshape, add axes or broadcast: a (rows, cols) tile cannot be combined with a per-row vector
+L5 #5 in=569 [task=95 code=263 feed=198] out=508 36.4s  FAIL crash:ValueError
+      -> Do not reshape, add axes or broadcast: a (rows, cols) tile cannot be combined with a per-row vector
+L5 #6 in=665 [task=95 code=291 feed=198 ledg=68] out=500 35.9s  FAIL crash:ValueError
+      -> Do not reshape, add axes or broadcast: a (rows, cols) tile cannot be combined with a per-row vector
+   STUCK: 'crash:ValueError' 3 attempts in a row; more of the same won't help
+   => stuck (confidence 0.00) after 6 attempt(s), 2950 in / 2574 out tokens
+
+=== run 3/3  level 6: transpose  [ours, v29fd8d90d5] ===
+L6 #1 in=102 [task=90] out=173 13.7s cached  FAIL rule:layout
+      -> Remove `.T`
+L6 #2 in=338 [task=82 code=172 feed=71] out=182 13.2s  PASS dev; holdout 8/8
+   => verified (confidence 0.95) after 2 attempt(s), 440 in / 355 out tokens
+
+=== summary over 3 run(s) ===
+  L4 rmsnorm      verified 1/3  mean attempts when verified 10.0  statuses ['stuck', 'failed', 'verified']
+  L5 softmax      verified 0/3  mean attempts when verified nan  statuses ['failed', 'stuck', 'stuck']
+  L6 transpose    verified 2/3  mean attempts when verified 2.0  statuses ['stuck', 'verified', 'verified']
+log: runs/ours-L456-seat-130.jsonl  (code version 29fd8d90d5)

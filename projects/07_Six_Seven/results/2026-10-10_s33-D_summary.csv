@@ -1,0 +1,5 @@
+date,tag,seat,model,level,feedback,run,solved,rounds_used,best_score,attempts,distinct_designs,prompt_tokens,completion_tokens,seconds,offline,run_id,max_rounds
+2026-10-10,s33-D,seat-33,Qwen/Qwen3-8B,06_fifo,D,1,False,6,0.36,24,9,17420,7575,343.6,False,s33-D-06_fifo-D-r1-203247,6
+2026-10-10,s33-D,seat-33,Qwen/Qwen3-8B,06_fifo,D,2,False,6,0.36,24,12,17820,7665,349.1,False,s33-D-06_fifo-D-r2-203831,6
+2026-10-10,s33-D,seat-33,Qwen/Qwen3-8B,04_traffic_fsm,D,1,False,6,0.721,24,6,18148,10442,475.6,False,s33-D-04_traffic_fsm-D-r1-204428,6
+2026-10-10,s33-D,seat-33,Qwen/Qwen3-8B,04_traffic_fsm,D,2,False,6,0.721,24,4,17960,11068,494.5,False,s33-D-04_traffic_fsm-D-r2-205224,6
