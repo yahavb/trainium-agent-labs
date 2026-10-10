@@ -1,6 +1,10 @@
 # 04 — FLUX.1-dev image generation on Trainium
 
-Generates images with FLUX.1-dev (1024×1024, 25 steps) on a seat pod's Trainium chip using AWS's NxD Inference Flux code.
+I generate images with FLUX.1-dev (1024×1024, 25 steps) on one Trainium chip, using AWS's NxD Inference Flux code. Then I try to make it faster. This page has everything I measured and what I learned.
+
+Short version: the stock setup is already close to the best of what I tried. Context parallel is 2.5% faster, `-O2` does nothing, and my own fused NKI attention kernel makes things 14% slower. The profile shows why.
+
+## Run it
 
 ```
 ./run.sh --prompt "A robot named trn2" --num 4
@@ -8,105 +12,129 @@ Generates images with FLUX.1-dev (1024×1024, 25 steps) on a seat pod's Trainium
 
 `generate.py` prints latency, ms/step and images/s and writes `out/metrics.json`. While it runs, `neuron-monitor` records `out/neuron-monitor.jsonl`, and `neuron_summary.py` summarises it.
 
-Flags that define an experiment: `--tp` (NeuronCores), `--cp` (context parallel), `--cc-opt` (neuronx-cc `-O` level for the transformer), `--nki` (fused QK-RMSNorm + RoPE + flash-attention NKI kernel, in [nki_kernels/](nki_kernels/)), `--warmup`. Each recompiles into its own folder under `/workspace/flux-compiled/`.
+These flags define an experiment. Each one recompiles into its own folder under `/workspace/flux-compiled/`.
 
-## Metrics so far
-
-### Baseline: stock NxDI path, TP=4, 1024², 25 steps, 4 images
-
-Source: `out/metrics.json` and `out/neuron-monitor.jsonl` (same files in `flux-out/` locally and on seat-185) (the first image is excluded from the steady-state numbers).
-
-| Metric | Value |
+| Flag | What it does |
 |---|---|
-| Config | `--tp 4`, no CP, `-O1`, no NKI |
-| Latency, per image | 7.30 / 7.49 / 7.56 / 7.65 s |
-| Latency, steady-state mean (images 2–4) | 7.57 s |
-| Latency p50 / max | 7.56 s / 7.65 s |
-| Time per denoising step | 303 ms |
-| Throughput | 0.132 images/s (7.9 images/min) |
-| Compile (cached) | 1.1 s |
-| Model load | 50.3 s |
-| NeuronCore utilisation, mean (all 4 cores) | 35.3 % (peak 97.9 %) |
-| NeuronCore utilisation while busy (>0 %) | 54.6 % |
-| Device memory, peak | 47.7 GiB |
-| Per-execution latency, p50 / p99 (mean over samples) | 210.1 ms / 226.5 ms |
+| `--tp` | NeuronCores for tensor parallel |
+| `--cp` | Context parallel: shard the sequence over 2 groups of `--tp` cores |
+| `--cc-opt` | neuronx-cc `-O` level for the transformer |
+| `--nki` | My fused QK-RMSNorm + RoPE + flash-attention kernel, in [nki_kernels/](nki_kernels/) |
+| `--warmup` | Untimed generations before the timed ones |
 
-### Experiments (seat-185): same prompt, 1024², 25 steps, 4 images
+## Results
 
-Source: `exp/*.json` and `exp/*.log` on seat-185 (`/workspace/04-flux-image/`), run by `exp/run_exps.sh`. Steady state excludes the first image. Neuron-monitor was off for the O2 and CP runs (`NO_MONITOR=1`); the NKI run was launched separately, with the monitor on.
+All runs use the same prompt, 1024×1024, 25 steps. Latency is steady state, so the first image is excluded unless I used `--warmup`.
 
-| Run | Flags | Mean latency | p50 | ms/step | Images/min | Compile | Load |
-|---|---|---|---|---|---|---|---|
-| Baseline | `--tp 4` | 7.57 s | 7.56 s | 303 | 7.93 | 1.1 s (cached) | 50.3 s |
-| O2 | `--tp 4 --cc-opt 2` | 7.61 s | 7.60 s | 304 | 7.88 | 771 s | 48.2 s |
-| Context parallel | `--tp 2 --cp` (4 cores, CP=2) | 7.38 s | 7.36 s | 295 | 8.13 | 846 s | 91.3 s |
-| Fused NKI attention | `--tp 4 --nki --warmup 1 --num 3` | 8.38 s | 8.38 s | 335 | 7.16 | 276 s | 45.3 s |
+| Run | Flags | Mean latency | ms/step | Images/min | Compile | Load |
+|---|---|---|---|---|---|---|
+| Baseline | `--tp 4` | 7.57 s | 303 | 7.93 | 1.1 s (cached) | 50.3 s |
+| `-O2` | `--tp 4 --cc-opt 2` | 7.61 s | 304 | 7.88 | 771 s | 48.2 s |
+| Context parallel | `--tp 2 --cp` | 7.38 s | 295 | 8.13 | 846 s | 91.3 s |
+| Baseline, 3 images with warmup | `--tp 4 --warmup 1 --num 3` | 7.35 s | 294 | 8.16 | 1.0 s (cached) | 48.1 s |
+| Fused NKI attention | `--tp 4 --nki --warmup 1 --num 3` | 8.38 s | 335 | 7.16 | 276 s | 45.3 s |
 
-- `-O2` gives no speedup (+0.6% latency, within run-to-run noise) for about 13 minutes of extra compile.
-- TP=2 with context parallel is about 2.5% faster than the TP=4 baseline. That is a small gain, and it is a single 4-image run.
-- The fused NKI attention is about 11% slower end to end (8.38 s vs 7.57 s, +32 ms per step). That matches the microbenchmark, which predicted about +37 ms per step. Its three images were timed after one untimed warmup generation, so all three count toward the mean.
+The fused NKI row compares against the warmup baseline right above it, not the first baseline. Same setup, so it's the fair comparison.
 
-### NeuronCore utilisation and memory, baseline vs NKI
+![End to end ms per step](charts/1-end-to-end.png)
 
-Both from neuron-monitor (output pasted from the NKI run's terminal; the baseline is `out/neuron-monitor.jsonl`).
+![Compile time against speed](charts/2-compile-vs-speed.png)
+
+### What I learned from the end-to-end runs
+
+- **`-O2` is not worth it.** It costs 13 minutes of compile and the latency is within noise (+0.6%).
+- **Context parallel wins by a little.** It's 2.5% faster on a single 4-image run. I wouldn't call that settled without more runs. It also nearly doubles load time to 91 s.
+- **My fused kernel loses.** It's 14% slower than the matched baseline (8.38 s vs 7.35 s, +41 ms per step). Utilisation and memory barely change, so the chip is not doing less work. It's doing the same work slower.
+
+### Utilisation and memory
+
+From neuron-monitor. The baseline column is the earlier 4-image run, not the matched warmup run. I only have monitor data for these two runs, because the `-O2` and context-parallel runs had the monitor off.
 
 | Metric | Baseline | Fused NKI |
 |---|---|---|
-| NeuronCore utilisation, mean (all 4 cores) | 35.3 % | 35.0 % |
-| Utilisation peak | 97.9 % | 100.0 % |
-| Utilisation while busy (>0 %) | 54.6 % | 52.6 % |
+| NeuronCore utilisation, mean (4 cores) | 35.3% | 35.0% |
+| Utilisation peak | 97.9% | 100.0% |
+| Utilisation while busy (>0%) | 54.6% | 52.6% |
 | Device memory, peak | 47.7 GiB | 46.8 GiB |
-| Per-execution latency p50 (mean over samples) | 210.1 ms | 230.5 ms |
-| Per-execution latency p99 (mean over samples) | 226.5 ms | 235.1 ms |
+| Per-execution latency p50 | 210.1 ms | 230.5 ms |
+| Per-execution latency p99 | 226.5 ms | 235.1 ms |
 
-Utilisation and memory are essentially unchanged. Only the per-execution latency moved, up about 10%.
+The cores sit idle about two thirds of the time on average. Some of that is the pipeline moving between stages (text encoders, transformer, VAE decoder), so I don't read the 35% as pure transformer inefficiency.
 
-### NKI attention microbenchmark
+## Why the fused kernel is slower
 
-[nki_kernels/bench_attention.py](nki_kernels/bench_attention.py), per-rank attention shape (S=4608, 6 heads, D=128, LNC=2), from `/tmp/nki_flux/bench.log` on seat-185. "Per step" is the per-call time times 57 blocks.
+I wrote `flux_qknorm_rope_attention` to fold QK-RMSNorm, RoPE and flash attention into one NKI kernel. The idea was to cut the fp32 glue ops around attention. I benchmarked it alone first, at the per-rank attention shape (S=4608, 6 heads, D=128, LNC=2). Each graph chains 8 calls so launch overhead washes out.
 
-| Variant | ms / attention call | ms / step (57 blocks) |
+| Variant | ms per attention call | ms per step (×57 blocks) |
 |---|---|---|
-| baseline (NxDI glue + nkilib `attention_cte`) | 1.840 | 104.9 |
-| fused (`flux_qknorm_rope_attention`) | 2.491 | 142.0 |
 | `attention_cte` core only | 1.341 | 76.4 |
+| Baseline (NxDI glue + `attention_cte`) | 1.840 | 104.9 |
+| Fused NKI kernel | 2.491 | 142.0 |
 
-The fused kernel is about 35% slower than the baseline path in this microbenchmark. The kernel core alone (1.34 ms) is faster than both, so the gap comes from the fused kernel's own QK-norm and RoPE work.
+![Attention microbenchmark](charts/3-attention-microbench.png)
 
-### Device profile (neuron-explorer, transformer NEFF)
+Three things follow from this:
 
-Source: `/workspace/ne-profile/profiles/global/flux-transformer@latest` on seat-185, queried with the scripts in `/workspace/analysis/` (`te.py`, `te2.py`, `dma.py`, `s5.py`, `spill.py`, `spill2.py`, `w.py`). One transformer execution on the two physical cores of one logical NeuronCore, window 273 ms. Both cores behave the same, so numbers are per core. Peak figures come from the profile's metadata: 78.6 TFLOPS on the tensor engine, 435 GB/s DMA, 716 GB/s HBM.
+1. **The attention core is not the problem.** The nkilib kernel alone takes 1.34 ms. The stock glue around it adds 0.5 ms.
+2. **My fusion adds 1.15 ms on top of the core, more than the glue it replaces.** The QK-norm and RoPE work inside my kernel costs more than the XLA ops it was meant to beat.
+3. **The microbenchmark predicted the end-to-end result.** It said +37 ms per step and the real run said +41 ms. So the slowdown comes from the kernel, not from how I patched it into the model.
+
+I haven't profiled the fused kernel on its own yet. My guess is that the norm and rotation run on the vector and scalar engines in a serial phase before the matmuls start, so the tensor engine waits. That's only a guess until I look at the engine timeline.
+
+## Where the time goes on the baseline
+
+I profiled the stock transformer with neuron-explorer and queried it with the scripts in `/workspace/analysis/` on seat-185. One execution on one logical NeuronCore (two physical cores) took 273 ms. Both cores behave the same, so the numbers are per core. Peaks come from the profile's metadata: 78.6 TFLOPS on the tensor engine, 435 GB/s for DMA.
 
 | Metric | Value |
 |---|---|
 | Instructions traced | 6.33 M (tensor 4.66 M, vector 0.60 M, scalar 0.50 M, sync 0.42 M, gpsimd 0.15 M) |
-| Tensor-engine active time | 183 ms of 273 ms (67%) |
-| Achieved tensor throughput | 55.5 TFLOPS = 70.5% of peak (ideal 129 ms, gap 54 ms) |
+| Tensor engine active | 183 ms of 273 ms (67%) |
+| Achieved tensor throughput | 55.5 TFLOPS, 70.5% of peak |
 | Transposes | 5% of tensor FLOPs, 6.6 ms |
-| Tensor-engine matmul issue interval | 221 ms measured vs 129 ms ideal, so 92 ms of excess per core |
-| DMA bytes moved | 45.3 GB per core |
-| DMA achieved bandwidth | 234 GB/s (54% of 435 GB/s) |
-| DMA memory-bound time | 194 ms (ideal at peak 104 ms, gap about 90 ms) |
-| Spill traffic (Scalar + GpSimd + Sync DMA) | save about 10.1 GB, reload about 15.6 GB |
+| Matmul issue time | 221 ms measured vs 129 ms ideal |
+| DMA bytes per core | 45.3 GB |
+| DMA achieved bandwidth | 234 GB/s, 54% of peak |
+| Spill traffic | about 10 GB saved, about 16 GB reloaded |
 
-What it shows:
+![Time budget per core](charts/5-time-budget.png)
 
-- **Matmul size matters.** Matmuls with N=512 run at 74% of ideal rate, N=128 at 39% and N=64 at 36%. The N=128 and N=64 matmuls add about 34 ms of the 92 ms excess.
-- **Attention is a big share of the tensor work.** `attention_cte.py:3887` alone is 141 ms of tensor-engine time, all N=128 matmuls at 41% efficiency. `attention_cte.py:3611` is N=512 at 52%.
-- **Weights are re-read from HBM.** 16.2 GB per core is loaded from the inputs into SBUF, against 5.35 GB of actual tensor data. The worst inputs (18.9 MB each, 50 of them) are reloaded 16 times, about 15 GB in total.
-- **Many small DMAs.** Hardware-dynamic DMAs under 2 KB (about 23.5 M packets) move 11.4 GB at 12 to 18 B/ns per engine, against 21 to 22 B/ns for 4 to 16 KB packets.
-- **Transpose DMAs.** 14.5 GB of the traffic is SBUF-to-SBUF transpose-mode DMA.
+### What I learned from the profile
 
-Caveats:
+- **Matmul shape decides tensor engine efficiency.** N=512 matmuls run at about 74% of the ideal rate. N=128 runs at 39% and N=64 at 36%. Those two small sizes cost about 34 ms of the 92 ms of excess matmul time.
 
-- The profile has three warnings: DMA block notifications were dropped (some DMA data may be wrong), the NEFF lacks compiler metrics, and HLO FLOP stats are missing, so MFU from HLO is unavailable. DMA packet coverage is 79% (71.6 of 91.1 GB).
+  ![Matmul efficiency by N](charts/4-matmul-efficiency.png)
+
+- **Attention's inner loop is the worst offender.** `attention_cte.py:3887` alone is 141 ms of tensor time, all N=128, at 41% efficiency. If I want to speed this model up, I'd start with a kernel that keeps the moving tensor at N=512 in that loop. More fusion around it won't help.
+- **Weights are read from HBM several times.** 16.2 GB per core is loaded into SBUF, but the real tensor data is only 5.35 GB. The worst 50 inputs (18.9 MB each) are reloaded 16 times, about 15 GB.
+- **Lots of small DMAs.** About 23.5 M hardware-dynamic packets are under 2 KB. They move 11.4 GB at 12 to 18 B/ns per engine, against 21 to 22 B/ns for 4 to 16 KB packets. Bigger transfers would help.
+- **14.5 GB of traffic is SBUF-to-SBUF transpose DMA.** That's a lot of data shuffling just for layout changes.
+
+### Caveats on the profile
+
+- The profile has three warnings: DMA block notifications were dropped, the NEFF lacks compiler metrics, and HLO FLOP stats are missing, so HLO-based MFU isn't available.
+- DMA packet coverage is 79% (71.6 of 91.1 GB), so treat the DMA numbers as lower bounds.
 - Ingest logged "DGE packet count exceeds number of DMA trace entries" for several DMA engines.
-- A separate profiling run in `prof/run.log` hit `NRT_EXEC_SW_NQ_OVERFLOW`.
-- The spill and reload totals are my sums from `s5.py`; they do not separate spills from ordinary intermediate traffic.
+- A separate profiling run in `prof/run.log` died with `NRT_EXEC_SW_NQ_OVERFLOW`.
+- My spill and reload totals are sums from `s5.py`. They don't separate spills from ordinary intermediate traffic.
 
-### In progress / not yet recorded
+## What I'd do next
 
-| Experiment | Status |
+1. Profile the fused kernel alone and check whether the norm and RoPE phase blocks the tensor engine.
+2. Rework the attention loop so matmuls run at N=512, not N=128.
+3. Find out why weights get reloaded up to 16 times. That's roughly 10 GB of avoidable HBM traffic per core.
+4. Repeat the context-parallel run a few times to see if the 2.5% gain holds.
+
+## Where the data lives
+
+All of it is on seat-185 under `/workspace/`.
+
+| Data | Path |
 |---|---|
-| Neuron-monitor utilisation for O2 and CP | Not captured (only the baseline and NKI runs have it). |
-| Earlier 4-image run before the baseline | Metrics overwritten. |
+| Baseline metrics and monitor | `04-flux-image/out/` |
+| `-O2` and context-parallel runs | `04-flux-image/exp/` |
+| Matched baseline and NKI runs | `projects/04-flux-image/out/{base,nki}/metrics.json` |
+| Attention microbenchmark | `/tmp/nki_flux/bench.log` |
+| Profile | `ne-profile/profiles/global/flux-transformer@latest` |
+| Analysis scripts | `analysis/` |
+
+The charts in [charts/](charts/) use the numbers on this page. The metrics from my very first 4-image run were overwritten, so there's nothing to report from it.
