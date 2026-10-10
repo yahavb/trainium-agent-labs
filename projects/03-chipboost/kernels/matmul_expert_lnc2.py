@@ -13,7 +13,8 @@ core then reads half of it and all of the small lhsT), else M, else both program
 (identical values, identical control flow: NKI expects the same control flow on both cores). With no
 launch grid (program_ndim() == 0) it is exactly the single-core kernel, so the referee can still check it.
 
-Caps default to random search's best single-core triple on seat-102 (m2 n6 k16, 3.33x); they apply per
+Caps default to the best single-core triple of the first random-search run on seat-102 (m2 n6 k16, 3.33x;
+that run is archived, on an older referee, and the sweep ranks the triple #6 of 62); they apply per
 program, to that program's share.
 
 Copyright (C) 2024, Amazon.com. All Rights Reserved (the tutorial kernel this adapts).

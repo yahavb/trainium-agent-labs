@@ -4,8 +4,8 @@ lnc2_probe.py -- does the second physical NeuronCore pay? P2's "use 100% of the 
 
 At LNC=2 each logical NeuronCore is two physical ones, and a plain launch uses one (NKI 0.6.0 docs). This
 runs kernels/matmul_expert_lnc2.py, which splits the output between the two programs of a kernel[2]
-launch, and measures it against the SAME kernel launched plainly (one program, the best single-core
-block caps random search found), at the matmul timing shapes:
+launch, and measures it against the SAME kernel launched plainly (one program, the same block caps), at
+the matmul timing shapes:
 
   1. simulator: kernel[2] in both documented forms, plus the plain launch, against the float32 reference;
   2. compile options: what the plain and the [2] kernel objects carry (LNC / grid fields), since P1's

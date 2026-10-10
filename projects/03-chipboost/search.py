@@ -272,12 +272,16 @@ def summarize(paths):
         print(f"  sweep #{i:<3} {caps_str(r['caps']):<12} {r['verdict']:<8} {r['time_us_median']:8.1f} us "
               f"{r['speedup']:6.3f}x")
     expert = effective((16, 2, 8), tiles)
+    shipped = rank.get(expert) and timed[rank[expert] - 1]
     if timed:
         print(f"  ground truth: {caps_str(timed[0]['caps'])} at {timed[0]['speedup']:.3f}x; the expert as shipped "
-              f"({caps_str(expert)}) ranks #{rank.get(expert, '?')} of {len(timed)}")
+              f"({caps_str(expert)}) ranks #{rank.get(expert, '?')} of {len(timed)}"
+              + (f"; the best is {timed[0]['speedup'] / shipped['speedup']:.3f}x over it" if shipped else ""))
 
+    # Attempt 0 is the expert as shipped: AWS's design, not a discovery. What the search found is its best
+    # over that attempt 0, both timed in the run's own session (the dashboard's tuning study does the same).
     print()
-    bests = []
+    bests, gains = [], []
     for rid, recs in sorted(runs.items()):
         if rid.startswith("matmul-sweep-"):
             continue
@@ -288,14 +292,24 @@ def summarize(paths):
             continue
         b = max(ver, key=lambda r: r["speedup"])
         bests.append(b["speedup"])
+        a0 = recs[0] if recs[0].get("attempt_no") == 0 and recs[0]["caps"] == expert else None
+        gain = ""
+        if a0 and a0.get("speedup"):
+            gains.append(b["speedup"] / a0["speedup"])
+            gain = (f", {gains[-1]:.3f}x over its attempt 0 (the expert as shipped, {a0['speedup']:.3f}x)"
+                    if b is not a0 else ", nothing beat its attempt 0 (the expert as shipped)")
         where = f"rank #{rank[b['caps']]} of {len(timed)} in the sweep" if b["caps"] in rank else "not in the sweep"
         share = f", {b['speedup'] / timed[0]['speedup']:.1%} of the ground truth" if timed else ""
         print(f"  {rid}: {len(recs)} evaluations; best verified {caps_str(b['caps'])} {b['speedup']:.3f}x "
-              f"at attempt {b.get('attempt_no')}; {where}{share}")
+              f"at attempt {b.get('attempt_no')}{gain}; {where}{share}")
     if bests:
         bests.sort()
-        print(f"  random search, {len(bests)} run(s): best verified min {bests[0]:.3f}x, "
+        print(f"  random search, {len(bests)} run(s): best verified vs start min {bests[0]:.3f}x, "
               f"median {bests[len(bests) // 2]:.3f}x, max {bests[-1]:.3f}x")
+    if gains:
+        gains.sort()
+        print(f"  the search's own share, over the expert as shipped: min {gains[0]:.3f}x, "
+              f"median {gains[len(gains) // 2]:.3f}x, max {gains[-1]:.3f}x")
     return runs
 
 
