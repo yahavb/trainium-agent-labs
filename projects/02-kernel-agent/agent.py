@@ -360,6 +360,15 @@ def preflight(source):
                               f"and its {role} `{name}` is {origin(name)}. Anything in HBM is "
                               f"moved with nisa.dma_copy, to or from an sbuf tile.")
                     break                       # one sentence per call is enough
+        if hit == ("nisa", "dma_copy"):
+            for role in ("dst", "src"):
+                name = base(kwargs.get(role)) if role in kwargs else None
+                if name and place(name) == "psum":
+                    add(node, f"nisa.dma_copy cannot read from or write to a psum tile, and its "
+                              f"{role} `{name}` is {origin(name)}. Move the result into an sbuf "
+                              f"tile of the same shape with nisa.tensor_copy first, and dma_copy "
+                              f"that sbuf tile.")
+                    break
         if (isinstance(kwargs.get("dst"), ast.Name) and isinstance(kwargs.get("src"), ast.Name)
                 and kwargs["dst"].id == kwargs["src"].id):
             add(node, f"dst and src are the same array `{kwargs['dst'].id}`, so this copy does "
@@ -616,6 +625,21 @@ def directed(error_text):
     * `module 'nki.isa' has no attribute 'multiply'`. The old message listed the first 25 names
       of nki.isa alphabetically. The name exists -- in nki.language. Say that.
     """
+    if at_least("directed5"):
+        # Seen on a seat twice in one hour, as the LAST fault of a kernel that was otherwise
+        # complete: level 3 (session 20261010-202354, round 7) and level 4 (session
+        # 20261010-203420, rounds 5 to 7, after reaching 0.75). The kernel copies its psum result
+        # straight to the output. The error names two memory regions and gives no advice; the
+        # model answered by pasting every default argument of dma_copy into the call.
+        m = re.search(r"dma_copy requires HBM or SBUF tensors, got src=MemoryRegion\.(\w+), "
+                      r"dst=MemoryRegion\.(\w+)", error_text)
+        if m and "psum" in m.groups():
+            return (error_text + " nisa.dma_copy cannot read from or write to a psum tile. A "
+                    "psum result reaches HBM in two steps: allocate an sbuf tile with the same "
+                    "shape as the psum tile, move the result into it with "
+                    "nisa.tensor_copy(dst=<that sbuf tile>, src=<the psum tile>), then "
+                    "nisa.dma_copy(dst=<the output slice>, src=<that sbuf tile>). Change nothing "
+                    "else, and do not add any other arguments to dma_copy.")
     if at_least("directed4"):
         # Seen on a seat, level 3, the first directed3 run (session 20261010-193145). directed3 got
         # the model past both old level 3 walls in one round each, to a kernel that is correct but
