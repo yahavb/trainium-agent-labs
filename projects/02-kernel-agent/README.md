@@ -17,6 +17,8 @@ splits the work into six roles.
   the spread.
 - The 32B runs were stopped by request at ~23:07 UTC. Levels 1, 2, 3 and 5 finished, levels 4 and 6 were
   stopped partway, and levels 7 and 8 never ran.
+- The 8B runs of levels 5–7 (seat-199) were stopped by request at ~23:08 UTC, partway through level 7.
+  Level 8 never ran on either model.
 
 ## Results
 
@@ -25,7 +27,7 @@ one run per level, 8K context. Every check is `nki.simulate` on the CPU. The bes
 in [`kernels/`](kernels/) (`_8b` in the name: Qwen3-8B), with its score and caveats in the header. They
 are the agent's output, not reference kernels.
 
-### Qwen3-8B (seat-35, TP=2)
+### Qwen3-8B (TP=2: levels 1–4 on seat-35, levels 5–7 on seat-199)
 
 | Level | Operation | agent2 (1 run) | `agent.py` baseline (3 runs) |
 |---|---|---|---|
@@ -33,7 +35,10 @@ are the agent's output, not reference kernels.
 | 2 | 2D transpose | 0.30: 14 checks, 196 s | 0.30 in every run |
 | 3 | matmul, single tile | **solved**: 3 checks, 120 s | 0.30 in every run |
 | 4 | matmul, tiled | 0.62: 23 checks, 592 s | 0.62 at best |
-| 5–8 | | not run | not run |
+| 5 | matmul, loads hoisted | 0.62 (1 of 4 shapes): 30 checks, 61 calls, 790 s | not run |
+| 6 | matmul, M and N blocked | 0.62 (1 of 4 shapes): 21 checks, 47 calls, 564 s | not run |
+| 7 | matmul, M, N and K blocked | 0.62 (1 of 4 shapes) after 6 checks, then stopped by request | not run |
+| 8 | single-head attention | not run | not run |
 | | levels 1–4 in all | 16.5 min | about 22 min per run |
 
 - Runs: `agent2-v5-all-1010-2230`, and `baseline-1010-1700` (`agent.py` defaults: 8 rounds × 4 samples).
@@ -45,6 +50,12 @@ are the agent's output, not reference kernels.
   `dma_transpose` are withheld.
 - **Level 3:** clean (an HBM output, exactly the minimum bytes), but hard-codes the one test shape.
 - **Level 4:** mostly copy-size and output-shape errors.
+- **Levels 5–7** (runs `agent2-e4e-l{5,6,7}-1010-2241`): each best kernel passes only the one test shape
+  that fits a single tile (K=128, M=128, N=512). At level 5 it puts a 256-row operand in one tile. At
+  levels 6 and 7 it hard-codes that first shape's tile and output sizes.
+  - 20 of the 57 checks hit errors no debugger rule recognises.
+  - The most common of those (11) come from views that move or resize the partition axis: "Partition dim
+    must stay at position 0", "Partition dim size must be preserved".
 
 ### Qwen3-32B (seat-198, TP=4, the whole chip)
 
