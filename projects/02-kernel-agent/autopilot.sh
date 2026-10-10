@@ -35,6 +35,9 @@ REMOTE=${AUTOPILOT_REMOTE:-mine}
 RESULTS_BRANCH=${AUTOPILOT_RESULTS_BRANCH:-seat17-results}
 TREE=$PROJ/.seat-results
 DONE=$PROJ/.queue-done
+# Which folder of job files this seat works through. A second seat gets its own (queue36), so two
+# seats never run the same job, and its own results branch (AUTOPILOT_RESULTS_BRANCH).
+QUEUE=${AUTOPILOT_QUEUE:-queue}
 PIDFILE=$PROJ/.autopilot.pid
 LOG=$PROJ/autopilot.log
 PY=${PYTHON:-python}
@@ -219,7 +222,7 @@ setting() {   # setting FILE KEY -> the value, quotes removed; only the first ma
 next_job() {
   mkdir -p "$DONE"
   local job name out modes repeat args cancel d
-  for job in queue/*.job; do
+  for job in "$QUEUE"/*.job; do
     [ -f "$job" ] || continue
     name=$(basename "$job")
     [ -e "$DONE/$name" ] && continue
