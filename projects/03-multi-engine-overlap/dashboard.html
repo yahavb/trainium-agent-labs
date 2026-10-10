@@ -778,54 +778,54 @@
         <div class="metric-card" style="--metric-color: var(--accent-green);">
           <div class="metric-header">
             <span class="metric-title">Idle Memory Stalls</span>
-            <span class="metric-chip text-green" id="card-stall-chip">-100% ELIMINATED</span>
+            <span class="metric-chip text-green" id="card-stall-chip">0% STEADY-STATE</span>
           </div>
           <div class="metric-value text-green" id="card-stall-val">0.0%</div>
-          <div class="metric-sub">
-            <span>Was <strong>66.7%</strong> in sequential</span>
+          <div class="metric-sub" id="card-stall-sub">
+            <span>Sequential: <strong>66.7%</strong> | Overall: <strong>31.0%</strong> (51.7% cut)</span>
           </div>
         </div>
 
         <div class="metric-card" style="--metric-color: var(--accent-cyan);">
           <div class="metric-header">
-            <span class="metric-title">Peak Speedup Factor</span>
-            <span class="metric-chip text-cyan" id="card-spd-chip">16 BLOCKS</span>
+            <span class="metric-title">Hardware Speedup</span>
+            <span class="metric-chip text-cyan" id="card-spd-chip">STANDARD 8 BLOCKS</span>
           </div>
-          <div class="metric-value text-cyan" id="card-spd-val">2.26×</div>
-          <div class="metric-sub">
-            <span><strong>2.07×</strong> on standard 8 blocks</span>
+          <div class="metric-value text-cyan" id="card-spd-val">2.07×</div>
+          <div class="metric-sub" id="card-spd-sub">
+            <span>Peak: <strong>2.26×</strong> (16 blocks) | Standard: <strong>2.07×</strong></span>
           </div>
         </div>
 
         <div class="metric-card" style="--metric-color: var(--accent-orange);">
           <div class="metric-header">
             <span class="metric-title">Numerical Discrepancy</span>
-            <span class="metric-chip text-orange">EXACT MATH</span>
+            <span class="metric-chip text-orange" id="card-err-chip">EXACT BITWISE MATCH</span>
           </div>
           <div class="metric-value text-orange" id="card-err-val">0.00<span style="font-size:1.2rem; font-weight:600;">e+00</span></div>
-          <div class="metric-sub">
-            <span>100% match vs. NumPy reference</span>
+          <div class="metric-sub" id="card-err-sub">
+            <span>0.00e+00 vs reference | 7.63e-06 max vs f64</span>
           </div>
         </div>
 
         <div class="metric-card" style="--metric-color: var(--accent-purple);">
           <div class="metric-header">
             <span class="metric-title">Agent Convergence</span>
-            <span class="metric-chip text-purple" id="card-round-chip">1 RECALIBRATION</span>
+            <span class="metric-chip text-purple" id="card-round-chip">SCORE 1.00</span>
           </div>
           <div class="metric-value text-purple" id="card-score-val">1.00<span style="font-size:1.2rem; font-weight:600;">/1.00</span></div>
-          <div class="metric-sub">
-            <span>2,460 / 8,192 tokens consumed</span>
+          <div class="metric-sub" id="card-score-sub">
+            <span>Silicon: 2,460 tok (61.5s) | Local: 3,060 tok</span>
           </div>
         </div>
 
         <div class="metric-card" style="--metric-color: #f43f5e;">
           <div class="metric-header">
             <span class="metric-title">Arithmetic Intensity</span>
-            <span class="metric-chip text-cyan">8.3× MEMORY BOUND</span>
+            <span class="metric-chip text-cyan" id="card-ai-chip">8.3× MEMORY BOUND</span>
           </div>
-          <div class="metric-value">26.8 <span style="font-size:1rem; font-weight:600; color:var(--text-dim);">FLOP/B</span></div>
-          <div class="metric-sub">
+          <div class="metric-value" id="card-ai-val">26.8 <span style="font-size:1rem; font-weight:600; color:var(--text-dim);">FLOP/B</span></div>
+          <div class="metric-sub" id="card-ai-sub">
             <span>Hardware ridge: <strong>222.0 FLOP/B</strong></span>
           </div>
         </div>
@@ -1038,16 +1038,7 @@
                 <th>Numerical Accuracy</th>
               </tr>
             </thead>
-            <tbody>
-              <tr>
-                <td class="mono font-semibold">64 × 128</td>
-                <td>1 Sub-Tile</td>
-                <td class="mono">30.0 µs</td>
-                <td class="mono">30.0 µs</td>
-                <td><span class="badge-warn">1.00×</span></td>
-                <td>N/A (single block)</td>
-                <td><span class="badge-pass">0.00e+00</span></td>
-              </tr>
+            <tbody id="scaling-table-body">
               <tr>
                 <td class="mono font-semibold">512 × 128</td>
                 <td>4 Blocks</td>
@@ -1097,7 +1088,18 @@
           </div>
         </div>
 
-        <div class="trajectory-timeline">
+        <!-- Trajectory Mode Selector -->
+        <div style="display:flex; gap:0.6rem; align-items:center; margin: 0.5rem 0 1.25rem 0;">
+          <span style="font-size:0.75rem; color:var(--text-dim); font-weight:700; letter-spacing:0.05em;">VIEW LOG SOURCE:</span>
+          <button id="btn-traj-silicon" class="btn btn-primary" onclick="switchTrajectoryMode('silicon')" style="font-size:0.75rem; padding:0.3rem 0.75rem;">
+            ⚡ Live Silicon Run (Pod seat-140, 2 Rounds)
+          </button>
+          <button id="btn-traj-latest" class="btn" onclick="switchTrajectoryMode('latest')" style="font-size:0.75rem; padding:0.3rem 0.75rem;">
+            💻 Latest Local Run (3 Rounds)
+          </button>
+        </div>
+
+        <div class="trajectory-timeline" id="trajectory-timeline-container">
           <!-- Round 0 -->
           <div class="trajectory-item">
             <div class="trajectory-badge badge-r0">ROUND 0</div>
@@ -1165,7 +1167,7 @@
                 <th>Result</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="hostile-table-body">
               <tr>
                 <td class="mono font-semibold">standard_even_256</td>
                 <td class="mono">256 × 128</td>
@@ -1375,11 +1377,8 @@
             document.getElementById('term-status').style.color = '#4ade80';
             isRunning = false;
 
-            // Trigger metric update
-            document.getElementById('card-stall-val').innerText = '0.0%';
-            document.getElementById('card-stall-val').style.color = 'var(--accent-green)';
-            document.getElementById('card-spd-val').innerText = '2.26×';
-            document.getElementById('card-score-val').innerText = '1.00/1.00';
+            // Trigger comprehensive dashboard dynamic update
+            updateAllDashboardMetrics();
           } else if (data.type === 'error') {
             es.close();
             appendTermLine('<span class="term-err">[PROCESS ERROR] ' + data.error + '</span>');
@@ -1496,16 +1495,172 @@
       document.getElementById('term-status').style.color = '#4ade80';
       isRunning = false;
 
-      // Trigger visual card animation
-      document.getElementById('card-stall-val').innerText = '0.0%';
-      document.getElementById('card-stall-val').style.color = 'var(--accent-green)';
-      document.getElementById('card-spd-val').innerText = '2.26×';
-      document.getElementById('card-score-val').innerText = '1.00/1.00';
+      // Trigger full metric update
+      updateAllDashboardMetrics();
     }
 
     async function startFullSimulation() {
       clearTerminal();
       await runSimScript('all');
+    }
+
+    // ================= DYNAMIC METRIC SYNCHRONIZATION =================
+    let globalMetrics = null;
+    let activeTrajMode = 'silicon';
+
+    async function updateAllDashboardMetrics() {
+      try {
+        const resp = await fetch('/api/metrics', { cache: 'no-store' });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        globalMetrics = data;
+        renderMetricsToUI(data);
+      } catch (err) {
+        console.error('Metrics fetch error:', err);
+      }
+    }
+
+    function renderMetricsToUI(data) {
+      if (!data || !data.summary) return;
+      const s = data.summary;
+
+      // 1. Update Hero Cards
+      const stallEl = document.getElementById('card-stall-val');
+      if (stallEl) {
+        stallEl.innerText = s.steady_state_stall;
+        stallEl.style.color = 'var(--accent-green)';
+      }
+      const stallSub = document.getElementById('card-stall-sub');
+      if (stallSub) {
+        stallSub.innerHTML = `<span>Sequential: <strong>${s.sequential_stall}</strong> | Overall: <strong>${s.overall_stall_avg}</strong> (${s.stall_reduction} cut)</span>`;
+      }
+
+      const spdEl = document.getElementById('card-spd-val');
+      if (spdEl) {
+        spdEl.innerText = s.speedup_standard;
+      }
+      const spdSub = document.getElementById('card-spd-sub');
+      if (spdSub) {
+        spdSub.innerHTML = `<span>Standard: <strong>${s.speedup_standard}</strong> | Peak: <strong>${s.speedup_peak}</strong> (16 blocks)</span>`;
+      }
+
+      const errEl = document.getElementById('card-err-val');
+      if (errEl) {
+        errEl.innerText = s.numerical_diff;
+      }
+      const errSub = document.getElementById('card-err-sub');
+      if (errSub) {
+        errSub.innerHTML = `<span>Exact bitwise match vs ref | Max hostile: <strong>${s.max_hostile_err}</strong> vs f64</span>`;
+      }
+
+      const scoreEl = document.getElementById('card-score-val');
+      if (scoreEl) {
+        scoreEl.innerText = s.grader_score;
+      }
+      const scoreSub = document.getElementById('card-score-sub');
+      if (scoreSub) {
+        const trajLatest = data.trajectories && data.trajectories.latest ? data.trajectories.latest : [];
+        const trajSilicon = data.trajectories && data.trajectories.silicon ? data.trajectories.silicon : [];
+        const latTokens = trajLatest.length ? (trajLatest[trajLatest.length - 1].total_tokens || 3060) : 3060;
+        const silTokens = trajSilicon.length ? (trajSilicon[trajSilicon.length - 1].total_tokens || 2460) : 2460;
+        scoreSub.innerHTML = `<span>Silicon: ${silTokens} tok (61.5s) | Local: ${latTokens} tok</span>`;
+      }
+
+      // 2. Update Hostile Test Suite Table
+      if (data.hostile_tests && data.hostile_tests.length > 0) {
+        const tbody = document.getElementById('hostile-table-body');
+        if (tbody) {
+          tbody.innerHTML = data.hostile_tests.map((t) => `
+            <tr style="${t.id.includes('prime') ? 'background:rgba(251,146,60,0.03);' : (t.id.includes('extreme') ? 'background:rgba(192,132,252,0.03);' : '')}">
+              <td class="mono font-semibold" style="${t.id.includes('prime') ? 'color:var(--accent-orange);' : (t.id.includes('extreme') ? 'color:var(--accent-purple);' : '')}">${t.id}</td>
+              <td class="mono">${t.shape}</td>
+              <td>${t.desc}</td>
+              <td class="mono">${t.tol}</td>
+              <td class="mono text-green">${t.max_err}</td>
+              <td><span class="badge-pass">${t.pass ? 'PASS' : 'FAIL'}</span></td>
+            </tr>
+          `).join('');
+        }
+      }
+
+      // 3. Update Hardware Scaling Table
+      if (data.scaling_table && data.scaling_table.length > 0) {
+        const sbody = document.getElementById('scaling-table-body');
+        if (sbody) {
+          sbody.innerHTML = data.scaling_table.map((row) => `
+            <tr style="${row.shape.includes('Standard') ? 'background:rgba(56, 189, 248, 0.04);' : ''}">
+              <td class="mono font-semibold" style="${row.shape.includes('Standard') ? 'color:var(--accent-cyan);' : ''}">${row.shape}</td>
+              <td>${row.blocks}</td>
+              <td class="mono">${row.seq_us}</td>
+              <td class="mono" style="${row.shape.includes('Standard') ? 'color:var(--accent-cyan); font-weight:700;' : ''}">${row.ovl_us}</td>
+              <td><span class="badge-pass" style="font-size:0.85rem; ${row.shape.includes('Standard') ? 'background:rgba(56,189,248,0.2); color:var(--accent-cyan); border-color:var(--accent-cyan);' : ''}">${row.speedup}</span></td>
+              <td class="text-green font-semibold">${row.stall_cut}</td>
+              <td><span class="badge-pass">${row.err}</span></td>
+            </tr>
+          `).join('');
+        }
+      }
+
+      // 4. Render Active Trajectory
+      renderTrajectoryTimeline(activeTrajMode);
+    }
+
+    function switchTrajectoryMode(mode) {
+      activeTrajMode = mode;
+      const btnSil = document.getElementById('btn-traj-silicon');
+      const btnLat = document.getElementById('btn-traj-latest');
+      if (btnSil && btnLat) {
+        if (mode === 'silicon') {
+          btnSil.className = 'btn btn-primary';
+          btnLat.className = 'btn';
+        } else {
+          btnSil.className = 'btn';
+          btnLat.className = 'btn btn-primary';
+        }
+      }
+      renderTrajectoryTimeline(mode);
+    }
+
+    function renderTrajectoryTimeline(mode) {
+      const container = document.getElementById('trajectory-timeline-container');
+      if (!container || !globalMetrics || !globalMetrics.trajectories) return;
+      const rounds = mode === 'silicon' ? globalMetrics.trajectories.silicon : globalMetrics.trajectories.latest;
+      if (!rounds || rounds.length === 0) return;
+
+      container.innerHTML = rounds.map((r) => {
+        const isConverged = r.score >= 1.0;
+        const badgeClass = isConverged ? 'badge-r1' : 'badge-r0';
+        const activeClass = isConverged ? 'active' : '';
+        const hazardTitle = r.hazard && r.hazard !== 'NONE' ? `Hazard Diagnosed: \`${r.hazard}\`` : 'Hazard: NONE — FULL CONVERGENCE ACHIEVED 🎯';
+        const scoreColor = isConverged ? 'text-green font-bold' : 'text-dim';
+        const latStr = r.latency_s ? ` | Latency: ${r.latency_s.toFixed(1)}s` : '';
+        const tokStr = r.total_tokens ? ` | Tokens: ${r.total_tokens}` : (r.tokens ? ` | Tokens: ${r.tokens}` : '');
+
+        return `
+          <div class="trajectory-item ${activeClass}">
+            <div class="trajectory-badge ${badgeClass}">ROUND ${r.round}</div>
+            <div class="trajectory-body">
+              <div class="trajectory-header">
+                <span class="trajectory-title" style="${isConverged ? 'color:var(--accent-green);' : ''}">${hazardTitle}</span>
+                <span class="mono ${scoreColor}" style="font-size:0.8rem;">Score: ${(r.score).toFixed(2)} / 1.00${latStr}${tokStr}</span>
+              </div>
+              <p class="trajectory-desc">
+                ${isConverged 
+                  ? 'Agent synthesized a verified 3-stage software pipeline: Prologue prefetch, 3-engine steady-state buffer rotation, and epilogue drain. All tests passed with 100% numerical accuracy!' 
+                  : (r.hazard === 'UNCOMPUTED_BLOCK_HAZARD'
+                    ? `Block ${r.block_failed >= 0 ? r.block_failed : 0} was uncomputed (all zeros). Loop boundary condition skipped block execution.`
+                    : (r.score < 0.8 && r.overlap_efficiency < 0.5 
+                      ? 'Sequential execution baseline: DMA, Vector, and Tensor run serialized with 66.7% idle memory stalls.' 
+                      : 'Diagnostic detected pipeline execution hazard.'))}
+              </p>
+              <div class="code-box">
+                <span style="color:#94a3b8;">// Grader Diagnostic Feedback:</span><br>
+                <span style="color:${isConverged ? 'var(--accent-green)' : '#f87171'};">${(r.hint || 'Score ' + r.score).replace(/\\n/g, '<br>')}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
     }
 
     // ================= GANTT RENDERING =================
@@ -1553,6 +1708,7 @@
     window.addEventListener('DOMContentLoaded', () => {
       renderGantt();
       checkBackendStatus();
+      updateAllDashboardMetrics();
     });
   </script>
 </body>
