@@ -335,8 +335,17 @@ def enrich(error_text):
                 "nl.ndarray((rows, cols), ...) and give a length-N vector the shape (1, N) or "
                 "(N, 1) depending on which axis you are reducing over.")
     if "cannot reshape array of size" in error_text:
-        return (error_text + " Do not reshape. Work with the shapes you were given and slice "
-                "them into tiles, e.g. src=a[0:128, 0:64].")
+        return (error_text + " Do NOT reshape. nc_matmul consumes its operands along the "
+                "PARTITION axis, so the layout is already what you need and reshaping fights it. "
+                "lhsT arrives as [K, M] (K on partitions, the left operand pre-transposed) and rhs "
+                "as [K, N] (K on partitions too); the result is [M, N]. For a single tile the whole "
+                "kernel is: allocate two sbuf tiles with the operands' own shapes and dma_copy each "
+                "operand straight in (no slicing, no reshaping -- they already fit); allocate a psum "
+                "tile of shape (M, N) with dtype=nl.float32; call "
+                "nisa.nc_matmul(dst=psum, stationary=lhs_tile, moving=rhs_tile), which contracts K "
+                "and gives [M, N]; tensor_copy the psum tile into an sbuf tile; dma_copy that out to "
+                "the shared_hbm result. Read M and N from the shapes (M=lhsT.shape[1], "
+                "N=rhs.shape[1]), never with reshape.")
     m = re.search(r"module '([\w.]+)' has no attribute '(\w+)'", error_text)
     if m:
         return error_text + available_names(f"{m.group(1)}.{m.group(2)}")
