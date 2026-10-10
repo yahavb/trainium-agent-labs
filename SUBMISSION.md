@@ -180,8 +180,20 @@ What did not work, kept here because each one cost us time:
 
 ## 5. Does the agent know when it failed?
 
-[[TBD: confidence buckets against the held-out outcome, Brier score, and the number of "confident (≥ 0.5)
-but wrong" claims, for the final run; agent.py's confidence and v7's verdict side by side.]]
+Two verdicts, one yardstick. When a level ends, the agent states a confidence from what the loop saw and
+nothing else (0 if unsolved; 0.9 if solved, ×0.7 if the loop tested one shape, ×0.5 for a test-shape size
+written into the code, ×0.6 for a hard-coded output dtype; [EVAL.md](projects/02-kernel-agent/EVAL.md)).
+v7 adds its own verdict after extra hostile cases and lowering for trn2. Both are then scored against our
+held-out set, which neither has seen.
+
+| runs | level | held-out | ours: confidence, Brier | v7's: confidence, Brier | confident (≥ 0.5) but wrong |
+|---|---|---|---|---|---|
+| v7, round 2 | 3 | 5/5 VERIFIED | 0.63, 0.137 | 0.74, 0.067 | 0 and 0 |
+| v7, round 2 | 4 | 5/5 VERIFIED | 0.90, 0.010 | 0.88, 0.014 | 0 and 0 |
+| [[TBD: final run, every level]] | | | | | |
+
+Neither verdict ever claimed a kernel that then failed. Ours is too cautious on level 3 (§9).
+([analysis/round2_v7/](analysis/round2_v7/README.md))
 
 Baseline, scored after the fact with the same confidence function: the 3 solved runs said 0.90 and all
 passed the held-out set; the 17 unsolved said 0. Brier 0.001, or 0.010 over the 3 real predictions; no
@@ -191,12 +203,24 @@ Five predictions say little, which is why the final run matters.
 
 ## 6. Where the tokens went
 
-[[TBD: analysis/token_budget_final.png, tokens per attempt split into instructions, reference, API card,
-previous code, feedback and ledger, with the 8,192 line; exact counts from the server's usage log.]]
+![tokens per attempt, by segment](analysis/round2_v7/token_budget.png)
+
+Round 2, levels 3 and 4, counted by the server ([analysis/round2_v7/](analysis/round2_v7/README.md)). A
+first prompt averages 1,148 tokens: 77% the API card and the worked example, 14% instructions, 10% the NumPy
+reference. A repair prompt averages 744: 47% the checker's feedback, 44% the previous kernel, 9%
+instructions. Neither comes near 8,192. The budget goes to the two things the model cannot work out by
+itself, real API calls up front and the checker's diagnosis afterwards, and the repair prompt drops the
+docs. [[TBD: final-run chart and numbers]]
 
 ## 7. Failure taxonomy
 
-[[TBD: final table from scripts/taxonomy.py.]] Baseline, 424 attempts in 25 named modes: index and size
+Under v7 (round 2), level 3's walls are gone: the baseline's reshape (48), copy size (26), 1-D tile (22) and
+out-of-bounds (16) failures do not occur, the 7 failures left are all a tile in the wrong memory, and every
+run solves in round 0. Level 4 still meets the baseline's wall first (partition over 128, 20 attempts in round
+0; the baseline never got past it), then a broadcast shape mismatch (20 in round 1), and solves in round 2.
+[[TBD: final table from scripts/taxonomy.py]]
+
+Baseline, 424 attempts in 25 named modes: index and size
 arithmetic 52%, unfamiliar API 24%, tiling rules 18%, memory placement 5%. Four modes were never fixed by the
 original feedback once they appeared (stuck rate 100%): out-of-bounds index, reshape instead of slicing,
 invented function, partition dimension over 128.
@@ -241,8 +265,9 @@ The solving kernel is correct, not fast: 36.6 Flops/Byte, memory-bound.
 - **Level 3 has one loop shape**, because the organizers' reference asserts it; its held-out cases change
   only the values.
 - **The confidence rule is stated, not fitted.** Its weights were fixed at 13:40, before any held-out
-  result, and never tuned. It is underconfident on level 3: it docks a single loop shape and the literal
-  64 that the level's own contract fixes.
+  result, and never tuned. It is underconfident on level 3: it docks every level-3 kernel ×0.7 for having
+  been tested on a single loop shape, which the level's own contract fixes, so it said 0.63 for five kernels
+  that were all right.
 - **Part of each solution comes from the checker.** Code-form messages are pasted by the model (§3, §8),
   and the level-1 example is a strong hint (§3).
 - **v7 is a bundle of layers.** [[TBD: what the ablation says about which layers matter]]
