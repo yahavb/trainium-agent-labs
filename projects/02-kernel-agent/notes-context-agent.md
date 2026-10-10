@@ -382,6 +382,12 @@ Level 1 prompt audit:
 - `docs`: about 911 accounted tokens;
 - `full-docs`: about 1732 accounted tokens.
 
+## Removed remaining level-specific repair hint
+
+Removed the remaining level-specific `.ap()` repair hint from `enrich()`. Access-pattern failures
+now receive generic stride/layout guidance only. Full-docs and repair docs contain no shipped
+reference code and no level-specific solution hints.
+
 ## Context manager improvements: keys, ledger, retrieval, report
 
 Added normalized failure keys and a compressed unique ledger.

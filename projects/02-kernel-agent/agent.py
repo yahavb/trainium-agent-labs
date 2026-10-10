@@ -507,11 +507,10 @@ def enrich(error_text):
         return (error_text + " Do not reshape. Work with the shapes you were given and slice "
                 "them into tiles, e.g. src=a[0:128, 0:64].")
     if "ap() pattern has invalid partition stride" in error_text:
-        return (error_text + " For level 1 avgpool, use the tutorial access pattern exactly: "
-                "pool_view = input_tile.ap([[sz_hin*sz_win, sz_cin], "
-                "[pool_size*sz_win, sz_hin//pool_size], "
-                "[pool_size, sz_win//pool_size], [sz_win, pool_size], [1, pool_size]]). "
-                "The first partition stride must be H*W, not 0 or 1.")
+        return (error_text + " Fix the access-pattern strides from the actual SBUF layout. The "
+                "partition-axis stride should span the free dimensions behind one partition row; "
+                "do not use zero or guessed strides. Keep reduced logical dimensions trailing if "
+                "the view will feed nl.sum.")
     m = re.search(r"module '([\w.]+)' has no attribute '(\w+)'", error_text)
     if m:
         return error_text + available_names(f"{m.group(1)}.{m.group(2)}")
