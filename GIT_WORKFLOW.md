@@ -40,6 +40,21 @@ git pull --ff-only origin master
 git switch -c perf/<short-task>-<github-user>
 ```
 
+Before running Samudra smoke tests or rollouts, each teammate must prepare the
+pinned Samudra source once in that checkout. The runner does not call this
+script for you:
+
+```bash
+cd projects/03-mechanical-sympathy
+./bootstrap_samudra.sh
+```
+
+This fetches the commit in `samudra-source.json` into the ignored
+`.scratch/Samudra/` directory. Run it again after you change the pinned commit
+or use a new checkout or pod. It fetches Samudra source only. It does not
+download the model checkpoint or OM4 data. If the Samudra checkout has local
+changes, the script stops and asks you to keep them safe first.
+
 Use a branch name that says what the branch changes, for example:
 
 ```text
