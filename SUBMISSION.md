@@ -483,7 +483,7 @@ repository from a logged run.
 | attempt logs, every attempt with its score | earlier runs: [analysis/logs/](analysis/logs/README.md) (baseline, replication, experiments; what each is, its code version, md5, and whether it is comparable); final run: [[TBD: analysis/logs/final/]] |
 | results table | [[TBD: analysis/summary_final.md]] |
 | checker, eval set, tolerance | [CHECKER.md](projects/02-kernel-agent/CHECKER.md), [EVAL.md](projects/02-kernel-agent/EVAL.md), `nkibench.py` |
-| agent | `agent.py`, `feedback_v2.py` … `feedback_v7.py`, [V7.md](projects/02-kernel-agent/V7.md) |
+| agent | `agent.py`, `feedback_v2.py` … `feedback_v7.py`, [V7.md](projects/02-kernel-agent/V7.md); `feedback_v8.py` (v8.2: commit `96a9fc9` and its switches), [V8.md](projects/02-kernel-agent/V8.md) (run command and every switch) |
 | hand-in kernels, one per level | [[TBD: nki_kernels/]]; candidates already built and run on the chip: [analysis/seat115_chip_and_l1rule.md](analysis/seat115_chip_and_l1rule.md) |
 | full builds and chip runs, with the exact kernels | [analysis/logs/chip_seat115/](analysis/logs/chip_seat115/), `seat115_v7/compile.txt`, `task15_4090_l1rule/*_solves.log` |
 | how we ran the day | [PLAN.md](PLAN.md), [NOTES.md](NOTES.md) |
