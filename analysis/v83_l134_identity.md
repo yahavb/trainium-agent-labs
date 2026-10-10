@@ -47,3 +47,41 @@ ans_level9-14): levels 5 and 7, 0 lines; level 6, 1 line: `def nki_matmul_block_
 That line is the level's required entry point. The harness names the function (nkibench's level 6) and every
 level-6 prompt must state it. It matches the tutorial's line because the organizers took the name from there.
 No `.ap([` in any of them.
+
+## v8.5 (0eb2695) against v8.4 (15fb0d5): the level-2 "returned ()" sentence
+
+0eb2695 changes only `feedback_v8.py` (md5 4721f924598b7727f52cf1eed9ec7b43): under `L2CAT`, a level-2 attempt
+whose feedback says `returned ()` gets one more sentence ("Your kernel returns nothing ... `return out`.").
+
+**1. Levels 1, 3-7 are unchanged.** Same method as above: both commits with the same switches (v8.3's plus
+`WARM=1`), `--rounds 6 --samples 1 --repeat 3`, levels 1-7, NKI 0.6.0, trn2, against a new deterministic mock
+(levels 1, 3, 4 as before; levels 5-7 get level 4's reference renamed to the level's entry point, with the same
+hash variants; level 2 gets, by prompt hash, the reference without its `return`, x unchanged, or a dropped loop
+variable).
+
+| level | requests (each commit) | request bodies | attempts | repair attempts |
+|---|---|---|---|---|
+| 1 | 18 | byte-identical | identical | 15 |
+| 3 | 3 | byte-identical | identical | 0 (the mock solved round 0 in all 3 runs) |
+| 4 | 6 | byte-identical | identical | 3 |
+| 5 | 18 | byte-identical | identical | 15 |
+| 6 | 18 | byte-identical | identical | 15 |
+| 7 | 18 | byte-identical | identical | 15 |
+
+Level 3's repair path is not covered here; it was covered for v8.3 vs v8.4 above (9 repair attempts), and
+the new branch needs `level == 2`.
+
+**2. Level 2: the sentence appears exactly when the feedback says `returned ()`.** 18 attempts per commit, 6
+with `returned ()`, 12 with L2CAT's description. v8.5: the sentence is on all 6 `returned ()` attempts and on
+none of the others; v8.4: on none. 6 of v8.5's 18 level-2 requests carry it, none of v8.4's. The runs part at
+the first `returned ()` (run 0, round 1), as intended.
+
+**3. The v8.3 level-2 logs.** Every logged level-2 attempt (10 runs, 152 attempts: seat-117 `v83_L2`, `L2b`,
+`L2c`, `L2d`; seat-119 `v83_L2`, `stopped_1713/v83_L2b`) was replayed through both commits' grade wrapper,
+with the inner grade returning the logged reward and feedback (L2CAT's simulation stubbed to the same constant
+in both, so only the new branch can differ). v8.5's feedback differs on 4 attempts, all in seat-119 `v83_L2`
+run 2, rounds 4-7: the 4 `returned ()` attempts of analysis/l2_l3_misses.md. In the other 9 runs every attempt's
+feedback is identical, so with the same model replies v8.5 sends them byte-identical requests.
+
+**Result: v8.5 changes nothing outside level-2 attempts whose feedback says `returned ()`; in the v8.3 logs
+that is 1 run of 10.**
