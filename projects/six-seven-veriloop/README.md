@@ -66,7 +66,7 @@ python veriloop/plot.py                        # table + graph from results/
 Run from this folder. Running the model needs a seat with the model served — README Part 1 at the top of
 this repo (`./serve.sh`) — plus Icarus Verilog in the seat: `apt-get update && apt-get install -y iverilog`.
 The checker alone runs anywhere with Icarus Verilog (`brew install icarus-verilog` on a Mac).
-Our team's working repo, with the plan and task board: github.com/krishmehtagit/Six_Seven (private).
+Our team's working repo, with the plan and task board: https://github.com/krishmehtagit/Six_Seven.
 
 ## Team
 
@@ -82,4 +82,4 @@ Our team's working repo, with the plan and task board: github.com/krishmehtagit/
 Registered with the organisers as team 7, **Six Seven**.
 
 Built on this repo's kernel-agent loop design. Our working repo, with the plan and task board:
-github.com/krishmehtagit/Six_Seven (private).
+https://github.com/krishmehtagit/Six_Seven.
