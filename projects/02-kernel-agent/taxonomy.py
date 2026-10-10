@@ -50,7 +50,8 @@ MODES = [
      r"'str' object is not callable"),
     ("1-D tile", "allocated an SBUF/PSUM tile with one dimension",
      r"must have at least 2 dimensions"),
-    ("reshaped instead of slicing", "tried to reshape a tensor into a tile",
+    ("result does not fit its tile", "an NKI call's result is a different size from its "
+     "destination; the simulator reports it as a reshape error",
      r"cannot reshape array"),
     ("no tiling: partition over 128", "one tile for the whole tensor",
      r"partition dimension \d+ exceeds maximum"),

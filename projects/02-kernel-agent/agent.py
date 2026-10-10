@@ -73,7 +73,8 @@ LOCATED = " The failing line is line "
 #   directed2  directed, plus the real signature of the NKI function called on the failing line.
 #              Measured on a seat: the model wrote nisa.tensor_scalar(dst=tile, data=0.5,
 #              op0=nisa.multiply) -- a real function with the arguments in the wrong roles.
-MODES = ("raw", "enriched", "located", "directed", "directed2")
+#   directed3  directed2, with the two messages behind the level 3 wall replaced (see directed()).
+MODES = ("raw", "enriched", "located", "directed", "directed2", "directed3")
 
 
 def at_least(mode):
@@ -417,6 +418,34 @@ def directed(error_text):
     * `module 'nki.isa' has no attribute 'multiply'`. The old message listed the first 25 names
       of nki.isa alphabetically. The name exists -- in nki.language. Say that.
     """
+    if at_least("directed3"):
+        # THE LEVEL 3 WALL. The repo records "cannot reshape array of size 32768 into shape (1,64)"
+        # on every run and reads it as "it reshapes instead of slicing". Seen on a seat, in order:
+        #   round 0  psum = nl.ndarray(shape=lhsT.shape[1:], ...)  -> "must have at least 2
+        #            dimensions ... give a length-N vector the shape (1, N)"
+        #   round 1  psum = nl.ndarray(shape=(1, lhsT.shape[1]), ...)   as told
+        #            nisa.nc_matmul(dst=psum, ...) -> "cannot reshape array of size 32768 into shape
+        #            (1,64) Do not reshape." -- four rounds running
+        # The model never calls reshape. The simulator does, inside nc_matmul, to put a (64, 512)
+        # result into the (1, 64) tile the FIRST message told the model to make. One message
+        # steered it to the wrong shape and the next misnamed the consequence.
+        m = re.search(r"cannot reshape array of size (\d+) into shape \(([\d, ]+)\)", error_text)
+        if m:
+            dims = tuple(int(x) for x in m.group(2).split(",") if x.strip())
+            return (error_text + f" Your code does not call reshape, and removing one will not "
+                    f"help. This is raised inside the NKI call on the failing line: its result has "
+                    f"{m.group(1)} elements and the destination tile you gave it has shape {dims}, "
+                    f"which holds {int(np.prod(dims))}. The destination has the wrong shape. For "
+                    f"nisa.nc_matmul with stationary of shape (K, M) and moving of shape (K, N), "
+                    f"dst must have shape (M, N). Allocate the destination with the full shape of "
+                    f"the result.")
+        if "must have at least 2 dimensions" in error_text:
+            return (error_text + " The shape on the failing line has one dimension and a tile "
+                    "needs two. Putting a 1 in front is only right when the data really is a "
+                    "single row. Otherwise give the tile the full shape of the data it will hold: "
+                    "a tile that receives the result of nisa.nc_matmul needs shape (M, N), where "
+                    "stationary is (K, M) and moving is (K, N); a tile that receives a copy needs "
+                    "exactly the shape of what is copied into it.")
     if "dma_copy requires src and dst to have the same number of elements" in error_text:
         dst, src = _shape(nkibench.LAST_DMA.get("dst")), _shape(nkibench.LAST_DMA.get("src"))
         if dst and src and at_least("directed2"):
