@@ -3,12 +3,31 @@
 
 # Samudra one-degree forward-speed experiments
 
-Three complete Trainium trials show how the measured forward time changed as
+Five complete Trainium trials show how the measured forward time changed as
 we enabled BF16 matrix-engine autocast and then folded BatchNorm into Conv2d.
 The plot follows [Karpathy’s autoresearch progress presentation](https://github.com/karpathy/autoresearch/blob/master/progress.png),
 using an experiment axis, annotated green speed records, and a running-best staircase.
 
-![Samudra forward-speed hill climb](progress.png)
+![Years emulated per minute across all completed trials](years-per-minute.png)
+
+| Update | Forward seconds (299 calls) | Years emulated per minute |
+| --- | ---: | ---: |
+| CPU reference | 622.0864 | 0.790 |
+| Trainium FP32 | 90.5580 | 5.424 |
+| BF16 autocast | 73.6998 | 6.664 |
+| Fold BatchNorm | 73.2887 | 6.702 |
+| 30-row latitude tiling | **42.5839** | **11.534** |
+| Also tile 90×180 blocks | 48.7519 | 10.075 |
+
+The latest best is **11.534 years/min**, 2.127x the FP32 Trainium baseline.
+The extra 90×180 tiling trial is slower and does not raise the running-best line.
+Rates use 598 forecast steps × 5 days / 365.25 days/year, divided by measured
+forward minutes. CPU is separate timing context. Only completed full-range
+reports are included; pending 15-row and 45-row experiments have no plotted score.
+All plotted reports pass the same workload/allocation checks. Forecast accuracy
+was not evaluated for these timing experiments.
+
+[Original three-trial forward-seconds plot](progress.png).
 
 | Backend / experiment | Single median | Full-range forward sum | Change versus preceding Trainium trial |
 | --- | ---: | ---: | ---: |
@@ -85,3 +104,17 @@ source data, prepared inputs, compiler outputs, and predictions are excluded.
 
 Raw reports: [CPU](cpu.json), [FP32](neuron.json), [BF16](neuron_bf16.json),
 [BF16 + folding](neuron_bf16_folded.json). [Trial ledger](progress.tsv).
+
+## Regenerate the throughput view
+
+```bash
+python projects/03-mechanical-sympathy/runners/plot_forward_progress.py \
+  projects/03-mechanical-sympathy/results/forward-only-2026-10-10/experiments.json \
+  --metric years-per-minute \
+  --cpu-reference projects/03-mechanical-sympathy/results/forward-only-2026-10-10/cpu.json \
+  --output projects/03-mechanical-sympathy/results/forward-only-2026-10-10/years-per-minute
+```
+
+The tiling report comes from the separately recorded
+[30-row experiment](../tiling-forward-2026-10-10/README.md).
+The additional 90×180 tiling report is retained as `tiled30_lvl1.json`.
