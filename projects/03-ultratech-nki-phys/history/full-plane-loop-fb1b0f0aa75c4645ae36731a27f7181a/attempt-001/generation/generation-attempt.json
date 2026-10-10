@@ -1,0 +1,27 @@
+{
+  "attempt_id": "generation-001",
+  "task": "plane-throughput",
+  "model": "Qwen/Qwen3-8B",
+  "status": "duplicate_previous",
+  "temperature": 0.4,
+  "max_tokens": 1200,
+  "nki_guidance_sha256": "af2da41e7c0ca0082297df4099e2574f093923a3b85231e8d403a0d2f74a7de2",
+  "sdk_context_sha256": "cb55c489fbbcc856f4f24e566a069801e4cbcf9402203cc79d742b7e91a6163a",
+  "physics_score": null,
+  "baseline_sha256": "2d4ade0473df9e5fdead2187b6675f25082c4c253ed92c6b302be32baf1d943f",
+  "feedback_sha256": "7753f48f406c89eefb20eb9c64003220c68af71c0dac9d0a79e93a4663d7aedf",
+  "request_sha256": "2e87620870fc8a5796faa50ec9d8ec5400e839caec4a8be95c7119e93a40bc9a",
+  "previous_candidate_sha256": "6c70daf8964026a42a990d119e4f18c6ae780acaf6e731f4cedae5d85b66cba2",
+  "retrieval_sha256": "98c998c4e28e8b13993cd5935a9b7f5d90c47e4aac7348cae44d6dbbcafd6591",
+  "generation_seconds": 41.541463450001174,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 3260,
+    "total_tokens": 3835,
+    "completion_tokens": 575,
+    "prompt_tokens_details": null
+  },
+  "candidate_sha256": "6c70daf8964026a42a990d119e4f18c6ae780acaf6e731f4cedae5d85b66cba2",
+  "revision_score": 0,
+  "feedback": "Identical program to previous candidate; no new revision. Physics remains unmeasured for this attempt; reuse prior evidence only under identical execution settings."
+}

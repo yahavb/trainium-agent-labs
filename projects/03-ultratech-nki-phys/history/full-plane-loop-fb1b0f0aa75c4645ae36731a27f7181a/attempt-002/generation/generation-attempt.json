@@ -1,0 +1,25 @@
+{
+  "attempt_id": "generation-002",
+  "task": "plane-throughput",
+  "model": "Qwen/Qwen3-8B",
+  "status": "generated_not_evaluated",
+  "temperature": 0.4,
+  "max_tokens": 1200,
+  "nki_guidance_sha256": "af2da41e7c0ca0082297df4099e2574f093923a3b85231e8d403a0d2f74a7de2",
+  "sdk_context_sha256": "cb55c489fbbcc856f4f24e566a069801e4cbcf9402203cc79d742b7e91a6163a",
+  "physics_score": null,
+  "baseline_sha256": "2d4ade0473df9e5fdead2187b6675f25082c4c253ed92c6b302be32baf1d943f",
+  "feedback_sha256": "53a77f6f2256a9a80efe678de609dd25270d159ef11dc4aec54b4091e3a14d88",
+  "request_sha256": "cbc8415d8b0c4b6aba25f310a80e6c9eb853590d7bd4f4e9cc39731721eb350d",
+  "previous_candidate_sha256": "6c70daf8964026a42a990d119e4f18c6ae780acaf6e731f4cedae5d85b66cba2",
+  "retrieval_sha256": "f70a7b4baaa2b29319bca38e7cb8146280b06ba7b76fafded91d46d6ee47b8b4",
+  "generation_seconds": 42.593911555002705,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 3534,
+    "total_tokens": 4124,
+    "completion_tokens": 590,
+    "prompt_tokens_details": null
+  },
+  "candidate_sha256": "c1c80e15da551db9cbdaa558192f325bc26c38a9e75042bf25e88527ee0293ee"
+}

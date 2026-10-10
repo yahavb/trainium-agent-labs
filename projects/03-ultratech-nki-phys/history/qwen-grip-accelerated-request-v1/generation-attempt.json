@@ -1,0 +1,12 @@
+{
+  "attempt_id": "qwen-grip-accelerated-request-v1",
+  "model": "Qwen/Qwen3-8B",
+  "status": "dry_run",
+  "temperature": 0.5,
+  "max_tokens": 1400,
+  "physics_score": null,
+  "baseline_sha256": "2d4ade0473df9e5fdead2187b6675f25082c4c253ed92c6b302be32baf1d943f",
+  "feedback_sha256": "f6340cb666c1f7fea2edc3a36f3803ef9dcbc0adcec68e0abff7d61fd286b703",
+  "request_sha256": "68e812752bf9aa06faa5f90d6728440df01f820a0407dbd070c0b7ee42375511",
+  "previous_candidate_sha256": "359cc19b08af4a2360a12da1341558b17da374db4c57391aa1216791030dbf1d"
+}

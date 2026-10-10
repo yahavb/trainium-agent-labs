@@ -172,12 +172,12 @@ Scaling by contributing terms accounts for cancellation without scaling toleranc
 The main submission archive contains:
 
 1. **Checker and acceptance reasoning:** `source/math_tasks.py`, `source/math_harness.py`, `source/frozen_math_eval.py`, `source/DISTINCT_MATH.md`, and tests.
-2. **Complete attempt log:** `development/attempts.jsonl`, all four requests/replies, hypotheses, graph proposals, lowered sources, numerical reports and available outputs/timings.
+2. **Attempt history:** `ALL_ATTEMPTS.jsonl` indexes every available local attempt-log row and standalone generation record; `history/` preserves original logs and saved grading/performance reports, including earlier failures. `HISTORY.md` explains overlap and unavailable remote/broad-track records. The final experiment also has `development/attempts.jsonl`, all four requests/replies, hypotheses, graph proposals, lowered sources, numerical reports and available outputs/timings.
 3. **One-page results note:** `RUN_NOTE.md`, with hardware, run counts, correctness outcomes, throughput ratios, timing spread and limitations.
 4. **Frozen final evaluation:** source/checker/input manifest, hashes, outputs and local grade under `final-evaluation/`; 64/64 cases passed with no feedback to Qwen.
 5. **Independent benchmark repeat:** raw timing samples, checks and `independent-repeat/summary.json` for both selected sources.
 6. **Broad-track appendix:** our engine report, explicitly labeled as reported prototype evidence. Its underlying code and full logs must be provided separately if that track is submitted as an independently reproducible deliverable.
 
-The package includes file checksums. Compiled NEFFs are omitted; reproduction requires the recorded sources and compatible installed Neuron environment. The complete-history claim covers the four-attempt distinct-math experiment, not every earlier exploratory contact/gripping run.
+The package includes file checksums. Compiled NEFFs are omitted; reproduction requires the recorded sources and compatible installed Neuron environment. Full final-experiment evidence covers the four-attempt distinct-math run. The broader history archive adds all locally available attempt logs and saved result reports, but cannot reconstruct remote-only records or the broader engine's unavailable raw attempt history.
 
 **Final claim:** a bounded physics-aware agent corrected a mathematical failure through feedback, selected faster implementations for two distinct computations, reproduced their throughput gains, and retained correctness on 64 frozen unseen inputs. The broader engine prototype shows the intended integration direction without being presented as an already solved general-purpose agent.

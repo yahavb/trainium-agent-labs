@@ -1,0 +1,23 @@
+{
+  "attempt_id": "generation-001",
+  "model": "Qwen/Qwen3-8B",
+  "status": "generated_not_evaluated",
+  "temperature": 0.5,
+  "max_tokens": 1200,
+  "nki_guidance_sha256": "8cc8835298b71f33915c9f5434bf61ae4cfaac9a504c01e42db93ff6682dd877",
+  "sdk_context_sha256": "cb55c489fbbcc856f4f24e566a069801e4cbcf9402203cc79d742b7e91a6163a",
+  "physics_score": null,
+  "baseline_sha256": "2d4ade0473df9e5fdead2187b6675f25082c4c253ed92c6b302be32baf1d943f",
+  "feedback_sha256": "233f5b19629537d7a207f393ef357e20204313795243f925d0aad9588b7af9e0",
+  "request_sha256": "99b59db626cd92be51b4e4e080750ab5831ea967bd213da2ff91c62d8d0f207c",
+  "previous_candidate_sha256": "23fd2f7c0580a17561f9a320d255d08979077e31c372df6af35b14703b0f06b9",
+  "generation_seconds": 63.360828844000935,
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 2843,
+    "total_tokens": 3724,
+    "completion_tokens": 881,
+    "prompt_tokens_details": null
+  },
+  "candidate_sha256": "340541f49a9e1a337f3bfa7fae9afb4d2e64069d18dd2dda2cc8e66da1096cf9"
+}

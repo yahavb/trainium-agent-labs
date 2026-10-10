@@ -1,0 +1,58 @@
+{
+  "context": {
+    "run_id": "4b0c7e57f6034245b581bf9b8e6bfc70",
+    "hostname": "10-20-72-139.dynapool.wireless.nyu.edu",
+    "visible_cores": null,
+    "backend": "cpu",
+    "batch": 2,
+    "contacts": 33,
+    "steps": 32,
+    "scene": "stack",
+    "runs": 1,
+    "warmup": 5,
+    "iters": 20,
+    "candidate": null,
+    "candidate_sha256": null,
+    "require_physics": true,
+    "source_sha256": {
+      "check_batch.py": "abdbd57f9a73397321fdc996b8336a90aa3baf981dff6422c836e5bcc30c35d5",
+      "batch_reference.py": "e0d6dce4c00474ab55ec5bd3b822abe0ebbe6ad7cd06dd9204b770e7e5639a28",
+      "nki_contact_batch.py": "2d4ade0473df9e5fdead2187b6675f25082c4c253ed92c6b302be32baf1d943f",
+      "benchmark_update.py": "7cb4023224021e86a4ea499d5c8e5756d079c72fa8bbff0e2604d9580ae88254",
+      "contact.py": "a83053062d737111ef1ad1e3ce3e7d9a0cbee352330186e6249ae4792e733f78",
+      "update_reference.py": "a0ea98345fe4ae793d4b25048a189a462a7b2e724ac9940cfa90d0050c3c11a5"
+    },
+    "initial_check": {
+      "score": 1,
+      "per_world_update_error": [
+        0.0,
+        0.0
+      ],
+      "update_error_limits": [
+        0.00017431439482606947,
+        0.00014700654719490558
+      ],
+      "padding_ok": true,
+      "inputs_unchanged": true,
+      "physics_checks": [
+        {
+          "passed": false,
+          "residual": 0.07204149851856868,
+          "objective_error": 0.13905181605780617,
+          "velocity_error": 0.49652384772752245,
+          "feasible": true
+        },
+        {
+          "passed": false,
+          "residual": 0.061101862258656076,
+          "objective_error": 0.15977294823795596,
+          "velocity_error": 0.35241628199021824,
+          "feasible": true
+        }
+      ],
+      "physics_passes": 0
+    },
+    "error": "Traceback (most recent call last):\n  File \"/Users/vedantdesai/.codex/.chatgpt-projects/g-p-6aca4cd2de2081918aafaa90a7757cb1/repo/projects/03-contact-physics/check_batch.py\", line 105, in main\n    raise ValueError(\"Initial physics correctness failed; refusing benchmark\")\nValueError: Initial physics correctness failed; refusing benchmark\n"
+  },
+  "results": []
+}

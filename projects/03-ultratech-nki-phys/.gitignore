@@ -1,4 +1,5 @@
 !ATTEMPTS.jsonl
+!history/**/attempts.jsonl
 !development/attempts.jsonl
 !development/**/attempts.jsonl
 !independent-repeat/**/attempts.jsonl

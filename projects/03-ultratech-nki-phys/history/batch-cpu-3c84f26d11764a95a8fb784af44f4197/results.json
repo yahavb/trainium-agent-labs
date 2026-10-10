@@ -1,0 +1,87 @@
+{
+  "context": {
+    "run_id": "3c84f26d11764a95a8fb784af44f4197",
+    "hostname": "10-20-72-139.dynapool.wireless.nyu.edu",
+    "visible_cores": null,
+    "backend": "cpu",
+    "batch": 2,
+    "contacts": 33,
+    "steps": 32,
+    "scene": "plane",
+    "runs": 1,
+    "warmup": 5,
+    "iters": 20,
+    "source_sha256": {
+      "check_batch.py": "be867c986fd235e893dd9271de834747125513e0a6fe6d9c365d79402be196de",
+      "batch_reference.py": "e0d6dce4c00474ab55ec5bd3b822abe0ebbe6ad7cd06dd9204b770e7e5639a28",
+      "nki_contact_batch.py": "2d4ade0473df9e5fdead2187b6675f25082c4c253ed92c6b302be32baf1d943f",
+      "benchmark_update.py": "7cb4023224021e86a4ea499d5c8e5756d079c72fa8bbff0e2604d9580ae88254",
+      "contact.py": "a83053062d737111ef1ad1e3ce3e7d9a0cbee352330186e6249ae4792e733f78",
+      "update_reference.py": "a0ea98345fe4ae793d4b25048a189a462a7b2e724ac9940cfa90d0050c3c11a5"
+    },
+    "initial_check": {
+      "score": 1,
+      "per_world_update_error": [
+        0.0,
+        0.0
+      ],
+      "update_error_limits": [
+        0.00019279630214441568,
+        0.0001177557060145773
+      ],
+      "padding_ok": true,
+      "inputs_unchanged": true,
+      "physics_checks": [
+        {
+          "passed": true,
+          "residual": 8.566110142921983e-05,
+          "objective_error": 1.874364989801207e-09,
+          "velocity_error": 8.549047825867628e-05,
+          "feasible": true
+        },
+        {
+          "passed": true,
+          "residual": 1.7231346691623277e-05,
+          "objective_error": 2.678979326527718e-10,
+          "velocity_error": 1.719793993759655e-05,
+          "feasible": true
+        }
+      ],
+      "physics_passes": 2
+    }
+  },
+  "results": [
+    {
+      "repeat": 0,
+      "score": 1,
+      "timing_ok": false,
+      "per_world_update_error": [
+        0.0,
+        0.0
+      ],
+      "update_error_limits": [
+        0.00019279630214441568,
+        0.0001177557060145773
+      ],
+      "padding_ok": true,
+      "inputs_unchanged": true,
+      "physics_checks": [
+        {
+          "passed": true,
+          "residual": 8.566110142921983e-05,
+          "objective_error": 1.874364989801207e-09,
+          "velocity_error": 8.549047825867628e-05,
+          "feasible": true
+        },
+        {
+          "passed": true,
+          "residual": 1.7231346691623277e-05,
+          "objective_error": 2.678979326527718e-10,
+          "velocity_error": 1.719793993759655e-05,
+          "feasible": true
+        }
+      ],
+      "physics_passes": 2
+    }
+  ]
+}

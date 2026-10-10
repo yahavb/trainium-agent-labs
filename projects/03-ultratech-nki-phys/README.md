@@ -9,7 +9,7 @@ A bounded Qwen3-8B agent proposes NKI implementations of two physics equations, 
 ## Required Submission Artifacts
 
 1. **Checker and reasoning:** [checker.py](checker.py), [CHECKER.md](CHECKER.md), and the actual equation/error gates in [source/math_tasks.py](source/math_tasks.py).
-2. **Every attempt and score:** [ATTEMPTS.jsonl](ATTEMPTS.jsonl). The complete four-proposal math experiment is in [development/](development/), including model requests/replies, wrong-sign feedback, generated graphs and sources, outputs and timings. A rejected duplicate is unmeasured, not a zero correctness score.
+2. **Every attempt and score:** [All available local attempt records](ALL_ATTEMPTS.jsonl), with original logs and saved grading/performance reports in [history/](history/) and [coverage notes](HISTORY.md). This includes earlier contact, gripping, failed/rejected generations, adaptive solvers and plane-agent runs, not just the final four proposals. For concise experiment views, see the [four-proposal math log](ATTEMPTS.jsonl) and [six-trial gripping log](gripping-evidence/ATTEMPTS.jsonl). Full final math evidence is in [development/](development/), including requests/replies, feedback, graphs, sources, outputs and timings. Unmeasured attempts retain `null`; overlapping generation/execution/case records are not counted as unique proposals. Remote-only and broader-engine raw logs not available locally are explicitly identified as a coverage gap.
 3. **One-page results note:** [RUN_NOTE.md](RUN_NOTE.md), with hardware, run counts, timing spread and independent repeat results.
 
 Read [submission.md](submission.md) for the full definition, real input examples, embedded flowcharts, successful results and failures. Our broader physics-engine PDF is a clearly labeled prototype-results appendix, not independently reproduced agent evidence.
@@ -83,6 +83,6 @@ Only run this on authorized, exclusively available cores. Fresh experiments writ
 
 ## Scope And Provenance
 
-The agent selects from a finite arithmetic/reduction graph language. We do not claim unrestricted NKI synthesis, superiority to a scripted optimizer, statistical significance, global optimality or full-simulator acceleration. Earlier contact/gripping work and unsuccessful proposals are documented in `source/AWS_PROGRESS.md` and `submission.md`; their full raw histories are not the four-attempt log submitted here.
+The agent selects from a finite arithmetic/reduction graph language. We do not claim unrestricted NKI synthesis, superiority to a scripted optimizer, statistical significance, global optimality or full-simulator acceleration. Earlier contact/gripping work and unsuccessful proposals are documented in `source/AWS_PROGRESS.md` and `submission.md`; their available local logs and grading/performance reports are collected separately in `history/`, with coverage limits in `HISTORY.md`.
 
 `SHA256SUMS.json` covers the portable submission files, excluding itself and generated caches. Original source and frozen input/output bytes are preserved. Paths/hostnames in historical logs describe the original environment. No credentials or compiled NEFFs are included.

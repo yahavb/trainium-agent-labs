@@ -1,0 +1,786 @@
+{
+  "context": {
+    "run_id": "ac587610f83945e6bc0bc1d5464cbd5e",
+    "backend": "simulate",
+    "batch": 2,
+    "steps": 1024,
+    "runs": 1,
+    "warmup": 20,
+    "iters": 200,
+    "host": "seat-260",
+    "python": "3.13.7",
+    "numpy": "2.4.6",
+    "visible_cores": null,
+    "public_manifest_sha256": "c7325d553f4f83e812b3693721f9c910bc16d4d4fdc36f82dac95bcd5cea5ec5",
+    "contract_sha256": "b43241fcfd8d6c665413480416c6e5fdc6f1329246d1098357aef0f15e7216c6",
+    "public_input_sha256": {
+      "grip-000": "68a22bc5d8b4605d4975b290b251af319e83e0d7a0b6340bb0e2cb3a98d69aa7",
+      "grip-001": "406c8d7f601f70dc6ff7adf5d3acfa1d8e5dd2014b591ec4231b2585f930d1b5",
+      "grip-002": "9b7dfb0407973f51ab5fae898179276ef02dbeaf0155fc2cd9201c46c64a0864",
+      "grip-003": "9bbb542090d98f2a2582e248abc0ed25220725057c55631ac81a6307a700e8ac",
+      "grip-004": "f33b2b4222c13c9b0316ea1e3bc965fa9ae605027ed6278f3853f15b70641fbe",
+      "grip-005": "6eea0b967a51a8043b02f74e1ea6bc47039a3ebc5563faf7eccd87ffb7c05b42",
+      "grip-006": "1c6a449edb5927fb1313c7aaf2b5176dbdff357763bd3a13444a1b71f4504d92",
+      "grip-007": "115fec1ea66c63f10d14f7e7a189c209d16e0cbebb954ebe19781351d8431a84",
+      "grip-008": "b39bf5fc8a3a07b504db10465b5f249dbaed0925c7c583c65a26f884d8c2a40a",
+      "grip-009": "061140b9c3eedf95b0555bee25ebe8d71b530303d2799c14a51a0b4cfcef5fed",
+      "grip-010": "c59c4e5f4676dde1900124aa9e95c076a76b0c8e90d033ce642056d0f478f2bf",
+      "grip-011": "f7980753dc3948c386410ceb93a8e79ab8c2e2d5e8362235ee81d36229eec83b",
+      "grip-012": "23d2b861666403b65e05d952080cb838a11d28dedd3472c760322cbff02cfb83",
+      "grip-013": "faa1c6964be461b155029480773578b87229a45f2da780b0f5e9be7e6cfd9e73",
+      "grip-014": "d64a50cb877816914e811485b68f789a96d3b4ea5b3b1fa403d8931f76f4efdd",
+      "grip-015": "5facbfcc484a05bba0667c31f11d9478692dd710c28b27076a65b45e39edee95"
+    },
+    "source_sha256": {
+      "grip_throughput.py": "d1c2c899c87d523197fefbd9a1231e41268f491e32f6a7f1f82452a88ed3de53",
+      "batch_reference.py": "e0d6dce4c00474ab55ec5bd3b822abe0ebbe6ad7cd06dd9204b770e7e5639a28",
+      "update_reference.py": "a0ea98345fe4ae793d4b25048a189a462a7b2e724ac9940cfa90d0050c3c11a5",
+      "nki_contact_batch.py": "2d4ade0473df9e5fdead2187b6675f25082c4c253ed92c6b302be32baf1d943f",
+      "benchmark_update.py": "7cb4023224021e86a4ea499d5c8e5756d079c72fa8bbff0e2604d9580ae88254",
+      "generated_candidate.py": "340541f49a9e1a337f3bfa7fae9afb4d2e64069d18dd2dda2cc8e66da1096cf9"
+    },
+    "candidate_sha256": "340541f49a9e1a337f3bfa7fae9afb4d2e64069d18dd2dda2cc8e66da1096cf9",
+    "nki_version": "0.6.0+31049202112.g85070674"
+  },
+  "all_cases_pass": false,
+  "scored_attempts": [
+    {
+      "group": 0,
+      "run": 0,
+      "score": 0,
+      "cases": [
+        {
+          "case_id": "grip-000",
+          "passed": false,
+          "before": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": true,
+                "residual": 8.704674073070497e-06,
+                "objective_error": 1.5491798264917026e-10,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 1.445427676451809e-05,
+              "acceleration_error": 0.00026649475148587953
+            },
+            "wrench_error": 1.4592757111589761e-05,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": true,
+                "residual": 8.704674073070497e-06,
+                "objective_error": 1.5491798264917026e-10,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 1.445427676451809e-05,
+              "acceleration_error": 0.00026649475148587953
+            },
+            "wrench_error": 1.4592757111589761e-05,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "Acceleration error 0.000266495 exceeds 0.0001. The force errors produce excessive generalized-acceleration error. Reduce force error rather than accepting a small objective error alone.",
+            "after": "Acceleration error 0.000266495 exceeds 0.0001. The force errors produce excessive generalized-acceleration error. Reduce force error rather than accepting a small objective error alone."
+          }
+        },
+        {
+          "case_id": "grip-001",
+          "passed": true,
+          "before": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 2.87720508645659e-06,
+                "objective_error": 3.8993013496989105e-11,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 1.218813806747291e-05,
+              "acceleration_error": 2.8399924883615353e-05
+            },
+            "wrench_error": 1.282621379753637e-05,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 2.87720508645659e-06,
+                "objective_error": 3.8993013496989105e-11,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 1.218813806747291e-05,
+              "acceleration_error": 2.8399924883615353e-05
+            },
+            "wrench_error": 1.282621379753637e-05,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "All physics gates passed for this output. Preserve accuracy when changing the solver.",
+            "after": "All physics gates passed for this output. Preserve accuracy when changing the solver."
+          }
+        }
+      ]
+    },
+    {
+      "group": 1,
+      "run": 0,
+      "score": 0,
+      "cases": [
+        {
+          "case_id": "grip-002",
+          "passed": false,
+          "before": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": true,
+                "residual": 3.133823583907035e-05,
+                "objective_error": 4.2086171687207973e-10,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 2.2023523266301642e-05,
+              "acceleration_error": 0.005438232417361633
+            },
+            "wrench_error": 2.0277343758338417e-05,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": true,
+                "residual": 3.133823583907035e-05,
+                "objective_error": 4.2086171687207973e-10,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 2.2023523266301642e-05,
+              "acceleration_error": 0.005438232417361633
+            },
+            "wrench_error": 2.0277343758338417e-05,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "Acceleration error 0.00543823 exceeds 0.0001. The force errors produce excessive generalized-acceleration error. Reduce force error rather than accepting a small objective error alone.",
+            "after": "Acceleration error 0.00543823 exceeds 0.0001. The force errors produce excessive generalized-acceleration error. Reduce force error rather than accepting a small objective error alone."
+          }
+        },
+        {
+          "case_id": "grip-003",
+          "passed": false,
+          "before": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": true,
+                "residual": 3.3359621773239826e-05,
+                "objective_error": 9.72369499503112e-10,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 4.71545111602294e-05,
+              "acceleration_error": 0.0007765735644716924
+            },
+            "wrench_error": 2.6929687508527646e-05,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": true,
+                "residual": 3.3359621773239826e-05,
+                "objective_error": 9.72369499503112e-10,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 4.71545111602294e-05,
+              "acceleration_error": 0.0007765735644716924
+            },
+            "wrench_error": 2.6929687508527646e-05,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "Acceleration error 0.000776574 exceeds 0.0001. The force errors produce excessive generalized-acceleration error. Reduce force error rather than accepting a small objective error alone.",
+            "after": "Acceleration error 0.000776574 exceeds 0.0001. The force errors produce excessive generalized-acceleration error. Reduce force error rather than accepting a small objective error alone."
+          }
+        }
+      ]
+    },
+    {
+      "group": 2,
+      "run": 0,
+      "score": 1,
+      "cases": [
+        {
+          "case_id": "grip-004",
+          "passed": true,
+          "before": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 1.2019458004278732e-07,
+                "objective_error": 1.271210370282865e-14,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 1.8777517014953007e-07,
+              "acceleration_error": 9.517669713332565e-06
+            },
+            "wrench_error": 1.4889993066821545e-07,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 1.2019458004278732e-07,
+                "objective_error": 1.271210370282865e-14,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 1.8777517014953007e-07,
+              "acceleration_error": 9.517669713332565e-06
+            },
+            "wrench_error": 1.4889993066821545e-07,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "All physics gates passed for this output. Preserve accuracy when changing the solver.",
+            "after": "All physics gates passed for this output. Preserve accuracy when changing the solver."
+          }
+        },
+        {
+          "case_id": "grip-005",
+          "passed": true,
+          "before": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 1.5254187548440368e-07,
+                "objective_error": 1.5185639819401447e-13,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 7.343314063447079e-07,
+              "acceleration_error": 4.476781745077601e-06
+            },
+            "wrench_error": 1.0761464621548024e-06,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 1.5254187548440368e-07,
+                "objective_error": 1.5185639819401447e-13,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 7.343314063447079e-07,
+              "acceleration_error": 4.476781745077601e-06
+            },
+            "wrench_error": 1.0761464621548024e-06,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "All physics gates passed for this output. Preserve accuracy when changing the solver.",
+            "after": "All physics gates passed for this output. Preserve accuracy when changing the solver."
+          }
+        }
+      ]
+    },
+    {
+      "group": 3,
+      "run": 0,
+      "score": 1,
+      "cases": [
+        {
+          "case_id": "grip-006",
+          "passed": true,
+          "before": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 1.129128320380909e-06,
+                "objective_error": 4.364036561489326e-13,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 1.0605528232242066e-06,
+              "acceleration_error": 6.103515630684342e-06
+            },
+            "wrench_error": 4.306640616705411e-07,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 1.129128320380909e-06,
+                "objective_error": 4.364036561489326e-13,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 1.0605528232242066e-06,
+              "acceleration_error": 6.103515630684342e-06
+            },
+            "wrench_error": 4.306640616705411e-07,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "All physics gates passed for this output. Preserve accuracy when changing the solver.",
+            "after": "All physics gates passed for this output. Preserve accuracy when changing the solver."
+          }
+        },
+        {
+          "case_id": "grip-007",
+          "passed": true,
+          "before": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 4.6783200605810926e-07,
+                "objective_error": 6.90701865179158e-13,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 1.550495252276535e-06,
+              "acceleration_error": 3.8193708339633126e-06
+            },
+            "wrench_error": 7.209472641989132e-07,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 4.6783200605810926e-07,
+                "objective_error": 6.90701865179158e-13,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 1.550495252276535e-06,
+              "acceleration_error": 3.8193708339633126e-06
+            },
+            "wrench_error": 7.209472641989132e-07,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "All physics gates passed for this output. Preserve accuracy when changing the solver.",
+            "after": "All physics gates passed for this output. Preserve accuracy when changing the solver."
+          }
+        }
+      ]
+    },
+    {
+      "group": 4,
+      "run": 0,
+      "score": 0,
+      "cases": [
+        {
+          "case_id": "grip-008",
+          "passed": false,
+          "before": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": true,
+                "residual": 8.704674073070497e-06,
+                "objective_error": 1.5491798264917026e-10,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 1.445427676451809e-05,
+              "acceleration_error": 0.00026649475148587953
+            },
+            "wrench_error": 1.4592757111589761e-05,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": true,
+                "residual": 8.704674073070497e-06,
+                "objective_error": 1.5491798264917026e-10,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 1.445427676451809e-05,
+              "acceleration_error": 0.00026649475148587953
+            },
+            "wrench_error": 1.4592757111589761e-05,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "Acceleration error 0.000266495 exceeds 0.0001. The force errors produce excessive generalized-acceleration error. Reduce force error rather than accepting a small objective error alone.",
+            "after": "Acceleration error 0.000266495 exceeds 0.0001. The force errors produce excessive generalized-acceleration error. Reduce force error rather than accepting a small objective error alone."
+          }
+        },
+        {
+          "case_id": "grip-009",
+          "passed": true,
+          "before": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 2.87720508645659e-06,
+                "objective_error": 3.8993013496989105e-11,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 1.218813806747291e-05,
+              "acceleration_error": 2.8399924883615353e-05
+            },
+            "wrench_error": 1.282621379753637e-05,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 2.87720508645659e-06,
+                "objective_error": 3.8993013496989105e-11,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 1.218813806747291e-05,
+              "acceleration_error": 2.8399924883615353e-05
+            },
+            "wrench_error": 1.282621379753637e-05,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "All physics gates passed for this output. Preserve accuracy when changing the solver.",
+            "after": "All physics gates passed for this output. Preserve accuracy when changing the solver."
+          }
+        }
+      ]
+    },
+    {
+      "group": 5,
+      "run": 0,
+      "score": 0,
+      "cases": [
+        {
+          "case_id": "grip-010",
+          "passed": false,
+          "before": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": true,
+                "residual": 3.133823583907035e-05,
+                "objective_error": 4.2086171687207973e-10,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 2.2023523266301642e-05,
+              "acceleration_error": 0.005438232417361633
+            },
+            "wrench_error": 2.0277343758338417e-05,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": true,
+                "residual": 3.133823583907035e-05,
+                "objective_error": 4.2086171687207973e-10,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 2.2023523266301642e-05,
+              "acceleration_error": 0.005438232417361633
+            },
+            "wrench_error": 2.0277343758338417e-05,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "Acceleration error 0.00543823 exceeds 0.0001. The force errors produce excessive generalized-acceleration error. Reduce force error rather than accepting a small objective error alone.",
+            "after": "Acceleration error 0.00543823 exceeds 0.0001. The force errors produce excessive generalized-acceleration error. Reduce force error rather than accepting a small objective error alone."
+          }
+        },
+        {
+          "case_id": "grip-011",
+          "passed": false,
+          "before": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": true,
+                "residual": 3.3359621773239826e-05,
+                "objective_error": 9.72369499503112e-10,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 4.71545111602294e-05,
+              "acceleration_error": 0.0007765735644716924
+            },
+            "wrench_error": 2.6929687508527646e-05,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": false,
+            "force_check": {
+              "passed": false,
+              "numerical": {
+                "passed": true,
+                "residual": 3.3359621773239826e-05,
+                "objective_error": 9.72369499503112e-10,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 4.71545111602294e-05,
+              "acceleration_error": 0.0007765735644716924
+            },
+            "wrench_error": 2.6929687508527646e-05,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "Acceleration error 0.000776574 exceeds 0.0001. The force errors produce excessive generalized-acceleration error. Reduce force error rather than accepting a small objective error alone.",
+            "after": "Acceleration error 0.000776574 exceeds 0.0001. The force errors produce excessive generalized-acceleration error. Reduce force error rather than accepting a small objective error alone."
+          }
+        }
+      ]
+    },
+    {
+      "group": 6,
+      "run": 0,
+      "score": 1,
+      "cases": [
+        {
+          "case_id": "grip-012",
+          "passed": true,
+          "before": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 1.2019458004278732e-07,
+                "objective_error": 1.271210370282865e-14,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 1.8777517014953007e-07,
+              "acceleration_error": 9.517669713332565e-06
+            },
+            "wrench_error": 1.4889993066821545e-07,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 1.2019458004278732e-07,
+                "objective_error": 1.271210370282865e-14,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 1.8777517014953007e-07,
+              "acceleration_error": 9.517669713332565e-06
+            },
+            "wrench_error": 1.4889993066821545e-07,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "All physics gates passed for this output. Preserve accuracy when changing the solver.",
+            "after": "All physics gates passed for this output. Preserve accuracy when changing the solver."
+          }
+        },
+        {
+          "case_id": "grip-013",
+          "passed": true,
+          "before": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 1.5254187548440368e-07,
+                "objective_error": 1.5185639819401447e-13,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 7.343314063447079e-07,
+              "acceleration_error": 4.476781745077601e-06
+            },
+            "wrench_error": 1.0761464621548024e-06,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 1.5254187548440368e-07,
+                "objective_error": 1.5185639819401447e-13,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 7.343314063447079e-07,
+              "acceleration_error": 4.476781745077601e-06
+            },
+            "wrench_error": 1.0761464621548024e-06,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "All physics gates passed for this output. Preserve accuracy when changing the solver.",
+            "after": "All physics gates passed for this output. Preserve accuracy when changing the solver."
+          }
+        }
+      ]
+    },
+    {
+      "group": 7,
+      "run": 0,
+      "score": 1,
+      "cases": [
+        {
+          "case_id": "grip-014",
+          "passed": true,
+          "before": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 1.129128320380909e-06,
+                "objective_error": 4.364036561489326e-13,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 1.0605528232242066e-06,
+              "acceleration_error": 6.103515630684342e-06
+            },
+            "wrench_error": 4.306640616705411e-07,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 1.129128320380909e-06,
+                "objective_error": 4.364036561489326e-13,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 1.0605528232242066e-06,
+              "acceleration_error": 6.103515630684342e-06
+            },
+            "wrench_error": 4.306640616705411e-07,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "All physics gates passed for this output. Preserve accuracy when changing the solver.",
+            "after": "All physics gates passed for this output. Preserve accuracy when changing the solver."
+          }
+        },
+        {
+          "case_id": "grip-015",
+          "passed": true,
+          "before": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 4.6783200605810926e-07,
+                "objective_error": 6.90701865179158e-13,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 1.550495252276535e-06,
+              "acceleration_error": 3.8193708339633126e-06
+            },
+            "wrench_error": 7.209472641989132e-07,
+            "cone_violation": 0.0
+          },
+          "after": {
+            "passed": true,
+            "force_check": {
+              "passed": true,
+              "numerical": {
+                "passed": true,
+                "residual": 4.6783200605810926e-07,
+                "objective_error": 6.90701865179158e-13,
+                "velocity_error": 0.0,
+                "feasible": true
+              },
+              "force_error": 1.550495252276535e-06,
+              "acceleration_error": 3.8193708339633126e-06
+            },
+            "wrench_error": 7.209472641989132e-07,
+            "cone_violation": 0.0
+          },
+          "guidance": {
+            "before": "All physics gates passed for this output. Preserve accuracy when changing the solver.",
+            "after": "All physics gates passed for this output. Preserve accuracy when changing the solver."
+          }
+        }
+      ]
+    }
+  ],
+  "evaluator_source_sha256": {
+    "grip_throughput.py": "d1c2c899c87d523197fefbd9a1231e41268f491e32f6a7f1f82452a88ed3de53",
+    "grip_feedback.py": "ae02236af0062529152cbba6c3ff49eba0ef34aff676ce382085fc59fe7ba992",
+    "grip_physics.py": "889c1951f708841d0fb6deb15458c13012e0f75ae7f2a3f10ef096c54dcb500f",
+    "force_checker.py": "1f9af524e26f6ba5a818f72de33e4bf55f749468e2574a623337685cfae40c59",
+    "contact.py": "a83053062d737111ef1ad1e3ce3e7d9a0cbee352330186e6249ae4792e733f78"
+  },
+  "passing_case_evaluations": 10,
+  "expected_case_evaluations": 16,
+  "throughput_eligible": false
+}
