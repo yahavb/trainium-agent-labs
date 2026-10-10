@@ -30,10 +30,22 @@ import taxonomy   # noqa: E402  the same episode split the taxonomy uses
 BUCKETS = ((0.0, 0.01), (0.01, 0.5), (0.5, 0.8), (0.8, 1.01))
 
 
-def best_attempt(attempts):
+def best_attempt(attempts, key="reward"):
     """The kernel solve() returned as best: highest reward, the first attempt to reach it."""
-    top = max(r["reward"] for r in attempts)
-    return next(r for r in attempts if r["reward"] == top)
+    top = max(r[key] for r in attempts)
+    return next(r for r in attempts if r[key] == top)
+
+
+def regrade(attempts, level, cache):
+    """Score every attempt again with agent.grade(), each from a fresh path. Runs before c39c0ce
+    graded candidates from one reused path, and nki then simulated a same-size candidate as the
+    first one (ded1ef2), so a logged reward can belong to a different kernel."""
+    for r in attempts:
+        code = r.get("code", "")
+        if (level, code) not in cache:
+            with redirect_stdout(io.StringIO()):
+                cache[(level, code)] = agent.grade(code, level)[0]
+        r["regraded"] = cache[(level, code)]
 
 
 def main():
@@ -41,22 +53,29 @@ def main():
     ap.add_argument("attempts", nargs="+")
     ap.add_argument("-o", "--out", default="analysis/calibration")
     ap.add_argument("--note", action="append", default=[], help="a line appended under Notes")
+    ap.add_argument("--no-regrade", action="store_true",
+                    help="trust the logged rewards (safe only for runs on c39c0ce or later)")
     a = ap.parse_args()
 
     episodes = taxonomy.load_attempts(a.attempts)
-    rows = []
+    rows, cache, changed = [], {}, []
     for (fi, run, level), atts in episodes.items():
-        best = best_attempt(atts)
+        if not a.no_regrade:
+            regrade(atts, level, cache)
+            changed += [(run, level, r["round"], r["reward"], r["regraded"]) for r in atts
+                        if abs(r["regraded"] - r["reward"]) > 1e-9]
+        best = best_attempt(atts, "reward" if a.no_regrade else "regraded")
+        logged_best = max(r["reward"] for r in atts)
+        score = best["reward"] if a.no_regrade else best["regraded"]
         spent = dict(prompt=sum(r.get("prompt_tokens") or 0 for r in atts),
                      completion=sum(r.get("completion_tokens") or 0 for r in atts),
                      rounds=len({r["round"] for r in atts}))
         ns = types.SimpleNamespace(no_eval=False, run=run)
         with redirect_stdout(io.StringIO()):
-            v = agent.verdict(ns, level, best["reward"], spent["rounds"], best.get("code", ""),
-                              spent)
-        v["file"], v["best_round"] = a.attempts[fi], best["round"]
+            v = agent.verdict(ns, level, score, spent["rounds"], best.get("code", ""), spent)
+        v["file"], v["best_round"], v["logged_best"] = a.attempts[fi], best["round"], logged_best
         rows.append(v)
-        print(f"run {run + 1} level {level}: loop {best['reward']:.2f}  confidence "
+        print(f"run {run + 1} level {level}: loop {score:.2f} (logged {logged_best:.2f})  confidence "
               f"{v['confidence']:.2f}  held-out {v['heldout_passed']}/{v['heldout_total']}  "
               f"{v['claim']}")
 
@@ -66,13 +85,13 @@ def main():
     over = [v for v in scored if v["confidence"] >= 0.5 and not ok(v)]
 
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
-    cols = ["run", "level", "loop_reward", "best_round", "rounds", "confidence", "reasons",
+    cols = ["run", "level", "loop_reward", "logged_best_reward", "best_round", "rounds", "confidence", "reasons",
             "heldout_passed", "heldout_total", "claim", "first_failure", "error"]
     with open(a.out + ".csv", "w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f)
         w.writerow(cols)
         for v in rows:
-            w.writerow([v["run"] + 1, v["level"], v["reward"], v["best_round"], v["rounds"],
+            w.writerow([v["run"] + 1, v["level"], v["reward"], v["logged_best"], v["best_round"], v["rounds"],
                         v["confidence"], "; ".join(v["reasons"]), v["heldout_passed"],
                         v["heldout_total"], v["claim"], v["first_failure"] or "", v["error"] or ""])
 
@@ -82,6 +101,16 @@ def main():
           f"best kernel went through `agent.verdict()`: the confidence from `agent.confidence()` "
           f"(stated from the loop's evidence only), then the held-out set "
           f"(`nkibench.evaluate`, new shapes x 4 value kinds) in the NKI 0.6.0 CPU simulator.",
+          "",
+          ("Loop rewards were **re-graded**: every logged attempt scored again with `agent.grade()`, "
+           "each from a fresh path, and the best kernel chosen by the new score. "
+           + (f"{len(changed)} of {sum(len(x) for x in episodes.values())} attempts scored "
+              f"differently from the log: "
+              + "; ".join(f"run {r + 1} L{lv} round {rd}: {x:.2f} -> {y:.2f}"
+                          for r, lv, rd, x, y in changed[:12])
+              + (" ..." if len(changed) > 12 else "") + "."
+              if changed else "Every attempt scored the same as logged.")
+           if not a.no_regrade else "Loop rewards are as logged (`--no-regrade`)."),
           "",
           "| run | level | loop reward | confidence | why | held-out | claim | first held-out failure |",
           "|---|---|---|---|---|---|---|---|"]

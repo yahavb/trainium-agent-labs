@@ -2,6 +2,8 @@
 
 Source: /h/trainium-agent-labs/runs/seat-116/latest/projects/02-kernel-agent/attempts.jsonl. 20 (run, level) pairs. For each, the run's best kernel went through `agent.verdict()`: the confidence from `agent.confidence()` (stated from the loop's evidence only), then the held-out set (`nkibench.evaluate`, new shapes x 4 value kinds) in the NKI 0.6.0 CPU simulator.
 
+Loop rewards were **re-graded**: every logged attempt scored again with `agent.grade()`, each from a fresh path, and the best kernel chosen by the new score. Every attempt scored the same as logged.
+
 | run | level | loop reward | confidence | why | held-out | claim | first held-out failure |
 |---|---|---|---|---|---|---|---|
 | 1 | 1 | 0.30 | 0.00 | it still fails shapes the loop tested | 0/20 | NOT SOLVED | C,H,W=(128, 32, 32) pool=2 normal: raised AssertionError: dma_copy requires src and dst to have the same number of eleme |
@@ -45,5 +47,6 @@ Unsolved runs are confidence 0 and fail held-out by construction, so they pull t
 ## Notes
 
 - The confidence weights (0.9; x0.7 single loop shape; x0.5 hard-coded test size; x0.6 hard-coded output dtype) were fixed in commit 7868c08 (13:40), before this retroactive run was made; confidence() is unchanged since then (diffed). Nothing was tuned to these results.
-- The 3 level-2 solves are 2 distinct kernels (runs 1 and 5 produced the same code). scripts/reaudit.py (4350038) separately confirmed they pass the loop's shapes under the allocation audit.
+- Re-grade (ded1ef2's cache hazard): all 424 baseline attempts, scored again one fresh path each with the current checker (allocation audit on), match the logged rewards exactly. The baseline's numbers are not affected by the reused-path bug -- unsolved runs included, not only the 3 solves scripts/reaudit.py checked.
+- The 3 level-2 solves are 2 distinct kernels (runs 1 and 5 produced the same code).
 - Input: runs/seat-116/latest/projects/02-kernel-agent/attempts.jsonl (baseline, 2026-10-10 10:50-12:43, --all --rounds 8 --samples 4 --context 8192 --repeat 5; old log format without a run field, split by order). Held-out check in the NKI 0.6.0 CPU simulator in Docker; nothing ran on the device.
