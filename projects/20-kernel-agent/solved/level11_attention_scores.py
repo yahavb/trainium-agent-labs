@@ -1,52 +1,49 @@
 import nki
 import nki.isa as nisa
 import nki.language as nl
-import numpy as np
 
 @nki.jit
 def nki_attention_scores_(q, k):
     # Allocate output in shared HBM
-    out = nl.ndarray(shape=(q.shape[0], k.shape[0]), dtype=nl.float32, buffer=nl.shared_hbm)
+    seq_len = q.shape[0]
+    d = q.shape[1]
+    out = nl.ndarray(shape=(seq_len, seq_len), dtype=q.dtype, buffer=nl.shared_hbm)
     
-    # Allocate SBUF for input tiles
-    q_sb = nl.ndarray(shape=q.shape, dtype=nl.float32, buffer=nl.sbuf)
-    k_sb = nl.ndarray(shape=k.shape, dtype=nl.float32, buffer=nl.sbuf)
+    # Allocate sbuf tiles for input
+    q_sb = nl.ndarray(shape=(seq_len, d), dtype=q.dtype, buffer=nl.sbuf)
+    k_sb = nl.ndarray(shape=(seq_len, d), dtype=k.dtype, buffer=nl.sbuf)
     
-    # Copy inputs to SBUF
+    # DMA copy input from HBM to sbuf
     nisa.dma_copy(dst=q_sb, src=q)
     nisa.dma_copy(dst=k_sb, src=k)
     
-    # Transpose q to (dim, seq)
-    t_ps = nl.ndarray(shape=(q.shape[1], q.shape[0]), dtype=nl.float32, buffer=nl.psum)
-    nisa.nc_transpose(dst=t_ps, data=q_sb)
-    t_sb = nl.ndarray(shape=(q.shape[1], q.shape[0]), dtype=nl.float32, buffer=nl.sbuf)
-    nisa.tensor_copy(dst=t_sb, src=t_ps)
+    # Transpose q and k to (d, seq)
+    t_ps_q = nl.ndarray(shape=(d, seq_len), dtype=q.dtype, buffer=nl.psum)
+    nisa.nc_transpose(dst=t_ps_q, data=q_sb)
+    t_sb_q = nl.ndarray(shape=(d, seq_len), dtype=q.dtype, buffer=nl.sbuf)
+    nisa.tensor_copy(dst=t_sb_q, src=t_ps_q)
     
-    # Transpose k to (dim, seq)
-    t_ps_k = nl.ndarray(shape=(k.shape[1], k.shape[0]), dtype=nl.float32, buffer=nl.psum)
+    t_ps_k = nl.ndarray(shape=(d, seq_len), dtype=k.dtype, buffer=nl.psum)
     nisa.nc_transpose(dst=t_ps_k, data=k_sb)
-    t_sb_k = nl.ndarray(shape=(k.shape[1], k.shape[0]), dtype=nl.float32, buffer=nl.sbuf)
+    t_sb_k = nl.ndarray(shape=(d, seq_len), dtype=k.dtype, buffer=nl.sbuf)
     nisa.tensor_copy(dst=t_sb_k, src=t_ps_k)
     
-    # Allocate psum and sbuf tiles for matmul
-    psum_tile = nl.ndarray(shape=(q.shape[0], k.shape[0]), dtype=nl.float32, buffer=nl.psum)
-    sbuf_tile_out = nl.ndarray(shape=(q.shape[0], k.shape[0]), dtype=nl.float32, buffer=nl.sbuf)
+    # Allocate psum tile for matmul
+    psum_tile = nl.ndarray(shape=(seq_len, seq_len), dtype=q.dtype, buffer=nl.psum)
     
-    # Perform matrix multiplication
-    nisa.nc_matmul(dst=psum_tile, stationary=t_sb, moving=t_sb_k)
+    # Perform matrix multiplication: q^T @ k^T
+    nisa.nc_matmul(dst=psum_tile, stationary=t_sb_q, moving=t_sb_k)
     
-    # Copy result from PSUM to SBUF
-    nisa.tensor_copy(dst=sbuf_tile_out, src=psum_tile)
+    # Allocate sbuf tile for output
+    out_sb = nl.ndarray(shape=(seq_len, seq_len), dtype=q.dtype, buffer=nl.sbuf)
     
-    # Copy result from SBUF to shared HBM
-    nisa.dma_copy(dst=out, src=sbuf_tile_out)
+    # Copy result from psum to sbuf
+    nisa.tensor_copy(dst=out_sb, src=psum_tile)
     
-    # Allocate SBUF for scaling
-    scale_sb = nl.ndarray(shape=(q.shape[0], k.shape[0]), dtype=nl.float32, buffer=nl.sbuf)
+    # Scale the result by 1 / sqrt(d)
+    scale = 1.0 / (d ** 0.5)
+    nisa.tensor_scalar(dst=out_sb, data=out_sb, op0=nl.multiply, operand0=scale)
     
-    # Scale by 1/sqrt(d)
-    nisa.tensor_scalar(dst=scale_sb, data=sbuf_tile_out, op0=nl.multiply, operand0=1.0 / np.sqrt(q.shape[1]))
-    
-    # Copy scaled result back to shared HBM
-    nisa.dma_copy(dst=out, src=scale_sb)
+    # DMA copy result from sbuf to shared HBM
+    nisa.dma_copy(dst=out, src=out_sb)
     return out

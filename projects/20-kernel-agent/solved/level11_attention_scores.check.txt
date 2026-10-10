@@ -2,11 +2,11 @@ level 11: attention scores Q K^T / sqrt(d)
   rules      clean
 
   case seq=128 dim=64:
-    HBM traffic is 196,608 bytes against a floor of 131,072, so 1.5x MORE THAN NECESSARY. The same bytes are crossing the bus repeatedly. For a tiled matmul the usual cause is allocating the PSUM tile inside the contraction loop and copying each partial product out: allocate one PSUM tile OUTSIDE that loop and let nisa.nc_matmul accumulate into it across every step, then copy out once. Hoisting the operand loads out of the innermost loop cuts the rest.
+    HBM traffic is 131,072 bytes against a floor of 131,072 (1.00x) -- essentially optimal. Every byte is read about once.
 
   case seq=64 dim=128:
-    HBM traffic is 98,304 bytes against a floor of 81,920, so 1.2x MORE THAN NECESSARY. The same bytes are crossing the bus repeatedly. For a tiled matmul the usual cause is allocating the PSUM tile inside the contraction loop and copying each partial product out: allocate one PSUM tile OUTSIDE that loop and let nisa.nc_matmul accumulate into it across every step, then copy out once. Hoisting the operand loads out of the innermost loop cuts the rest.
+    HBM traffic is 81,920 bytes against a floor of 81,920 (1.00x) -- essentially optimal. Every byte is read about once.
 
   case seq=96 dim=32:
-    HBM traffic is 98,304 bytes against a floor of 61,440, so 1.6x MORE THAN NECESSARY. The same bytes are crossing the bus repeatedly. For a tiled matmul the usual cause is allocating the PSUM tile inside the contraction loop and copying each partial product out: allocate one PSUM tile OUTSIDE that loop and let nisa.nc_matmul accumulate into it across every step, then copy out once. Hoisting the operand loads out of the innermost loop cuts the rest.
+    HBM traffic is 61,440 bytes against a floor of 61,440 (1.00x) -- essentially optimal. Every byte is read about once.
   numerics   3/3 shapes passed

@@ -366,6 +366,16 @@ def lint_kernel(source):
             issues.append(f"line {fn.lineno}: `def {fn.name}(...)` -- the kernel never returns. Write the "
                           f"result into an nl.shared_hbm tensor and end with `return out`.")
 
+    # NumPy inside the kernel. Measured on the real chip: the level-11 kernel's `1.0 / np.sqrt(q.shape[1])`
+    # passes the CPU simulator but the device compiler rejects it ("cannot call object of type
+    # 'numpy.ufunc'"). Shape arithmetic must be plain Python.
+    for fn in kernels:
+        for node in ast.walk(fn):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) \
+                    and isinstance(node.func.value, ast.Name) and node.func.value.id in ("np", "numpy"):
+                issues.append(f"{at(node)} -- np.{node.func.attr} inside the kernel: the simulator accepts it "
+                              f"but the device compiler does not. Use plain Python, e.g. 1.0 / (d ** 0.5).")
+
     # Invented instructions and keywords. Measured: ~15% of failures were names the model made up
     # (nisa.sum, transpose_stationary=True), and the simulator reports only the first one per round.
     if _nisa is not None:
@@ -455,7 +465,7 @@ def lint_kernel(source):
                     t = _name(kw.value)
                     if not t:
                         continue
-                    if kw.arg == "dst" or not lib:
+                    if kw.arg in ("dst", "reduce_res") or not lib:      # reduce_res is an output too
                         writes[t] = min(writes.get(t, 10**9), node.lineno)
                     else:
                         reads.setdefault(t, []).append(node)

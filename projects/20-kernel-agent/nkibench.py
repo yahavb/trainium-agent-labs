@@ -398,6 +398,7 @@ level(11, "attention scores Q K^T / sqrt(d)", "nki_attention_scores_",
       [dict(seq=128, dim=64), dict(seq=64, dim=128), dict(seq=96, dim=32)],
       {"matmul", "dot", "einsum", "softmax", "attention"},
       "nc_matmul contracts over the partition axis, so both operands need dim there: Q^T and K^T.",
+      max_waste=1.1,   # added later: the first solve stored the scores twice (1.2-1.6x the floor)
       make_args=_args_two_tiles,
       label=lambda sp: f"seq={sp['seq']} dim={sp['dim']}")
 
