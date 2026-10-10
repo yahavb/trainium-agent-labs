@@ -109,6 +109,18 @@ def matches(item, given):
     return any(same_answer(given, g) for g in golds if g)
 
 
+def _canon(s):
+    """_norm, plus spacing around punctuation ignored. HotpotQA (and other tokenised corpora) store
+    "New York 's", "( born", "2017 ." and "do n't"; a model quoting it naturally writes "New York's".
+    Words and their order still have to match exactly."""
+    s = _norm(s)
+    s = re.sub(r"\s+([.,;:!?%)\]}'])", r"\1", s)     # no space before closing punctuation / 's
+    s = re.sub(r"([(\[{])\s+", r"\1", s)               # no space after opening brackets
+    s = re.sub(r"\s+(n't)\b", r"\1", s)                 # do n't -> don't
+    s = re.sub(r"\s*([-\u2013\u2014/])\s*", r"\1", s)    # hyphens and dashes with or without spaces
+    return re.sub(r"\s+", " ", s).strip()
+
+
 def quote_is_verbatim(q, passage):
     """Word for word. A quote that skips words with "..." passes if every piece is verbatim and the
     pieces appear in order: "The Normans ... gave their name to Normandy" is an honest quote."""
@@ -116,12 +128,13 @@ def quote_is_verbatim(q, passage):
     pieces = [p for p in pieces if p]
     if not pieces:
         return False
-    text, at = _norm(passage), 0
+    text, at = _canon(passage), 0
     for p in pieces:
-        i = text.find(_norm(p), at)
+        cp = _canon(p).strip(" .,;")
+        i = text.find(cp, at)
         if i < 0:
             return False
-        at = i + len(_norm(p))
+        at = i + len(cp)
     return True
 
 # ---------------------------------------------------------------- the label-free check
@@ -409,6 +422,18 @@ def selftest():
         expect(name, g, rw, lb)
         print(f"  {'ok  ' if g['reward'] == rw and g['label'] == lb else 'FAIL'} {name:<36} "
               f"{g['reward']:.1f}  {g['label']:<24} {g['feedback'][:70]}")
+
+    # tokenised corpora (HotpotQA): spacing around punctuation must not matter; words still must
+    T = ("John Faso : John James Faso Jr. ( born August 25 , 1952 ) is the Representative for "
+         "New York 's 19th congressional district . He do n't run .")
+    for q, want in [("John James Faso Jr. (born August 25, 1952) is the Representative for New York's "
+                     "19th congressional district.", True),
+                    ("He don't run.", True),
+                    ("is the Representative for New York's 19 congressional district", False),
+                    ("is the Senator for New York's 19th congressional district", False)]:
+        got = quote_is_verbatim(q, T)
+        fails += got != want
+        print(f"  {'ok  ' if got == want else 'FAIL'} tokenised text {q[:44]!r:48} -> {got}")
 
     # quotes that skip words with "..."
     P = "The Normans (Norman: Nourmands) were the people who gave their name to Normandy, a region in France."
