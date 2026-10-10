@@ -1,6 +1,6 @@
 # Kernel agent: what the checker's feedback is worth
 
-Seat 17 · project 2 · **interim note, 10 Oct 15:50 EDT.** More runs are in progress on the seat; the
+Team 36 · project 2 · **interim note, 10 Oct 15:50 EDT.** More runs are in progress on the seat; the
 tables here cover the runs that have finished and will be regenerated when the rest do.
 
 ## What we ran
