@@ -50,6 +50,67 @@ busy() { pgrep -f "bash [^ ]*go[.]sh _run" >/dev/null \
          || pgrep -f "python[^ ]* ([^ ]*/)?agent[.]py" >/dev/null \
          || pgrep -f "bash [^ ]*after_directed[.]sh _wait" >/dev/null; }
 
+# One entry per agent process on this seat, ours or not: how long it has run, where, and how far its
+# attempt log has got. Counts and positions only -- the contents of a log that is not ours are never
+# copied anywhere. This is what tells us when a chip someone else is using will be free.
+agents_progress() {
+  "$PY" - <<'EOF'
+import json, os, subprocess
+found = False
+for pid in sorted((p for p in os.listdir("/proc") if p.isdigit()), key=int):
+    try:
+        with open(f"/proc/{pid}/cmdline", "rb") as f:
+            cmd = [c.decode("utf-8", "replace") for c in f.read().split(b"\0") if c]
+        cwd = os.readlink(f"/proc/{pid}/cwd")
+    except OSError:
+        continue
+    if len(cmd) < 2 or "python" not in os.path.basename(cmd[0]) or os.path.basename(cmd[1]) != "agent.py":
+        continue
+    found = True
+    try:
+        up = subprocess.run(["ps", "-o", "etime=", "-p", pid], capture_output=True, text=True).stdout.strip()
+    except OSError:
+        up = "?"
+
+    def arg(name, default=None):
+        return cmd[cmd.index(name) + 1] if name in cmd and cmd.index(name) + 1 < len(cmd) else default
+
+    print(f"pid {pid}   running for {up or '?'}   in {cwd}")
+    print(f"   options: {' '.join(cmd[2:])[:120]}")
+    log = arg("--log")
+    if not log:
+        print("   no --log option, so its progress cannot be read")
+        continue
+    path = log if os.path.isabs(log) else os.path.join(cwd, log)
+    try:
+        with open(path, errors="replace") as f:
+            lines = f.read().splitlines()
+    except OSError as e:
+        print(f"   log {path}: cannot read ({e.strerror})")
+        continue
+    runs, prev, last, rounds, n = 1, None, None, set(), 0
+    for line in lines:
+        try:
+            r = json.loads(line)
+        except ValueError:
+            continue
+        n += 1
+        lv = r.get("level")
+        if isinstance(lv, int) and isinstance(prev, int) and lv < prev:
+            runs += 1                      # the level number went back down: the next repeat began
+        prev, last = lv, r
+        rounds.add((runs, lv, r.get("round")))
+    if last is None:
+        print(f"   log {path}: empty so far")
+        continue
+    print(f"   log {path}: {n} attempts, {len(rounds)} rounds done; now on run {runs} of "
+          f"{arg('--repeat', '1')}, level {last.get('level')}, round {last.get('round')} "
+          f"(up to {arg('--rounds', '?')} rounds a level)")
+if not found:
+    print("none")
+EOF
+}
+
 results_up() {
   if [ ! -d "$TREE/.git" ]; then
     git init -q "$TREE" && git -C "$TREE" checkout -q -b "$RESULTS_BRANCH" \
@@ -92,6 +153,9 @@ EOF
     done
     echo "==================== processes ===================="
     pgrep -af "agent[.]py|go[.]sh _run" | cut -c1-150
+    echo
+    echo "==================== agents on this chip: how far along ===================="
+    agents_progress
   } > "$TREE/STATUS.txt" 2>&1
   git -C "$TREE" add -A >/dev/null 2>&1
   if [ -n "$(git -C "$TREE" status --porcelain 2>/dev/null)" ]; then
@@ -156,9 +220,16 @@ next_job() {
 case "${1:-}" in
   _loop)
     say "autopilot started on $(hostname), every ${EVERY}s"
+    # If a pull brings a newer copy of this script, switch to it. Otherwise the loop keeps running
+    # the code it started with, and a fix pushed to the fork would need a restart by hand.
+    MINE=$(cksum < "$PROJ/autopilot.sh")
     while :; do
       results_up
       code_down
+      if [ "$(cksum < "$PROJ/autopilot.sh")" != "$MINE" ]; then
+        say "autopilot: this script changed, switching to the new copy"
+        exec bash "$PROJ/autopilot.sh" _loop
+      fi
       next_job
       sleep "$EVERY"
     done ;;
