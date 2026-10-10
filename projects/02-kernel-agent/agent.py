@@ -128,7 +128,7 @@ def grade(source, level):
                     f"CANNOT SIMULATE: {e}")
         except Exception as e:
             failures.append((nkibench.label(case, level),
-                             enrich(f"raised {type(e).__name__}: {e}")))
+                             enrich(f"raised {type(e).__name__}: {e}", level)))
             continue
         parts["runs"] = True
         m = (nkibench.check_inputs_untouched(before, args)
@@ -250,8 +250,30 @@ def real_signature(func_name):
     return ""
 
 
-def enrich(error_text):
+def enrich(error_text, level=None):
     """Add the real names when the failure is an invented API call."""
+    # Wrong number of entry-point parameters. Measured: the model wrote def ...(x) for a level
+    # whose reference takes (x, pool_size), so the harness passed 2 args to a 1-arg function. Name
+    # the exact signature the entry point must have -- it is the reference's, verbatim.
+    m = re.search(r"(\w+)\(\) takes (\d+) positional arguments? but (\d+) (?:was|were) given",
+                  error_text)
+    if m and level is not None:
+        import inspect
+        ref = nkibench.LEVELS[level]["ref"]
+        params = list(inspect.signature(ref).parameters)
+        entry = nkibench.LEVELS[level]["entry"]
+        return (error_text + f" The entry point must accept the SAME arguments as the reference: "
+                f"write `def {entry}({', '.join(params)}):`. The harness calls your kernel with "
+                f"{len(params)} argument(s) ({', '.join(params)}), so a signature with fewer "
+                f"parameters raises this. Keep all of them even if the shape is implied by a tensor.")
+    m = re.search(r"(\w+)\(\) missing \d+ required positional argument", error_text)
+    if m and level is not None:
+        import inspect
+        ref = nkibench.LEVELS[level]["ref"]
+        params = list(inspect.signature(ref).parameters)
+        entry = nkibench.LEVELS[level]["entry"]
+        return (error_text + f" Your entry point declares more parameters than the harness passes. "
+                f"Use exactly the reference's signature: `def {entry}({', '.join(params)}):`.")
     if "'MemoryRegion' object is not callable" in error_text:
         return (error_text + " nl.sbuf, nl.psum and nl.shared_hbm are memory regions, not "
                 "functions. Do not call them. Allocate with "
