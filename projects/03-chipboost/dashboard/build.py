@@ -27,6 +27,9 @@ any number of files, merged, every section optional. A missing section shows as 
 
 "Verified" means verdict == "faster": correct on every shape, and faster by more than the noise.
 A run that never produced one counts as the start kernel at 1.00x; no run is dropped.
+
+A log line whose referee_message starts with "(fake)" (schema.py --fake) or "(stub)" (search.py --stub)
+stamps the whole page, and names the files those lines came from.
 """
 
 import argparse
@@ -62,6 +65,11 @@ VERDICT = {
 
 DIFF_LINES = 250    # per attempt; the full source stays in the log
 TEXT_CHARS = 2000
+MARKERS = ("(fake)", "(stub)")   # how schema.py --fake and search.py --stub label what they invent
+
+
+def marked(rec):
+    return str(rec.get("referee_message") or "").startswith(MARKERS)
 
 
 # ---------------------------------------------------------------- input
@@ -105,6 +113,7 @@ def load_attempts(paths):
                 notes.append(f"{where}: no kernel or verdict; skipped")
                 continue
             rec["run_id"] = rec["run_id"] or f"{rec['kernel']}-{rec['arm']}"
+            rec["_file"] = str(path)
             records.append(rec)
     return records, notes
 
@@ -190,8 +199,8 @@ def order(r):
 def summarize(records):
     """Per kernel: the start time, and per arm the runs, each with its best and its progress curve."""
     runs = defaultdict(list)
-    for r in records:
-        runs[(r["kernel"], r["arm"], r["run_id"])].append(r)
+    for r in records:   # by seat too: two seats can pick the same run_id
+        runs[(r["kernel"], r["arm"], str(r["seat"]), r["run_id"])].append(r)
     out = {}
     for k in [op for op in schema.OPS if any(key[0] == op for key in runs)]:
         recs = [r for r in records if r["kernel"] == k]
@@ -208,7 +217,7 @@ def summarize(records):
                     if verified(r):
                         cur = max(cur, r["speedup"])
                     curve.append(cur)
-                rs.append(dict(run_id=key[2], seat=lst[0]["seat"], attempts=lst, curve=curve,
+                rs.append(dict(run_id=key[3], seat=lst[0]["seat"], attempts=lst, curve=curve,
                                best_us=min(r["time_us_median"] for r in ver) if ver else run_base,
                                best_x=max(r["speedup"] for r in ver) if ver else 1.0,
                                n_verified=len(ver)))
@@ -378,9 +387,10 @@ def panel_speed(summary, results):
                      f'physics floor {esc(fmt_us(floor))}</text>')
             rows_t.append([esc(k), "Physics floor", fmt_us(floor), "", "", "", "", "no kernel can beat it"])
         below = [r for rs in s["arms"].values() for r in rs if floor and r["n_verified"] and r["best_us"] < floor]
-        warn = (f'<p class="warn"><span class="icon" aria-hidden="true">!</span><strong>Check the timer:</strong> '
-                f'{len(below)} run{"s" if len(below) != 1 else ""} reported a verified time below the physics floor '
-                f'({fmt_us(min(r["best_us"] for r in below))} &lt; {fmt_us(floor)}). Nothing real can do that.</p>'
+        warn = (f'<p class="warn"><span class="icon" aria-hidden="true">!</span><strong>Below the floor:</strong> '
+                f'{len(below)} run{"s" if len(below) != 1 else ""} reported a verified time under the floor '
+                f'({fmt_us(min(r["best_us"] for r in below))} &lt; {fmt_us(floor)}). Either the timer is wrong, or '
+                f'the floor kernel is not the fastest copy of these bytes: re-measure it before reporting.</p>'
                 if below else "")
         blocks.append(f'<h3>{esc(k)} <span class="src">{esc(source_label(s["sources"]))}</span></h3>'
                       f'<div class="scroll"><svg class="wide" viewBox="0 0 {W} {H}" role="img" '
@@ -629,12 +639,41 @@ def panel_timeline(summary):
 
 # ---------------------------------------------------------------- panel 5: held-out map
 
-def panel_heldout(results):
+def heldout_from_logs(summary):
+    """What the attempt logs alone say about held-out shapes: per arm, how many kernels were correct on the
+    dev shapes and how many of those the held-out shapes then rejected. Used whether or not an
+    end-of-run check exists, since it costs nothing."""
+    rows = []
+    for k, s in summary.items():
+        for arm in schema.ARMS:
+            atts = [a for r in s["arms"][arm] for a in r["attempts"]]
+            if not atts:
+                continue
+            fails = [a for a in atts if a["verdict"] == "heldout_fail"]
+            correct = [a for a in atts if a["verdict"] in ("heldout_fail", "slower", "no_gain", "faster")]
+            last = max(fails, key=lambda a: a["timestamp"] or 0) if fails else None
+            msg = (last["referee_message"] or "").strip().splitlines()[0][:160] if last and last["referee_message"] else ""
+            rows.append([esc(k), ARM_LABEL[arm], str(len(atts)), str(len(correct)),
+                         status(not fails, "0", str(len(fails))), esc(msg)])
+    if not rows:
+        return ""
+    return ('<h3>During the runs <span class="src">from attempts.jsonl</span></h3>' +
+            table(["Kernel", "Arm", "Attempts", "Correct on dev shapes", "Rejected at held-out", "Latest rejection"],
+                  rows, numeric=(2, 3)) +
+            '<p class="how">Zero rejections means none were caught, not that every kernel passes: if the loops '
+            'skip held-out shapes to save compiles, only the end-of-run check on each best kernel tests them.</p>')
+
+
+def panel_heldout(results, summary):
     ho = results["heldout"]
+    how = ("Shapes the agent never saw while it searched, including tile edges. A speedup that breaks here "
+           "does not count.")
+    from_logs = heldout_from_logs(summary)
     if not ho:
-        return card("5", "Held-out shapes", "Shapes the agent never saw while it searched.",
-                    empty("Not in yet: the <code>heldout</code> section of a <code>results*.json</code> "
-                          "(format at the top of <code>dashboard/build.py</code>)."))
+        end = empty("End-of-run check on each arm's best kernel: not in yet. It goes in the <code>heldout</code> "
+                    "section of a <code>results_&lt;owner&gt;.json</code> (format at the top of "
+                    "<code>dashboard/build.py</code>).")
+        return card("5", "Held-out shapes", how, end + from_logs)
     by_kernel = defaultdict(list)
     for h in ho:
         by_kernel[h.get("kernel", "?")].append(h)
@@ -656,11 +695,9 @@ def panel_heldout(results):
                     row.append(status(False, "", "fail"))
             rows.append(row)
         fails = sum(1 for h in hs if not h.get("passed"))
-        blocks.append(f'<h3>{esc(k)} <span class="src">{fails} failing cell{"s" if fails != 1 else ""}</span></h3>' +
-                      table(["Kernel"] + [esc(s) for s in shapes], rows))
-    return card("5", "Held-out shapes",
-                "Shapes the agent never saw while it searched, including tile edges. A speedup that breaks "
-                "here does not count.", "".join(blocks))
+        blocks.append(f'<h3>{esc(k)}: end-of-run check <span class="src">{fails} failing cell'
+                      f'{"s" if fails != 1 else ""}</span></h3>' + table(["Kernel"] + [esc(s) for s in shapes], rows))
+    return card("5", "Held-out shapes", how, "".join(blocks) + from_logs)
 
 
 # ---------------------------------------------------------------- page
@@ -689,7 +726,7 @@ def kpis(summary, results, records):
         tiles.append(("Red team", f"{caught} of {len(cheats)}", sub))
     else:
         tiles.append(("Red team", "–", "not in yet"))
-    runs = {(r["kernel"], r["arm"], r["run_id"]) for r in records}
+    runs = {(r["kernel"], r["arm"], r["seat"], r["run_id"]) for r in records}
     seats = {r["seat"] for r in records}
     tiles.append(("Attempts through the referee", f"{len(records):,}",
                   f"{len(runs)} runs · {len(seats)} seat{'s' if len(seats) != 1 else ''}"))
@@ -930,11 +967,25 @@ JS = r"""
 """
 
 
+def stamp(records, fake):
+    """The banner for invented data: all of it (the layout build), or some lines mixed into real logs."""
+    if not fake:
+        return ""
+    bad = [r for r in records if marked(r)]
+    if not records or len(bad) == len(records):
+        what = ("Generated by <code>schema.py --fake</code> or <code>search.py --stub</code> to build the "
+                "layout. Never report a number from this page.")
+    else:
+        files = sorted({r.get("_file") or "?" for r in bad})
+        what = (f"{len(bad):,} of {len(records):,} attempts are marked (fake) or (stub), in "
+                f"{esc(', '.join(files))}. Remove those lines before reporting any number from this page.")
+    return f'<div class="fake" role="alert"><strong>Fake or stub data.</strong> {what}</div>'
+
+
 def build(records, results, notes, fake, inputs):
     summary = summarize(records)
     timeline, details = panel_timeline(summary)
-    banner = ('<div class="fake" role="alert"><strong>Fake data.</strong> Generated by <code>schema.py --fake</code> '
-              'to build the layout. Never report a number from this page.</div>') if fake else ""
+    banner = stamp(records, fake)
     sources = set().union(*(s["sources"] for s in summary.values())) if summary else set()
     built = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     meta = (f"Built {built} from {len(inputs)} file{'s' if len(inputs) != 1 else ''} · "
@@ -965,7 +1016,7 @@ than the timing noise.</p>
 {panel_progress(summary, results)}
 {panel_redteam(results)}
 {timeline}
-{panel_heldout(results)}
+{panel_heldout(results, summary)}
 <footer>Inputs: {esc(", ".join(inputs)) or "none"}. Speedups are against the start kernel timed in the same session.
 Projections, if any, are labelled as such; everything else here was logged by the referee.</footer>
 </main>
@@ -989,27 +1040,38 @@ def main():
         return sorted(str(p) for p in PROJECT.rglob(pattern)
                       if ".git" not in p.parts and not p.name.startswith("fake_"))
 
+    def rel(p):
+        """logs/seat-100/attempts.jsonl, not attempts.jsonl: every seat's file has the same name."""
+        try:
+            return Path(p).resolve().relative_to(PROJECT).as_posix()
+        except ValueError:
+            return Path(p).name
+
     if a.fake:
         records, notes, inputs = [], [], ["schema.fake_attempts()"]
         for rec in schema.fake_attempts():
             for k in schema.ATTEMPT_FIELDS:
                 rec.setdefault(k, None)
+            rec["_file"] = "schema.fake_attempts()"
             records.append(rec)
     else:
         paths = a.logs or found("attempts*.jsonl")
         if not paths:
             sys.exit(f"no attempts*.jsonl under {PROJECT}. Pass log files, or --fake for the layout.")
         records, notes = load_attempts(paths)
-        inputs = [Path(p).name for p in paths]
-    fake = a.fake or any(str(r.get("referee_message") or "").startswith("(fake)") for r in records) \
-        or any("fake" in Path(p).name.lower() for p in inputs)
+        for r in records:
+            r["_file"] = rel(r["_file"])
+        inputs = [rel(p) for p in paths]
+    fake = a.fake or any(marked(r) for r in records) or any("fake" in Path(p).name.lower() for p in inputs)
+    # Fake panels 3 and 5 only for a page that is fake through and through, never mixed into real logs.
+    all_fake = a.fake or (bool(records) and all(marked(r) for r in records))
     res_paths = a.results if a.results is not None else found("*results*.json")
     results = load_results(res_paths)
-    if fake and not res_paths:
+    if all_fake and not res_paths:
         results = merge_results([fake_results()])
         inputs.append("fake_results()")
     else:
-        inputs += [Path(p).name for p in res_paths]
+        inputs += [rel(p) for p in res_paths]
 
     out = Path(a.out)
     out.parent.mkdir(parents=True, exist_ok=True)
