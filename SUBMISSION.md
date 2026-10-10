@@ -9,13 +9,14 @@ every number comes from the NKI 0.6.0 CPU simulator (`nki.simulate`), graded by 
 
 **In one paragraph.** We built a checker-driven agent that writes NKI kernels with a model that sees 8,192
 tokens (Qwen3-8B, served on the seat's Trainium2). The organizers' agent solved only level 2 (3 runs of 5).
-Ours solved levels 3 and 4 in every run and level 1 twice [[TBD: final counts]], and every solve passed a
+Ours solved levels 3 and 4 in every run, and level 1 in every run of the final version so far, three different
+kernels [[TBD: final counts]]; every solve passed a
 fresh-process re-audit and a held-out set of new shapes and hostile values [[TBD: final-run numbers]]. The
 model never changed; what it was shown did. One worked example in the first prompt solves level 3; the code
-in the repair messages solves level 4 (hollowed out, level 4 stopped solving). Level 1 fell twice: once to a
-one-line instruction, "Add keepdims=True to this call", sent in place of a raw simulator error; once when a
-fresh first attempt was right in the simulator but not legal on trn2, and a compiler gate handed back the
-rewrite. Along the way we found that the seat's model
+in the repair messages solves level 4 (hollowed out, level 4 stopped solving). Two of level 1's solves show how: once a
+one-line instruction, "Add keepdims=True to this call", sent in place of a raw simulator error; once a
+fresh first attempt that was right in the simulator but not legal on trn2, for which a compiler gate handed
+back the rewrite. Along the way we found that the seat's model
 server is deterministic, so "5 runs" were often one run five times. We report distinct runs next to every
 rate and changed the agent so its samples actually differ.
 
@@ -230,7 +231,7 @@ written down before the results came in ([PLAN.md](PLAN.md) §4).
 | v8 | E-div + skeleton feedback + cut-off answers not graded + level-1 call fixes; liuyq's level-1 compiler gate in the base | L1–L4 | **L1: our first level-1 solve**, in its first repair round; VERIFIED by both verdicts, held-out 20/20, lowers for trn2, re-audit PASS (1 of 3 runs). L4: 0.62 twice (v7: 5/5). L3: solved, two rounds later than v7. L2, round 0 only: 0/20 | skeleton dropped (see below); the rest kept |
 | L2 sampling | v8 with the first prompt and the sampling settings back to the organizers' | L2, round 0, 20 samples | 2/20, the same as the organizers' agent re-run today (2/20); with v7's sampling settings 0/20 | the level-2 regression was v7's sampling settings |
 | v8.1 | v8 without the skeleton, plus samples 1 and 3 on the original sampling and 2 and 4 on v7's, plus one sentence restating the level-2 task when the model transposes the whole input | L2 | the first level-2 solve in a repair round today (round 2), through the existing numeric-mismatch message; stopped after one run for v8.2 | folded into v8.2 |
-| **v8.2** (final candidate, 96a9fc9) | v8.1 plus **E-mix**: in every repair round, sample 1 repairs the best kernel as before and samples 2–4 start over from the first prompt, each tagged differently. Level 2 had only ever been solved in round 0, so its repair rounds now also buy fresh first attempts | L1–L4 | so far (16:19): **L1 solved** in round 2: in round 1 a fresh first attempt (E-mix), not the repair, was correct in the simulator but channel by channel; the compiler gate held it at 0.95 and handed back the all-channels rewrite; in round 2 the repair sample applied it, VERIFIED, held-out 20/20, lowers for trn2; L2 2 of 3 runs; L4 1 of 1 [[TBD: final counts]] | final candidate |
+| **v8.2** (final candidate, 96a9fc9) | v8.1 plus **E-mix**: in every repair round, sample 1 repairs the best kernel as before and samples 2–4 start over from the first prompt, each tagged differently. Level 2 had only ever been solved in round 0, so its repair rounds now also buy fresh first attempts | L1–L4 | so far (16:23): **L1 3/3**, three different kernels (rounds 2, 2 and 0), all re-audited and VERIFIED, held-out 20/20, lowering for trn2; the first was a fresh first attempt (E-mix) held by the compiler gate at 0.95 and repaired with its rewrite. **L2 2/3**. L4 2/2. [[TBD: final counts]] | final candidate |
 
 **The skeleton gamble, and why it lost.** v8 hollowed out the code in the repair messages (`t[<…>]`) so that the
 model would have to work out slices and shapes itself. On level 4 it could not. With and without the
