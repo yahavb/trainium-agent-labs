@@ -1,0 +1,21 @@
+{
+  "independent_clean_kernels": 12,
+  "accepted_mutations": 24,
+  "verified_repair_pairs": 24,
+  "rejected_mutations": 0,
+  "rejected": [],
+  "train_records": 22,
+  "heldout_records": 2,
+  "failure_categories": {
+    "DMA_SHAPE_MISMATCH": 1,
+    "INVALID_API_FUNCTION": 14,
+    "INVALID_TENSOR_DIMENSIONS": 5,
+    "INVALID_API_ARGUMENT": 1,
+    "NUMERICAL_MISMATCH": 2,
+    "INVALID_BUFFER_PLACEMENT": 1
+  },
+  "device_verified": 0,
+  "verification_status": "SIMULATOR_VERIFIED",
+  "source_dataset": "synthetic_nki/data",
+  "heldout_policy": "Entire elementwise_arithmetic family; two bug variants of one independent task, neither indexed."
+}

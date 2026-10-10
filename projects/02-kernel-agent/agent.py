@@ -33,6 +33,15 @@ import time
 import numpy as np
 
 import nkibench
+from failure_selection import Candidate, select_candidate, classify_failure
+from candidate_diversity import build_variants, diversity_metrics
+from nki_knowledge import ground_prompt
+from shape_repair import constrained_prompt, shape_prompt, failure_input_shapes
+from synthetic_nki.retrieval import example_prompt
+from repair_history import RepairHistory
+from experiment_metrics import (CASE_RESULTS, GRADE_DIRECTORY, ModelReply,
+                                enabled as instrumentation_enabled, record_case,
+                                response_metadata)
 
 MODEL = os.environ.get("KERNEL_AGENT_MODEL", "Qwen/Qwen3-8B")
 
@@ -85,7 +94,7 @@ def grade(source, level):
     parts["rules"] = True
 
     spec = nkibench.LEVELS[level]
-    path = f"/tmp/_agent_level{level}.py"
+    path = os.path.join(GRADE_DIRECTORY.get() or "/tmp", f"_agent_level{level}.py")
     with open(path, "w") as f:
         f.write(source)
     try:
@@ -119,19 +128,32 @@ def grade(source, level):
         args, _ = nkibench.make_inputs(case, level)
         before = [x.copy() if isinstance(x, np.ndarray) else x for x in args]
         want = spec["ref"](*args)
+        simulation_started = time.perf_counter() if CASE_RESULTS.get() is not None else None
         try:
             got, counted = nkibench.simulate_and_count(kernel, args)
         except nkibench.NkiMissing as e:
+            record_case(nkibench.label(case, level), simulation_seconds=(time.perf_counter()-simulation_started) if simulation_started is not None else None, ran=False, numerically_correct=None,
+                        verified=False, error=str(e))
             return (sum(WEIGHTS[k] for k, v in parts.items() if v), parts,
                     f"CANNOT SIMULATE: {e}")
         except Exception as e:
+            record_case(nkibench.label(case, level), simulation_seconds=(time.perf_counter()-simulation_started) if simulation_started is not None else None, ran=False, numerically_correct=None,
+                        verified=False, error=f"{type(e).__name__}: {e}")
             failures.append((nkibench.label(case, level),
                              enrich(f"raised {type(e).__name__}: {e}")))
             continue
+        simulation_seconds = (time.perf_counter()-simulation_started) if simulation_started is not None else None
         parts["runs"] = True
-        m = (nkibench.check_inputs_untouched(before, args)
-             or nkibench.describe_mismatch(got, want)
-             or nkibench.check_traffic_bar(level, counted, args, want))
+        if CASE_RESULTS.get() is not None:
+            input_error = nkibench.check_inputs_untouched(before, args)
+            numerical_error = nkibench.describe_mismatch(got, want) if not input_error else None
+            traffic_error = (nkibench.check_traffic_bar(level, counted, args, want)
+                             if not input_error and not numerical_error else None)
+            m = input_error or numerical_error or traffic_error
+        else:
+            m = (nkibench.check_inputs_untouched(before, args)
+                 or nkibench.describe_mismatch(got, want)
+                 or nkibench.check_traffic_bar(level, counted, args, want))
         # A simulator warning about a hardware-correctness hazard counts as a failure even when the
         # numbers happen to match on CPU: the kernel would be wrong on the device.
         hazards = [w for w in counted.get("warnings", [])
@@ -140,6 +162,12 @@ def grade(source, level):
             m = ("CORRECT ON CPU BUT WRONG ON HARDWARE: " + hazards[0]
                  + ". Fix that before anything else -- the simulator agrees with the reference here "
                    "and the device would not.")
+        if CASE_RESULTS.get() is not None:
+            record_case(nkibench.label(case, level), simulation_seconds=simulation_seconds, ran=True,
+                        inputs_untouched=not bool(input_error),
+                        numerically_correct=(not bool(numerical_error)) if not input_error else None,
+                        traffic_passed=(not bool(traffic_error)) if not input_error and not numerical_error else None,
+                        hardware_hazard_passed=not bool(hazards), verified=not bool(m), error=m)
         if m:
             failures.append((nkibench.label(case, level), m))
             continue
@@ -432,6 +460,8 @@ def extract_code(text):
 
 def ask(a, prompt):
     import httpx
+    measured = instrumentation_enabled(a)
+    started = time.perf_counter() if measured else None
     # enable_thinking=False matters. Qwen3 reasons before answering, and with thinking on it
     # spent the whole budget there: the first cluster run returned "No code came back" at 54.7s
     # over and over, plus truncated fragments (invalid decimal literal, unterminated string).
@@ -466,13 +496,20 @@ def ask(a, prompt):
         print(f"    (empty answer, {len(reasoning)} chars of hidden reasoning, "
               f"finish={ch.get('finish_reason')} — shorten the prompt rather than raising the "
               f"budget)")
+    if measured:
+        metadata = response_metadata(payload, time.perf_counter() - started)
+        metadata['requested_max_tokens'] = budget
+        return ModelReply(content, metadata)
     return content
 
 
 def ask_parallel(a, prompt, n):
     import concurrent.futures as cf
+    prompts = [prompt] * n if isinstance(prompt, str) else list(prompt)
+    if len(prompts) != n:
+        raise ValueError("one prompt is required per candidate")
     with cf.ThreadPoolExecutor(max_workers=n) as ex:
-        return [f.result() for f in [ex.submit(ask, a, prompt) for _ in range(n)]]
+        return [f.result() for f in [ex.submit(ask, a, p) for p in prompts]]
 
 
 def offline_answers(level, n, rnd):
@@ -494,21 +531,139 @@ def solve(a, level, log):
     best = (0.0, None, "")
     tried, streak, seen = [], 0, {}
     latest = ("", "")
+    selection_policy = getattr(a, "selection_policy", "reward")
+    candidate_policy = getattr(a, "candidate_policy", "standard")
+    repair_policy = getattr(a, "repair_policy", "standard")
+    generation_policy = getattr(a, "generation_policy", "standard")
+    feedback_policy = getattr(a, "feedback_policy", "legacy")
+    example_policy = getattr(a, "example_policy", "off")
+    adaptive = getattr(a, "adaptive_repair", False)
+    repair_history = RepairHistory()
+    measured = instrumentation_enabled(a)
+    extended = measured or selection_policy == "diagnostic"
+    selection_history = []
     for rnd in range(a.rounds):
         t0 = time.perf_counter()
+        generation_prompt = prompt
+        grounding = None
+        shape_plan = None
+        generation_constraints = None
+        synthetic_context = None
+        history_context = None
+        if generation_policy == "constrained" and not latest[0]:
+            generation_prompt, generation_constraints = constrained_prompt(
+                generation_prompt, nkibench.LEVELS[level]["op"], model=getattr(a,"model",MODEL),
+                context=getattr(a,"context",8192), answer_budget=getattr(a,"max_tokens",2500))
+        if (repair_policy == "shape-aware" or feedback_policy == "targeted") and latest[0]:
+            generation_prompt, shape_plan = shape_prompt(
+                generation_prompt, latest[0], latest[1], streak, input_shapes=failure_input_shapes(latest[0],latest[1],level), model=getattr(a,"model",MODEL),
+                context=getattr(a,"context",8192), answer_budget=getattr(a,"max_tokens",2500))
+        if repair_policy == "grounded" and latest[0] and feedback_policy == "legacy":
+            generation_prompt, grounding = ground_prompt(
+                prompt, classify_failure(latest[1]), latest[0],
+                model=getattr(a, 'model', MODEL), context=getattr(a, 'context', 8192),
+                answer_budget=getattr(a, 'max_tokens', MIN_ANSWER_TOKENS))
+        if example_policy == "synthetic" and latest[0]:
+            generation_prompt, synthetic_context = example_prompt(
+                generation_prompt, classify_failure(latest[1]), latest[0],
+                model=getattr(a,"model",MODEL), context=getattr(a,"context",8192),
+                answer_budget=getattr(a,"max_tokens",2500))
+        if adaptive and latest[0]:
+            history_context = repair_history.guidance()
+            if history_context:
+                from nki_knowledge import local_token_counter
+                counter,_=local_token_counter(getattr(a,"model",MODEL))
+                if counter(generation_prompt+history_context)<=getattr(a,"context",8192)-getattr(a,"max_tokens",2500)-128:
+                    generation_prompt += "\n\n" + history_context
+                else:history_context=None
+        variants = build_variants(generation_prompt, a.samples, candidate_policy,
+                                  repair=bool(latest[0]), repeated=streak, repair_scope=shape_plan["scope"] if shape_plan else None)
+        request_prompts = generation_prompt if candidate_policy == "standard" else [v.prompt for v in variants]
         replies = (offline_answers(level, a.samples, rnd) if a.offline
-                   else ask_parallel(a, prompt, a.samples))
+                   else ask_parallel(a, request_prompts, a.samples))
+        generation_seconds = time.perf_counter() - t0 if measured else None
         graded = []
+        grade_metrics = []
         for reply in replies:
             src = extract_code(reply)
-            reward, parts, feedback = grade(src, level)
+            details = []
+            case_token = CASE_RESULTS.set(details) if measured else None
+            grade_dir = getattr(a, 'grade_dir', None)
+            directory_token = GRADE_DIRECTORY.set(grade_dir) if grade_dir else None
+            grade_started = time.perf_counter() if measured else None
+            try:
+                reward, parts, feedback = grade(src, level)
+            finally:
+                if case_token is not None: CASE_RESULTS.reset(case_token)
+                if directory_token is not None: GRADE_DIRECTORY.reset(directory_token)
+            grade_metrics.append(dict(checker_seconds=time.perf_counter() - grade_started,
+                                      shape_results=details) if measured else {})
             graded.append((reward, src, feedback, parts))
-            log.write(json.dumps(dict(level=level, round=rnd, reward=reward, parts=parts,
-                                      prompt_chars=len(prompt), reply_chars=len(reply),
-                                      code=src, feedback=feedback)) + "\n")
+            if not extended:
+                log.write(json.dumps(dict(level=level, round=rnd, reward=reward, parts=parts,
+                                          prompt_chars=len(prompt), reply_chars=len(reply),
+                                          code=src, feedback=feedback)) + "\n")
+        if extended:
+            candidates = [Candidate(g[0], g[1], g[2]) for g in graded]
+            decision = select_candidate(candidates, selection_policy, selection_history)
+            diversity = diversity_metrics([c.code for c in candidates])
+            round_seconds = time.perf_counter() - t0 if measured else None
+            for index, (reward, src, feedback, parts) in enumerate(graded):
+                record = dict(level=level, round=rnd, reward=reward, parts=parts,
+                              prompt_chars=len(variants[index].prompt), reply_chars=len(replies[index]),
+                              code=src, feedback=feedback)
+                record.update(decision.log_metadata(index))
+                if candidate_policy == "diverse" or repair_policy == "grounded":
+                    record.update(candidate_policy=candidate_policy,
+                                  repair_policy=repair_policy,
+                                  prompt_strategy=variants[index].strategy,
+                                  prompt=variants[index].prompt,
+                                  diversity=diversity,
+                                  exact_source_hash=diversity['exact_source_hashes'][index],
+                                  ast_source_hash=diversity['ast_source_hashes'][index])
+                if repair_policy in ("grounded", "shape-aware"):
+                    record['grounding'] = grounding
+                if shape_plan is not None or generation_policy != "standard":
+                    record.update(shape_plan=shape_plan, generation_policy=generation_policy, generation_constraints=generation_constraints)
+                if feedback_policy != "legacy" or example_policy != "off" or adaptive:
+                    record.update(feedback_policy=feedback_policy,example_policy=example_policy,
+                                  adaptive_repair=adaptive,shape_plan=shape_plan,
+                                  synthetic_context=synthetic_context,repair_history_context=history_context)
+                if measured:
+                    evaluated = {case['case'] for case in grade_metrics[index]['shape_results']}
+                    shape_results = grade_metrics[index]['shape_results'] + [
+                        dict(case=nkibench.label(case, level), evaluated=False, ran=None,
+                             numerically_correct=None, verified=None)
+                        for case in nkibench.LEVELS[level]['shapes']
+                        if nkibench.label(case, level) not in evaluated]
+                    record.update(response_metadata({}))
+                    record.update(getattr(replies[index], 'metadata', {}))
+                    record.update(run_id=getattr(a, 'run_id', None), repeat_index=getattr(a, 'repeat_index', None),
+                                  candidate_policy=candidate_policy, repair_policy=repair_policy,
+                                  prompt_strategy=variants[index].strategy,
+                                  prompt=variants[index].prompt,
+                                  diversity=diversity, exact_source_hash=diversity['exact_source_hashes'][index],
+                                  ast_source_hash=diversity['ast_source_hashes'][index],
+                                  checker_seconds=grade_metrics[index]['checker_seconds'],
+                                  shape_results=shape_results, round_seconds=round_seconds,
+                                  round_generation_seconds=generation_seconds,
+                                  round_checker_seconds=sum(m['checker_seconds'] for m in grade_metrics),
+                                  repair_parent_hash=__import__('failure_selection').code_fingerprint(latest[0]) if latest[0] else None,
+                                  repair_parent_feedback=latest[1] if latest[0] else None,
+                                  timing_scope='generation and grading; excludes JSONL serialization')
+                log.write(json.dumps(record) + "\n")
+            top = graded[decision.selected_index]
+            selection_history.append(tuple(c for c in candidates
+                                           if c.reward < sum(WEIGHTS.values()) - 1e-9))
+        else:
+            # Preserve the baseline's stable reward-only ordering and legacy logs.
+            graded.sort(key=lambda g: g[0], reverse=True)
+            top = graded[0]
         log.flush()
-        graded.sort(key=lambda g: g[0], reverse=True)
-        top = graded[0]
+        if adaptive:
+            chosen_index=decision.selected_index if extended else 0
+            verified_shapes=sum(case.get("verified") is True for case in grade_metrics[chosen_index].get("shape_results",[]))
+            repair_history.observe(top[1],top[2],top[0],verified_shapes)
         if top[0] > best[0]:
             best = (top[0], top[1], top[2])
         # Repair the LATEST attempt, not the best one. Rebuilding from the best attempt with the
@@ -517,6 +672,8 @@ def solve(a, level, log):
         # stuck at 0.10 for four rounds while the prompt still carried the 0.50 code.
         if (top[1] or "").strip():
             latest = (top[1], top[2])
+            if adaptive and repair_history.best and (verified_shapes,top[0]) < (repair_history.best["verified_shapes"],repair_history.best["reward"]):
+                latest=(repair_history.best["source"],repair_history.best["feedback"])
         same = top[2] == (tried[-1] if tried else None)
         if same:
             # Collapse. Fifteen identical multi-line blocks is noise, not information.
@@ -574,6 +731,17 @@ def main():
     ap.add_argument("--all", action="store_true", help="levels 1 to 4")
     ap.add_argument("--rounds", type=int, default=4)
     ap.add_argument("--samples", type=int, default=2)
+    ap.add_argument("--selection-policy", choices=("reward", "diagnostic"), default="reward",
+                    help="equal-reward tie-breaking; diagnostic uses unverified repairability "
+                         "heuristics while reward preserves baseline ordering")
+    ap.add_argument("--candidate-policy", choices=("standard", "diverse"), default="standard")
+    ap.add_argument("--repair-policy", choices=("standard", "grounded", "shape-aware"), default="standard")
+    ap.add_argument("--generation-policy", choices=("standard", "constrained"), default="standard")
+    ap.add_argument("--feedback-policy", choices=("legacy","targeted"), default="legacy")
+    ap.add_argument("--example-policy", choices=("off","synthetic"), default="off")
+    ap.add_argument("--adaptive-repair", action="store_true")
+    ap.add_argument("--instrument", action="store_true", help="add usage, timing and per-shape experimental metadata")
+    ap.add_argument("--grade-dir", help="private candidate-code directory for an isolated experiment")
     ap.add_argument("--max-tokens", type=int, default=MIN_ANSWER_TOKENS)
     ap.add_argument("--model", default=MODEL)
     ap.add_argument("--base", default=os.environ.get("KERNEL_AGENT_BASE_URL")
@@ -597,6 +765,14 @@ def main():
                     help="let the model reason first; costs budget, and it ran out")
     ap.add_argument("--offline", action="store_true")
     a = ap.parse_args()
+    if a.samples < 1 or a.rounds < 1 or a.repeat < 1:
+        ap.error("samples, rounds and repeat must be positive")
+    if a.grade_dir:
+        os.makedirs(a.grade_dir, exist_ok=True)
+        a.grade_dir = os.path.abspath(a.grade_dir)
+    if instrumentation_enabled(a):
+        import uuid
+        a.run_id = uuid.uuid4().hex
 
     if not a.offline:
         # Validate before the first request. An empty or scheme-less value produces a hostname
@@ -626,6 +802,7 @@ def main():
 
     with open(a.log, "a") as log:
         for rep in range(a.repeat):
+            a.repeat_index = rep
             if a.repeat > 1:
                 print(f"\n################ run {rep + 1} of {a.repeat} ################")
             results = []
