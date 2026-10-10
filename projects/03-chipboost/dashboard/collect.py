@@ -36,10 +36,11 @@ SOURCES = {
 }
 # run_comparison.py names its per-arm logs <arm>-r<repeat>.jsonl: attempt logs, though not named attempts*.
 COMPARISON_LOG = re.compile(r"^(referee|model_alone|random_search)-r\d+\.jsonl$")
-# Single log files, by glob, copied one by one: P1's referee-v2 runs each write pilot.jsonl into their own
-# /tmp folder, beside full repo snapshots whose results files must not be collected twice.
+# Single log files, by glob, copied one by one: P1's v2, continuation and recovery runs each write
+# pilot.jsonl into their own /tmp folder, beside full repo snapshots whose results files must not be
+# collected twice.
 POD_FILES = {
-    100: "/tmp/p1-qwen-v2-*/pilot.jsonl",
+    100: ("/tmp/p1-qwen-v2-*/pilot.jsonl", "/tmp/p1-qwen-continuation-*/pilot.jsonl", "/tmp/redteam-recovery-*/pilot.jsonl"),
 }
 
 
@@ -102,10 +103,10 @@ def from_pods(seats, pod_dirs):
         copied.add(seat)
         got += files
         print(f"  pod  seat-{seat:<11} {', '.join(f.name for f in files)}")
-    for seat, pattern in POD_FILES.items():
+    for seat, patterns in POD_FILES.items():
         if seat not in seats:
             continue
-        ls = run(["kubectl", "exec", f"seat-{seat}", "-c", "app", "--", "sh", "-c", f"ls -1 {pattern} 2>/dev/null"], OUT)
+        ls = run(["kubectl", "exec", f"seat-{seat}", "-c", "app", "--", "sh", "-c", f"ls -1 {' '.join(patterns)} 2>/dev/null"], OUT)
         for src in ls.stdout.split():
             # /tmp/p1-qwen-v2-20261010-1/pilot.jsonl -> pods/seat-100/extra/attempts-p1-qwen-v2-20261010-1.jsonl
             rel = Path("pods") / f"seat-{seat}" / "extra" / f"attempts-{src.rstrip('/').split('/')[-2]}.jsonl"

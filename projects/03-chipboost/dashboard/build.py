@@ -63,17 +63,17 @@ import schema  # noqa: E402
 #   -v2-            seat 100: P1's consolidated v2 treatment; seat 101: P3's named-error rules (different treatments)
 #   -v3-            P3's seat running P1's failure instructions alone (agent.py --no-p3-rules --tag v3)
 # Optional groups are drawn only when they have runs.
-DISPLAY_ARMS = ("referee_continuation", "referee", "referee_v2", "referee_v2_p1fix", "referee_v2_p3", "referee_v3",
+DISPLAY_ARMS = ("referee_continuation", "referee_redteam_recovery", "referee", "referee_v2", "referee_v2_p1fix", "referee_v2_p3", "referee_v3",
                 "referee_v4", "referee_v5", "referee_later", "model_alone", "model_alone_v2", "random_search")
 ARMS_SHOWN = DISPLAY_ARMS
-OPTIONAL_ARMS = {"referee_continuation", "referee_v2", "referee_v2_p1fix", "referee_v2_p3", "referee_v3", "referee_v4",
+OPTIONAL_ARMS = {"referee_continuation", "referee_redteam_recovery", "referee_v2", "referee_v2_p1fix", "referee_v2_p3", "referee_v3", "referee_v4",
                  "referee_v5", "referee_later", "model_alone_v2"}
-ARM_LABEL = {"referee_continuation": "Qwen winner continuation", "referee": "Referee v1", "referee_v2": "Referee v2 (P1)",
+ARM_LABEL = {"referee_continuation": "Qwen winner continuation", "referee_redteam_recovery": "Qwen P3 recovery", "referee": "Referee v1", "referee_v2": "Referee v2 (P1)",
              "referee_v2_p1fix": "Qwen + P1 fixes", "referee_v2_p3": "P3 named-error rules (v2)",
              "referee_v3": "P1 instructions only (v3)", "referee_v4": "P3 rules A-C + P1 (v4)", "referee_v5": "Referee v5",
              "referee_later": "Referee v6+", "model_alone": "Model alone v1", "model_alone_v2": "Model alone v2",
              "random_search": "Random search"}
-ARM_COLOR = {"referee_continuation": "#ad4d7b", "referee": "var(--s1)", "referee_v2": "var(--s4)",
+ARM_COLOR = {"referee_continuation": "#ad4d7b", "referee_redteam_recovery": "#697332", "referee": "var(--s1)", "referee_v2": "var(--s4)",
              "referee_v2_p1fix": "#257e73", "referee_v2_p3": "#8365cc", "referee_v3": "#6b7d2a", "referee_v4": "#3d6f8f",
              "referee_v5": "#7a5c3a", "referee_later": "#6f6e69", "model_alone": "var(--s2)",
              "model_alone_v2": "#a87519", "random_search": "var(--s3)"}
@@ -82,6 +82,8 @@ VERSION_TAG = re.compile(r"-v(\d+)-")   # agent.py --tag vN puts "-vN-" in the r
 
 def display_arm(record):
     arm, run_id = record["arm"], record["run_id"] or ""
+    if arm == "referee" and "-redteam-recovery-" in run_id:
+        return "referee_redteam_recovery"   # P1's 17:05: P3's recovery runs, never counted as v1
     if arm == "referee" and "-continuation-" in run_id:
         return "referee_continuation"
     if arm == "referee" and "-v2-p1fix-" in run_id:
@@ -573,7 +575,7 @@ def panel_speed(summary, results, tune):
     body = "".join(blocks) or empty("No kernels yet.")
     return card("Speedup over the start kernel",
                 "Bar: median of each run's best verified speedup; whisker: fastest to slowest run. Random search "
-                "starts from the expert, so its bar includes the expert's own speedup.",
+                "starts from the expert, so its bar includes the expert's own speedup." + continuation_note(summary),
                 legend_arms() + body + table_view(table(
                     ["Kernel", "Row", "Speedup", "Fastest run", "Slowest run", "Time", "Runs"], rows_t,
                     numeric=(2, 3, 4, 5, 6))))
@@ -588,7 +590,27 @@ def step_points(xs, ys):
     return pts
 
 
-MODEL_ARMS = ("referee_continuation", "referee", "referee_v2", "referee_v2_p1fix", "referee_v2_p3", "referee_v3", "referee_v4", "referee_v5", "referee_later", "model_alone", "model_alone_v2")   # both start from the start kernel; random search starts from the expert
+CONTINUATION_NOTE = (" Winner continuation shows new candidate results only; its retained 1.517x seed "
+                     "is not counted in attempts. A 1x result means no new verified gain, not loss of the seed.")
+SEED_X = 1.517   # Qwen's verified winner: continuation and P3 recovery runs start from it, not from the start kernel
+WINNER_SEEDED = ("referee_continuation", "referee_redteam_recovery")
+
+
+def beat_seed(runs):
+    return any(r["best_x"] > SEED_X * 1.01 and r["n_verified"] for r in runs)
+
+
+def continuation_note(summary):
+    note = CONTINUATION_NOTE if any(s["arms"].get("referee_continuation") for s in summary.values()) else ""
+    rec = [r for s in summary.values() for r in s["arms"].get("referee_redteam_recovery") or []]
+    if rec:
+        note += (" P3 recovery also starts from the 1.517x winner: its candidates are timed against the original "
+                 "start kernel, so 1.517x there is the seed's own speed"
+                 + (", and one run went beyond it." if beat_seed(rec) else ", not a new gain."))
+    return note
+
+
+MODEL_ARMS = ("referee_continuation", "referee_redteam_recovery", "referee", "referee_v2", "referee_v2_p1fix", "referee_v2_p3", "referee_v3", "referee_v4", "referee_v5", "referee_later", "model_alone", "model_alone_v2")   # from the start kernel, except WINNER_SEEDED; random search starts from the expert
 
 
 def panel_progress(summary, results, tune):
@@ -668,7 +690,7 @@ def panel_progress(summary, results, tune):
         for a in MODEL_ARMS if a not in OPTIONAL_ARMS or any_runs(a)) + "</div>")
     return card("Progress: the model improves the start kernel",
                 "Best verified speedup so far, from the start kernel (1×). Line: median over runs; band: fastest to "
-                "slowest run within each version. Same x = same budget; v1, v2, P1-fix trials, v3 and winner continuation are never pooled. Continuation starts from a verified winner, a different prior.",
+                "slowest run within each version. Same x = same budget; v1, v2, P1-fix trials, v3, P3 recovery and winner continuation are never pooled. Continuation and P3 recovery start from the verified 1.517x winner, a different prior." + continuation_note(summary),
                 legend + body + tuning_block(tune) + table_view(table(
                     ["Kernel", "Arm", "Runs", "Attempts", "After 25%", "After 50%", "After 75%", "At the end",
                      "Spread at the end"], rows_t, numeric=(2, 3, 4, 5, 6, 7))))
@@ -1049,6 +1071,10 @@ def kpis(summary, results, records, tune):
             best = median(r["best_x"] for r in rs)
             target, tname = (expert_x, "expert") if expert_x else (limit_x, "floor limit")
             sub = f"Qwen3-8B · {len(rs)} run{'s' if len(rs) != 1 else ''} · median best verified"
+            if arm == "referee_continuation":
+                sub += " · new candidates only; retained 1.517x seed excluded"
+            if arm == "referee_redteam_recovery":
+                sub += " · starts from the 1.517x winner" + ("" if beat_seed(rs) else "; no gain over it")
             tiles.append((f"{k} · {ARM_LABEL[arm]}", fmt_x(best), sub,
                           meter((best - 1) / (target - 1)) if target and target > 1 else meter(0)))
     rt = results["redteam"]
@@ -1498,6 +1524,17 @@ def hero_heldout(results):
     return f'<svg viewBox="0 0 {W} {H}" role="img" aria-label="held-out shapes">{"".join(g)}</svg>'
 
 
+def seeded_caption(s):
+    """Runs that began from the winner itself sit outside the from-start comparison: say so, with their result."""
+    arms = [a for a in WINNER_SEEDED if s and s["arms"].get(a)]
+    if not arms:
+        return ""
+    runs = [r for a in arms for r in s["arms"][a]]
+    names = " and ".join(ARM_LABEL[a] for a in arms)
+    return (f" Not shown: {len(runs)} run{'s' if len(runs) != 1 else ''} that started from the 1.517× winner "
+            f"({names}); {'one went beyond it' if beat_seed(runs) else 'none went beyond it'}.")
+
+
 def hero(summary, results, tune, sweep):
     """The page's opening: four headline numbers and four charts, every value computed from the logs."""
     s = summary.get("matmul")
@@ -1530,8 +1567,8 @@ def hero(summary, results, tune, sweep):
             'accepted</p>')
     cards = [
         ("Feedback decides whether the loop works",
-         "One dot per run of Qwen3-8B (8 attempts each). Green: the run produced a kernel the referee verified "
-         "faster on the chip and correct on unseen shapes.", fb_svg),
+         "One dot per run of Qwen3-8B (8 attempts each), from the start kernel. Green: the run produced a kernel the "
+         "referee verified faster on the chip and correct on unseen shapes." + seeded_caption(s), fb_svg),
         ("Correct on shapes it never saw",
          "Speedup over the start kernel at 6 held-out shapes with hostile inputs. Red: wrong at that shape "
          "(bf16 ulps against a limit of 4).", hero_heldout(results)),
@@ -1600,7 +1637,7 @@ and on unseen shapes, and faster than the timing noise.</p></div><p class="meta"
 <main>
 <header class="top">
 <div><h1>CHIPBOOST</h1><p class="lede">Qwen3-8B kernel optimization on Trainium: model alone and referee-guided runs.
-V1, consolidated v2, Qwen + P1 fixes and P1 instructions only (v3) are shown separately; template random search uses an expert prior. Winner continuation starts from a verified 1.517x candidate, a different prior from start-kernel trials; speedups remain relative to the original baseline.
+V1, consolidated v2, Qwen + P1 fixes, P1 instructions only (v3) and P3 recovery are shown separately; template random search uses an expert prior. Winner continuation and P3 recovery start from the verified 1.517x candidate, a different prior from start-kernel trials; speedups remain relative to the original baseline.
 A speedup counts only if the referee verifies it: correct on the chip and on unseen shapes, and faster than the noise.</p></div>
 <p class="meta">{esc(meta)}</p>
 </header>
