@@ -24,9 +24,9 @@ BASE_URL = os.environ.get("KERNEL_AGENT_BASE_URL", "http://localhost:8000/v1")
 
 
 # ---------------------------------------------------------------- SBUF Geometry Prompts
-PROMPT_INITIAL = textwrap_dedent = """
+PROMPT_INITIAL = """
 You are an expert compiler engineer writing high-performance kernels for AWS Trainium (NeuronCore-v2).
-Your task is to write a 3-way overlapped hardware pipelined kernel.
+Write a concise 3-way overlapped hardware pipelined kernel.
 
 Target Operation:
 Bilinear scaling on the Vector Engine followed by Matrix Multiplication on the Tensor Engine:
@@ -34,21 +34,22 @@ y = (alpha * x + beta) @ weight
 
 Hardware Geometry & Memory Architecture:
 1. Physical Engines:
-   - DMA Engine: moves data from HBM into SBUF cache using tile slices.
-   - Vector Engine: computes element-wise scaling (alpha * tile + beta) inside SBUF.
-   - Tensor Engine: computes tile matrix multiplication (tile @ weight) inside SBUF.
+   - DMA Engine: moves data from HBM into SBUF cache (`buf_dma[:valid, :] = x[r_start:r_end, :]`).
+   - Vector Engine: computes element-wise scaling (`buf_vec[:valid, :] = alpha * buf_dma[:valid, :] + beta`).
+   - Tensor Engine: computes tile matrix multiplication (`buf_out[:valid, :] = buf_vec[:valid, :].astype(np.float64) @ weight.astype(np.float64)`).
 2. SBUF Cache Allocation:
-   - Tile size: at most 128 rows x 128 cols.
-   - Multi-Buffering: Allocate distinct SBUF buffers (buf_dma, buf_vec, buf_tensor) to prevent stalls.
+   - Tile size: strictly 128 rows x 128 cols.
+   - Triple-Buffering: Allocate distinct SBUF buffers (buf_dma, buf_vec, buf_tensor) to prevent stalls.
 3. 3-Stage Pipeline Structure:
    - Prologue: DMA prefetches Block 0 and Block 1 into SBUF.
    - Steady-State Loop: Simultaneously execute DMA(Block N+1), Vector(Block N), and Tensor(Block N-1).
    - Epilogue: Drain remaining Vector and Tensor operations.
-   - Handle ragged edges: On partial final blocks, clamp valid rows with min(128, rem_rows).
+   - Handle ragged edges: `r_start = b * 128, r_end = min(r_start + 128, H), valid = r_end - r_start`.
 
-Requirement:
-Define `def pipeline_kernel(x, weight, alpha, beta) -> np.ndarray:`
-Return ONLY executable Python code inside a ```python ``` markdown block.
+Rules:
+- Define `def pipeline_kernel(x, weight, alpha, beta) -> np.ndarray:`
+- Do NOT use whole-array `np.matmul` or whole-array `@`. Use sliced tile operations only.
+- Output concise Python code inside ```python ``` with no verbose docstrings.
 """
 
 
@@ -82,7 +83,7 @@ def extract_python_code(text: str) -> str:
 
 
 # ---------------------------------------------------------------- Model Client & Token Instrumentation
-def call_model(prompt: str, max_tokens: int = 2500) -> tuple[str, dict]:
+def call_model(prompt: str, max_tokens: int = 1000) -> tuple[str, dict]:
     """Calls OpenAI-compatible vLLM endpoint running on Trainium or shared cluster."""
     usage = {
         "prompt_tokens": len(prompt) // 4,
