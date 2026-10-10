@@ -260,12 +260,14 @@ def alone_prompt(src, time_us, first):
 
 # ---------------------------------------------------------------- the loop
 
-def says(r, referee):
-    """What the model may be told. speedcheck: instruction_given ONLY -- referee_message can quote the
-    kernel's own exception text, which is attacker-controlled, and names held-out shapes (REFEREE.md
-    section 5). stage12's messages are our own nkibench text, so they may fall back to the message."""
+def says(r, referee, src=""):
+    """P1 owns safe, self-contained diagnostics; P3 never promotes raw exception text.
+
+    P3's earlier DMA/PSUM rules are consolidated in speedcheck.py, alongside the
+    compiler rule. Keep src for call compatibility and --tag for v1/v2 reporting.
+    """
     if referee[1] is not None:
-        return r.get("instruction_given") or ""
+        return r.get("instruction_given") or "No diagnostic was produced; check NKI syntax, tile shapes, and output coverage."
     return agent02.enrich(r.get("instruction_given") or r.get("referee_message") or "")
 
 
@@ -279,13 +281,13 @@ def better(rec, waste, best):
 
 def run_once(a, referee, start_path, rep, log, workdir):
     tag = "offline-" if (a.offline or a.dry) else ""
-    run_id = f"{OP}-{a.arm}-{tag}{time.strftime('%H%M%S')}-{rep}"
+    run_id = f"{OP}-{a.arm}-{a.tag + '-' if a.tag else ''}{tag}{time.strftime('%H%M%S')}-{rep}"
     start_src = open(start_path).read()
     start, start_waste = grade(start_src, referee, a.dry, os.path.join(workdir, f"{run_id}_start.py"))
     if start is None:
         sys.exit("the referee failed 3 times on the START kernel (no free core? see REFEREE.md section 7). "
                  "Nothing was logged.")
-    status = says(start, referee)
+    status = says(start, referee, start_src)
     print(f"\n=========== run {run_id} ===========")
     print(f"start kernel {os.path.relpath(start_path, HERE)}: verdict {start.get('verdict') or 'PASS (untimed)'}"
           + (f", {start['time_us_median']:.1f} us (chip)" if start.get("time_us_median") else "")
@@ -324,7 +326,7 @@ def run_once(a, referee, start_path, rep, log, workdir):
                 print("    skipped: the referee stayed down. Not logged, not counted against the budget.")
                 continue
             out["attempts"] += 1
-            referee_says = says(r, referee)
+            referee_says = says(r, referee, src)
             instruction = {"referee": referee_says, "model_alone": MAKE_FASTER}.get(a.arm)
             rec = {k: None for k in schema.ATTEMPT_FIELDS}
             rec.update({k: v for k, v in r.items() if k in schema.ATTEMPT_FIELDS})   # the referee's fields
@@ -406,6 +408,7 @@ def main():
                          "never, so every arm spends its whole budget, which a fair comparison needs")
     ap.add_argument("--start", default=None, help="start kernel; default P2's kernels/matmul_start.py "
                                                   "if it exists, else reference_level4.py")
+    ap.add_argument("--tag", default="", help="prefixed onto the run id, e.g. v2 -> matmul-referee-v2-...")
     ap.add_argument("--seat", type=int, default=seat_from_hostname())
     ap.add_argument("--max-tokens", type=int, default=agent02.MIN_ANSWER_TOKENS)
     ap.add_argument("--context", type=int, default=8192, help="the server's max-model-len")
