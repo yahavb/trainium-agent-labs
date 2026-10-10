@@ -632,3 +632,10 @@ specify the constraints in the prompt and it produces nothing; omit them and it 
 confident and illegal. What worked was generating naively, letting the **verifier** find the violation,
 and sending back one surgical instruction naming only the change. **Constraints belong in your
 verifier, not in your generation prompt.** Project 1 hit the same wall three more times.
+
+## NeuronSolver
+
+The reference-free generation and targeted repair controller is documented in
+[NEURON_SOLVER.md](NEURON_SOLVER.md), including local tests, pod deployment, persisted
+artifacts, and paired evaluation. The original `agent.py` remains unchanged.
+No NeuronSolver benchmark level has been verified solved yet.
