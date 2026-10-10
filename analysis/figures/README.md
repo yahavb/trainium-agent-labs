@@ -18,4 +18,4 @@ A run counts once it has finished: a run that is the last in its log, not solved
 still have been running when the log was pulled, so it is left out (listed in `figures.json`). The baseline's
 `--all` runs stop early on repeated failures, so all of its runs count (`--complete baseline`).
 
-Reproduce: the `scripts/figures.py` call at the end of `analysis/final/README.md`'s commands, with the v8.2 and final-version globs pointing at `analysis/logs/final/seat-*/` (v82_L*, v82x_L*; v82_L[134]*, v82x_L[134]*, v83_L2*), plus `--complete baseline`.
+Reproduce: see the `scripts/figures.py` command in `analysis/final/README.md`.

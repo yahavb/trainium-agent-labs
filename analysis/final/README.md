@@ -33,3 +33,15 @@ separate. `compare.md` puts them side by side with the baseline.
 | 14 | 0/1 (0.50) | - | - |
 
 No level 5-7 run scored 1.0, so `traffic_l57` has no kernels to check.
+
+Figures (analysis/figures) from the same logs:
+
+```bash
+F=analysis/logs/final; R=../trainium-agent-labs/runs   # R: the v7 round-2 logs pulled from the seats
+python scripts/figures.py analysis/figures \
+  "baseline=analysis/logs/baseline/attempts.jsonl,analysis/logs/replica_seat119/attempts.jsonl" \
+  "v7=$R/seat-119/Ev7_L1/Ev7_L1.jsonl,$R/seat-116/Ev7_L2/Ev7_L2.jsonl,$R/seat-117/Ev7_L3/Ev7_L3.jsonl,$R/seat-118/Ev7_L4/Ev7_L4.jsonl" \
+  "v8.2=$F/seat-*/v82_L*.jsonl,$F/seat-*/v82x_L*.jsonl" \
+  "final version=$F/seat-*/v82_L[134]*.jsonl,$F/seat-*/v82x_L[134]*.jsonl,$F/seat-*/v83_L2*.jsonl" \
+  --complete baseline --note "..."
+```
