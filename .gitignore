@@ -42,3 +42,6 @@ projects/*/attempts.jsonl
 
 # agent runs started with nohup ... > run.log (README pattern for surviving a dropped kubectl exec)
 run*.log
+
+# Superseded by final/checker.py on this branch.
+/sean-work/

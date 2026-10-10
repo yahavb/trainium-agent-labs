@@ -1,0 +1,19 @@
+{
+  "source": "working v4",
+  "embedded_tests": 33,
+  "lfsr_stdout_byte_identical": true,
+  "prompts_replayed": 171,
+  "prompts_byte_identical": true,
+  "reference_scores": {
+    "lfsr": 1.0,
+    "sequence_generator": 1.0,
+    "traffic_light": 1.0,
+    "dice_roller": 1.0,
+    "cpu8": 1.0
+  },
+  "one_python_file": true,
+  "runtime_json_created": true,
+  "runtime_json_edits_preserved": true,
+  "live_rule_reload": true,
+  "model_called": false
+}

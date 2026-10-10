@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+/build/
+/knowledge.json
+/taxonomy.json
+/principles.json
+/feedback_rules.json
+/experiments/
+/verilog/
+/reference/
+/TestBench/
+/candidates/
+/prompts/
+/baseline_lfsr.txt
