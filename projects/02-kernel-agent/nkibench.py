@@ -778,12 +778,22 @@ def simulate_and_count(kernel, args):
     counter = dict(bytes=0, transfers=0, api=api, dtypes=set())
     original = nisa.dma_copy
 
+    def tensor_bytes(t):
+        nbytes = getattr(t, "nbytes", None)
+        if not isinstance(nbytes, int) or nbytes <= 0:
+            nbytes = int(np.prod(t.shape)) * itemsize_of(t)
+        return int(nbytes)
+
     def counting_dma_copy(dst=None, src=None, **kw):
         try:
-            nbytes = getattr(src, "nbytes", None)
-            if not isinstance(nbytes, int) or nbytes <= 0:
-                nbytes = int(np.prod(src.shape)) * itemsize_of(src)
-            counter["bytes"] += int(nbytes)
+            # A DMA can convert dtypes. Counting only src overstated a float32 SBUF -> bf16 HBM store
+            # by 2x: measured on the chipboost expert matmul, which read "1.29x the floor" while
+            # moving exactly the floor. The HBM side of a converting copy is the narrower one here,
+            # since inputs and outputs are bf16.
+            nbytes = tensor_bytes(src)
+            if dst is not None:
+                nbytes = min(nbytes, tensor_bytes(dst))
+            counter["bytes"] += nbytes
             counter["dtypes"].add(str(getattr(src, "dtype", "?")))
         except Exception:
             counter["unmeasured"] = counter.get("unmeasured", 0) + 1
