@@ -156,6 +156,10 @@ Full account: [CHECKER.md](projects/02-kernel-agent/CHECKER.md). The decisions t
   normal draw, a ramp (every element distinct), ×1e4 (float16 overflows), and float16 inputs, plus an
   output dtype check. The reference kernels pass all of it (20/20, 16/16, 4/4, 16/16). Four deliberately
   wrong kernels that pass every loop shape are all caught. [EVAL.md](projects/02-kernel-agent/EVAL.md)
+- **Levels 5–7** compute the same matmul as level 4 and add a traffic bar: a correct kernel that moves more
+  HBM bytes than the level allows (1.60× the byte floor for level 5) scores 0.5 + 0.5 × the shapes that pass.
+  Their held-out set checks values on new shapes, not traffic; the bar is enforced on the loop shapes, and the
+  final solves' traffic was re-measured afterwards on a larger multi-block shape. [[TBD: that result, if L5–7 run]]
 - **Bugs we found in our own checker, and what we re-checked.**
   - *Path cache.* NKI caches a kernel by its file path. Grading several candidates from one path in one
     process graded a later candidate as the first one, numerics included, which can make both false solves
