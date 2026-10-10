@@ -12,8 +12,9 @@ as it goes.**
 > that parses, obeys the rules and runs, but computes the wrong numbers. The transcripts below show
 > exactly where it stalls, and that is the problem you are being handed.
 >
-> **Also missing:** reference kernels for levels 5 to 7, so the optimization half of the ladder is
-> unmarked; and layers 2 and 3 of the checker, so **latency cannot be measured at all yet** — every
+> **Level 5 now has a reference:** `reference_level5.py` passes the simulator's numerical and
+> memory-traffic checks; see the measured comparison below. Reference kernels for levels 6 and 7
+> are still missing, as are layers 2 and 3 of the checker, so **latency cannot be measured yet** — every
 > number here is throughput reasoning from the simulator.
 >
 > This is a genuinely open problem, not a tidied-up exercise with a hidden answer. If you get a level
@@ -180,6 +181,49 @@ It answers three questions in order, and stops at the first failure:
 The tutorials are public, so hiding them buys nothing, and a harness whose reference nobody can read
 is a harness nobody should trust. Use them to confirm the harness works, then write your own.
 
+### Level 5 reference: reuse the right-hand tiles
+
+`reference_level5.py` extends the level-4 matmul by caching one RHS column slab before
+looping over output-row tiles. Each RHS tile is loaded once and reused across M;
+the LHS is still loaded once per N slab. Each output tile accumulates all K tiles
+in PSUM and is written once. The checker and the 1.6x traffic limit are unchanged.
+
+Run in the pod's NKI environment:
+
+```bash
+python validate_level5.py
+python agent.py --offline --level 5 --samples 1 --rounds 2 --log /tmp/level5-offline.jsonl
+```
+
+The validator checks all four registered shapes with three random seeds, compares
+against NumPy, checks that inputs are preserved, rejects simulator hardware-hazard
+warnings, and verifies the exact DMA bytes and transfer counts. It also confirms
+that the unchanged level-4 reference fails the level-5 traffic limit on the largest
+shape. Use this validator for the optimization gate: the standalone
+`nkibench.py --check` path reports traffic but does not enforce `check_traffic_bar()`.
+The agent's grader does enforce that gate.
+
+Measured on seat 21's CPU simulator, float32 inputs:
+
+| K | M | N | Level 4 bytes | Level 5 bytes | Level 5 / byte floor |
+|---|---|---|---|---|---|
+| 128 | 128 | 512 | 589,824 | 589,824 | 1.000x |
+| 256 | 256 | 1024 | 3,670,016 | 2,621,440 | 1.111x |
+| 512 | 128 | 512 | 1,572,864 | 1,572,864 | 1.000x |
+| 256 | 512 | 1024 | 7,340,032 | 4,194,304 | 1.143x |
+
+The largest case moves about 43% fewer bytes. Equal traffic on the single-M-tile
+cases is expected: there are no repeated RHS loads to remove there. For aligned
+float32 inputs, the expected traffic is `4 * (K*M*(N/512) + K*N + M*N)` bytes.
+
+Like the level-4 reference, this kernel requires positive dimensions aligned to
+the hardware tiles. Its cached RHS slab uses `K*512` elements: at most 1 MiB on the
+tested shapes. Larger K values require revisiting SBUF capacity or blocking K.
+These results establish simulated correctness and traffic, **not device latency
+or a model solve rate**. The offline command exercises the agent with a canned
+reference; a live evaluation must explicitly pass `--level 5`, since `--all`
+still selects levels 1 through 4.
+
 ### What it looks like when you run the agent
 
 Real output from `agent.py` against Qwen3-8B, two attempts per round. **Read this before running
@@ -270,6 +314,27 @@ python agent.py --all --rounds 8 --samples 4 --context 8192 --repeat 5
 That prints, per level, how many runs solved it plus best, worst and mean. **Report the rate, not your
 best run.** A team that reports "we solved it" from one lucky run has measured the dice, not their agent —
 and this harness did exactly that for several commits before anyone noticed.
+
+#### Level 1: pooling-specific prompts
+
+The level-1 prompt uses a separate API card for window reductions and scalar scaling. In the first
+seat-21 baseline run, all 32 samples scored 0.30: candidates tried matrix multiplication for pooling,
+then cycled through incompatible tile sizes and invented API names. The repair prompt now permits
+replacing that computation and restates the pooling shape contract. Scores and checker tolerances
+are unchanged; levels 2 onward retain their existing prompts.
+
+This is a prompt change, **not a measured solve-rate improvement yet**. After the unchanged baseline
+finishes, evaluate this branch with the same settings and separate logs:
+
+```bash
+nohup python -u agent.py --level 1 --rounds 8 --samples 4 --context 8192 --repeat 5 \
+  --log attempts-level1-fix.jsonl > run-level1-fix.log 2>&1 < /dev/null &
+tail -f run-level1-fix.log
+```
+
+Keep runs sequential within a pod: `grade()` writes to a shared `/tmp/_agent_level1.py` candidate
+file even when the working directories differ. Compare level-1 solve rates across all five runs;
+passing the shipped reference kernel only validates the harness, not the model's new prompts.
 
 #### What measuring actually bought: a reverted "improvement"
 
@@ -433,7 +498,8 @@ exposes. That last column is the point: fixing one does not finish the job, it m
 
 > **Measured vs expected.** Rows 1 to 4 are measured on a trn2 node. Rows 5 onward are **expected**
 > from the tutorial's structure — nobody has run an agent on this ladder yet, and there are no
-> reference kernels for levels 5 to 7 in this repo. Treat them as the map, not the territory.
+> reference kernels for levels 6 and 7 in this repo. Level 5's new reference has been checked
+> in CPU simulation as described above; device performance remains unmeasured.
 
 ### 1. It does not compile or run at all — *measured*
 
@@ -632,3 +698,59 @@ specify the constraints in the prompt and it produces nothing; omit them and it 
 confident and illegal. What worked was generating naively, letting the **verifier** find the violation,
 and sending back one surgical instruction naming only the change. **Constraints belong in your
 verifier, not in your generation prompt.** Project 1 hit the same wall three more times.
+
+
+---
+
+## Added tooling (team plan implementation)
+
+Everything below is **off by default**, so the baseline runs exactly as before. Each lever is a
+flag, so the baseline stays runnable and every change is attributable (experiment protocol rule 1).
+
+### Measurement
+```bash
+./run_exp.sh base_L4 --level 4 --rounds 8 --samples 4 --context 8192 --repeat 5
+python analyze.py logs/base_L4.jsonl        # solve RATE + 95% CI, taxonomy, prompt-segment sizes
+python read_failures.py logs/base_L4.jsonl --worst   # read the failing kernels
+```
+`agent.py` now logs `exp`, `run`, `sample`, `t` and `seg_chars` on every line (needed to split a
+`--repeat` log into runs and to plot where the prompt tokens went). Always run through
+`run_exp.sh` or pass `--exp`/`--log`.
+
+### Agent levers (plan Tier 1–2)
+```bash
+python agent.py --level 3 --tools doc                 # DOC: <name> -> real NKI signature + docstring
+python agent.py --level 3 --tools doc,probe           # also ```probe``` snippets under nki.simulate
+python agent.py --level 4 --tiles                     # offer nkitile.tiles(n,size) as a helper
+python agent.py --all   --skills                      # curriculum: solved kernels seed later levels
+python agent.py --level 2 --beam 2                    # repair top-2 distinct candidates each round
+python agent.py --level 2 --temperature 0.7 --top-p 0.8 --top-k 20   # Qwen non-thinking sampling
+```
+Tools are a *utility the model aims itself*, not a hint or the answer — DOC answers exactly what was
+asked, PROBE lets it run a 5-line experiment, `tiles` gets the ragged edge right by construction.
+
+### Held-out generalisation set
+```bash
+python agent.py --heldout --rounds 8 --samples 4 --context 8192 --repeat 3
+```
+Levels 10–13: ragged matmul, elementwise relu-affine (control), row-wise softmax (hostile ±180
+inputs), RMSNorm (all-zero hostile row). Never tune feedback on these — they measure whether the
+agent generalises.
+
+### Honesty: kill matrix + calibration ladder
+```bash
+python mutants.py --rules-only          # off-device: 5 planted bugs the static scan must catch
+python mutants.py                       # in the pod: adds the numeric mutants
+python agent.py --all --calibration     # labels each solved kernel VERIFIED-COMPILED / SIMULATED-* / FAILED
+python calibrate.py skills/level4.py --level 4   # fresh-seed re-check + compile gate on one kernel
+```
+
+### Deliverable scaffolds
+`CHECKER.md` (what the checker accepts/rejects and why, + the kill matrix) and `NOTE.md` (the
+one-page result with rates and spread) are ready to fill in.
+
+### What needs the pod / a device
+`nkibench.py`'s simulation, `tools.py` PROBE, `mutants.py` numeric rows, and `calibrate.py`'s
+compile/device rungs all import `nki`. They degrade with a clear message off-device; run them in a
+seat pod to exercise them for real. On-device **timing** (layers 2–3) is still not built — see the
+plan's S2.
