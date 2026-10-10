@@ -3,6 +3,9 @@
 This project checks Samudra inference against a CPU reference and then improves
 the same workload on AWS Trainium.
 
+New to the project? [HARNESS.md](HARNESS.md) explains step by step how an attempt is
+run, checked and recorded, and how the separate kernel-agent loop works.
+
 ![Samudra forward progress, simulated years per minute](results/easy-wins-2026-10-10/years_per_minute.png)
 
 ### Temperature
