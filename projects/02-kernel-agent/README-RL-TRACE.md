@@ -1,101 +1,116 @@
-# Verifier-grounded RL trace agent
+# Verifier-grounded RL trace experiment
 
-This is an additive experiment for the existing `projects/02-kernel-agent` implementation.
-It does not modify `agent.py` or `nkibench.py`.
+This is an additive experiment for `projects/02-kernel-agent`. It reuses the original
+`agent.py` model client and `nkibench.py` verifier. It does not modify either file.
 
-## What it does
+## What changed
 
-- Reuses the original `agent.py` model endpoint, code extractor, and `grade()` verifier.
-- Requests a compact, visible engineering trace in a fixed JSON schema before the kernel code.
-  It does **not** request or reward hidden/private chain-of-thought.
-- Runs the unchanged `nkibench.grade`/NKI simulator path as the source of truth.
-- Uses a per-level, failure-state contextual UCB bandit to select among four prompt strategies:
-  `direct`, `contract_trace`, `counterexample`, and `repair_diagnosis`.
-- Logs each attempt's code, structured trace, verifier result, reward components, chosen action,
-  and elapsed time to JSONL for analysis.
+- `rl_trace_agent.py` adds an online contextual UCB bandit over four generation/repair strategies.
+- Each attempt logs a short structured engineering trace, candidate code, the actual verifier
+  feedback, and reward components to JSONL.
+- The verifier remains the source of truth. A model saying a kernel is correct does not count.
+- The prompt now states the valid NKI imports verbatim. In particular, **`nl` is an alias, not a
+  module**: use `import nki.language as nl`, never `import nl`. Likewise `nl.sbuf`, `nl.psum`,
+  and `nl.shared_hbm` are buffer values, not functions; pass them as `buffer=nl.sbuf`, etc.
 
-**Important distinction:** this is agent-level online RL (policy learning over prompt/repair
-strategies). It does not update Qwen/gpt-oss weights. The repo currently calls an inference
-endpoint, and cannot backpropagate into that endpoint's model. This is the practical first
-experiment you can run against the existing implementation. True RL fine-tuning would require
-a trainable model checkpoint, policy-training code, and suitable accelerator/training setup.
+This is online RL over prompt strategy selection, not weight-level RL fine-tuning. The model is
+served through an inference endpoint, so its weights are not updated by this script. The traces
+are short, visible, structured engineering notes; the script does not request private chain of
+thought or reward verbosity.
 
-## Setup
+## Run from the correct directory
 
-Use the same environment and endpoint as the original agent. From this directory:
+The files `agent.py`, `nkibench.py`, and `rl_trace_agent.py` are inside
+`projects/02-kernel-agent`, not at the repository root:
 
 ```bash
+cd /workspace/My_Working_Dir/trainium-agent-labs/projects/02-kernel-agent
 python nkibench.py --selftest
 python -m py_compile agent.py nkibench.py rl_trace_agent.py
 ```
 
-Set the model endpoint (the original repo's seat environment may already set it):
+The self-test does not require the model endpoint. The agent run does. In the seat pod, the
+environment normally sets `KERNEL_AGENT_BASE_URL` and `KERNEL_AGENT_MODEL`; check with:
 
 ```bash
-export KERNEL_AGENT_BASE_URL=http://localhost:8000/v1
-export KERNEL_AGENT_MODEL=Qwen/Qwen3-8B
+echo "$KERNEL_AGENT_BASE_URL"
+echo "$KERNEL_AGENT_MODEL"
 ```
 
-Run a small first experiment:
+If needed, set the URL to the actual endpoint used by your pod. Do not assume `localhost:8000`
+unless the model server is running in the same pod and listening on that port.
+
+## First run
+
+Start with the transpose task, one sample per round to limit endpoint load:
 
 ```bash
-python rl_trace_agent.py --level 2 --rounds 8 --samples 1 --context 8192 --log rl_level2.jsonl
+python rl_trace_agent.py \
+  --level 2 --rounds 8 --samples 1 --context 8192 \
+  --log rl_level2.jsonl
 ```
 
-Then test a harder level:
+Then test tiled matmul:
 
 ```bash
-python rl_trace_agent.py --level 4 --rounds 8 --samples 1 --context 8192 --log rl_level4.jsonl
+python rl_trace_agent.py \
+  --level 4 --rounds 8 --samples 1 --context 8192 \
+  --log rl_level4.jsonl
 ```
 
-For the shared endpoint, use the path expected by your deployment:
+For a long session, use the same background pattern as the original README:
 
 ```bash
-export GPTOSS_BASE_URL=https://YOUR-ENDPOINT
-python rl_trace_agent.py --level 4 --rounds 6 --samples 1 --context 8192 --path /agg/v1 --log rl_gptoss.jsonl
+nohup python rl_trace_agent.py --level 2 --rounds 8 --samples 1 --context 8192 \
+  --log rl_level2.jsonl > rl_level2.log 2>&1 < /dev/null &
+tail -f rl_level2.log
 ```
 
-For long runs in a remote shell, follow the repo's existing `nohup ... > run.log 2>&1 < /dev/null &` advice.
+Summarize logs with the companion script:
 
-## Reward
+```bash
+python summarize_rl_trace.py rl_level2.jsonl rl_level4.jsonl
+```
 
-The online controller uses:
+## Strategy arms
+
+- `direct`: short direct generation.
+- `contract_trace`: explicit shape/dtype/output and partial-tile contract.
+- `counterexample`: emphasis on ragged dimensions and boundary behavior.
+- `repair_diagnosis`: use recent verifier output to make one minimal repair.
+
+The policy conditions on the current level and the failure category returned by the checker.
+It uses UCB exploration and updates action values from each attempt's observed reward.
+
+## Reward and logs
 
 `R = 0.85 * R_kernel + 0.10 * R_trace + 0.05 * R_evidence`
 
-- `R_kernel`: the original graded verifier reward; this dominates.
-- `R_trace`: deterministic score for a valid JSON trace covering the required engineering fields,
-  with explicit shape/correctness checks (and tile/memory checks for matmul levels). It penalizes
-  unparseable or absent traces and does not reward verbosity.
-- `R_evidence`: derived from the actual checker category and pass/fail state, never from the model's
-  claim that its own kernel is correct.
+- `R_kernel`: original `agent.grade()` reward (correctness remains dominant).
+- `R_trace`: deterministic field-coverage score for the structured trace, not its length.
+- `R_evidence`: score based on the checker pass/failure category, never on self-reported success.
 
-The UCB controller learns action values separately by level and observed failure state. Since a
-kernel can receive partial credit from the existing verifier, the controller can learn before a
-level is completely solved.
+Each JSONL row records the prompt strategy, failure category, trace, candidate code, verifier
+feedback, reward components, and elapsed generation time.
 
-## What to compare
+## Baseline comparison
 
-Run the baseline `agent.py` and this controller on the same level, model, context length, round
-budget, and seed/repeat schedule. Report:
+Use the same model, endpoint, kernel level, context, and total generation budget for baseline
+`agent.py` and `rl_trace_agent.py`. Run several independent trials. Report:
 
-1. first-attempt verifier reward and parse/rule/run/correct rates;
-2. fraction of runs reaching reward 1.0;
-3. attempts to first fully verified kernel;
-4. mean verifier reward under a fixed generation budget;
-5. duplicate-code / repeated-failure rate;
-6. calls, elapsed time, and tokens if the endpoint returns usage;
-7. trace validity and coverage, plus whether trace contents correspond to the actual verifier feedback;
-8. generalization on held-out shapes (add these to `nkibench.py` rather than tuning only to its shipped cases).
+1. first-attempt reward and fraction reaching full verifier reward 1.0;
+2. attempts until a fully verified kernel is found;
+3. mean verifier reward at a fixed call budget;
+4. rates of parse errors, invalid imports/API use, and numerical mismatches;
+5. repeated-code / repeated-failure rate;
+6. trace-format validity and coverage;
+7. elapsed time and token/call cost where available.
 
-Do not interpret one run as evidence: use multiple seeds/runs. The controller is intentionally small;
-with few attempts it may not have enough data to reliably identify the best action.
+A valid trace is not evidence that a kernel is correct. `nkibench.py` is authoritative.
 
-## Caveats
+## Current limitations
 
-- The extra trace instruction can increase prompt length and may reduce code quality on models that
-  struggle with structured output. The four arms are designed to let the controller learn which
-  framing works better, but test against the original baseline.
-- The script currently uses the original checker and CPU-side NKI simulation. This is not a real
-  Trainium latency benchmark. Hardware speedups require the later on-device timing layer.
-- The script expects the repo's NKI SDK/simulator environment for grading generated NKI kernels.
+- This is an initial online policy-learning experiment, not PPO/GRPO fine-tuning of Qwen or gpt-oss.
+- The existing verifier uses the NKI simulator for functional checks. It does not establish real
+  Trainium latency or downstream generative-model speedups.
+- Do not evaluate based on one run; the UCB estimates need repeated trials.
