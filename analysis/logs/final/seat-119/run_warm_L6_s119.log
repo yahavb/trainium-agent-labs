@@ -1,0 +1,39 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1 L2CAT=1 WARM=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 6: matmul, M and N blocked ===========
+  tokens: prompt 599 = instructions 70 + prev_code 424 + feedback 105  [tokenizer] | answers 457, 489, 489, 489
+round 0: this round 0.75  best so far 0.75  (93.9s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.56x the byte floor, and level 6 requires 1.25x or better. Correctness alone is level 4; this level is about the bytes. Block the M and N dimensions so more tiles stay resident in SBUF and are reused across iterations, rather than reloaded.
+  tokens: prompt 663 = instructions 70 + prev_code 488 + feedback 105  [tokenizer] | answers 470, 604, 540, 485
+round 1: same failure again (0.75, best so far 0.75)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+  tokens: prompt 737 = instructions 70 + prev_code 484 + feedback 105 + ledger 78  [tokenizer] | answers 560, 576, 633, 463
+round 2: this round 0.62  best so far 0.75  (108.5s)
+  1 of 4 shapes passed. On K=128 M=128 N=512: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.56x the byte floor, and level 6 requires 1.25x or better. Correctness alone is level 4; this level is about the bytes. Block the M and N dimensions so more tiles stay resident in SBUF and are reused across iterations, rather than reloaded.
+  tokens: prompt 749 = instructions 70 + prev_code 575 + feedback 104  [tokenizer] | answers 580, 481, 629, 460
+round 3: same failure again (0.62, best so far 0.75)
+  same failure 2x — adding a ledger of 2 failed attempts to break the repeat
+  tokens: prompt 898 = instructions 70 + prev_code 579 + feedback 104 + ledger 145  [tokenizer] | answers 580, 481, 529, 460
+round 4: same failure again (0.62, best so far 0.75)
+  same failure 3x — adding a ledger of 2 failed attempts to break the repeat
+  tokens: prompt 898 = instructions 70 + prev_code 579 + feedback 104 + ledger 145  [tokenizer] | answers 580, 577, 530, 481
+round 5: same failure again (0.62, best so far 0.75)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  1 of 4 shapes passed. On K=128 M=128 N=512: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.56x the
+    2x  2 of 4 shapes passed. On K=256 M=256 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.56x th
+  VERDICT level 6: FAILED, confidence 0.00: not solved: best score 0.75 after 6 rounds
+
+  CONFIDENCE level 6: 0.00 (it still fails shapes the loop tested) -- stated before the held-out check
+  VERDICT level 6: NOT SOLVED (best reward 0.75; held-out 8/16)
+    tokens spent: 18,176 prompt + 12,623 answer over 6 round(s)
+
+=========== summary ===========
+  level 6  reward 0.75 after 6 round(s)  tokens 18,176 prompt + 12,623 answer  confidence 0.00  NOT SOLVED (best reward 0.75; held-out 8/16)
+  solved 0/1
+
+=========== calibration, 1 verdict(s) ===========
+  said 0.00-0.01:   1 verdicts, mean confidence 0.00, actually passed held-out 0/1
+  Brier score 0.000.  Confident (>=0.5) but wrong: 0
+
+attempts logged to warm_L6_s119.jsonl, verdicts to warm_L6_s119_verdicts.jsonl

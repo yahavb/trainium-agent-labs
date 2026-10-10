@@ -1,0 +1,43 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1 L2CAT=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 5: matmul, loads hoisted ===========
+  tokens: prompt 1,142 = instructions 163 + reference 110 + api_card 869  [tokenizer] | answers 317, 294, 294, 294
+round 0: this round 0.62  best so far 0.62  (60.3s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: Line 16: `nisa.dma_copy(dst=lhsT_tile, src=lhsT)` raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 `lhsT_tile` and `rhs_tile` are bigger than one nc_matmul takes: at most 128 rows of K, at most 128 columns of the stationary operand, and at most 512 columns of the moving operand. Tile all three dimensions at once. Replace e
+  tokens: prompt 899 = instructions 69 + prev_code 316 + feedback 514  [tokenizer] | answers 416, 297, 308, 348
+round 1: this round 0.88  best so far 0.88  (65.4s)
+  3 of 4 shapes passed. On K=256 M=512 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 2.00x the byte floor, and level 5 requires 1.60x or better. Correctness alone is level 4; this level is about the bytes. Hoist the operand loads out of the innermost loop; the same tiles are being re-read on every pass.
+  tokens: prompt 587 = instructions 69 + prev_code 415 + feedback 103  [tokenizer] | answers 446, 297, 317, 298
+round 2: this round 0.62  best so far 0.88  (66.4s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: NUMERICAL MISMATCH: worst error 3.42 of the output's RMS (15.98), tolerance 0.02.
+  at index (107, 403): expected +52.2404, got -2.35687
+  97.8% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+  tokens: prompt 638 = instructions 69 + prev_code 445 + feedback 124  [tokenizer] | answers 446, 328, 318, 297
+round 3: same failure again (0.62, best so far 0.88)
+  same failure 2x — adding a ledger of 3 failed attempts to break the repeat
+  tokens: prompt 855 = instructions 69 + prev_code 445 + feedback 124 + ledger 217  [tokenizer] | answers 446, 298, 298, 298
+round 4: same failure again (0.62, best so far 0.88)
+  same failure 3x — adding a ledger of 3 failed attempts to break the repeat
+  tokens: prompt 855 = instructions 69 + prev_code 445 + feedback 124 + ledger 217  [tokenizer] | answers 446, 298, 308, 343
+round 5: same failure again (0.62, best so far 0.88)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  1 of 4 shapes passed. On K=256 M=256 N=1024: NUMERICAL MISMATCH: worst error 3.42 of the output's RMS (15.98),
+    1x  1 of 4 shapes passed. On K=256 M=256 N=1024: Line 16: `nisa.dma_copy(dst=lhsT_tile, src=lhsT)` raised Assertio
+    1x  3 of 4 shapes passed. On K=256 M=512 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 2.00x th
+  VERDICT level 5: FAILED, confidence 0.00: not solved: best score 0.88 after 6 rounds
+
+  CONFIDENCE level 5: 0.00 (it still fails shapes the loop tested) -- stated before the held-out check
+  VERDICT level 5: NOT SOLVED (best reward 0.88; held-out 16/16)
+    tokens spent: 19,904 prompt + 8,050 answer over 6 round(s)
+
+=========== summary ===========
+  level 5  reward 0.88 after 6 round(s)  tokens 19,904 prompt + 8,050 answer  confidence 0.00  NOT SOLVED (best reward 0.88; held-out 16/16)
+  solved 0/1
+
+=========== calibration, 1 verdict(s) ===========
+  said 0.00-0.01:   1 verdicts, mean confidence 0.00, actually passed held-out 1/1
+  Brier score 1.000.  Confident (>=0.5) but wrong: 0
+
+attempts logged to v83_L5_s118.jsonl, verdicts to v83_L5_s118_verdicts.jsonl

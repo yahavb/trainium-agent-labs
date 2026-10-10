@@ -1,0 +1,4 @@
+{"t": 1791665312, "level": 1, "rounds": 7, "extra_cases": 35, "extra_failed": 0, "compiler_risks": [], "lowered": true, "status": "VERIFIED", "confidence": 0.901, "claim": "solved, and passes all 35 extra cases it was never graded on, and lowers for trn2"}
+{"t": 1791665918, "level": 2, "rounds": 8, "extra_cases": 35, "extra_failed": 0, "compiler_risks": [], "lowered": true, "status": "VERIFIED", "confidence": 0.901, "claim": "solved, and passes all 35 extra cases it was never graded on, and lowers for trn2"}
+{"t": 1791666148, "level": 3, "status": "FAILED", "confidence": 0.0, "best": 0.3, "rounds": 4, "claim": "not solved: best score 0.30 after 4 rounds"}
+{"t": 1791666341, "level": 4, "rounds": 3, "extra_cases": 29, "extra_failed": 0, "compiler_risks": [], "lowered": true, "status": "VERIFIED", "confidence": 0.883, "claim": "solved, and passes all 29 extra cases it was never graded on, and lowers for trn2"}

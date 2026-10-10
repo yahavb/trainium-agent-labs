@@ -1,0 +1,50 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1 L2CAT=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 2: 2D transpose ===========
+  tokens: prompt 1,066 = instructions 158 + reference 180 + api_card 728  [tokenizer] | answers 323, 302, 302, 302
+round 0: this round 0.30  best so far 0.30  (60.6s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 27: `transposed_tile = local_tile.transpose(1, 2)` raised AttributeError: 'NkiTensor' object has no attribute 'transpose' A NkiTensor is not a numpy array, so it has no `transpose`. Use the nl/nisa functions instead.
+  tokens: prompt 471 = instructions 67 + prev_code 322 + feedback 82  [tokenizer] | answers 353, 257, 419, 302
+round 1: this round 0.30  best so far 0.30  (63.4s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 27: `reshaped_tile = local_tile.reshape((F1, F2))` raised AssertionError: Partition dim size must be preserved, got 1 -> 3 This level keeps every row where it is: row p of x holds an F1-by-F2 matrix stored row-major (F1, F2 = shape2D), and row p of the output holds the same F1*F2 values of that small matrix transposed, i.e. stored column-major. 
+  tokens: prompt 592 = instructions 67 + prev_code 352 + feedback 173  [tokenizer] | answers 314, 318, 537, 366
+round 2: this round 0.30  best so far 0.30  (73.6s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 26: `transposed_tile = nisa.transpose(local_tile)` raised AttributeError: module 'nki.isa' has no attribute 'transpose' Only the token `nisa.transpose` is wrong: `transpose` is in nki.language. Change that one token and nothing else on the line, so it reads:
+
+    transposed_tile = nl.transpose(local_tile)
+
+  tokens: prompt 480 = instructions 67 + prev_code 313 + feedback 100  [tokenizer] | answers 314, 302, 292, 280
+round 3: this round 0.30  best so far 0.30  (54.7s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 26: `transposed_tile = nl.transpose(local_tile)` raised ValueError: cannot reshape array of size 12 into shape (3,1) Do not reshape. Work with the shapes you were given and slice them into tiles, e.g. src=a[0:128, 0:64].
+  tokens: prompt 471 = instructions 67 + prev_code 313 + feedback 91  [tokenizer] | answers 375, 339, 382, 257
+round 4: this round 0.30  best so far 0.30  (64.7s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 29: `transposed_tile[j, i] = local_tile[i, j]` raised ValueError: shape mismatch: value array of shape (4,) could not be broadcast to indexing result of shape (1,) You assigned 4 elements into a slice that holds 1. Assignment does not reshape or broadcast either: the slice on the left and the value on the right must have the SAME shape. If the v
+  tokens: prompt 606 = instructions 67 + prev_code 374 + feedback 165  [tokenizer] | answers 375, 302, 302, 302
+round 5: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 5 failed attempts to break the repeat
+  tokens: prompt 901 = instructions 67 + prev_code 374 + feedback 165 + ledger 295  [tokenizer] | answers 383, 261, 261, 302
+round 6: this round 0.30  best so far 0.30  (57.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 31: `transposed_tile[j, i] = local_tile[i, j]` raised ValueError: shape mismatch: value array of shape (4,) could not be broadcast to indexing result of shape (1,) You assigned 4 elements into a slice that holds 1. Assignment does not reshape or broadcast either: the slice on the left and the value on the right must have the SAME shape. If the v
+  tokens: prompt 614 = instructions 67 + prev_code 382 + feedback 165  [tokenizer] | answers 383, 257, 280, 339
+round 7: this round 0.50  best so far 0.50  (59.8s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: NUMERICAL MISMATCH: worst error 4.49 of the output's RMS (1.01), tolerance 0.02.
+  at index (24, 9): expected +2.62617, got -1.9109
+  81.8% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case Your output is x unchanged: no element moved. Each row's A-by-B block must becom
+  not solved in 8 rounds; best reward 0.50
+  VERDICT level 2: FAILED, confidence 0.00: not solved: best score 0.50 after 8 rounds
+
+  CONFIDENCE level 2: 0.00 (it still fails shapes the loop tested) -- stated before the held-out check
+  VERDICT level 2: NOT SOLVED (best reward 0.50; held-out 0/16)
+    tokens spent: 20,804 prompt + 10,383 answer over 8 round(s)
+
+=========== summary ===========
+  level 2  reward 0.50 after 8 round(s)  tokens 20,804 prompt + 10,383 answer  confidence 0.00  NOT SOLVED (best reward 0.50; held-out 0/16)
+  solved 0/1
+
+=========== calibration, 1 verdict(s) ===========
+  said 0.00-0.01:   1 verdicts, mean confidence 0.00, actually passed held-out 0/1
+  Brier score 0.000.  Confident (>=0.5) but wrong: 0
+
+attempts logged to v83_L2c_s117.jsonl, verdicts to v83_L2c_s117_verdicts.jsonl

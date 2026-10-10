@@ -1,0 +1,7 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1 L2CAT=1 WARM=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 6: matmul, M and N blocked ===========
+  tokens: prompt 599 = instructions 70 + prev_code 424 + feedback 105  [tokenizer] | answers 594, 489, 461, 481
+round 0: this round 0.75  best so far 0.75  (100.2s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.56x the byte floor, and level 6 requires 1.25x or better. Correctness alone is level 4; this level is about the bytes. Block the M and N dimensions so more tiles stay resident in SBUF and are reused across iterations, rather than reloaded.

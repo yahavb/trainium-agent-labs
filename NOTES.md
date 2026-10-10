@@ -60,6 +60,23 @@ Regenerate the category tables: `.venv/bin/python scripts/attempts_to_csv.py run
 | v8.2 extra runs | 96a9fc9 | L1 / L2 | 118, 117 | L1 +2/2, L2 +2/3 | — | — | — | v8.2 totals: L1 7/7, L2 5/9 |
 | final_all | 96a9fc9, `--all --repeat 1` | L1–L4 | 116 | L1 1.0, L2 1.0, **L3 0.30**, L4 1.0 | solved in rounds 6, 7, —, round 2 | — | — | one command runs all 4 levels; this time L3 was not solved (the same failure repeated after 4 rounds, stopped early) |
 
+**Final runs (18:25 stop; logs in `analysis/logs/final/seat-{115..119}/`, flat, one file set per prefix: `<prefix>.jsonl`, `_verdicts.jsonl`, `_nki_verdicts.jsonl`, `_usage.jsonl`, `run_<prefix>.log`; each seat's `v82_queue.log` lists every run's start, end and score). Rounds below are the log's "after N rounds" (N = 0-based round + 1).**
+
+final = **0eb2695** (tag `final`). Runs per level come from 96a9fc9 (L1, L3, L4; prefixes `v82_`, `v82x_`, `final_all`), 5c3aba2 (L2, `v83_`), 0eb2695 (L2 `v85_`, L9-14 `final_L*`) and 15fb0d5 (L5-7, `v84w_`, `warm_`). Their request bodies are byte-identical on the levels each is quoted for: 1c2f915, 4fdeb0e, c860074.
+
+| run set | commit | level | seats | solved | scores (after N rounds) | re-audit |
+|---|---|---|---|---|---|---|
+| v8.3 L2 (all) | 5c3aba2 | L2 | 117 x6, 119 x4 | **8/10** | 117: 1(3),1(2),1(4),1(5),.5,1(2); 119: 1(3),1(1),.5,1(2) | PASS (27 kernels over v8.2/v8.3/final_all, 116-119) |
+| v8.5 L2 | 0eb2695 | L2 | 117 x3, 118 x3 (+2 partial L2d, stopped) | **4/6** | 117: 1(5),1(3),1(3); 118: .30, .50, 1(2) | not run (out of time) |
+| WARM L5-7 | 15fb0d5 | L5 / L6 / L7 | 115-119 | **0** | L5 best .88 (6 runs), L6 best .75 (6), L7 best .75 (6; plus partial warm_L7 on 117) | - |
+| held-out L9-14 | 0eb2695 | L9-L14 | 119, 115, 117, 118 | L9 **2/2**, L10 **1/1**, L11 0/1 (.67), L12 0/2 (.50, .30), L13 0/1 (.50), L14 0/1 (.50) | L9 1(3),1(3); L10 1(3) | L9, L10: PASS by a fresh-process `grade()` (plain `scripts/reaudit.py` cannot load levels 9-14: KeyError 9) |
+
+- The two extra v8.3 runs count: 117 `v83_L2d` and 119 `v83_L2b` (its log sits in the seat-119 set) have the same switch line and md5 87ddb0, and each wrote its SOLVED line before anything was stopped (119's at 17:08; the 17:13 stop hit the queued `v82x_L1`).
+- v8.5's one added sentence (level 2, "returned ()") never fired: no v8.5 attempt hit "returned ()". So the v8.5 L2 runs are v8.4/v8.3 L2 runs, not evidence for the change.
+- L9 and L10: held-out verdict UNVERIFIED ("no held-out check ran": the held-out set has no levels 9-14); verdict_nki VERIFIED, 15/15 extra cases, lowers for trn2. L12 stalls on `s = s + 1e-6` TypeError (tile plus Python float).
+- Seat-115 served with `--max-num-seqs 8` (others 4); its runs: warm_* and final_L10/L14.
+- Why L5-7 stay at 2.00x / 1.56x (found 17:40, not implemented): the traffic hint says hoist loads out of the innermost loop, but the warm kernel's innermost loop is k, where loads are needed. The excess is outer: at K=256 M=512 N=1024 rhs is re-read once per m tile (4x) and lhsT once per n tile (2x), 7.34 MB against a 3.67 MB floor; n outer with the rhs strip kept in SBUF gives about 1.14x. The model mostly resubmitted the warm kernel unchanged. Per-operand traffic in the feedback would need telling lhsT from rhs inside `dma_copy`, where `src.name` is empty in the 0.6 simulator.
+
 **Chip-level verification (17:20)**
 - **trn2 full build + birsim** (`check/compile_solves7.py`, CPU only): v8.2's L1 (5 kernels), L2 (3), L3 (3), L4 (1), plus v8.3's L2 solves, **all compile, and birsim MATCHES for all** (max error as a fraction of RMS: L1 about 1.9e-07, L2 0, L3 1.2e-06, L4 2.9e-06). The compiler rejected none of them.
 - **Measured on a NeuronCore** (`check/device_check.py`, seat-116, vLLM stopped first and started again afterwards): L1 kernel 53900f4b **matches the reference on the chip for 4/4 shapes**, device error 2.4e-07–4.8e-07. 1.5–2.0 seconds per call, including host overhead; this is not kernel latency.

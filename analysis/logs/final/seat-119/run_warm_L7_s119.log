@@ -1,0 +1,35 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1 L2CAT=1 WARM=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 7: matmul, M, N and K blocked ===========
+  tokens: prompt 600 = instructions 72 + prev_code 425 + feedback 103  [tokenizer] | answers 462, 463, 464, 498
+round 0: this round 0.75  best so far 0.75  (92.1s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: NUMERICAL MISMATCH: worst error 7.71 of the output's RMS (15.96), tolerance 0.02.
+  at index (161, 796): expected -6.98733, got +115.989
+  74.1% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+  tokens: prompt 657 = instructions 72 + prev_code 461 + feedback 124  [tokenizer] | answers 462, 463, 463, 463
+round 1: same failure again (0.75, best so far 0.75)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+  tokens: prompt 743 = instructions 72 + prev_code 461 + feedback 124 + ledger 86  [tokenizer] | answers 462, 494, 478, 498
+round 2: same failure again (0.75, best so far 0.75)
+  same failure 3x — adding a ledger of 1 failed attempts to break the repeat
+  tokens: prompt 743 = instructions 72 + prev_code 461 + feedback 124 + ledger 86  [tokenizer] | answers 462, 463, 463, 498
+round 3: same failure again (0.75, best so far 0.75)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  2 of 4 shapes passed. On K=256 M=256 N=1024: NUMERICAL MISMATCH: worst error 7.71 of the output's RMS (15.96),
+  VERDICT level 7: FAILED, confidence 0.00: not solved: best score 0.75 after 4 rounds
+
+  CONFIDENCE level 7: 0.00 (it still fails shapes the loop tested) -- stated before the held-out check
+  VERDICT level 7: NOT SOLVED (best reward 0.75; held-out 0/16)
+    tokens spent: 10,972 prompt + 7,556 answer over 4 round(s)
+
+=========== summary ===========
+  level 7  reward 0.75 after 4 round(s)  tokens 10,972 prompt + 7,556 answer  confidence 0.00  NOT SOLVED (best reward 0.75; held-out 0/16)
+  solved 0/1
+
+=========== calibration, 1 verdict(s) ===========
+  said 0.00-0.01:   1 verdicts, mean confidence 0.00, actually passed held-out 0/1
+  Brier score 0.000.  Confident (>=0.5) but wrong: 0
+
+attempts logged to warm_L7_s119.jsonl, verdicts to warm_L7_s119_verdicts.jsonl

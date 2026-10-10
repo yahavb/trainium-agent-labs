@@ -1,0 +1,13 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1 L2CAT=1 WARM=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 2: 2D transpose ===========
+  tokens: prompt 1,066 = instructions 158 + reference 180 + api_card 728  [tokenizer] | answers 257, 257, 413, 302
+round 0: this round 0.50  best so far 0.50  (63.6s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: NUMERICAL MISMATCH: worst error 4.49 of the output's RMS (1.01), tolerance 0.02.
+  at index (24, 9): expected +2.62617, got -1.9109
+  81.8% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case Your output is x unchanged: no element moved. Each row's A-by-B block must becom
+  tokens: prompt 500 = instructions 67 + prev_code 256 + feedback 177  [tokenizer] | answers 257, 302, 276, 302
+round 1: same failure again (0.50, best so far 0.50)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat

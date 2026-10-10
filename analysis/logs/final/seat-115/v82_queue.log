@@ -1,0 +1,15 @@
+21:27:45 start warm_L7_s115 L7 rounds=8 repeat=1 L2CAT=1 WARM=1
+21:33:41 done  warm_L7_s115:   level 7  reward 0.75 after 4 round(s)  ;
+21:33:41 start warm_L6_s115 L6 rounds=8 repeat=1 L2CAT=1 WARM=1
+21:43:41 done  warm_L6_s115:   level 6  reward 0.75 after 6 round(s)  ;
+21:43:41 start warm_L5_s115 L5 rounds=8 repeat=1 L2CAT=1 WARM=1
+21:49:37 done  warm_L5_s115:   level 5  reward 0.88 after 4 round(s)  ;
+21:49:37 start warm_L7b_s115 L7 rounds=8 repeat=1 L2CAT=1 WARM=1
+21:55:35 done  warm_L7b_s115:   level 7  reward 0.75 after 4 round(s)  ;
+21:55:35 extra queue finished
+22:05:21 start final_L10_s115 L10 rounds=8 repeat=1 L2CAT=1 WARM=1
+22:10:52 done  final_L10_s115:   level 10  reward 1.00 after 3 round(s)  SOLVED  ;
+22:10:52 start final_L14_s115 L14 rounds=8 repeat=1 L2CAT=1 WARM=1
+22:24:59 done  final_L14_s115:   level 14  reward 0.50 after 8 round(s)  ;
+22:24:59 skip (past 18:20): final_L10b_s115 10 8 1 L2CAT=1 WARM=1
+22:24:59 extra queue finished

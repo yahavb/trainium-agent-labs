@@ -1,0 +1,12 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1 L2CAT=1 WARM=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 2: 2D transpose ===========
+  tokens: prompt 1,066 = instructions 158 + reference 180 + api_card 728  [tokenizer] | answers 292, 300, 302, 302
+round 0: this round 0.30  best so far 0.30  (58.9s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 18: `nisa.dma_copy(dst=tile, src=x)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=16384 `tile` holds 16384 elements but `x` holds 384. Replace line 18 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile = nl.n
+  tokens: prompt 626 = instructions 67 + prev_code 291 + feedback 268  [tokenizer] | answers 294, 257, 260, 257
+round 1: this round 0.62  best so far 0.62  (50.0s)
+  1 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 27: `out[p, i * F2 + j] = tile[p, j * F2 + i]` raised AssertionError: Out-of-bound access for tensor `unnamed` on dimension 1: index 12 exceed dimension size of 12. This level keeps every row where it is: row p of x holds an F1-by-F2 matrix stored row-major (F1, F2 = shape2D), and row p of the output holds the same F1*F2 values of that small mat

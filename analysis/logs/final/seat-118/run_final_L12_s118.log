@@ -1,0 +1,49 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1 L2CAT=1 WARM=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 12: row L2-normalize ===========
+  tokens: prompt 1,187 = instructions 153 + reference 91 + api_card 943  [tokenizer] | answers 288, 340, 353, 339
+round 0: this round 0.30  best so far 0.30  (66.8s)
+  0 of 3 shapes passed. On R=128 C=64: Line 14: `s += 1e-6` raised TypeError: unsupported operand type(s) for +=: 'NkiTensor' and 'float' Python operators like `+=` do not work on tiles. Replace line 14 with:
+
+    nisa.tensor_scalar(dst=s, data=s, op0=nl.add, operand0=1e-6)
+
+nisa.tensor_scalar combines a tile with a number; nisa.tensor_tensor combines two tiles of the same shape. Both write into dst
+  tokens: prompt 479 = instructions 68 + prev_code 287 + feedback 124  [tokenizer] | answers 304, 396, 390, 396
+round 1: this round 0.30  best so far 0.30  (71.1s)
+  0 of 3 shapes passed. On R=128 C=64: Line 19: `nisa.tensor_scalar(dst=m, data=s, op0=nl.reciprocal, operand0=0.0)` raised AssertionError: Expected binary operator, got reciprocal
+  tokens: prompt 429 = instructions 68 + prev_code 303 + feedback 58  [tokenizer] | answers 316, 390, 411, 411
+round 2: this round 0.30  best so far 0.30  (72.2s)
+  0 of 3 shapes passed. On R=128 C=64: Line 20: `nisa.tensor_scalar(dst=m, data=m, op0=nl.reciprocal, operand0=0.0)` raised AssertionError: Expected binary operator, got reciprocal
+  tokens: prompt 441 = instructions 68 + prev_code 315 + feedback 58  [tokenizer] | answers 316, 396, 380, 390
+round 3: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 3 failed attempts to break the repeat
+  tokens: prompt 629 = instructions 68 + prev_code 315 + feedback 58 + ledger 188  [tokenizer] | answers 296, 390, 396, 396
+round 4: this round 0.50  best so far 0.50  (71.0s)
+  0 of 3 shapes passed. On R=128 C=64: NON-FINITE OUTPUT: 3712 NaN and 0 Inf, first at (1, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.
+  tokens: prompt 425 = instructions 68 + prev_code 295 + feedback 62  [tokenizer] | answers 300, 390, 396, 396
+round 5: same failure again (0.50, best so far 0.50)
+  same failure 2x — adding a ledger of 4 failed attempts to break the repeat
+  tokens: prompt 680 = instructions 68 + prev_code 299 + feedback 62 + ledger 251  [tokenizer] | answers 300, 390, 401, 396
+round 6: same failure again (0.50, best so far 0.50)
+  same failure 3x — adding a ledger of 4 failed attempts to break the repeat
+  tokens: prompt 680 = instructions 68 + prev_code 299 + feedback 62 + ledger 251  [tokenizer] | answers 300, 396, 391, 400
+round 7: same failure again (0.50, best so far 0.50)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 3 shapes passed. On R=128 C=64: NON-FINITE OUTPUT: 3712 NaN and 0 Inf, first at (1, 0). Usually an uninit
+    2x  0 of 3 shapes passed. On R=128 C=64: Line 20: `nisa.tensor_scalar(dst=m, data=m, op0=nl.reciprocal, operand0=0
+    1x  0 of 3 shapes passed. On R=128 C=64: Line 14: `s += 1e-6` raised TypeError: unsupported operand type(s) for +=
+    1x  0 of 3 shapes passed. On R=128 C=64: Line 19: `nisa.tensor_scalar(dst=m, data=s, op0=nl.reciprocal, operand0=0
+  VERDICT level 12: FAILED, confidence 0.00: not solved: best score 0.50 after 8 rounds
+
+  CONFIDENCE level 12: 0.00 (it still fails shapes the loop tested) -- stated before the held-out check
+  VERDICT level 12: UNVERIFIED (no held-out check ran)
+    tokens spent: 19,800 prompt + 11,750 answer over 8 round(s)
+
+=========== summary ===========
+  level 12  reward 0.50 after 8 round(s)  tokens 19,800 prompt + 11,750 answer  confidence 0.00  UNVERIFIED (no held-out check ran)
+  solved 0/1
+
+  calibration: nothing to score (no held-out check ran)
+
+attempts logged to final_L12_s118.jsonl, verdicts to final_L12_s118_verdicts.jsonl

@@ -1,0 +1,1 @@
+{"t": 1791664469, "level": 3, "rounds": 1, "extra_cases": 11, "extra_failed": 0, "compiler_risks": [], "lowered": true, "status": "VERIFIED", "confidence": 0.741, "claim": "solved, and passes all 11 extra cases it was never graded on, and lowers for trn2"}

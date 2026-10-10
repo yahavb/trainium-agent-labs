@@ -1,0 +1,85 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1 L2CAT=1 WARM=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 10: layer norm (no scale or shift) ===========
+  tokens: prompt 1,210 = instructions 157 + reference 110 + api_card 943  [tokenizer] | answers 529, 585, 585, 573
+round 0: this round 0.83  best so far 0.83  (108.3s)
+  2 of 3 shapes passed. On R=256 C=128 scale=3.0 shift=5.0: Line 13: `nisa.dma_copy(dst=tile, src=x)` raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 A tile may have at most 128 rows, and you asked for 256. Do not allocate one tile for the whole tensor: loop over the partition dimension in chunks of at most 128 with nl.affine_range, allocate the tile inside the loop w
+  tokens: prompt 861 = instructions 71 + prev_code 584 + feedback 206  [tokenizer] | answers 665, 585, 585, 585
+round 1: this round 0.95  best so far 0.95  (111.0s)
+  Correct in the simulator on every shape, but the trn2 compiler rejects it: the chip has no such instruction, so this kernel cannot run on the device. Fix exactly these lines:
+
+Line 28 (`mean_tile` is a (rows, 1) column; tensor_tensor with a broadcast column). Replace:
+        nisa.tensor_tensor(dst=diff, data1=tile, data2=mean_tile, op=nl.subtract)
+with:
+        nisa.tensor_scalar(dst=diff, data=t
+  tokens: prompt 941 = instructions 71 + prev_code 664 + feedback 206  [tokenizer] | answers 665, 585, 579, 452
+round 2: this round 1.00  best so far 1.00  (110.4s)
+  Correct on every shape.
+  SOLVED on round 2. Correct on every shape.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_layernorm_(x):
+      R, C = x.shape
+      # Allocate output in shared HBM
+      out = nl.ndarray((R, C), dtype=x.dtype, buffer=nl.shared_hbm)
+    
+      # Loop over rows in chunks of 128
+      for i in nl.affine_range(0, R, 128):
+          # Define chunk size
+          chunk_size = min(128, R - i)
+          # Allocate input tile in SBUF for current chunk
+          tile = nl.ndarray((chunk_size, C), dtype=x.dtype, buffer=nl.sbuf)
+          # Copy input chunk to SBUF
+          nisa.dma_copy(dst=tile, src=x[i:i+chunk_size, :])
+        
+          # Compute mean over columns (axis=1)
+          mean_tile = nl.ndarray((chunk_size, 1), dtype=x.dtype, buffer=nl.sbuf)
+          mean = nl.mean(tile, axis=[1], keepdims=True)
+          nisa.tensor_copy(dst=mean_tile, src=mean)
+        
+          # Compute variance over columns (axis=1)
+          var_tile = nl.ndarray((chunk_size, 1), dtype=x.dtype, buffer=nl.sbuf)
+          diff = nl.ndarray((chunk_size, C), dtype=x.dtype, buffer=nl.sbuf)
+          nisa.tensor_scalar(dst=diff, data=tile, op0=nl.subtract, operand0=mean_tile)
+          square = nl.ndarray((chunk_size, C), dtype=x.dtype, buffer=nl.sbuf)
+          nisa.tensor_tensor(dst=square, data1=diff, data2=diff, op=nl.multiply)
+          var = nl.mean(square, axis=[1], keepdims=True)
+          nisa.tensor_copy(dst=var_tile, src=var)
+        
+          # Add epsilon and take square root
+          var_plus_eps = nl.ndarray((chunk_size, 1), dtype=x.dtype, buffer=nl.sbuf)
+          nisa.tensor_scalar(dst=var_plus_eps, data=var_tile, op0=nl.add, operand0=1e-5)
+          sqrt_var = nl.ndarray((chunk_size, 1), dtype=x.dtype, buffer=nl.sbuf)
+          nisa.activation(dst=sqrt_var, op=nl.sqrt, data=var_plus_eps)
+        
+          # Compute reciprocal of sqrt(var)
+          inv_sqrt_var = nl.ndarray((chunk_size, 1), dtype=x.dtype, buffer=nl.sbuf)
+          nisa.reciprocal(dst=inv_sqrt_var, data=sqrt_var)
+        
+          # Compute (x - mean) / sqrt(var)
+          scaled_diff = nl.ndarray((chunk_size, C), dtype=x.dtype, buffer=nl.sbuf)
+          nisa.tensor_scalar(dst=scaled_diff, data=diff, op0=nl.multiply, operand0=inv_sqrt_var)
+        
+          # Copy result to output
+          nisa.dma_copy(dst=out[i:i+chunk_size, :], src=scaled_diff)
+    
+      return out
+  -------------------------------------------
+  VERDICT level 10: VERIFIED, confidence 0.80: solved, and passes all 15 extra cases it was never graded on, and lowers for trn2
+
+  CONFIDENCE level 10: 0.90 (passed every loop shape and nothing in the code is shape-specific) -- stated before the held-out check
+  VERDICT level 10: UNVERIFIED (no held-out check ran)
+    tokens spent: 12,048 prompt + 6,973 answer over 3 round(s)
+
+=========== summary ===========
+  level 10  reward 1.00 after 3 round(s)  SOLVED  tokens 12,048 prompt + 6,973 answer  confidence 0.90  UNVERIFIED (no held-out check ran)
+  solved 1/1
+
+  calibration: nothing to score (no held-out check ran)
+
+attempts logged to final_L10_s115.jsonl, verdicts to final_L10_s115_verdicts.jsonl

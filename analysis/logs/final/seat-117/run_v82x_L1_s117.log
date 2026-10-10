@@ -1,0 +1,12 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 1: average pooling 2D ===========
+  tokens: prompt 1,193 = instructions 152 + reference 98 + api_card 943  [tokenizer] | answers 361, 458, 455, 371
+round 0: this round 0.30  best so far 0.30  (80.3s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 23: `s = nl.sum(tile, axis=[2, 3], keepdims=True)` raised AssertionError: tensor_reduce axis must be the last contiguous dim(s) of the tile. For a 3D tensor, expected axis=(1, 2) (or a shorter trailing subset). Got axis=(2, 3)
+  tokens: prompt 526 = instructions 68 + prev_code 360 + feedback 98  [tokenizer] | answers 379, 349, 382, 356
+round 1: this round 0.95  best so far 0.95  (70.9s)
+  Correct in the simulator on every shape, but the trn2 compiler rejects it: the chip has no such instruction, so this kernel cannot run on the device. Fix exactly these lines:
+
+Lines 19-29 (`tile[c, ...]` gives an instruction one partition starting at partition `c`; on the chip every compute instruction must start at partition 0. Do all C rows at once with `c` gone: `tile[:, ...]`, and (1, ...) til

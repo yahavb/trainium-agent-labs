@@ -1,0 +1,39 @@
+feedback v8: v7 (PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen GATE=static) + one prompt line per sample k>=2 SKELETON=0 L1FIX=1 TRUNCFIX=1 MIXSAMP=1 L2HINT=1 MIX=1 L2CAT=1 WARM=1
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 6: matmul, M and N blocked ===========
+  tokens: prompt 599 = instructions 70 + prev_code 424 + feedback 105  [tokenizer] | answers 595, 489, 614, 481
+round 0: this round 0.75  best so far 0.75  (102.7s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.56x the byte floor, and level 6 requires 1.25x or better. Correctness alone is level 4; this level is about the bytes. Block the M and N dimensions so more tiles stay resident in SBUF and are reused across iterations, rather than reloaded.
+  tokens: prompt 663 = instructions 70 + prev_code 488 + feedback 105  [tokenizer] | answers 560, 604, 641, 487
+round 1: same failure again (0.75, best so far 0.75)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+  tokens: prompt 739 = instructions 70 + prev_code 486 + feedback 105 + ledger 78  [tokenizer] | answers 561, 481, 460, 463
+round 2: this round 0.62  best so far 0.75  (92.4s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: NUMERICAL MISMATCH: worst error 3.6 of the output's RMS (16.03), tolerance 0.02.
+  at index (91, 975): expected -41.7118, got +15.9688
+  97.7% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+  tokens: prompt 672 = instructions 70 + prev_code 480 + feedback 122  [tokenizer] | answers 503, 483, 577, 577
+round 3: this round 0.75  best so far 0.75  (98.4s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.56x the byte floor, and level 6 requires 1.25x or better. Correctness alone is level 4; this level is about the bytes. Block the M and N dimensions so more tiles stay resident in SBUF and are reused across iterations, rather than reloaded.
+  tokens: prompt 657 = instructions 70 + prev_code 482 + feedback 105  [tokenizer] | answers 558, 481, 483, 634
+round 4: same failure again (0.75, best so far 0.75)
+  STOPPING this level: this failure for the 4th time, alternating with 1 other(s). The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  2 of 4 shapes passed. On K=256 M=256 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.56x th
+    1x  1 of 4 shapes passed. On K=256 M=256 N=1024: NUMERICAL MISMATCH: worst error 3.6 of the output's RMS (16.03), 
+  VERDICT level 6: FAILED, confidence 0.00: not solved: best score 0.75 after 5 rounds
+
+  CONFIDENCE level 6: 0.00 (it still fails shapes the loop tested) -- stated before the held-out check
+  VERDICT level 6: NOT SOLVED (best reward 0.75; held-out 8/16)
+    tokens spent: 13,320 prompt + 10,732 answer over 5 round(s)
+
+=========== summary ===========
+  level 6  reward 0.75 after 5 round(s)  tokens 13,320 prompt + 10,732 answer  confidence 0.00  NOT SOLVED (best reward 0.75; held-out 8/16)
+  solved 0/1
+
+=========== calibration, 1 verdict(s) ===========
+  said 0.00-0.01:   1 verdicts, mean confidence 0.00, actually passed held-out 0/1
+  Brier score 0.000.  Confident (>=0.5) but wrong: 0
+
+attempts logged to warm_L6_s117.jsonl, verdicts to warm_L6_s117_verdicts.jsonl
