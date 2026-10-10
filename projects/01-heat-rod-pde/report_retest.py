@@ -9,13 +9,16 @@ def main():
     source = Path(sys.argv[1])
     data = json.loads(source.read_text())
     rows = data['results']
+    policy = ('Original upstream checker only.'
+              if data.get('settings', {}).get('grading_policy') == 'original_checker' else
+              'Historical policy: original checker plus an independent physics validator.')
     lines = ['# Default-agent retest', '',
              'Real Qwen3-8B inference on seat-85. Experimental concise mode: '
              + str(data['settings'].get('concise', False)) + '.',
              'Both variants use the same eight problem configurations, two samples per round, '
              'three rounds, 512 output tokens per request, one calculator exchange per attempt '
-             'and a 180-second case deadline. Full-score answers require the independent verifier.', '',
-             '| Agent | Validated solved | Timeouts | Service failures | Total seconds |',
+             'and a 180-second case deadline. ' + policy, '',
+             '| Agent | Solved under recorded policy | Timeouts | Service failures | Total seconds |',
              '|---|---:|---:|---:|---:|']
     groups = {}
     for variant in ('baseline', 'improved'):
@@ -28,7 +31,7 @@ def main():
     solved_delta = sum(r['status']=='solved' for r in improved) - sum(r['status']=='solved' for r in baseline)
     baseline_seconds = sum(r['seconds'] for r in baseline)
     improved_seconds = sum(r['seconds'] for r in improved)
-    lines += ['', f'Validated solved difference: {solved_delta:+d} cases. '
+    lines += ['', f'Solved under recorded policy difference: {solved_delta:+d} cases. '
               f'Total measured time difference: {improved_seconds-baseline_seconds:+.1f}s '
               f'({(improved_seconds/baseline_seconds-1)*100:+.1f}%). '
               'Lower elapsed time alone does not demonstrate better mathematical answers.', '',

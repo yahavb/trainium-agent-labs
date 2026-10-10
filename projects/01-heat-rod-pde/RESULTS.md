@@ -1,5 +1,8 @@
 # Challenge 1 — Heat-Rod PDE Agent results
 
+> Historical report: the current agent uses only the unchanged upstream checker.
+> The additional physics validator described below has been removed; see README.md.
+
 Hardware: seat-85, Trainium2 (`trn2.48xlarge` host, one allocated chip); Qwen3-8B, TP=2, context 8192.
 Real model inference only. No offline generator and no analytic-answer fallback.
 

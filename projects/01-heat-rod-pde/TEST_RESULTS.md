@@ -1,5 +1,8 @@
 # Verification record
 
+> Historical report: the current agent uses only the unchanged upstream checker.
+> The additional physics validator described below has been removed; see README.md.
+
 Executed in `seat-85` with the lab's Python/SymPy/NumPy environment on October 10, 2026.
 
 - Original `level0_heatrod.py --selftest`: PASS, including exact solutions for 15 generated problems and deliberately wrong decay/boundary/format cases.

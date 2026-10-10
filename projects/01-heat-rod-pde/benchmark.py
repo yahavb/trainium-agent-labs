@@ -8,7 +8,6 @@ import subprocess
 import sys
 import time
 import agent
-import validation
 
 
 def main():
@@ -52,14 +51,12 @@ def main():
                 entry['rounds'] = max((r['round'] for r in rows), default=-1) + 1
                 solved = next((r for r in rows if r['reward'] == 1.0), None)
                 if solved:
-                    check = validation.verify(agent.LEVELS[level].make(sub, seed), solved['answer'])
-                    entry['validation'] = check
-                    entry['status'] = 'solved' if check['accepted'] else 'validation_failed'
+                    entry['status'] = 'solved'
             results.append(entry)
             (root / 'comparison.json').write_text(json.dumps({'settings': {'model': 'Qwen/Qwen3-8B',
                 'seat': 85, 'samples': 2, 'rounds': 3, 'max_tokens': 512, 'tool_steps': 1,
                 'timeout_per_case_seconds': args.timeout, 'concise': args.concise,
-                'offline': False}, 'results': results}, indent=2))
+                'offline': False, 'grading_policy': 'original_checker'}, 'results': results}, indent=2))
             print(f"DONE {case.name}: {entry['status']} ({entry['seconds']:.1f}s)", flush=True)
     print(f'COMPLETE {root}', flush=True)
 
