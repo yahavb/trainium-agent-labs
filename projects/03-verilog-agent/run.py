@@ -30,13 +30,30 @@ def main():
 
     print("\n[prompt] AI writes the circuit", flush=True)
     try:
-        d = P.generate(argparse.Namespace(request=a.request, code=a.code, spec=a.spec,
-                                          designs=a.designs, log=a.log, fix=None))
+        d = generate_and_show(argparse.Namespace(request=a.request, code=a.code, spec=a.spec,
+                                                 designs=a.designs, log=a.log, fix=None))
     except SystemExit as e:
         sys.exit(f"prompt step stopped: {e}")
 
     outcome, history = check_and_fix(d, a.rounds, a.log)
     summary(d, outcome, history, t0)
+
+def generate_and_show(ns):
+    """Run the prompt step, then show the circuit it wrote as one clear block before testing starts."""
+    import io, contextlib
+    print("  the AI is writing the circuit...", flush=True)
+    buf = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf):
+            d = P.generate(ns)
+    except SystemExit:
+        print(buf.getvalue(), end="")
+        raise
+    code = open(os.path.join(d, "design.v")).read().rstrip()
+    print(f"\n===== AI-generated circuit ({code.count(chr(10)) + 1} lines) -> {d}/design.v =====")
+    print(code)
+    print("=" * 60, flush=True)
+    return d
 
 def check_and_fix(d, rounds=3, log="attempts.jsonl", fix=True):
     """verify -> (fix -> verify) ... until PASS, review, untestable, or out of rounds."""
@@ -75,6 +92,12 @@ def check_and_fix(d, rounds=3, log="attempts.jsonl", fix=True):
 def summary(d, outcome, history, t0):
     rep = json.load(open(os.path.join(d, "report.json"))) if os.path.exists(os.path.join(d, "report.json")) else {}
     mut = rep.get("mutation")
+    dp = os.path.join(d, "design.v")
+    if os.path.exists(dp):
+        code = open(dp).read().rstrip()
+        print(f"\n----- final circuit: {dp} ({code.count(chr(10)) + 1} lines) -----")
+        print(code)
+        print("-" * 60)
     print(f"\n===== RESULT: {os.path.basename(d)} =====")
     print(f"outcome    : {outcome}")
     print(f"scores     : {' -> '.join(str(s) for s in history)}")

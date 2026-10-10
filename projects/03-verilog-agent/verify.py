@@ -77,6 +77,21 @@ def verify(folder, regen=False, do_mutation=True, print_tb=True):
     # 2. run the design through it
     score, detailed, _ = simulate(design, tb)
 
+    # 2a. a testbench that doesn't compile is the TESTBENCH's fault, not the design's
+    report["testbench_error"] = False
+    if tb and detailed.startswith("COMPILE ERROR") and simulate(design, None)[0] > 0:
+        report["testbench_error"] = True
+        src = tb.splitlines()
+        nums = sorted({int(x) for x in vagent.re.findall(r"tb\.v:(\d+)", detailed)})[:3]
+        near = sorted({m for n in nums for m in (n - 1, n) if 0 < m <= len(src) and src[m-1].strip()})
+        detailed = ("TESTBENCH ERROR: the testbench does not compile (the design itself compiles fine).\n" +
+                    "\n".join(l for l in detailed.splitlines()[1:] if "tb.v" in l)[:400] +
+                    ("\nThe mistake is on or just before:\n" + "\n".join(f"  tb.v line {m}: {src[m-1].strip()}"
+                                                                         for m in near) if near else ""))
+        print("  ✗ the TESTBENCH has an error (not the design):", flush=True)
+        for l in detailed.splitlines()[1:]:
+            print("    " + l, flush=True)
+
     # 2b. the judge: a design failing a JUST-BUILT testbench may mean the golden model misread the spec.
     #     (never for an existing tb.v: that one was already trusted, e.g. when re-checking a shrunk design)
     report["judge"] = None
@@ -139,10 +154,26 @@ def verify(folder, regen=False, do_mutation=True, print_tb=True):
         print(f"  ⚠ testbench suspect -> NOT sent to feedback; human review: {review}", flush=True)
         if os.path.exists(hand):
             os.remove(hand)
+    elif report.get("testbench_error"):
+        if os.path.exists(hand):
+            os.remove(hand)
+        print("  -> not sent to feedback: fix the testbench (or press Enter next time to let the AI write one)",
+              flush=True)
     elif tb and not report["passed"]:
         json.dump(dict(name=name, spec=spec, design=design, testbench=tb, score=report["score"],
                        result=detailed, mismatches=report["mismatches"]), open(hand, "w"), indent=2)
         print(f"  ✗ FAILED -> handed to feedback: {hand}", flush=True)
+        # the feedback step: turn the raw failure into a diagnosis + hints (teammate's feedback.py)
+        try:
+            import feedback as FB
+            fbr = FB.generate_feedback_from_file(hand, os.path.join(folder, "feedback_result.json"))
+            print(f"  [feedback] {fbr.get('error_type')} -> fix the {fbr.get('retry_target') or 'design'}", flush=True)
+            for s_ in (fbr.get("suggestions") or [])[:3]:
+                print(f"    - {s_[:170]}", flush=True)
+        except ImportError:
+            pass
+        except Exception as ex:
+            print(f"  [feedback] could not analyse the failure: {ex}", flush=True)
     elif os.path.exists(hand):
         os.remove(hand)
 
@@ -150,6 +181,8 @@ def verify(folder, regen=False, do_mutation=True, print_tb=True):
     opt = os.path.join(folder, "for_optimize.json")
     index = os.path.join(os.path.dirname(os.path.normpath(folder)) or ".", "PASSED.txt")
     listed = open(index).read().split() if os.path.exists(index) else []
+    if report["passed"] and os.path.exists(os.path.join(folder, "feedback_result.json")):
+        os.remove(os.path.join(folder, "feedback_result.json"))
     if report["passed"]:
         json.dump(dict(name=name, spec=spec, design=design, testbench=tb,
                        mutation=report["mutation"]), open(opt, "w"), indent=2)
@@ -163,6 +196,17 @@ def verify(folder, regen=False, do_mutation=True, print_tb=True):
             open(index, "w").write("".join(n + "\n" for n in listed if n != name))
 
     json.dump(report, open(os.path.join(folder, "report.json"), "w"), indent=2)
+    # every check is kept (report.json only holds the latest), so the attempt log shows the whole loop
+    import hashlib, time as _t
+    with open(os.path.join(folder, "history.jsonl"), "a") as h:
+        h.write(json.dumps(dict(time=round(_t.time(), 3), score=report["score"], passed=report["passed"],
+                                testbench=report.get("testbench"), judge=(report["judge"] or {}).get("verdict"),
+                                mismatches=len(report["mismatches"]),
+                                outcome=("PASS" if report["passed"] else "REVIEW" if report.get("testbench_suspect")
+                                         else "TESTBENCH ERROR" if report.get("testbench_error")
+                                         else "NOT TESTED" if not report["behaviour_tested"] else "FAIL"),
+                                design_sha=hashlib.sha1(design.encode()).hexdigest()[:8],
+                                first=(report["result"].splitlines() or [""])[0][:120])) + "\n")
     print(f"  -> {os.path.join(folder, 'report.json')}", flush=True)
     return report
 
@@ -196,6 +240,10 @@ def json_to_folder(path):
     """Unpack a hand-off JSON into designs/<module>/ (design.v, spec.txt, and tb.v if the user gave one)."""
     code, spec, tb = from_request_json(path)
     m = vagent.re.search(r"\bmodule\s+(\w+)", code)
+    if tb and m and not vagent.re.search(rf"\b{m[1]}\s+(?:#\s*\([^;]*?\)\s*)?\w+\s*\(", tb):
+        print(f"  ⚠ the testbench you gave never uses module {m[1]} (it is not a testbench for this design) "
+              f"-> ignoring it; the AI will write one", flush=True)
+        tb = None
     d = os.path.join("designs", m[1] if m else os.path.splitext(os.path.basename(path))[0])
     os.makedirs(d, exist_ok=True)
     sp, tp, src = (os.path.join(d, f) for f in ("spec.txt", "tb.v", "tb_source.txt"))
@@ -215,6 +263,10 @@ def json_to_folder(path):
     elif tb:                                   # the user's own testbench: use it as-is
         open(tp, "w").write(tb)
         open(src, "w").write("user\n")
+    elif os.path.exists(src):                  # no testbench this time: drop the previous user's one
+        for f in (tp, src):
+            if os.path.exists(f):
+                os.remove(f)
     elif old_spec is not None and spec and old_spec != spec.strip():
         for f in (tp, src):                    # a different circuit under the same name: old testbench is stale
             if os.path.exists(f):

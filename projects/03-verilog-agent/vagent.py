@@ -765,7 +765,7 @@ def python_route(spec, hdr, kind, stub, log, tag, tries, hint=""):
             why = "" if ok else w
         print(f"  [tb] python {kind} model attempt {i}: {'accepted (' + note + ')' if ok else 'rejected - ' + why[:200]} "
               f"({time.time() - t0:.0f}s, {len(results)}/{len(srcs)} ran)", flush=True)
-        log.write(json.dumps(dict(problem=tag, kind="testbench", route="python-" + kind, attempt=i,
+        log.write(json.dumps(dict(time=round(time.time(), 3), problem=tag, kind="testbench", route="python-" + kind, attempt=i,
                                   accepted=ok, reason=why, tb=tb if ok else None)) + "\n")
         log.flush()
         if ok:
@@ -939,7 +939,7 @@ def auto_tb(spec, code, log, tag, tries=3, hint=""):
                 why = why or "only one answer was usable, so there was no second opinion to confirm it"
             print(f"  [tb] {kind} template attempt {i}: {'accepted (' + note + ')' if ok else 'rejected - ' + why[:200]} "
                   f"({time.time() - t0:.0f}s, {len(good)}/{len(refs)} usable)", flush=True)
-            log.write(json.dumps(dict(problem=tag, kind="testbench", route=kind + "-template", attempt=i,
+            log.write(json.dumps(dict(time=round(time.time(), 3), problem=tag, kind="testbench", route=kind + "-template", attempt=i,
                                       accepted=ok, reason=why, tb=tb)) + "\n")
             log.flush()
             if ok:
@@ -962,7 +962,7 @@ def auto_tb(spec, code, log, tag, tries=3, hint=""):
                 break
         print(f"  [tb] attempt {i}: {'accepted' if ok else 'rejected - ' + why[:200]} "
               f"({time.time() - t0:.0f}s, {len(cands)} candidate(s))", flush=True)
-        log.write(json.dumps(dict(problem=tag, kind="testbench", attempt=i, accepted=ok,
+        log.write(json.dumps(dict(time=round(time.time(), 3), problem=tag, kind="testbench", attempt=i, accepted=ok,
                                   reason=why, tb=tb)) + "\n")
         log.flush()
         if ok:
@@ -1154,8 +1154,8 @@ def menu(a):
                 continue
             print("\n[prompt] the AI writes the circuit", flush=True)
             try:
-                d = P.generate(argparse.Namespace(request=[spec], code=None, spec=None, designs="designs",
-                                                  log=a.log, fix=None))
+                d = R.generate_and_show(argparse.Namespace(request=[spec], code=None, spec=None,
+                                                           designs="designs", log=a.log, fix=None))
             except SystemExit as e:
                 print(f"  prompt step stopped: {e}")
                 continue
@@ -1171,6 +1171,11 @@ def menu(a):
                 print("  a description is needed to test behaviour")
                 continue
             tb = read_tb()
+            mod = re.search(r"\bmodule\s+(\w+)", code)
+            while tb not in (None, "auto") and mod and not re.search(rf"\b{mod[1]}\s+(?:#\s*\([^;]*?\)\s*)?\w+\s*\(", tb):
+                print(f"  ✗ that testbench never uses module {mod[1]}, so it can't test this design. Try again "
+                      f"(Enter = the AI writes one).")
+                tb = read_tb()
             if tb is None:
                 print("  (no testbench: only syntax will be checked)")
             req = dict(prompt=spec, verilog=code)
