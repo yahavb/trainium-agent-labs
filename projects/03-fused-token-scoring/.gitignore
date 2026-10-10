@@ -3,3 +3,5 @@ build/
 *.neff
 *.ntff
 *.log
+presentations/
+/presentation/

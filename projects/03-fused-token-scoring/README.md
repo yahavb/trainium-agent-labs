@@ -1,155 +1,187 @@
-# Project 3 — Fused token scoring on Trainium2
+# Fused Token Scoring on Trainium2
 
-**Compute a selected token's log-probability and the distribution's entropy
-together, sharing the work over a large vocabulary.**
+**Joint selected-token log-probability and entropy using the AWS Neuron Kernel Interface (NKI).**
 
-> **STATUS: RUNNABLE AND BENCHMARKED on Trainium2, seat-256.**
->
-> **20.7% lower median device latency** on 512 positions × 32768 vocabulary
-> entries versus the fastest measured separate NKI implementation; **2.14x
-> faster** than the measured AWS cross-entropy-plus-entropy composition.
-> All 111 hardware correctness comparisons pass with the original accuracy gate.
-> The 20% target was met on workload B and missed on A; all results are reported.
+> **Status: implemented, validated and benchmarked on Trainium2, seat-256.**
+> On the larger workload, fusion reduces median device latency by **20.7%**
+> (**1.26× speedup**) against the fastest measured separate baseline.
+> All **111 hardware correctness comparisons** pass the original accuracy gate.
 
-## The problem and the contribution
+## Abstract
 
-A language model emits a score, called a logit, for every possible next token.
-Scoring and reinforcement-learning workflows can need both the probability of
-a chosen token and a measure of uncertainty, called entropy. Computing those
-separately repeats vocabulary reads, normalization and exponentiation.
+Language-model scoring and reinforcement-learning workflows can require both a
+selected token's log-probability and the entropy of its probability distribution.
+Separate calculations repeat vocabulary reads, normalization and exponentiation.
+We implement a tiled NKI kernel that shares these calculations while maintaining
+stable FP32 state over BF16 inputs. We compare it with two complete, independently
+tuned separate-operation baselines on real Trainium2 hardware. Median device
+latency decreases by **9.9%, 20.7% and 13.6%** on three predefined workloads,
+with all numerical comparisons passing. The proposed 20% reduction on both
+primary workloads is **partially achieved**: the larger workload passes and the
+smaller one misses. The result is a reproducible forward scoring primitive;
+full-model and training-step acceleration remain to be measured after integration.
 
-This project supplies a standalone **forward NKI kernel**, a stable FP32
-reference, two complete separate-operation baselines, numerical validation and
-reproducible Trainium2 measurements. The optimization keeps bounded vocabulary
-tiles on chip and reuses exponentials and normalization for both outputs. It
-writes two vectors instead of a vocabulary-sized probability intermediate.
-An on-chip gather selects one score per row without building a full-vocabulary
-selection mask; our own separate baseline receives the same improvement.
-Scalar Engine produces exponentials and their sum together while the original
-logits remain available for the gather and the shifted entropy calculation.
+## 1. Problem statement
 
-Fusion already exists in [Hugging Face TRL's GPU scoring kernel](https://github.com/huggingface/trl/blob/v1.14.0/trl/kernels/logprob_entropy.py).
-AWS also provides [NKI cross entropy](https://github.com/aws-neuron/nki-library/blob/main/src/nkilib_src/nkilib/experimental/loss/cross_entropy.py),
-which computes loss with streaming log-sum-exp. Our contribution is the NKI
-joint scoring implementation, its stable entropy extension and an auditable
-Trainium comparison. See [prior work](NOTICE.md).
+### 1.1 Application need
 
-## Measured impact
+Consider training a customer-support language model to generate useful answers.
+A PPO/GRPO-style workflow can score the tokens in generated responses to determine
+how likely those tokens are under the model. It may also compute entropy to
+monitor uncertainty or encourage exploration through its training objective.
 
-Real Trainium2 execution, BF16 inputs and FP32 outputs, on October 10, 2026.
-Each cell summarizes 300 measured calls across three rounds. The comparison is
-the **fastest correct tuned separate baseline**, which was `separate_score` for
-all three workloads. Lower latency is better.
+The model supplies a matrix of raw scores, called **logits**, with shape `[T,V]`:
+`T` is the number of token positions being scored and `V` is the vocabulary size.
+The operation returns two FP32 vectors of length `T`:
 
-| Workload | Positions × vocabulary | Before p50 (ms) | Fused p50 (ms) | Fused p95 (ms) | Speedup | Latency reduction |
-| --- | --- | ---: | ---: | ---: | ---: | ---: |
-| A: small | 128 × 8192 | 0.073176 | 0.065931 | 0.066444 | 1.11x | **9.9%** |
-| B: larger | 512 × 32768 | 0.406309 | 0.322317 | 0.323087 | 1.26x | **20.7%** |
-| C: partial tiles | 129 × 8193 | 0.077624 | 0.067073 | 0.067860 | 1.16x | **13.6%** |
+- **Selected-token log-probability:** the logarithm of the probability assigned
+  to the chosen token at each position.
+- **Entropy:** how spread out the probability distribution is at each position.
+  It measures distribution uncertainty, not answer correctness.
 
-On B, the improvement saves **0.084 ms per scoring call** against the strongest
-baseline. The AWS-library composition takes 0.688173 ms for both outputs versus
-0.322317 ms for fusion, a **53.2% reduction**, but that slower baseline is not
-used for the headline gain. Device medians remain consistent across rounds:
-0.322226–0.322400 ms for fusion and 0.406286–0.406357 ms for the best separate path.
+This application motivates the optimization. Our experiments use deterministic
+synthetic logits and measure the scoring primitive on Trainium2.
 
-Host execution timing, with device inputs and outputs already resident:
+### 1.2 Optimization opportunity and contribution
 
-| Workload | Separate host p50 (ms) | Fused host p50 (ms) | Reduction |
-| --- | ---: | ---: | ---: |
-| A | 0.124943 | 0.117902 | 5.6% |
-| B | 0.457228 | 0.372783 | 18.5% |
-| C | 0.129239 | 0.128378 | 0.7% |
+Both outputs need the same vocabulary normalization and exponentials. Calculating
+them through independent passes repeats work over a potentially large input.
+The project evaluates whether sharing that work reduces latency while preserving
+numerical correctness and support for uneven input shapes.
 
-The host measurements include costs beyond the device execution interval. On C,
-the host benefit is much smaller than the device benefit. These are scoring
-primitive results; a full model or training-step speedup remains unmeasured.
+The contribution consists of a **joint NKI forward kernel**, a stable streaming
+entropy calculation, an on-chip selected-score gather, complete baselines,
+hardware validation and auditable measurements. Temporary vocabulary tiles remain
+on chip, and the outputs are two vectors rather than a full probability matrix.
+Our own separate baseline also avoids a full probability intermediate; the
+comparison therefore measures the benefit of sharing work between the outputs.
 
-**Accuracy:** 37 cases × 3 implementations = **111 passing hardware comparisons**,
-plus 10 invalid-input rejection checks. Worst fused absolute error is
-**0.0000458 for log-probability** and **0.0000429 for entropy**. No tolerance was
-relaxed. The selected benchmark configurations also pass the uniform, peaked,
-wide-distribution and large-offset cases, not just the benchmark's random inputs.
+Fusion is an established technique. [Hugging Face TRL provides GPU token scoring](https://github.com/huggingface/trl/blob/v1.14.0/trl/kernels/logprob_entropy.py),
+and [AWS NKI Library provides streaming cross entropy](https://github.com/aws-neuron/nki-library/blob/main/src/nkilib_src/nkilib/experimental/loss/cross_entropy.py).
+This project contributes an NKI joint implementation and a measured Trainium
+comparison; it makes no claim to invent fusion. See [NOTICE.md](NOTICE.md).
 
-**Goal check:** the proposal targeted at least 20% lower median device latency on
-both A and B. It succeeded on B and missed A. C also improves, with a 13.6% gain.
-The broader two-workload target is therefore **partially met**.
+## 2. Objectives
 
-The optional 512 × 151936 vocabulary experiment did not complete and supplies
-no reported correctness or performance result. The submission's measured scope
-is A, B and C above.
+| Objective | Acceptance criterion | Outcome |
+| --- | --- | --- |
+| Preserve correctness | Every output element passes the fixed FP32-reference accuracy gate | **111/111 hardware comparisons pass** |
+| Support realistic boundaries | Handle singleton vocabularies, extreme offsets, boundary indices and partial tiles | All 37 numerical cases pass across three implementations |
+| Reduce device latency | At least 20% lower median latency on both A and B versus the fastest correct separate baseline | **Partially met:** B achieves 20.7%; A achieves 9.9% |
+| Make evaluation reproducible | Retain tuning, raw samples, physical-core traces, versions and source hashes | Evidence committed; offline audit passes |
 
-Evidence: [summary and per-round statistics](results/summary.json),
-[individual timing samples](results/raw_samples.json),
-[physical-core trace events](results/traces/),
-[tuning measurements](results/tuning.json),
-[hardware validation](results/validation-tuned.json), and
-[environment and source hashes](results/environment.json).
-`python audit_results.py` verifies the reported statistics, trace grouping,
-fastest-baseline selection and unchanged source files without requiring Neuron.
+The 20% threshold is our predefined project objective, not an organizer scoring
+rule. Workload C adds boundary coverage beyond the two primary workloads.
 
-## What is measured
+## 3. Methodology
 
-All implementations return **both** FP32 outputs from identical BF16 logits and
-int32 indices, with the same core allocation. The separate NKI baseline performs
-two independent normalization passes inside one compiled dispatch; it avoids a
-full probability tensor and uses the same streaming arithmetic as the fused
-kernel. A second baseline uses the installed AWS cross-entropy kernel in FP32,
-negates its loss and computes entropy separately, also inside one dispatch.
-The fastest correct measured separate baseline is the comparison for each shape.
+### 3.1 Input contract and stable computation
 
-Device timing uses `nrtpy` execution trace events. LNC=2 creates two physical-core
-intervals per execution; the reported duration spans the earliest start to the
-latest completion for that `exec_id`, using synchronized trace timestamps to
-account for the cores' clock offsets. Compilation, input generation, transfers
-and host validation are excluded. Host execution timing is reported separately
-with inputs and outputs already resident on the device; it is not a full
-application latency measurement.
+Inputs are contiguous NumPy BF16 logits `[T,V]` and contiguous int32 selected
+indices `[T]`. Outputs are FP32 log-probability and entropy vectors `[T]`, using
+natural logarithms and temperature one. Inputs must be finite with
+`abs(logit) <= 10000`, `T >= 1`, valid indices, and `1 <= V <= 2**24`.
+The vocabulary bound keeps local FP32 index arithmetic exact in this SDK.
 
-Before final measurement, every implementation gets the same tile search on
-a separate deterministic input seed: four configurations for each of three
-implementations on three workloads, with all 36 candidates passing correctness.
-The final run rotates implementation order
-across three rounds, using ten warmups and one hundred measured calls per round.
-It retains individual samples, core trace events, percentiles, variation,
-environment details and code hashes. The predefined goal is at least **20% lower
-median device latency on workloads A and B**; this is our project target.
+For each row, the kernel maintains a running maximum and two sums:
 
-## Interface and numerical behavior
+```text
+m = maximum logit
+s = sum(exp(x - m))
+u = sum(exp(x - m) * (x - m))
 
-```python
-from runtime import score_tokens
-logprobs, entropy = score_tokens(logits, selected_indices)
+logprob = x[selected] - m - log(s)
+entropy = log(s) - u / s
 ```
 
-- `logits`: contiguous NumPy BF16 `[T,V]`, finite values with `abs(x) <= 10000`.
-- `selected_indices`: contiguous NumPy int32 `[T]`, indices from zero through `V-1`.
-- Outputs: two FP32 arrays `[T]`, using natural logarithms, temperature one.
-- `T >= 1`; `1 <= V <= 2**24`. The vocabulary bound keeps FP32 local index arithmetic
-  exact in this SDK. Partial row and vocabulary tiles are supported.
-- Fixed accuracy gate: every element satisfies `abs(error) <= 1e-3 + 1e-4 * abs(reference)`.
-  The reference uses the same quantized BF16 input, promoted to FP32.
+Rows and vocabulary entries are processed in tiles using fast on-chip memory.
+When a later tile increases the maximum, the previous sums must be corrected
+before adding that tile's contribution:
 
-For a row, subtract its maximum `m`, compute `s = sum(exp(x-m))` and
-`u = sum(exp(x-m)*(x-m))`, then return
-`logprob = x[selected]-m-log(s)` and `entropy = log(s)-u/s`.
-When a later tile raises the running maximum, both sums are rescaled; the
-weighted sum also receives the required shift correction. Only valid slices
-are loaded, so padded infinities cannot contaminate the entropy.
+```text
+delta = old_m - new_m
+scale = exp(delta)
+u = scale * (old_u + delta * old_s)
+s = scale * old_s
+```
 
-Uniform scores, vocabulary size one, random scores, peaked distributions,
-positive/negative common offsets, first/middle/last indices, increasing tile
-maxima and ragged shapes exercise the hardware correctness suite. Host checks
-reject invalid layout, dtype, shape, values and indices before device execution.
+The entropy correction uses the **old** normalization sum. An on-chip gather
+selects one score per row without a vocabulary-sized selection mask. Scalar
+Engine produces exponentials and their sum together; valid slices handle partial
+tiles. Token positions are divided across two physical cores. The installed
+Neuron compiler builds the kernel, and `nrtpy` loads and executes it.
 
-## Run it on the workshop pod
+### 3.2 Complete and comparable baselines
 
-This implementation targets the installed workshop NKI 0.6 snapshot on Trainium2.
-`nki`, `nkilib`, `nrtpy`, NumPy and `ml_dtypes` are already available there.
-The standalone compiler adapter uses snapshot-specific APIs; inspect the recorded
-versions before porting it to another SDK.
+| Implementation | Computation | Role |
+| --- | --- | --- |
+| `fused_score` | Shared vocabulary processing for both outputs | Proposed implementation |
+| `separate_score` | Independent log-probability and entropy passes with the same streaming arithmetic and gather optimization | Strong separate NKI baseline |
+| `aws_separate_score` | Installed AWS cross entropy in FP32, negated to obtain log-probability, plus independently computed entropy | AWS-library composition baseline |
 
-From a terminal with the workshop Kubernetes credentials:
+All three return **both required outputs**, use identical inputs and the same
+core allocation, and execute in **one compiled dispatch**. The primary comparison
+uses the fastest correct tuned separate implementation for each workload.
+
+### 3.3 Workloads and environment
+
+| Workload | Positions `T` | Vocabulary `V` | Input scores | Purpose |
+| --- | ---: | ---: | ---: | --- |
+| A: small | 128 | 8192 | 1,048,576 | Compact scoring batch; primary workload |
+| B: larger | 512 | 32768 | 16,777,216 | 16× the input scores of A; primary workload |
+| C: partial / uneven | 129 | 8193 | 1,056,897 | One additional row and vocabulary entry relative to A; exercises uneven boundaries |
+
+“Small” and “larger” describe **input matrix sizes**, not language-model sizes.
+“Partial” refers to valid slices when shards or tiles contain fewer entries than
+a full block. Diagonal or square matrices are not required.
+
+Measurements were collected on **October 10, 2026**, in workshop pod `seat-256`
+on Trainium2, with logical NeuronCore configuration **LNC=2**, two physical-core
+execution intervals per scoring call, and `NEURON_RT_VISIBLE_CORES=0,1`.
+The image uses Python 3.13.7, NKI `0.6.0+31049202112.g85070674` and
+Neuron compiler `2.27.5334.0+f702b353`. Exact versions and source identifiers
+are recorded in [environment.json](results/environment.json).
+
+### 3.4 Correctness and benchmark protocol
+
+The reference promotes the **same quantized BF16 inputs** to FP32. Every element
+must satisfy the unchanged accuracy gate:
+
+```text
+abs(actual - reference) <= 1e-3 + 1e-4 * abs(reference)
+```
+
+The 37-case suite covers random and wide distributions, uniform scores, peaked
+distributions, vocabulary size one, positive and negative common offsets,
+first/middle/last indices, increasing tile maxima and ragged shapes. It also
+checks numeric invariants and ten invalid host-input rejections.
+
+Performance evaluation follows this sequence:
+
+1. **Tune equally.** Each implementation receives four configurations:
+   `(row_tile, vocab_tile)` = `(64,4096)`, `(128,4096)`, `(128,8192)` and
+   `(128,16384)`. Tuning uses seed 2027, five warmups and 30 device samples
+   per candidate. All **36 candidates** pass correctness.
+2. **Validate selected configurations.** The final tile choices undergo the
+   full hardware correctness suite, including distributions outside the
+   tuning input.
+3. **Measure independently.** Final inputs use seed 2026. Implementation order
+   rotates over three rounds, with ten warmups and 100 measured calls per
+   round, implementation, workload and timing mode.
+4. **Retain and audit.** The run saves **5,400 timing samples**, **27 trace
+   files**, percentiles, variation, per-round statistics and compiled-program
+   hashes. The offline audit reconstructs timings and checks source hashes.
+
+**Device latency** spans the earliest physical-core start to the latest completion
+for one `exec_id`, using synchronized trace timestamps. Two physical-core
+intervals are grouped as one execution; raw clocks from different cores are not
+mixed. Compilation, input generation, transfers and host validation are excluded.
+**Resident host latency** is measured separately with device inputs and outputs
+already allocated. It excludes transfers and full application integration.
+
+### 3.5 Reproduction and submission artifacts
+
+The full project is contained in this folder. On the supplied Trainium2 image:
 
 ```bash
 kubectl exec -it seat-256 -- bash
@@ -157,73 +189,130 @@ cd /workspace/projects/03-fused-token-scoring
 export NEURON_PLATFORM_TARGET_OVERRIDE=trn2
 export NEURON_LOGICAL_NC_CONFIG=2
 export NEURON_RT_VISIBLE_CORES=0,1
-python runtime.py
-python validate.py
-python benchmark.py --tune
-python validate.py --tuning results/tuning.json --output results/validation-tuned.json
-python benchmark.py
-python audit_results.py
+bash run.sh
+# Completion status: cat results/run.exit
 ```
 
-For this development checkout, replace the `cd` line with
-`cd /workspace/fused-token-scoring-shubham/projects/03-fused-token-scoring`.
+The existing isolated development copy uses
+`/workspace/fused-token-scoring-shubham/projects/03-fused-token-scoring`.
+Use available cores and coordinate model-server reservations with the team.
+The standalone compiler adapter targets the recorded NKI snapshot; another SDK
+may need adapter changes. CPU simulation provides correctness checks only.
 
-The entire sequence can survive a dropped terminal connection:
-
-```bash
-nohup bash run.sh > run.log 2>&1 < /dev/null &
-tail -f run.log
-# Completion status: cat results/run.exit (0 means success).
-```
-
-Use your assigned pod and available cores. An idle-looking core can still be
-reserved by another runtime process. Coordinate the model server with your team
-before pausing it; preserve its settings and restore it after benchmarking.
-This implementation's development runs use the isolated directory
-`/workspace/fused-token-scoring-shubham/projects/03-fused-token-scoring`, preserving
-the active checkout and other project files in `/workspace`.
-
-CPU simulation is useful before hardware access, but supplies no performance
-result:
-
-```bash
-python validate.py --simulate --quick --output results/simulator-quick.json
-```
-
-The submitted evidence can also be checked locally without Trainium or NumPy,
-from the repository root:
+The committed evidence can be audited locally **without Trainium or NumPy**, from
+the repository root:
 
 ```bash
 python3 projects/03-fused-token-scoring/audit_results.py \
   --results projects/03-fused-token-scoring/results
 ```
 
-For repeated device calls, construct `runtime.LoadedKernel` once and reuse its
-device inputs/outputs. The convenience `score_tokens` call includes validation,
-compilation/loading and transfers, and is deliberately excluded from kernel
-timing. Compiler artifacts are cached under ignored `build/` directories.
-
-## Files and implementation steps
-
-| File | Purpose |
+| Artifact | Purpose |
 | --- | --- |
-| [IMPLEMENTATION.md](IMPLEMENTATION.md) | Ordered checkpoints and frozen acceptance criteria |
-| [kernel.py](kernel.py) | Fused kernel and independent-pass NKI baseline |
-| [baseline.py](baseline.py) | Complete baseline using installed AWS cross entropy |
-| [reference.py](reference.py) | BF16 input contract, stable FP32 reference and accuracy gate |
-| [runtime.py](runtime.py) | Standalone compile/load, device I/O and trace timing |
-| [validate.py](validate.py) | Hardware correctness and host rejection checks |
-| [benchmark.py](benchmark.py) | Equal-budget tuning, repeated measurement and saved evidence |
-| [run.sh](run.sh) | Sequential pipeline that records a final exit status |
-| [audit_results.py](audit_results.py) | Offline check of hashes, raw timings, trace grouping and reported gains |
-| `results/` | Actual validation, tuning, samples, traces and environment metadata |
+| [kernel.py](kernel.py), [baseline.py](baseline.py) | Proposed kernel and both complete baselines |
+| [reference.py](reference.py), [validate.py](validate.py) | Input contract, FP32 oracle and hardware correctness suite |
+| [runtime.py](runtime.py) | Compile/load, device I/O and execution trace timing |
+| [benchmark.py](benchmark.py), [run.sh](run.sh) | Equal-budget tuning and repeated benchmark pipeline |
+| [audit_results.py](audit_results.py) | Offline checks of source hashes, samples, traces and reported gains |
+| [summary.json](results/summary.json), [RESULTS.md](results/RESULTS.md) | Aggregated measurements and per-round statistics |
+| [raw_samples.json](results/raw_samples.json), [traces/](results/traces/) | Individual timings and physical-core event evidence |
+| [tuning.json](results/tuning.json), [validation-tuned.json](results/validation-tuned.json) | Candidate measurements and selected-configuration correctness |
+| [environment.json](results/environment.json) | SDK versions, baseline/source hashes and hardware metadata |
+| [IMPLEMENTATION.md](IMPLEMENTATION.md) | Implementation checkpoints and frozen acceptance criteria |
 
-## Scope of the result
+The convenience interface is
+`runtime.score_tokens(logits, selected_indices)`. Repeated application calls
+should reuse `runtime.LoadedKernel`; the convenience call includes validation,
+compilation/loading and transfers and is excluded from the kernel timing.
 
-This is a forward scoring primitive for materialized logits. It does not include
-the language-model head, gradients, optimizer steps, framework/autograd
-integration, multi-device execution or a full GRPO training run. Kernel speedup
-can reduce the cost of this operation; the application benefit depends on how
-much of its total time it spends scoring. Any full training-speed claim needs a
-separate integration benchmark. Memory traffic reduction is an algorithmic
-property here, not a measured device memory-usage result.
+## 4. Results and metrics
+
+### 4.1 Device latency: comparison with the strongest baseline
+
+Each statistic summarizes **300 calls across three rounds**. `p50` is the median;
+`p95` is the 95th percentile. The fastest correct separate baseline was
+`separate_score` for every measured workload. Lower latency is better.
+
+| Workload | Separate p50 (ms) | Fused p50 (ms) | Fused p95 (ms) | Speedup | Latency reduction |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| A: small | 0.073176 | 0.065931 | 0.066444 | 1.11× | **9.9%** |
+| B: larger | 0.406309 | 0.322317 | 0.323087 | 1.26× | **20.7%** |
+| C: partial / uneven | 0.077624 | 0.067073 | 0.067860 | 1.16× | **13.6%** |
+
+Speedup is `separate_p50 / fused_p50`; latency reduction is
+`100 * (1 - fused_p50 / separate_p50)`. On B, fusion saves approximately
+**0.084 ms (84 microseconds) per scoring call**. Its three round medians range
+from 0.322226 to 0.322400 ms, compared with 0.406286 to 0.406357 ms for the
+strongest separate path. Raw samples and complete statistics are retained.
+
+The AWS-library composition produces both outputs in 0.130962, 0.688173 and
+0.126745 ms on A, B and C, respectively. On B, fusion is **2.14× faster** than
+that composition, with **53.2% lower latency**. The primary 20.7% gain uses the
+stronger separate NKI baseline.
+
+### 4.2 Resident host execution latency
+
+| Workload | Separate host p50 (ms) | Fused host p50 (ms) | Reduction |
+| --- | ---: | ---: | ---: |
+| A | 0.124943 | 0.117902 | 5.6% |
+| B | 0.457228 | 0.372783 | **18.5%** |
+| C | 0.129239 | 0.128378 | 0.7% |
+
+Host measurements include costs beyond the device execution interval. The
+smaller benefit on C illustrates how those costs can dilute a device improvement.
+These values describe resident execution, not full application latency.
+
+### 4.3 Numerical correctness
+
+All **37 cases × 3 implementations = 111 hardware comparisons** pass, together
+with **10 invalid-input rejection checks**. No tolerance was relaxed.
+
+| Implementation | Worst log-probability absolute error | Worst entropy absolute error | Hardware cases passed |
+| --- | ---: | ---: | ---: |
+| Fused NKI | 0.0000458 | 0.0000429 | 37/37 |
+| Separate NKI | 0.0000458 | 0.0000429 | 37/37 |
+| AWS-library composition | 0.0004826 | 0.0000429 | 37/37 |
+
+Errors are measured against the FP32 reference on the same BF16 inputs. Passing
+this numerical gate establishes correctness for the tested operation and cases;
+it is not a model-quality evaluation.
+
+### 4.4 Interpretation and limitations
+
+The observations support sharing vocabulary processing as a useful optimization
+for this scoring primitive. The predefined **20% target is partially met**:
+B passes, A misses, and C provides an additional 13.6% improvement.
+
+The measured scope is one workshop pod, the recorded SDK, three input shapes
+and deterministic synthetic distributions. Results should be remeasured for a
+new device, SDK, shape or integration. The optional `512 × 151936` experiment
+did not complete; no correctness or performance result is claimed for it.
+
+This implementation computes forward scores from materialized logits.
+Language-model-head fusion, gradients, optimizer steps, framework/autograd
+integration, multi-device execution and a complete GRPO training run remain
+outside the measured contribution. Reduced vocabulary processing follows from
+the algorithm; device memory usage and energy savings were not measured.
+
+Application gains depend on the fraction of total time spent scoring. For
+example, **hypothetically**, if scoring takes one second of a ten-second training
+step, a 20.7% scoring reduction would save about 0.207 seconds, or 2.1% of total
+step time, assuming other work is unchanged. Full-step gains require an actual
+integration benchmark.
+
+## 5. Conclusion
+
+We deliver a runnable NKI implementation that computes selected-token
+log-probability and entropy jointly on Trainium2. Against an optimized separate
+baseline with comparable precision, tiling and core allocation, it achieves
+**20.7% lower median device latency on the larger workload**, with additional
+**9.9% and 13.6% reductions** on the small and uneven workloads. All **111
+hardware correctness comparisons** pass, and the saved evidence is independently
+auditable without accelerator access.
+
+The practical contribution is a faster, validated building block for Trainium
+workflows that repeatedly need both token likelihood and entropy. The next step
+is integration into a real scoring or training pipeline, gradients where required,
+and measurement of complete application throughput. The benchmark supports the
+kernel improvement; the broader two-workload target and full training impact
+remain explicit limits of the result.
