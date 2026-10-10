@@ -1,5 +1,20 @@
 # Level scorecard
 
+## Current system: generated planner + legalizer, revision dd85856, base Qwen3-8B on Trainium2 (as of 21:47 UTC)
+
+| Level | Score | Shapes | Run |
+|---|---:|---:|---|
+| 1 Average pooling | **1.00** (warm start) | 4/4 | runs/controlled-20261010T214022-7d05zuet |
+| 2 Transpose | **1.00** (cold, round 0) | 4/4 | runs/controlled-20261010T214002-44j993c1 |
+| 3 Single-tile matmul | **1.00** (cold, round 0) | 1/1 | runs/controlled-20261010T214002-44j993c1 |
+| 4 Tiled matmul | running | – | runs/controlled-20261010T214002-44j993c1 |
+| 5 Matmul, hoisted loads | running | – | runs/controlled-20261010T214002-44j993c1 |
+| 6 Matmul, M/N blocked | 0.625 after round 0 (running) | 1/4 | runs/controlled-20261010T214002-44j993c1 |
+| 7 Matmul, M/N/K blocked | 0.30 after round 0 (running) | 0/4 | runs/controlled-20261010T214002-44j993c1 |
+| 8 Single-head attention | 0.30 after round 0 (running) | 0/3 | runs/controlled-20261010T214002-44j993c1 |
+
+The tables below are earlier runs; each run directory records the exact source revision used.
+
 Observed results on seat-265 only. Original five-repeat baseline: zero of five solved on each level. Official checker unchanged. No device-verified kernels.
 
 | Level | Operation | Best cold-start agent reward | Shapes | Evidence / status (updated 20:58 UTC) |
