@@ -49,11 +49,11 @@ function renderKpis(summary) {
       <code class="inline">python agent.py --all</code></div>`;
     return;
   }
-  const solvedTotal = levels.reduce((n, [_lv, A]) => n + A.solved_runs, 0);
+  const solvedLevels = levels.filter(([_lv, A]) => A.solved_runs > 0).length;
   const runsTotal = levels.reduce((n, [_lv, A]) => n + A.runs, 0);
   let html = `<div class="tile hero"><div class="label">levels solved</div>
-    <div class="value">${solvedTotal}<span class="of">/${levels.length}</span></div>
-    <div class="sub">across ${runsTotal} level-runs</div></div>`;
+    <div class="value">${solvedLevels}<span class="of">/${levels.length}</span></div>
+    <div class="sub">${runsTotal} level-runs aggregated</div></div>`;
   for (const [lv, A] of levels) {
     const isHoldout = +lv > 10;
     html += `<div class="tile ${A.solve_rate > 0 ? "solved" : ""} ${isHoldout ? "holdout" : ""}">

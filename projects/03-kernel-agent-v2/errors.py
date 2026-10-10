@@ -37,6 +37,7 @@ TAXONOMY = {
     "ragged-edge":      ("wrong only in the final partial tile", "numeric"),
     "partial-coverage": ("some tiles written, others left zero/untouched", "numeric"),
     "core-arithmetic":  ("wrong across the interior, not at an edge", "numeric"),
+    "stat-scope":       ("a per-tile statistic where the reference uses the whole row", "numeric"),
     "nondeterministic": ("two runs on the same input disagree", "numeric"),
     # runtime
     "raised":           ("the kernel raised during execution", "runtime"),
@@ -96,6 +97,12 @@ def enrich_exception(text):
                     "of exponentials and cannot be 0 if you subtracted the row max first.")
     if "maximum recursion depth" in t:
         return t + " FIX: use loops, not recursion -- tiles are iterated with `for`."
+    if "concatenation axis" in t or "must match exactly" in t and "concatenate" in t:
+        return t + (" FIX: never build the output by concatenating tiles. Preallocate "
+                    "`out = np.zeros((R, C), dtype=...)` BEFORE the loops and assign each "
+                    "tile to its own slice: `out[r0:r0+128, c0:c0+512] = ...`. The final "
+                    "partial tile has a different size than the rest, which is exactly "
+                    "what breaks np.concatenate.")
     if "Unable to allocate" in t or "MemoryError" in t:
         return t + (" FIX: you allocated something the size of the whole INPUT per "
                     "iteration. Allocate the small tile inside the loop instead.")
@@ -166,6 +173,12 @@ def instruction_from_failure(failure, case_label=""):
             "The formula itself is wrong in the interior. Recompute it for one tile BY "
             "HAND (a SCRATCH: line comparing your expression to the reference on a 3x3 "
             "array is the fastest way to see which term differs), then fix that term.",
+        "stat-scope":
+            "Your statistic (mean / variance / RMS / max) is computed per TILE, but the "
+            "reference computes it over the WHOLE row. Restructure to two passes: pass 1 "
+            "accumulates the per-row statistic across all of the row's column tiles; "
+            "pass 2 walks the tiles again and applies it. A tile-local statistic is wrong "
+            "wherever a row spans more than one tile.",
         "nondeterministic":
             "Your kernel gives different answers on identical calls: you are reading "
             "uninitialised memory or carrying state in a global. Allocate fresh output "
@@ -189,9 +202,23 @@ def instruction_from_failure(failure, case_label=""):
             "You marked this high confidence and it is wrong. Verify your index "
             "arithmetic with a SCRATCH: line on a small array before answering again.",
     }
+    # Instructions that map to a reference card say so: the model was not finding
+    # "preallocate, don't concatenate" or "statistics span the whole row" because no
+    # instruction used those words. Give it the exact retrieval query.
+    DOCS_HINT = {
+        "stat-scope": "DOCS: row statistics that span column tiles",
+        "ragged-edge": "DOCS: preallocate the output never concatenate tiles",
+        "no-tile-loop": "DOCS: what a compliant kernel looks like",
+        "banned-call": "DOCS: the five rules",
+        "partial-coverage": "DOCS: preallocate the output never concatenate tiles",
+        "wrong-shape": "DOCS: output-size formulas",
+    }
     base = T.get(tax)
     if base is None:  # unknown mode -- degrade to the verdict, never to silence
         base = "Fix what the verdict names."
+    hint = DOCS_HINT.get(tax)
+    if hint:
+        base = f"{base} (before answering, run: {hint})"
     return f"{base}{loc} {v}".strip()
 
 

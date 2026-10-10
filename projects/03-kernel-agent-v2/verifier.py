@@ -199,6 +199,57 @@ def _snapshot(args):
     return [a.copy() if isinstance(a, np.ndarray) else a for a in args]
 
 
+def _stat_scope(got, want, err, tol):
+    """Detect the per-tile-statistic signature. Returns (taxonomy, hint) or None.
+
+    Fits a per-(row, column-tile) least-squares scale s and asks how much of the error
+    it explains. Two diagnoses come out:
+      stat-scope      -- scales DIFFER between tiles: the statistic was computed per
+                         tile (softmax's 1-wide tile returning 1.0 is the loud case)
+      core-arithmetic -- one uniform scale explains everything: a wrong leading
+                         constant or epsilon, not a scope problem
+    """
+    if got.ndim != 2 or got.shape[1] <= ladder.TILE_COLS:
+        return None
+    wrong = int((err > tol).sum())
+    if not wrong:
+        return None
+    explained = 0
+    scales = []
+    for c0 in range(0, got.shape[1], ladder.TILE_COLS):
+        c1 = min(c0 + ladder.TILE_COLS, got.shape[1])
+        m = err[:, c0:c1] > tol
+        if not m.any():
+            continue
+        g, w = got[:, c0:c1], want[:, c0:c1]
+        dn = (w * w).sum(axis=1, keepdims=True)
+        num = (g * w).sum(axis=1, keepdims=True)
+        s = np.where(dn > 1e-15, num / np.where(dn > 1e-15, dn, 1.0), 1.0)
+        resid = np.abs(g - w * s)
+        good = (resid <= tol * 0.5) & m & (np.abs(s) > 0.2)
+        explained += int(good.sum())
+        for r in range(got.shape[0]):
+            if m[r, 0] or m[r, -1]:
+                scales.append(float(s[r, 0]))
+    if explained < 0.6 * wrong or not scales:
+        return None
+    arr = np.asarray(scales)
+    varies = arr.size > 1 and (arr.max() / max(arr.min(), 1e-9)) > 1.05 \
+        and not np.allclose(arr, arr[0], rtol=0.02)
+    if varies:
+        return ("stat-scope",
+                "the error is a per-TILE scaling: your normalising statistic (max, sum, "
+                "mean, RMS) was computed per TILE, but the reference computes it over "
+                "the WHOLE row. Restructure to two passes -- pass 1 accumulates the "
+                "per-row statistic across all of the row's column tiles, pass 2 walks "
+                "the tiles again and applies it. (before answering, run: DOCS: row "
+                "statistics that span column tiles)")
+    return ("core-arithmetic",
+            "every wrong element is the reference times a NEAR-CONSTANT factor, so the "
+            "shape of the computation is right and one constant in it is wrong (a "
+            "missing epsilon, a scale factor, a sqrt). Check the formula's constants.")
+
+
 def describe_mismatch(got, want, rtol):
     """The message the agent learns from. Localises: element, direction, which tile.
     Returns (verdict, taxonomy) or (None, None)."""
@@ -256,6 +307,19 @@ def describe_mismatch(got, want, rtol):
            f"got {got.flat[i]:+.6g}",
            f"  {float((err > tol).mean()):.1%} of elements are outside tolerance"]
     tax = "core-arithmetic"
+
+    # Statistic-scope signature (measured twice in the first live baseline): when the
+    # error is explained, per (row, column tile), by got ~= want * s -- i.e. the output
+    # is the reference times a factor that DIFFERS between tiles -- the kernel computed
+    # its normalising statistic per TILE where the reference used the whole row. This is
+    # invisible to the ragged-edge location hint, which sends the model clamping slices
+    # it does not need to clamp. A UNIFORM factor instead means a plain wrong constant.
+    scope = _stat_scope(got, want, err, tol)
+    if scope is not None:
+        kind, hint = scope
+        msg.append("  " + hint)
+        return "\n".join(msg), kind
+
     if got.ndim >= 2:
         r, c = int(idx[0]), int(idx[-1])
         ragged = []

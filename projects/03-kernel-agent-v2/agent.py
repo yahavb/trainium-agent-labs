@@ -64,6 +64,7 @@ EXPERIMENTS = {
     "partial-coverage": "SCRATCH: R, C = 300, 1100; [(r0, c0, x_slice_shape := (min(128, R-r0), min(512, C-c0))) for r0 in range(0, R, 128) for c0 in range(0, C, 512)]",
     "wrong-shape": "SCRATCH: L, K, s, d = 31, 3, 2, 3; (L - d*(K-1) - 1)//s + 1",
     "core-arithmetic": "SCRATCH: t = np.array([[1., 2., 3.], [4., 5., 6.]]); (t.max(axis=1, keepdims=True), t - t.max(axis=1, keepdims=True))",
+    "stat-scope": "SCRATCH: t = np.arange(6.).reshape(2, 3); (np.sqrt((t*t).mean(axis=1, keepdims=True)), np.sqrt((t[:, 0:2]*t[:, 0:2]).mean(axis=1, keepdims=True)))",
     "no-tile-loop": "SCRATCH: R = 129; [r0 for r0 in range(0, R, 128)]",
     "banned-call": "SCRATCH: t = np.arange(6.).reshape(2, 3); t.sum(axis=1)",
     "nondeterministic": "SCRATCH: out = np.zeros(4); out",
@@ -348,11 +349,16 @@ class LevelRun:
                       f"not converging.")
                 break
             if same >= 2:
-                exp = EXPERIMENTS.get(tax)
-                if exp:
-                    self.log_tool("SCRATCH-HINT", exp, "(suggested to the model)")
-                    self.latest = (self.latest[0], self.latest[1] +
-                                   f"\nBefore answering, run this check and read its output:\n  {exp}")
+                # A repeated exception means the model is editing blind: make it
+                # reproduce the exception on a small array first -- reading the actual
+                # message beats a third blind rewrite (measured: level 4 burned four
+                # identical rounds on one concat error).
+                exp = EXPERIMENTS.get(tax) or (
+                    "Reproduce this exact exception on a SMALL array (e.g. a (3, 5) "
+                    "tile) with a SCRATCH: line, read the message, then fix the kernel.")
+                self.log_tool("SCRATCH-HINT", exp, "(suggested to the model)")
+                self.latest = (self.latest[0], self.latest[1] +
+                               f"\nBefore answering, do this and read its output:\n  {exp}")
         return self.finish(rnd + 1, solved_round)
 
     def finish(self, rounds_used, solved_round, endpoint_dead=False):
@@ -400,6 +406,8 @@ def discover_context(a):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--level", type=int, choices=sorted(ladder.LEVELS))
+    ap.add_argument("--levels", default="",
+                    help="comma list, e.g. --levels 4,5,6 -- iterate exactly these")
     ap.add_argument("--all", action="store_true", help="the graded ladder, levels 1-10")
     ap.add_argument("--holdout", action="store_true",
                     help="include the self-holdout tier 11-13 (never tuned against)")
@@ -445,9 +453,15 @@ def main():
         a.context = a.context if isinstance(a.context, int) else 8192
         print("*** OFFLINE: canned replies; proves the loop, predicts nothing. ***")
 
-    levels = ([a.level] if a.level else
-              ladder.holdout_levels() + ladder.graded_levels() if (a.all and a.holdout)
-              else ladder.graded_levels() if a.all else [1])
+    if a.levels:
+        levels = [int(x) for x in a.levels.split(",") if x.strip()]
+        bad = [x for x in levels if x not in ladder.LEVELS]
+        if bad:
+            sys.exit(f"no level(s) {bad}; have {sorted(ladder.LEVELS)}")
+    else:
+        levels = ([a.level] if a.level else
+                  ladder.holdout_levels() + ladder.graded_levels() if (a.all and a.holdout)
+                  else ladder.graded_levels() if a.all else [1])
 
     stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     run_id = f"{stamp}-{(a.tag or ('offline' if a.offline else 'run'))}-{os.getpid()}"

@@ -35,6 +35,7 @@ SEED = {
     "non-finite": "subtract the row max before exp; initialise every output element you read",
     "partial-coverage": "each tile writes ITS OWN output slice; check loop bounds against out.shape",
     "core-arithmetic": "verify the formula on a 3x3 array with a SCRATCH line before writing the loop",
+    "stat-scope": "row statistics must span the WHOLE row: accumulate across column tiles, then normalise in a second pass",
     "wrong-shape": "recompute the output size formula from the input shape first",
     "no-tile-loop": "wrap work in for-loops stepping 128 rows / 512 cols",
     "whole-array-op": "slice a tile first, then do arithmetic on the slice",

@@ -1,5 +1,17 @@
 # Numeric gotchas
 
+## Per-tile softmax returns 1.0 in a one-wide tile
+
+Softmax computed per COLUMN tile looks almost right and is wrong everywhere: the
+denominator belongs to the whole row. The loud signature: a one-wide final tile
+normalizes its single element to exactly **1.0** while the reference value there is
+~1/C — plausible numbers, no crash. The quiet version: every element of every row is
+scaled by `sum_whole_row / sum_tile`, a small error within tolerance on friendly data
+and far outside it on wide rows. Fix: compute the row max and the row sum of
+exponentials over the WHOLE row (accumulate across column tiles), then normalize in a
+second pass — see "row statistics that span column tiles" in the patterns card.
+
+
 Every one of these produces PLAUSIBLE numbers, not a crash. That is why the test battery
 exists and why each has a named fix.
 

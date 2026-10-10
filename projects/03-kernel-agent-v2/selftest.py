@@ -113,6 +113,50 @@ def kernel(x):
     r = verifier.check(mut, 2)
     check("input mutation caught", r["taxonomy"] == "modified-input", str(r["taxonomy"]))
 
+    # --- planted bug: per-tile statistic (the stat-scope trap, measured on level 4) --
+    # RMS normalised per column tile: wherever the reference's whole-row RMS differs
+    # from the tile-local one, and visibly wherever a tile is 1 column wide (x/|x| = 1).
+    perscope = """
+import numpy as np
+def kernel(x, eps=1e-6):
+    R, C = x.shape
+    out = np.zeros((R, C), dtype=np.float64)
+    for r0 in range(0, R, 128):
+        for c0 in range(0, C, 512):
+            t = x[r0:r0+128, c0:c0+512].astype(np.float64)
+            rms = np.sqrt((t * t).mean(axis=1, keepdims=True)) + eps
+            out[r0:r0+128, c0:c0+512] = t / rms
+    return out
+"""
+    r = verifier.check(perscope, 4)
+    check("per-tile RMS scope caught", r["taxonomy"] == "stat-scope", str(r["taxonomy"]))
+    check("  its instruction names the two-pass restructure",
+          "two passes" in r["failures"][0]["instruction"],
+          r["failures"][0]["instruction"][:80])
+
+    # --- planted bug: per-tile softmax (the L5 face of stat-scope, from the live run) --
+    # a one-wide final column tile softmaxes to exactly 1.0 -- plausible numbers, wrong
+    # row denominators.
+    pertile_sm = """
+import numpy as np
+def kernel(x):
+    R, C = x.shape
+    out = np.zeros((R, C), dtype=np.float64)
+    for i in range(0, R, 128):
+        for j in range(0, C, 512):
+            tile = x[i:i+128, j:j+512]
+            tile_max = tile.max(axis=-1, keepdims=True)
+            tile_exp = np.exp((tile - tile_max).astype(np.float64))
+            out[i:i+128, j:j+512] = tile_exp / tile_exp.sum(axis=-1, keepdims=True)
+    return out
+"""
+    r = verifier.check(pertile_sm, 5)
+    check("per-tile softmax scope caught", r["taxonomy"] == "stat-scope",
+          str(r["taxonomy"]))
+    check("  softmax instruction names two passes",
+          "two passes" in r["failures"][0]["instruction"],
+          r["failures"][0]["instruction"][:90])
+
     # --- planted bug: one-pass variance cancellation (the level-8/12 trap) ----
     onepass = """
 import numpy as np

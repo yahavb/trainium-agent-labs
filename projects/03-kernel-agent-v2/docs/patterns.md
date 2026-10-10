@@ -1,5 +1,57 @@
 # Tiling patterns
 
+## Pattern: preallocate the output — never concatenate tiles
+
+Collecting tiles in a list and joining them is the most common way a tiled kernel dies on
+the ragged tail:
+
+```python
+result = []
+for r0 in range(0, R, 128):
+    ...
+    result.append(piece)              # 128 rows, except the last one
+return np.concatenate(result, axis=0) # ValueError: size 128 vs size 1
+```
+
+The final tile is PARTIAL, so the pieces have different sizes and concatenate refuses
+them. Preallocate instead, and assign each tile to its own slice — sizes then do not
+matter:
+
+```python
+out = np.zeros((R, C), dtype=np.float64)     # BEFORE the loops
+for r0 in range(0, R, 128):
+    for c0 in range(0, C, 512):
+        t = x[r0:r0+128, c0:c0+512]
+        out[r0:r0+128, c0:c0+512] = do_something(t)
+return out
+```
+
+## Pattern: row statistics that span column tiles
+
+A statistic over the LAST axis (mean, RMS, variance, softmax denominator) belongs to the
+WHOLE row. When the row is wider than one column tile, a statistic computed per tile is
+simply a different quantity — normalising by it returns +-1 in a one-wide tile and a
+slightly-wrong scale everywhere else. Two passes:
+
+```python
+sq = np.zeros(R, dtype=np.float64)           # pass 1: accumulate per-row sums
+for c0 in range(0, C, 512):
+    t = x[:, c0:c0+512].astype(np.float64)   # a whole-row strip of column tiles
+    sq += (t * t).sum(axis=1)
+rms = np.sqrt(sq / C) + eps                  # ONE statistic per row, whole-row scope
+
+for r0 in range(0, R, 128):                  # pass 2: apply it per tile
+    for c0 in range(0, C, 512):
+        t = x[r0:r0+128, c0:c0+512].astype(np.float64)
+        out[r0:r0+128, c0:c0+512] = t / rms[r0:r0+128, None]
+```
+
+The pass-1 accumulation loop steps over COLUMNS so each strip stays inside the tile
+budget; the per-row statistic it builds is global to the row. Softmax needs the same
+shape: pass 1 computes the row max and the sum of exponentials across tiles, pass 2
+writes `exp(x - max) / sum`.
+
+
 ## Pattern: reduction along an axis, row tiles
 
 Row-wise sum/max/norm all share one shape: loop over row tiles, reduce within the tile,
