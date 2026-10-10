@@ -1,0 +1,39 @@
+level 4: matmul, tiled
+  rules      clean
+
+  case K=128 M=128 N=512:
+    HBM traffic is 589,824 bytes against a floor of 589,824 (1.00x) -- essentially optimal. Every byte is read about once.
+
+  case K=256 M=256 N=1024:
+    HBM traffic is 3,670,016 bytes against a floor of 2,359,296, so 1.6x MORE THAN NECESSARY. The same bytes are crossing the bus repeatedly. For a tiled matmul the usual cause is allocating the PSUM tile inside the contraction loop and copying each partial product out: allocate one PSUM tile OUTSIDE that loop and let nisa.nc_matmul accumulate into it across every step, then copy out once. Hoisting the operand loads out of the innermost loop cuts the rest.
+
+  case K=512 M=128 N=512:
+    HBM traffic is 1,572,864 bytes against a floor of 1,572,864 (1.00x) -- essentially optimal. Every byte is read about once.
+
+  case K=256 M=512 N=1024:
+    HBM traffic is 7,340,032 bytes against a floor of 3,670,016, so 2.0x MORE THAN NECESSARY. The same bytes are crossing the bus repeatedly. For a tiled matmul the usual cause is allocating the PSUM tile inside the contraction loop and copying each partial product out: allocate one PSUM tile OUTSIDE that loop and let nisa.nc_matmul accumulate into it across every step, then copy out once. Hoisting the operand loads out of the innermost loop cuts the rest.
+  numerics   4/4 shapes passed
+
+  K=128 M=128 N=512: 589,824 HBM bytes in 3 transfers (via nki.simulate, dtype float32)
+    NOTE: the 222 Flops/Byte ridge is the published bfloat16 figure, and this ran in float32. Treat the verdict as indicative and re-measure in bfloat16 before quoting a number.
+    arithmetic intensity 28.4 Flops/Byte. Ceiling at this shape is 28.4 (every byte read once); the hardware ridge is 222.
+    YOUR KERNEL: at the byte floor already, so there is no reuse left to find.
+    THIS SHAPE: even a perfect kernel reaches only 28.4, which is 7.8x under the ridge, so the operation is memory bound here however it is written. Do not chase compute-bound at this size -- for a square bfloat16 matmul you need about n >= 667 before the ceiling clears the ridge.
+
+  K=256 M=256 N=1024: 3,670,016 HBM bytes in 20 transfers (via nki.simulate, dtype float32)
+    NOTE: the 222 Flops/Byte ridge is the published bfloat16 figure, and this ran in float32. Treat the verdict as indicative and re-measure in bfloat16 before quoting a number.
+    arithmetic intensity 36.6 Flops/Byte. Ceiling at this shape is 56.9 (every byte read once); the hardware ridge is 222.
+    YOUR KERNEL: moving 1.6x the necessary bytes, which divides your intensity by 1.6. Recovering that is entirely in your hands and is the whole of levels 4 to 7.
+    THIS SHAPE: even a perfect kernel reaches only 56.9, which is 3.9x under the ridge, so the operation is memory bound here however it is written. Do not chase compute-bound at this size -- for a square bfloat16 matmul you need about n >= 667 before the ceiling clears the ridge.
+
+  K=512 M=128 N=512: 1,572,864 HBM bytes in 9 transfers (via nki.simulate, dtype float32)
+    NOTE: the 222 Flops/Byte ridge is the published bfloat16 figure, and this ran in float32. Treat the verdict as indicative and re-measure in bfloat16 before quoting a number.
+    arithmetic intensity 42.7 Flops/Byte. Ceiling at this shape is 42.7 (every byte read once); the hardware ridge is 222.
+    YOUR KERNEL: at the byte floor already, so there is no reuse left to find.
+    THIS SHAPE: even a perfect kernel reaches only 42.7, which is 5.2x under the ridge, so the operation is memory bound here however it is written. Do not chase compute-bound at this size -- for a square bfloat16 matmul you need about n >= 667 before the ceiling clears the ridge.
+
+  K=256 M=512 N=1024: 7,340,032 HBM bytes in 40 transfers (via nki.simulate, dtype float32)
+    NOTE: the 222 Flops/Byte ridge is the published bfloat16 figure, and this ran in float32. Treat the verdict as indicative and re-measure in bfloat16 before quoting a number.
+    arithmetic intensity 36.6 Flops/Byte. Ceiling at this shape is 73.1 (every byte read once); the hardware ridge is 222.
+    YOUR KERNEL: moving 2.0x the necessary bytes, which divides your intensity by 2.0. Recovering that is entirely in your hands and is the whole of levels 4 to 7.
+    THIS SHAPE: even a perfect kernel reaches only 73.1, which is 3.0x under the ridge, so the operation is memory bound here however it is written. Do not chase compute-bound at this size -- for a square bfloat16 matmul you need about n >= 667 before the ceiling clears the ridge.

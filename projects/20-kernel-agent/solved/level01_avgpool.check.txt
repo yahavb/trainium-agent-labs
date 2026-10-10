@@ -1,0 +1,15 @@
+level 1: average pooling 2D
+  rules      clean
+
+  case C,H,W=(32, 32, 32) pool=2:
+    HBM traffic is 163,840 bytes against a floor of 163,840 (1.00x) -- essentially optimal. Every byte is read about once.
+
+  case C,H,W=(128, 16, 16) pool=4:
+    HBM traffic is 139,264 bytes against a floor of 139,264 (1.00x) -- essentially optimal. Every byte is read about once.
+
+  case C,H,W=(8, 24, 24) pool=3:
+    HBM traffic is 20,480 bytes against a floor of 20,480 (1.00x) -- essentially optimal. Every byte is read about once.
+
+  case C,H,W=(64, 8, 8) pool=2:
+    HBM traffic is 20,480 bytes against a floor of 20,480 (1.00x) -- essentially optimal. Every byte is read about once.
+  numerics   4/4 shapes passed

@@ -25,7 +25,7 @@ python agent.py --offline --level 1 --all  # the loop, canned generator
 For the kernel side, the NumPy harness also runs on a laptop with no accelerator:
 
 ```bash
-cd ../02-kernel-agent
+cd ../20-kernel-agent
 python kernelbench.py --selftest           # proves it catches planted bugs
 python kernelbench.py --list               # the ten-level ladder
 python kernelbench.py --level 1 --show
@@ -97,7 +97,7 @@ The pod already sets `HEATROD_BASE_URL` and the model name, so there is nothing 
 ### Project 2 (the unsolved one)
 
 ```bash
-cd /workspace/projects/02-kernel-agent
+cd /workspace/projects/20-kernel-agent
 python nkibench.py --selftest
 nohup python agent.py --all --rounds 8 --samples 4 --context 8192 --repeat 5 > run.log 2>&1 < /dev/null &
 tail -f run.log
