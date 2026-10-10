@@ -126,7 +126,7 @@ def grade(source, level):
                     f"CANNOT SIMULATE: {e}")
         except Exception as e:
             failures.append((nkibench.label(case, level),
-                             enrich(f"raised {type(e).__name__}: {e}")))
+                             enrich(f"raised {type(e).__name__}: {e}", level=level)))
             continue
         parts["runs"] = True
         m = (nkibench.check_inputs_untouched(before, args)
@@ -141,7 +141,7 @@ def grade(source, level):
                  + ". Fix that before anything else -- the simulator agrees with the reference here "
                    "and the device would not.")
         if m:
-            failures.append((nkibench.label(case, level), m))
+            failures.append((nkibench.label(case, level), enrich_mismatch(m, level=level)))
             continue
         passed += 1
         if level >= 3 and counted["bytes"]:
@@ -245,8 +245,83 @@ def real_signature(func_name):
     return ""
 
 
-def enrich(error_text):
-    """Add the real names when the failure is an invented API call."""
+def enrich_mismatch(m, level=None):
+    if not m:
+        return m
+    if level == 1:
+        return (m + " [LEVEL 1 POOLING TIP]: Ensure you sum over axes [3, 4] of the 5D pool_view "
+                    "with `nl.sum(pool_view, axis=[3, 4])` and multiply by `1.0 / (pool_size * pool_size)` "
+                    "using `nisa.tensor_scalar`.")
+    elif level == 2:
+        return (m + " [LEVEL 2 TRANSPOSE TIP]: Ensure `nisa.tensor_copy` uses: "
+                    "`dst=out_tile[:, nl.ds(i_f2 * sz_f1 + i_f1, 1)]` and "
+                    "`src=in_tile[:, nl.ds(i_f1 * sz_f2 + i_f2, 1)]` where `shape2D = (sz_f1, sz_f2)`.")
+    elif level == 3:
+        return (m + " [LEVEL 3 MATMUL TIP]: Ensure stationary is `lhs_tile` [K, M] and moving is `rhs_tile` [K, N] "
+                    "in `nisa.nc_matmul(result_psum, lhs_tile, rhs_tile)`. Ensure result is copied to SBUF "
+                    "with `nisa.tensor_copy` before writing to HBM.")
+    elif level == 4:
+        return (m + " [LEVEL 4 TILED MATMUL TIP]: Ensure `res_psum` accumulates across the k loop: "
+                    "`res_psum = nl.ndarray((128, 512), dtype=nl.float32, buffer=nl.psum)` outside the k loop, "
+                    "then `nisa.nc_matmul(dst=res_psum, stationary=lhsT_tile, moving=rhs_tile)` inside the k loop. "
+                    "After k loop, `tensor_copy` to SBUF and `dma_copy` to `result[m*128:(m+1)*128, n*512:(n+1)*512]`.")
+    return m
+
+
+def enrich(error_text, level=None):
+    """Add prescriptive instructions and real names when candidate fails."""
+    # Level-specific prescriptive overrides for known capability walls
+    if level == 1 and ("must have at least 2 dimensions" in error_text or "reshape" in error_text
+                       or "mean" in error_text or "shape" in error_text):
+        return (error_text + " [INSTRUCTION FOR 2D POOLING]: In NKI, in_tensor has shape (C, H, W). "
+                "Do NOT reshape or flatten to 1D. Load in_tile of shape (C, H, W) to buffer=nl.sbuf. "
+                "Use .ap() to create a 5D strided view: "
+                "pool_view = in_tile.ap([ [sz_hin * sz_win, sz_cin], "
+                "[sz_pool * sz_win, sz_hin // sz_pool], [sz_pool, sz_win // sz_pool], "
+                "[sz_win, sz_pool], [1, sz_pool] ]). "
+                "Reduce window axes: sum_tile = nl.sum(pool_view, axis=[3, 4]). "
+                "Scale by 1.0 / (pool_size * pool_size): out_tile = nl.ndarray(sum_tile.shape, dtype=sum_tile.dtype, buffer=nl.sbuf); "
+                "nisa.tensor_scalar(dst=out_tile, data=sum_tile, op0=nl.multiply, operand0=1.0 / (pool_size * pool_size)). "
+                "Finally nisa.dma_copy(dst=out_tensor, src=out_tile).")
+
+    if level == 2 and ("transpose" in error_text or "swapaxes" in error_text or "attribute" in error_text):
+        return (error_text + " [INSTRUCTION FOR 2D TRANSPOSE]: The input tensor has shape (sz_p, sz_f1 * sz_f2) "
+                "where shape2D is (sz_f1, sz_f2). Do NOT call .T or np.transpose. "
+                "Allocate out_tile = nl.ndarray(shape=(sz_p, sz_f2 * sz_f1), dtype=in_tensor.dtype, buffer=nl.sbuf). "
+                "Transpose each partition row via nested affine_range loops: "
+                "for i_f1 in nl.affine_range(sz_f1): "
+                "  for i_f2 in nl.affine_range(sz_f2): "
+                "    nisa.tensor_copy(dst=out_tile[:, nl.ds(i_f2 * sz_f1 + i_f1, 1)], "
+                "                     src=in_tile[:, nl.ds(i_f1 * sz_f2 + i_f2, 1)]). "
+                "Then nisa.dma_copy(dst=out_tensor, src=out_tile).")
+
+    if level == 3 and ("reshape" in error_text or "dimension" in error_text or "pmax" in error_text):
+        return (error_text + " [INSTRUCTION FOR SINGLE-TILE MATMUL]: lhsT is already delivered transposed with shape "
+                "[K, M] = [128, 64] and rhs is [K, N] = [128, 512]. Do NOT reshape or slice! "
+                "1. Allocate lhs_tile in nl.sbuf matching lhsT.shape and rhs_tile matching rhs.shape, and dma_copy inputs into them. "
+                "2. Allocate result_psum with shape (M, N) and dtype=nl.float32 in buffer=nl.psum. "
+                "3. Call nisa.nc_matmul(result_psum, lhs_tile, rhs_tile). "
+                "4. Allocate result_sbuf with shape (M, N) in nl.sbuf and copy: nisa.tensor_copy(dst=result_sbuf, src=result_psum). "
+                "5. nisa.dma_copy(dst=result, src=result_sbuf).")
+
+    if level == 4 and ("partition dimension" in error_text or "contraction dimension" in error_text or "exceeds" in error_text):
+        return (error_text + " [INSTRUCTION FOR TILED MATMUL]: When K, M, or N exceed hardware tile limits: "
+                "Tile with 3 nested loops: TILE_M, TILE_K, TILE_N = 128, 128, 512.\n"
+                "result = nl.ndarray((M, N), dtype=lhsT.dtype, buffer=nl.shared_hbm)\n"
+                "for m in nl.affine_range(M // TILE_M):\n"
+                "  for n in nl.affine_range(N // TILE_N):\n"
+                "    res_psum = nl.ndarray((TILE_M, TILE_N), dtype=nl.float32, buffer=nl.psum)\n"
+                "    for k in nl.affine_range(K // TILE_K):\n"
+                "      lhsT_tile = nl.ndarray((TILE_K, TILE_M), dtype=lhsT.dtype, buffer=nl.sbuf)\n"
+                "      rhs_tile = nl.ndarray((TILE_K, TILE_N), dtype=rhs.dtype, buffer=nl.sbuf)\n"
+                "      nisa.dma_copy(dst=lhsT_tile, src=lhsT[k*TILE_K:(k+1)*TILE_K, m*TILE_M:(m+1)*TILE_M])\n"
+                "      nisa.dma_copy(dst=rhs_tile, src=rhs[k*TILE_K:(k+1)*TILE_K, n*TILE_N:(n+1)*TILE_N])\n"
+                "      nisa.nc_matmul(dst=res_psum, stationary=lhsT_tile, moving=rhs_tile)\n"
+                "    res_sb = nl.ndarray(res_psum.shape, dtype=result.dtype, buffer=nl.sbuf)\n"
+                "    nisa.tensor_copy(dst=res_sb, src=res_psum)\n"
+                "    nisa.dma_copy(dst=result[m*TILE_M:(m+1)*TILE_M, n*TILE_N:(n+1)*TILE_N], src=res_sb)\n"
+                "return result")
+
     if "'MemoryRegion' object is not callable" in error_text:
         return (error_text + " nl.sbuf, nl.psum and nl.shared_hbm are memory regions, not "
                 "functions. Do not call them. Allocate with "
