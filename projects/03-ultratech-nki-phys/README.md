@@ -4,6 +4,8 @@
 
 A bounded Qwen3-8B agent proposes NKI implementations of two physics equations, receives independent correctness and device-throughput feedback, and retains the fastest correct candidate. This is inference-time agent optimization, not model-weight training.
 
+![Agent workflow: Qwen proposals, trusted NKI lowering, correctness checks, device benchmarking and feedback](submission-assets/agent-flow.png)
+
 ## Required Submission Artifacts
 
 1. **Checker and reasoning:** [checker.py](checker.py), [CHECKER.md](CHECKER.md), and the actual equation/error gates in [source/math_tasks.py](source/math_tasks.py).
