@@ -74,7 +74,9 @@ LOCATED = " The failing line is line "
 #              Measured on a seat: the model wrote nisa.tensor_scalar(dst=tile, data=0.5,
 #              op0=nisa.multiply) -- a real function with the arguments in the wrong roles.
 #   directed3  directed2, with the two messages behind the level 3 wall replaced (see directed()).
-MODES = ("raw", "enriched", "located", "directed", "directed2", "directed3", "directed4")
+MODES = ("raw", "enriched", "located", "directed", "directed2", "directed3", "directed4",
+         "directed5")
+PREFLIGHT = " Reading the whole kernel, the checker also found "
 
 # The model's failing line, set by explain() from directed4 on, so that a message can depend on what
 # the line IS (a copy, an assignment) and name the variable on it.
@@ -206,7 +208,191 @@ def signature(feedback):
     repeat and the give-up rule would stop firing. Two attempts hitting the same error on different
     lines are the same failure.
     """
-    return feedback.split(LOCATED)[0]
+    return feedback.split(PREFLIGHT)[0].split(LOCATED)[0]
+
+
+def preflight(source):
+    """Every problem visible in the kernel's TEXT, without running it, as a list of sentences.
+
+    Why this exists. A kernel that crashes reports one error: the first line that raises. Seen on
+    a seat, level 3, the directed4 probe (session 20261010-200712): the model sent
+
+        nisa.dma_copy(dst=tile_rhs, src=rhs, dst_offset=K * nl.affine_range(0, M))
+        nisa.nc_matmul(dst=out, stationary=tile_lhs, moving=tile_rhs, K=K)
+        nisa.tensor_copy(dst=out, src=out)
+
+    Six things are wrong in those three lines, and all six can be read off the text: dma_copy has
+    no dst_offset, affine_range is not a number, nc_matmul has no K, its dst is in HBM, tensor_copy
+    cannot touch HBM, and it copies an array onto itself. The checker reported the first, as
+    "unsupported operand type(s) for *: 'int' and 'range'", for four rounds, until the level was
+    stopped. At one fix a round, eight rounds are not enough for a kernel like that even when
+    every fix lands. So report them together.
+
+    Conservative on purpose: a line is named only when the fault is certain from the text (the
+    name does not exist, the function has no such argument, the array was allocated in a buffer
+    the call cannot use). Nothing here guesses at shapes or values.
+    """
+    import ast
+    import importlib
+    import inspect
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return []
+    mods = {}
+    for alias, mod_name in (("nl", "nki.language"), ("nisa", "nki.isa")):
+        try:
+            mods[alias] = importlib.import_module(mod_name)
+        except Exception:
+            pass
+    if len(mods) < 2:
+        return []
+    parent = {}
+    for node in ast.walk(tree):
+        for child in ast.iter_child_nodes(node):
+            parent[child] = node
+    fn = next((n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)), None)
+    params = {a.arg for a in fn.args.args} if fn else set()
+
+    def api(node):
+        if (isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
+                and node.value.id in mods):
+            return node.value.id, node.attr
+        return None
+
+    def base(node):
+        while isinstance(node, ast.Subscript):
+            node = node.value
+        return node.id if isinstance(node, ast.Name) else None
+
+    buffers, assigned = {}, {}
+    for node in ast.walk(tree):
+        if (isinstance(node, ast.Assign) and len(node.targets) == 1
+                and isinstance(node.targets[0], ast.Name)):
+            name = node.targets[0].id
+            assigned[name] = assigned.get(name, 0) + 1
+            call = node.value
+            if isinstance(call, ast.Call) and api(call.func) == ("nl", "ndarray"):
+                for kw in call.keywords:
+                    region = api(kw.value)
+                    if kw.arg == "buffer" and region and region[0] == "nl":
+                        buffers[name] = region[1]
+    buffers = {n: b for n, b in buffers.items() if assigned.get(n) == 1 and n not in params}
+
+    def place(name):
+        return "shared_hbm" if name in params else buffers.get(name)
+
+    def origin(name):
+        return ("an input, which lives in HBM" if name in params
+                else f"allocated with buffer=nl.{buffers[name]}")
+
+    found = []
+
+    def add(node, text):
+        item = f"line {node.lineno}: {text}"
+        if item not in found:
+            found.append(item)
+
+    nodes = sorted((n for n in ast.walk(tree) if hasattr(n, "lineno")),
+                   key=lambda n: (n.lineno, n.col_offset))
+    for node in nodes:
+        hit = api(node)
+        if hit and not hasattr(mods[hit[0]], hit[1]):
+            other = next((a for a in mods if a != hit[0] and hasattr(mods[a], hit[1])), None)
+            add(node, f"`{hit[0]}.{hit[1]}` does not exist. "
+                + (f"Write `{other}.{hit[1]}`." if other else
+                   "Nothing by that name is in nl or nisa: remove it."))
+        if not isinstance(node, ast.Call):
+            continue
+        hit = api(node.func)
+        if not hit or not hasattr(mods[hit[0]], hit[1]):
+            continue
+        dotted, obj = f"{hit[0]}.{hit[1]}", getattr(mods[hit[0]], hit[1])
+        kwargs = {kw.arg: kw.value for kw in node.keywords if kw.arg}
+        if not callable(obj):
+            add(node, f"`{dotted}` is not a function and cannot be called.")
+            continue
+        try:
+            sig = inspect.signature(obj)
+            open_ended = any(q.kind is q.VAR_KEYWORD for q in sig.parameters.values())
+            names = list(sig.parameters)
+        except (TypeError, ValueError):
+            open_ended, names = True, []
+        if not open_ended:
+            for kw in kwargs:
+                if kw not in names:
+                    add(node, f"`{dotted}` has no argument `{kw}`. Delete `{kw}=...`. Its "
+                              f"arguments are: {', '.join(names[:7])}.")
+        if hit == ("nl", "affine_range"):
+            up = parent.get(node)
+            in_loop = (isinstance(up, (ast.For, ast.comprehension)) and up.iter is node)
+            if not in_loop:
+                add(node, "`nl.affine_range(...)` is only a loop range, as in "
+                          "`for i in nl.affine_range(n):`. It is not a number and cannot be used "
+                          "in arithmetic or passed as an argument.")
+        if hit == ("nl", "ndarray"):
+            shape = kwargs.get("shape") or (node.args[0] if node.args else None)
+            region = api(kwargs.get("buffer")) if kwargs.get("buffer") is not None else None
+            if (isinstance(shape, ast.Tuple) and len(shape.elts) == 1 and region
+                    and region[1] in ("sbuf", "psum")):
+                add(node, f"a tile in nl.{region[1]} needs two dimensions and this shape has "
+                          f"one. Give it the full shape of the data it will hold.")
+        if hit == ("nisa", "nc_matmul"):
+            dst = base(kwargs.get("dst")) if "dst" in kwargs else None
+            if dst and place(dst) and place(dst) != "psum":
+                add(node, f"the dst of nisa.nc_matmul must be a psum tile, and `{dst}` is "
+                          f"{origin(dst)}. Allocate a tile with buffer=nl.psum and the shape of "
+                          f"the result for dst, then move the result on with nisa.tensor_copy "
+                          f"(psum to sbuf) and nisa.dma_copy (sbuf to HBM).")
+            for role in ("stationary", "moving"):
+                name = base(kwargs.get(role)) if role in kwargs else None
+                if name and place(name) and place(name) != "sbuf":
+                    add(node, f"the {role} operand of nisa.nc_matmul must be an sbuf tile, and "
+                              f"`{name}` is {origin(name)}. Copy it into an sbuf tile with "
+                              f"nisa.dma_copy first and pass that tile.")
+        if hit == ("nisa", "tensor_copy"):
+            for role in ("dst", "src"):
+                name = base(kwargs.get(role)) if role in kwargs else None
+                if name and place(name) == "shared_hbm":
+                    add(node, f"nisa.tensor_copy only moves data between sbuf and psum tiles, "
+                              f"and its {role} `{name}` is {origin(name)}. Anything in HBM is "
+                              f"moved with nisa.dma_copy, to or from an sbuf tile.")
+                    break                       # one sentence per call is enough
+        if (isinstance(kwargs.get("dst"), ast.Name) and isinstance(kwargs.get("src"), ast.Name)
+                and kwargs["dst"].id == kwargs["src"].id):
+            add(node, f"dst and src are the same array `{kwargs['dst'].id}`, so this copy does "
+                      f"nothing.")
+    if fn:
+        written = set()
+        for node in ast.walk(fn):
+            if isinstance(node, ast.Call):
+                for kw in node.keywords:
+                    if kw.arg == "dst" and base(kw.value):
+                        written.add(base(kw.value))
+            if isinstance(node, (ast.Assign, ast.AugAssign)):
+                for target in (node.targets if isinstance(node, ast.Assign) else [node.target]):
+                    if isinstance(target, ast.Subscript) and base(target):
+                        written.add(base(target))
+        for node in ast.walk(fn):
+            if (isinstance(node, ast.Return) and isinstance(node.value, ast.Name)
+                    and node.value.id in buffers and node.value.id not in written):
+                add(node, f"the kernel returns `{node.value.id}`, but no line writes anything "
+                          f"into `{node.value.id}`. Copy the result into it with "
+                          f"nisa.dma_copy(dst={node.value.id}, src=<an sbuf tile>).")
+    return found
+
+
+def preflight_text(source, limit=6):
+    found = preflight(source)
+    if not found:
+        return ""
+    shown = found[:limit]
+    tail = f" (and {len(found) - limit} more)" if len(found) > limit else ""
+    return (PREFLIGHT + ("this problem" if len(found) == 1 else f"these {len(found)} problems")
+            + ", which can be seen without running it. Fix "
+            + ("it" if len(found) == 1 else "all of them")
+            + " in the same reply, together with the failure above: "
+            + " ".join(f"({i}) {item}" for i, item in enumerate(shown, 1)) + tail)
 
 
 def grade(source, level):
@@ -313,7 +499,8 @@ def grade(source, level):
         lbl, first = failures[0]
         return (sum(WEIGHTS[k] for k, v in parts.items() if v)
                 + WEIGHTS["correct"] * passed / len(spec["shapes"]), parts,
-                f"{passed} of {len(spec['shapes'])} shapes passed. On {lbl}: {first}")
+                f"{passed} of {len(spec['shapes'])} shapes passed. On {lbl}: {first}"
+                + (preflight_text(source) if at_least("directed5") else ""))
 
     parts["correct"] = True
     reward = sum(WEIGHTS.values())

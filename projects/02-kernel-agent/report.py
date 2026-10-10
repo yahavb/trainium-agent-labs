@@ -31,7 +31,7 @@ import json
 import re
 from collections import defaultdict
 
-ORDER = ["raw", "enriched", "located", "directed", "directed2", "directed3", "directed4"]
+ORDER = ["raw", "enriched", "located", "directed", "directed2", "directed3", "directed4", "directed5"]
 MARK = " The failing line is line "
 
 
