@@ -36,6 +36,7 @@ BANNED_GLOBAL = {
     "apply_along_axis", "apply_over_axes", "vectorize", "fromfunction",
     "argsort", "sort", "lexsort", "partition", "argpartition", "compress",
     "extract", "place", "putmask", "nditer", "ndenumerate",
+    "asarray", "asanyarray", "array",
 }
 
 
@@ -242,6 +243,8 @@ def check_rules(src, n):
     tree_names = {node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)}
     if "kernel" not in tree_names:
         bad.append("Define the entry point as def kernel(...) with the reference signature")
+    if not any(isinstance(node, ast.For) for node in ast.walk(tree)):
+        bad.append("Use explicit tiled for loops; a whole-array expression is not a valid kernel for this challenge")
     aliases = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -425,7 +428,7 @@ def selftest():
     v = check_rules("import numpy as np\ndef kernel(x):\n    return x.sum(axis=1)\n", 2)
     print(f"  level-2 .sum() cheat            -> {'caught: ' + v[0] if v else 'UNDETECTED'}")
     rc |= 0 if v else 1
-    for n, expr in [(7, "a @ b"), (6, "a.T"), (2, "np.add.reduce(a, axis=1)")]:
+    for n, expr in [(7, "a @ b"), (6, "a.T"), (2, "np.add.reduce(a, axis=1)"), (1, "np.maximum(2.5 * a - 0.5, 0.0)")]:
         caught = bool(check_rules(f"import numpy as np\ndef kernel(a,b=None):\n    return {expr}\n", n))
         print(f"  shortcut {expr:<25} -> {'caught' if caught else 'UNDETECTED'}")
         rc |= 0 if caught else 1
