@@ -1,156 +1,73 @@
-# CHIPBOOST: Qwen3 speeds up its own kernels, and we prove every speedup is real
+# CHIPBOOST
 
-*Hack the Chip, NYU x Annapurna Labs, Oct 10 2026*
+Can Qwen3-8B, served on one Trainium2 chip, make the matmul it is built from faster on that same chip,
+under a referee strict enough that no speedup can be faked?
 
-> Qwen3-8B, running on a Trainium chip, rewrites the kernels it is built from (matmul, RMSNorm) to run faster
-> on that same chip. A strict referee proves every version is still correct on shapes the agent never saw,
-> times it on the real silicon, and names one change. And because the event's whole thesis is "the checker
-> decides whether the loop works", we attack our own referee to prove it can't be fooled.
+Built at Hack the Chip (NYU × Annapurna Labs), 10 October 2026. Numbers are measured on the chip unless
+marked [sim]. [NOTE.md](NOTE.md) is the one-page note, with runs and spread.
 
----
+## Setup
 
-## 1. Why this, out of everything we considered
+- **Shapes:** Qwen3-8B's per-core matmuls at tensor parallelism 2 and 256 tokens: gate_up (4096×256×6144)
+  plus q_proj (4096×256×2048). The score is their summed time.
+- **Start kernel:** the NKI tutorial's tiled matmul, 960 µs.
+- **Expert kernel:** AWS's published "fully optimised" matmul with two fixes (fp32 accumulation, and block
+  sizes that fit Qwen3's shapes), 385 µs (2.49×).
+- **Hardware:** one Trainium2 chip per seat, seats 100 to 102. Neuron SDK 2.32, NKI 0.6.0.
 
-| Idea | Verdict | What we keep |
-|---|---|---|
-| Fix crash walls in Project 2 (feedback rules) | Solid but small; "just Project 2" | Verdict -> instruction feedback, `enrich()` |
-| Qwen3-layer levels | Engineer: "that's Project 2" | Real Qwen3 ops at real Qwen3 sizes |
-| FORGE v1 (end-to-end Qwen +10%) | Integration into served Qwen unlikely today; 10% target risky | Amdahl estimate, "correctness before speed" |
-| FORGE v2 (performance cliffs) | Best original idea; full scope too big | Held-out and tile-edge shapes; speedups must survive them |
-| FORGE-lite (on-chip timing) | The missing piece in the repo | On-chip timing as referee layer 2 |
-| **CHIPBOOST** | Best structured, most complete | The backbone of this plan |
+## Results
 
-**What we checked before deciding (facts, with sources):**
-
-- **"Can an LLM agent speed up Trainium kernels?" is already answered yes.** Amazon's AccelOpt (ICLR/MLSys
-  2026) raised average peak throughput on NKIBench kernels from 45% to 59% on Trainium 2, and open-source
-  models matched Claude Sonnet 4's gains at ~26x lower cost
-  ([arXiv:2511.15915](https://arxiv.org/abs/2511.15915)). So "AI makes kernels faster" alone is not novel.
-  Our uniqueness has to come from elsewhere (section 3).
-- **The pods run Neuron SDK 2.32, which ships NKI 0.6.0** (container
-  `pytorch-inference-vllm-neuronx:0.24.0.1.1.0-neuronx-py313-sdk2.32.0`, in the repo's `k8s/` manifests).
-- **NKI 0.6.0 has no public timing API.** `nki.benchmark` is gone; a plain `kernel(*args)` call recompiles
-  each time (~1.5 s, i.e. you'd be timing the compiler, not the kernel). The internal route is
-  `ParserFrontend().compile()` -> `CompiledKernel.from_frontend()` -> `.benchmark()`, which returns
-  mean/min/max/std (nki-samples issue #134, PR #133). **On-chip timing is the #1 risk and the first thing to
-  ask the engineers.**
-- **Measurement can lie, silently.** On SDK 2.32, the legacy `baremetal()` harness returns all-zero output
-  with exit code 0 for correct kernels (issue #134). A referee that times a kernel without re-checking its
-  on-chip output could "measure" a speedup of a kernel that computes nothing.
-- **The repo's byte counter only sees `nisa.dma_copy`** (`simulate_and_count`, `nkibench.py:611`). NKI also
-  has `dma_transpose` and `dma_compute`; a kernel moving data another way would look like it moves fewer bytes
-  than it does.
-- **Every repo helper CHIPBOOST relies on exists:** `check_rules` (l.358), `describe_mismatch` (l.421),
-  `reuse_report` (l.548), `check_traffic_bar` (l.570), `check_inputs_untouched` (l.596),
-  `simulate_and_count` (l.611), `explain_with_ceiling` (l.72), `level(...)` (l.229), level 8 example
-  (~l.326). The repo's own `STATE.md` lists "layer 2: real latency" and `NEURON_RT_VISIBLE_CORES=0,1` as the
-  next things to build.
-
-## 2. What we build
-
-```
-Qwen3-8B (cores 2-3) --> candidate kernel --> REFEREE --> score + ONE named change --+
-       ^                                                                             |
-       +-------------------------------- next attempt <------------------------------+
-```
-
-```
-REFEREE (speedcheck.py), in order, stops at first failure:
-  1. Rules        static scan (repo's check_rules)
-  2. Correct      simulator vs NumPy on dev shapes, incl. ragged + hostile values
-  3. Correct      ON THE CHIP, same check (catches silent-zero harness failures)
-  4. Fast         on-chip timing on cores 0-1, interleaved A/B with the baseline, noise threshold
-  5. Robust       held-out shapes the loop never saw (tile edges: 127/128/129, 511/512/513...)
-  6. Why slow     bytes vs floor, transfer count, intensity vs ridge -> ONE instruction
-```
-
-**Score:** 0 if wrong anywhere (including held-out shapes). Otherwise speedup over the start kernel and share
-of the expert kernel's speed reached.
-
-**Kernels** (Qwen3-8B sizes; verify hidden 4096 / intermediate 12288 / eps 1e-6 in the pod's `config.json`):
-
-- **Matmul** (start: `reference_level4.py`; expert ceiling: the NKI tutorial's fully optimized matmul)
-- **RMSNorm** (memory-bound; the lesson is "read each byte once")
-- **Stretch: SwiGLU** (the fusion move is the win to find)
-
-## 3. Our unique qualities (achievable today)
-
-- **Self-referential and small.** An 8B model optimizing the kernels it is made of, at its own real sizes, on
-  the chip it is served from. AccelOpt's abstract describes larger setups optimizing a benchmark suite; check
-  the full paper before claiming more.
-- **A referee that is attacked, not just trusted.** A referee red-team suite of planted cheats it must catch
-  (section 4). Reward hacking in kernel generation is a known industry problem; showing a Trainium referee
-  that catches each known trick, with a pass/fail table, is the artifact the organizers say they want to keep.
-- **Equal-budget, three-arm comparison on matmul:** (a) model + referee, (b) model alone ("make it faster"),
-  (c) random/grid search over tile sizes, no AI. If random search wins anywhere, we say so. (AccelOpt's
-  abstract compares models, not against non-AI search.)
-- **Speedups must survive held-out and tile-edge shapes.** Borrowed from FORGE v2: a speedup that only holds
-  at friendly shapes, or breaks at 129 rows, doesn't count. We show a small before/after map.
-- **Honesty by construction.** Every number labelled simulator / chip / projection; rates over repeats with
-  spread; the agent reports when it failed.
-
-## 4. The referee red-team suite (built in the morning, before any agent run)
-
-Each is a tiny hand-written "cheating" kernel. The referee must reject every one with a clear message.
-
-| # | Cheat | Which referee check catches it |
-|---|---|---|
-| 1 | Returns zeros / uninitialized output | correctness (sim + chip) |
-| 2 | Writes into its input and returns it | `check_inputs_untouched` |
-| 3 | Correct at dev shapes, wrong at a ragged last tile | held-out tile-edge shapes |
-| 4 | Hands the whole op to NumPy/framework | rules scan |
-| 5 | Moves data with a DMA call the byte counter doesn't hook | extended byte counting (all DMA ops) |
-| 6 | Accumulates in lower precision to look faster | per-dtype tolerance, stated and justified |
-| 7 | "Faster" only by timing noise | interleaved A/B + noise threshold |
-| 8 | Timing includes compile time (the 1.5 s trap) | compile excluded, warm-up, sanity check vs empty kernel |
-
-**Report:** "referee catches 8/8" (or honestly which it misses, and why).
-
-## 5. Who runs what (5 seats, each self-contained; share via git)
-
-| Seat | Morning | Afternoon |
-|---|---|---|
-| **104** (infra) | Gate: get on-chip timing working on cores 0-1 (ask engineer: `CompiledKernel.benchmark()` vs `neuron-profile`); measure noise on `reference_level4.py`. Push `speedcheck.py`. | Quiet timing chip if noise is high; repeat runs for spread |
-| **103** (referee) | Write the 8 cheat kernels; make referee catch all; held-out shape sets | Failure taxonomy from all `attempts.jsonl`; cliff map before/after |
-| **100** | Matmul at Qwen3 sizes passes the referee as a start kernel | Main loop: model + referee, `--repeat` |
-| **101** | Random/grid tile search script (no AI) | Arms (b) and (c) on the same budget |
-| **102** | Register RMSNorm level, correct start kernel | Main loop + model-alone arm; SwiGLU if time |
-
-## 6. Timeline
-
-| Time | Milestone |
+| | |
 |---|---|
-| 12:00 | Pitch + timing question to engineer; all seats `./serve.sh`; fork repo |
-| 13:30 | Gate: on-chip timing works? Red-team cheats written; start kernels pass |
-| 15:00 | All loops running; first real speedup or honest "none yet" |
-| 17:30 | Repeats done; three-arm table; red-team table; held-out map |
-| 18:30 | Stop building. Note, demo, PR |
+| **Referee** | Caught 34 of 36 planted cheats and accepted 9 of 9 honest kernels. Neither cheat it missed gained any speed. |
+| **AWS tutorial bug** | AWS's published matmul rounds its running sum to bf16 once per K-block. It fails its own correctness check at K=8192 [sim] and a held-out Qwen3 shape. An fp32 accumulator fixes it, at no measurable speed cost. |
+| **Block-size tuning** | Random search, 3 runs × 24 tries: 1.325–1.372× over AWS's defaults. Measuring all 62 settings puts AWS's default at #29 and the ceiling at 1.375×. The best setting does not transfer: +84% to −61% on unseen shapes. |
+| **The model** | First version, alone or with the referee's feedback: 0 faster kernels in 96 attempts. With feedback that names the change to make: in its first run, a correct kernel 1.517× faster on the third attempt, and correct on 6 of 6 unseen shapes (1.52× geometric mean). Repeats and the success rate are in NOTE.md. |
 
-## 7. Risks and fallbacks
+- **Also measured, not a referee verdict:** splitting the expert across both physical cores of an LNC=2
+  NeuronCore gives 1.50× more (5.0× the start kernel).
+- **Not claimed:** any end-to-end Qwen3 speedup. No kernel was plugged into the served model.
 
-- **On-chip timing doesn't work by 13:30** -> referee layer 4 uses the simulator's bytes/intensity (labelled
-  "simulator estimate"). Everything else stands: red-team suite, three arms, held-out shapes.
-- **Timing too noisy beside vLLM** -> seat 104 stops its model server and becomes the quiet timing chip;
-  others push candidates via git for batch timing.
-- **Agent never beats the start kernel** -> the three-arm comparison and failure taxonomy are the result.
-- **Engineer says "still Project 2"** -> fine: our contributions (red-team referee, on-chip layer, fair
-  baselines, held-out robustness) are exactly what Project 2 is missing.
+## How the referee decides
 
-## 8. Deliverables
+1. **Rules:** banned calls and imports. The candidate runs in a sandboxed child process.
+2. **Correctness:** first in the CPU simulator, then on the chip with hostile inputs.
+3. **Timing:** interleaved A/B against the start kernel, on the device clock. Under 1% counts as no gain.
+4. **Held-out shapes:** a kernel that would be "faster" must also pass three random shapes it has never seen.
+5. **Feedback:** one instruction goes back to the model.
 
-- **Checker:** `speedcheck.py` + red-team suite, every accept/reject and tolerance justified
-- **Attempt logs:** `attempts.jsonl` from every seat (prompt, code, correctness, timing)
-- **One-page note:** what ran where, runs and spread, simulator vs chip vs projection
-- **Demo:** a fast-but-wrong kernel rejected, then a real speedup accepted, and the one-line instruction that
-  caused it; the red-team table; the three-arm chart
-- **PR** from our fork
+## Where things are
 
-## 9. Pitch (30 seconds)
+| | |
+|---|---|
+| **Checker and its reasoning** | [`speedcheck.py`](speedcheck.py), [`timing.py`](timing.py), [`REFEREE.md`](REFEREE.md) |
+| **Red team** | [`redteam/`](redteam/): cheating kernels and their results |
+| **Attempt logs** | [`logs/seat-101/`](logs/seat-101/) (model), [`logs/seat-102/`](logs/seat-102/) (random search, sweep), [`experiments/`](experiments/) (seat 100) |
+| **Dashboard** | [`dashboard/index.html`](dashboard/index.html), built from the logs by `dashboard/build.py` |
+| **Kernels** | [`kernels/`](kernels/): start, expert, AWS as published, the model's 1.517× kernel |
+| **Per-owner detail** | [`STATUS.md`](STATUS.md) (P1), [`P2_STATUS.md`](P2_STATUS.md), [`P3_STATUS.md`](P3_STATUS.md) |
+| **Original plan** | [`PLAN.md`](PLAN.md) |
 
-> "AI can already speed up Trainium kernels; AccelOpt showed that. What isn't solved is trusting the result.
-> On our chips, Qwen3-8B speeds up its own matmul and RMSNorm. Our referee checks correctness on the chip and
-> on shapes the agent never saw, times on the silicon, and we red-team it with eight cheating kernels to
-> prove it can't be fooled. We compare against the model alone and random search on an equal budget."
+## Run it (in a seat pod)
 
-**Ask the engineer:** (1) the supported way to time an NKI kernel on device in SDK 2.32 / NKI 0.6.0; (2) does
-running on cores 0-1 beside vLLM disturb timing; (3) how projects are judged.
+```bash
+cd projects/03-chipboost && export CHIPBOOST_SEAT=102
+python speedcheck.py --op matmul --check kernels/matmul_expert.py   # one referee verdict
+python agent.py --arm referee --budget 8                            # the model loop (needs the vLLM server)
+python search.py --budget 24 --seed 0                               # random search over block sizes
+python heldout_grid.py --op matmul                                  # every arm's best on unseen shapes
+python tools/aws_matmul_bf16_repro.py --sim                         # the AWS bug, CPU only
+python dashboard/build.py                                           # rebuild the dashboard from the logs
+```
+
+## Team
+
+| Role | |
+|---|---|
+| P1: referee and timing | [likhith2366](https://github.com/likhith2366) |
+| P2: kernels, search, held-out grid | Jithendra Puppala ([jithendra1798](https://github.com/jithendra1798)) |
+| P3: model loop and red team | Siva Balan ([Sivabalan21](https://github.com/Sivabalan21)) |
+| P4: dashboard and note | Bala Sai Manikanta Sandeep Puppala ([manikanta-sandeep](https://github.com/manikanta-sandeep)) |
+| Review and integration | Nihal Ajayakumar ([anihal](https://github.com/anihal)) |
+
+Resumes are in [`resumes/`](resumes/).
