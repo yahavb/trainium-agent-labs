@@ -378,6 +378,13 @@ Until v8.1, level 2's repair rounds had never once succeeded, in the baseline or
 solve came from a first attempt. Under v8.3, four of five level-2 solves came after round 0, three of them
 right after the distilled explanation (§4).
 
+**Why the final version still misses.** Level 2, 2 of 9 runs: in one, no kernel ever ran, the repairs cycled
+through runtime errors and the fresh samples kept redrawing the round-0 mistake; in the other, the misleading
+`returned ()` message above, over a kernel that was wrong anyway. Level 3, the one run inside `--all`: a
+different first answer to the same prompt, then four rounds on the same copy-size error, and the run stopped
+early under the repeated-failure rule; we cannot rule out that a later fresh sample would have solved it.
+([analysis/l2_l3_misses.md](analysis/l2_l3_misses.md))
+
 Baseline, 424 attempts in 25 named modes: index and size
 arithmetic 52%, unfamiliar API 24%, tiling rules 18%, memory placement 5%. Four modes were never fixed by the
 original feedback once they appeared (stuck rate 100%): out-of-bounds index, reshape instead of slicing,
@@ -449,12 +456,20 @@ counted by the server.
   NKI 0.6.0 simulates trn3. A level-4 kernel with a 1024-wide moving tile passes 2/4 shapes under trn3 and
   0/4 under trn2 ("moving free dimension 1024 exceeds max 512 for nc_version.gen3"). We set trn2
   explicitly and re-graded earlier runs under it. ([analysis/sim_target_check.md](analysis/sim_target_check.md))
-- **A deterministic server.** In the standard seat configuration (`--max-num-seqs 4`, which every number above
-  uses), the model server returns the same text for the same request at temperature 0.7, so repeated runs of one configuration are mostly copies, and "5/5" can mean one trajectory five times. We report distinct
-  trajectories next to every rate. On seat-115 (`--max-num-seqs 8`) sampling was applied (six identical
+- **A deterministic server, within one server state.** In the standard seat configuration (`--max-num-seqs 4`,
+  which every number above uses), the model server returns the same text for the same request at temperature
+  0.7, so repeated runs of one configuration are mostly copies, and "5/5" can mean one trajectory five times. We report distinct
+  trajectories next to every rate. It is not the same text in every server state: in the one-command `--all`
+  run, level 3's first prompt, byte for byte the same length as in the per-level runs, drew four different
+  kernels, none of which solved (probably a different batch or prefix-cache state;
+  [analysis/l2_l3_misses.md](analysis/l2_l3_misses.md)). On seat-115 (`--max-num-seqs 8`) sampling was applied (six identical
   requests at temperature 1.0 gave six different answers), but samples still repeated far more than on a
   GPU: 50% of sample pairs identical in first rounds and 87% in repair rounds, against 1% and 54% on an
   RTX 4090. A request with a `seed` parameter returned HTTP 500 and took the server down once.
+- **One misleading checker message.** A level-2 kernel with no `return` gets "WRONG SHAPE: returned (),
+  reference is (32, 12). Check the output-size arithmetic, not the values." The sizes were fine; the return was
+  missing. One v8.3 run spent four rounds on it and did not recover; we found it too late to change the
+  checker and re-measure, so it stays as a known weakness.
 - **Simulator numbers.** Every score comes from `nki.simulate` on a CPU. Beyond it: every v8.2 and v8.3 solve
   on levels 1–4 was built in full for trn2 and matched in birsim; one level-1 solve, and liuyq's hand-in
   candidates for levels 1–4, 9 and 11, also ran on a NeuronCore (§5, §10). Speed on the chip was not measured.
