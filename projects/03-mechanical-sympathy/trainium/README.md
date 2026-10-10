@@ -72,6 +72,10 @@ python analyze_attempts.py attempts_v1.jsonl attempts_v2.jsonl attempts_v3.jsonl
 python -c "import agent_loop as al; print(al.grade(open('card_check_kernel.py').read(), 2e-2))"   # 1.0
 ```
 
+Keep each candidate result in its JSONL attempt log. Add one summary row per run to
+`../results/agent_attempts.csv`. This file tracks kernel-agent solve results. It stays
+separate from `../results/attempts.csv`, which tracks Samudra forecast inference results.
+
 The agent needs the seat's vLLM server (Qwen3-8B, `./serve.sh`) and the organizers'
 `/workspace/projects/02-kernel-agent`. It does not need a free NeuronCore, because kernels are
 graded in the NKI CPU simulator.
