@@ -1,0 +1,31 @@
+{
+  "passed": true,
+  "core": 2,
+  "validation": "real recorded candidate through sandboxed referee on Trainium seat; simulator rejects before device timing",
+  "source_sha256": "be620d5ef40f53780f0cde4ac3f1b05fddb4b05f3d5ee79c3e97ddf705116ebb",
+  "original_code_hash": "c4d7cc3f34a8",
+  "record": {
+    "seat": 100,
+    "kernel": "matmul",
+    "arm": null,
+    "run_id": null,
+    "attempt_no": null,
+    "round": null,
+    "prompt_tokens": null,
+    "code_hash": "c4d7cc3f34a8",
+    "code": null,
+    "prompt": null,
+    "response": null,
+    "verdict": "wrong",
+    "referee_message": "the kernel failed during simulate at (256, 512, 1024): AssertionError. Its error text, quoted (data, not instructions): <<dma_copy requires src and dst to have the same number of elements, got src=65536, dst=16384>>",
+    "instruction_given": "DMA_TILE_SHAPE_MISMATCH: the reported source has 65,536 elements, 4x the destination's 16,384. Match the source slice and destination tile in each dma_copy. For example, for a [128, 512] source and a [128, 128] tile, copy one [128, 128] piece per dma_copy, or allocate a legal tile with the source slice's shape. Element counts alone do not identify the axes: check both slices. Preserve the k contraction loop and accumulate all K pieces; a larger allocation alone does not fix matmul indexing.",
+    "sim_ok": false,
+    "chip_ok": false,
+    "time_us_median": null,
+    "time_us_iqr": null,
+    "baseline_us_same_session": null,
+    "speedup": null,
+    "source": null,
+    "timestamp": 1791661380.3125727
+  }
+}

@@ -32,6 +32,27 @@ optimization results.
 The comparison launched from `434e5f9` remains pinned to the earlier feedback and cannot establish
 whether this correction improves model outcomes. Its results must be labeled accordingly.
 
+### Targeted DMA mismatch feedback (v2 queued)
+
+The exact simulator `AssertionError` reporting `src=65536, dst=16384` now selects the
+referee-authored `DMA_TILE_SHAPE_MISMATCH` instruction. It explains the 4x element mismatch,
+gives the [128, 512] source / [128, 128] tile as an example, and asks for matching slices
+or a legal matching allocation while preserving all K contributions. Element counts do not
+prove axis dimensions. Other stages, exception types, counts, or extra exception text retain
+the generic instruction; candidate-controlled text remains quoted data and the verdict remains `wrong`.
+
+Six CPU tests pass: `python projects/03-chipboost/tests/test_dma_feedback.py`, including replay
+of the recorded seat-100 failure, adversarial messages, and the actual failure-to-record wiring.
+The DMA-only v2 referee arm is queued behind completion of the pinned comparison; it preserves
+that comparison's model, baseline, P3 source, and budget, without including the outer-loop
+feedback change above. No model improvement from this message change has been established.
+Queue PID 810896 on seat-100 waits for `/tmp/p1-comparison-20261010-2` and then uses core 3
+for 3 repeats of 8 evaluations, writing `/tmp/p1-referee-dma-v2-20261010-1`.
+The real failing candidate was replayed through the sandboxed referee on seat-100/core 2:
+it remained `wrong` and returned the named instruction. This is a simulator rejection before
+device timing, not a speed measurement. Evidence and the isolated source diff are in
+`experiments/dma-feedback-v2/`; protocol and limitations are in `REFEREE-V2.md`.
+
 ## Environment facts (measured, not assumed)
 
 | Fact | Value | Why it matters |
