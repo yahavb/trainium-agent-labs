@@ -1,0 +1,31 @@
+Write a Verilog module named `lfsr` for an 8-bit linear feedback shift register.
+Ports: input clk, input reset_n (active low), output reg [7:0] data.
+On reset_n low, data is set to 8'b10001010.
+On each rising clock edge with reset_n high, shift data left by one and set the new
+bit 0 to the XOR of the old bits 0, 3, 5 and 6.
+
+Your previous attempt:
+```verilog
+module lfsr (
+    input clk,
+    input reset_n,
+    output reg [7:0] data
+);
+
+always @(posedge clk) begin
+    if (!reset_n) begin
+        data <= 8'b10001010;
+    end else begin
+        data <= {data[6:0], data[7] ^ data[3] ^ data[5] ^ data[6]};
+    end
+end
+
+endmodule
+
+```
+
+A checker tested your previous attempt (score 0.30):
+reset_immediate: requirement: while reset_n is 0, data must equal the initial state at every moment, including before the first clock edge. Observed: at 2 ns, with reset_n at 0 and no clock edge yet, data is undefined (X).
+first_step: requirement: on each clock edge after reset_n is released, data must advance by one step of the LFSR in the spec. Observed: on the first edge after release, data is wrong in bit(s) [0]; the other 7 bits are correct.
+
+First, for each failure above, say in one sentence which part of the design causes it. Then end with the complete corrected Verilog module in one code block.

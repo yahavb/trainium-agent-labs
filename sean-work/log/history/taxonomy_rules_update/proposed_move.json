@@ -1,0 +1,30 @@
+{
+  "destination": "/workspace/sean-work",
+  "move": [
+    "README.md",
+    "CHECKER.md",
+    "agent.py",
+    "checker.py",
+    "taxonomy.py",
+    "prompt_regression.py",
+    "taxonomy.json",
+    "knowledge.json",
+    "principles.json",
+    "baseline_lfsr.txt",
+    "prompts",
+    "experiments",
+    "TestBench",
+    "verilog",
+    "reference",
+    "candidates",
+    "tests",
+    "log"
+  ],
+  "leave_archived": "archive/",
+  "plain_logs": [
+    "log/lfsr.log",
+    "log/sequence_generator.log",
+    "log/traffic_light.log",
+    "log/dice_roller.log"
+  ]
+}

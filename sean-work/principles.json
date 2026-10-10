@@ -1,0 +1,82 @@
+[
+  {
+    "id": "COMPILE_ERROR",
+    "principle": "A hardware description must satisfy the language rules and compilation environment requirements before its behavior can be simulated."
+  },
+  {
+    "id": "X_BEFORE_FIRST_EDGE",
+    "principle": "An output required to be defined before the first clock edge must become known without depending on a clocked state update."
+  },
+  {
+    "id": "WRONG_BETWEEN_EDGES_IN_RESET",
+    "principle": "When reset is specified to act independently of the clock, affected outputs must settle to their reset values without waiting for a clock edge."
+  },
+  {
+    "id": "WRONG_AFTER_EDGE_IN_RESET",
+    "principle": "When reset is specified to govern a clock edge, affected outputs must settle to their reset values after that edge."
+  },
+  {
+    "id": "MULTIPLE_DRIVERS",
+    "principle": "A signal's value must be determined by a single driver or by defined rules that resolve contributions from multiple drivers."
+  },
+  {
+    "id": "BLOCKING_IN_CLOCKED_LOGIC",
+    "principle": "Clocked state transitions must preserve the specified sampling relationships; simulator execution order must not introduce unintended dependencies between simultaneous updates."
+  },
+  {
+    "id": "INIT_ONLY_VALUE",
+    "principle": "A value established only at simulation startup does not imply that reset can establish or restore that value during operation."
+  },
+  {
+    "id": "NEXT_STATE_WRONG_FIRST_EDGE",
+    "principle": "The first transition after reset must follow the specified transition rules from the reset state using the inputs sampled for that transition."
+  },
+  {
+    "id": "NEXT_STATE_DIVERGES_LATER",
+    "principle": "Every state transition must satisfy the specified behavior for the current state and relevant inputs, including boundary conditions and repeated operation."
+  },
+  {
+    "id": "TIMEOUT",
+    "principle": "A simulation expected to finish requires a reachable termination condition and event processing that can progress toward it."
+  },
+  {
+    "id": "PARTIAL_X",
+    "principle": "Every bit of an output required to be defined must have a known value at the specified observation time."
+  },
+  {
+    "id": "OUTPUT_STUCK",
+    "principle": "A required state transition must advance the observable state when the specified next state differs from the current state."
+  },
+  {
+    "id": "OUTPUT_INVERTED",
+    "principle": "Output polarity is part of the specification; each bit must represent the specified logical value."
+  },
+  {
+    "id": "BIT_ORDER_REVERSED",
+    "principle": "The ordering of bits determines their meaning; each output position must correspond to the specified bit position."
+  },
+  {
+    "id": "SHIFTED_TOWARD_LSB",
+    "principle": "Movement toward lower bit positions must agree with the specified relationship between successive states."
+  },
+  {
+    "id": "SHIFTED_TOWARD_MSB",
+    "principle": "Movement toward higher bit positions and the newly entered bit must both agree with the specified state transition."
+  },
+  {
+    "id": "OFF_BY_ONE_VALUE",
+    "principle": "Numeric state values must follow the specified transition exactly, including increments, decrements, and boundary values."
+  },
+  {
+    "id": "ONE_CYCLE_LATE",
+    "principle": "A specified output must be visible on its required cycle; an additional cycle of delay changes the behavior."
+  },
+  {
+    "id": "ONE_CYCLE_EARLY",
+    "principle": "A specified output must become visible on its required cycle; advancing it by a cycle changes the behavior."
+  },
+  {
+    "id": "UPPER_BITS_ZERO",
+    "principle": "The full specified output width carries information; higher bit positions must preserve their required values."
+  }
+]

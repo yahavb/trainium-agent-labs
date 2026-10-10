@@ -1,0 +1,4 @@
+{
+  "async_reset": true,
+  "spec_addendum": "Reset immediately selects red and clears elapsed time. Count enabled rising edges: red lasts 32, green lasts 20, and yellow lasts 7 before repeating. Enable low holds the light and elapsed count. Exactly one light is on."
+}

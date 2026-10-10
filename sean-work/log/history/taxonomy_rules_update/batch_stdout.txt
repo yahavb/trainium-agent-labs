@@ -1,0 +1,5 @@
+lfsr: /workspace/GUIDE/VerilogGenBenchmark/log/lfsr.log
+sequence_generator: /workspace/GUIDE/VerilogGenBenchmark/log/sequence_generator.log
+traffic_light: /workspace/GUIDE/VerilogGenBenchmark/log/traffic_light.log
+dice_roller: /workspace/GUIDE/VerilogGenBenchmark/log/dice_roller.log
+Suite logs: /workspace/GUIDE/VerilogGenBenchmark/log/runs/md_generic_v4_dynamic_taxonomy_20261010T194313Z_1791661393449624988

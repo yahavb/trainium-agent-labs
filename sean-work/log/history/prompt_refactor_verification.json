@@ -1,0 +1,21 @@
+{
+  "prompt_cases": 171,
+  "compared_prompt_files": 342,
+  "prompt_diff": "byte-identical",
+  "grade_source_unchanged": true,
+  "extract_source_unchanged": true,
+  "jsonl_events": "byte-identical in all four conditions",
+  "unit_tests_passed": 32,
+  "lfsr_stdout": "byte-identical",
+  "baseline_sha256": "9ecd82dbc66e39c8e3949360a3a48654baa40831d4e76b32925fd5eed0449e9f",
+  "runner_reference_scores": {
+    "lfsr": 1.0,
+    "sequence_generator": 1.0,
+    "traffic_light": 1.0,
+    "dice_roller": 1.0
+  },
+  "runner_summary": "logs/prompt_refactor_runner/md_generic_v4_dynamic_taxonomy_20261010T192758Z_1791660478571883369/summary.json",
+  "interface_option": "--interface-from-tb (default off)",
+  "individual_runner": "checker.py --run-tb",
+  "batch_runner": "checker.py --run-all"
+}

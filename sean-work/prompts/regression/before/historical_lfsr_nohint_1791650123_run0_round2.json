@@ -1,0 +1,6 @@
+[
+  {
+    "role": "user",
+    "content": "Write a Verilog module named `lfsr` for an 8-bit linear feedback shift register.\nPorts: input clk, input reset_n (active low), output reg [7:0] data.\nOn reset_n low, data is set to 8'b10001010.\nOn each rising clock edge with reset_n high, shift data left by one and set the new\nbit 0 to the XOR of the old bits 0, 3, 5 and 6.\nReturn only the Verilog module in one code block.\n\nYour previous attempt:\n```verilog\nmodule lfsr (\n    input clk,\n    input reset_n,\n    output reg [7:0] data\n);\n\nalways @(posedge clk or negedge reset_n) begin\n    if (!reset_n) begin\n        data <= 8'b10001010;\n    end else begin\n        data <= {data[6:0], data[7] ^ data[3] ^ data[5] ^ data[6]};\n    end\nend\n\nendmodule\n\n```\nResult (score 0.30):\nFIRST FAILURE:\nError: At time                15000, data = 00010100, expected = 00010101\nHINT: only bit 0 (the newly shifted-in bit) is wrong. The shift is fine, so the error is in the XOR feedback expression. Recheck which bits of the old value are XORed against the spec.\n\nEarlier feedback you already received:\n- FIRST FAILURE:\nFix the problem and return the complete corrected module."
+  }
+]

@@ -1,0 +1,34 @@
+candidates/lfsr.v: 1.0
+    correct
+candidates/bad/inverted_feedback.v: 0.4
+    reset_midrun: requirement: reset during a run must restore the initial state immediately, hold it across a clock edge, and restart the specified sequence after release. Observed: reset restored and held the initial state correctly; the sequence after restart fails at restart cycle 1 after reset release, data is wrong in bit(s) [0]; the other 7 bits are correct.
+    first_step: requirement: on each clock edge after reset_n is released, data must advance by one step of the LFSR in the spec. Observed: on the first edge after release, data is wrong in bit(s) [0]; the other 7 bits are correct.
+    sequence: requirement: every clock edge must advance data by one step of the LFSR in the spec. Observed: at cycle 1 after release, data is wrong in bit(s) [0]; the other 7 bits are correct.
+    Facts and score verified
+candidates/bad/lfsr_badtap.v: 0.55
+    reset_midrun: requirement: reset during a run must restore the initial state immediately, hold it across a clock edge, and restart the specified sequence after release. Observed: reset restored and held the initial state correctly; the sequence after restart fails at restart cycle 2 after reset release, data is wrong in bit(s) [0]; the other 7 bits are correct.
+    sequence: requirement: every clock edge must advance data by one step of the LFSR in the spec. Observed: at cycle 2 after release, data is wrong in bit(s) [0]; the other 7 bits are correct.
+    Facts and score verified
+candidates/bad/lfsr_initial_hack.v: 0.8
+    reset_midrun: requirement: reset during a run must restore the initial state immediately, hold it across a clock edge, and restart the specified sequence after release. Observed: at 2573 ns, one ns after reset assertion with clk low and no clock edge, data is wrong in bit(s) [7, 5, 0]; the other 5 bits are correct.
+    In your design, data is assigned in 2 place(s): line 6, an initial block; line 8, a block triggered by posedge clk. (data is driven from more than one block) (data uses a blocking assignment on line 6)
+    Facts and score verified
+candidates/bad/lfsr_syncreset.v: 0.65
+    reset_immediate: requirement: while reset_n is 0, data must equal the initial state at every moment, including before the first clock edge. Observed: at 2 ns, with reset_n at 0 and no clock edge yet, data is undefined (X).
+    In your design, data is assigned in 1 place(s): line 6, a block triggered by posedge clk.
+    reset_midrun: requirement: reset during a run must restore the initial state immediately, hold it across a clock edge, and restart the specified sequence after release. Observed: at 2573 ns, one ns after reset assertion with clk low and no clock edge, data is wrong in bit(s) [7, 5, 0]; the other 5 bits are correct.
+    In your design, data is assigned in 1 place(s): line 6, a block triggered by posedge clk.
+    Facts and score verified
+candidates/bad/lfsr_two_drivers.v: 0.65
+    reset_value: requirement: while reset_n is 0, data must equal the initial state from the spec. Observed: with reset_n held at 0, after a clock edge, data is wrong in bit(s) [7, 4, 3, 2, 1, 0]; the other 2 bits are correct.
+    In your design, data is assigned in 2 place(s): line 6, a block triggered by posedge clk; line 10, a block triggered by reset_n. (data is driven from more than one block)
+    reset_midrun: requirement: reset during a run must restore the initial state immediately, hold it across a clock edge, and restart the specified sequence after release. Observed: at 2577 ns, after a clock edge with reset held, data is wrong in bit(s) [7, 4, 3, 2, 1, 0]; the other 2 bits are correct.
+    In your design, data is assigned in 2 place(s): line 6, a block triggered by posedge clk; line 10, a block triggered by reset_n. (data is driven from more than one block)
+    Facts and score verified
+candidates/bad/shift_wrong_direction.v: 0.4
+    reset_midrun: requirement: reset during a run must restore the initial state immediately, hold it across a clock edge, and restart the specified sequence after release. Observed: reset restored and held the initial state correctly; the sequence after restart fails at restart cycle 1 after reset release, data is wrong in bit(s) [7, 6, 4]; the other 5 bits are correct.
+    first_step: requirement: on each clock edge after reset_n is released, data must advance by one step of the LFSR in the spec. Observed: on the first edge after release, data is wrong in bit(s) [7, 6, 4]; the other 5 bits are correct.
+    sequence: requirement: every clock edge must advance data by one step of the LFSR in the spec. Observed: at cycle 1 after release, data is wrong in bit(s) [7, 6, 4]; the other 5 bits are correct.
+    Facts and score verified
+
+SELFTEST PASSED

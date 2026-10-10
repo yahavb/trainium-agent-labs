@@ -1,0 +1,6 @@
+[
+  {
+    "role": "user",
+    "content": "Write a Verilog module named `lfsr` for an 8-bit linear feedback shift register.\nPorts: input clk, input reset_n (active low), output reg [7:0] data.\nOn reset_n low, data is set to 8'b10001010.\nOn each rising clock edge with reset_n high, shift data left by one and set the new\nbit 0 to the XOR of the old bits 0, 3, 5 and 6.\nReturn only the Verilog module in one code block."
+  }
+]

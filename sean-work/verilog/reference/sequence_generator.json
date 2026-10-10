@@ -1,0 +1,4 @@
+{
+  "async_reset": true,
+  "spec_addendum": "Use behavior A: reset immediately displays AF and positions the sequence at AF. The first enabled edge produces BC. Each further enabled edge advances one item, wrapping from 8D to AF. Hold both output and position while disabled, then continue at the next item."
+}

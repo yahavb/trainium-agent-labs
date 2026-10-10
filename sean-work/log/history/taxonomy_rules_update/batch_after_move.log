@@ -1,0 +1,5 @@
+lfsr: /workspace/sean-work/log/lfsr.log
+sequence_generator: /workspace/sean-work/log/sequence_generator.log
+traffic_light: /workspace/sean-work/log/traffic_light.log
+dice_roller: /workspace/sean-work/log/dice_roller.log
+Suite logs: /workspace/sean-work/log/runs/md_generic_v4_dynamic_taxonomy_20261010T194526Z_1791661526924930698

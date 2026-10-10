@@ -1,0 +1,2 @@
+Principle: An output required before the first clock edge must become defined independently of a clocked transition.
+Principle: A reset specified to act independently of the clock must restore the required state between clock edges.

@@ -1,0 +1,74 @@
+I am trying to create a Verilog model for a sequence generator. It must meet the following specifications:
+	- Inputs:
+		- Clock
+		- Active-low reset
+		- Enable
+	- Outputs:
+		- Data (8 bits)
+
+While enabled, it should generate an output sequence of the following hexadecimal values and then repeat:
+	- 0xAF
+	- 0xBC
+	- 0xE2
+	- 0x78
+	- 0xFF
+	- 0xE2
+	- 0x0B
+	- 0x8D
+
+How would I write a design that meets these specifications?
+Use module name sequence_generator with ports: input clk, input reset_n, input enable, output data [7:0].
+Use behavior A: reset immediately displays AF and positions the sequence at AF. The first enabled edge produces BC. Each further enabled edge advances one item, wrapping from 8D to AF. Hold both output and position while disabled, then continue at the next item.
+
+Fix the failures and return the complete corrected Verilog module in one code block.
+
+Latest checker result (score 0.00):
+compiles: requirement: a module named `sequence_generator` with ports clk, reset_n, enable and data[7:0] that compiles. Observed: compiler output:
+/tmp/prompt_capture_3g1qan_e/sequence_generator.v:9: syntax error
+/tmp/prompt_capture_3g1qan_e/sequence_generator.v:1: error: Syntax error in variable list.
+/tmp/prompt_capture_3g1qan_e/sequence_generator.v:31: syntax error
+/tmp/prompt_capture_3g1qan_e/sequence_generator.v:31: error: Malformed statement
+
+Previous attempt:
+```verilog
+module sequence_generator (
+    input clk,
+    input reset_n,
+    input enable,
+    output reg [7:0] data
+);
+
+    // Define the sequence
+    reg [7:0] sequence [0:7] = '{8'hAF, 8'hBC, 8'hE2, 8'h78, 8'hFF, 8'hE2, 8'h0B, 8'h8D};
+
+    // State variables
+    reg [3:0] index;
+    reg [3:0] prev_index;
+
+    // Always block for state updates
+    always @(posedge clk) begin
+        if (!reset_n) begin
+            // Reset: restart sequence
+            index <= 0;
+            prev_index <= 0;
+            data <= 8'h00;
+        end else begin
+            if (enable) begin
+                // When enabled, advance the index
+                if (index == 7) begin
+                    index <= 0;
+                end else begin
+                    index <= index + 1;
+                end
+                // Update data
+                data <= sequence[index];
+            end else begin
+                // When disabled, hold the current index
+                prev_index <= index;
+            end
+        end
+    end
+
+endmodule
+
+```

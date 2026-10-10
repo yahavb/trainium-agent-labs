@@ -1,0 +1,14 @@
+test_cli_flags_and_experiment_name (test_checker.CheckerTests.test_cli_flags_and_experiment_name) ... ok
+test_compile_failure_and_timeout (test_checker.CheckerTests.test_compile_failure_and_timeout) ... ok
+test_detector_is_never_called_when_disabled (test_checker.CheckerTests.test_detector_is_never_called_when_disabled) ... ok
+test_every_detector_on_bad_designs (test_checker.CheckerTests.test_every_detector_on_bad_designs) ... ok
+test_guards_and_reference_samples (test_checker.CheckerTests.test_guards_and_reference_samples) ... ok
+test_observed_previous_state_and_entered_bit (test_checker.CheckerTests.test_observed_previous_state_and_entered_bit) ... ok
+test_only_first_failing_cycle_is_reported (test_checker.CheckerTests.test_only_first_failing_cycle_is_reported) ... ok
+test_principle_priority_budget_and_deduplication (test_checker.CheckerTests.test_principle_priority_budget_and_deduplication) ... ok
+test_reference_and_existing_bad_designs (test_checker.CheckerTests.test_reference_and_existing_bad_designs) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 1.087s
+
+OK

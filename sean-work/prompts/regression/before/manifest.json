@@ -1,0 +1,10 @@
+{
+  "cases": 171,
+  "historical_coverage": {
+    "explain": 33,
+    "explain_principles": 22,
+    "explain_principles_v2": 11,
+    "no_flags": 95
+  },
+  "note": "Historical prompts reconstructed using archived source and original feedback; current-layout prompts use current checker feedback for real archived attempts."
+}

@@ -1,0 +1,61 @@
+[
+  {
+    "task": "lfsr",
+    "exit_code": 0,
+    "elapsed_seconds": 32.34831590400427,
+    "log": "/workspace/GUIDE/VerilogGenBenchmark/logs/md_generic_v4_dynamic_taxonomy_20261010T193309Z_1791660789210467332/lfsr.log",
+    "command": [
+      "/opt/conda/bin/python",
+      "/workspace/GUIDE/VerilogGenBenchmark/agent.py",
+      "--spec",
+      "/workspace/GUIDE/VerilogGenBenchmark/LFSR.md",
+      "--seed",
+      "0",
+      "--cycles",
+      "256",
+      "--random-cycles",
+      "128",
+      "--taxonomy",
+      "/workspace/GUIDE/VerilogGenBenchmark/taxonomy.json",
+      "--rules-limit",
+      "2",
+      "--facts",
+      "--detectors",
+      "--knowledge",
+      "/workspace/GUIDE/VerilogGenBenchmark/knowledge.json",
+      "--tb",
+      "/workspace/GUIDE/VerilogGenBenchmark/TestBench/lfsr_tb.v",
+      "--ref",
+      "/workspace/GUIDE/VerilogGenBenchmark/verilog/reference/lfsr.v",
+      "--principles",
+      "--repeat",
+      "1",
+      "--rounds",
+      "6",
+      "--context-tokens",
+      "8000",
+      "--max-tokens",
+      "1500",
+      "--rule-bytes",
+      "1200",
+      "--log-dir",
+      "/workspace/GUIDE/VerilogGenBenchmark/logs/md_generic_v4_dynamic_taxonomy_20261010T193309Z_1791660789210467332",
+      "--run-name",
+      "md_generic_v4_dynamic_taxonomy_20261010T193309Z_1791660789210467332",
+      "--output-dir",
+      "/workspace/GUIDE/VerilogGenBenchmark/candidates/gen",
+      "--explain"
+    ],
+    "records": [
+      "/workspace/GUIDE/VerilogGenBenchmark/logs/md_generic_v4_dynamic_taxonomy_20261010T193309Z_1791660789210467332/md_generic_v4_dynamic_taxonomy_20261010T193309Z_1791660789210467332_lfsr_20261010T193309Z_1791660789260213302.jsonl"
+    ],
+    "scores": {
+      "event": "summary",
+      "solved": 1,
+      "repeat": 1,
+      "final_scores": [
+        1.0
+      ]
+    }
+  }
+]

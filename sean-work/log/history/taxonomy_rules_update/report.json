@@ -1,0 +1,55 @@
+{
+  "source_log": "logs/md_generic_v4_dynamic_taxonomy_20261010T193309Z_1791660789210467332/md_generic_v4_dynamic_taxonomy_20261010T193309Z_1791660789210467332_lfsr_20261010T193309Z_1791660789260213302.jsonl",
+  "run": 0,
+  "round": 1,
+  "hashes_before": {
+    "taxonomy.json": {
+      "md5": "99f8e421be61691dcabe262d4e960220",
+      "sha256": "7d227b3ff29ab2165341d429d2201f14bea408c14048d480f9b47c907ddb051e"
+    },
+    "knowledge.json": {
+      "md5": "0c06e1a7c98e3fe4c17d909d6d087e2b",
+      "sha256": "39ac6f0b5cd066f5459aab1811fc4913b7a4bb19c2caad69e025ab53bc1fa9b8"
+    }
+  },
+  "knowledge_original_present": false,
+  "round1_after_audit": {
+    "categories": [
+      "lfsr",
+      "generic"
+    ],
+    "signatures": [
+      "X_BEFORE_FIRST_EDGE",
+      "WRONG_BETWEEN_EDGES_IN_RESET",
+      "NEXT_STATE_DIVERGES_LATER"
+    ],
+    "selected_rules": [
+      {
+        "key": "lfsr:X_BEFORE_FIRST_EDGE",
+        "signature": "X_BEFORE_FIRST_EDGE",
+        "rule": "An output required before the first clock edge must become defined independently of a clocked transition.",
+        "description": "output is X with reset asserted and no clock edge yet",
+        "source": "simulation"
+      },
+      {
+        "key": "lfsr:WRONG_BETWEEN_EDGES_IN_RESET",
+        "signature": "WRONG_BETWEEN_EDGES_IN_RESET",
+        "rule": "A reset specified to act independently of the clock must restore the required state between clock edges.",
+        "description": "reset asserted mid-run; output not at reset value before the next edge (only when async reset is required)",
+        "source": "simulation"
+      }
+    ],
+    "taxonomy_sha256": "7d227b3ff29ab2165341d429d2201f14bea408c14048d480f9b47c907ddb051e",
+    "knowledge_sha256": "39ac6f0b5cd066f5459aab1811fc4913b7a4bb19c2caad69e025ab53bc1fa9b8",
+    "taxonomy_path": "/workspace/GUIDE/VerilogGenBenchmark/taxonomy.json",
+    "knowledge_path": "/workspace/GUIDE/VerilogGenBenchmark/knowledge.json",
+    "prompt_byte_budget": 5988,
+    "prompt_utf8_bytes": 2338,
+    "excluded_categories": []
+  },
+  "json_files_unchanged": true,
+  "grade_source_unchanged": true,
+  "lfsr_stdout_byte_identical": true,
+  "source_log_after_move": "log/history/md_generic_v4_dynamic_taxonomy_20261010T193309Z_1791660789210467332/md_generic_v4_dynamic_taxonomy_20261010T193309Z_1791660789210467332_lfsr_20261010T193309Z_1791660789260213302.jsonl",
+  "intended_destination": "/workspace/sean-work"
+}

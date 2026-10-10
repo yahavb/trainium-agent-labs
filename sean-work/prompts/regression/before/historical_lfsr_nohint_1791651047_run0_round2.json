@@ -1,0 +1,6 @@
+[
+  {
+    "role": "user",
+    "content": "Write a Verilog module named `lfsr` for an 8-bit linear feedback shift register.\nPorts: input clk, input reset_n (active low), output reg [7:0] data.\nOn reset_n low, data is set to 8'b10001010.\nOn each rising clock edge with reset_n high, shift data left by one and set the new\nbit 0 to the XOR of the old bits 0, 3, 5 and 6.\nReturn only the Verilog module in one code block.\n\nYour previous attempt:\n```verilog\nmodule lfsr (\n    input clk,\n    input reset_n,\n    output reg [7:0] data\n);\n\nalways @(posedge clk) begin\n    if (!reset_n) begin\n        data <= 8'b10001010;\n    end else begin\n        data <= {data[6:0], data[7] ^ data[3] ^ data[5] ^ data[6]};\n    end\nend\n\nendmodule\n\n```\nResult (score 0.30):\nreset_immediate: at 2 ns reset_n has been 0 for 1 ns and no clock edge has happened yet, and data is undefined (X).\nfirst_step: on the first clock edge after reset_n is released, data is wrong in bit(s) [0]; the other 7 bits are correct.\n\nEarlier feedback you already received:\n- reset_immediate: at 2 ns reset_n has been 0 for 1 ns and no clock edge has happened yet, and data is undefined (X).\nFix the problem and return the complete corrected module.\nYour last two attempts were identical and both failed. Change the logic, not just the formatting.\n"
+  }
+]
