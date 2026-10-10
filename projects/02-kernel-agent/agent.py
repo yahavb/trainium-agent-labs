@@ -69,6 +69,16 @@ WEIGHTS = dict(parses=0.1, rules=0.2, runs=0.2, correct=0.5)
 FEEDBACK_MODE = "located"
 LOCATED = " The failing line is line "
 
+# Each mode adds to the one before it, so "at least located" is a meaningful test.
+#   directed2  directed, plus the real signature of the NKI function called on the failing line.
+#              Measured on a seat: the model wrote nisa.tensor_scalar(dst=tile, data=0.5,
+#              op0=nisa.multiply) -- a real function with the arguments in the wrong roles.
+MODES = ("raw", "enriched", "located", "directed", "directed2")
+
+
+def at_least(mode):
+    return MODES.index(FEEDBACK_MODE) >= MODES.index(mode)
+
 # Used only when the traceback has no frame inside the candidate file. (error pattern, pattern to
 # look for in the source). `{0}` is the first group captured from the error.
 GUESSES = [
@@ -119,15 +129,17 @@ def explain(exc, path, source, prefix="raised ", add_fix=True):
         return text
     if add_fix:
         text = enrich(text)
-    if FEEDBACK_MODE in ("located", "directed"):
+    if at_least("located"):
         where = locate(exc, path, source)
         if where:
             # A size mismatch can be fixed at either end, so do not point at the copy alone.
             close = ("Change that line, or the line that allocates its destination, so the two "
                      "shapes match."
-                     if FEEDBACK_MODE == "directed" and "same number of elements" in text
+                     if at_least("directed") and "same number of elements" in text
                      else "That is the line to change.")
             text += f"{LOCATED}{where[0]} of your kernel: `{where[1]}`. {close}"
+            if at_least("directed2"):
+                text += signatures_on(where[1])
         elif not explain.warned:
             explain.warned = True
             frames = [f"{os.path.basename(f.f_code.co_filename)}:{n}"
@@ -138,6 +150,23 @@ def explain(exc, path, source, prefix="raised ", add_fix=True):
 
 
 explain.warned = False
+
+
+def signatures_on(line):
+    """The real signatures of the nl/nisa functions called on a line, as a sentence, or ''."""
+    sigs = []
+    for name in dict.fromkeys(re.findall(r"\b(?:nl|nisa)\.(\w+)\s*\(", line)):
+        sig = real_signature(name)
+        # real_signature names the module "isa" / "language"; the model writes nisa / nl.
+        for long, short in (("isa.", "nisa."), ("language.", "nl.")):
+            if sig.startswith(long):
+                sig = short + sig[len(long):]
+        if "(" in sig and sig not in sigs:
+            sigs.append(sig if len(sig) <= 260 else sig[:257] + "...")
+    if not sigs:
+        return ""
+    return (" For reference, the real signature" + (" is " if len(sigs) == 1 else "s are ")
+            + " and ".join(sigs[:2]) + ". Pass every argument by keyword, in those roles.")
 
 
 def signature(feedback):
@@ -403,7 +432,7 @@ def directed(error_text):
 
 def enrich(error_text):
     """Add the real names when the failure is an invented API call."""
-    if FEEDBACK_MODE == "directed":
+    if at_least("directed"):
         better = directed(error_text)
         if better:
             return better
@@ -584,6 +613,36 @@ def prompt_shape(prompt, kind, level, terse=0, code="", feedback="", ledger=""):
     return shape
 
 
+# Measured on a seat, level 1, eight rounds of four samples at temperature 0.6: the four answers
+# were byte-identical in seven rounds and two distinct in the eighth. So four samples of one prompt
+# are one attempt paid for four times. The server runs four sequences at once at no extra
+# wall-clock, so --diverse spends those slots on four differently worded requests instead.
+# Each variant is a way of working, not a piece of the answer.
+FIRST_VARIANTS = (
+    "",
+    "\n\nKeep it as simple as you can. When a whole tensor fits in one tile (first dimension at "
+    "most 128), load it whole instead of looping over small pieces.",
+    "\n\nOn every line that allocates a tile, add a comment giving its shape, and make sure every "
+    "copy into or out of it has exactly that shape.",
+    "\n\nUse as few different NKI functions as possible, and only ones named above.",
+)
+REPAIR_VARIANTS = (
+    "",
+    "\n\nAfter fixing that, check every other line that uses the same function or the same tile "
+    "for the same mistake, and fix those too.",
+    "\n\nDo not patch this attempt. Write the kernel again from the start in the simplest form "
+    "that could work, keeping only the parts the checker did not complain about.",
+    "\n\nOn every line that allocates a tile, add a comment giving its shape, and make sure every "
+    "copy into or out of it has exactly that shape.",
+)
+
+
+def variants(prompt, kind, n):
+    """n prompts: the original, then the same request with a different way of working added."""
+    extra = FIRST_VARIANTS if kind == "first" else REPAIR_VARIANTS
+    return [prompt + extra[i % len(extra)] for i in range(n)]
+
+
 CODE_BLOCK = re.compile(r"```(?:python)?\s*(.*?)```", re.S)
 
 
@@ -667,6 +726,13 @@ def ask_parallel(a, prompt, n):
         return [f.result() for f in [ex.submit(ask, a, prompt) for _ in range(n)]]
 
 
+def ask_each(a, prompts):
+    """One request per prompt, all at once."""
+    import concurrent.futures as cf
+    with cf.ThreadPoolExecutor(max_workers=len(prompts)) as ex:
+        return [f.result() for f in [ex.submit(ask, a, p) for p in prompts]]
+
+
 def offline_answers(level, n, rnd):
     """No model. Replays the shipped reference, preceded by a deliberately broken version, so the
     loop and the feedback path can be exercised with no endpoint. Never report a number."""
@@ -689,7 +755,11 @@ def solve(a, level, log):
     latest = ("", "")
     for rnd in range(a.rounds):
         t0 = time.perf_counter()
+        diverse = getattr(a, "diverse", False)
+        prompts = (variants(prompt, shape["kind"], a.samples) if diverse
+                   else [prompt] * a.samples)
         replies = (offline_answers(level, a.samples, rnd) if a.offline
+                   else ask_each(a, prompts) if diverse
                    else ask_parallel(a, prompt, a.samples))
         gen_s = round(time.perf_counter() - t0, 1)
         graded = []
@@ -699,7 +769,9 @@ def solve(a, level, log):
             graded.append((reward, src, feedback, parts))
             meta = getattr(reply, "meta", {})
             log.write(json.dumps(dict(level=level, round=rnd, reward=reward, parts=parts,
-                                      prompt_chars=len(prompt), reply_chars=len(reply),
+                                      prompt_chars=len(prompts[i]), reply_chars=len(reply),
+                                      variant=(i % len(REPAIR_VARIANTS)) if diverse else 0,
+                                      diverse=diverse, commit=getattr(a, "commit", ""),
                                       code=src, feedback=feedback,
                                       session=getattr(a, "session", ""),
                                       run=getattr(a, "run", 0), sample=i, model=a.model,
@@ -712,7 +784,12 @@ def solve(a, level, log):
                                       finish=meta.get("finish"),
                                       reasoning_chars=meta.get("reasoning_chars"))) + "\n")
         log.flush()
-        graded.sort(key=lambda g: g[0], reverse=True)
+        if diverse:
+            # Rewards often tie (four attempts at 0.30). Among equals, repair from the attempt whose
+            # failure has not been seen before: a new failure is movement, the old one is a cycle.
+            graded.sort(key=lambda g: (g[0], signature(g[2]) not in seen), reverse=True)
+        else:
+            graded.sort(key=lambda g: g[0], reverse=True)
         top = graded[0]
         if top[0] > best[0]:
             best = (top[0], top[1], top[2])
@@ -807,17 +884,28 @@ def main():
                     help="let the model reason first; costs budget, and it ran out")
     ap.add_argument("--offline", action="store_true")
     ap.add_argument("--feedback", default="located",
-                    choices=("raw", "enriched", "located", "directed"),
+                    choices=MODES,
                     help="what the checker sends back when the kernel raises. raw: the bare "
                          "exception. enriched: plus the fix instruction (the original behaviour). "
                          "located: plus the model's own failing line, quoted. directed: plus "
                          "messages rewritten from what real runs showed (actual shapes, where a "
                          "name really lives). Run the same level under each to measure what the "
                          "feedback is worth.")
+    ap.add_argument("--diverse", action="store_true",
+                    help="send --samples DIFFERENTLY WORDED requests each round instead of the "
+                         "same prompt --samples times. Measured on a seat: four samples of one "
+                         "prompt came back identical in seven rounds of eight.")
     a = ap.parse_args()
     global FEEDBACK_MODE
     FEEDBACK_MODE = a.feedback
     a.session = time.strftime("%Y%m%d-%H%M%S")
+    try:
+        import subprocess
+        a.commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True,
+                                  text=True, timeout=5,
+                                  cwd=os.path.dirname(os.path.abspath(__file__))).stdout.strip()
+    except Exception:
+        a.commit = ""
 
     if not a.offline:
         # Validate before the first request. An empty or scheme-less value produces a hostname
@@ -838,7 +926,7 @@ def main():
                      f"http://qwen3-8b:8000/v1.")
         a.base = raw.rstrip("/") + a.path
         print(f"endpoint {a.base}  model {a.model}  feedback {FEEDBACK_MODE}  "
-              f"session {a.session}")
+              f"diverse {a.diverse}  commit {a.commit or '?'}  session {a.session}")
     else:
         print("*** OFFLINE: replaying the reference kernel. Numbers are meaningless. ***")
 

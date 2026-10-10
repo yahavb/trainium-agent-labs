@@ -20,6 +20,7 @@
 # Settings can be overridden:  MODES="located" REPEAT=5 bash go.sh
 # A further mode, kept apart from earlier results:  OUT=results-directed MODES=directed bash go.sh
 # (use the same OUT= with "status" and "stop")
+# Queue it behind a job that is still running:  GO_WAIT_FOR=results OUT=results-next ... bash go.sh
 set -uo pipefail
 # Resolve this script's own path BEFORE changing directory: it re-runs itself for the background
 # job, and a relative path such as projects/02-kernel-agent/go.sh stops resolving after the cd.
@@ -75,6 +76,11 @@ summary() {
 case "${1:-}" in
   _run)
     # The background job. Not meant to be called by hand.
+    if [ -n "${GO_WAIT_FOR:-}" ]; then
+      # Two runs at once share the model and both crawl (measured: 4 minutes a round instead of 1).
+      echo "##### waiting for the job in $GO_WAIT_FOR to finish, since $(date +%H:%M:%S)"
+      while (OUT="$GO_WAIT_FOR"; PIDFILE="$OUT/ablation.pid"; running); do sleep 20; done
+    fi
     for mode in $MODES; do
       echo "##### feedback=$mode started $(date +%H:%M:%S)"
       # shellcheck disable=SC2086
