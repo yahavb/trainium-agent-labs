@@ -19,7 +19,6 @@ logical cores 0-1, so this defaults to core 2. Override with CHIPBOOST_CORE, or 
 """
 
 import argparse
-import importlib.util
 import os
 import statistics
 import sys
@@ -53,16 +52,6 @@ def _pick_core():
             except Exception:
                 pass
     raise RuntimeError(f"no free NeuronCore among {candidates} (vLLM holds 0-1 on seat pods): {last}")
-
-
-def load_kernel(path, entry):
-    """Import a kernel file and return its @nki.jit entry point."""
-    spec = importlib.util.spec_from_file_location(f"cand_{abs(hash(path))}", path)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    if not hasattr(mod, entry):
-        raise AttributeError(f"no function named {entry} in {path}")
-    return getattr(mod, entry)
 
 
 def compile_kernel(kernel, inputs):
@@ -209,24 +198,30 @@ def time_ab(a, b, rounds=5, warmup=3, iters=20):
     return dict(a=A, b=B, speedup=A["median_us"] / B["median_us"])
 
 
-def noise_threshold(stats):
-    """Smallest speedup that beats the measured noise of a baseline: max(5%, 2x relative IQR)."""
-    return 1.0 + max(0.05, 2.0 * stats["iqr_us"] / stats["median_us"])
+NOISE_FLOOR = 0.01
+
+
+def noise_threshold(*stats):
+    """The ONE definition of the referee's noise threshold: 1 + max(1%, 2x the relative IQR), where the IQR is
+    the worst among `stats` -- pass both arms of every timed shape, so each shape counts its noisier arm and the
+    shapes pool conservatively (the max). A speedup >= thr is a gain, <= 1/thr a loss, in between `no_gain`.
+
+    Why 1%: on seat-100 the A/A spread (start kernel vs itself, 45 checks) was sd 0.011% and the worst per-shape
+    deviation 0.063%, so 1% is ~16x the worst seen; the old 5% floor was ~170x the noise and called real 2-4%
+    speedups `slower`. Noisy (small) shapes still raise the threshold through the IQR term."""
+    rel = max(s["iqr_us"] / s["median_us"] for s in stats)
+    return 1.0 + max(NOISE_FLOOR, 2.0 * rel)
 
 
 # ---------------------------------------------------------------- selftest
 
-def _matmul_inputs(K, M, N, seed=0):
-    import ml_dtypes
-    r = np.random.default_rng(seed)
-    return {"lhsT": r.standard_normal((K, M)).astype(ml_dtypes.bfloat16),
-            "rhs": r.standard_normal((K, N)).astype(ml_dtypes.bfloat16)}
-
-
 def selftest(shapes="small"):
-    here = os.path.dirname(os.path.abspath(__file__))
-    ref = os.path.join(here, "..", "02-kernel-agent", "reference_level4.py")
-    kern = load_kernel(ref, "nki_matmul_tiled_")
+    # The referee's own loader (nkibench) and matmul inputs/reference, so the timer is proven on exactly what the
+    # referee feeds it. Imported here, not at module level: speedcheck imports this module (lazily) too.
+    import speedcheck
+    spec = speedcheck.OPS["matmul"]
+    ref = os.path.join(speedcheck.NKIBENCH_DIR, "reference_level4.py")
+    kern = speedcheck.nkibench.load_kernel(ref, "nki_matmul_tiled_")
     core = _pick_core()
     print(f"bound to NeuronCore {core}")
     ok = True
@@ -244,13 +239,13 @@ def selftest(shapes="small"):
 
     timed = []
     for K, M, N in cases:
-        inp = _matmul_inputs(K, M, N)
+        inp = spec["make_inputs"]((K, M, N), 0)
         t0 = time.time()
         ck = compile_kernel(kern, inp)
         ct = time.time() - t0
         L = Loaded(ck, inp)
         out = L.run()[0].astype(np.float32)
-        want = inp["lhsT"].astype(np.float32).T @ inp["rhs"].astype(np.float32)
+        want = np.asarray(spec["ref"](inp), np.float32)
         err = float(np.nanmax(np.abs(out - want)) / np.abs(want).max())
         print(f"\nmatmul K={K} M={M} N={N}  (compile {ct:.1f}s)")
         check("output written", not np.isnan(out).any(), f"{np.isnan(out).sum()} NaN left of {out.size}")
@@ -269,7 +264,7 @@ def selftest(shapes="small"):
 
     ab = time_ab(L1, L1, rounds=3)
     check("A/A interleave is ~1.0", abs(ab["speedup"] - 1) < 0.03,
-          f"same kernel vs itself: {ab['speedup']:.3f}  (noise threshold {noise_threshold(ab['a']):.3f})")
+          f"same kernel vs itself: {ab['speedup']:.3f}  (noise threshold {noise_threshold(ab['a'], ab['b']):.3f})")
 
     print("\nTIMER OK" if ok else "\nTIMER FAILED -- do not trust timings")
     return ok
