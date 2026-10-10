@@ -16,13 +16,13 @@ attempt matched to the server's token counts (checks.md). These are round-2 numb
 
 | level | solved | attempts to first 1.0 | distinct trajectories | re-audit (fresh process, trn2) | held-out |
 |---|---|---|---|---|---|
-| 3 | **5/5** (baseline 0/5) | 1, 1, 1, 1, 2 (all round 0) | 3 distinct round-0 code sets, 4 distinct whole runs | 2 distinct solving kernels, both PASS | 5/5 VERIFIED |
+| 3 | **5/5** (baseline 0/5) | 1, 1, 1, 1, 2 (all round 0) | 3 (4 if the order of the samples within a round counts; it should not, they are interchangeable) | 2 distinct solving kernels, both PASS | 5/5 VERIFIED |
 | 4 | **5/5** (baseline 0/5) | 9 in every run (round 2) | **1**: the five runs are identical, code for code | 1 solving kernel, PASS | 5/5 VERIFIED |
 
 "Distinct trajectories" counts runs whose code differs. Level 4's five runs are identical round by round:
 the same prompt lengths (1,894, 2,993, 4,103 characters, 20 requests each in USAGE_LOG), the same code, the
 same feedback. Even with `SAMPLING=qwen` (temperature 0.7), they are one trajectory repeated, so level 4's 5/5 is
-**evidence of one path, not five**. Level 3's 5/5 rests on four different runs.
+**evidence of one path, not five**. Level 3's 5/5 rests on three different trajectories. For comparison, the baseline's and E-A's level 1 are also a single trajectory: every run's round 0 returned one code four times, and all five runs are the same (analysis/compare, scripts/compare.py).
 
 ## The three sentences
 
