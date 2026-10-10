@@ -1,0 +1,4 @@
+﻿family,mode,description,level 3,level 4,total,share of failures,stuck rate
+tiling rules,partition_over_128,a tile or contraction larger than 128 partitions,0,20,20,42.6%,0%
+index arithmetic,broadcast,assigns a value of the wrong shape,0,20,20,42.6%,0%
+memory model,wrong_buffer,a tile in the wrong memory (SBUF / PSUM / HBM),7,0,7,14.9%,
