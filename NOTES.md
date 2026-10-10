@@ -19,25 +19,26 @@
 | `origin` | github.com/teoguo/trainium-agent-labs | teoguo 的 fork，以后从这里给原仓库提 PR（从 `master` 开分支） |
 | `upstream` | github.com/yahavb/trainium-agent-labs | 原仓库，只读 |
 
-**Baseline**（seat-116，`--all --rounds 8 --samples 4 --context 8192 --repeat 5`，约 12:45 跑完）
+**Baseline**（seat-116，`--all --rounds 8 --samples 4 --context 8192 --repeat 5`，10:50–12:43，已完成，424 次尝试）
 ```
-          run1   run2   STATE.md 参考
-level 1   0.30   0.30   0/5，全部 0.30
-level 2   1.00✅ 0.30   4/5
-level 3   0.30   0.30   0/5，全部 0.30
-level 4   0.62   0.62   0/5，全部 0.62
+          solved   5 次分数                      STATE.md 参考
+level 1   0/5      [0.30, 0.30, 0.30, 0.30, 0.30]   0/5，全部 0.30
+level 2   3/5      [1.00, 0.30, 1.00, 0.30, 1.00]   4/5
+level 3   0/5      [0.30, 0.30, 0.30, 0.30, 0.30]   0/5，全部 0.30
+level 4   0/5      [0.62, 0.62, 0.50, 0.62, 0.62]   0/5，全部 0.62
 ```
+**截止时间 18:30**（问过主办方）。座位 115/117/118/119 是组员的，可以并行跑；操作手册见 Claude 文档「Trainium 组员操作手册」。
 日志拉回本机：`scripts/sync.sh 116 pull` → `runs/seat-116/latest/`（gitignore，不提交）。
 重新生成分类表：`.venv/bin/python scripts/attempts_to_csv.py runs/seat-116/latest/projects/02-kernel-agent/attempts.jsonl -o analysis/baseline_seat116`
 
 **已确认的发现**
-1. **每轮约 50 秒，慢在模型生成，不在评分。** vLLM 总生成速度约 22 tok/s（4 条并发，每条约 5.6 tok/s），worker 一直占满 CPU，日志里有 `vllm._C` 缺失。这是服务端配置，我们不改。对策：一次只测一个 level（`--level X --repeat 5`，15–25 分钟），多个座位并行；输出 token 贵、输入 token 便宜（prefill 约 240 tok/s）。
-2. **失败分类**（前 3 次 run，224 次尝试，`analysis/baseline_seat116_summary.csv`）：
-   - 拷贝两边大小不一致 48 次（L1/L2/L3 都有）
-   - 编造不存在的函数 48 次（全在 L1：`nisa.multiply`、`nisa.scalar_mul`）
-   - 下标越界 32 次（L2/L3）
-   - tile 超过 128 行 27 次（L4 唯一卡住的地方）
-   - 乱用 reshape 21 次、tile 只有一维 16 次（L3）
+1. **每轮约 50 秒，慢在模型生成，不在评分；没有便宜的提速办法。** 12:50 在 seat-116 实测：1 条并发 13.9 tok/s，4 条并发总共 22.1 tok/s（每条 5.5）。模型确实在 Trainium 上跑（`neuron-ls` 有进程；`PJRT_DEVICE=CPU` 是 vllm_neuron 自己设的）。CPU 配额 11 核只用了约 5 核，节流约 1%，所以不是 CPU 配额卡住；`vllm._C` 缺失在 Neuron 上是正常的。可调的只有 `--optimization-level 3`（默认 O1）或 TP=4，都要重新编译、耗时未知、还会让 baseline 失效，**决定不改**。对策：多座位并行，一次只测一个 level；输出 token 贵、输入 token 便宜（prefill 约 270 tok/s）。
+2. **失败分类**（5 次 run，424 次尝试，`analysis/baseline_seat116_summary.csv`）：
+   - 拷贝两边大小不一致 96 次（L1 40、L2 30、L3 26）
+   - 编造不存在的函数 80 次（全在 L1：`nisa.multiply`、`nisa.scalar_mul`）
+   - 下标越界 64 次（L2/L3/L4）
+   - tile 超过 128 行 55 次（L4 主要卡点）
+   - 乱用 reshape 50 次（L3 48）、tile 只有一维 22 次（L3）
 3. **harness 的反馈里已经附带了修改建议**（`agent.py` 的 `enrich()`），但同样的错误还是反复出现，说明现有建议没起作用。改反馈要从这里入手。
 4. **port-forward 没有权限**，agent 只能在 pod 里跑；`kubectl cp` / exec 可以用。
 
@@ -48,11 +49,11 @@ level 4   0.62   0.62   0/5，全部 0.62
 - ⚠️ `references/downloads/*_nki_kernels.py`（average_pool2d、matmul、transpose2d）基本就是 level 1–4 的标准答案，**不能放进 prompt**（等于泄题），只给人看
 
 **正在做 / 下一步**
-1. [对照表已完成 `analysis/api_name_fixes.md`，待接进 `enrich()`] 编造的名字只有 4 种（nisa.multiply 36、transpose_moving 13、nisa.scalar_mul 12、tile_size() 1）；0.6.0 里 `nl.multiply` 可直接调用，`nc_matmul` 的转置参数叫 `is_transpose`
+1. [实验 A 已接进 `enrich()` 的 `KNOWN_FIXES`，commit 5ed7ec2，待在 seat-116 上验证 L1] 编造的名字只有 4 种（nisa.multiply 36、transpose_moving 13、nisa.scalar_mul 12、tile_size() 1）；0.6.0 里 `nl.multiply` 可直接调用，`nc_matmul` 的转置参数叫 `is_transpose`
 2. 精简 API 卡片（level 1–4 用到的十几个函数，约 300 token）放进 prompt
-3. 改反馈的优先级：L4「tile 超过 128 行」（离解出来最近）→「拷贝大小不一致」（影响三关）→ L1 编造函数
+3. liuyq 的 `feedback_v2.py` / `feedback_v3.py`（commit fc137e7）已经覆盖 L4「tile 超过 128 行」和「拷贝大小不一致」；她在 4090 上 L4 解出 5/10（原版 0/15），待在 pod 上确认
 4. agent 加 token 分段统计（prompt 里规则说明 / 上次代码 / 报错 / 失败记录各多少）和置信度输出
-5. 每个改动用 `--level X --repeat 5` 验证，变差就回滚；下午 3 点冻结，跑最终对比
+5. 每个改动用 `--level X --repeat 5` 验证，变差就回滚；约 16:30 冻结，多座位并行跑最终对比，18:15 前提交
 
 **文件索引**：`上手指南.md`（连座位的命令）· `scripts/connect.sh` · `scripts/sync.sh` · `scripts/attempts_to_csv.py` · `analysis/`（分类表）· `projects/02-kernel-agent/{agent.py,nkibench.py}`（要改的代码）
 
