@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="338" viewBox="0 0 680 338" font-family="Helvetica, Arial, sans-serif" role="img" aria-labelledby="t d">
+<title id="t">Qwen3-8B decode throughput on Trainium 2 vs number of DFlash2 draft tokens</title>
+<desc id="d">baseline: 51.9 tokens per second; 4 draft tokens: 68.9 tokens per second; 8 draft tokens: 69.0 tokens per second; 15 draft tokens: 67.3 tokens per second</desc>
+<rect width="680" height="338" fill="#fff"/>
+<text x="340.0" y="30" text-anchor="middle" font-size="18" font-weight="bold" fill="#111">Qwen3-8B on Trainium 2 — decode throughput</text>
+<text x="340.0" y="52" text-anchor="middle" font-size="12" fill="#444">1 request, greedy, 128 new tokens, TP=2 on one trn2 chip, same server config</text>
+<line x1="200" y1="72" x2="200" y2="298" stroke="#333"/>
+<text x="190" y="102.1" text-anchor="end" font-size="14" fill="#111">Baseline (no drafts)</text>
+<rect x="200" y="80" width="204.6" height="34" fill="#6b7280"/>
+<text x="412.6" y="102.1" font-size="14" fill="#111">51.9 tok/s (1.00x)</text>
+<text x="190" y="154.1" text-anchor="end" font-size="14" fill="#111">DFlash2, 4 draft tokens</text>
+<rect x="200" y="132" width="271.6" height="34" fill="#2563eb"/>
+<text x="479.6" y="154.1" font-size="14" fill="#111" font-weight="bold">68.9 tok/s (1.33x)</text>
+<text x="190" y="206.1" text-anchor="end" font-size="14" fill="#111">DFlash2, 8 draft tokens</text>
+<rect x="200" y="184" width="272.0" height="34" fill="#2563eb"/>
+<text x="480.0" y="206.1" font-size="14" fill="#111" font-weight="bold">69.0 tok/s (1.33x)</text>
+<text x="190" y="258.1" text-anchor="end" font-size="14" fill="#111">DFlash2, 15 draft tokens</text>
+<rect x="200" y="236" width="265.3" height="34" fill="#2563eb"/>
+<text x="473.3" y="258.1" font-size="14" fill="#111" font-weight="bold">67.3 tok/s (1.30x)</text>
+</svg>

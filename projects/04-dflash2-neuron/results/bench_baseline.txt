@@ -1,0 +1,18 @@
+# python3 bench_dflash2.py --max-tokens 128 --runs 2
+# server: bash serve_baseline.sh  (Qwen/Qwen3-8B, no speculative decoding, same config as serve_dflash2.sh)
+# seat-40, trn2 (1 chip, TP=2), 2026-10-10 21:53 UTC
+--- sample output (prompt 1) ---
+ A hash map, also known as a hash table, is a data structure that stores key-value pairs. It allows for efficient retrieval of values based on their associated keys. Here's a step-by-step explanation of how a hash map works:
+
+1. **Hash Function**: The hash map uses a hash function to convert the key into an index (or hash code) that points to a specific position in an underlying array. The hash function takes the key as input and returns an integer, which is then used to determine where the key-
+--------------------------------
+run 0 prompt 0: 128 tokens in 2.47s = 51.8 tok/s
+run 0 prompt 1: 128 tokens in 2.47s = 51.8 tok/s
+run 0 prompt 2: 128 tokens in 2.46s = 52.0 tok/s
+run 1 prompt 0: 128 tokens in 2.46s = 52.0 tok/s
+run 1 prompt 1: 128 tokens in 2.47s = 51.9 tok/s
+run 1 prompt 2: 128 tokens in 2.46s = 51.9 tok/s
+
+model: Qwen/Qwen3-8B
+overall: 768 tokens in 14.8s = 51.9 tok/s (per-request median 51.9 tok/s)
+no spec_decode metrics found (baseline server, or metrics disabled)
