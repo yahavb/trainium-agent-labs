@@ -34,6 +34,14 @@ messages) is quoted as data in referee_message and never becomes instruction_giv
     python speedcheck.py --op matmul --check cand.py
     python speedcheck.py --op matmul --check cand.py --json --log attempts.jsonl
     speedcheck.check_isolated(path)   # from Python: one record, or None if the REFEREE failed
+
+In a loop, a persistent worker skips the 6-13 s NeuronCore runtime start check_isolated pays per candidate;
+same contract (a record, or None for a referee failure), with a per-candidate watchdog that kills and
+respawns the worker (`speedcheck.py --serve RESULTS.jsonl` underneath; paths in on stdin, records out
+through the parent-named file):
+
+    with speedcheck.RefereeWorker(op="matmul", core=3) as w:
+        rec = w.check(path)            # w.last_error says why, when it returns None
 """
 
 import argparse
@@ -62,6 +70,7 @@ import schema    # noqa: E402
 
 CACHE = os.environ.get("CHIPBOOST_CACHE", "/tmp/chipboost_cache")
 CHILD_TIMEOUT = 600
+COMPILE_THREADS = 8                  # shapes the sandboxed child compiles at once
 
 # ---------------------------------------------------------------- ops
 
@@ -71,11 +80,34 @@ def _bf16():
     return ml_dtypes.bfloat16
 
 
+_NORMAL_CHUNKS = 8                    # fixed: the values for a seed never depend on the machine's core count
+
+
+def _normal(seed_seq, shape):
+    """Standard normal fp32, filled in parallel. A big operand is split into _NORMAL_CHUNKS slices, each from
+    its own child stream of the seed, and filled in threads (numpy drops the GIL while it fills): ~10x faster
+    than one fp64 stream cast to fp32, which was most of the referee's 2.2 s of input generation. Deterministic
+    per seed (the child and the referee must build the same simulator inputs). The threads end with the call:
+    none are left running when the referee forks its sandboxed child."""
+    out = np.empty(shape, np.float32)
+    flat = out.reshape(-1)
+    if flat.size < (1 << 20):
+        np.random.default_rng(seed_seq).standard_normal(out=flat, dtype=np.float32)
+        return out
+    gens = [np.random.default_rng(s) for s in seed_seq.spawn(_NORMAL_CHUNKS)]
+    cut = np.linspace(0, flat.size, _NORMAL_CHUNKS + 1).astype(np.int64)
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(min(_NORMAL_CHUNKS, os.cpu_count() or 1)) as ex:
+        list(ex.map(lambda i: gens[i].standard_normal(out=flat[cut[i]:cut[i + 1]], dtype=np.float32),
+                    range(_NORMAL_CHUNKS)))
+    return out
+
+
 def _matmul_inputs(shape, seed, hostile=False):
     K, M, N = shape
-    r = np.random.default_rng(seed)
-    a = r.standard_normal((K, M)).astype(np.float32)
-    b = r.standard_normal((K, N)).astype(np.float32)
+    sa, sb = np.random.SeedSequence(seed).spawn(2)
+    a = _normal(sa, (K, M))
+    b = _normal(sb, (K, N))
     if hostile:                       # large magnitudes, exact zeros, a sign-flipped block
         a[: K // 8] *= 64.0
         b[:, : N // 16] = 0.0
@@ -424,17 +456,31 @@ def _child(job_path):
             np.save(os.path.join(wd, f"sim_{i}.npy"), np.asarray(got, np.float32))
             res["sim"].append(dict(shape=list(shape), counter=counter,
                                    untouched=nkibench.check_inputs_untouched(before, args)))
-    if res["error"] is None:
+    if res["error"] is None and job["compile"]:
+        # Every shape compiles at once, in threads (neuronx-cc releases the GIL: 8 compiles take 8.5 s instead
+        # of 25 s). The outcome is what the sequential loop reported: shapes in order, the first failure wins.
         import timing
-        for key, shape in job["compile"]:
-            inp = spec["make_inputs"](tuple(shape), 0)
+        from concurrent.futures import ThreadPoolExecutor
+        jobs = [(key, tuple(shape), spec["make_inputs"](tuple(shape), 0)) for key, shape in job["compile"]]
+
+        def compile_one(key, inp):
+            ck = timing.compile_kernel(kernel, inp)
+            shutil.copy(ck.neff_path, os.path.join(wd, f"{key}.neff"))
+
+        ex = ThreadPoolExecutor(max(1, min(COMPILE_THREADS, len(jobs))))
+        futs = [ex.submit(compile_one, key, inp) for key, _, inp in jobs]
+        for (key, shape, _), fut in zip(jobs, futs):
             try:
-                ck = timing.compile_kernel(kernel, inp)
-                shutil.copy(ck.neff_path, os.path.join(wd, f"{key}.neff"))
+                fut.result()
                 res["neffs"][key] = f"{key}.neff"
             except Exception as e:
                 fail("compile", e, list(shape))
                 break
+        if res["error"] is not None:          # report now; the parent kills whatever is still compiling
+            with open(os.path.join(wd, "result.json"), "w") as f:
+                json.dump(res, f)
+            os._exit(0)
+        ex.shutdown()
     json.dump(res, open(os.path.join(wd, "result.json"), "w"))
 
 
@@ -532,9 +578,16 @@ def _limits():
     except OSError:
         pass
     resource.setrlimit(resource.RLIMIT_AS, (48 * gb, 48 * gb))
-    resource.setrlimit(resource.RLIMIT_CPU, (CHILD_TIMEOUT, CHILD_TIMEOUT))
+    # CPU seconds are summed over the child's threads, and it compiles up to COMPILE_THREADS shapes at once:
+    # the budget is twice the wall-clock limit (the same total work a sequential child could do, plus room for
+    # the threads' overhead). It is only a backstop -- the parent's wall clock, CHILD_TIMEOUT, ends every child,
+    # an infinite loop included (one Python thread holding the GIL burns at most one CPU second per second).
+    resource.setrlimit(resource.RLIMIT_CPU, (2 * CHILD_TIMEOUT, 2 * CHILD_TIMEOUT))
     resource.setrlimit(resource.RLIMIT_FSIZE, (4 * gb, 4 * gb))
-    resource.setrlimit(resource.RLIMIT_NPROC, (2048, 2048))      # per uid: the child's own uid, so no fork bomb
+    # Per uid, threads included: the child's own uid, so no fork bomb. Each neuronx-cc runs a walrus_driver with
+    # one thread per host CPU (~190 on a trn2.48xlarge) whatever the env says; 8 at once hit 2048 and failed with
+    # "pthread_create failed". 5 parallel compiles peak at ~1000 tasks with the BLAS pools capped (run_child).
+    resource.setrlimit(resource.RLIMIT_NPROC, (4096, 4096))
     os.setsid()
 
 
@@ -641,7 +694,19 @@ def run_child(src, op, sim_seed, sim, compile_shapes, baseline, workdirs):
 
     Layout: wd (root, group = the child's own gid, 0750) holds the job and the already-scanned source, readable
     by the child; wd/out (the child's, 0700) is the only place it can write. It cannot rename `out` away (it
-    has no write permission on wd), so once it is dead the referee reads exactly that directory."""
+    has no write permission on wd), so once it is dead the referee reads exactly that directory.
+
+    The sandbox needs root and setpriv. Without them the child would run the candidate as the referee's own user,
+    able to rewrite the referee: that is a RefereeError, unless CHIPBOOST_ALLOW_UNSANDBOXED=1 opts in (local
+    development only), and then every child says so on stderr."""
+    if not (os.getuid() == 0 and shutil.which("setpriv")):
+        why = "the referee is not root" if os.getuid() != 0 else "setpriv is not installed"
+        if os.environ.get("CHIPBOOST_ALLOW_UNSANDBOXED") != "1":
+            raise RefereeError(f"cannot sandbox the candidate ({why}); run the referee as root with setpriv, or set "
+                               f"CHIPBOOST_ALLOW_UNSANDBOXED=1 for local development only")
+        print(f"speedcheck: WARNING: CANDIDATE CODE RUNS UNSANDBOXED ({why}; CHIPBOOST_ALLOW_UNSANDBOXED=1): it can "
+              f"read and modify anything this user can, the referee included. Never use these verdicts for real.",
+              file=sys.stderr)
     wd = tempfile.mkdtemp(prefix="chipboost_child_")
     workdirs.append(wd)
     out = os.path.join(wd, "out")
@@ -653,7 +718,11 @@ def run_child(src, op, sim_seed, sim, compile_shapes, baseline, workdirs):
                        compile=[[k, list(x)] for k, x in compile_shapes]), f)
     env = dict(os.environ, NEURON_RT_VISIBLE_CORES="0",          # held by vLLM: any device use by the child fails
                NKI_DISABLE_COMPILE_CACHE="1", CHIPBOOST_CHILD="1", PYTHONDONTWRITEBYTECODE="1",
-               HOME=out, XDG_CACHE_HOME=out, TMPDIR=out)
+               HOME=out, XDG_CACHE_HOME=out, TMPDIR=out,
+               # BLAS/OpenMP pools default to one thread per host CPU (192) in the child and in every neuronx-cc
+               # it starts: capped, the child goes from 191 threads and 20 GB of address space to 12 and 1 GB,
+               # and 5 parallel compiles from ~1800 tasks of RLIMIT_NPROC to ~1000, and finish sooner.
+               **{v: "4" for v in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")})
     cmd = [sys.executable, os.path.abspath(__file__), "--_child", os.path.join(wd, "job.json")]
     uid = None
     if os.getuid() == 0 and shutil.which("setpriv"):
@@ -1296,9 +1365,254 @@ def check_isolated(path, op="matmul", timeout=2 * CHILD_TIMEOUT + 600, baseline=
     return rec
 
 
+# ---------------------------------------------------------------- persistent worker (optional)
+
+def _serve(argv):
+    """`speedcheck.py --serve RESULTS.jsonl ...`: the referee as a long-lived process. It binds its NeuronCore
+    once, then reads candidate paths from stdin, one per line, and appends one JSON line per candidate to
+    RESULTS (a file the parent created and named): {"seq": n, "rec": record} or {"seq": n, "error": text} for a
+    referee failure. seq 0 is {"ready": true, "core": c} once the core is held. Candidates still run only in
+    run_child's sandbox; nothing they print can reach RESULTS."""
+    ap = argparse.ArgumentParser(prog="speedcheck.py --serve")
+    ap.add_argument("results")
+    ap.add_argument("--op", default="matmul", choices=sorted(OPS))
+    ap.add_argument("--baseline")
+    ap.add_argument("--rounds", type=int, default=3)
+    a = ap.parse_args(argv)
+    out = open(a.results, "a")
+
+    def emit(**d):
+        out.write(json.dumps(d) + "\n")
+        out.flush()
+        os.fsync(out.fileno())
+
+    try:
+        import timing
+        import nki.runtime  # noqa: F401
+        core = timing._pick_core()                    # the runtime start (nrt_init, 6-13 s) is paid here, once
+    except Exception as e:
+        emit(seq=0, ready=False, error=f"no free NeuronCore: {type(e).__name__}: {e}"[:500])
+        sys.exit(3)
+    emit(seq=0, ready=True, core=core, pid=os.getpid())
+    import gc
+    seq = 0
+    while True:
+        line = sys.stdin.readline()
+        if not line:
+            return
+        seq += 1
+        try:
+            rec = check(line.rstrip("\n"), a.op, baseline=a.baseline, rounds=a.rounds)
+            problems = schema.validate(rec)
+            if problems:
+                emit(seq=seq, error=f"referee produced an invalid record: {problems}"[:500])
+            else:
+                emit(seq=seq, rec=rec)
+        except RefereeError as e:
+            emit(seq=seq, error=f"referee error: {e}"[:500])
+        except BaseException as e:                    # unknown state: report, exit, and let the parent respawn
+            emit(seq=seq, error=f"referee crashed: {type(e).__name__}: {e}"[:500])
+            os._exit(4)
+        gc.collect()                                  # device tensors of this check's NEFFs go now
+
+
+def _descendants(pid):
+    """(pid, uid) of every process below `pid`, by parent links."""
+    procs = _procs()
+    kids = {}
+    for p, pp, _, u in procs:
+        kids.setdefault(pp, []).append((p, u))
+    out, todo = [], [pid]
+    while todo:
+        for p, u in kids.get(todo.pop(), []):
+            out.append((p, u))
+            todo.append(p)
+    return out
+
+
+class RefereeWorker:
+    """check_isolated without the per-candidate runtime start: one `--serve` process holds a NeuronCore and
+    referees candidates one after another. Same contract as check_isolated -- `check(path)` returns one record,
+    or None when the REFEREE failed (it died, no core, baseline broken) -- with a watchdog per candidate: a
+    check that outlives `timeout` is graded like check_isolated's timeout, and the worker is killed (with every
+    sandboxed process under it) and started again on the next call. The worker is also replaced every
+    `max_checks` candidates. Use it as a context manager, or call close().
+
+        with speedcheck.RefereeWorker(op="matmul", core=3) as w:
+            for path in candidates:
+                rec = w.check(path)
+    """
+
+    def __init__(self, op="matmul", baseline=None, rounds=3, timeout=2 * CHILD_TIMEOUT + 600, start_timeout=300,
+                 max_checks=50, core=None):
+        self.op, self.baseline, self.rounds = op, baseline, rounds
+        self.timeout, self.start_timeout, self.max_checks, self.core = timeout, start_timeout, max_checks, core
+        self._p = None
+        self.starts = 0                    # worker processes started so far (one runtime start each)
+        self.last_error = None             # the referee's account of the last None, for logs
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+
+    def _start(self):
+        # Its own temp directory: whatever a killed check leaves behind (sandbox work directories) goes with it.
+        self._tmp = tempfile.mkdtemp(prefix="chipboost_worker_")
+        os.chmod(self._tmp, 0o711)                      # a sandbox uid may traverse to its own work dir, no more
+        fd, self._results = tempfile.mkstemp(dir=self._tmp, prefix="results_", suffix=".jsonl")
+        os.close(fd)
+        self._errf = tempfile.TemporaryFile()
+        if os.getuid() == 0:
+            _subreaper()        # a dead worker's sandboxed orphans come here, so _stop can kill AND reap them
+        env = dict(os.environ, TMPDIR=self._tmp)
+        if self.core is not None:
+            env["CHIPBOOST_CORE"] = str(self.core)
+        cmd = [sys.executable, os.path.abspath(__file__), "--serve", self._results, "--op", self.op,
+               "--rounds", str(self.rounds)] + (["--baseline", self.baseline] if self.baseline else [])
+        self._p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=self._errf,
+                                   env=env, cwd=self._tmp, text=True, start_new_session=True)
+        self._pos, self._buf, self._seq = 0, "", 0
+        self.starts += 1
+        msg = self._wait(0, self.start_timeout)
+        if not isinstance(msg, dict) or not msg.get("ready"):
+            self.last_error = (msg.get("error") if isinstance(msg, dict) else None) or "the worker did not start"
+            self._stop()
+            return False
+        return True
+
+    def _read(self):
+        try:
+            with open(self._results) as f:
+                f.seek(self._pos)
+                data = f.read()
+                self._pos = f.tell()
+        except OSError:
+            return []
+        self._buf += data
+        *lines, self._buf = self._buf.split("\n")
+        out = []
+        for ln in lines:
+            try:
+                out.append(json.loads(ln))
+            except ValueError:
+                pass
+        return out
+
+    def _wait(self, seq, timeout):
+        """The worker's message for `seq`; None if the worker died first; "timeout" if the watchdog fired."""
+        deadline = time.monotonic() + timeout
+        while True:
+            dead = self._p.poll() is not None
+            for msg in self._read():
+                if isinstance(msg, dict) and msg.get("seq") == seq:
+                    return msg
+            if dead:
+                return None
+            if time.monotonic() > deadline:
+                return "timeout"
+            time.sleep(0.1)
+
+    def _stop(self):
+        """Kill the worker and everything under it, sandboxed children included (they run in sessions and uids
+        of their own, so neither the process group nor the worker's death reaches them)."""
+        p, self._p = self._p, None
+        if p is None:
+            return
+        below = _descendants(p.pid) if p.poll() is None else []
+        try:
+            os.killpg(p.pid, signal.SIGKILL)
+        except OSError:
+            pass
+        p.kill()
+        p.wait()
+        for q, _ in below:
+            try:
+                os.kill(q, signal.SIGKILL)
+            except OSError:
+                pass
+        if os.getuid() == 0:
+            # A worker that died on its own took the process tree with it (its orphans went to PID 1), but a check
+            # in flight left its sandbox uid as the owner of its `out` directory under our TMPDIR: kill by uid.
+            uids = {x for _, u in below for x in u if 61000 <= x < 65000}
+            try:
+                tops = [e.path for e in os.scandir(self._tmp) if e.is_dir(follow_symlinks=False)]
+            except OSError:
+                tops = []
+            for d in tops:                                # <tmp>/chipboost_child_*/out, never deeper (untrusted)
+                for x in (d, os.path.join(d, "out")):
+                    try:
+                        u = os.lstat(x).st_uid
+                    except OSError:
+                        continue
+                    if 61000 <= u < 65000:
+                        uids.add(u)
+            for uid in uids:
+                _kill_uid(uid)
+        try:
+            p.stdin.close()
+        except OSError:
+            pass
+        try:
+            self.last_error = self.last_error or _tail(self._errf)[-500:]
+            self._errf.close()
+        except (OSError, ValueError):
+            pass
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def check(self, path):
+        self.last_error = None
+        path = os.path.abspath(path)
+        if "\n" in path:
+            self.last_error = "a path with a newline cannot be sent to the worker"
+            return None
+        if self._p is not None and (self._p.poll() is not None or self._seq >= self.max_checks):
+            self._stop()
+        if self._p is None and not self._start():
+            return None
+        self._seq += 1
+        try:
+            self._p.stdin.write(path + "\n")
+            self._p.stdin.flush()
+        except OSError:
+            self.last_error = "the worker died before it read the candidate"
+            self._stop()
+            return None
+        msg = self._wait(self._seq, self.timeout)
+        if msg == "timeout":
+            self._stop()
+            return _record(kernel=self.op, verdict="wrong", referee_message=f"the check timed out after {self.timeout}s",
+                           instruction_given="The kernel did not finish; check for an unbounded loop.")
+        if msg is None:
+            self.last_error = "the worker died during the check"
+            self._stop()
+            return None
+        rec = msg.get("rec")
+        if not isinstance(rec, dict) or schema.validate(rec):
+            self.last_error = str(msg.get("error") or "invalid record")[:500]
+            return None
+        return rec
+
+    def close(self):
+        """Let the worker finish (EOF on stdin), or kill it after a few seconds."""
+        p = self._p
+        if p is None:
+            return
+        try:
+            p.stdin.close()
+            p.wait(timeout=10)
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+        self._stop()
+
+
 def main():
     if len(sys.argv) == 3 and sys.argv[1] == "--_child":
         _child(sys.argv[2])
+        return
+    if len(sys.argv) >= 3 and sys.argv[1] == "--serve":
+        _serve(sys.argv[2:])
         return
     ap = argparse.ArgumentParser()
     ap.add_argument("--op", default="matmul", choices=sorted(OPS))
