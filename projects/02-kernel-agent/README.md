@@ -271,6 +271,27 @@ That prints, per level, how many runs solved it plus best, worst and mean. **Rep
 best run.** A team that reports "we solved it" from one lucky run has measured the dice, not their agent —
 and this harness did exactly that for several commits before anyone noticed.
 
+#### Level 1: pooling-specific prompts
+
+The level-1 prompt uses a separate API card for window reductions and scalar scaling. In the first
+seat-21 baseline run, all 32 samples scored 0.30: candidates tried matrix multiplication for pooling,
+then cycled through incompatible tile sizes and invented API names. The repair prompt now permits
+replacing that computation and restates the pooling shape contract. Scores and checker tolerances
+are unchanged; levels 2 onward retain their existing prompts.
+
+This is a prompt change, **not a measured solve-rate improvement yet**. After the unchanged baseline
+finishes, evaluate this branch with the same settings and separate logs:
+
+```bash
+nohup python -u agent.py --level 1 --rounds 8 --samples 4 --context 8192 --repeat 5 \
+  --log attempts-level1-fix.jsonl > run-level1-fix.log 2>&1 < /dev/null &
+tail -f run-level1-fix.log
+```
+
+Keep runs sequential within a pod: `grade()` writes to a shared `/tmp/_agent_level1.py` candidate
+file even when the working directories differ. Compare level-1 solve rates across all five runs;
+passing the shipped reference kernel only validates the harness, not the model's new prompts.
+
 #### What measuring actually bought: a reverted "improvement"
 
 Right after adding `--repeat`, a plausible change went in — a second worked example in the prompt showing
