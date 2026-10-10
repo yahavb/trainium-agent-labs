@@ -7,7 +7,7 @@
 
 ---
 
-## 0. 当前状态（2026-10-10 13:25，随时更新）
+## 0. 当前状态（2026-10-10 13:35，随时更新）
 
 **人员**：teoguo（seat-116）+ liuyq（有经验）两人主力；另外三位新手做辅助，不计入关键路径。
 **题目**：做项目 2（`projects/02-kernel-agent`，NKI kernel agent，在芯片上跑）。CHALLENGE（Stage A，`kernelbench.py`）有时间再做，同一套 agent 搬过去。评分按 30/25/25/20 那一套（CHALLENGE 第 239 行写着 "Same rubric as every problem"）。
@@ -53,6 +53,8 @@ level 4   0/5      [0.62, 0.62, 0.50, 0.62, 0.62]   0/5，全部 0.62
 2. 精简 API 卡片（level 1–4 用到的十几个函数，约 300 token）放进 prompt
 3. liuyq 的 `feedback_v2.py` / `feedback_v3.py`（commit fc137e7）已经覆盖 L4「tile 超过 128 行」和「拷贝大小不一致」；她在 4090 上 L4 解出 5/10（原版 0/15），待在 pod 上确认
 4. [硬件合法性检查：**已用真 nki 0.6.0 验证通过**（本机 Docker，按 `SETUP_PYTHON.md`）] 模拟器分配 tile 时不查上限，现在模拟时记录每个 `nl.ndarray/zeros/ones/full`，分区 >128、PSUM 每分区 >16 KiB、SBUF 每分区 >192 KiB 判「ILLEGAL ON HARDWARE」，优先于数值比较；跨多个 PSUM bank 合法，不判。验证：selftest 通过；4 个参考 kernel 全过（审计到 12/12/5/90 次分配）；「分配 (256,128) SBUF 但每次 DMA 只搬 128 行」的 L4 kernel，关审计真模拟器给 4/4（漏洞属实），开审计判 ILLEGAL；跨 2 个 bank 的 PSUM 不误伤。**修了一个坑**：nki 按文件路径缓存，同一进程里重复用同一个候选文件路径时，审计会一直看到第一个 kernel 的分配（漏判 + 误判）。现在 `agent.py` / `feedback_v2.py` 每个候选写到唯一路径（`nkibench.candidate_path()`），v2 的 `locate()` 照常能指出出错行。**26c43ed 有这个坑，别用它跑实验**（或设 `NKIBENCH_NO_ALLOC_AUDIT=1`）。4090 上的 L4 5/10 是在没有审计时测的，复现时要重新审。
+   - **13:35 座位占用**：115 跑 `daykit/.../feedback_v7.py`（L2、L9）；116 跑实验 A（L1，`attempts_expA_L1.jsonl`）；117 跑 L4 v3 `--repeat 5`（`attempts_v3_L4.jsonl`，13:13 启动，`agent.py`/`feedback_v2.py` 是旧版，**解出的 kernel 要重审**）；118 在重启 vLLM（新配置，编译中）；119 跑 `agent.py --all --repeat 5`。
+   - **重审**：`python scripts/reaudit.py <attempts.jsonl ...>` 把每个 1.0 的 kernel 单独开新进程跑 `--check`（需要 nki：pod 或 SETUP_PYTHON.md 的 Docker）。已重审 baseline：4 次 L2 解出（2 个不同 kernel）全部 PASS，baseline 数字成立。
 5. agent 加 token 分段统计（prompt 里规则说明 / 上次代码 / 报错 / 失败记录各多少）和置信度输出
 6. 每个改动用 `--level X --repeat 5` 验证，变差就回滚；约 16:30 冻结，多座位并行跑最终对比，18:15 前提交
 
