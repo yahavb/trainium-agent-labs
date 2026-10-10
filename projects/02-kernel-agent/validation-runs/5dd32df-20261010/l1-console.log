@@ -1,0 +1,26 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 1: average pooling 2D ===========
+round 0: this round 0.30  best so far 0.30  (43.0s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AttributeError: module 'nki.language' has no attribute 'Layout' `nki.language` has no `Layout`. The closest real names are: dropout. Pick one of those or use a different approach.
+round 1: this round 0.30  best so far 0.30  (49.9s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: ndarray() got an unexpected keyword argument 'layout' Remove the `layout=` argument. The real signature is language.ndarray(shape, dtype, buffer=<MemoryRegion.sbuf: 'sbuf'>, name='', address=None).
+round 2: this round 0.30  best so far 0.30  (48.7s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: tensor_scalar() got an unexpected keyword argument 'dtype' Remove the `dtype=` argument. The real signature is isa.tensor_scalar(dst: 'NkiTensor', data: 'NkiTensor', op0, operand0: 'float | NkiTensor', reverse0=False, op1=None, operand1: 'float | NkiTensor | None' = None, reverse1=False, engine=<engine.unknown: 0>, name=None).
+round 3: this round 0.30  best so far 0.30  (48.1s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: tensor_scalar() missing 3 required positional arguments: 'data', 'op0', and 'operand0'
+round 4: this round 0.30  best so far 0.30  (133.9s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AttributeError: module 'nki.language' has no attribute 'OpCode' `nki.language` has no `OpCode`. The closest real names are: opcode, prod, power, mod, transpose, ones. Pick one of those or use a different approach.
+round 5: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 5 failed attempts to break the repeat
+round 6: this round 0.30  best so far 0.30  (47.1s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: tensor_scalar() missing 3 required positional arguments: 'data', 'op0', and 'operand0'
+round 7: this round 0.30  best so far 0.30  (52.0s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AttributeError: module 'nki.language' has no attribute 'OpCode' `nki.language` has no `OpCode`. The closest real names are: opcode, prod, power, mod, transpose, ones. Pick one of those or use a different approach.
+  not solved in 8 rounds; best reward 0.30
+
+=========== summary ===========
+  level 1  reward 0.30 after 8 round(s)
+  solved 0/1
+
+attempts logged to validation-runs/5dd32df-20261010/l1-attempts.jsonl
