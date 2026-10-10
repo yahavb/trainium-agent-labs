@@ -176,9 +176,6 @@ referee that planted cheats could not fool verified it. Every number below is co
 <div class="meta" id="meta"></div></header>
 <section class="tiles" id="tiles"></section>
 <div class="grid">
-<section class="card wide"><h2>From the start kernel to <span id="ladder-top"></span><span class="tag">speed ladder</span></h2>
-<p class="how">Matmul time on the chip at Qwen3-8B's shapes, as a multiple of the NKI tutorial kernel. Hover a bar for its time.</p>
-<div id="ladder"></div></section>
 <section class="card wide"><h2>Found and fixed: a precision bug in AWS's published matmul<span class="tag" style="color:var(--gold);background:color-mix(in srgb,var(--gold) 15%,transparent)">discovery</span></h2>
 <div class="bug"><div><p class="how" style="font-size:14px;color:var(--ink)">AWS publishes a "fully optimised" NKI matmul. Our referee checks every
 kernel at shapes it was never shown, with hostile inputs, so it ran AWS's kernel at Qwen3-8B's real sizes, and the numbers came back wrong.</p>
@@ -189,6 +186,9 @@ kernel at shapes it was never shown, with hostile inputs, so it ran AWS's kernel
 <li><b>Its own benchmark.</b> At K = 8192, the K AWS benchmarks with: 19.4 ulps in the simulator. It fails its own correctness check, file unmodified.</li>
 <li><b>The fix.</b> One line: accumulate in fp32. Error drops to 0.5 ulps at no measurable speed cost. Every expert number on this page uses the fixed kernel.</li>
 </ol></div><div id="bug"></div></div></section>
+<section class="card wide"><h2>From the start kernel to <span id="ladder-top"></span><span class="tag">speed ladder</span></h2>
+<p class="how">Matmul time on the chip at Qwen3-8B's shapes, as a multiple of the NKI tutorial kernel. Hover a bar for its time.</p>
+<div id="ladder"></div></section>
 <section class="card wide"><h2>Agent optimisation: every version gets further<span class="tag">agent evolution</span></h2>
 <p class="how">Share of each agent version's attempts that reached each referee stage. Each version fixed what stopped the
 one before: P3's rules took the model from crashing, to running, to correct and faster; P1's agent got there too.</p>
