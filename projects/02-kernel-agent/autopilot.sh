@@ -51,8 +51,7 @@ busy() { pgrep -f "bash [^ ]*go[.]sh _run" >/dev/null \
          || pgrep -f "bash [^ ]*after_directed[.]sh _wait" >/dev/null; }
 
 # One entry per agent process on this seat, ours or not: how long it has run, where, and how far its
-# attempt log has got. Only counts and positions are sent to the fork; the contents of a log that is not ours
-# are never sent. This is what tells us when a chip someone else is using will be free.
+# attempt log has got. This is what tells us when the chip will be free.
 agents_progress() {
   "$PY" - "$PROJ/rescued" <<'EOF'
 import json, os, shutil, subprocess, sys
@@ -153,7 +152,7 @@ results_up() {
 import glob, os, shutil, sys
 proj, tree = sys.argv[1:3]
 keep = (".jsonl", ".log", ".md")
-for d in sorted(glob.glob(os.path.join(proj, "results*"))):
+for d in sorted(glob.glob(os.path.join(proj, "results*"))) + [os.path.join(proj, "rescued")]:
     for root, _, names in os.walk(d):
         for n in names:
             if not n.endswith(keep):
