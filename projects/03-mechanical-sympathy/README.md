@@ -198,3 +198,16 @@ See the [three-trial report and hill-climb graph](results/forward-only-2026-10-1
 for the CPU timing reference, Trainium FP32, BF16 autocast, and BatchNorm-folding
 measurements. These speed-only results have not passed the project’s forecast
 correctness acceptance workflow.
+
+### Latitude tiling result
+
+Adding 30-row latitude tiling to BF16 matmult autocast and BatchNorm folding
+reduced the eight-year, 299-call forward time from **73.29 s to 42.58 s**
+(**1.72× faster**, 41.9% less forward time). The two full-resolution blocks
+are tiled. Compilation and warmup are excluded; no accuracy checks or
+forecast metrics ran for this trial.
+
+![Samudra forward progress with latitude tiling](results/tiling-forward-2026-10-10/progress.png)
+
+See the [tiling report and raw timing](results/tiling-forward-2026-10-10/README.md)
+for the workload and plot reproduction command.

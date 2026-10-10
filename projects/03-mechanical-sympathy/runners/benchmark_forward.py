@@ -160,6 +160,12 @@ def main():
     )
     parser.add_argument("--prepare-only", action="store_true")
     parser.add_argument("--output", type=Path, default=Path("forward_benchmark.json"))
+    parser.add_argument("--tile-rows", type=int, default=0)
+    parser.add_argument(
+        "--tile-min-pixels", type=int, default=64800,
+        help="Tile blocks whose grid has at least this many cells (16200 adds 90x180)",
+    )
+    parser.add_argument("--fold-batch-norm", action="store_true")
     parser.add_argument("--threads", type=int, default=8)
     parser.add_argument("--warmup", type=int, default=3)
     parser.add_argument("--single-repeats", type=int, default=20)
@@ -235,7 +241,17 @@ def main():
     )
     checkpoint_epoch = checkpoint["epoch"]
     del checkpoint
-    model.requires_grad_(False).eval().to(device)
+    model.requires_grad_(False).eval()
+    folded_pairs = []
+    if args.fold_batch_norm:
+        from samudra.utils.inference_fusion import fold_batch_norm
+        folded_pairs = fold_batch_norm(model)
+    tiled_blocks = []
+    if args.tile_rows:
+        from samudra_tiled import tile_large_blocks
+        tiled_blocks = tile_large_blocks(model, tuple(initial.shape[-2:]), args.tile_rows, args.tile_min_pixels)
+        print(f"Tiled blocks: {tiled_blocks}", flush=True)
+    model.to(device)
     synchronize()
     setup_seconds = time.perf_counter() - setup_start
 
@@ -353,6 +369,12 @@ def main():
                 subprocess.check_output(["neuron-ls", "--json-output"], text=True)
             ),
         }
+    report["tiling"] = {
+        "band_rows": args.tile_rows,
+        "min_pixels": args.tile_min_pixels,
+        "blocks": tiled_blocks,
+    }
+    report["batch_norm_folding"] = {"enabled": args.fold_batch_norm, "folded_pairs": folded_pairs}
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + "\n")
     print(
