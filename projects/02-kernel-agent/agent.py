@@ -150,6 +150,15 @@ LEVEL_START_CARDS = {
     4: ["matmul_psum", "matmul_tiling"],
 }
 
+DOCS_EXTRA_CARDS = {
+    1: ["api_core", "dma_copy_shape", "tile_rank", "access_patterns", "avgpool_reduction",
+        "reduction_axis", "signatures"],
+    2: ["api_core", "dma_copy_shape", "tile_rank", "signatures"],
+    3: ["api_core", "dma_copy_shape", "matmul_psum", "signatures"],
+    4: ["api_core", "dma_copy_shape", "tile_limits", "matmul_psum", "matmul_tiling",
+        "signatures"],
+}
+
 
 # ---------------------------------------------------------------- reward
 #
@@ -647,11 +656,31 @@ def prompt_accounting(reference="", code="", feedback="", cards="", ledger="", i
     return sections
 
 
-def start_context(level):
-    return render_context_cards(LEVEL_START_CARDS.get(level, []))
+def start_card_names(level, style="minimal"):
+    names = list(LEVEL_START_CARDS.get(level, []))
+    if style in {"docs", "reference"}:
+        names += DOCS_EXTRA_CARDS.get(level, [])
+    deduped = []
+    for name in names:
+        if name not in deduped:
+            deduped.append(name)
+    return deduped
 
 
-def first_prompt(level, terse=0):
+def start_context(level, style="minimal"):
+    return render_context_cards(start_card_names(level, style))
+
+
+def reference_kernel_text(level):
+    path = os.path.join(os.path.dirname(__file__), f"reference_level{level}.py")
+    try:
+        src = open(path).read()
+    except OSError:
+        return ""
+    return src
+
+
+def first_prompt(level, terse=0, style="minimal"):
     """Deliberately short, and it does NOT list the rules.
 
     Measured twice in this repo: hand a model an enumerated list of prohibitions and it audits
@@ -662,15 +691,23 @@ def first_prompt(level, terse=0):
     s = nkibench.LEVELS[level]
     import inspect
     ref = inspect.getsource(s['ref'])
-    start_cards = start_context(level)
+    start_cards = start_context(level, style)
     start_text = f"\n\n{start_cards}" if start_cards else ""
+    reference_text = ""
+    if style == "reference":
+        ref_kernel = reference_kernel_text(level)
+        if ref_kernel:
+            reference_text = (
+                "\n\nShipped reference kernel pattern. Use it as an API/style example, but still "
+                "return your own complete kernel:\n"
+                f"```python\n{ref_kernel}\n```")
     if terse >= 2:
         # Last resort. Measured on this endpoint: one-sentence prompts answered in 300-700
         # tokens while every structured, rule-carrying prompt spiralled.
         return (f"Write a Python function `{s['entry']}` decorated with @nki.jit that computes "
                 f"the same thing as this, using nki.language as nl and nki.isa as nisa:\n\n"
                 f"{ref}\n"
-                f"{CORE_CARD}{start_text}\nReply with one python code block.")
+                f"{CORE_CARD}{start_text}{reference_text}\nReply with one python code block.")
     if terse >= 1:
         # The matmul memory rules are the substance of levels 3 and 4, and the short prompt has to
         # carry them: measured, the agent cycled between "dst must be in ['psum']" and "moving must
@@ -683,7 +720,7 @@ def first_prompt(level, terse=0):
         return (f"Write an AWS Neuron NKI kernel: a function `{s['entry']}` decorated with "
                 f"@nki.jit that computes what this reference computes.\n\n"
                 f"{ref}\n"
-                f"{CORE_CARD}{start_text}\n{mm}\n"
+                f"{CORE_CARD}{start_text}{reference_text}\n{mm}\n"
                 f"Reply with one python code block.")
     return (
         f"Write an AWS Neuron NKI kernel.\n\n"
@@ -691,7 +728,7 @@ def first_prompt(level, terse=0):
         f"Entry point: a function named `{s['entry']}`, decorated with `@nki.jit`.\n"
         f"It must compute exactly what this NumPy reference computes:\n\n"
         f"{ref}\n\n"
-        f"{CORE_CARD}{start_text}\n\n"
+        f"{CORE_CARD}{start_text}{reference_text}\n\n"
         f"Reply with ONE python code block containing the imports and the function. No prose.")
 
 
@@ -743,12 +780,15 @@ def print_budget(name, budget):
 def audit_context(level):
     import inspect
     ref = inspect.getsource(nkibench.LEVELS[level]["ref"])
-    first = first_prompt(level)
-    first_budget = prompt_accounting(reference=ref, core=CORE_CARD, cards=start_context(level))
     print(f"level {level}: {nkibench.LEVELS[level]['op']}")
-    print_budget("first prompt", first_budget)
-    first_cards = ["core_minimal"] + LEVEL_START_CARDS.get(level, [])
-    print(f"    chars={len(first)} cards={', '.join(first_cards)}")
+    for style in ("minimal", "docs", "reference"):
+        first = first_prompt(level, style=style)
+        first_budget = prompt_accounting(
+            reference=ref, core=CORE_CARD, cards=start_context(level, style),
+            code=reference_kernel_text(level) if style == "reference" else "")
+        print_budget(f"first prompt [{style}]", first_budget)
+        first_cards = ["core_minimal"] + start_card_names(level, style)
+        print(f"    chars={len(first)} cards={', '.join(first_cards)}")
 
     source = (
         "import nki\nimport nki.language as nl\nimport nki.isa as nisa\n\n"
@@ -922,12 +962,13 @@ def offline_answers(level, n, rnd):
 def solve(a, level, log):
     print(f"\n=========== level {level}: {nkibench.LEVELS[level]['op']} ===========")
     terse = a.terse
-    prompt = first_prompt(level, terse)
-    prompt_cards = ["core_minimal"] + LEVEL_START_CARDS.get(level, [])
+    prompt = first_prompt(level, terse, a.prompt_style)
+    prompt_cards = ["core_minimal"] + start_card_names(level, a.prompt_style)
     prompt_budget = prompt_accounting(
         reference=__import__("inspect").getsource(nkibench.LEVELS[level]["ref"]),
         core=CORE_CARD,
-        cards=start_context(level))
+        cards=start_context(level, a.prompt_style),
+        code=reference_kernel_text(level) if a.prompt_style == "reference" else "")
     best = (0.0, None, "")
     tried, streak, seen = [], 0, {}
     latest = ("", "")
@@ -1017,12 +1058,13 @@ def solve(a, level, log):
             # 202-character prompt and, under greedy sampling, the identical non-answer six
             # rounds running. Shorten and re-ask instead.
             terse = min(terse + 1, 2)
-            prompt = first_prompt(level, terse)
-            prompt_cards = ["core_minimal"] + LEVEL_START_CARDS.get(level, [])
+            prompt = first_prompt(level, terse, a.prompt_style)
+            prompt_cards = ["core_minimal"] + start_card_names(level, a.prompt_style)
             prompt_budget = prompt_accounting(
                 reference=__import__("inspect").getsource(nkibench.LEVELS[level]["ref"]),
                 core=CORE_CARD,
-                cards=start_context(level))
+                cards=start_context(level, a.prompt_style),
+                code=reference_kernel_text(level) if a.prompt_style == "reference" else "")
             print(f"  no code yet, so re-asking with a shorter prompt (terseness {terse})")
         else:
             prompt = repair_prompt(level, latest[0], latest[1], tried)
@@ -1062,6 +1104,9 @@ def main():
                          "Qwen3-8B is fine at 0.")
     ap.add_argument("--context", type=int, default=4096,
                     help="the server's max-model-len; prompt + answer must fit inside it")
+    ap.add_argument("--prompt-style", choices=("minimal", "docs", "reference"), default="minimal",
+                    help="initial prompt context: minimal cards, richer API docs, or docs plus the "
+                         "shipped reference kernel pattern")
     ap.add_argument("--think", action="store_true",
                     help="let the model reason first; costs budget, and it ran out")
     ap.add_argument("--offline", action="store_true")

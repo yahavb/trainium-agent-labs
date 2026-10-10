@@ -302,3 +302,17 @@ Workflow remains level-wise:
 - then Level 2 transpose;
 - then Level 3/4 matmul;
 - add similarly concise start cards only when a level reveals repeated API confusion.
+
+## Prompt ablation
+
+Added `--prompt-style minimal|docs|reference` to test whether using more of the 8192-token
+window improves the first attempt.
+
+Level 1 prompt sizes:
+
+- `minimal`: about 383 chars-estimated tokens, current compact setup;
+- `docs`: about 898 chars-estimated tokens, adds concise API cards;
+- `reference`: about 1605 chars-estimated tokens, adds docs plus shipped reference kernel pattern.
+
+Use this to compare first-attempt reward/error category instead of guessing whether more context
+helps.
