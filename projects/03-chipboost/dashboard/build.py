@@ -759,17 +759,24 @@ def stage_of(c):
 
 
 def suite_name(s):
-    return {"results_p1.json": "P1 red team", "redteam_results.json": "P3 red team (fallback referee)",
+    return {"results_p1.json": "P1 red team (14:04 referee)", "results_p1_throughput.json": "P1 red team",
+            "redteam_results.json": "P3 red team (fallback referee)",
             "redteam_results_speedcheck.json": "P3 red team"}.get(Path(s["name"]).name, s["name"])
 
 
+# newer run -> the run it replaces. Each newer one re-ran the same fixtures against the referee the
+# experiments actually used, so showing both would count every cheat twice.
+SUPERSEDES = {
+    "redteam_results_speedcheck.json": "redteam_results.json",   # P3: the real referee, not the stage12 fallback
+    "results_p1_throughput.json": "results_p1.json",             # P1: the same 33 fixtures on the throughput referee
+}
+
+
 def current_suites(suites):
-    """P3's run against the real referee (redteam_results_speedcheck.json) supersedes its earlier run against
-    the temporary fallback (redteam_results.json): show the fallback only while it is all there is."""
+    """Show each team's latest red-team run only: an older run appears only while it is all there is."""
     names = {Path(s["name"]).name for s in suites}
-    if "redteam_results_speedcheck.json" in names:
-        return [s for s in suites if Path(s["name"]).name != "redteam_results.json"]
-    return suites
+    dropped = {old for new, old in SUPERSEDES.items() if new in names}
+    return [s for s in suites if Path(s["name"]).name not in dropped]
 
 
 def panel_redteam(results):
@@ -876,7 +883,11 @@ def panel_heldout(results, summary):
             x = L + j * cw + cw / 2
             g.append(f'<text transform="translate({x:.1f},{T - 8}) rotate(-35)" class="tick col">{esc(shape_text(sh))}</text>')
         for i, w in enumerate(whiches):
-            name = {"start": "Start kernel", "expert": "Expert kernel", "aws as published": "AWS as published"}.get(w) or (
+            if str(w).startswith("best ") and w[5:] in ARM_LABEL:   # heldout_grid.py: "best random_search"
+                w_label = f"{ARM_LABEL[w[5:]]}: best"
+            else:
+                w_label = None
+            name = w_label or {"start": "Start kernel", "expert": "Expert kernel", "aws as published": "AWS as published"}.get(w) or (
                 f"{ARM_LABEL[w]}: best" if w in ARM_LABEL else str(w)[:1].upper() + str(w)[1:])
             y = T + i * rh
             g.append(f'<text x="{L - 8}" y="{y + rh / 2 + 4:.1f}" text-anchor="end" class="row-label">{esc(name)}</text>')
