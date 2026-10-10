@@ -617,7 +617,7 @@ def tuning_block(tune):
     head = ('<h3 class="sep">Random search: tuning the expert\'s block sizes <span class="src">'
             'speedup over the expert as shipped (1×), so not comparable with the curves above</span></h3>')
     if not runs:
-        return head + empty(f"No random-search runs yet. The sweep's best of all {sw['n']} settings is "
+        return head + empty(f"No random-search runs yet. The best of the {sw['n']} settings swept is "
                             f"{fmt_x(sw['best'])} the expert.")
     L_max = max(len(r["curve"]) for r in runs)
     xs = list(range(1, L_max + 1))
@@ -648,7 +648,7 @@ def tuning_block(tune):
              f'<text x="{W - Rm + 6}" y="{sy(1) + 4:.1f}" class="ref-label">expert as shipped</text>')
     if sw:
         g.append(f'<line x1="{Lm}" x2="{W - Rm}" y1="{sy(sw["best"]):.1f}" y2="{sy(sw["best"]):.1f}" class="ref"/>'
-                 f'<text x="{W - Rm + 6}" y="{sy(sw["best"]) + 4:.1f}" class="ref-label">best of all {sw["n"]}: '
+                 f'<text x="{W - Rm + 6}" y="{sy(sw["best"]) + 4:.1f}" class="ref-label">best of {sw["n"]} swept: '
                  f'{fmt_x(sw["best"])}</text>')
     if max(n) > 1:
         up, dn = step_points(xs, hi), step_points(xs, lo)[::-1]
@@ -661,11 +661,12 @@ def tuning_block(tune):
              f'<rect class="overlay" x="{Lm}" y="{T}" width="{W - Lm - Rm}" height="{H - T - B}" fill="transparent"/>')
     curves = dict(xs=xs, dx0=dx0, dx1=dx1, px0=Lm, px1=W - Rm,
                   series=[dict(label="Random search, over the expert", color=color, med=med, lo=lo, hi=hi, n=n)])
-    ranks = [r["rank"] for r in runs if r["rank"]]
     note = (f'{len(runs)} run{"s" if len(runs) != 1 else ""}; median best <strong>{fmt_x(median(r["best"] for r in runs))}'
             f'</strong> the expert')
-    if ranks and sw:
-        note += f'; each run\'s best ranks #{", #".join(str(x) for x in ranks)} of the sweep\'s {sw["n"]} settings'
+    if sw:
+        # A run's best that the sweep has not reached yet has no rank: say so rather than drop it.
+        note += ("; each run's best, ranked among the " + f'{sw["n"]} settings swept so far: '
+                 + ", ".join(f"#{r['rank']}" if r["rank"] else "not swept yet" for r in runs))
     return (head + f'<svg viewBox="0 0 {W} {H}" role="img" data-curves="{esc(json.dumps(curves))}" '
             f'aria-label="random search: best speedup over the expert against attempts">{"".join(g)}</svg>'
             f'<p class="how">{note}.</p>')
@@ -971,7 +972,7 @@ def kpis(summary, results, records, tune):
         sub = (f"random search over AWS's default · {len(runs)} run{'s' if len(runs) != 1 else ''}" if runs
                else "random search: no runs yet")
         if sw:
-            sub += f" · best of all {sw['n']}: {(sw['best'] - 1) * 100:+.0f}%"
+            sub += f" · best of {sw['n']} swept: {(sw['best'] - 1) * 100:+.0f}%"
         tiles.append(("Block tuning", f"{(best - 1) * 100:+.0f}%" if best else "–", sub,
                       meter((best - 1) / (sw["best"] - 1)) if best and sw and sw["best"] > 1 else meter(0)))
     rt = results["redteam"]
