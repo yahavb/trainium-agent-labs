@@ -214,17 +214,52 @@ def available_names(dotted):
     import difflib
     import importlib
     mod_name, _, attr = dotted.rpartition(".")
-    try:
-        mod = importlib.import_module(mod_name)
-    except Exception:
+    # Measured on level 1: the model wrote op0=nisa.multiply, and the reply said "nki.isa has no
+    # multiply, and nothing similar exists" -- true of nki.isa, but nl.multiply is real and is
+    # exactly what the API card shows. The reply then listed nki.isa's first 25 names
+    # alphabetically (bn_aggr, dropout, iota ... max8), none relevant, and the model froze for three
+    # rounds. So search all three modules, and never dump an alphabetical slice.
+    aliases = {"nki.language": "nl", "nki.isa": "nisa", "nki": "nki"}
+    here = aliases.get(mod_name, mod_name)
+
+    # Every public name, written the way a kernel writes it: bare name -> ["nl.x", "nisa.x", ...]
+    import types
+    names = {}
+    for mod, alias in aliases.items():
+        try:
+            m = importlib.import_module(mod)
+        except Exception:
+            continue
+        for n in dir(m):
+            # Skip submodules: `nki.language` is an attribute of nki, not something to call.
+            if not n.startswith("_") and not isinstance(getattr(m, n, None), types.ModuleType):
+                names.setdefault(n, []).append(f"{alias}.{n}")
+    if not names:
         return ""
-    names = [n for n in dir(mod) if not n.startswith("_")]
-    close = difflib.get_close_matches(attr, names, n=6, cutoff=0.4)
+
+    # 1. The exact name exists, only in a different module.
+    elsewhere = [q for q in names.get(attr, []) if q != f"{here}.{attr}"]
+    if elsewhere:
+        return (f" `{attr}` is not in `{mod_name}` but it IS real: write `{elsewhere[0]}`, not "
+                f"`{here}.{attr}`. Keep the rest of that line as it is.")
+
+    # 2. The closest names across nki, nl and nisa, each written with its module. Word parts
+    #    first: scalar_mul shares "scalar" with tensor_scalar and "mul" starts multiply, yet
+    #    spelling similarity alone ranks it 0.52, below junk like dot -> dropout at 0.60.
+    parts = [p for p in attr.lower().split("_") if len(p) >= 3]
+    close = [n for n in names
+             if any(q == p or q.startswith(p) for p in parts for q in n.lower().split("_"))]
+    close += [n for n in difflib.get_close_matches(attr, list(names), n=6, cutoff=0.6)
+              if n not in close]
+    close = close[:6]
     if close:
-        return (f" `{mod_name}` has no `{attr}`. The closest real names are: "
-                f"{', '.join(close)}. Pick one of those or use a different approach.")
-    return (f" `{mod_name}` has no `{attr}`, and nothing similar exists. Its real names include: "
-            f"{', '.join(sorted(names)[:25])}.")
+        found = [q for n in close for q in names[n] if q != f"{here}.{attr}"][:6]
+        return (f" `{here}` has no `{attr}`. The closest real names in nki, nl and nisa are: "
+                f"{', '.join(found)}. Pick one of those or use a different approach.")
+
+    # 3. Nothing close anywhere. Point back at the card, which lists the calls these levels use.
+    return (f" `{attr}` does not exist in nki, nl or nisa, and nothing similar does. Use only the "
+            f"functions listed under 'Available NKI functions'.")
 
 
 def real_signature(func_name):
