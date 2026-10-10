@@ -13,6 +13,23 @@
 | Hardened referee regression | Historical results saved in `results_p1.json` (see below) |
 | Throughput implementation | Done in `76b2227`: worker, parallel compilation, threaded inputs |
 | Current signoff | See `P1-HANDOFF.md` for scope, evidence, and remaining limitations |
+| Original 72-evaluation comparison | Complete, strict report passed: neither Qwen arm found a speedup; template-control median best 3.125919x |
+| Recovery pilot v3 | Complete: 8 attempts, all `wrong`; no verified improvement |
+| Canceled treatments | Reasoning run: zero graded attempts; queued DMA-only v2 superseded, no comparison results |
+| Consolidated Qwen-only v2 | Complete: 7 `wrong`, 1 `faster` in 8 attempts; winner 1.517123964x; two unchanged-source replays `faster` at 1.516961251x and 1.516817767x |
+
+The v2 winner and both replay records are preserved under `experiments/qwen-v2-feedback/` and
+`experiments/qwen-winner-replication/`. The 80-attempt dashboard separates v1 from v2 and excludes
+replays from the optimization budget. V2 is one exploratory multi-change run, not a controlled feedback ablation.
+
+See [RESULTS-SUMMARY.md](RESULTS-SUMMARY.md) for exact measurements, provenance, and cohort limitations.
+Original v1: referee 22 `wrong` + 2 `no_gain`; model alone 2 `wrong` + 22 `no_gain`;
+template control 22 `faster` + 2 `slower`. Each arm has 24 attempts across three runs.
+Full evidence and the strict report are in `experiments/qwen-v1-comparison/`; one infrastructure
+interruption is excluded from these counts. The control uses an expert-template prior, not Qwen generation.
+The deliverable is Qwen-only (plus random-search control); earlier non-Qwen side trials are retained
+only in the archive appendix and excluded from deliverable aggregates. Original comparison results remain
+pinned to earlier feedback and must not be presented as validation of subsequent feedback fixes.
 
 ### Feedback correction
 
@@ -32,22 +49,23 @@ optimization results.
 The comparison launched from `434e5f9` remains pinned to the earlier feedback and cannot establish
 whether this correction improves model outcomes. Its results must be labeled accordingly.
 
-### Targeted DMA mismatch feedback (v2 queued)
+### Subsequent failure feedback and canceled DMA-only treatment
 
-The exact simulator `AssertionError` reporting `src=65536, dst=16384` now selects the
-referee-authored `DMA_TILE_SHAPE_MISMATCH` instruction. It explains the 4x element mismatch,
-gives the [128, 512] source / [128, 128] tile as an example, and asks for matching slices
-or a legal matching allocation while preserving all K contributions. Element counts do not
-prove axis dimensions. Other stages, exception types, counts, or extra exception text retain
-the generic instruction; candidate-controlled text remains quoted data and the verdict remains `wrong`.
+The first targeted simulator DMA instruction was replayed against the observed
+`src=65536, dst=16384` failure. Subsequent work generalizes DMA mismatch guidance and adds
+conservative fallback and PSUM/compiler repair advice. Candidate-controlled exception text remains
+data, and these feedback changes do not turn a failed candidate into an accepted verdict.
+The fixes are pushed in `7da33ee`; local `python -m unittest discover -s projects/03-chipboost/tests -p 'test_*.py'`
+passed 36 tests. This is not a measured model improvement. Final seat/core-2 checks in
+`research/final_feedback_validation.json` verified DMA, NKI tile-list, and PSUM instructions;
+the corresponding failures remained `wrong`, and the baseline returned `no_gain`.
 
-Six CPU tests pass: `python projects/03-chipboost/tests/test_dma_feedback.py`, including replay
-of the recorded seat-100 failure, adversarial messages, and the actual failure-to-record wiring.
-The DMA-only v2 referee arm is queued behind completion of the pinned comparison; it preserves
-that comparison's model, baseline, P3 source, and budget, without including the outer-loop
-feedback change above. No model improvement from this message change has been established.
-Queue PID 810896 on seat-100 waits for `/tmp/p1-comparison-20261010-2` and then uses core 3
-for 3 repeats of 8 evaluations, writing `/tmp/p1-referee-dma-v2-20261010-1`.
+The queued DMA-only v2 comparison was canceled as superseded and produced no comparison results.
+The separate full-feedback/repair-controller v3 pilot completed eight evaluations, all `wrong`.
+The reasoning experiment was canceled for the deadline with zero graded evaluations. Cancellations
+are operational events, not kernel failures and not part of the original comparison's attempt count.
+The consolidated Qwen-only v2 run is a separate completed treatment, not the canceled DMA-only queue:
+PID `884773`, core 2, output `/tmp/p1-qwen-v2-20261010-1`, eight completed evaluations: seven wrong and one faster; two unchanged-source replays confirmed the winner.
 The real failing candidate was replayed through the sandboxed referee on seat-100/core 2:
 it remained `wrong` and returned the named instruction. This is a simulator rejection before
 device timing, not a speed measurement. Evidence and the isolated source diff are in

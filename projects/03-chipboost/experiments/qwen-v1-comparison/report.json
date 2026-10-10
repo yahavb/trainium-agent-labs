@@ -1,0 +1,276 @@
+{
+  "status": "complete",
+  "provisional": false,
+  "directory": "C:\\Users\\likhi\\.codex\\worktrees\\chipboost-integration\\annapurna\\projects\\03-chipboost\\experiments\\qwen-v1-comparison",
+  "expected_repeats": 3,
+  "expected_budget": 8,
+  "attempts": 72,
+  "acceptance_passed": true,
+  "runner_state": {
+    "phase": "complete",
+    "core": 3,
+    "pid": 751076,
+    "budget": 8,
+    "repeat": 3,
+    "completed": [
+      "referee-r0",
+      "model_alone-r0",
+      "random_search-r0",
+      "model_alone-r1",
+      "random_search-r1",
+      "referee-r1",
+      "random_search-r2",
+      "referee-r2",
+      "model_alone-r2"
+    ],
+    "referee_commit": "434e5f9",
+    "p2_commit": "919c6be",
+    "p3_commit": "2ce9416",
+    "referee_sha256": "5f366558ae933c88262bbde806afbcd4a568fdbfab4fc3395951f1b3799d71be",
+    "candidate_sha256": "656515ac59183ba6a9dd6a716e992b386871389e9e4a6447f459522c4ad820e6",
+    "baseline": "/tmp/p1-signoff-434e5f9/projects/02-kernel-agent/reference_level4.py",
+    "baseline_sha256": "0dde78bd65e0a724a4fab05b2b893b215c8335e2086bc6c945ed43250a1f728b",
+    "agent_sha256": "9b08841329d9bf49e23819b02c7122baa65f6f741df479b43746af296e8cdf34",
+    "search_sha256": "3cbd71601f3b6a53063f47f6d6aa520cfed87d3de1430cd7f116ee2bead24f58",
+    "search_design": "P2 expert-template cap search; same timing baseline, different candidate prior from agent arms",
+    "acceptance": "passed",
+    "worker_pid": 751140,
+    "startup_baseline": "Reuse acceptance record for P3's unbudgeted startup measurement; all generated candidates are newly graded",
+    "worker_starts": 1
+  },
+  "runs": [
+    {
+      "tag": "referee-r0",
+      "arm": "referee",
+      "repeat": 0,
+      "complete": true,
+      "run_id": "matmul-referee-191549-0",
+      "attempts": 8,
+      "verdicts": {
+        "no_gain": 1,
+        "wrong": 7
+      },
+      "correct": 1,
+      "failed": 7,
+      "failure_rate": 0.875,
+      "heldout_checked": 0,
+      "heldout_failure_rate": null,
+      "best_verified_speedup": 1.0
+    },
+    {
+      "tag": "referee-r1",
+      "arm": "referee",
+      "repeat": 1,
+      "complete": true,
+      "run_id": "matmul-referee-195228-0",
+      "attempts": 8,
+      "verdicts": {
+        "no_gain": 1,
+        "wrong": 7
+      },
+      "correct": 1,
+      "failed": 7,
+      "failure_rate": 0.875,
+      "heldout_checked": 0,
+      "heldout_failure_rate": null,
+      "best_verified_speedup": 1.0
+    },
+    {
+      "tag": "referee-r2",
+      "arm": "referee",
+      "repeat": 2,
+      "complete": true,
+      "run_id": "matmul-referee-200439-0",
+      "attempts": 8,
+      "verdicts": {
+        "wrong": 8
+      },
+      "correct": 0,
+      "failed": 8,
+      "failure_rate": 1.0,
+      "heldout_checked": 0,
+      "heldout_failure_rate": null,
+      "best_verified_speedup": 1.0
+    },
+    {
+      "tag": "model_alone-r0",
+      "arm": "model_alone",
+      "repeat": 0,
+      "complete": true,
+      "run_id": "matmul-model_alone-192424-0",
+      "attempts": 8,
+      "verdicts": {
+        "no_gain": 8
+      },
+      "correct": 8,
+      "failed": 0,
+      "failure_rate": 0.0,
+      "heldout_checked": 0,
+      "heldout_failure_rate": null,
+      "best_verified_speedup": 1.0
+    },
+    {
+      "tag": "model_alone-r1",
+      "arm": "model_alone",
+      "repeat": 1,
+      "complete": true,
+      "run_id": "matmul-model_alone-193836-0",
+      "attempts": 8,
+      "verdicts": {
+        "no_gain": 7,
+        "wrong": 1
+      },
+      "correct": 7,
+      "failed": 1,
+      "failure_rate": 0.125,
+      "heldout_checked": 0,
+      "heldout_failure_rate": null,
+      "best_verified_speedup": 1.0
+    },
+    {
+      "tag": "model_alone-r2",
+      "arm": "model_alone",
+      "repeat": 2,
+      "complete": true,
+      "run_id": "matmul-model_alone-201654-0",
+      "attempts": 8,
+      "verdicts": {
+        "no_gain": 7,
+        "wrong": 1
+      },
+      "correct": 7,
+      "failed": 1,
+      "failure_rate": 0.125,
+      "heldout_checked": 0,
+      "heldout_failure_rate": null,
+      "best_verified_speedup": 1.0
+    },
+    {
+      "tag": "random_search-r0",
+      "arm": "random_search",
+      "repeat": 0,
+      "complete": true,
+      "run_id": "random_search-r0",
+      "attempts": 8,
+      "verdicts": {
+        "faster": 8
+      },
+      "correct": 8,
+      "failed": 0,
+      "failure_rate": 0.0,
+      "heldout_checked": 8,
+      "heldout_failure_rate": 0.0,
+      "best_verified_speedup": 3.1259193885343675
+    },
+    {
+      "tag": "random_search-r1",
+      "arm": "random_search",
+      "repeat": 1,
+      "complete": true,
+      "run_id": "random_search-r1",
+      "attempts": 8,
+      "verdicts": {
+        "faster": 6,
+        "slower": 2
+      },
+      "correct": 8,
+      "failed": 0,
+      "failure_rate": 0.0,
+      "heldout_checked": 6,
+      "heldout_failure_rate": 0.0,
+      "best_verified_speedup": 3.323521621027373
+    },
+    {
+      "tag": "random_search-r2",
+      "arm": "random_search",
+      "repeat": 2,
+      "complete": true,
+      "run_id": "random_search-r2",
+      "attempts": 8,
+      "verdicts": {
+        "faster": 8
+      },
+      "correct": 8,
+      "failed": 0,
+      "failure_rate": 0.0,
+      "heldout_checked": 8,
+      "heldout_failure_rate": 0.0,
+      "best_verified_speedup": 2.525760284578033
+    }
+  ],
+  "arms": {
+    "referee": {
+      "attempts": 24,
+      "verdicts": {
+        "no_gain": 2,
+        "wrong": 22
+      },
+      "correct": 2,
+      "failed": 22,
+      "failure_rate": 0.9166666666666666,
+      "heldout_checked": 0,
+      "heldout_failure_rate": null,
+      "started_runs": 3,
+      "completed_runs": 3,
+      "median_best_speedup": 1.0,
+      "min_best_speedup": 1.0,
+      "max_best_speedup": 1.0
+    },
+    "model_alone": {
+      "attempts": 24,
+      "verdicts": {
+        "no_gain": 22,
+        "wrong": 2
+      },
+      "correct": 22,
+      "failed": 2,
+      "failure_rate": 0.08333333333333333,
+      "heldout_checked": 0,
+      "heldout_failure_rate": null,
+      "started_runs": 3,
+      "completed_runs": 3,
+      "median_best_speedup": 1.0,
+      "min_best_speedup": 1.0,
+      "max_best_speedup": 1.0
+    },
+    "random_search": {
+      "attempts": 24,
+      "verdicts": {
+        "faster": 22,
+        "slower": 2
+      },
+      "correct": 24,
+      "failed": 0,
+      "failure_rate": 0.0,
+      "heldout_checked": 22,
+      "heldout_failure_rate": 0.0,
+      "started_runs": 3,
+      "completed_runs": 3,
+      "median_best_speedup": 3.1259193885343675,
+      "min_best_speedup": 2.525760284578033,
+      "max_best_speedup": 3.323521621027373
+    }
+  },
+  "notes": [],
+  "candidate_prior_note": "Random search uses P2's expert-template cap prior. Agent arms start from the reference baseline. These results compare complete search setups; the three-arm comparison does not isolate feedback alone.",
+  "version_note": "This batch remains pinned to P1 434e5f9, P2 919c6be, and P3 2ce9416. It predates the subsequent representative-feedback fix and does not evaluate that fix. Keep these results separate from any future batch using the corrected feedback implementation.",
+  "infrastructure": {
+    "events": 1,
+    "by_kind": {
+      "prior_interruption": 1
+    },
+    "records": [
+      {
+        "logged_at": 1791659721.6101005,
+        "kind": "prior_interruption",
+        "observed_at": "2026-10-10T19:01:09Z",
+        "core": 2,
+        "reason": "NRT reported logical core 2 busy; check_isolated returned None",
+        "acceptance_case": "isolated_AA",
+        "counted_as_kernel_attempt": false,
+        "source": "Earlier direct referee diagnostic; no kernel verdict was recorded"
+      }
+    ],
+    "included_in_attempt_counts": false
+  }
+}

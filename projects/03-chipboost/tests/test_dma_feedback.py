@@ -11,7 +11,7 @@ SOURCE = Path(__file__).resolve().parents[1] / "speedcheck.py"
 TREE = ast.parse(SOURCE.read_text())
 NAMES = {"_STAGE_INSTR", "_DMA_4X_ERROR", "_DMA_4X_INSTR", "_child_failure",
          "_NKI_UNSUPPORTED_ERROR", "_NKI_TILE_LIST_INSTR", "_rhs_tile_list",
-         "_ERROR_TYPE_HINTS", "_dma_mismatch_instruction", "_DEVICE_INSTR", "_wrong_output_instruction"}
+         "_matmul_structure_failure", "_ERROR_TYPE_HINTS", "_dma_mismatch_instruction", "_DEVICE_INSTR", "_wrong_output_instruction"}
 NODES = [n for n in TREE.body if
          (isinstance(n, ast.FunctionDef) and n.name in NAMES) or
          (isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id in NAMES

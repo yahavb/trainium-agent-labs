@@ -22,6 +22,7 @@ def main():
     parser.add_argument('--agent-file', default='experimental_agent.py')
     parser.add_argument('--samples', type=int, default=1)
     parser.add_argument('--budget', type=int, default=8)
+    parser.add_argument('--tag', default='')
     a = parser.parse_args()
     root = Path(a.root).resolve() / 'projects/03-chipboost'
     out = Path(a.out).resolve()
@@ -39,7 +40,7 @@ def main():
     out.mkdir(exist_ok=False)   # only once the agent imports, so a failed import leaves --out reusable
     baseline = root.parent/'02-kernel-agent/reference_level4.py'
     state = dict(phase='acceptance', pid=os.getpid(), core=a.core, budget=a.budget, samples=a.samples,
-                 treatment=a.label, think=a.think, max_tokens=a.max_tokens,
+                 treatment=a.label, tag=a.tag, think=a.think, max_tokens=a.max_tokens,
                  warning='Exploratory multi-change treatment; not DMA-only v2 or original comparison',
                  model='Qwen/Qwen3-8B', sources={str(p.relative_to(root.parent)):hashlib.sha256(p.read_bytes()).hexdigest()
                  for p in (root/'speedcheck.py', root/a.agent_file, baseline,
@@ -78,6 +79,8 @@ def main():
                         '--log', str(out/'pilot.jsonl')]
             if a.think:
                 sys.argv.append('--think')
+            if a.tag:
+                sys.argv.extend(['--tag', a.tag])
             agent.main()
             rows=[json.loads(line) for line in (out/'pilot.jsonl').read_text().splitlines() if line.strip()]
             assert len(rows)==a.budget and all(not schema.validate(r) for r in rows)

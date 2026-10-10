@@ -3,11 +3,32 @@
 ## Subsequent feedback correction
 
 The ambiguous innermost-loop load advice has been replaced by conservative outer-loop reuse diagnosis
-in `instruction_given`. Five CPU tests and four representative hardware checks passed; see
+in `instruction_given`. Four representative hardware checks passed; see
 `feedback_validation.json` and `verify_feedback.py`. The chip verified the reference, n-outer,
 lhsT-hoisted, and rhs-hoisted kernels; the feedback identified which operand still reloads while
 preserving the other operand's reuse and distinct K tiles. This changes feedback, not verdicts or timing.
 The original comparison batch remains pinned to the earlier implementation and does not evaluate this fix.
+
+Later integration work adds conservative fallback, generalized DMA mismatch, and PSUM/compiler repair
+guidance (`7da33ee`). Local `python -m unittest discover -s projects/03-chipboost/tests -p 'test_*.py'`
+passed 36 tests; the four chip checks above
+cover the earlier diagnosis. Final seat/core-2 checks in `research/final_feedback_validation.json`
+verified all three later DMA/tile-list/PSUM failure instructions while preserving `wrong` verdicts;
+the baseline returned `no_gain`. See `RESULTS-SUMMARY.md` for Qwen-only reporting: the completed
+eight-attempt recovery pilot (all `wrong`), canceled experiments with no results, and the consolidated
+completed Qwen-only v2 run on core 2 (budget 8, integrated P3 `--tag v2`, PID `884773`,
+`/tmp/p1-qwen-v2-20261010-1`). Earlier non-Qwen side trials remain in an archive appendix and are
+excluded from deliverable comparison results.
+The original 72-evaluation comparison is complete and its strict report passed; see
+`experiments/qwen-v1-comparison/report.md`. The two original Qwen arms each had zero `faster`
+outcomes: referee feedback had 22 `wrong` + 2 `no_gain`, model alone 2 `wrong` + 22 `no_gain`.
+The separate expert-template control had 22 `faster` + 2 `slower`, with median run-best 3.125919x.
+All arms have 24 evaluations across three runs, and the control has a different candidate prior.
+Consolidated Qwen v2 completed all eight attempts: 7 `wrong`, 1 `faster`. Attempt 3 achieved
+1.517123964x; two unchanged-source core-3 checks both returned `faster`, at 1.516961251x and
+1.516817767x. Evidence is in `experiments/qwen-v2-feedback/` and `experiments/qwen-winner-replication/`.
+This single exploratory multi-change run is separate from v1; replay checks do not consume model budget.
+The dashboard contains exactly 80 attempts (72 v1 + 8 v2), excluding replay and archived side trials.
 
 ## Original throughput acceptance
 

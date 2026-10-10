@@ -1,0 +1,16 @@
+primary shape K=4096 M=256 N=6144 (gate_up, 256 tokens): tile counts M 2, N 12, K 32 -> 72 triples
+SBUF filter: dropped 10 of 72 (estimate over 147,456 B per partition), 62 fit
+attempt 0: kernels/matmul_expert.py as shipped, caps m16 n2 k8, which run as m2 n2 k8 here, so (2, 2, 8) is excluded from the random draws (no second timing)
+attempts 1-7: distinct random triples of the 61 left, random.Random(2)
+run random_search-r2: seat 100 (--seat), core 3, referee single pinned RefereeWorker
+candidates in /tmp/chipboost_runs/random_search-r2 (outside the referee's folder), records appended to /tmp/p1-comparison-20261010-2/random_search-r2.jsonl
+#0   caps m16 n2 k8    faster         384.0us   2.50x  best 2.50x
+#1   caps m2 n4 k2     faster         380.1us   2.53x  best 2.53x
+#2   caps m2 n1 k1     faster         657.5us   1.46x  best 2.53x
+#3   caps m2 n2 k32    faster         380.6us   2.52x  best 2.53x
+#4   caps m1 n2 k8     faster         564.9us   1.70x  best 2.53x
+#5   caps m1 n3 k8     faster         431.1us   2.23x  best 2.53x
+#6   caps m2 n12 k1    faster         664.8us   1.44x  best 2.53x
+#7   caps m1 n2 k1     faster         651.7us   1.47x  best 2.53x
+best verified (faster): caps m2 n4 k2 (runs as m2 n4 k2), 2.53x
+evaluated 8 of 8; filtered: SBUF dropped 10 of 72, (2, 2, 8) excluded as attempt 0's twin

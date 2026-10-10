@@ -56,18 +56,26 @@ PROJECT = HERE.parent
 sys.path.insert(0, str(PROJECT))
 import schema  # noqa: E402
 
-ARM_LABEL = {"referee": "Model + referee", "model_alone": "Model alone", "random_search": "Random search",
-             "referee_v2": "Model + referee v2"}
-ARM_COLOR = {"referee": "var(--s1)", "model_alone": "var(--s2)", "random_search": "var(--s3)",
-             "referee_v2": "var(--s4)"}
-# The arms as shown. referee_v2 is not a schema arm: it is the referee arm's runs tagged v2 (agent.py --tag
-# v2: the two named-fix rules), split out so v1 and v2 are compared side by side instead of averaged.
-ARMS_SHOWN = ("referee", "referee_v2", "model_alone", "random_search")
-OPTIONAL_ARMS = {"referee_v2"}   # drawn only when they have runs
+# The arms as shown. Raw records keep schema.ARMS and their run_id; the v2 arms are run_id tags
+# (agent.py --tag v2, and P1's -v2-p1fix- runs), split out so each is compared side by side instead of
+# averaged into its base arm. Optional arms are drawn only when they have runs.
+DISPLAY_ARMS = ("referee", "referee_v2", "referee_v2_p1fix", "model_alone", "model_alone_v2", "random_search")
+ARMS_SHOWN = DISPLAY_ARMS
+OPTIONAL_ARMS = {"referee_v2", "referee_v2_p1fix", "model_alone_v2"}
+ARM_LABEL = {"referee": "Referee v1", "referee_v2": "Referee v2", "referee_v2_p1fix": "Qwen + P1 fixes",
+             "model_alone": "Model alone v1", "model_alone_v2": "Model alone v2", "random_search": "Random search"}
+ARM_COLOR = {"referee": "var(--s1)", "referee_v2": "var(--s4)", "referee_v2_p1fix": "#257e73",
+             "model_alone": "var(--s2)", "model_alone_v2": "#a87519", "random_search": "var(--s3)"}
 
 
-def shown_arm(rec):
-    return "referee_v2" if rec["arm"] == "referee" and "-v2-" in (rec["run_id"] or "") else rec["arm"]
+def display_arm(record):
+    arm, run_id = record["arm"], record["run_id"] or ""
+    if arm == "referee" and "-v2-p1fix-" in run_id:
+        return "referee_v2_p1fix"
+    return arm + "_v2" if arm in ("referee", "model_alone") and "-v2-" in run_id else arm
+
+
+shown_arm = display_arm   # both names are used below; the function is idempotent
 
 # In pipeline order: how far the kernel got. Status colours, each with its own shape, so a
 # verdict never rests on colour alone.
@@ -256,7 +264,7 @@ def summarize(records):
     """Per kernel: the start time, and per arm the runs, each with its best and its progress curve."""
     runs = defaultdict(list)
     for r in records:   # by seat too: two seats can pick the same run_id
-        runs[(r["kernel"], r["arm"], str(r["seat"]), r["run_id"])].append(r)
+        runs[(r["kernel"], display_arm(r), str(r["seat"]), r["run_id"])].append(r)
     out = {}
     for k in [op for op in schema.OPS if any(key[0] == op for key in runs)]:
         recs = [r for r in records if r["kernel"] == k]
@@ -497,7 +505,7 @@ def panel_speed(summary, results, tune):
             rows.append(("Expert kernel", "var(--neutral-bar)", expert_x, None, None, None, info["expert_us"]))
         top = max([v for row in rows for v in (row[2], row[4]) if v] + [1.0] + ([limit_x] if limit_x else []))
         _, hi, ticks = nice_domain(0, top * 1.04, 5)
-        W, L, R, T, rh, bh = 540, 112, 70, 20, 26, 12
+        W, L, R, T, rh, bh = 540, 140, 70, 20, 26, 12
         H = T + rh * len(rows) + 20
         sx = lambda v: L + v / hi * (W - L - R)
         g = []
@@ -560,7 +568,7 @@ def step_points(xs, ys):
     return pts
 
 
-MODEL_ARMS = ("referee", "referee_v2", "model_alone")   # both start from the start kernel; random search starts from the expert
+MODEL_ARMS = ("referee", "referee_v2", "referee_v2_p1fix", "model_alone", "model_alone_v2")   # both start from the start kernel; random search starts from the expert
 
 
 def panel_progress(summary, results, tune):
@@ -640,7 +648,7 @@ def panel_progress(summary, results, tune):
         for a in MODEL_ARMS if a not in OPTIONAL_ARMS or any_runs(a)) + "</div>")
     return card("Progress: the model improves the start kernel",
                 "Best verified speedup so far, from the start kernel (1×). Line: median over runs; band: fastest to "
-                "slowest run. Same x = same budget.",
+                "slowest run within each version. Same x = same budget; v1, v2 and P1-fix trials are never pooled.",
                 legend + body + tuning_block(tune) + table_view(table(
                     ["Kernel", "Arm", "Runs", "Attempts", "After 25%", "After 50%", "After 75%", "At the end",
                      "Spread at the end"], rows_t, numeric=(2, 3, 4, 5, 6, 7))))
@@ -933,7 +941,7 @@ def panel_timeline(summary):
         if not lanes:
             continue
         n_max = max(len(r["attempts"]) for _, _, r in lanes)
-        W, Lm, Rm, T, rh = 540, 150, 10, 4, 17
+        W, Lm, Rm, T, rh = 540, 210, 10, 4, 17
         H = T + rh * len(lanes) + 22
         step = (W - Lm - Rm) / max(n_max - 1, 1)
         size = max(2.5, min(4.5, step * 0.35))
@@ -1003,27 +1011,15 @@ def kpis(summary, results, records, tune):
     tiles = []
     for k in kernels_of(summary, results):
         s, info, start, expert_x, limit_x = kernel_view(k, summary, results)
-        rs = s["arms"]["referee"]
-        best = median(r["best_x"] for r in rs) if rs else None
-        target, tname = (expert_x, "expert") if expert_x else (limit_x, "floor limit")
-        if best:
-            sub = f"model + referee · {len(rs)} run{'s' if len(rs) != 1 else ''}"
-            # How far from the start (1x) toward the target: 1.00x is 0% of the way, whatever the target.
-            sub += (f" · {max(0.0, (best - 1) / (target - 1)):.0%} of the way to the {tname}'s {fmt_x(target)}"
-                    if target and target > 1 else "")
-        else:
-            sub = "no runs yet" + (f" · target: {tname} {fmt_x(target)}" if target else "")
-        tiles.append((f"{k} speedup", fmt_x(best) if best else "–", sub,
-                      meter((best - 1) / (target - 1)) if best and target and target > 1 else meter(0)))
-    if tune:
-        sw, runs = tune["sweep"], tune["runs"]
-        best = median(r["best"] for r in runs) if runs else None
-        sub = (f"random search over AWS's default · {len(runs)} run{'s' if len(runs) != 1 else ''}" if runs
-               else "random search: no runs yet")
-        if sw:
-            sub += f" · best of {sw['n']} swept: {(sw['best'] - 1) * 100:+.0f}%"
-        tiles.append(("Block tuning", f"{(best - 1) * 100:+.0f}%" if best else "–", sub,
-                      meter((best - 1) / (sw["best"] - 1)) if best and sw and sw["best"] > 1 else meter(0)))
+        for arm in MODEL_ARMS:
+            rs = s["arms"][arm]
+            if not rs:
+                continue
+            best = median(r["best_x"] for r in rs)
+            target, tname = (expert_x, "expert") if expert_x else (limit_x, "floor limit")
+            sub = f"Qwen3-8B · {len(rs)} run{'s' if len(rs) != 1 else ''} · median best verified"
+            tiles.append((f"{k} · {ARM_LABEL[arm]}", fmt_x(best), sub,
+                          meter((best - 1) / (target - 1)) if target and target > 1 else meter(0)))
     rt = results["redteam"]
     if rt:
         control, cheats, caught, pending = redteam_split(rt)
@@ -1356,7 +1352,8 @@ def build(records, results, notes, fake, inputs, sweep=()):
 <body>
 <main>
 <header class="top">
-<div><h1>CHIPBOOST</h1><p class="lede">Qwen3-8B speeds up the kernels it is built from, on the Trainium chip it runs on.
+<div><h1>CHIPBOOST</h1><p class="lede">Qwen3-8B kernel optimization on Trainium: model alone and referee-guided runs.
+V1, consolidated v2 and Qwen + P1 fixes are shown separately; template random search uses an expert prior.
 A speedup counts only if the referee verifies it: correct on the chip and on unseen shapes, and faster than the noise.</p></div>
 <p class="meta">{esc(meta)}</p>
 </header>

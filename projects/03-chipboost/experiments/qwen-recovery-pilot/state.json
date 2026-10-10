@@ -1,0 +1,18 @@
+{
+  "phase": "complete",
+  "pid": 844147,
+  "core": 2,
+  "budget": 8,
+  "treatment": "full_feedback_and_repair_controller_pilot",
+  "warning": "Exploratory multi-change treatment; not DMA-only v2 or original comparison",
+  "model": "Qwen/Qwen3-8B",
+  "sources": {
+    "03-chipboost/speedcheck.py": "6fd2191f3643436fc7671c79fbf9d9e7aaa1b1debd13d80d0e0e492c7c74693d",
+    "03-chipboost/experimental_agent.py": "1b17b1127e3f447975c1a8c2ee32bb81a1fc79a824c03fd4997e8682e8fb550f",
+    "02-kernel-agent/reference_level4.py": "0dde78bd65e0a724a4fab05b2b893b215c8335e2086bc6c945ed43250a1f728b"
+  },
+  "worker_pid": 844211,
+  "attempts": 8,
+  "faster": 0,
+  "best_valid_speedup": null
+}
