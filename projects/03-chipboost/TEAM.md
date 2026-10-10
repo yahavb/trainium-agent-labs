@@ -91,7 +91,8 @@ result = speedcheck.check(path, op="matmul", shapes="dev" | "heldout", baseline=
 ```
 
 **Every log line** follows `schema.py`. Verdicts are exactly: `rules`, `wrong`, `heldout_fail`, `slower`,
-`faster`. `source` is `chip` or `sim`. Times are microseconds.
+`no_gain` (correct, but the change is inside timing noise), `faster`. Every line carries the kernel's full
+`code`, plus the `prompt` and `response` for model arms, so the dashboard can show diffs. `source` is `chip` or `sim`. Times are microseconds.
 
 ## Merge order
 
