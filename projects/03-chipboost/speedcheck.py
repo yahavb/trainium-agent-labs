@@ -6,12 +6,17 @@ speedcheck.py -- the CHIPBOOST referee. One candidate kernel in, one verdict and
     sim        CPU simulation vs NumPy on small shapes; bytes counted over every DMA            -> "wrong"
     chip       on the device at the timing shapes, hostile then normal inputs, fresh output
                garbage before every run, inputs read back afterwards                          -> "wrong"
+    fail fast  ONE fresh, verified run of baseline and candidate per timing shape; more than
+               3x slower on any shape stops here, without the full interleave                  -> "slower"
     timing     device clock, interleaved with the baseline; every timed run gets a DIFFERENT
                input set in an unpredictable order and fresh output garbage, and is verified  -> "wrong"
+    verdict    thr = timing.noise_threshold (1 + max(1%, 2x the worse arm's relative IQR)):
+               total speedup <= 1/thr                                                          -> "slower"
+               total >= thr AND no shape below 1/thr -> held-out, then                         -> "faster"
+               anything else (inside the noise, or a gain that costs some shape)               -> "no_gain"
     held-out   only for a candidate that would score faster: 3 shapes drawn at random from
-               every legal tile multiple, hostile values                                       -> "heldout_fail"
-    verdict    "faster" only if it beats the measured noise on the total AND regresses on no
-               shape AND passed held-out; otherwise "slower"
+               every legal tile multiple, hostile values. A failure says WHAT failed, never
+               WHICH shape (the next prompt would learn it)                                    -> "heldout_fail"
 
 TRUST BOUNDARY. The referee never imports the candidate. A child process does that -- simulation and
 compilation to a NEFF -- and it is sandboxed by the operating system, not by source filtering (a source
@@ -29,6 +34,14 @@ messages) is quoted as data in referee_message and never becomes instruction_giv
     python speedcheck.py --op matmul --check cand.py
     python speedcheck.py --op matmul --check cand.py --json --log attempts.jsonl
     speedcheck.check_isolated(path)   # from Python: one record, or None if the REFEREE failed
+
+In a loop, a persistent worker skips the 6-13 s NeuronCore runtime start check_isolated pays per candidate;
+same contract (a record, or None for a referee failure), with a per-candidate watchdog that kills and
+respawns the worker (`speedcheck.py --serve RESULTS.jsonl` underneath; paths in on stdin, records out
+through the parent-named file):
+
+    with speedcheck.RefereeWorker(op="matmul", core=3) as w:
+        rec = w.check(path)            # w.last_error says why, when it returns None
 """
 
 import argparse
@@ -57,6 +70,7 @@ import schema    # noqa: E402
 
 CACHE = os.environ.get("CHIPBOOST_CACHE", "/tmp/chipboost_cache")
 CHILD_TIMEOUT = 600
+COMPILE_THREADS = 8                  # shapes the sandboxed child compiles at once
 
 # ---------------------------------------------------------------- ops
 
@@ -66,11 +80,34 @@ def _bf16():
     return ml_dtypes.bfloat16
 
 
+_NORMAL_CHUNKS = 8                    # fixed: the values for a seed never depend on the machine's core count
+
+
+def _normal(seed_seq, shape):
+    """Standard normal fp32, filled in parallel. A big operand is split into _NORMAL_CHUNKS slices, each from
+    its own child stream of the seed, and filled in threads (numpy drops the GIL while it fills): ~10x faster
+    than one fp64 stream cast to fp32, which was most of the referee's 2.2 s of input generation. Deterministic
+    per seed (the child and the referee must build the same simulator inputs). The threads end with the call:
+    none are left running when the referee forks its sandboxed child."""
+    out = np.empty(shape, np.float32)
+    flat = out.reshape(-1)
+    if flat.size < (1 << 20):
+        np.random.default_rng(seed_seq).standard_normal(out=flat, dtype=np.float32)
+        return out
+    gens = [np.random.default_rng(s) for s in seed_seq.spawn(_NORMAL_CHUNKS)]
+    cut = np.linspace(0, flat.size, _NORMAL_CHUNKS + 1).astype(np.int64)
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(min(_NORMAL_CHUNKS, os.cpu_count() or 1)) as ex:
+        list(ex.map(lambda i: gens[i].standard_normal(out=flat[cut[i]:cut[i + 1]], dtype=np.float32),
+                    range(_NORMAL_CHUNKS)))
+    return out
+
+
 def _matmul_inputs(shape, seed, hostile=False):
     K, M, N = shape
-    r = np.random.default_rng(seed)
-    a = r.standard_normal((K, M)).astype(np.float32)
-    b = r.standard_normal((K, N)).astype(np.float32)
+    sa, sb = np.random.SeedSequence(seed).spawn(2)
+    a = _normal(sa, (K, M))
+    b = _normal(sb, (K, N))
     if hostile:                       # large magnitudes, exact zeros, a sign-flipped block
         a[: K // 8] *= 64.0
         b[:, : N // 16] = 0.0
@@ -114,8 +151,37 @@ try:                                            # P2's shapes.py extends or over
     import shapes as _shapes
     for _k, _v in getattr(_shapes, "OPS", {}).items():
         OPS[_k] = {**OPS.get(_k, {}), **_v}
-except ImportError:
-    pass
+except Exception as _e:                         # a broken shapes.py must not take the referee down with it
+    if not (isinstance(_e, ImportError) and getattr(_e, "name", None) == "shapes"):
+        print(f"speedcheck: WARNING: shapes.py failed to load ({type(_e).__name__}: {_e}); "
+              f"using the built-in specs only", file=sys.stderr)
+    OPS = {"matmul": MATMUL}
+
+HELDOUT_FIXED_WITH_RANDOM = 2       # shapes from P2's fixed list on top of the random draw
+
+
+def _sample(r, pool, k):
+    return [pool[i] for i in sorted(int(j) for j in r.permutation(len(pool))[:k])]
+
+
+def _fixed_heldout(fixed):
+    """A fixed list: all of it if small (P2's ragged 127/129/1-row cases), else n at random; never a shape
+    the caller excludes (the timing and simulator shapes)."""
+    def draw(r, n, exclude):
+        pool = [s for s in fixed if s not in exclude]
+        return pool if len(pool) <= max(n, 5) else _sample(r, pool, n)
+    return draw
+
+
+def _heldout_union(rand, fixed):
+    """n fresh random shapes (a fixed public list was learnable: red-team 3b) plus a sample of P2's fixed
+    list, whose shapes were picked for their edge cases (1/127/129 rows, 6 K-blocks, one M-tile)."""
+    def draw(r, n, exclude):
+        out = [tuple(s) for s in rand(r, n, exclude)]
+        pool = [s for s in fixed if s not in exclude and s not in out]
+        return out + _sample(r, pool, HELDOUT_FIXED_WITH_RANDOM)
+    return draw
+
 
 def _out_from_ref(spec):
     """P2's shapes.py has no `out`: derive it from the reference, once per shape."""
@@ -147,12 +213,12 @@ for _k in list(OPS):
     _sp["sim_shapes"] = [tuple(x) for x in _sp["sim_shapes"]]
     _sp["time_shapes"] = [tuple(x) for x in _sp["time_shapes"]]
     _sp.setdefault("vary", (_sp.get("names") or list(_sp["make_inputs"](_sp["sim_shapes"][0], 0)))[0])
-    if not callable(_sp["heldout"]):                     # a fixed list: all of it if small, else a random draw
-        _fixed = [tuple(x) for x in _sp["heldout"]]
-        _sp["heldout"] = lambda r, n, ex, f=_fixed: (list(f) if len(f) <= 5 else
-                                                     [f[i] for i in r.permutation(len(f))[:n]])
-    if _k == "matmul":                                   # a fixed public list was learnable (red-team 3b)
-        _sp["heldout"] = _matmul_heldout
+    _fixed = list(dict.fromkeys(tuple(x) for k in ("heldout", "heldout_shapes")
+                                if not callable(_sp.get(k)) for x in _sp.get(k) or ()))
+    # A random draw whenever there is one -- for matmul always ours: a fixed public list was learnable
+    # (red-team 3b) -- plus a sample of the fixed list (its edge cases: 1, 127, 129 rows, 6 K-blocks).
+    _rand = _matmul_heldout if _k == "matmul" else _sp["heldout"] if callable(_sp["heldout"]) else None
+    _sp["heldout"] = (_heldout_union(_rand, _fixed) if _rand and _fixed else _rand or _fixed_heldout(_fixed))
 
 # ---------------------------------------------------------------- stage 1: rules (defence in depth only)
 
@@ -270,7 +336,13 @@ def check_source_shape(src):
 
 def simulate_count_all(kernel, args):
     """Hook every DMA entry point -- nkibench's counter saw only nisa.dma_copy, so dma_transpose,
-    dma_compute and nl.load/store moved bytes invisibly -- and flatten nested source lists."""
+    dma_compute and nl.load/store moved bytes invisibly -- and flatten nested source lists.
+
+    A DMA can convert dtypes, so each transfer is counted at its NARROW side: every source element at the
+    smaller of its own and the destination's element size, i.e. min(bytes(src), bytes(dst)) for a copy.
+    Counting the source alone read a float32 SBUF -> bf16 HBM store at twice its size (P2's nkibench fix,
+    3163951): a kernel moving exactly the floor read "1.29x the floor" and was told to stop reloading tiles.
+    nc_matmul calls are counted too (by_op), but are not transfers and move no HBM bytes."""
     import nki
     import nki.isa as nisa
     import nki.language as nl
@@ -288,27 +360,60 @@ def simulate_count_all(kernel, args):
         n = getattr(t, "nbytes", None)
         return int(n) if isinstance(n, int) and n > 0 else int(np.prod(t.shape)) * nkibench.itemsize_of(t)
 
-    def wrap(name, fn, src_pos):
+    def narrow(s, dst):
+        """Bytes of source s as moved into dst: at the narrower element size of the two."""
+        b = size(s)
+        if dst is None:
+            return b
+        try:
+            d = nkibench.itemsize_of(dst, default=0)
+            return min(b, int(np.prod(s.shape)) * d) if d > 0 else b
+        except Exception:
+            return b
+
+    def arg(a, kw, key, pos):
+        if key in kw:
+            return kw[key]
+        return a[pos] if pos is not None and len(a) > pos else None
+
+    def wrap(name, fn, src_key, src_pos, dst_key, dst_pos):
         def counted(*a, **kw):
-            src = kw.get("srcs", kw.get("src", a[src_pos] if len(a) > src_pos else None))
-            for s in flat(src):
+            src, dst = arg(a, kw, src_key, src_pos), arg(a, kw, dst_key, dst_pos)
+            out = fn(*a, **kw)
+            if dst_key is None:                      # nl.load: the destination is the tile it returns
+                dst = out
+            srcs = list(flat(src))
+            if not srcs:                             # a transfer the counter cannot see the source of
+                counter["unmeasured"] += 1
+            for s in srcs:
                 try:
-                    counter["bytes"] += size(s)
+                    counter["bytes"] += narrow(s, dst)
                     counter["dtypes"].add(str(getattr(s, "dtype", "?")))
                 except Exception:
                     counter["unmeasured"] += 1
             counter["transfers"] += 1
             counter["by_op"][name] = counter["by_op"].get(name, 0) + 1
+            return out
+        return counted
+
+    def tally(name, fn):
+        def counted(*a, **kw):
+            counter["by_op"][name] = counter["by_op"].get(name, 0) + 1
             return fn(*a, **kw)
         return counted
 
-    hooks = [(nisa, "dma_copy", 1), (nisa, "dma_transpose", 1), (nisa, "dma_compute", 1),
-             (nl, "load", 0), (nl, "store", 1)]
+    #        module, name, (source keyword, position), (destination keyword, position)
+    hooks = [(nisa, "dma_copy", "src", 1, "dst", 0), (nisa, "dma_transpose", "src", 1, "dst", 0),
+             (nisa, "dma_compute", "srcs", 1, "dst", 0), (nl, "load", "src", 0, None, None),
+             (nl, "store", "value", 1, "dst", 0)]
     originals = []
-    for mod, name, pos in hooks:
+    for mod, name, *where in hooks:
         if hasattr(mod, name):
             originals.append((mod, name, getattr(mod, name)))
-            setattr(mod, name, wrap(name, getattr(mod, name), pos))
+            setattr(mod, name, wrap(name, getattr(mod, name), *where))
+    if hasattr(nisa, "nc_matmul"):
+        originals.append((nisa, "nc_matmul", nisa.nc_matmul))
+        nisa.nc_matmul = tally("nc_matmul", nisa.nc_matmul)
     import warnings
     try:
         with warnings.catch_warnings():
@@ -351,17 +456,31 @@ def _child(job_path):
             np.save(os.path.join(wd, f"sim_{i}.npy"), np.asarray(got, np.float32))
             res["sim"].append(dict(shape=list(shape), counter=counter,
                                    untouched=nkibench.check_inputs_untouched(before, args)))
-    if res["error"] is None:
+    if res["error"] is None and job["compile"]:
+        # Every shape compiles at once, in threads (neuronx-cc releases the GIL: 8 compiles take 8.5 s instead
+        # of 25 s). The outcome is what the sequential loop reported: shapes in order, the first failure wins.
         import timing
-        for key, shape in job["compile"]:
-            inp = spec["make_inputs"](tuple(shape), 0)
+        from concurrent.futures import ThreadPoolExecutor
+        jobs = [(key, tuple(shape), spec["make_inputs"](tuple(shape), 0)) for key, shape in job["compile"]]
+
+        def compile_one(key, inp):
+            ck = timing.compile_kernel(kernel, inp)
+            shutil.copy(ck.neff_path, os.path.join(wd, f"{key}.neff"))
+
+        ex = ThreadPoolExecutor(max(1, min(COMPILE_THREADS, len(jobs))))
+        futs = [ex.submit(compile_one, key, inp) for key, _, inp in jobs]
+        for (key, shape, _), fut in zip(jobs, futs):
             try:
-                ck = timing.compile_kernel(kernel, inp)
-                shutil.copy(ck.neff_path, os.path.join(wd, f"{key}.neff"))
+                fut.result()
                 res["neffs"][key] = f"{key}.neff"
             except Exception as e:
                 fail("compile", e, list(shape))
                 break
+        if res["error"] is not None:          # report now; the parent kills whatever is still compiling
+            with open(os.path.join(wd, "result.json"), "w") as f:
+                json.dump(res, f)
+            os._exit(0)
+        ex.shutdown()
     json.dump(res, open(os.path.join(wd, "result.json"), "w"))
 
 
@@ -459,9 +578,16 @@ def _limits():
     except OSError:
         pass
     resource.setrlimit(resource.RLIMIT_AS, (48 * gb, 48 * gb))
-    resource.setrlimit(resource.RLIMIT_CPU, (CHILD_TIMEOUT, CHILD_TIMEOUT))
+    # CPU seconds are summed over the child's threads, and it compiles up to COMPILE_THREADS shapes at once:
+    # the budget is twice the wall-clock limit (the same total work a sequential child could do, plus room for
+    # the threads' overhead). It is only a backstop -- the parent's wall clock, CHILD_TIMEOUT, ends every child,
+    # an infinite loop included (one Python thread holding the GIL burns at most one CPU second per second).
+    resource.setrlimit(resource.RLIMIT_CPU, (2 * CHILD_TIMEOUT, 2 * CHILD_TIMEOUT))
     resource.setrlimit(resource.RLIMIT_FSIZE, (4 * gb, 4 * gb))
-    resource.setrlimit(resource.RLIMIT_NPROC, (2048, 2048))      # per uid: the child's own uid, so no fork bomb
+    # Per uid, threads included: the child's own uid, so no fork bomb. Each neuronx-cc runs a walrus_driver with
+    # one thread per host CPU (~190 on a trn2.48xlarge) whatever the env says; 8 at once hit 2048 and failed with
+    # "pthread_create failed". 5 parallel compiles peak at ~1000 tasks with the BLAS pools capped (run_child).
+    resource.setrlimit(resource.RLIMIT_NPROC, (4096, 4096))
     os.setsid()
 
 
@@ -568,7 +694,19 @@ def run_child(src, op, sim_seed, sim, compile_shapes, baseline, workdirs):
 
     Layout: wd (root, group = the child's own gid, 0750) holds the job and the already-scanned source, readable
     by the child; wd/out (the child's, 0700) is the only place it can write. It cannot rename `out` away (it
-    has no write permission on wd), so once it is dead the referee reads exactly that directory."""
+    has no write permission on wd), so once it is dead the referee reads exactly that directory.
+
+    The sandbox needs root and setpriv. Without them the child would run the candidate as the referee's own user,
+    able to rewrite the referee: that is a RefereeError, unless CHIPBOOST_ALLOW_UNSANDBOXED=1 opts in (local
+    development only), and then every child says so on stderr."""
+    if not (os.getuid() == 0 and shutil.which("setpriv")):
+        why = "the referee is not root" if os.getuid() != 0 else "setpriv is not installed"
+        if os.environ.get("CHIPBOOST_ALLOW_UNSANDBOXED") != "1":
+            raise RefereeError(f"cannot sandbox the candidate ({why}); run the referee as root with setpriv, or set "
+                               f"CHIPBOOST_ALLOW_UNSANDBOXED=1 for local development only")
+        print(f"speedcheck: WARNING: CANDIDATE CODE RUNS UNSANDBOXED ({why}; CHIPBOOST_ALLOW_UNSANDBOXED=1): it can "
+              f"read and modify anything this user can, the referee included. Never use these verdicts for real.",
+              file=sys.stderr)
     wd = tempfile.mkdtemp(prefix="chipboost_child_")
     workdirs.append(wd)
     out = os.path.join(wd, "out")
@@ -580,7 +718,11 @@ def run_child(src, op, sim_seed, sim, compile_shapes, baseline, workdirs):
                        compile=[[k, list(x)] for k, x in compile_shapes]), f)
     env = dict(os.environ, NEURON_RT_VISIBLE_CORES="0",          # held by vLLM: any device use by the child fails
                NKI_DISABLE_COMPILE_CACHE="1", CHIPBOOST_CHILD="1", PYTHONDONTWRITEBYTECODE="1",
-               HOME=out, XDG_CACHE_HOME=out, TMPDIR=out)
+               HOME=out, XDG_CACHE_HOME=out, TMPDIR=out,
+               # BLAS/OpenMP pools default to one thread per host CPU (192) in the child and in every neuronx-cc
+               # it starts: capped, the child goes from 191 threads and 20 GB of address space to 12 and 1 GB,
+               # and 5 parallel compiles from ~1800 tasks of RLIMIT_NPROC to ~1000, and finish sooner.
+               **{v: "4" for v in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")})
     cmd = [sys.executable, os.path.abspath(__file__), "--_child", os.path.join(wd, "job.json")]
     uid = None
     if os.getuid() == 0 and shutil.which("setpriv"):
@@ -688,27 +830,112 @@ def _child_failure(e, label=""):
 
 # ---------------------------------------------------------------- stage 6: one instruction
 
-def one_instruction(counter, args, want, flops):
-    """Turn the measurements into ONE change to make. Never just 'too slow'."""
-    if not counter or counter.get("unmeasured") or not counter.get("transfers"):
+WASTE_HINT = 1.15                         # simulator bytes over the floor that count as reloading
+FULL_MATMUL_FLOPS = 2 * nkibench.PMAX * nkibench.GEMM_STATIONARY_FMAX * nkibench.GEMM_MOVING_FMAX
+FULL_TILE_BYTES = nkibench.PMAX * nkibench.GEMM_MOVING_FMAX * 2  # one 128 x 512 bf16 tile, 128 KiB
+
+
+def _waste(diag):
+    """Simulator bytes over the byte floor for one diag tuple (counter, args, want, flops)."""
+    counter, args, want, _ = diag
+    floor = nkibench.minimum_hbm_bytes(list(args), want)
+    return counter.get("bytes", 0) / floor if floor else 1.0
+
+
+def one_instruction(counter, args, want, flops, chip=None):
+    """Turn the measurements into ONE change to make. Never just 'too slow'.
+
+    counter, args, want, flops: the simulator's view of one dev shape (bytes are a hint, not a cost: redundant
+    DMAs measured free on the chip, STATUS finding 1). chip: the device outcome, which decides the kind of
+    advice -- dict(speedup=total baseline/candidate, per_shape=[(shape, speedup)], t_us=candidate total,
+    flops=flops over the timed shapes, threshold=the noise threshold). Without it, simulator-only advice.
+    Every word is referee-authored; nothing the candidate wrote reaches it."""
+    if not counter or not counter.get("transfers"):
         return ("The byte counter could not see this kernel's data movement, so no traffic diagnosis is "
                 "possible: move data with nisa.dma_copy called through the nisa module.")
+    unmeasured = int(counter.get("unmeasured") or 0)
+    note = (f" ({unmeasured:,} transfer{'s' if unmeasured != 1 else ''} could not be measured, so the byte "
+            f"figures are a lower bound.)") if unmeasured else ""
     elements = int(np.prod(np.shape(want)))
     floor = nkibench.minimum_hbm_bytes(list(args), want)
     waste = counter["bytes"] / floor if floor else 1.0
-    if counter["transfers"] > max(8, elements // 64):
-        return (f"One transfer per few elements ({counter['transfers']:,} transfers for {elements:,} outputs): "
-                f"move whole 128-row tiles per DMA, not elements.")
-    if waste > 1.15:
-        return (f"Same tiles reloaded every pass ({waste:.2f}x the byte floor): move the operand loads out of "
-                f"the innermost loop so each tile is loaded once and reused across it.")
-    ceiling = flops / floor if floor else float("inf")
-    if ceiling >= nkibench.RIDGE_FLOPS_PER_BYTE["bfloat16"]:
-        return ("Bytes are already near the floor and this shape can be compute bound: keep the Tensor "
-                "Engine busy -- block K so one PSUM tile accumulates across the whole contraction, and "
-                "overlap the next tile's load with the current matmul.")
-    return ("At the byte floor on a memory-bound shape: the remaining cost is transfer efficiency -- "
-            "issue fewer, larger DMAs and overlap them with compute.")
+    transfers = counter["transfers"]
+    avg_kib = counter["bytes"] / transfers / 1024
+    n_mm = int((counter.get("by_op") or {}).get("nc_matmul", 0) or 0)
+    fill = (flops / (n_mm * FULL_MATMUL_FLOPS)) if n_mm and flops else None   # 1.0 = every matmul a full tile
+    compute_bound = floor and flops / floor >= nkibench.RIDGE_FLOPS_PER_BYTE["bfloat16"]
+    # The chip advice follows the Tensor Engine ladder when the kernel does matmuls. Not the dev shape's
+    # roofline: dev shapes are too small to clear the ridge, the timed Qwen3 shapes sit at or above it.
+    on_tensor_engine = n_mm > 0 and flops > 0
+    per_element = transfers > max(8, elements // 64)
+
+    if chip is None:                                             # simulator only
+        if per_element:
+            return (f"One transfer per few elements ({transfers:,} transfers for {elements:,} outputs): move "
+                    f"whole 128-row tiles per DMA, not elements.{note}")
+        if waste > WASTE_HINT:
+            return (f"Same tiles reloaded every pass ({waste:.2f}x the byte floor): move the operand loads out "
+                    f"of the innermost loop so each tile is loaded once and reused across it.{note}")
+        if compute_bound:
+            return ("Bytes are already near the floor and this shape can be compute bound: keep the Tensor "
+                    "Engine busy -- block K so one PSUM tile accumulates across the whole contraction, and "
+                    f"overlap the next tile's load with the current matmul.{note}")
+        return ("At the byte floor on a memory-bound shape: the remaining cost is transfer efficiency -- "
+                f"issue fewer, larger DMAs and overlap them with compute.{note}")
+
+    speedup = float(chip.get("speedup") or 0.0)
+    thr = float(chip.get("threshold") or 1.05)
+    per_shape = list(chip.get("per_shape") or [])
+    worst = min(per_shape, key=lambda x: x[1]) if per_shape else None
+    faster = speedup >= thr and not any(sp < 1.0 / thr for _, sp in per_shape)
+    t_us, tflop = float(chip.get("t_us") or 0.0), float(chip.get("flops") or 0.0)
+    rate = f", {tflop / t_us / 1e6:.1f} TFLOP/s" if on_tensor_engine and t_us > 0 and tflop > 0 else ""
+    small_mm = fill is not None and fill < 0.9
+    overhead = (f"{transfers:,} DMAs averaging {avg_kib:.0f} KiB"
+                + (f" and {n_mm:,} matmuls at {fill:.0%} of a full 128x128x512 tile" if fill is not None else "")
+                + " in the simulator")
+
+    if faster:
+        head = f"Faster on the chip ({speedup:.2f}x{rate}). Next step: "
+        if per_element:
+            return (head + f"move whole 128-row tiles per DMA, not a few elements ({transfers:,} transfers for "
+                    f"{elements:,} outputs).{note}")
+        if not on_tensor_engine:
+            return (head + "fewer, larger DMAs -- whole 128-partition tiles, several rows per partition -- with "
+                    f"each load overlapping the previous tile's compute and store.{note}")
+        if waste > 1.5:
+            return (head + f"block M and N -- keep a block of lhsT and rhs tiles resident in SBUF and reuse each "
+                    f"across the block instead of reloading it ({waste:.2f}x the byte floor in the simulator)."
+                    + note)
+        if waste > WASTE_HINT:
+            return (head + "block K as well, so one PSUM tile keeps accumulating across the whole contraction "
+                    f"and each output tile is copied out once ({waste:.2f}x the byte floor in the simulator)."
+                    + note)
+        if small_mm:
+            return (head + f"use full-size matmuls -- 128 contraction x 128 stationary x 512 moving per "
+                    f"nc_matmul ({overhead}).{note}")
+        return (head + "overlap data movement with compute -- allocate two SBUF buffers per operand and issue "
+                "the next block's loads before the current block's matmuls, so the Tensor Engine never waits "
+                f"on a DMA.{note}")
+
+    head = ("Slower on the chip" if speedup <= 1.0 / thr else "No gain on the chip") + f" ({speedup:.3f}x"
+    if worst and worst[1] < 1.0 / thr:
+        head += f"; {worst[1]:.3f}x at {tuple(worst[0])}"
+    head += ")"
+    if waste > WASTE_HINT:
+        return (head + f" and the simulator shows {waste:.2f}x the byte floor: the same tiles are reloaded every "
+                f"pass -- move the operand loads out of the innermost loop so each tile is loaded once and "
+                f"reused across it.{note}")
+    if per_element:
+        return (head + f" with one transfer per few elements ({transfers:,} transfers for {elements:,} "
+                f"outputs): move whole 128-row tiles per DMA, not elements.{note}")
+    if not on_tensor_engine:
+        return (head + f" with no wasted bytes ({waste:.2f}x the floor), so the time goes to DMA overhead "
+                f"({overhead}): issue fewer, larger DMAs -- whole 128-partition tiles, several rows per "
+                f"partition.{note}")
+    return (head + f" with no wasted bytes ({waste:.2f}x the floor), so the time goes to instruction overhead "
+            f"({overhead}): issue fewer, larger DMAs and matmuls, with tiles at the hardware maxima -- 128 "
+            f"partitions, 128 stationary columns, 512 moving columns.{note}")
 
 
 # ---------------------------------------------------------------- precision
@@ -782,10 +1009,11 @@ def _resolve_baseline(baseline, op):
 
 
 class Wrong(RuntimeError):
-    def __init__(self, verdict, msg, instr=None):
+    def __init__(self, verdict, msg, instr=None, kind="mismatch"):
         super().__init__(msg)
         self.verdict = verdict
         self.instr = instr or (msg.splitlines() or [""])[0]
+        self.kind = kind                 # crash / input modified / mismatch / precision: says WHAT, not WHERE
 
 
 _DEVICE_INSTR = "The compiled kernel failed on the device; fix the interface or runtime error named in the referee message."
@@ -808,24 +1036,29 @@ def _chip_case(neff_path, spec, shape, inp, label, rng, verdict="wrong"):
         got = N.run()
         after = N.read_inputs()
     except Exception as e:
-        raise Wrong(verdict, _device_failure(f"at {label}", e), _DEVICE_INSTR)
+        raise Wrong(verdict, _device_failure(f"at {label}", e), _DEVICE_INSTR, kind="crash")
     want = spec["ref"](inp)
-    bad = nkibench.check_inputs_untouched(list(inp.values()), [after[k] for k in inp]) or \
-        _mismatch(got, want, spec["tol"], label)
+    bad = nkibench.check_inputs_untouched(list(inp.values()), [after[k] for k in inp])
     if bad:
-        raise Wrong(verdict, bad)
+        raise Wrong(verdict, bad, kind="input modified")
+    bad = _mismatch(got, want, spec["tol"], label)
+    if bad:
+        raise Wrong(verdict, bad, kind="precision" if "PRECISION LOSS" in bad else "mismatch")
     return N, got, want
 
 
-def _verifier(spec, wants, label):
+def _verifier(spec, wants, label, baseline=False):
     """Checks every timed output against the reference for the input set it was fed. Bitwise equality with
-    an already-verified output for the same set short-circuits the full check."""
+    an already-verified output for the same set short-circuits the full check. A wrong BASELINE output is the
+    referee's failure, not the candidate's: it raises RefereeError, never a verdict."""
     seen = {}
 
     def verify(out, k):
         if k in seen and np.array_equal(out, seen[k]):
             return
         bad = _mismatch(out, wants[k], spec["tol"], f"timed run {label}")
+        if bad and baseline:
+            raise RefereeError(f"the baseline produced a wrong output while timed: {bad}")
         if bad:
             raise Wrong("wrong", "A TIMED RUN PRODUCED A WRONG OUTPUT: the kernel was correct when checked but not "
                                  "when timed, so its time is not for this computation.\n" + bad)
@@ -833,9 +1066,36 @@ def _verifier(spec, wants, label):
     return verify
 
 
+FAIL_FAST = 3.0          # one verified run more than this many times the baseline's: `slower`, no full interleave
+ACCEPTED = ("faster", "no_gain", "slower")      # correct kernels; exit code 0
+
+_HELDOUT_INSTR = {
+    "compile": "The kernel does not compile at every legal shape: derive every loop bound, tile count and buffer "
+               "size from the input shapes, with no hard-coded sizes or shape-specific branches.",
+    "crash": "The kernel fails on the device at some legal shapes: derive every loop bound, tile count and buffer "
+             "size from the input shapes, with no hard-coded sizes or shape-specific branches.",
+    "input modified": "The kernel overwrites an input at some shapes: write only to a new output allocated with "
+                      "nl.ndarray(..., buffer=nl.shared_hbm).",
+    "precision": "The kernel loses precision at some shapes: accumulate in fp32 (a PSUM tile) across the whole "
+                 "contraction and round to the output dtype once, at the end.",
+    "mismatch": "The kernel is wrong at some legal shapes it was not tuned on: make every loop cover the whole "
+                "input for any legal size, with no hard-coded sizes or shape-specific branches.",
+}
+
+
+def _heldout_fail(head, kind, detail=""):
+    """A held-out failure names the kind of failure, never the shape or the kernel's own error text (which can
+    carry the dims): the next prompt must not learn the held-out shapes."""
+    msg = (f"HELD-OUT FAILURE ({kind}): {head}, but the kernel {detail or 'gave a wrong result'} on a held-out "
+           f"shape. Held-out shapes are drawn at random per check and never disclosed: the kernel must be correct "
+           f"at every legal shape, not only the ones it is timed on.")
+    return msg, _HELDOUT_INSTR.get(kind, _HELDOUT_INSTR["mismatch"])
+
+
 def check(path, op="matmul", baseline=None, rounds=3, verbose=False):
-    """Referee one candidate. Returns a schema record. Raises RefereeError if the referee itself cannot run --
-    that is never the candidate's fault and is never logged as its verdict."""
+    """Referee one candidate. Returns a schema record whose verdict is one of rules / wrong / heldout_fail /
+    slower / no_gain / faster (see the module docstring for when each applies). Raises RefereeError if the
+    referee itself cannot run -- that is never the candidate's fault and is never logged as its verdict."""
     spec = OPS[op]
     say = print if verbose else (lambda *a, **k: None)
     try:
@@ -897,7 +1157,8 @@ def check(path, op="matmul", baseline=None, rounds=3, verbose=False):
                    if x.get("untouched") else _mismatch(got, want, spec["tol"], f"sim {shape}"))
             if bad:
                 return _record(**base, verdict="wrong", referee_message=bad, instruction_given=bad.split("\n")[0])
-            diag = (_clean_counter(x.get("counter")), list(inp.values()), want.astype(spec["out"](shape)[1]), spec["flops"](shape))
+            d = (_clean_counter(x.get("counter")), list(inp.values()), want.astype(spec["out"](shape)[1]), spec["flops"](shape))
+            diag = d if diag is None or _waste(d) > _waste(diag) else diag      # the shape with the most waste
         base["sim_ok"] = True
         c = diag[0]
         say(f"  simulator  {len(sims)} shapes correct; {c.get('bytes', 0):,} bytes in {c.get('transfers', 0)} "
@@ -926,15 +1187,14 @@ def check(path, op="matmul", baseline=None, rounds=3, verbose=False):
         say(f"  chip       correct on {len(cands)} shapes, hostile and normal (worst {worst:.2f} bf16 ulps)")
 
         # 4. timing: both arms see the same unpredictable sequence of DIFFERENT input sets; every run fresh + verified
-        t_cand = t_base = rel = 0.0
-        per_shape, n_runs = [], 10
+        n_runs = 10
+        arms = []
         for shape, (N, normal) in cands.items():
             vary = spec["vary"]
             sets = [dict(normal, **{vary: spec["make_inputs"](shape, int(rng.integers(1 << 62)))[vary]})
                     for _ in range(6)]
             wants = [spec["ref"](x) for x in sets]
             order = [int(k) for k in rng.integers(0, len(sets), rounds * n_runs)]
-            feed = (lambda j, sets=sets, order=order: (order[j], sets[order[j]]))
             out_shape, out_dtype = spec["out"](shape)
             try:
                 B = timing.Neff(_baseline_neff(baseline, spec, shape), normal, out_shape, out_dtype,
@@ -943,58 +1203,122 @@ def check(path, op="matmul", baseline=None, rounds=3, verbose=False):
                 raise
             except Exception as e:
                 raise RefereeError(f"the baseline would not load at {shape}: {type(e).__name__}: {e}")
+            arms.append(dict(shape=shape, N=N, B=B, sets=sets, order=order,
+                             feed=(lambda j, sets=sets, order=order: (order[j], sets[order[j]])),
+                             va=_verifier(spec, wants, f"baseline {shape}", baseline=True),
+                             vb=_verifier(spec, wants, str(shape))))
+
+        # 4a. fail fast: ONE fresh, verified run of each arm per shape. A kernel thousands of times slower would
+        # otherwise spend most of an hour in the interleave below.
+        probe = []
+        for x in arms:
+            shape, first = x["shape"], (lambda j, f=x["feed"]: f(0))
             try:
-                ab = timing.time_ab_fresh(B, N, rounds=rounds, n=n_runs,
-                                          verify_a=_verifier(spec, wants, f"baseline {shape}"),
-                                          verify_b=_verifier(spec, wants, str(shape)), feed=feed)
-                after = N.read_inputs()
+                x["B"].run()                                  # warm; the candidate is warm from the chip stage
+                tb = x["B"].time_fresh(1, x["va"], first)[0]
+            except RefereeError:
+                raise
+            except Exception as e:
+                raise RefereeError(f"the baseline failed on the chip at {shape}: {type(e).__name__}: {e}")
+            try:
+                tc = x["N"].time_fresh(1, x["vb"], first)[0]
             except Wrong:
                 raise
             except Exception as e:
-                raise Wrong("wrong", _device_failure(f"timing at {shape}", e), _DEVICE_INSTR)
-            last = sets[order[-1]]
+                raise Wrong("wrong", _device_failure(f"timing at {shape}", e), _DEVICE_INSTR, kind="crash")
+            probe.append((shape, tb, tc))
+        if any(tc > FAIL_FAST * tb for _, tb, tc in probe):
+            t_base, t_cand = sum(tb for _, tb, _ in probe), sum(tc for _, _, tc in probe)
+            speedup = t_base / t_cand
+            slow = ", ".join(f"{sh}: {tc:.1f} us vs {tb:.1f} us ({tb / tc:.3f}x)" for sh, tb, tc in probe
+                             if tc > FAIL_FAST * tb)
+            say(f"  fail-fast  more than {FAIL_FAST:g}x slower at {slow}")
+            # one run each, so no measured spread: the threshold is the noise floor alone
+            instr = one_instruction(*diag, chip=dict(speedup=speedup, t_us=t_cand,
+                                                     per_shape=[(sh, tb / tc) for sh, tb, tc in probe],
+                                                     threshold=1.0 + timing.NOISE_FLOOR,
+                                                     flops=sum(spec["flops"](sh) for sh, _, _ in probe)))
+            msg = (f"correct on the timing shapes, but STOPPED EARLY: more than {FAIL_FAST:g}x slower than the "
+                   f"baseline at {slow}. One verified run each: {t_cand:.1f} us vs baseline {t_base:.1f} us = "
+                   f"{speedup:.3f}x; the full interleaved timing was skipped.")
+            return _record(**base, verdict="slower", referee_message=msg, instruction_given=instr,
+                           time_us_median=float(t_cand), time_us_iqr=None, baseline_us_same_session=float(t_base),
+                           speedup=float(speedup), source="chip")
+
+        # 4b. the full interleave
+        t_cand = t_base = iqr_cand = 0.0
+        per_shape, stats = [], []
+        for x in arms:
+            shape, N = x["shape"], x["N"]
+            try:
+                ab = timing.time_ab_fresh(x["B"], N, rounds=rounds, n=n_runs, verify_a=x["va"], verify_b=x["vb"],
+                                          feed=x["feed"])
+                after = N.read_inputs()
+            except (Wrong, RefereeError):
+                raise
+            except Exception as e:
+                raise Wrong("wrong", _device_failure(f"timing at {shape}", e), _DEVICE_INSTR, kind="crash")
+            last = x["sets"][x["order"][-1]]
             bad = nkibench.check_inputs_untouched([last[k] for k in last], [after[k] for k in last])
             if bad:
-                raise Wrong("wrong", f"during timing at {shape}: {bad}")
+                raise Wrong("wrong", f"during timing at {shape}: {bad}", kind="input modified")
             t_base += ab["a"]["median_us"]
             t_cand += ab["b"]["median_us"]
-            rel = max(rel, ab["a"]["iqr_us"] / ab["a"]["median_us"], ab["b"]["iqr_us"] / ab["b"]["median_us"])
+            iqr_cand += ab["b"]["iqr_us"]                     # the candidate's own spread, pooled over shapes
+            stats += [ab["a"], ab["b"]]
             per_shape.append((shape, ab["speedup"]))
             say(f"  timing     {shape}: baseline {ab['a']['median_us']:.1f} us, candidate {ab['b']['median_us']:.1f} us"
                 f" -> {ab['speedup']:.3f}x")
         speedup = t_base / t_cand
-        threshold = 1.0 + max(0.05, 2.0 * rel)
-        timed = dict(time_us_median=float(t_cand), time_us_iqr=float(t_cand * rel),
+        threshold = timing.noise_threshold(*stats)
+        timed = dict(time_us_median=float(t_cand), time_us_iqr=float(iqr_cand),
                      baseline_us_same_session=float(t_base), speedup=float(speedup), source="chip")
-        instr = one_instruction(*diag)
+        instr = one_instruction(*diag, chip=dict(speedup=speedup, per_shape=per_shape, t_us=t_cand,
+                                                 threshold=threshold,
+                                                 flops=sum(spec["flops"](sh) for sh, _ in per_shape)))
         regressed = [(sh, sp) for sh, sp in per_shape if sp < 1.0 / threshold]
+        head = f"{t_cand:.1f} us vs baseline {t_base:.1f} us = {speedup:.3f}x"
+        shapes_txt = "; per shape " + ", ".join(f"{sh} {sp:.3f}x" for sh, sp in per_shape)
+        say(f"  verdict    {speedup:.4f}x against the noise band {1 / threshold:.4f}-{threshold:.4f}")
 
-        if speedup < threshold or regressed:
-            why = (f"below the noise threshold {threshold:.3f}" if speedup < threshold else
-                   f"but SLOWER at {', '.join(f'{sh} ({sp:.3f}x)' for sh, sp in regressed)}")
-            msg = (f"correct on the timing shapes; {t_cand:.1f} us vs baseline {t_base:.1f} us = {speedup:.3f}x, "
-                   f"{why}. (Held-out shapes are checked only for a speedup.)")
+        if speedup <= 1.0 / threshold:
+            msg = (f"correct on the timing shapes; {head}{shapes_txt}: SLOWER, beyond the noise threshold "
+                   f"({1 / threshold:.3f}x). (Held-out shapes are checked only for a speedup.)")
             return _record(**base, verdict="slower", referee_message=msg, instruction_given=instr, **timed)
+        if speedup < threshold or regressed:
+            why = (f"inside the timing noise (a gain needs {threshold:.3f}x, a loss {1 / threshold:.3f}x)"
+                   if speedup < threshold else
+                   f"faster on the total but SLOWER at {', '.join(f'{sh} ({sp:.3f}x)' for sh, sp in regressed)}, "
+                   f"and a speedup must not cost any shape")
+            msg = (f"correct on the timing shapes; {head}{shapes_txt}: NO GAIN, {why}. "
+                   f"(Held-out shapes are checked only for a speedup.)")
+            return _record(**base, verdict="no_gain", referee_message=msg, instruction_given=instr, **timed)
 
-        # 5. held-out: fresh random shapes, hostile values
+        # 5. held-out: fresh random shapes, hostile values. Nothing below may name one (see _heldout_fail).
         held = [tuple(x) for x in spec["heldout"](rng, 3, set(spec["time_shapes"]) | set(spec["sim_shapes"]))]
         res2 = run_child(src, op, sim_seed, False, [(f"h{i}", x) for i, x in enumerate(held)], baseline, workdirs)
+        hhead = f"correct and {speedup:.3f}x faster on the timing shapes"
         if res2["error"]:
-            text, instr2 = _child_failure(res2["error"], "held-out: ")
-            return _record(**base, verdict="heldout_fail", referee_message=text, instruction_given=instr2, **timed)
+            e = res2["error"]
+            if e.get("stage") == "crash":                  # `type` is the referee's own account of how it ended
+                kind, detail = "crash", f"crashed while being compiled ({e.get('type', '?')})"
+            else:                                           # the type only: the kernel's message can carry the dims
+                kind, detail = "compile", f"failed to compile ({e.get('type', '?')})"
+            msg, instr2 = _heldout_fail(hhead, kind, detail)
+            return _record(**base, verdict="heldout_fail", referee_message=msg, instruction_given=instr2, **timed)
         for i, shape in enumerate(held):
             inp = spec["make_inputs"](shape, int(rng.integers(1 << 62)), hostile=True)
             try:
                 _chip_case(os.path.join(res2["wd"], f"h{i}.neff"), spec, shape, inp,
-                           f"held-out {shape} hostile", rng, verdict="heldout_fail")
+                           "held-out", rng, verdict="heldout_fail")
             except Wrong as w:
-                msg = ("Correct on the development shapes but WRONG on a shape the loop never saw -- the kernel "
-                       "must not depend on the shapes it was tuned on.\n" + str(w))
-                return _record(**base, verdict="heldout_fail", referee_message=msg,
-                               instruction_given=msg.split("\n")[0], **timed)
-        say(f"  held-out   correct on {held}")
-        msg = (f"correct everywhere, including held-out {held}; {t_cand:.1f} us vs baseline {t_base:.1f} us = "
-               f"{speedup:.3f}x, beating the noise threshold {threshold:.3f} with no shape slower.")
+                detail = {"crash": "failed on the device", "input modified": "modified its input",
+                          "precision": "lost precision (errors above the bf16 ulp limit)"}.get(w.kind)
+                msg, instr2 = _heldout_fail(hhead, w.kind, detail)
+                return _record(**base, verdict="heldout_fail", referee_message=msg, instruction_given=instr2, **timed)
+        say(f"  held-out   correct on {len(held)} undisclosed shapes")
+        msg = (f"correct everywhere, including {len(held)} undisclosed held-out shapes; {head}{shapes_txt}: FASTER, "
+               f"beating the noise threshold {threshold:.3f}x with no shape slower.")
         return _record(**base, verdict="faster", referee_message=msg, instruction_given=instr, **timed)
 
     except Tampered as t:
@@ -1011,7 +1335,8 @@ def check(path, op="matmul", baseline=None, rounds=3, verbose=False):
 
 def check_isolated(path, op="matmul", timeout=2 * CHILD_TIMEOUT + 600, baseline=None):
     """Run the referee in a fresh process (device memory from hundreds of candidates is released each time).
-    The record comes back through a file only the parent names, and must agree with the exit code.
+    The record comes back through a file only the parent names, and must agree with the exit code (0 for the
+    accepted verdicts faster / no_gain / slower, 1 for rules / wrong / heldout_fail).
     Returns None when the REFEREE failed (no core, baseline broken): that is not a verdict on the kernel."""
     fd, out = tempfile.mkstemp(prefix="chipboost_rec_", suffix=".json")
     os.close(fd)
@@ -1034,15 +1359,260 @@ def check_isolated(path, op="matmul", timeout=2 * CHILD_TIMEOUT + 600, baseline=
             os.remove(out)
         except OSError:
             pass
-    accepted = rec.get("verdict") in ("faster", "slower")
+    accepted = rec.get("verdict") in ACCEPTED
     if schema.validate(rec) or accepted != (p.returncode == 0):
         return None
     return rec
 
 
+# ---------------------------------------------------------------- persistent worker (optional)
+
+def _serve(argv):
+    """`speedcheck.py --serve RESULTS.jsonl ...`: the referee as a long-lived process. It binds its NeuronCore
+    once, then reads candidate paths from stdin, one per line, and appends one JSON line per candidate to
+    RESULTS (a file the parent created and named): {"seq": n, "rec": record} or {"seq": n, "error": text} for a
+    referee failure. seq 0 is {"ready": true, "core": c} once the core is held. Candidates still run only in
+    run_child's sandbox; nothing they print can reach RESULTS."""
+    ap = argparse.ArgumentParser(prog="speedcheck.py --serve")
+    ap.add_argument("results")
+    ap.add_argument("--op", default="matmul", choices=sorted(OPS))
+    ap.add_argument("--baseline")
+    ap.add_argument("--rounds", type=int, default=3)
+    a = ap.parse_args(argv)
+    out = open(a.results, "a")
+
+    def emit(**d):
+        out.write(json.dumps(d) + "\n")
+        out.flush()
+        os.fsync(out.fileno())
+
+    try:
+        import timing
+        import nki.runtime  # noqa: F401
+        core = timing._pick_core()                    # the runtime start (nrt_init, 6-13 s) is paid here, once
+    except Exception as e:
+        emit(seq=0, ready=False, error=f"no free NeuronCore: {type(e).__name__}: {e}"[:500])
+        sys.exit(3)
+    emit(seq=0, ready=True, core=core, pid=os.getpid())
+    import gc
+    seq = 0
+    while True:
+        line = sys.stdin.readline()
+        if not line:
+            return
+        seq += 1
+        try:
+            rec = check(line.rstrip("\n"), a.op, baseline=a.baseline, rounds=a.rounds)
+            problems = schema.validate(rec)
+            if problems:
+                emit(seq=seq, error=f"referee produced an invalid record: {problems}"[:500])
+            else:
+                emit(seq=seq, rec=rec)
+        except RefereeError as e:
+            emit(seq=seq, error=f"referee error: {e}"[:500])
+        except BaseException as e:                    # unknown state: report, exit, and let the parent respawn
+            emit(seq=seq, error=f"referee crashed: {type(e).__name__}: {e}"[:500])
+            os._exit(4)
+        gc.collect()                                  # device tensors of this check's NEFFs go now
+
+
+def _descendants(pid):
+    """(pid, uid) of every process below `pid`, by parent links."""
+    procs = _procs()
+    kids = {}
+    for p, pp, _, u in procs:
+        kids.setdefault(pp, []).append((p, u))
+    out, todo = [], [pid]
+    while todo:
+        for p, u in kids.get(todo.pop(), []):
+            out.append((p, u))
+            todo.append(p)
+    return out
+
+
+class RefereeWorker:
+    """check_isolated without the per-candidate runtime start: one `--serve` process holds a NeuronCore and
+    referees candidates one after another. Same contract as check_isolated -- `check(path)` returns one record,
+    or None when the REFEREE failed (it died, no core, baseline broken) -- with a watchdog per candidate: a
+    check that outlives `timeout` is graded like check_isolated's timeout, and the worker is killed (with every
+    sandboxed process under it) and started again on the next call. The worker is also replaced every
+    `max_checks` candidates. Use it as a context manager, or call close().
+
+        with speedcheck.RefereeWorker(op="matmul", core=3) as w:
+            for path in candidates:
+                rec = w.check(path)
+    """
+
+    def __init__(self, op="matmul", baseline=None, rounds=3, timeout=2 * CHILD_TIMEOUT + 600, start_timeout=300,
+                 max_checks=50, core=None):
+        self.op, self.baseline, self.rounds = op, baseline, rounds
+        self.timeout, self.start_timeout, self.max_checks, self.core = timeout, start_timeout, max_checks, core
+        self._p = None
+        self.starts = 0                    # worker processes started so far (one runtime start each)
+        self.last_error = None             # the referee's account of the last None, for logs
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+
+    def _start(self):
+        # Its own temp directory: whatever a killed check leaves behind (sandbox work directories) goes with it.
+        self._tmp = tempfile.mkdtemp(prefix="chipboost_worker_")
+        os.chmod(self._tmp, 0o711)                      # a sandbox uid may traverse to its own work dir, no more
+        fd, self._results = tempfile.mkstemp(dir=self._tmp, prefix="results_", suffix=".jsonl")
+        os.close(fd)
+        self._errf = tempfile.TemporaryFile()
+        if os.getuid() == 0:
+            _subreaper()        # a dead worker's sandboxed orphans come here, so _stop can kill AND reap them
+        env = dict(os.environ, TMPDIR=self._tmp)
+        if self.core is not None:
+            env["CHIPBOOST_CORE"] = str(self.core)
+        cmd = [sys.executable, os.path.abspath(__file__), "--serve", self._results, "--op", self.op,
+               "--rounds", str(self.rounds)] + (["--baseline", self.baseline] if self.baseline else [])
+        self._p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=self._errf,
+                                   env=env, cwd=self._tmp, text=True, start_new_session=True)
+        self._pos, self._buf, self._seq = 0, "", 0
+        self.starts += 1
+        msg = self._wait(0, self.start_timeout)
+        if not isinstance(msg, dict) or not msg.get("ready"):
+            self.last_error = (msg.get("error") if isinstance(msg, dict) else None) or "the worker did not start"
+            self._stop()
+            return False
+        return True
+
+    def _read(self):
+        try:
+            with open(self._results) as f:
+                f.seek(self._pos)
+                data = f.read()
+                self._pos = f.tell()
+        except OSError:
+            return []
+        self._buf += data
+        *lines, self._buf = self._buf.split("\n")
+        out = []
+        for ln in lines:
+            try:
+                out.append(json.loads(ln))
+            except ValueError:
+                pass
+        return out
+
+    def _wait(self, seq, timeout):
+        """The worker's message for `seq`; None if the worker died first; "timeout" if the watchdog fired."""
+        deadline = time.monotonic() + timeout
+        while True:
+            dead = self._p.poll() is not None
+            for msg in self._read():
+                if isinstance(msg, dict) and msg.get("seq") == seq:
+                    return msg
+            if dead:
+                return None
+            if time.monotonic() > deadline:
+                return "timeout"
+            time.sleep(0.1)
+
+    def _stop(self):
+        """Kill the worker and everything under it, sandboxed children included (they run in sessions and uids
+        of their own, so neither the process group nor the worker's death reaches them)."""
+        p, self._p = self._p, None
+        if p is None:
+            return
+        below = _descendants(p.pid) if p.poll() is None else []
+        try:
+            os.killpg(p.pid, signal.SIGKILL)
+        except OSError:
+            pass
+        p.kill()
+        p.wait()
+        for q, _ in below:
+            try:
+                os.kill(q, signal.SIGKILL)
+            except OSError:
+                pass
+        if os.getuid() == 0:
+            # A worker that died on its own took the process tree with it (its orphans went to PID 1), but a check
+            # in flight left its sandbox uid as the owner of its `out` directory under our TMPDIR: kill by uid.
+            uids = {x for _, u in below for x in u if 61000 <= x < 65000}
+            try:
+                tops = [e.path for e in os.scandir(self._tmp) if e.is_dir(follow_symlinks=False)]
+            except OSError:
+                tops = []
+            for d in tops:                                # <tmp>/chipboost_child_*/out, never deeper (untrusted)
+                for x in (d, os.path.join(d, "out")):
+                    try:
+                        u = os.lstat(x).st_uid
+                    except OSError:
+                        continue
+                    if 61000 <= u < 65000:
+                        uids.add(u)
+            for uid in uids:
+                _kill_uid(uid)
+        try:
+            p.stdin.close()
+        except OSError:
+            pass
+        try:
+            self.last_error = self.last_error or _tail(self._errf)[-500:]
+            self._errf.close()
+        except (OSError, ValueError):
+            pass
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def check(self, path):
+        self.last_error = None
+        path = os.path.abspath(path)
+        if "\n" in path:
+            self.last_error = "a path with a newline cannot be sent to the worker"
+            return None
+        if self._p is not None and (self._p.poll() is not None or self._seq >= self.max_checks):
+            self._stop()
+        if self._p is None and not self._start():
+            return None
+        self._seq += 1
+        try:
+            self._p.stdin.write(path + "\n")
+            self._p.stdin.flush()
+        except OSError:
+            self.last_error = "the worker died before it read the candidate"
+            self._stop()
+            return None
+        msg = self._wait(self._seq, self.timeout)
+        if msg == "timeout":
+            self._stop()
+            return _record(kernel=self.op, verdict="wrong", referee_message=f"the check timed out after {self.timeout}s",
+                           instruction_given="The kernel did not finish; check for an unbounded loop.")
+        if msg is None:
+            self.last_error = "the worker died during the check"
+            self._stop()
+            return None
+        rec = msg.get("rec")
+        if not isinstance(rec, dict) or schema.validate(rec):
+            self.last_error = str(msg.get("error") or "invalid record")[:500]
+            return None
+        return rec
+
+    def close(self):
+        """Let the worker finish (EOF on stdin), or kill it after a few seconds."""
+        p = self._p
+        if p is None:
+            return
+        try:
+            p.stdin.close()
+            p.wait(timeout=10)
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+        self._stop()
+
+
 def main():
     if len(sys.argv) == 3 and sys.argv[1] == "--_child":
         _child(sys.argv[2])
+        return
+    if len(sys.argv) >= 3 and sys.argv[1] == "--serve":
+        _serve(sys.argv[2:])
         return
     ap = argparse.ArgumentParser()
     ap.add_argument("--op", default="matmul", choices=sorted(OPS))
@@ -1073,7 +1643,7 @@ def main():
         print(f"\nVERDICT: {rec['verdict'].upper()}")
         print(rec["referee_message"])
         print(f"\nONE CHANGE: {rec['instruction_given']}")
-    sys.exit(0 if rec["verdict"] in ("faster", "slower") else 1)
+    sys.exit(0 if rec["verdict"] in ACCEPTED else 1)       # correct kernels exit 0, rejected ones 1, referee 3
 
 
 if __name__ == "__main__":

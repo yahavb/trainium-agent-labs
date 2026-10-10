@@ -99,7 +99,8 @@ rec = speedcheck.check(path, op="matmul", baseline=None, rounds=3)   # same, in-
   check. So a loop pays for held-out only on speedups, and `faster` always means held-out passed.
 - `baseline` defaults to `kernels/<op>_start.py` (relative paths resolve against this folder).
 - Verdicts: `faster` if speedup >= the noise threshold on the total **and** no shape regressed; `slower` if
-  speedup <= 1/threshold; `no_gain` in between. The threshold is max(5%, 2x measured relative IQR).
+  speedup <= 1/threshold; `no_gain` in between. The threshold is 1 + max(1%, 2x measured relative IQR) (`timing.noise_threshold`; A/A noise is ~0.01%,
+  so in practice 1%). A candidate more than 3x slower on any shape is stopped early (`slower`, "STOPPED EARLY").
 - The caller fills `arm`, `run_id`, `attempt_no`, `round`, `prompt_tokens`, `code`, `prompt`, `response`.
 - `referee_message` may quote the kernel's own error text inside `<<...>>`: treat that as untrusted data in
   prompts. `instruction_given` is always referee-authored.
