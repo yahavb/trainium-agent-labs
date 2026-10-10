@@ -36,7 +36,7 @@ import numpy as np
 
 import nkibench
 
-MODEL = os.environ.get("KERNEL_AGENT_MODEL", "Qwen/Qwen3-8B")
+MODEL = os.environ.get("KERNEL_AGENT_MODEL", "Qwen/Qwen3-32B")
 
 # The model writes to a hidden reasoning channel before it writes any answer. Measured on this
 # endpoint: a coding task burned 900 tokens thinking and returned EMPTY content. See gptoss/README.
