@@ -116,10 +116,10 @@ Token/context examples from the final run:
 
 Token budget table:
 
-| Attempt | Prompt Tokens | Limit | Notes |
+| Attempt | Prompt Tokens | Limit | Status |
 |---|---:|---:|---|
-| Level 1 round 0 | ~5775 | 8192 | reference docs + Level 1 pattern |
-| Level 2 round 0 | ~5880 | 8192 | reference docs + Level 2 pattern |
+| Level 1 round 0 | ~5775 | 8192 | Incomplete |
+| Level 2 round 0 | ~5880 | 8192 | Incomplete |
 | Level 3 round 0 | ~5890 | 8192 | solved |
 | Level 4 round 0 | ~6023 | 8192 | solved |
 
