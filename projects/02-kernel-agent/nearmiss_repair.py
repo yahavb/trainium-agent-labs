@@ -126,6 +126,8 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--output", default="runs/traffic/nearmiss_repair")
     ap.add_argument("--demo", default="demo.json")
+    ap.add_argument("--instruction", default="",
+                    help="path to a text file appended to every prompt as an extra instruction")
     ap.add_argument("--model", default=MODEL)
     ap.add_argument("--base", default=os.environ.get("KERNEL_AGENT_BASE_URL")
                     or os.environ.get("GPTOSS_BASE_URL"))
@@ -140,6 +142,7 @@ def main():
     logf = open(os.path.join(a.output, "rounds.jsonl"), "w")
 
     src = open(a.kernel).read()
+    extra_instruction = open(a.instruction).read() if a.instruction else ""
     with open(os.path.join(a.output, "start_kernel.py"), "w") as f:
         f.write(src)
     print(f"start kernel: {a.kernel} (model-authored in an earlier run; copied to "
@@ -175,8 +178,10 @@ def main():
         if best is None or prg > best[0]:
             best = (prg, src, ev)
 
-        prompt = prompt_for(a.level, src, ev, diag or enrich_feedback(ev.get("feedback") or ""),
-                            a.demo)
+        extra = diag or enrich_feedback(ev.get("feedback") or "")
+        if extra_instruction:
+            extra = (extra + "\n\n" if extra else "") + extra_instruction
+        prompt = prompt_for(a.level, src, ev, extra, a.demo)
         ptok = counter.count(prompt)
         budget = min(a.max_tokens, max(256, a.context - ptok - 64))
         if ptok + budget + 64 > a.context:
