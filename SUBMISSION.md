@@ -61,17 +61,20 @@ byte-level comparisons).
 | where | seat pods 116–119 in parallel for the final version (seat 115 for liuyq's chip runs), one agent process per model server |
 | speed | 50–80 s per round of 4 samples, up to 4 minutes when answers run to the 2,500-token limit; bound by generation: 13.9 tok/s for one stream, 22.1 tok/s in total for four. A level takes 1–12 minutes per run |
 
-**What came out.** The final candidate is v8.2 (commit 96a9fc9; switches in §4). At least five runs per level, every one of them reported, rounds
-counted from 0 (round 0 is the first prompt). [[TBD: refresh from `scripts/report.py` on analysis/logs/final/; v8.3 if it
-replaces v8.2 on level 2]]
+**What came out.** The final version is tag `final` (v8.5, §4): its runs on levels 1, 3 and 4 were made on
+v8.2, on level 2 on v8.3 and v8.5, and on levels 5–7 on v8.4, which send byte-identical requests wherever they
+overlap. At least five runs per level, every one of them reported; rounds counted from 0 (round 0 is the first
+prompt). [[TBD: refresh from `scripts/final_auto.py` on analysis/logs/final/]]
 
-| level | operation | baseline (organizers' agent) | v7 | **v8.2: solved, first 1.0 at round** | distinct | held-out |
+| level | operation | baseline (organizers' agent) | v7 | **final version: solved, first 1.0 at round** | distinct | checked by |
 |---|---|---|---|---|---|---|
-| 1 | average pool 2D | 0/5 · .30 .30 .30 .30 .30 | 0/1 · best 0.50 | **5/5** · rounds 2, 2, 0, 4, 2 | 5 different solving kernels | all VERIFIED (20/20 each); all 5 fully built for trn2 and matching in birsim on two shapes |
-| 2 | 2D transpose | 3/5 · 1 .30 1 .30 1 (replication 2/5) | 0/3 | **5/9** · .50 1 .50 .50 1 .50 1 1 1 [[TBD: rounds]] | [[TBD: trajectories over 9 runs]] | 5 VERIFIED, 4 NOT SOLVED; both verdicts agree; every solve builds for trn2 and matches in birsim |
-| 3 | matmul, one tile | 0/5 · .30 .30 .30 .30 .30 | 5/5 · round 0 | **5/6** · rounds 0, 2, 0, 0, 0; the sixth, inside the one-command `--all` run, stopped at 0.30 after four identical failures | 3 solving kernels | [[TBD: held-out]]; builds for trn2, matches in birsim |
-| 4 | matmul, tiled | 0/5 · .62 .62 .50 .62 .62 | 5/5 · round 2 | **5/5** · round 2 every run | **1 trajectory**: five copies of one path, the same kernel v7 found | [[TBD: held-out]]; builds for trn2, matches in birsim |
+| 1 | average pool 2D | 0/5 · .30 .30 .30 .30 .30 | 0/1 · best 0.50 | **5/5** · rounds 2, 2, 0, 4, 2 | 5 different solving kernels | held-out 20/20 each, VERIFIED; full trn2 build + birsim; one kernel on a NeuronCore |
+| 2 | 2D transpose | 3/5 · 1 .30 1 .30 1 (replication 2/5) | 0/3 | **7/9** (v8.3) [[TBD: v8.5's new runs]] | [[TBD]] | held-out, VERIFIED; full trn2 build + birsim |
+| 3 | matmul, one tile | 0/5 · .30 .30 .30 .30 .30 | 5/5 · round 0 | **5/6** · rounds 0, 2, 0, 0, 0; the sixth, inside the one-command `--all` run, stopped at 0.30 after four identical failures | 3 solving kernels | [[TBD: held-out]]; full trn2 build + birsim |
+| 4 | matmul, tiled | 0/5 · .62 .62 .50 .62 .62 | 5/5 · round 2 | **5/5** · round 2 every run | **1 trajectory**: five copies of one path, the same kernel v7 found | [[TBD: held-out]]; full trn2 build + birsim |
+| 5–7 | matmul under a traffic bar | not run | not run | [[TBD]] | | |
 
+On level 2, v8.2 alone solved 5 of 9; adding error distillation (v8.3) made it 7 of 9 on the same seats.
 We also ran the final version once end to end, one command for all four levels (`--all --repeat 1`): levels 1,
 2 and 4 solved, level 3 did not, and that run is counted above. Every solving kernel passed a fresh-process re-audit on trn2, and every one of v8.2's and v8.3's solves on
 levels 1–4 also builds in full for trn2 and matches in birsim, the compiler's instruction-level simulator
@@ -88,11 +91,16 @@ same kernel.
 2. **A simulator pass is not a chip pass.** Our allocation audit rejects kernels the simulator runs but
    no chip can hold (§8 shows one in a live run). liuyq's compiler gate finds level-1 kernels the simulator
    accepts and the trn2 compiler rejects.
-3. **The model server is deterministic**: the same request returns the same text, even at temperature
-   0.7, so 5 runs were often one run five times. We report distinct trajectories next to every rate, and v8 makes the samples differ (§4).
+3. **The model server is deterministic, within one server state**: the same request returns the same text, even
+   at temperature 0.7, so 5 runs were often one run five times. We report distinct trajectories next to every
+   rate, and v8 makes the samples differ (§4).
 4. **The token budget was not what bound us; reading `finish_reason` was.** Prompts stay near 1,100
    tokens, repairs near 750, far below 8,192 (§6). But one layer dropped the `finish_reason` check, and a
    level-1 run lost 22 minutes to cut-off answers graded as syntax errors (§9).
+5. **Tell the model what its kernel did, not how wrong it is.** On level 2 the checker used to report only the
+   size of the error. Running the failed kernel once more on `arange` input shows exactly where each output
+   element came from ("your output at row position i*B+j holds x[i]"), and saying that, without code, took
+   level 2 from 5 of 9 to 7 of 9 (§4, §7).
 
 **How many runs, and the spread.** Every cell is at least 5 runs of one configuration. We report the rate, never the
 best run, and next to it the number of **distinct trajectories**: the seat's model server is deterministic
