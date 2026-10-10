@@ -599,8 +599,12 @@ def nki_primer():
 GUIDE = False    # --guide (v1c): one general NKI guide for every level, replacing primer + matmul card
 
 
+GUIDE_VERSION = "current"   # --guide-version p3: the exact guide and closing line used by our best L4 run
+
+
 def nki_guide():
-    name = "nki_guide_examples3.md" if EXAMPLES3 else "nki_guide.md"
+    name = ("nki_guide_p3.md" if GUIDE_VERSION == "p3" else
+            "nki_guide_examples3.md" if EXAMPLES3 else "nki_guide.md")
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "nkiknow", "cards", name)
     with open(path) as f:
         text = f.read().strip()
@@ -619,8 +623,11 @@ def with_knowledge(level, prompt):
     matmul card (and, with --primer, the primer). v0 returns the prompt untouched."""
     if GUIDE and _kv() >= 1:
         entry = nkibench.LEVELS[level]["entry"]
-        prompt = (prompt.rstrip() + "\n\n" + PLAN_LAST
-                  + f"\nThe function must be named exactly `{entry}` and decorated with `@nki.jit`.")
+        if GUIDE_VERSION == "p3":
+            prompt = prompt.rstrip() + "\n\n" + PLAN_LAST_P3
+        else:
+            prompt = (prompt.rstrip() + "\n\n" + PLAN_LAST
+                      + f"\nThe function must be named exactly `{entry}` and decorated with `@nki.jit`.")
         card = nki_guide()
         if SYSTEM_GUIDE:
             SECTIONS["card"] = len(card)
@@ -634,6 +641,12 @@ def with_knowledge(level, prompt):
     if _kv() >= 3:
         card += LOOKUP_PARAGRAPH + "\n\n"
     return card + prompt
+
+
+PLAN_LAST_P3 = ("Begin your code block with comment lines that plan the kernel: every tensor and tile with its shape, "
+                "each instruction's dimension limits (lanes <= 128; matmul K <= 128, M <= 128, N <= 512), and one loop "
+                "for every dimension that can exceed its limit. Then write the code. The examples above are for "
+                "other operations: reuse their patterns, never their slices or variable lists.")
 
 
 PLAN_LAST = ("Begin your code block with comment lines that plan the kernel: every tensor and tile with its shape, "
@@ -1011,6 +1024,8 @@ def main():
                          "falls back to the text protocol if the server has no tool support")
     ap.add_argument("--seed-kernel", default=None, metavar="PATH",
                     help="start from this correct kernel and ask for fewer HBM bytes")
+    ap.add_argument("--guide-version", choices=("current", "p3"), default="current",
+                    help="p3: the guide and closing line of our best L4 run (official checker: solved 1/3, mean 0.83)")
     ap.add_argument("--alloc-check", action="store_true",
                     help="reject SBUF/PSUM tiles allocated with more than 128 lanes (illegal on hardware)")
     ap.add_argument("--guide", action="store_true",
@@ -1038,6 +1053,8 @@ def main():
     GUIDE = a.guide
     global ALLOC_CHECK
     ALLOC_CHECK = a.alloc_check
+    global GUIDE_VERSION
+    GUIDE_VERSION = a.guide_version
     global SYSTEM_GUIDE, TAGGED, EXAMPLES3, DIVERSE_SAMPLES
     SYSTEM_GUIDE, TAGGED, EXAMPLES3 = a.system_guide, a.tagged, a.examples3
     DIVERSE_SAMPLES = a.diverse_samples
