@@ -497,8 +497,53 @@ def argument_list(func_name):
     return None
 
 
+LAYOUT_HINTS = False      # --layout-hints
+
+
+def layout_hint(error_text):
+    """--layout-hints: the three level-1 walls, explained with the numbers in the error itself.
+
+    Measured over 43 failing level-1 kernels: 24 stopped at the .ap stride, 15 at the 2-D tile rule,
+    and both 0.50s came from a reshape that only relabels data so the reduce-axis error goes away.
+    The model always reasoned in NumPy terms. These state the NKI rule with this tile's numbers;
+    none of them gives the finished pattern."""
+    m = re.search(r"Partition step (-?\d+) must equal tensor free dimension size (\d+)\. "
+                  r"Pattern: (\[.*?\]\]), tensor shape: \(([\d, ]+)\)", error_text)
+    if m:
+        step, free, pattern = int(m.group(1)), int(m.group(2)), m.group(3)
+        shape = [int(v) for v in m.group(4).replace(" ", "").strip(",").split(",")]
+        strides = [int(np.prod(shape[i + 1:])) for i in range(len(shape))]
+        per_dim = ", ".join(f"dimension {i} is {st}" for i, st in enumerate(strides))
+        return (f" In .ap every stride counts ELEMENTS of the tile, read row by row as if it were "
+                f"flattened -- not steps along one axis as in NumPy. For this tile of shape "
+                f"{tuple(shape)}, one step along {per_dim}. So the FIRST pair walks the partitions "
+                f"and must be [{free}, <count>], and every other stride is made of the free strides "
+                f"({', '.join(str(st) for st in strides[1:])}), e.g. 2 steps along dimension 1 are "
+                f"{2 * strides[1] if len(strides) > 1 else 2} elements. Your pattern {pattern} "
+                f"used {step} for the partition step.")
+    m = re.search(r"tensor_reduce axis must be the last contiguous dim\(s\) of the tile", error_text)
+    if m:
+        return (" nl.sum (and every reduction) only reduces the LAST dimensions of what it is given. "
+                "Renumbering axis= or reshaping does not fix that: a reshape only relabels the same "
+                "data in the same order, so after it the last dimensions hold DIFFERENT elements and "
+                "the result is wrong even though it runs. To reduce other dimensions, build a view "
+                "with tile.ap(...) that lists the dimensions you keep first and the ones you reduce "
+                "last, then reduce those last dimensions.")
+    if "must have at least 2 dimensions" in error_text:
+        return (" If this tile is the result of nl.sum or another reduction, pass keepdims=True so "
+                "the reduced axis stays with size 1: a (C, k) tile summed over axis 1 then becomes "
+                "(C, 1) instead of a 1-D (C,).")
+    return ""
+
+
 def enrich(error_text):
     """Add the real names when the failure is an invented API call."""
+    if LAYOUT_HINTS:
+        extra = layout_hint(error_text)
+        if extra and "must have at least 2 dimensions" not in error_text:
+            return error_text + extra
+    else:
+        extra = ""
     if "'MemoryRegion' object is not callable" in error_text:
         return (error_text + " nl.sbuf, nl.psum and nl.shared_hbm are memory regions, not "
                 "functions. Do not call them. Allocate with "
@@ -602,7 +647,7 @@ def enrich(error_text):
         return (error_text + " Every SBUF and PSUM tile needs two dimensions: a partition dimension "
                 "first, then a free dimension. A 1-D tile is not allowed, so write "
                 "nl.ndarray((rows, cols), ...) and give a length-N vector the shape (1, N) or "
-                "(N, 1) depending on which axis you are reducing over.")
+                "(N, 1) depending on which axis you are reducing over." + extra)
     # KNOWN GAP, deliberately left as in the original for the --plan vs --plan-merge comparison: the
     # NKI simulator says "cannot reshape TENSOR of size ...", so this numpy-worded rule never fires
     # on tiles. Do NOT fix it as "tiles cannot be reshaped": measured under --plan, reshaping a WHOLE
@@ -1182,6 +1227,11 @@ dtype. Make each step small enough to be one or two operations in a kernel.
 Reply with ONE python code block containing `import numpy as np` and the stage functions only."""
 
 
+def inspect_params(fn):
+    import inspect
+    return list(inspect.signature(fn).parameters)
+
+
 def check_plan(src, level, lo=2, hi=5):
     """Run the model's stages on every test shape. Returns ([(name, fn), ...], None) or (None, why)."""
     if not (src or "").strip():
@@ -1203,18 +1253,27 @@ def check_plan(src, level, lo=2, hi=5):
         args, _ = nkibench.make_inputs(case, level)
         want = spec["ref"](*args)
         lbl = nkibench.label(case, level)
+        # What each stage actually returned on this input, so a rejection shows WHERE the shapes
+        # went wrong. Measured: "axis 4 is out of bounds" alone, three tries, the identical plan.
+        trail = [", ".join(f"{n} {tuple(x.shape)}" for n, x in
+                           zip(inspect_params(spec["ref"]), args) if isinstance(x, np.ndarray))]
+        shown = lambda: ("\nWhat each stage returned on this input: " + " -> ".join(trail)
+                         + f". The reference returns {tuple(np.shape(want))}.")
         for _, name in found:
             try:
                 got = ns[name](*[x.copy() if isinstance(x, np.ndarray) else x for x in args])
             except Exception as e:
-                return None, f"On {lbl}, {name} raises {type(e).__name__}: {e}"
+                trail.append(f"{name} raises {type(e).__name__}")
+                return None, f"On {lbl}, {name} raises {type(e).__name__}: {e}" + shown()
             if not isinstance(got, np.ndarray) or got.ndim == 0:
+                trail.append(f"{name} returns {type(got).__name__}")
                 return None, (f"On {lbl}, {name} returns {type(got).__name__}, not an array. Every "
-                              f"stage must return a NumPy array a kernel could return.")
+                              f"stage must return a NumPy array a kernel could return." + shown())
+            trail.append(f"{name} {tuple(got.shape)}")
         m = nkibench.describe_mismatch(got, want)
         if m:
             return None, (f"On {lbl}, the last stage ({found[-1][1]}) does not match the "
-                          f"reference: {m}")
+                          f"reference: {m}" + shown())
     return [(name, ns[name]) for _, name in found], None
 
 
@@ -1226,7 +1285,10 @@ def make_plan(a, level, transcript):
                               args=", ".join(inspect.signature(ref).parameters))
     prompt = base
     for t in range(a.plan_tries):
-        r = chat(a, prompt, False, a.max_tokens)
+        # Thinking on by default (--plan-think): one request per try, and the NumPy plan is where a
+        # wrong axis is cheapest to catch. Answer budget on top of the thinking budget.
+        r = chat(a, prompt, bool(a.plan_think), a.think_tokens + a.max_tokens if a.plan_think
+                 else a.max_tokens)
         src = extract_code(r["content"])
         stages, why = check_plan(src, level)
         print(f"  plan attempt {t}: " + (f"OK, {len(stages)} steps ({r['seconds']}s)" if stages
@@ -1440,8 +1502,15 @@ def main():
                          "at a time, each passing step the start of the next")
     ap.add_argument("--plan-tries", type=int, default=3,
                     help="--decompose: attempts to get a plan that passes the check")
+    ap.add_argument("--plan-think", type=int, default=1, choices=(0, 1),
+                    help="--decompose: 1 (default) lets the model think before writing the NumPy "
+                         "plan; 0 writes it with thinking off")
     ap.add_argument("--stage-rounds", type=int, default=None,
                     help="--decompose: rounds allowed per step (default: --rounds)")
+    ap.add_argument("--layout-hints", type=int, default=0, choices=(0, 1),
+                    help="1: explain the three level-1 layout walls (.ap stride unit, reduce only "
+                         "the last dims / reshape only relabels, keepdims after a reduction) with "
+                         "the numbers from the error. 0 (default): off, as in earlier runs")
     ap.add_argument("--offline", action="store_true")
     a = ap.parse_args()
     if a.decompose and a.offline:
@@ -1473,13 +1542,17 @@ def main():
     full = sum(WEIGHTS.values())
     history = {lv: [] for lv in levels}
 
-    global STATIC_CHECK, PERSONA
+    global STATIC_CHECK, PERSONA, LAYOUT_HINTS
     STATIC_CHECK = bool(a.static_check)
+    LAYOUT_HINTS = bool(a.layout_hints)
+    if LAYOUT_HINTS:
+        print("layout hints: on (.ap stride unit, last-dims reduction, keepdims)")
     PERSONA = (a.persona or "").strip()
     if PERSONA:
         print(f"persona: {PERSONA}")
     if a.decompose:
-        print(f"decompose mode: plan into 2-5 NumPy steps (up to {a.plan_tries} tries), then "
+        print(f"decompose mode: plan into 2-5 NumPy steps (thinking {'on' if a.plan_think else 'off'}, "
+              f"up to {a.plan_tries} tries), then "
               f"{a.stage_rounds or a.rounds} rounds per step")
     if a.transcript is None:
         a.transcript = os.path.splitext(a.log)[0] + ".txt"
