@@ -184,16 +184,16 @@ tail -f run.log                         # Ctrl+C stops watching; the run keeps g
 ### 9. Run project 2 — the kernel agent
 
 ```bash
-cd /workspace/projects/20-kernel-agent
+cd /workspace/projects/02-kernel-agent
 
 python nkibench.py --selftest
 
 nohup python agent.py --all --rounds 8 --samples 4 --context 8192 --repeat 5 > run.log 2>&1 < /dev/null &
-tail -f run.log                         # reconnect: tail -f /workspace/projects/20-kernel-agent/run.log
+tail -f run.log                         # reconnect: tail -f /workspace/projects/02-kernel-agent/run.log
 ```
 
 **This project is unsolved — that is the point.** A real open problem, not an exercise with a hidden answer.
-Write-up: [`projects/20-kernel-agent/`](projects/20-kernel-agent/).
+Write-up: [`projects/02-kernel-agent/`](projects/02-kernel-agent/).
 
 > The pod sets `HEATROD_BASE_URL`, `KERNEL_AGENT_BASE_URL` and the model names for you, in every shell —
 > `env | grep -E 'HEATROD|KERNEL_AGENT'` shows them, so there is nothing to
@@ -339,7 +339,7 @@ stack five programmers tend to lose these.
 | # | project | status |
 |---|---|---|
 | **1** | [**The heat-rod agent**](projects/01-heat-rod-pde/) — a small model solves heat-equation problems under a checker that grades the physics, with a calculator it aims itself. | **solved 6/6** |
-| **2** | [**The kernel agent**](projects/20-kernel-agent/) — an agent writes NKI kernels that run on the chip and keeps verifying its own output. | **11 of 11 levels** (team 20, see [RESULTS](projects/20-kernel-agent/RESULTS.md)); level 8 with an explicit stage plan |
+| **2** | [**The kernel agent**](projects/02-kernel-agent/) — an agent writes NKI kernels that run on the chip and keeps verifying its own output. | runs; **unsolved** |
 
 Both project READMEs open with a real transcript of what the loop prints, so you can judge a project — and
 tell progress from flailing — before starting.

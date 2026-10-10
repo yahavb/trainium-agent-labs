@@ -18,7 +18,7 @@ Everything below was measured against the real endpoint. No framework, no build 
 | `mockserver.py` | a fake endpoint so you can build while offline or while the real one is busy. |
 
 The kernel-writing challenge that used to live here moved to
-[`../projects/20-kernel-agent/`](../projects/20-kernel-agent/).
+[`../projects/02-kernel-agent/`](../projects/02-kernel-agent/).
 
 ## Setup
 

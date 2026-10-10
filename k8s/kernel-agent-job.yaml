@@ -44,7 +44,7 @@ spec:
               grep -q "copy_kernel" agent.py \
                 || { echo "STALE CONFIGMAP: agent.py predates the worked-example prompt. Recreate it:"; \
                      echo "  kubectl delete configmap kernel-agent-code"; \
-                     echo "  kubectl create configmap kernel-agent-code --from-file=projects/20-kernel-agent/"; \
+                     echo "  kubectl create configmap kernel-agent-code --from-file=projects/02-kernel-agent/"; \
                      exit 1; }
               echo
               python -c "import nki; print('nki', getattr(nki,'__version__','?'), '| simulate:', hasattr(nki,'simulate'))"
