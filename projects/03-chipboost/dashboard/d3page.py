@@ -165,7 +165,7 @@ code{font-size:12px;color:var(--ink2)}
 max-width:300px;opacity:0;transition:opacity .12s;z-index:9}#tip b{display:block;font-size:14px}
 .bug{display:grid;grid-template-columns:1.1fr 1fr;gap:24px;align-items:center}@media (max-width:860px){.bug{grid-template-columns:1fr}}
 .steps{margin:6px 0 0;padding-left:20px;font-size:13.5px;color:var(--ink2)}.steps li{margin:5px 0}.steps b{color:var(--ink)}
-.foot{color:var(--muted);font-size:12px;margin-top:18px}
+#wins{overflow-x:auto}.foot{color:var(--muted);font-size:12px;margin-top:18px}
 </style>
 </head>
 <body>
