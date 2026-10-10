@@ -196,8 +196,27 @@ invented function, partition dimension over 128.
 
 ## 8. A failure, and the recovery
 
-[[TBD: one complete transcript: the failing kernel, the checker's words, the instruction sent back, the
-round that fixed it, tokens per round.]]
+Level 4 (tiled matmul), feedback v3 (v7's predecessor), run 1: the first level-4 solve of the day. Every
+message below is in the log; the full transcript, with the code that changed each round and the prompts
+rebuilt to the logged length, is [analysis/recovery_v3_L4_run1.md](analysis/recovery_v3_L4_run1.md)
+(log: [analysis/logs/ev3_L4/](analysis/logs/README.md), lines 29–52).
+
+| round | best of 4 | what the checker said | what went back to the model |
+|---|---|---|---|
+| 0 | 0.62 | `dma_copy dst partition dimension 256 exceeds maximum 128`: one SBUF tile for a whole operand | loop over the partition dimension in chunks of at most 128, allocate each tile inside the loop |
+| 1 | 0.62 | `Matmul stationary free dimension 256 exceeds gemm_stationary_fmax=128` | the loop over output rows, as code in the model's own names |
+| 2 | 0.62 | `Matmul moving free dimension 1024 exceeds max 512 for nc_version.gen3` | the loop over output columns, as code |
+| 3 | 0.62 | **ILLEGAL ON HARDWARE**: SBUF tiles of (256, 256) and (256, 1024) | allocate each tile inside the loop, with the chunk's own shape |
+| 4 | 0.62 | the same, a second time | the same message, plus a ledger: "These approaches have already failed, so do something different" and one line per failed attempt |
+| 5 | **1.00** | correct on every shape | |
+
+Three things happen here. The model pasted the code-form messages almost verbatim, so each round removed
+exactly one wall (rounds 1 to 3). At round 3 the simulator ran the kernel on every shape; only our
+allocation audit knew that no chip holds a (256, 1024) SBUF tile, and it said so. The same failure twice
+brought in the ledger, and the next answer rewrote the allocations as (128, 128) and (128, 512) tiles:
+solved, after 21 attempts. Then, before seeing anything new, the agent stated a confidence of 0.90; the
+held-out set (4 new shapes × 4 kinds of values) passed 16/16. Verdict: VERIFIED, and the claim was right.
+The solving kernel is correct, not fast: 36.6 Flops/Byte, memory-bound.
 
 ## 9. Limits
 
