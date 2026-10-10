@@ -361,6 +361,14 @@ def lint_kernel(source):
                 issues.append(f"{at(node)} -- psum tile {t} has {size(dims[1])} columns; one psum bank holds "
                               f"at most 512 fp32 per row. Split the free axis into blocks of 512.")
 
+    for fn in kernels:                 # the result must leave the chip: return an HBM tensor, not a tile
+        for r in ast.walk(fn):
+            t = _name(r.value) if isinstance(r, ast.Return) else None
+            if t and where.get(t) in ("sbuf", "psum"):
+                issues.append(f"{at(r)} -- returns {t}, a {where[t]} tile. The kernel must return an "
+                              f"nl.shared_hbm tensor: allocate out with buffer=nl.shared_hbm, dma_copy the "
+                              f"result into it (via sbuf if it is in psum) and return out.")
+
     for fn in kernels:                 # a cut-off reply leaves a kernel that never returns its output
         if not any(isinstance(n, ast.Return) and n.value is not None for n in ast.walk(fn)):
             issues.append(f"line {fn.lineno}: `def {fn.name}(...)` -- the kernel never returns. Write the "

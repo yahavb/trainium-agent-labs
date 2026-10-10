@@ -700,6 +700,23 @@ def simulate_and_count(kernel, args):
     run, api = _simulator(nki, kernel)
     counter = dict(bytes=0, transfers=0, api=api, dtypes=set())
     original = nisa.dma_copy
+    import nki.language as nl
+    original_ndarray = nl.ndarray
+
+    def checked_ndarray(shape, *a, **kw):
+        # Check the ACTUAL allocation sizes, which a static check cannot see when they come from
+        # q.shape or a loop (independent audit: a symbolic (K, 512) sbuf tile with K=256 passed lint).
+        buf = kw.get("buffer", a[1] if len(a) > 1 else None)
+        dims = tuple(int(d) for d in (shape if isinstance(shape, (tuple, list)) else (shape,)))
+        if buf is nl.sbuf or buf is nl.psum:
+            where = "sbuf" if buf is nl.sbuf else "psum"
+            if len(dims) < 2:
+                raise ValueError(f"{where} tile allocated with shape {dims}: on-chip tiles need 2 dimensions "
+                                 f"(partition, free).")
+            if dims[0] > 128:
+                raise ValueError(f"{where} tile allocated with shape {dims}: {dims[0]} rows, but an on-chip tile "
+                                 f"has at most 128 (the partition axis). Split it into 128-row tiles.")
+        return original_ndarray(shape, *a, **kw)
 
     def counting_dma_copy(dst=None, src=None, **kw):
         try:
@@ -719,6 +736,7 @@ def simulate_and_count(kernel, args):
     # which the agent should be told rather than have scrolled past.
     import warnings
     nisa.dma_copy = counting_dma_copy
+    nl.ndarray = checked_ndarray
     try:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
@@ -734,6 +752,7 @@ def simulate_and_count(kernel, args):
         counter["warnings"] = hazards + [w for w in seen if w not in hazards][:3]
     finally:
         nisa.dma_copy = original
+        nl.ndarray = original_ndarray
     return out, counter
 
 

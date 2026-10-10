@@ -147,7 +147,12 @@ def grade(source, level):
                     + ("\nThe rules, from the AWS NKI docs:\n" + "\n".join(f"- {n}" for n in notes) if notes else ""))
 
     spec = nkibench.LEVELS[level]
-    path = f"/tmp/_agent_level{level}_{os.getpid()}.py"
+    # One file per CANDIDATE, not per process: the 4 samples of a round used to share one path, and
+    # Python's bytecode cache keys on mtime (1 s) + size, so a same-size sample written in the same
+    # second could run the previous sample's code (independent audit, reproduced). Hash the source.
+    import hashlib
+    sys.dont_write_bytecode = True
+    path = f"/tmp/_agent_level{level}_{os.getpid()}_{hashlib.sha1(source.encode()).hexdigest()[:12]}.py"
     with open(path, "w") as f:
         f.write(source)
     try:
