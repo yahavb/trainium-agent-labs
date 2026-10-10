@@ -4,7 +4,7 @@ This is the final hand-in guide for the kernel agent.
 
 Team: 13
 
-Submitted by: Gyanasri Konda
+Submitted by: Jnanasree Konda
 
 ## Major Improvements Over Baseline
 
