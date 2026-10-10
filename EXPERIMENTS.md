@@ -71,6 +71,34 @@ Time per round with `--plan-merge` and 4 thoughts was about 430–455 s. With 2 
 7. **Showing failed attempts was not enough to stop the model going back to them** (`merge_history`). An explicit, precise hint seems to matter more than memory.
 8. **Variance is large; n is small.** Two runs with identical settings (seats 182 and 184 before history takes effect) hit different first errors at round 0. Our only 0.50 (`merge_multi`) **did not replicate** in `merge_multi_rep`. The three runs with the static check on (`merge_static`, `merge_tmix`, `merge_t10`) all ended at the same `.ap` wall, whether the temperatures were mixed or all 1.0. So the walls in finding 3 are reproducible, while the score is not. With 1–2 runs per configuration we report behaviour, and we **do not** rank configurations by score.
 
+### Failure taxonomy (counts)
+
+Counted over the 43 distinct kernels in the transcripts of `merge_static`, `merge_history`, `merge_tmix`, `merge_t10` and `merge_multi_rep`. Identical samples are counted once.
+
+| Runtime wall (the error the simulator stopped on) | Kernels |
+|---|---|
+| `.ap` stride unit ("invalid partition stride") | 24 |
+| Tile must be 2-D (usually after `nl.sum` without `keepdims`) | 15 |
+| Reduce over non-last axes (`axis=(2,4)`) | 2 |
+| Partition dim changed | 1 |
+| `dma_copy` size mismatch | 1 |
+
+API misuse caught by the static check in the same kernels (one kernel can have several): missing argument 12, wrong module (`nisa.multiply`) 10, `dst=` on a function that returns its result 9.
+
+### Token instrumentation
+
+Estimated input tokens of the task/repair prompt per round (characters ÷ 4, from the transcripts):
+
+| Run | Round 0 → last |
+|---|---|
+| `merge_static` | 624, 995, 891, 882, 777, 956 |
+| `merge_history` | 624, 875, 1430, 2038, 2531, 1928 |
+| `merge_tmix` | 624, 860, 759, 759 |
+| `merge_t10` | 624, 1037, 848, 849 |
+| `merge_multi_rep` | 624, 729, 778, 720, 792 |
+
+A repair prompt is roughly 40% API card, 40% the current kernel and 20% feedback. History adds about 500 tokens per remembered attempt. On top of this, each round sends the merge prompt (the task plus 4 clipped thoughts, sized to fit 8192 tokens) and 4 code prompts (task plus summary). The 8k budget was never exceeded.
+
 ## 5. Future Plan
 
 - **Explain the `.ap` stride unit when that error appears.** Either attach the real NKI docstring, or restate the error with the numbers worked out for this tile ("one partition step = H·W = 1024 elements, one row = W, one column = 1"), in the style of finding 1.
