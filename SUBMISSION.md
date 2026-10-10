@@ -151,8 +151,8 @@ NKI tutorial kernels, the organizers' reference kernels for levels 1–4, and ou
 line-by-line scan of every request v7 sends (35 distinct prompts, first and repair rounds, levels 1–4 and
 9–14) and of 2,851 string constants in the agent found 0 lines from any of them; the same scanner finds 95
 on a positive control. ([analysis/prompt_leak_check.md](analysis/prompt_leak_check.md))
-Thinking stays off: with it on, a round took 446 s instead of about 8 s on the same model, and every
-sample was cut off before any code.
+Thinking stays off. The organizers measured it on this model: with thinking on, a round took 446 s and every
+sample was cut off before any code ([projects/02-kernel-agent/README.md](projects/02-kernel-agent/README.md)).
 
 ## 4. Experiments, one change at a time
 
@@ -167,8 +167,16 @@ written down before the results came in ([PLAN.md](PLAN.md) §4).
 | E-v7 | feedback_v7 as a whole | L1, L3, L4, L2 | L3 5/5 (round 1), L4 4/4 (round 3, one trajectory), L1 [[TBD]], L2 [[TBD]]; all solves VERIFIED [[TBD: final after re-audit]] | adopted |
 | E-div | v7, plus a one-line `(attempt k of n, run r)` tag on samples 2–4 so a greedy server returns different samples | L1–L4 | [[TBD]] | [[TBD]] |
 
-Changes that looked reasonable and were worse, kept here because they cost us time: [[TBD: the 128-row
-copy example (L2 2/5 → 0/5, L4 0.62 → 0.30, rolled back); thinking on; compiler -O3 not ready in 33 min.]]
+What did not work, kept here because each one cost us time:
+
+- **Both message fixes for level 1 moved the failure, not the score.** Experiment A cut invented calls from
+  80 to 20 and E-F cut wrong-signature errors from 8 to 3 per run; both stayed at 0.30, stuck on the next wall.
+- **Compiling the model server with -O3** to make rounds faster: still compiling after 33 minutes. Dropped;
+  it would also have invalidated the baseline.
+- **A `seed` parameter**, to get independent samples from a greedy server: HTTP 500, and it took the server
+  down once.
+- **Splitting an experiment's runs across seats** to get results sooner: under greedy decoding the runs are
+  mostly copies, so it buys speed without information. E-div (§4 table) is the fix we tried instead.
 
 ## 5. Does the agent know when it failed?
 
@@ -227,7 +235,19 @@ The solving kernel is correct, not fast: 36.6 Flops/Byte, memory-bound.
 - **Greedy decoding.** The seat's model server ignores the sampling temperature in practice, so repeated runs of
   one configuration are mostly copies, and "5/5" can mean one trajectory five times. We report distinct
   trajectories next to every rate. A request with a `seed` parameter returned HTTP 500 and took the server down once.
-- [[TBD: the rest]]
+- **Simulator numbers.** Every score comes from `nki.simulate` on a CPU. [[TBD: which hand-in kernels were
+  also compiled for trn2 and run on a NeuronCore]]
+- **Five runs per cell, and fewer distinct trajectories.** A 3/5 against a 4/5 is noise.
+- **Level 3 has one loop shape**, because the organizers' reference asserts it; its held-out cases change
+  only the values.
+- **The confidence rule is stated, not fitted.** Its weights were fixed at 13:40, before any held-out
+  result, and never tuned. It is underconfident on level 3: it docks a single loop shape and the literal
+  64 that the level's own contract fixes.
+- **Part of each solution comes from the checker.** Code-form messages are pasted by the model (§3, §8),
+  and the level-1 example is a strong hint (§3).
+- **v7 is a bundle of layers.** [[TBD: what the ablation says about which layers matter]]
+- **Levels 9–14 are liuyq's own held-out operations**, not the official ladder, and are reported apart from it.
+- **The SBUF limit is conservative**: 192 KiB per partition, below trn2's 224 KiB.
 
 ## 10. Files
 
