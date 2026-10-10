@@ -318,6 +318,28 @@ def hoisted_psum(src):
     return None
 
 
+CONTRACTION_MISMATCH = re.compile(r"Matmul contraction dimension mismatch: stationary\[0\]=(\d+) != moving\[0\]=(\d+)")
+
+
+def count_first_buffer(src):
+    """Rule C's static check: the name of an SBUF buffer `X = nl.ndarray((A // B, C, D), ...)` -- three axes
+    with a floor-division FIRST, i.e. the tile count where the partition axis belongs. Parse only."""
+    try:
+        tree = ast.parse(src)
+    except (SyntaxError, ValueError):
+        return None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) \
+                and isinstance(node.value, ast.Call) and _dotted(node.value.func).endswith("ndarray") \
+                and node.value.args and isinstance(node.value.args[0], ast.Tuple) \
+                and len(node.value.args[0].elts) == 3 \
+                and isinstance(node.value.args[0].elts[0], ast.BinOp) \
+                and isinstance(node.value.args[0].elts[0].op, ast.FloorDiv) \
+                and SAFE_NAME.match(node.targets[0].id):
+            return node.targets[0].id
+    return None
+
+
 def says(r, referee, src="", rules=True):
     """What the model may be told. speedcheck: instruction_given, never referee_message -- it can quote the
     kernel's own exception text, which is attacker-controlled, and names held-out shapes (REFEREE.md
@@ -341,6 +363,16 @@ def says(r, referee, src="", rules=True):
                     f"{n_src // n_dst}x the tile. Make each dma_copy's source slice exactly the destination "
                     f"tile's shape (copy one tile-sized piece per call and loop over the rest), or allocate the "
                     f"destination with the source slice's shape.")
+        m = CONTRACTION_MISMATCH.search(msg)
+        if m and int(m.group(2)) < int(m.group(1)):
+            # Rule C (seat-101 v3, 7x): a multi-tile SBUF buffer with the tile count first, so tile k is one row.
+            n_stat, n_mov = int(m.group(1)), int(m.group(2))
+            x = count_first_buffer(src or "")
+            buf = f"Your buffer {x}" if x else "Your multi-tile SBUF buffer"
+            return (f"nc_matmul's moving operand has {n_mov} row(s) on the partition axis, but it needs {n_stat}. "
+                    f"{buf} puts the tile count first, so each tile you take from it is a one-row slice. Put the "
+                    f"partition axis first: allocate it with shape (TILE_K, K // TILE_K, TILE_N), copy tile k into "
+                    f"[:, k, :], and pass [:, k, :] to nc_matmul. Keep everything else identical.")
         if "NUMERICAL MISMATCH" in msg:
             x = hoisted_psum(src or "")
             if x:
