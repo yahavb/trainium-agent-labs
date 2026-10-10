@@ -2,6 +2,53 @@
 
 This is the final hand-in guide for the kernel agent.
 
+Team: 13
+
+Submitted by: Gyanasri Konda
+
+## Final Results
+
+Final command used:
+
+```bash
+python agent.py --all --rounds 4 --samples 1 --context 8192 --prompt-style reference --dump-prompts --log submission-reference.jsonl
+```
+
+Result summary:
+
+- Verifier self-test: `SELFTEST PASSED`
+- Levels solved: `2/4`
+- Level 1 average pooling 2D: reward `0.30`, not solved after 4 rounds.
+- Level 2 2D transpose: reward `0.30`, not solved after 4 rounds.
+- Level 3 single-tile matmul: reward `1.00`, solved on round 0.
+- Level 4 tiled matmul: reward `1.00`, solved on round 0.
+
+Observed solved kernels:
+
+- Level 3: correct on every shape; reported memory-bound at `19.7 Flops/Byte`, `11.3x` more reuse needed.
+- Level 4: correct on every shape; reported memory-bound at `36.6 Flops/Byte`, `6.1x` more reuse needed.
+
+Failure taxonomy from `submission-reference.jsonl`:
+
+- `generic`: 7 attempts
+- `dma_shape`: 3 attempts
+
+Failure keys:
+
+- `dma.shape_mismatch`: 3
+- `generic.0_of_4_shapes_passed_on_c_h_w_32_32_32_pool_2_raised_a`: 2
+- `generic.the_code_does_not_parse_invalid_syntax_on_line_3_send_one`: 2
+- `generic.0_of_4_shapes_passed_on_c_h_w_32_32_32_pool_2_raised_n`: 1
+- `generic.correct_on_every_shape_memory_bound_19_7_flops_byte_agains`: 1
+- `generic.correct_on_every_shape_memory_bound_36_6_flops_byte_agains`: 1
+
+Token/context examples from the final run:
+
+- Level 1 round 0: `prompt~5775`, `limit=8192`, `docs~4983`, `code~675`
+- Level 2 round 0: `prompt~5880`, `limit=8192`, `docs~5071`, `code~693`
+- Level 3 round 0: prompt was about `5890` tokens and solved.
+- Level 4 round 0: prompt was about `6023` tokens and solved.
+
 ## What To Hand In
 
 - `agent.py`: the agent loop, context manager, retry logic, confidence-by-verification behavior, token accounting, and failure taxonomy logging.
@@ -158,4 +205,3 @@ Use:
 python agent.py --show-attempt submission-reference.jsonl --show-round 0
 python agent.py --show-attempt submission-reference.jsonl --show-round 1
 ```
-

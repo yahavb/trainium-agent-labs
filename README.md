@@ -16,6 +16,9 @@ the change. Everything here was built by learning that the hard way, eight separ
 
 Resuming or picking this up cold? [`STATE.md`](STATE.md) has exactly where things stand and what to do next.
 
+Project 2 final submission notes for Team 13 are in
+[`projects/02-kernel-agent/SUBMISSION.md`](projects/02-kernel-agent/SUBMISSION.md).
+
 ---
 
 # Part 1 — Get onto your chip

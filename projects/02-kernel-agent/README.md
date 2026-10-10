@@ -635,5 +635,8 @@ verifier, not in your generation prompt.** Project 1 hit the same wall three mor
 
 ## Final Submission
 
-For the final hackathon run commands, artifacts to hand in, verifier tolerance notes, eval-set notes,
-failure taxonomy, and token instrumentation checklist, see [`SUBMISSION.md`](SUBMISSION.md).
+Team 13, submitted by Gyanasri Konda.
+
+For the final hackathon results, run commands, artifacts to hand in, verifier tolerance notes,
+eval-set notes, failure taxonomy, and token instrumentation checklist, see
+[`SUBMISSION.md`](SUBMISSION.md).
