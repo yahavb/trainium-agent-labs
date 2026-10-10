@@ -92,15 +92,20 @@ tail -f /tmp/heatrod-structured.log
 正确候选首次请求输出 959 tokens，用时 97.8 秒。所有回复正常 stop，没有截断。
 这是用户提供的单次日志，不是稳定性能结论，完整记录见 [观察记录](OBSERVATIONS.zh-CN.md)。
 
-当前先测试工具请求是否能更简洁：
+简洁工具请求的第一轮实验已完成：每轮约 43 秒，但四轮都未解出，完整运行 173.7 秒、
+总输出 3632 tokens。原版单次为 106.3 秒、2313 tokens，首轮成功。
+这不足以证明总体差异，但不支持采用简洁方案作为默认优化。
+两个方案的单次结果和局限见 [英文实验记录](EXPERIMENT_RESULTS.md)。
+
+下一步先保留原版工具说明，单独测试 structured 修复反馈：
 
 ```bash
-python -u run_experiments.py --config configs/concise_tools.json --repeats 1
+python -u run_experiments.py --config configs/structured.json --repeats 1
 ```
 
-如果流程正常，再分别串行运行 baseline 与 concise_tools，各重复 5 次。
-检查成功率、总耗时、总输出 tokens 和截断次数，保留失败运行。输出长可能包含有效推导，
-不能预先认定全部是冗余内容。
+若首轮失败，检查 structured 是否在后续轮修正了指数；若首轮成功，说明这次没有用到修复反馈。
+随后对可比较方案串行重复实验。检查成功率、总耗时、总输出 tokens 和截断次数，保留失败运行。
+输出长可能包含有效推导，不能预先认定全部是冗余内容。
 
 ## 结果保存在哪里？
 

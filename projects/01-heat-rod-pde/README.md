@@ -6,7 +6,8 @@
 [一页说明模板](EXPERIMENT_NOTE.zh-CN.md)。
 `run_experiments.py` repeats a fixed problem, snapshots the executed code, and saves per-run logs
 and a summary. `structured` feedback is an unmeasured experiment; the original checker is unchanged.
-The concise calculator protocol is a separate unmeasured trial; both token and retry budgets are retained.
+The concise calculator protocol failed its first live trial and remains opt-in; see
+[preliminary results](EXPERIMENT_RESULTS.md). Baseline remains the default.
 
 **A small model on your chip solves heat-equation problems it cannot solve in one shot. The checker
 does the work.**
