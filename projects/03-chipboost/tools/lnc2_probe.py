@@ -16,7 +16,14 @@ block caps random search found), at the matmul timing shapes:
 
 Run it on a free logical core, nothing else on it:
     CHIPBOOST_CORE=3 python tools/lnc2_probe.py
+    CHIPBOOST_CORE=3 python tools/lnc2_probe.py --validate     # plus a host-clock cross-check
     python tools/lnc2_probe.py --sim-only
+
+--validate exists because the device timer warned "2 events per iteration; model likely has multiple
+subgraphs" on the LNC=2 kernel (one per physical core). If those were back to back rather than at the same
+time, the device median would show one half's time, not the kernel's. The host clock cannot be fooled that
+way: it times whole back-to-back executions. It includes launch overhead, the same for both kernels, so
+the DIFFERENCE between LNC=1 and LNC=2 per call should match the device clock's difference.
 """
 
 import argparse
@@ -89,7 +96,17 @@ def compile_opts_lnc(k, inputs, lnc):
     return _compile_bir_to_neff(nir, opts, inputs)
 
 
-def chip(rounds):
+def host_per_call_us(L, n=200, warm=10):
+    """Wall-clock microseconds per back-to-back execution of a loaded kernel (launch overhead included)."""
+    for _ in range(warm):
+        L.model(L.inputs, outputs=L.outputs)
+    t0 = time.perf_counter()
+    for _ in range(n):
+        L.model(L.inputs, outputs=L.outputs)
+    return (time.perf_counter() - t0) / n * 1e6
+
+
+def chip(rounds, validate=False):
     import timing
     import speedcheck
     k = load()
@@ -135,6 +152,12 @@ def chip(rounds):
         f = SPEC["flops"](shape)
         print(f"  {shape}: LNC=1 {t1:8.1f} us ({f / t1 / 1e6:5.1f} TFLOP/s)   LNC=2 {t2:8.1f} us "
               f"({f / t2 / 1e6:5.1f} TFLOP/s)   second core buys {t1 / t2:.3f}x")
+        if validate:
+            h1, h2 = host_per_call_us(loaded[1]), host_per_call_us(loaded[2])
+            agree = abs((h1 - h2) - (t1 - t2)) <= max(10.0, 0.25 * abs(t1 - t2))
+            print(f"  {shape}: host clock per call LNC=1 {h1:8.1f} us, LNC=2 {h2:8.1f} us: LNC=2 saves "
+                  f"{h1 - h2:6.1f} us, the device clock says {t1 - t2:6.1f} us -> "
+                  f"{'AGREE' if agree else 'DISAGREE: do not trust the device number for LNC=2'}")
         tot1, tot2, flops = tot1 + t1, tot2 + t2, flops + f
     print(f"\n  TOTAL over the timing shapes: LNC=1 {tot1:.1f} us, LNC=2 {tot2:.1f} us -> {tot1 / tot2:.3f}x "
           f"({flops / tot2 / 1e6:.1f} TFLOP/s on one logical core). Route: {route}.")
@@ -145,6 +168,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--sim-only", action="store_true")
     ap.add_argument("--rounds", type=int, default=3)
+    ap.add_argument("--validate", action="store_true", help="also time both with the host clock")
     a = ap.parse_args()
     try:
         import nki  # noqa: F401
@@ -159,7 +183,7 @@ def main():
         return 0
     print(f"\n== chip, NeuronCore {os.environ.get('CHIPBOOST_CORE', '(timing.py default)')}")
     try:
-        chip(a.rounds)
+        chip(a.rounds, a.validate)
     except Exception:
         traceback.print_exc(limit=4)
     return 0
