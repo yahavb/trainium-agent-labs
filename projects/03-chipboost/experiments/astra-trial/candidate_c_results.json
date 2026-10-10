@@ -1,0 +1,93 @@
+{
+  "phase": "complete",
+  "core": 2,
+  "pid": 875315,
+  "source_sha256": "5f366558ae933c88262bbde806afbcd4a568fdbfab4fc3395951f1b3799d71be",
+  "baseline_sha256": "0dde78bd65e0a724a4fab05b2b893b215c8335e2086bc6c945ed43250a1f728b",
+  "cases": [
+    {
+      "label": "baseline",
+      "sha256": "0dde78bd65e0a724a4fab05b2b893b215c8335e2086bc6c945ed43250a1f728b",
+      "record": {
+        "seat": 100,
+        "kernel": "matmul",
+        "arm": null,
+        "run_id": null,
+        "attempt_no": null,
+        "round": null,
+        "prompt_tokens": null,
+        "code_hash": "638cfdf0f2fa",
+        "code": null,
+        "prompt": null,
+        "response": null,
+        "verdict": "no_gain",
+        "referee_message": "correct on the timing shapes; 959.9 us vs baseline 960.0 us = 1.000x; per shape (4096, 256, 2048) 1.000x, (4096, 256, 6144) 1.000x: NO GAIN, inside the timing noise (a gain needs 1.010x, a loss 0.990x). (Held-out shapes are checked only for a speedup.)",
+        "instruction_given": "No gain on the chip (1.000x) and the simulator shows 2.00x the byte floor: the same tiles are reloaded every pass -- move the operand loads out of the innermost loop so each tile is loaded once and reused across it.",
+        "sim_ok": true,
+        "chip_ok": true,
+        "time_us_median": 959.8910000000001,
+        "time_us_iqr": 0.6420000000000528,
+        "baseline_us_same_session": 960.015,
+        "speedup": 1.0001291813341306,
+        "source": "chip",
+        "timestamp": 1791663549.1020768
+      }
+    },
+    {
+      "label": "astra_c_first",
+      "sha256": "aa0bdfb6c1a87cb49e2509d10b5176eab4864bed0e8b109422ddb0bd8495186f",
+      "record": {
+        "seat": 100,
+        "kernel": "matmul",
+        "arm": null,
+        "run_id": null,
+        "attempt_no": null,
+        "round": null,
+        "prompt_tokens": null,
+        "code_hash": "626c96b4db94",
+        "code": null,
+        "prompt": null,
+        "response": null,
+        "verdict": "faster",
+        "referee_message": "correct everywhere, including 3 undisclosed held-out shapes; 375.8 us vs baseline 959.8 us = 2.554x; per shape (4096, 256, 2048) 2.431x, (4096, 256, 6144) 2.605x: FASTER, beating the noise threshold 1.011x with no shape slower.",
+        "instruction_given": "Faster on the chip (2.55x, 45.7 TFLOP/s). Next step: overlap data movement with compute -- allocate two SBUF buffers per operand and issue the next block's loads before the current block's matmuls, so the Tensor Engine never waits on a DMA.",
+        "sim_ok": true,
+        "chip_ok": true,
+        "time_us_median": 375.771,
+        "time_us_iqr": 1.495999999999981,
+        "baseline_us_same_session": 959.783,
+        "speedup": 2.5541699598957877,
+        "source": "chip",
+        "timestamp": 1791663571.3424854
+      }
+    },
+    {
+      "label": "astra_c_repeat",
+      "sha256": "aa0bdfb6c1a87cb49e2509d10b5176eab4864bed0e8b109422ddb0bd8495186f",
+      "record": {
+        "seat": 100,
+        "kernel": "matmul",
+        "arm": null,
+        "run_id": null,
+        "attempt_no": null,
+        "round": null,
+        "prompt_tokens": null,
+        "code_hash": "626c96b4db94",
+        "code": null,
+        "prompt": null,
+        "response": null,
+        "verdict": "faster",
+        "referee_message": "correct everywhere, including 3 undisclosed held-out shapes; 376.2 us vs baseline 959.8 us = 2.551x; per shape (4096, 256, 2048) 2.427x, (4096, 256, 6144) 2.603x: FASTER, beating the noise threshold 1.010x with no shape slower.",
+        "instruction_given": "Faster on the chip (2.55x, 45.7 TFLOP/s). Next step: overlap data movement with compute -- allocate two SBUF buffers per operand and issue the next block's loads before the current block's matmuls, so the Tensor Engine never waits on a DMA.",
+        "sim_ok": true,
+        "chip_ok": true,
+        "time_us_median": 376.1885,
+        "time_us_iqr": 1.2039999999999935,
+        "baseline_us_same_session": 959.7625,
+        "speedup": 2.5512808073612034,
+        "source": "chip",
+        "timestamp": 1791663597.919226
+      }
+    }
+  ]
+}
