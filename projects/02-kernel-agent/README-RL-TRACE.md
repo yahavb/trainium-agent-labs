@@ -1,27 +1,39 @@
 # Verifier-grounded RL trace experiment
 
-This is an additive experiment for `projects/02-kernel-agent`. It reuses the original
-`agent.py` model client and `nkibench.py` verifier. It does not modify either file.
+This is an additive experiment for `projects/02-kernel-agent`. It reuses the existing
+`agent.py` model client and `nkibench.py` verifier. Leave both files unchanged.
 
-## What changed
+## Files to replace
 
-- `rl_trace_agent.py` adds an online contextual UCB bandit over four generation/repair strategies.
-- Each attempt logs a short structured engineering trace, candidate code, the actual verifier
-  feedback, and reward components to JSONL.
-- The verifier remains the source of truth. A model saying a kernel is correct does not count.
-- The prompt now states the valid NKI imports verbatim. In particular, **`nl` is an alias, not a
-  module**: use `import nki.language as nl`, never `import nl`. Likewise `nl.sbuf`, `nl.psum`,
-  and `nl.shared_hbm` are buffer values, not functions; pass them as `buffer=nl.sbuf`, etc.
+Replace the entire contents of:
+- `projects/02-kernel-agent/rl_trace_agent.py`
+- `projects/02-kernel-agent/README-RL-TRACE.md` (this file)
 
-This is online RL over prompt strategy selection, not weight-level RL fine-tuning. The model is
-served through an inference endpoint, so its weights are not updated by this script. The traces
-are short, visible, structured engineering notes; the script does not request private chain of
-thought or reward verbosity.
+Leave `agent.py`, `nkibench.py`, and `summarize_rl_trace.py` unchanged.
+
+## Why the NKI API prompt is explicit
+
+The NKI checker errors are evidence about the generated code, not an environment failure:
+
+- `No module named 'nl'`: `nl` is an alias created by `import nki.language as nl`, not a module.
+- `MemoryRegion object is not callable`: `nl.sbuf`, `nl.psum`, and `nl.shared_hbm` are buffer values,
+  passed as `buffer=nl.sbuf`, not function calls.
+- `NkiTensor.reshape() takes 2 positional arguments but 4 were given`: NKI's tensor reshape
+  expects a single shape tuple if used, such as `x.reshape((P, F1, F2))`, not
+  `x.reshape(P, F1, F2)`.
+
+For level 2, the updated prompt additionally tells the model the exact index mapping for transpose
+and recommends the established NKI approach using `nl.affine_range`, `nl.ds`, and `nisa.tensor_copy`.
+It tells the model to avoid NKI tensor `reshape`/`transpose` for this task. The repository's known
+reference kernel is `reference_level2.py`; you can validate the checker against it with:
+
+```bash
+python nkibench.py --level 2 --check reference_level2.py
+```
+
+That is a diagnostic check, not an agent result.
 
 ## Run from the correct directory
-
-The files `agent.py`, `nkibench.py`, and `rl_trace_agent.py` are inside
-`projects/02-kernel-agent`, not at the repository root:
 
 ```bash
 cd /workspace/My_Working_Dir/trainium-agent-labs/projects/02-kernel-agent
@@ -29,88 +41,85 @@ python nkibench.py --selftest
 python -m py_compile agent.py nkibench.py rl_trace_agent.py
 ```
 
-The self-test does not require the model endpoint. The agent run does. In the seat pod, the
-environment normally sets `KERNEL_AGENT_BASE_URL` and `KERNEL_AGENT_MODEL`; check with:
+The self-test does not require the model endpoint. The agent run does. Check whether your seat
+already configured the endpoint:
 
 ```bash
 echo "$KERNEL_AGENT_BASE_URL"
 echo "$KERNEL_AGENT_MODEL"
 ```
 
-If needed, set the URL to the actual endpoint used by your pod. Do not assume `localhost:8000`
-unless the model server is running in the same pod and listening on that port.
+Use the actual endpoint supplied by your environment; do not assume localhost is serving the model.
 
 ## First run
 
-Start with the transpose task, one sample per round to limit endpoint load:
+Use a fresh log so it is easy to compare with earlier attempts:
 
 ```bash
 python rl_trace_agent.py \
   --level 2 --rounds 8 --samples 1 --context 8192 \
-  --log rl_level2.jsonl
+  --log rl_level2_v3.jsonl
 ```
 
-Then test tiled matmul:
+Then try tiled matmul:
 
 ```bash
 python rl_trace_agent.py \
   --level 4 --rounds 8 --samples 1 --context 8192 \
-  --log rl_level4.jsonl
+  --log rl_level4_v3.jsonl
 ```
 
-For a long session, use the same background pattern as the original README:
+Optional background run:
 
 ```bash
 nohup python rl_trace_agent.py --level 2 --rounds 8 --samples 1 --context 8192 \
-  --log rl_level2.jsonl > rl_level2.log 2>&1 < /dev/null &
-tail -f rl_level2.log
+  --log rl_level2_v3.jsonl > rl_level2_v3.log 2>&1 < /dev/null &
+tail -f rl_level2_v3.log
 ```
 
-Summarize logs with the companion script:
+Summarize JSONL logs with the existing companion script:
 
 ```bash
-python summarize_rl_trace.py rl_level2.jsonl rl_level4.jsonl
+python summarize_rl_trace.py rl_level2_v3.jsonl rl_level4_v3.jsonl
 ```
 
-## Strategy arms
+## How the controller works
 
-- `direct`: short direct generation.
-- `contract_trace`: explicit shape/dtype/output and partial-tile contract.
-- `counterexample`: emphasis on ragged dimensions and boundary behavior.
-- `repair_diagnosis`: use recent verifier output to make one minimal repair.
+The controller uses contextual UCB over four prompt/repair strategies:
+- `direct`: concise direct generation;
+- `contract_trace`: explicit shape/dtype/output contract;
+- `counterexample`: focus on ragged dimensions and boundaries;
+- `repair_diagnosis`: use the latest checker feedback to make a minimal repair.
 
-The policy conditions on the current level and the failure category returned by the checker.
-It uses UCB exploration and updates action values from each attempt's observed reward.
-
-## Reward and logs
+The context includes kernel level and the failure category returned by the verifier. The policy updates
+strategy values using each attempt's reward.
 
 `R = 0.85 * R_kernel + 0.10 * R_trace + 0.05 * R_evidence`
 
-- `R_kernel`: original `agent.grade()` reward (correctness remains dominant).
-- `R_trace`: deterministic field-coverage score for the structured trace, not its length.
-- `R_evidence`: score based on the checker pass/failure category, never on self-reported success.
+- `R_kernel`: original verifier reward; this dominates.
+- `R_trace`: deterministic coverage score for a compact structured engineering record, not its length.
+- `R_evidence`: based on actual verifier feedback, never the model's assertion that its code works.
 
-Each JSONL row records the prompt strategy, failure category, trace, candidate code, verifier
-feedback, reward components, and elapsed generation time.
+Each JSONL row stores the action, structured trace, code, actual feedback, reward parts, failure category,
+and generation latency. Traces are short auditable implementation notes, not private chain-of-thought.
 
 ## Baseline comparison
 
-Use the same model, endpoint, kernel level, context, and total generation budget for baseline
-`agent.py` and `rl_trace_agent.py`. Run several independent trials. Report:
+Compare the original `agent.py` and this controller using the same model, endpoint, level, context,
+and generation budget. Run multiple independent trials. Report:
+1. first-attempt reward and fully verified-kernel rate;
+2. attempts to first fully verified kernel;
+3. mean verifier reward under a fixed call budget;
+4. rates of bad imports, unsupported API use, parse errors, and numerical mismatches;
+5. repeated-code and repeated-failure rates;
+6. trace format validity and coverage;
+7. wall-clock time and token/call cost where available.
 
-1. first-attempt reward and fraction reaching full verifier reward 1.0;
-2. attempts until a fully verified kernel is found;
-3. mean verifier reward at a fixed call budget;
-4. rates of parse errors, invalid imports/API use, and numerical mismatches;
-5. repeated-code / repeated-failure rate;
-6. trace-format validity and coverage;
-7. elapsed time and token/call cost where available.
+A structured trace is not proof of correctness. The verifier is authoritative.
 
-A valid trace is not evidence that a kernel is correct. `nkibench.py` is authoritative.
+## Limitations
 
-## Current limitations
-
-- This is an initial online policy-learning experiment, not PPO/GRPO fine-tuning of Qwen or gpt-oss.
-- The existing verifier uses the NKI simulator for functional checks. It does not establish real
-  Trainium latency or downstream generative-model speedups.
-- Do not evaluate based on one run; the UCB estimates need repeated trials.
+- This is online policy learning over prompt strategies, not weight-level PPO/GRPO fine-tuning.
+- `nkibench.py` uses the NKI simulator for functional checks. It does not establish real Trainium
+  latency or downstream model speedups.
+- The UCB controller needs repeated trials; do not draw conclusions from one run.
