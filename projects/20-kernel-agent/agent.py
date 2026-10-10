@@ -52,6 +52,45 @@ REASONING_KEYS = ("reasoning", "reasoning_content")
 WEIGHTS = dict(parses=0.1, rules=0.2, runs=0.2, correct=0.5)
 
 
+def _softmax(x, axis=-1):
+    e = np.exp(x - x.max(axis=axis, keepdims=True))
+    return e / e.sum(axis=axis, keepdims=True)
+
+
+def wrong_variant(level, args, got):
+    """Levels 8 and 11: when the numbers are wrong, test the output against the usual WRONG versions of
+    the computation and name the one it matches. Idea from an independent audit of the failed level-8
+    attempts (scale divided instead of multiplied, P^T V, softmax over the wrong axis...). It names the
+    step that is wrong, never the code: hint 7 of the project README."""
+    if level not in (8, 11) or got is None:
+        return None
+    q, k = args[0].astype(np.float64), args[1].astype(np.float64)
+    d = q.shape[1]
+    S = q @ k.T
+    if level == 11:
+        variants = [("q k^T WITHOUT the 1/sqrt(d) scale", S),
+                    ("q k^T MULTIPLIED by sqrt(d) (the scale is inverted)", S * np.sqrt(d)),
+                    ("q k^T divided by d instead of sqrt(d)", S / d),
+                    ("k q^T / sqrt(d), the TRANSPOSE of the scores (operands swapped)", S.T / np.sqrt(d))]
+    else:
+        v = args[2].astype(np.float64)
+        Ss = S / np.sqrt(d)
+        variants = [("softmax(q k^T) v WITHOUT the 1/sqrt(d) scale", _softmax(S) @ v),
+                    ("softmax(q k^T * sqrt(d)) v: the scale is inverted", _softmax(S * np.sqrt(d)) @ v),
+                    ("P^T v instead of P v: the second matmul needs P transposed as stationary", _softmax(Ss).T @ v),
+                    ("softmax over the wrong axis (columns instead of rows)", _softmax(Ss, axis=0) @ v),
+                    ("exp(scores - max) v: the exponentials were never divided by their row sums",
+                     np.exp(Ss - Ss.max(axis=1, keepdims=True)) @ v),
+                    ("softmax(k q^T / sqrt(d)) v: the scores are transposed (operands swapped)", _softmax(Ss.T) @ v),
+                    ("(q k^T / sqrt(d)) v: the softmax step is missing", Ss @ v)]
+    g = np.asarray(got, dtype=np.float64)
+    for name, want in variants:
+        if g.shape == want.shape and np.max(np.abs(g - want)) <= 0.02 * (np.sqrt(np.mean(want ** 2)) + 1e-12):
+            return (f" DIAGNOSIS: your output equals {name}, to within tolerance. Every other step is "
+                    f"already right; fix only that one.")
+    return None
+
+
 def lint_count(feedback):
     """How many static-check problems a grade's feedback reports (0 when the kernel passed the check)."""
     m = re.match(r"A static check found (\d+) problem", feedback or "")
@@ -178,6 +217,8 @@ def grade(source, level):
             m = ("CORRECT ON CPU BUT WRONG ON HARDWARE: " + hazards[0]
                  + ". Fix that before anything else -- the simulator agrees with the reference here "
                    "and the device would not.")
+        if m and level in (8, 11) and "NUMERICAL MISMATCH" in m:
+            m += wrong_variant(level, args, got) or ""
         if m and LEVEL_HINTS and level in (5, 6, 7):
             m = level_hint(m, level) or m
         if m:
