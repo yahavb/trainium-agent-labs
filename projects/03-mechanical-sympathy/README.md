@@ -238,3 +238,20 @@ forecast metrics ran for this trial.
 
 See the [tiling report and raw timing](results/tiling-forward-2026-10-10/README.md)
 for the workload and plot reproduction command.
+
+### Tiling follow-up and throughput
+
+Also tiling the two 90×180 blocks was slower: **48.75 s** against 42.58 s for
+full-resolution tiling only. Their dilation-2 halos add 53% more rows per band.
+Keep tiling to the full-resolution blocks.
+
+![Samudra forward progress, forward seconds](results/easy-wins-2026-10-10/progress.png)
+
+The same trials as throughput. Each run simulates 8.19 years (598 five-day
+steps), so the best result runs **11.53 simulated years per minute**, up from
+5.42 for the FP32 baseline.
+
+![Samudra forward progress, simulated years per minute](results/easy-wins-2026-10-10/years_per_minute.png)
+
+See the [follow-up report](results/easy-wins-2026-10-10/README.md) for the
+device-only check and plot reproduction commands.
