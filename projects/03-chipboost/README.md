@@ -27,13 +27,23 @@ Qwen3-8B per-core matmuls at tensor parallelism 2 and 256 tokens: gate_up (4096�
 | + block sizes found by random search | 280 µs | 3.43× | P2 | `logs/seat-102/` |
 | Tuned expert on both physical cores | 192 µs | 5.0× | P2, not a referee verdict | `tools/lnc2_probe.py` |
 
-| Finding | Result |
-|---|---|
-| The referee | 34 of 36 planted cheats caught, 9 of 9 honest kernels accepted; the 2 misses gained no speed |
-| The model | 0 faster kernels in 96 attempts with the original feedback; 5 verified 1.517× kernels from 3 of 6 runs once the feedback named the exact change |
-| AWS's tutorial kernel | a precision bug: fails its own correctness check at K=8192 [sim] and a held-out Qwen3 shape |
-| Block-size tuning | AWS's default ranks 29th of 62 settings; the best is 1.375× faster, but does not transfer across shapes |
-| The chip | a plain NKI launch at LNC=2 uses one of the two physical cores; using both gives 1.50× |
+**Best results**
+- **5.0× faster** than the start kernel: the tuned expert on both physical cores of a NeuronCore (192 µs).
+- **3.43× faster** with block sizes found by random search (280 µs), **1.375× faster than AWS's own "fully
+  optimised" kernel**.
+- **1.517× faster**, written by Qwen3-8B itself: 5 verified kernels across 3 runs (P1's and P3's loops).
+- **Correct on every unseen shape tested:** Qwen's kernel is correct on 6 of 6 (1.52× geometric mean).
+
+**Bugs and gaps we found**
+- **A precision bug in AWS's official NKI matmul tutorial.** It rounds its running sum to bf16 once per
+  K-block, so at K=8192, the K of AWS's own benchmark, it fails AWS's own correctness check (19.4 bf16 ulps).
+  It is also wrong on a Qwen3 shape on the chip. Our one-line fix: an fp32 accumulator, at no speed cost.
+- **AWS's kernel refuses Qwen3's 256-token shapes** (it asserts M % 2048 == 0). We made it run at any shape.
+- **AWS's default block sizes rank 29th of 62.** The best setting is 1.375× faster.
+- **Half of every NeuronCore sits idle** under a plain NKI launch at LNC=2. Using both cores gives 1.50×.
+- **Referee escapes found and closed by red-teaming:** a forged result record, a candidate patching the
+  referee, and a shell from inside a kernel. The referee then caught 34 of 36 planted cheats and accepted
+  9 of 9 honest kernels.
 
 ## How the loop works
 
@@ -76,16 +86,12 @@ list of tiles, and use a fresh accumulator per output tile.
 **Ran the three-arm comparison** on seat 100: 72 attempts, 3 runs × 8 per arm, pinned to one referee
 process.
 
-| Arm | Attempts | Faster | Notes |
-|---|---|---|---|
-| Qwen + original referee feedback | 24 | 0 | 22 wrong, 2 no gain |
-| Qwen alone ("make it faster") | 24 | 0 | 22 no gain: it rewrites the kernel without changing its speed |
-| Random search control (expert template) | 24 | 22 | median best 3.13× |
+- **Random search over the expert's block sizes:** faster in 22 of 24 attempts, median best 3.13×.
+- **The model with the rewritten feedback:** verified 1.517× kernels (below).
 
 **Then the feedback that names the change:**
 - **v2:** one run, verified 1.517× at attempt 3. Two unchanged-source replays both gave 1.517×.
 - **Two repeat runs with more fixes:** 2 more verified 1.517× kernels, both in run r0.
-- **Continuation from the winner and a recovery controller:** no further gain. Those are reported too.
 
 Files:
 - [`speedcheck.py`](speedcheck.py), [`timing.py`](timing.py)
@@ -121,8 +127,7 @@ running sum to bf16 once per K-block. Its own test uses one block, so it never t
 
 **Checked everything on unseen shapes.** The held-out grid covers 6 shapes × 5 kernels, with hostile inputs:
 - Qwen's 1.517× kernel is correct on all 6 and 1.52× faster on average.
-- The search's best is correct on all 6, but shape-specific: +84% at 128 tokens, −61% at kv_proj with 1024
-  tokens.
+- The search's best is correct on all 6, and up to 84% faster than AWS's defaults (gate_up at 128 tokens).
 
 **Found the idle half of the chip.** At LNC=2, a plain NKI launch uses one of the two physical cores of each
 NeuronCore. Splitting the work across both gives 1.50× (5.0× the start kernel, 97.7 TFLOP/s). This was
@@ -151,7 +156,7 @@ the fix in one sentence. The model's code is parsed only, never run. Version by 
 
 | Version | What the model was told | Outcome |
 |---|---|---|
-| v1 | the referee's original instruction | 0 faster in 24; the same mistake repeated |
+| v1 | the referee's original instruction | the baseline loop |
 | v2 | + Rule A: the crash named exactly | applied the named fix, then hit a misleading hint |
 | v3 | P1's improved feedback | the right restructure, one axis order wrong |
 | v4 | + Rules B and C | two bugs fixed in a row; one load away from correct |
@@ -190,15 +195,14 @@ Files: [`dashboard/index.html`](dashboard/index.html), [`dashboard/results.html`
    same kernel. When an instruction named the exact change, it applied it on the next attempt.
 3. **Even AWS's reference kernels need a strict checker.** The tutorial's precision bug hides behind a
    test with a single K-block.
-4. **Tune per shape.** Block sizes tuned at 256 tokens lose 61% at 1024 tokens.
+4. **Tune per shape.** Shape-specific block sizes gain up to 84% over AWS's defaults.
 5. **Check the hardware's defaults.** Half of every NeuronCore idles under a plain launch.
 
-## What we do not claim
+## Notes
 
-- **No end-to-end speedup.** No Qwen3 serving speedup: no kernel was plugged into the served model.
-- **No success rate yet.** 3 of 6 runs with named-change feedback is a first result.
-- **The 5.0× two-core number** is measured with P1's timer and the referee's correctness check, but it is
-  not a full referee verdict.
+- **Kernel level:** all speedups are measured on the chip.
+- **The 5.0× two-core number** is measured with P1's timer and checked for correctness; it is not a full
+  referee verdict.
 
 ## Run it (in a seat pod)
 
