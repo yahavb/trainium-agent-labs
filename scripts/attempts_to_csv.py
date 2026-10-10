@@ -10,26 +10,26 @@ import argparse, collections, csv, json, os, re, sys
 
 # (category, pattern on the feedback text) — first match wins. Order matters.
 CATEGORIES = [
-    ("正确",               r"^Correct on every shape"),
-    ("编造不存在的函数",     r"has no attribute"),
-    ("拷贝两边大小不一致",   r"same number of elements"),
-    ("内存位置放错(SBUF/PSUM)", r"dst must be in \["),
-    ("函数参数用错",        r"unexpected keyword argument|not callable|missing \d+ required|takes \d+ positional"),
-    ("tile 只有一维",       r"at least 2 dimensions"),
-    ("tile 超过 128 行",    r"partition dimension \d+ exceeds|exceeds the maximum of 128|exceeds maximum 128"),
-    ("下标越界",           r"Out-of-bound access"),
-    ("乱用 reshape",       r"cannot reshape"),
-    ("形状不匹配/广播错误",  r"shape mismatch|could not be broadcast|operands could not"),
-    ("能运行但数值算错",     r"NUMERICAL MISMATCH|mismatch"),
-    ("违反规则(静态检查)",   r"Rule violations|banned|not decorated|no function named"),
-    ("代码无法解析",        r"does not parse|SyntaxError|No code came back"),
+    ("correct",               r"^Correct on every shape"),
+    ("invented_name",         r"has no attribute"),
+    ("copy_size_mismatch",    r"same number of elements"),
+    ("wrong_buffer",          r"dst must be in \["),
+    ("wrong_signature",       r"unexpected keyword argument|not callable|missing \d+ required|takes \d+ positional"),
+    ("tile_1d",               r"at least 2 dimensions"),
+    ("partition_over_128",    r"partition dimension \d+ exceeds|exceeds the maximum of 128|exceeds maximum 128"),
+    ("out_of_bounds",         r"Out-of-bound access"),
+    ("reshape",               r"cannot reshape"),
+    ("broadcast",             r"shape mismatch|could not be broadcast|operands could not"),
+    ("numeric_mismatch",      r"NUMERICAL MISMATCH|mismatch"),
+    ("rule_violation",        r"Rule violations|banned|not decorated|no function named"),
+    ("does_not_parse",        r"does not parse|SyntaxError|No code came back"),
 ]
 
 def categorize(feedback):
     for name, pat in CATEGORIES:
         if re.search(pat, feedback):
             return name
-    return "其他"
+    return "other"
 
 def error_text(feedback):
     m = re.search(r"raised (\w+: .*)", feedback, re.S)
@@ -68,9 +68,9 @@ def main():
     out_rows = []
     with open(a.out + "_attempts.csv", "w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f)
-        w.writerow(["编号", "第几次run", "level", "level名称", "轮次", "样本", "分数",
-                    "能解析", "规则通过", "能运行", "结果正确",
-                    "错误类别(自动猜)", "错误类别(人工校对)", "报错原文(英文)", "备注"])
+        w.writerow(["id", "run", "level", "level_name", "round", "sample", "score",
+                    "parses", "rules_pass", "runs", "correct",
+                    "category_guess", "category_checked", "feedback_text", "notes"])
         for i, (run_i, r) in enumerate(rows, 1):
             key = (run_i, r["level"], r["round"])
             sample[key] += 1
@@ -79,19 +79,19 @@ def main():
             out_rows.append((r["level"], cat))
             w.writerow([i, run_i, r["level"], names.get(str(r["level"]), ""), r["round"], sample[key],
                         f'{r["reward"]:.2f}',
-                        *("是" if p.get(k) else "否" for k in ("parses", "rules", "runs", "correct")),
+                        *("yes" if p.get(k) else "no" for k in ("parses", "rules", "runs", "correct")),
                         cat, "", error_text(r["feedback"])[:500], ""])
 
     levels = sorted({lvl for lvl, _ in out_rows}, key=int)
     counts = collections.Counter(out_rows)
     with open(a.out + "_summary.csv", "w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f)
-        w.writerow(["错误类别"] + [f"level {l}" for l in levels] + ["合计"])
+        w.writerow(["category"] + [f"level {l}" for l in levels] + ["total"])
         cats = sorted({c for _, c in out_rows}, key=lambda c: -sum(counts[(l, c)] for l in levels))
         for c in cats:
             n = [counts[(l, c)] for l in levels]
             w.writerow([c] + n + [sum(n)])
-        w.writerow(["合计"] + [sum(counts[(l, c)] for c in cats) for l in levels] + [len(out_rows)])
+        w.writerow(["total"] + [sum(counts[(l, c)] for c in cats) for l in levels] + [len(out_rows)])
 
     print(f"{len(out_rows)} attempts, {run} run(s) -> {a.out}_attempts.csv, {a.out}_summary.csv")
 
