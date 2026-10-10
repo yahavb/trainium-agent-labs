@@ -6,4 +6,5 @@ default-smoke/
 benchmark-console*.log
 default-smoke-console.log
 attempts.jsonl
+comparison-runs/
 run*.log

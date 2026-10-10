@@ -1,12 +1,25 @@
 # Project 1 — The heat-rod agent
 
-**小组共同版本：** [整合说明](TEAM_INTEGRATION.zh-CN.md) ·
-[完整调优过程](TUNING_WALKTHROUGH.zh-CN.md)。
+The integrated team agent is `improved_agent.py`. Optional `--decay-repair` derives
+exponential rates from the model's submitted spatial waves, preserving its coefficients
+and initial expression; it accepts a proposal only after the original checker and held-out
+validation both pass. This is symbolic tool-assisted inference, not model training.
+See [matched optimization results](OPTIMIZATION_RESULTS.md) and the source/attempt artifacts
+under `evidence/decay-repair/`. Historical seat-85 reports describe earlier revisions.
 
-**小组实验入口：** [中文上手指南](TEAM_GUIDE.zh-CN.md) ·
-[原版配置](configs/baseline.json) · [实验反馈配置](configs/structured.json) ·
-[简洁工具配置](configs/concise_tools.json) ·
-[一页说明模板](EXPERIMENT_NOTE.zh-CN.md)。
+```bash
+python improved_agent.py --level 1 --all --samples 2 --workers 2 --tool-steps 1 --decay-repair
+python compare_agents.py --variants improved decay --samples 2 --rounds 3 --max-tokens 1200
+```
+
+`compare_agents.py` runs sequentially, snapshots source, alternates variant order by case,
+keeps the same problem seeds and budgets, and records model-only, executed-original, and
+held-out-validated outcomes separately. `--repeats` repeats the same cases; `improved_agent.py`
+uses `--repeat` to advance problem seeds. `--decay-repair` remains opt-in.
+
+**Team experiments:** [baseline configuration](configs/baseline.json) ·
+[structured-feedback configuration](configs/structured.json) ·
+[concise-tool configuration](configs/concise_tools.json).
 `run_experiments.py` repeats a fixed problem, snapshots the executed code, and saves per-run logs
 and a summary. `structured` feedback is an unmeasured experiment; the original checker is unchanged.
 The concise calculator protocol failed its first live trial and remains opt-in; see

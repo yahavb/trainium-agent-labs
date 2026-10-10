@@ -1,5 +1,9 @@
 # Heat-Rod PDE Agent — seat 85
 
+Historical implementation notes for the `challenge1-improvements` source branch.
+The integrated team version additionally instruments `agent.py` and provides opt-in
+symbolic decay repair; see [current results](OPTIMIZATION_RESULTS.md).
+
 Upstream: https://github.com/yahavb/trainium-agent-labs
 
 Starting revision: `8f1ca41` (the seat checkout). Original files are retained unchanged.

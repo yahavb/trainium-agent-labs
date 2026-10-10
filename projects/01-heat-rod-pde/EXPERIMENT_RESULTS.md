@@ -1,5 +1,8 @@
 # Preliminary live results
 
+These are historical baseline and prompt trials. The subsequent matched tool-repair
+experiment is documented separately in [OPTIMIZATION_RESULTS.md](OPTIMIZATION_RESULTS.md).
+
 The original JSONL traces, configurations, source snapshots, and summaries have now been downloaded
 directly from seat-87 and inspected. The initial comparison contains one run per profile; a subsequent
 batch repeats baseline three times. These small, fixed-seed samples do not establish population solve
