@@ -985,6 +985,10 @@ def failure_key(feedback):
     low = text.lower()
     if "memoryregion" in low or "not callable" in low:
         return "signature.memory_region_called"
+    if "unexpected keyword argument" in low and "src_slice" in low:
+        return "signature.unexpected_keyword_src_slice"
+    if "unexpected keyword argument" in low:
+        return "signature.unexpected_keyword"
     if "missing 1 required positional argument" in low and "dtype" in low:
         return "signature.ndarray_missing_dtype"
     if "unknown dtype" in low:
@@ -1018,6 +1022,8 @@ def ledger_line(feedback):
     evidence = error_context(feedback)
     summary = {
         "signature.memory_region_called": "memory regions called as functions; use buffer=nl.sbuf",
+        "signature.unexpected_keyword_src_slice": "dma_copy does not take src_slice; slice the source tensor directly",
+        "signature.unexpected_keyword": "invalid keyword argument; use the real NKI signature",
         "signature.ndarray_missing_dtype": "nl.ndarray missing dtype",
         "signature.unknown_dtype": "used non-NKI dtype; use nl.float32 or input.dtype, not np.float32",
         "reduction.mean_not_supported": ".mean() used on NKI tensor",
@@ -1057,6 +1063,10 @@ def known_invalid_patterns(failures):
     checks = [
         ("memoryregion" in text or "not callable" in text,
          "do not call nl.sbuf/nl.psum/nl.shared_hbm; pass them as buffer=nl.sbuf"),
+        ("unexpected keyword argument" in text and "src_slice" in text,
+         "do not pass src_slice= to dma_copy; slice the source tensor directly in src=..."),
+        ("unexpected keyword argument" in text,
+         "remove unsupported keyword arguments and use the real NKI function signature"),
         ("missing 1 required positional argument" in text and "dtype" in text,
          "add explicit dtype=... to every nl.ndarray allocation"),
         ("unknown dtype" in text,
@@ -1323,6 +1333,7 @@ def repair_prompt(level, source, feedback, tried=None, best_reward=None, current
     checker message worse.
     """
     compact = compact_feedback(feedback)
+    evidence = error_context(feedback)
     category, instruction = distill_failure(compact)
     card_names = retrieved_card_names(level, category, feedback=compact, source=source, max_cards=10)
     ledger = compact_ledger(tried or [])
