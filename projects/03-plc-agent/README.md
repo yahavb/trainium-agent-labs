@@ -1,5 +1,3 @@
-https://github.com/mohamed-ela/AMAZON-Hack-CHIP-26-ME2890/blob/main/README.md
-
 # PLC Agent — Two Agents and a Compiler Between Them
 
 **Hack the Chip — NYU × Annapurna Labs, October 2026**

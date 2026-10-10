@@ -1,0 +1,38 @@
+{
+  "model": "Qwen/Qwen3-8B",
+  "mode": "critic-bootstrap",
+  "runs": 2,
+  "specs_per_run": 2,
+  "seed": 99,
+  "solved_per_run": [
+    2,
+    1
+  ],
+  "solve_rate_mean": 0.75,
+  "solve_rate_min": 0.5,
+  "solve_rate_max": 1.0,
+  "first_round_solve_rate": 0.0,
+  "mean_rounds_when_solved": 2.67,
+  "generator_calls_total": 48,
+  "generator_calls_per_solve": 16.0,
+  "mean_best_score": 0.825,
+  "first_half": {
+    "first_round_rate": 0.0,
+    "mean_rounds": 3
+  },
+  "second_half": {
+    "first_round_rate": 0.0,
+    "mean_rounds": 3
+  },
+  "per_level": {
+    "4": {
+      "specs": 4,
+      "solved": 3,
+      "first_round": 0
+    }
+  },
+  "per_sample_solved": {
+    "0": "2/2",
+    "1": "1/2"
+  }
+}
