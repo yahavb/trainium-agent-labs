@@ -1,0 +1,9 @@
+﻿family,mode,description,level 5,level 6,level 7,total,share of failures,stuck rate
+index arithmetic,broadcast,assigns a value of the wrong shape,15,24,19,58,69.0%,0%
+silent wrong numbers,numeric_mismatch,"runs, numbers wrong",4,1,4,9,10.7%,71%
+tiling rules,partition_over_128,a tile or contraction larger than 128 partitions,1,2,1,4,4.8%,0%
+silent wrong numbers,too_much_traffic,correct but over the level's HBM byte bar,1,2,1,4,4.8%,0%
+index arithmetic,out_of_bounds,indexes past the end of a tensor,0,3,0,3,3.6%,50%
+index arithmetic,copy_size_mismatch,copies between tiles of different sizes,1,0,1,2,2.4%,
+API,invented_name,calls an NKI function or attribute that does not exist,2,0,0,2,2.4%,
+memory model,wrong_buffer,a tile in the wrong memory (SBUF / PSUM / HBM),0,0,2,2,2.4%,0%

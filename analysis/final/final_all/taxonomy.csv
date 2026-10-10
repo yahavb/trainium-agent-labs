@@ -1,0 +1,12 @@
+﻿family,mode,description,level 1,level 2,level 3,level 4,total,share of failures,stuck rate
+index arithmetic,copy_size_mismatch,copies between tiles of different sizes,2,23,4,0,29,34.1%,83%
+index arithmetic,broadcast,assigns a value of the wrong shape,5,0,11,10,26,30.6%,60%
+index arithmetic,axis_mismatch,an operation given a tile with more axes than it takes,8,0,0,0,8,9.4%,0%
+index arithmetic,out_of_bounds,indexes past the end of a tensor,0,5,0,0,5,5.9%,67%
+other,other,,3,1,0,0,4,4.7%,0%
+rules / format,truncated,the answer hit max_tokens and was cut off (finish=length); the checker then sees broken code,3,1,0,0,4,4.7%,
+silent wrong numbers,numeric_mismatch,"runs, numbers wrong",2,1,0,0,3,3.5%,0%
+memory model,python_op_on_tile,"Python arithmetic (+=, *) on a tile",2,0,0,0,2,2.4%,
+tiling rules,tile_1d,a 1-D tile (every SBUF/PSUM tile needs 2 dims),2,0,0,0,2,2.4%,
+tiling rules,partition_over_128,a tile or contraction larger than 128 partitions,0,0,0,1,1,1.2%,0%
+memory model,wrong_buffer,a tile in the wrong memory (SBUF / PSUM / HBM),0,0,1,0,1,1.2%,

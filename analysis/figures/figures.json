@@ -1,5 +1,5 @@
 {
- "note": "logs pulled by 17:50 (v8.2 L3/L4: only the runs pulled so far); final logs pending",
+ "note": "final logs (analysis/logs/final, pushed 18:27); final version: v8.2 runs on L1/L3/L4, v8.3 on L2",
  "solved": {
   "baseline": {
    "1": [
@@ -39,38 +39,38 @@
   },
   "v8.2": {
    "1": [
-    6,
-    6
+    7,
+    7
    ],
    "2": [
     5,
     9
    ],
    "3": [
-    1,
-    1
+    5,
+    5
    ],
    "4": [
-    2,
-    2
+    5,
+    5
    ]
   },
-  "final (v8.2 + v8.3 L2)": {
+  "final version": {
    "1": [
-    6,
-    6
+    7,
+    7
    ],
    "2": [
-    8,
-    10
+    9,
+    11
    ],
    "3": [
-    1,
-    1
+    5,
+    5
    ],
    "4": [
-    2,
-    2
+    5,
+    5
    ]
   }
  },
@@ -78,6 +78,7 @@
   "1": {
    "rounds": [
     0,
+    2,
     2,
     2,
     2,
@@ -89,14 +90,16 @@
     9,
     9,
     9,
+    9,
     17,
     29
    ],
-   "runs": 6
+   "runs": 7
   },
   "2": {
    "rounds": [
     0,
+    1,
     1,
     1,
     1,
@@ -110,78 +113,93 @@
     5,
     5,
     5,
+    5,
     9,
     11,
     15,
     19
    ],
-   "runs": 10
+   "runs": 11
   },
   "3": {
    "rounds": [
-    0
+    0,
+    0,
+    0,
+    0,
+    2
    ],
    "attempts": [
-    1
+    1,
+    1,
+    1,
+    1,
+    9
    ],
-   "runs": 1
+   "runs": 5
   },
   "4": {
    "rounds": [
+    2,
+    2,
+    2,
     2,
     2
    ],
    "attempts": [
     9,
+    9,
+    9,
+    9,
     9
    ],
-   "runs": 2
+   "runs": 5
   }
  },
  "modes": {
   "baseline": {
    "copy_size_mismatch": 196,
    "invented_name": 162,
+   "broadcast": 18,
    "partition_over_128": 110,
    "out_of_bounds": 96,
    "reshape": 98,
-   "broadcast": 18,
    "tile_1d": 55,
-   "wrong_signature": 42,
+   "numeric_mismatch": 14,
    "failed attempts": 837
   },
   "v7": {
    "copy_size_mismatch": 12,
    "invented_name": 34,
+   "broadcast": 20,
    "partition_over_128": 20,
    "out_of_bounds": 20,
    "reshape": 0,
-   "broadcast": 20,
    "tile_1d": 0,
-   "wrong_signature": 12,
+   "numeric_mismatch": 0,
    "failed attempts": 167
   },
   "v8.2": {
-   "copy_size_mismatch": 138,
+   "copy_size_mismatch": 140,
    "invented_name": 7,
-   "partition_over_128": 2,
+   "broadcast": 74,
+   "partition_over_128": 5,
    "out_of_bounds": 4,
    "reshape": 1,
-   "broadcast": 29,
-   "tile_1d": 6,
-   "wrong_signature": 5,
-   "failed attempts": 296
+   "tile_1d": 7,
+   "numeric_mismatch": 35,
+   "failed attempts": 360
   },
-  "final (v8.2 + v8.3 L2)": {
-   "copy_size_mismatch": 104,
-   "invented_name": 10,
-   "partition_over_128": 2,
+  "final version": {
+   "copy_size_mismatch": 111,
+   "invented_name": 11,
+   "broadcast": 76,
+   "partition_over_128": 5,
    "out_of_bounds": 5,
    "reshape": 1,
-   "broadcast": 31,
-   "tile_1d": 6,
-   "wrong_signature": 5,
-   "failed attempts": 253
+   "tile_1d": 7,
+   "numeric_mismatch": 17,
+   "failed attempts": 324
   }
  },
  "files": {
@@ -196,47 +214,51 @@
    "../trainium-agent-labs/runs/seat-119/Ev7_L1/Ev7_L1.jsonl"
   ],
   "v8.2": [
-   "../trainium-agent-labs/runs/seat-116/v82/v82_L2_s116.jsonl",
-   "../trainium-agent-labs/runs/seat-116/v82/v82_L3_s116.jsonl",
-   "../trainium-agent-labs/runs/seat-117/v82/v82_L1_s117.jsonl",
-   "../trainium-agent-labs/runs/seat-117/v82/v82_L1b_s117.jsonl",
-   "../trainium-agent-labs/runs/seat-117/v82/v82_L1c_s117.jsonl",
-   "../trainium-agent-labs/runs/seat-117/v82x_partial/v82x_L1_s117.jsonl",
-   "../trainium-agent-labs/runs/seat-117/v82x_partial/v82x_L2_s117.jsonl",
-   "../trainium-agent-labs/runs/seat-118/stopped_1713/v82x_L1_s118.jsonl",
-   "../trainium-agent-labs/runs/seat-118/stopped_1713/v82x_L1b_s118.jsonl",
-   "../trainium-agent-labs/runs/seat-118/v82/v82_L1_s118.jsonl",
-   "../trainium-agent-labs/runs/seat-118/v82/v82_L1b_s118.jsonl",
-   "../trainium-agent-labs/runs/seat-118/v82_L2/v82_L2_s118.jsonl",
-   "../trainium-agent-labs/runs/seat-118/v82_L2/v82x_L2_s118.jsonl",
-   "../trainium-agent-labs/runs/seat-119/stopped_1713/v82x_L1_s119.jsonl",
-   "../trainium-agent-labs/runs/seat-119/v82/v82_L2_s119.jsonl",
-   "../trainium-agent-labs/runs/seat-119/v82/v82_L4_s119.jsonl",
-   "../trainium-agent-labs/runs/seat-119/v82/v82_L4b_s119.jsonl",
-   "../trainium-agent-labs/runs/seat-119/v82/v82_L4c_s119.jsonl",
-   "../trainium-agent-labs/runs/seat-119/v82x_partial/v82x_L1_s119.jsonl"
+   "analysis/logs/final/seat-116/v82_L2_s116.jsonl",
+   "analysis/logs/final/seat-116/v82_L3_s116.jsonl",
+   "analysis/logs/final/seat-117/v82_L1_s117.jsonl",
+   "analysis/logs/final/seat-117/v82_L1b_s117.jsonl",
+   "analysis/logs/final/seat-117/v82_L1c_s117.jsonl",
+   "analysis/logs/final/seat-117/v82x_L1_s117.jsonl",
+   "analysis/logs/final/seat-117/v82x_L2_s117.jsonl",
+   "analysis/logs/final/seat-118/v82_L1_s118.jsonl",
+   "analysis/logs/final/seat-118/v82_L1b_s118.jsonl",
+   "analysis/logs/final/seat-118/v82_L2_s118.jsonl",
+   "analysis/logs/final/seat-118/v82_L3_s118.jsonl",
+   "analysis/logs/final/seat-118/v82x_L1_s118.jsonl",
+   "analysis/logs/final/seat-118/v82x_L1b_s118.jsonl",
+   "analysis/logs/final/seat-118/v82x_L2_s118.jsonl",
+   "analysis/logs/final/seat-119/v82_L2_s119.jsonl",
+   "analysis/logs/final/seat-119/v82_L3d_s119.jsonl",
+   "analysis/logs/final/seat-119/v82_L4_s119.jsonl",
+   "analysis/logs/final/seat-119/v82_L4b_s119.jsonl",
+   "analysis/logs/final/seat-119/v82_L4c_s119.jsonl",
+   "analysis/logs/final/seat-119/v82x_L1_s119.jsonl"
   ],
-  "final (v8.2 + v8.3 L2)": [
-   "../trainium-agent-labs/runs/seat-116/v82/v82_L3_s116.jsonl",
-   "../trainium-agent-labs/runs/seat-117/v82/v82_L1_s117.jsonl",
-   "../trainium-agent-labs/runs/seat-117/v82/v82_L1b_s117.jsonl",
-   "../trainium-agent-labs/runs/seat-117/v82/v82_L1c_s117.jsonl",
-   "../trainium-agent-labs/runs/seat-117/v82x_partial/v82x_L1_s117.jsonl",
-   "../trainium-agent-labs/runs/seat-117/v83/v83_L2_s117.jsonl",
-   "../trainium-agent-labs/runs/seat-117/v83/v83_L2b_s117.jsonl",
-   "../trainium-agent-labs/runs/seat-117/v83/v83_L2c_s117.jsonl",
-   "../trainium-agent-labs/runs/seat-117/v83/v83_L2d_s117.jsonl",
-   "../trainium-agent-labs/runs/seat-118/stopped_1713/v82x_L1_s118.jsonl",
-   "../trainium-agent-labs/runs/seat-118/stopped_1713/v82x_L1b_s118.jsonl",
-   "../trainium-agent-labs/runs/seat-118/v82/v82_L1_s118.jsonl",
-   "../trainium-agent-labs/runs/seat-118/v82/v82_L1b_s118.jsonl",
-   "../trainium-agent-labs/runs/seat-119/stopped_1713/v82x_L1_s119.jsonl",
-   "../trainium-agent-labs/runs/seat-119/stopped_1713/v83_L2b_s119.jsonl",
-   "../trainium-agent-labs/runs/seat-119/v82/v82_L4_s119.jsonl",
-   "../trainium-agent-labs/runs/seat-119/v82/v82_L4b_s119.jsonl",
-   "../trainium-agent-labs/runs/seat-119/v82/v82_L4c_s119.jsonl",
-   "../trainium-agent-labs/runs/seat-119/v82x_partial/v82x_L1_s119.jsonl",
-   "../trainium-agent-labs/runs/seat-119/v83/v83_L2_s119.jsonl"
+  "final version": [
+   "analysis/logs/final/seat-116/v82_L3_s116.jsonl",
+   "analysis/logs/final/seat-117/v82_L1_s117.jsonl",
+   "analysis/logs/final/seat-117/v82_L1b_s117.jsonl",
+   "analysis/logs/final/seat-117/v82_L1c_s117.jsonl",
+   "analysis/logs/final/seat-117/v82x_L1_s117.jsonl",
+   "analysis/logs/final/seat-117/v83_L2_s117.jsonl",
+   "analysis/logs/final/seat-117/v83_L2b_s117.jsonl",
+   "analysis/logs/final/seat-117/v83_L2c_s117.jsonl",
+   "analysis/logs/final/seat-117/v83_L2d_s117.jsonl",
+   "analysis/logs/final/seat-118/v82_L1_s118.jsonl",
+   "analysis/logs/final/seat-118/v82_L1b_s118.jsonl",
+   "analysis/logs/final/seat-118/v82_L3_s118.jsonl",
+   "analysis/logs/final/seat-118/v82x_L1_s118.jsonl",
+   "analysis/logs/final/seat-118/v82x_L1b_s118.jsonl",
+   "analysis/logs/final/seat-119/v82_L3d_s119.jsonl",
+   "analysis/logs/final/seat-119/v82_L4_s119.jsonl",
+   "analysis/logs/final/seat-119/v82_L4b_s119.jsonl",
+   "analysis/logs/final/seat-119/v82_L4c_s119.jsonl",
+   "analysis/logs/final/seat-119/v82x_L1_s119.jsonl",
+   "analysis/logs/final/seat-119/v83_L2_s119.jsonl",
+   "analysis/logs/final/seat-119/v83_L2b_s119.jsonl",
+   "analysis/logs/final/seat-119/v83_L2c_s119.jsonl",
+   "analysis/logs/final/seat-119/v83_L2d_s119.jsonl"
   ]
  },
  "left_out": {
@@ -247,13 +269,12 @@
   ],
   "v8.2": [
    "v82x_L1_s117.jsonl run 0 L1",
-   "v82x_L1_s119.jsonl run 0 L1",
    "v82x_L1_s119.jsonl run 0 L1"
   ],
-  "final (v8.2 + v8.3 L2)": [
+  "final version": [
    "v82x_L1_s117.jsonl run 0 L1",
    "v82x_L1_s119.jsonl run 0 L1",
-   "v82x_L1_s119.jsonl run 0 L1"
+   "v83_L2d_s119.jsonl run 0 L2"
   ]
  }
 }

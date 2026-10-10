@@ -1,0 +1,3 @@
+﻿family,mode,description,level 7,total,share of failures,stuck rate
+silent wrong numbers,numeric_mismatch,"runs, numbers wrong",36,36,90.0%,80%
+silent wrong numbers,too_much_traffic,correct but over the level's HBM byte bar,4,4,10.0%,100%
