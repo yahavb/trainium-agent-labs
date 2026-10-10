@@ -46,6 +46,7 @@ MIN_ANSWER_TOKENS = 2500
 # never mistaken for the same experiment.
 TEMPERATURE = 0.6
 TOP_P = 0.95
+EXPLORE_TEMPERATURES = [0.6, 0.8, 1.0, 1.2]     # one per sample under --explore
 
 REASONING_KEYS = ("reasoning", "reasoning_content")
 
@@ -59,8 +60,11 @@ REASONING_KEYS = ("reasoning", "reasoning_content")
 WEIGHTS = dict(parses=0.1, rules=0.2, runs=0.2, correct=0.5)
 
 
-def grade(source, level):
-    """Returns (reward, parts, feedback). Feedback is an INSTRUCTION, never just a verdict."""
+def grade(source, level, fragments=False):
+    """Returns (reward, parts, feedback). Feedback is an INSTRUCTION, never just a verdict.
+
+    fragments=True appends a checked example kernel to the feedback for the errors that have one.
+    """
     parts = dict(parses=False, rules=False, runs=False, correct=False)
 
     if not source.strip():
@@ -97,12 +101,12 @@ def grade(source, level):
     with os.fdopen(fd, "w") as f:
         f.write(source)
     try:
-        return _grade_file(path, level, parts)
+        return _grade_file(path, level, parts, fragments)
     finally:
         os.unlink(path)
 
 
-def _grade_file(path, level, parts):
+def _grade_file(path, level, parts, fragments=False):
     """The part of grade() that needs the kernel on disk: import it, then simulate every shape."""
     spec = nkibench.LEVELS[level]
     try:
@@ -142,8 +146,9 @@ def _grade_file(path, level, parts):
             return (sum(WEIGHTS[k] for k, v in parts.items() if v), parts,
                     f"CANNOT SIMULATE: {e}")
         except Exception as e:
+            raised = f"raised {type(e).__name__}: {e}"
             failures.append((nkibench.label(case, level),
-                             enrich(f"raised {type(e).__name__}: {e}")))
+                             enrich(raised) + (fragment_note(raised, level) if fragments else "")))
             continue
         parts["runs"] = True
         m = (nkibench.check_inputs_untouched(before, args)
@@ -221,6 +226,136 @@ def copy_kernel(a):
     return out
 
 """
+
+
+def api_card(level):
+    """The card trimmed to what the level uses (--level-cards).
+
+    Matmul is a third of the card, and it leaks: on seat-38, 12 of 84 level-1 pooling attempts called
+    nisa.nc_matmul. Levels 1 and 2 get the card without it; matmul levels get all of it.
+    """
+    if level >= 3:
+        return API_CARD
+    text = "\n".join(l for l in API_CARD.split("\n") if "nisa.nc_matmul(dst=" not in l)
+    return text[:text.index("nisa.nc_matmul has strict")] + text[text.index("Slice tiles with"):]
+
+
+# Code shown with a failure, only when that failure comes back (--fragments). A chunked-copy example
+# placed in EVERY prompt once made every level worse (STATE.md: level 2 fell from 2 of 5 to 0 of 5),
+# so each fragment answers one specific error, and each is a smaller kernel than the level's own: it
+# shows the pattern, not the answer. `python agent.py --check-fragments` runs every one through
+# nki.simulate, so the prompt never teaches NKI that does not work.
+FRAGMENTS = [
+    dict(name="scale",
+         when=r"module 'nki\.(?:isa|language)' has no attribute "
+              r"'(?:multiply|mul|scale|divide|div|mean|average)'",
+         note="Arithmetic on a whole tile is nisa.tensor_scalar with an op from nki.language, "
+              "for example scaling a tile by 0.25:",
+         entry="scale_kernel", shape=(32, 16), expect=lambda a: a * 0.25,
+         code="""\
+@nki.jit
+def scale_kernel(a):
+    out = nl.ndarray(a.shape, dtype=a.dtype, buffer=nl.shared_hbm)
+    t = nl.ndarray(a.shape, dtype=a.dtype, buffer=nl.sbuf)
+    nisa.dma_copy(dst=t, src=a)
+    s = nl.ndarray(a.shape, dtype=a.dtype, buffer=nl.sbuf)
+    nisa.tensor_scalar(dst=s, data=t, op0=nl.multiply, operand0=0.25)
+    nisa.dma_copy(dst=out, src=s)
+    return out"""),
+    dict(name="block",
+         when=r"dma_copy requires src and dst to have the same number of elements"
+              r"|cannot reshape array of size",
+         note="To work on part of a tensor, allocate a tile with exactly the part's shape and slice "
+              "the source to match. Never reshape. For example, copying rows 128-255 and columns 32-95:",
+         entry="block_copy_kernel", shape=(256, 96), expect=lambda a: a[128:256, 32:96],
+         code="""\
+@nki.jit
+def block_copy_kernel(a):
+    out = nl.ndarray((128, 64), dtype=a.dtype, buffer=nl.shared_hbm)
+    t = nl.ndarray((128, 64), dtype=a.dtype, buffer=nl.sbuf)   # exactly the slice's shape
+    nisa.dma_copy(dst=t, src=a[128:256, 32:96])
+    nisa.dma_copy(dst=out, src=t)
+    return out"""),
+    dict(name="chunks",
+         when=r"partition dimension \d+ exceeds maximum",
+         note="A tile holds at most 128 rows, so a taller tensor is moved in 128-row chunks, one tile "
+              "per chunk, for example copying a 384-row tensor:",
+         entry="chunked_copy_kernel", shape=(384, 64), expect=lambda a: a,
+         code="""\
+@nki.jit
+def chunked_copy_kernel(a):
+    rows, cols = a.shape
+    out = nl.ndarray(a.shape, dtype=a.dtype, buffer=nl.shared_hbm)
+    for i in nl.affine_range(rows // 128):
+        t = nl.ndarray((128, cols), dtype=a.dtype, buffer=nl.sbuf)
+        nisa.dma_copy(dst=t, src=a[i * 128:(i + 1) * 128, 0:cols])
+        nisa.dma_copy(dst=out[i * 128:(i + 1) * 128, 0:cols], src=t)
+    return out"""),
+    dict(name="rows",
+         when=r"must have at least 2 dimensions",
+         note="Every tile is 2-D, rows first. A result with one value per row has shape (rows, 1), "
+              "for example summing each row:",
+         entry="row_sum_kernel", shape=(64, 32), expect=lambda a: a.sum(axis=1, keepdims=True),
+         code="""\
+@nki.jit
+def row_sum_kernel(a):
+    rows, cols = a.shape
+    out = nl.ndarray((rows, 1), dtype=a.dtype, buffer=nl.shared_hbm)
+    t = nl.ndarray(a.shape, dtype=a.dtype, buffer=nl.sbuf)
+    nisa.dma_copy(dst=t, src=a)
+    s = nl.sum(t, axis=[1], keepdims=True)
+    o = nl.ndarray((rows, 1), dtype=a.dtype, buffer=nl.sbuf)
+    nisa.tensor_copy(dst=o, src=s)
+    nisa.dma_copy(dst=out, src=o)
+    return out"""),
+    dict(name="columns", level=2,
+         when=r"Out-of-bound access for tensor .* on dimension 0",
+         note="shape2D = (F1, F2) describes the F1*F2 values inside each row. The first axis (rows) is "
+              "never indexed with F1 or F2: keep it whole with `:` and move along the second axis "
+              "with nl.ds(start, size). For example, swapping the two columns of every row:",
+         entry="column_swap_kernel", shape=(32, 2), expect=lambda a: a[:, ::-1],
+         code="""\
+@nki.jit
+def column_swap_kernel(a):
+    out = nl.ndarray(a.shape, dtype=a.dtype, buffer=nl.shared_hbm)
+    t = nl.ndarray(a.shape, dtype=a.dtype, buffer=nl.sbuf)
+    nisa.dma_copy(dst=t, src=a)
+    s = nl.ndarray(a.shape, dtype=a.dtype, buffer=nl.sbuf)
+    nisa.tensor_copy(dst=s[:, nl.ds(0, 1)], src=t[:, nl.ds(1, 1)])
+    nisa.tensor_copy(dst=s[:, nl.ds(1, 1)], src=t[:, nl.ds(0, 1)])
+    nisa.dma_copy(dst=out, src=s)
+    return out"""),
+]
+
+FRAGMENT_IMPORTS = "import nki\nimport nki.isa as nisa\nimport nki.language as nl\n\n"
+
+
+def fragment_note(error_text, level):
+    """The checked example for this error, if there is one."""
+    for f in FRAGMENTS:
+        if f.get("level", level) == level and re.search(f["when"], error_text):
+            return f"\n{f['note']}\n```python\n{f['code']}\n```"
+    return ""
+
+
+def check_fragments():
+    """Run every fragment through nki.simulate against NumPy. Returns 0 if all of them are right."""
+    import nki
+    rc = 0
+    for f in FRAGMENTS:
+        ns = {}
+        exec(compile(FRAGMENT_IMPORTS + f["code"], f"<fragment {f['name']}>", "exec"), ns)
+        a = np.random.default_rng(0).standard_normal(f["shape"]).astype(np.float32)
+        try:
+            run, _ = nkibench._simulator(nki, ns[f["entry"]])
+            got = np.asarray(run(a.copy()))
+            ok = got.shape == f["expect"](a).shape and np.allclose(got, f["expect"](a), atol=1e-4)
+            why = "" if ok else f"got shape {got.shape}, values off by {np.abs(got - f['expect'](a)).max():.3g}"
+        except Exception as e:
+            ok, why = False, f"raised {type(e).__name__}: {str(e)[:120]}"
+        rc |= 0 if ok else 1
+        print(f"  fragment {f['name']:<8} {'ok' if ok else 'FAIL ' + why}")
+    return rc
 
 
 def available_names(dotted):
@@ -365,7 +500,7 @@ def enrich(error_text):
                 f"`{m.group(2)}`. Use the nl/nisa functions instead.")
     return error_text
 
-def first_prompt(level, terse=0):
+def first_prompt(level, terse=0, cards=False):
     """Deliberately short, and it does NOT list the rules.
 
     Measured twice in this repo: hand a model an enumerated list of prohibitions and it audits
@@ -398,16 +533,19 @@ def first_prompt(level, terse=0):
                 f"nisa.dma_copy(dst=, src=), loop with nl.affine_range(n). A tile's partition "
                 f"dimension is at most {nkibench.PMAX}.\n{mm}\n"
                 f"Reply with one python code block.")
+    mm_limits = ("" if cards and level < 3 else
+                 f" For matmul, the stationary free dimension is at most "
+                 f"{nkibench.GEMM_STATIONARY_FMAX} and the moving free dimension at most "
+                 f"{nkibench.GEMM_MOVING_FMAX}.")
     return (
         f"Write an AWS Neuron NKI kernel.\n\n"
         f"Operation: {s['op']}\n"
         f"Entry point: a function named `{s['entry']}`, decorated with `@nki.jit`.\n"
         f"It must compute exactly what this NumPy reference computes:\n\n"
         f"{inspect.getsource(s['ref'])}\n"
-        f"Hardware limits: a tile's partition dimension is at most {nkibench.PMAX}. For matmul, "
-        f"the stationary free dimension is at most {nkibench.GEMM_STATIONARY_FMAX} and the "
-        f"moving free dimension at most {nkibench.GEMM_MOVING_FMAX}.\n\n"
-        f"Import nki, nki.language as nl, and nki.isa as nisa.\n\n{API_CARD}\n\n"
+        f"Hardware limits: a tile's partition dimension is at most {nkibench.PMAX}.{mm_limits}\n\n"
+        f"Import nki, nki.language as nl, and nki.isa as nisa.\n\n"
+        f"{api_card(level) if cards else API_CARD}\n\n"
         f"Reply with ONE python code block containing the imports and the function. No prose.")
 
 
@@ -423,6 +561,29 @@ def repair_prompt(level, source, feedback):
         f"A checker reports:\n{feedback}\n\n"
         f"Change exactly what the checker names and keep everything else identical. Reply with "
         f"ONE python code block.")
+
+
+def rethink_prompt(level, source, feedback):
+    """For when every sample hands back the kernel it was given (--echo-break, first time).
+
+    Measured on the 8K baseline: level 4's best kernel came back byte-identical three rounds
+    running. "Keep everything else identical" plus unchanged feedback leaves the model nothing to
+    change, so this drops that line, says the approach is what fails, and asks for a different one.
+    """
+    return (
+        f"This NKI kernel for {nkibench.LEVELS[level]['op']} fails, and your last answer returned "
+        f"it unchanged:\n\n```python\n{source}\n```\n\n"
+        f"A checker reports:\n{feedback}\n\n"
+        f"Repeating it cannot pass. Write the kernel a different way, so that this failure cannot "
+        f"happen. Reply with ONE python code block.")
+
+
+def fresh_prompt(level, terse, tried, cards=False):
+    """For a second echo in a row: start over from the task, without the old code to anchor on,
+    and list what has already failed."""
+    ledger = "\n".join(f"- {t[:160]}" for t in dict.fromkeys(tried))
+    return (first_prompt(level, terse, cards)
+            + f"\n\nEarlier attempts at this failed like this; do not repeat them:\n{ledger}")
 
 
 CODE_BLOCK = re.compile(r"```(?:python)?\s*(.*?)```", re.S)
@@ -449,8 +610,9 @@ def extract_code(text):
 
 # ---------------------------------------------------------------- the model
 
-def ask(a, prompt):
+def ask(a, prompt, temperature=None):
     import httpx
+    temperature = a.temperature if temperature is None else temperature
     # enable_thinking=False matters. Qwen3 reasons before answering, and with thinking on it
     # spent the whole budget there: the first cluster run returned "No code came back" at 54.7s
     # over and over, plus truncated fragments (invalid decimal literal, unterminated string).
@@ -462,9 +624,9 @@ def ask(a, prompt):
         print(f"    (prompt is ~{est_prompt} tokens, so the answer budget is capped at {budget} "
               f"to stay inside the {a.context}-token context)")
     body = dict(model=a.model, messages=[{"role": "user", "content": prompt}],
-                max_tokens=budget, temperature=TEMPERATURE, top_p=TOP_P,
+                max_tokens=budget, temperature=temperature, top_p=a.top_p,
                 chat_template_kwargs={"enable_thinking": a.think})
-    meta = dict(max_tokens=budget, error=None)
+    meta = dict(max_tokens=budget, temperature=temperature, top_p=a.top_p, error=None)
     t0 = time.perf_counter()
     # One failed request used to end the whole run, losing every later level and the --repeat
     # summary. Server faults and timeouts are retried after a pause; a 4xx is this request's own
@@ -515,9 +677,17 @@ def ask(a, prompt):
 
 
 def ask_parallel(a, prompt, n):
+    """n samples of one prompt, at once. With --temperatures each sample gets its own temperature.
+
+    At 0.6 / top_p 0.95 the samples were byte-identical in most rounds of the 8K baseline, and its
+    runs replayed each other, so --samples 4 paid four times for one answer. A spread of
+    temperatures is the cheapest way to make the samples differ.
+    """
     import concurrent.futures as cf
+    temps = a.temperatures or [a.temperature]
     with cf.ThreadPoolExecutor(max_workers=n) as ex:
-        return [f.result() for f in [ex.submit(ask, a, prompt) for _ in range(n)]]
+        futures = [ex.submit(ask, a, prompt, temps[i % len(temps)]) for i in range(n)]
+        return [f.result() for f in futures]
 
 
 def server_context(a):
@@ -563,10 +733,11 @@ def offline_answers(level, n, rnd):
 def solve(a, level, log, run=0):
     print(f"\n=========== level {level}: {nkibench.LEVELS[level]['op']} ===========")
     terse = a.terse
-    prompt = first_prompt(level, terse)
+    prompt = first_prompt(level, terse, a.level_cards)
     best = (0.0, None, "")
     tried, streak, seen = [], 0, {}
     latest = ("", "")
+    sent_code, echoes = None, 0      # the kernel inside the current prompt; echo rounds in a row
     for rnd in range(a.rounds):
         t0 = time.perf_counter()
         replies = ([(r, {}) for r in offline_answers(level, a.samples, rnd)] if a.offline
@@ -575,7 +746,7 @@ def solve(a, level, log, run=0):
         for sample, (reply, meta) in enumerate(replies):
             src = extract_code(reply)
             t1 = time.perf_counter()
-            reward, parts, feedback = grade(src, level)
+            reward, parts, feedback = grade(src, level, a.fragments)
             grade_seconds = round(time.perf_counter() - t1, 2)
             graded.append((reward, src, feedback, parts))
             # Enough to rebuild any table in the write-up without guessing: which run and sample,
@@ -583,7 +754,8 @@ def solve(a, level, log, run=0):
             # fingerprint of the code so identical samples are visible at a glance.
             log.write(json.dumps(dict(
                 run=run, level=level, round=rnd, sample=sample, reward=reward, parts=parts,
-                model=a.model, temperature=TEMPERATURE, top_p=TOP_P, context=a.context,
+                model=a.model, context=a.context, echo_break=a.echo_break,
+                fragments=a.fragments, level_cards=a.level_cards,
                 prompt_chars=len(prompt), reply_chars=len(reply), **meta,
                 grade_seconds=grade_seconds, code_sha=hashlib.sha1(src.encode()).hexdigest()[:12],
                 code=src, feedback=feedback)) + "\n")
@@ -630,6 +802,21 @@ def solve(a, level, log, run=0):
                 print(f"    {n}x  {f[:110]}")
             return best[0], rnd + 1
         tried.append(top[2])
+        returned = {g[1].strip() for g in graded if g[1].strip()}
+        if a.echo_break and sent_code is not None and returned == {sent_code.strip()}:
+            # Every sample handed back the kernel it was given. Resending a prompt that asks for
+            # one named change would get the same kernel again, so change what is asked.
+            echoes += 1
+            if echoes == 1:
+                prompt, sent_code = rethink_prompt(level, latest[0], latest[1]), latest[0]
+                print("  every sample returned the kernel it was given; asking for a different "
+                      "approach")
+            else:
+                prompt, sent_code = fresh_prompt(level, terse, tried, a.level_cards), None
+                print("  echoed again; starting over from the task, with the failures listed and "
+                      "without the old kernel")
+            continue
+        echoes = 0
         repeats = streak
         if repeats >= 2 and (best[1] or "").strip():
             # Sampling on this endpoint is greedy, so an unchanged prompt returns an unchanged
@@ -639,6 +826,7 @@ def solve(a, level, log, run=0):
             prompt = (repair_prompt(level, latest[0], latest[1])
                       + f"\n\nThese approaches have already failed, so do something different:\n"
                         f"{ledger}")
+            sent_code = latest[0]
             print(f"  same failure {repeats}x — adding a ledger of {len(set(tried))} failed "
                   f"attempts to break the repeat")
             continue
@@ -647,10 +835,10 @@ def solve(a, level, log, run=0):
             # 202-character prompt and, under greedy sampling, the identical non-answer six
             # rounds running. Shorten and re-ask instead.
             terse = min(terse + 1, 2)
-            prompt = first_prompt(level, terse)
+            prompt, sent_code = first_prompt(level, terse, a.level_cards), None
             print(f"  no code yet, so re-asking with a shorter prompt (terseness {terse})")
         else:
-            prompt = repair_prompt(level, latest[0], latest[1])
+            prompt, sent_code = repair_prompt(level, latest[0], latest[1]), latest[0]
     print(f"  not solved in {a.rounds} rounds; best reward {best[0]:.2f}")
     return best[0], a.rounds
 
@@ -684,10 +872,33 @@ def main():
     ap.add_argument("--retries", type=int, default=3,
                     help="retries for a failed or timed-out request before it is logged as an "
                          "attempt that returned no code")
+    # Step 2 levers. All off by default, so the default run stays the baseline and each lever can
+    # be measured on its own. --explore turns on all four.
+    ap.add_argument("--temperature", type=float, default=TEMPERATURE)
+    ap.add_argument("--top-p", type=float, default=TOP_P)
+    ap.add_argument("--temperatures", type=lambda s: [float(x) for x in s.split(",")],
+                    help="one temperature per sample, e.g. 0.6,0.8,1.0,1.2 (overrides --temperature)")
+    ap.add_argument("--echo-break", action="store_true",
+                    help="when every sample returns the kernel it was given, ask for a different "
+                         "approach, then start over")
+    ap.add_argument("--fragments", action="store_true",
+                    help="show a checked example kernel with the errors that have one")
+    ap.add_argument("--level-cards", action="store_true",
+                    help="trim the API card to what the level uses (no matmul for levels 1-2)")
+    ap.add_argument("--explore", action="store_true",
+                    help=f"all four: --temperatures {','.join(map(str, EXPLORE_TEMPERATURES))} "
+                         f"--echo-break --fragments --level-cards")
+    ap.add_argument("--check-fragments", action="store_true",
+                    help="run every example kernel through nki.simulate, then exit")
     ap.add_argument("--think", action="store_true",
                     help="let the model reason first; costs budget, and it ran out")
     ap.add_argument("--offline", action="store_true")
     a = ap.parse_args()
+    if a.check_fragments:
+        sys.exit(check_fragments())
+    if a.explore:
+        a.temperatures = a.temperatures or EXPLORE_TEMPERATURES
+        a.echo_break = a.fragments = a.level_cards = True
 
     if not a.offline:
         # Validate before the first request. An empty or scheme-less value produces a hostname
@@ -711,6 +922,8 @@ def main():
         print(f"endpoint {a.base}  model {a.model}  context {a.context}")
     else:
         print("*** OFFLINE: replaying the reference kernel. Numbers are meaningless. ***")
+    print(f"sampling: temperature {a.temperatures or a.temperature}, top_p {a.top_p}.  "
+          f"echo-break {a.echo_break}, fragments {a.fragments}, level cards {a.level_cards}")
 
     levels = sorted(nkibench.LEVELS)[:4] if a.all else [a.level or 1]
     full = sum(WEIGHTS.values())
