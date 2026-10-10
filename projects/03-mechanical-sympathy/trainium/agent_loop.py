@@ -318,6 +318,37 @@ def grade(src, tol, shapes=None):
 
 
 # ------------------------------------------------------------------ prompts
+PROMPT = "v1"   # v1 = task + organizers' example kernel; v2 = + API_CARD below
+
+# API facts for this task, one line each. Every call here was proven to work in NKI 0.6 by a
+# kernel built only from them (card_check_kernel.py: reward 1.0 on all shapes); that kernel is
+# never shown to the model. These are general facts about the API, not the solution.
+API_CARD = """NKI facts you will need (all verified in this NKI version):
+- A tile has at most 128 rows (partition axis). For more rows, loop over blocks:
+  for i in range((R + 127) // 128): r0 = 128 * i; rows = min(128, R - r0); then use x[r0:r0 + rows, :].
+- Copy between HBM and on-chip memory only with nisa.dma_copy(dst=..., src=...), whole tiles or slices.
+- Every tile is 2-D. One value per row is a (rows, 1) tile, never (rows,).
+- Reduce along a row and keep it 2-D: s = nl.sum(t, axis=1, keepdims=True)   # shape (rows, 1)
+- Apply one value per row across a (rows, N) tile:
+  nisa.tensor_scalar(dst=out, data=t, op0=nl.subtract, operand0=row_vals)   # row_vals is (rows, 1)
+  operand0 can also be a plain Python number; op1=/operand1= chain a second operation.
+- Elementwise on two tiles of the same shape: nisa.tensor_tensor(dst=out, data1=a, data2=b, op=nl.multiply)
+- Activation functions on a whole tile: nisa.activation(dst=out, op=nl.rsqrt, data=t); available
+  ops include nl.gelu, nl.gelu_apprx_tanh, nl.rsqrt, nl.sqrt, nl.exp.
+- Elementwise minimum with a number: nisa.tensor_scalar(dst=out, data=t, op0=nl.minimum, operand0=10.0)
+- Allocate every tile first with nl.ndarray(shape, dtype=nl.float32, buffer=nl.sbuf).
+- Work on whole tiles. Never loop over single elements, index a tile with a single number
+  (t[c] or t[c, n]), or use Python if on tile values."""
+
+
+def card():
+    return ("\n\n" + API_CARD) if PROMPT == "v2" else ""
+
+
+def card_gap():
+    """Text between the card and the next sentence: with --prompt v1 the prompts stay
+    byte-identical to the version that ran v1 and v2."""
+    return "\n\n" if PROMPT == "v2" else " "
 def example_kernel():
     p = Path(KA) / "reference_level1.py"
     return p.read_text() if p.exists() else ""
@@ -344,7 +375,7 @@ Requirements: start with exactly
     @nki.jit
     def {ENTRY}(x):
 No numpy or torch inside the kernel. Allocate the output with
-nl.ndarray(x.shape, dtype=x.dtype, buffer=nl.shared_hbm) and return it.
+nl.ndarray(x.shape, dtype=x.dtype, buffer=nl.shared_hbm) and return it.{card()}
 
 Here is a working NKI kernel for a different operation, showing the API that exists in this
 version (loading, tiling, storing, allocation):
@@ -365,7 +396,7 @@ Your kernel:
 {src}
 ```
 Fix it. Keep `@nki.jit def {ENTRY}(x):` and only the imports nki, nki.language as nl, nki.isa as
-nisa. Reply with one python code block containing the whole corrected kernel."""
+nisa.{card()}{card_gap()}Reply with one python code block containing the whole corrected kernel."""
 
 
 # ------------------------------------------------------------------ checker self-test
@@ -473,6 +504,8 @@ def main():
     ap.add_argument("--tol", type=float, default=2e-2)
     ap.add_argument("--log", default="attempts_samudra.jsonl")
     ap.add_argument("--repeat", type=int, default=1, help="independent runs, for a solve rate")
+    ap.add_argument("--prompt", default="v1", choices=["v1", "v2"],
+                    help="v1 = task + example kernel; v2 = + verified NKI API card")
     ap.add_argument("--feedback", default="v1", choices=["v1", "v2"],
                     help="v1 = organizers' enrich() only; v2 = + failing line + task-specific fixes")
     ap.add_argument("--selftest", action="store_true", help="prove the checker on planted cases, no model")
@@ -480,8 +513,8 @@ def main():
     if a.selftest:
         raise SystemExit(0 if selftest() else 1)
     a.think = bool(a.think)
-    global FEEDBACK
-    FEEDBACK = a.feedback
+    global FEEDBACK, PROMPT
+    FEEDBACK, PROMPT = a.feedback, a.prompt
     solved = []
     for rep in range(a.repeat):
         run_id = time.strftime("%H%M%S") + (f"-r{rep + 1}" if a.repeat > 1 else "")
@@ -496,7 +529,7 @@ def solve(a, run_id):
     best = (-1.0, "", "")
     prompt = first_prompt()
     Path("kernels").mkdir(exist_ok=True)
-    print(f"run {run_id}: {a.rounds} rounds x {a.samples} samples, feedback {FEEDBACK}, "
+    print(f"run {run_id}: {a.rounds} rounds x {a.samples} samples, feedback {FEEDBACK}, prompt {PROMPT}, "
           f"model {a.model} at {a.base}")
     for rnd in range(1, a.rounds + 1):
         t0 = time.time()
@@ -517,7 +550,7 @@ def solve(a, run_id):
             rec = dict(run=run_id, round=rnd, sample=i, reward=round(reward, 3), parts=parts,
                        feedback=fb, gen_s=round(gen_s, 1), check_s=round(time.time() - t1, 1),
                        chars=len(src), prompt_chars=len(prompt), reply_chars=len(ans or ""),
-                       feedback_version=FEEDBACK,
+                       feedback_version=FEEDBACK, prompt_version=PROMPT,
                        source=src, time=time.strftime("%H:%M:%S"))
             with open(a.log, "a") as f:
                 f.write(json.dumps(rec) + "\n")

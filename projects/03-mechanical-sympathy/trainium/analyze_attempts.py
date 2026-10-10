@@ -56,13 +56,14 @@ def load(path):
     for r in recs:
         r["mode"] = mode_of(r)
         r.setdefault("feedback_version", "v1")
+        r.setdefault("prompt_version", "v1")
     return recs
 
 
 def main(paths):
     data = {p: load(p) for p in paths}
     print("## 1. Summary\n")
-    print("| Log | Feedback | Runs | Solved | Rounds to solve | Attempts | Mean reward | Best reward |")
+    print("| Log | Version | Runs | Solved | Rounds to solve | Attempts | Mean reward | Best reward |")
     print("|---|---|---|---|---|---|---|---|")
     walls = {}
     for p, recs in data.items():
@@ -71,7 +72,8 @@ def main(paths):
             runs[r["run"]].append(r)
         solved = {k: min(x["round"] for x in v if x["reward"] >= 1.0)
                   for k, v in runs.items() if any(x["reward"] >= 1.0 for x in v)}
-        fbv = ",".join(sorted({r["feedback_version"] for r in recs}))
+        fbv = ",".join(sorted({f"feedback {r['feedback_version']}, prompt {r['prompt_version']}"
+                               for r in recs}))
         print(f"| {p} | {fbv} | {len(runs)} | {len(solved)}/{len(runs)} | "
               f"{sorted(solved.values()) or '-'} | {len(recs)} | "
               f"{sum(r['reward'] for r in recs) / max(len(recs), 1):.2f} | "
