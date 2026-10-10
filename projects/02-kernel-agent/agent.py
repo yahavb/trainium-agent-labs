@@ -392,15 +392,22 @@ def first_prompt(level, terse=0):
         f"Reply with ONE python code block containing the imports and the function. No prose.")
 
 
-def repair_prompt(level, source, feedback):
+def repair_prompt(level, source, feedback, card=True):
     """One named change, and the previous code. No rules list, no reference re-sent.
 
     The lesson this whole repo keeps re-learning: feeding a verifier's report back verbatim
     reproduces the same mistake, because a report says what is wrong and never what to do.
+
+    card=True re-sends API_CARD (~400 tokens). Measured on level 1 without it: from round 1 on the
+    model no longer saw the card, and guessed nisa.multiply, op=nisa.multiply and nisa.scalar_mul
+    for three rounds, although the card's nisa.tensor_scalar line is the real call.
+    Turn it off with --repair-card 0 to compare.
     """
+    api = f"{API_CARD}\n" if card else ""
     return (
         f"This NKI kernel for {nkibench.LEVELS[level]['op']} is not right yet.\n\n"
         f"```python\n{source}\n```\n\n"
+        f"{api}"
         f"A checker reports:\n{feedback}\n\n"
         f"Change exactly what the checker names and keep everything else identical. Reply with "
         f"ONE python code block.")
@@ -550,7 +557,7 @@ def solve(a, level, log):
             # answer. Measured: the same TypeError 19 rounds running. Changing the prompt is the
             # only thing that can change the answer, so say what has already been tried.
             ledger = "\n".join(f"- {t[:160]}" for t in dict.fromkeys(tried))
-            prompt = (repair_prompt(level, latest[0], latest[1])
+            prompt = (repair_prompt(level, latest[0], latest[1], a.repair_card)
                       + f"\n\nThese approaches have already failed, so do something different:\n"
                         f"{ledger}")
             print(f"  same failure {repeats}x — adding a ledger of {len(set(tried))} failed "
@@ -564,7 +571,7 @@ def solve(a, level, log):
             prompt = first_prompt(level, terse)
             print(f"  no code yet, so re-asking with a shorter prompt (terseness {terse})")
         else:
-            prompt = repair_prompt(level, latest[0], latest[1])
+            prompt = repair_prompt(level, latest[0], latest[1], a.repair_card)
     print(f"  not solved in {a.rounds} rounds; best reward {best[0]:.2f}")
     return best[0], a.rounds
 
@@ -594,6 +601,9 @@ def main():
                          "Qwen3-8B is fine at 0.")
     ap.add_argument("--context", type=int, default=4096,
                     help="the server's max-model-len; prompt + answer must fit inside it")
+    ap.add_argument("--repair-card", type=int, default=1, choices=(0, 1),
+                    help="1 (default) puts the API card in every repair prompt as well as the first "
+                         "one; 0 is the original behaviour, for comparison")
     ap.add_argument("--think", action="store_true",
                     help="let the model reason first; costs budget, and it ran out")
     ap.add_argument("--offline", action="store_true")
