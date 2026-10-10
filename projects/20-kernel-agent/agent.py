@@ -905,10 +905,9 @@ def ask(a, prompt, temperature=0.6):
     body = dict(model=a.model, messages=[{"role": "user", "content": prompt}],
                 max_tokens=budget, temperature=temperature, top_p=0.95,
                 chat_template_kwargs={"enable_thinking": a.think})
-    if temperature > 0:
-        # Measured: without a per-request seed the server's sampling is deterministic, so seats 95 and
-        # 98 produced byte-identical level-8 traces -- three seats were one experiment run three times.
-        body["seed"] = int.from_bytes(os.urandom(4), "little")
+    # No per-request "seed": vllm-neuron 0.24 builds a torch.Generator on the Neuron device for it and the
+    # engine dies (measured: it took down all four servers). Sampling is deterministic per server, so
+    # seats 95 and 98 ran byte-identical traces; give each server its own seed instead: VLLM_EXTRA_ARGS="--seed N" ./serve.sh
     t_start = time.perf_counter()
     r = httpx.post(f"{a.base.rstrip('/')}/chat/completions", json=body,
                    timeout=900, verify=False)
