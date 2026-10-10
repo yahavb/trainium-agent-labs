@@ -1,210 +1,210 @@
-# 黑客松笔记（Trainium agent labs）
+# Hackathon notes (Trainium agent labs)
 
-**座位**：每人一个 pod，命令里的 `<N>` 换成**你自己的座位号**（队长 teoguo = seat-116）。不要进别人的座位。
+**Seats**: one pod per person; replace `<N>` in the commands with **your own seat number** (team lead teoguo = seat-116). Do not go into someone else's seat.
 
-> 来源：`README.md`、`STATE.md`、`projects/02-kernel-agent/README.md`、`projects/02-kernel-agent/CHALLENGE-kernel-agent.md`。
-> 一句话核心：**决定 agent loop 好坏的是 checker，不是模型。** 「错了，偏差 341%」是真话但没用；「sin(pi·x) 这一项根本不该出现」才是能执行的指令。
+> Sources: `README.md`, `STATE.md`, `projects/02-kernel-agent/README.md`, `projects/02-kernel-agent/CHALLENGE-kernel-agent.md`.
+> The core in one sentence: **what makes an agent loop good or bad is the checker, not the model.** "Wrong, off by 341%" is true but useless; "the sin(pi·x) term should not be there at all" is an instruction the model can act on.
 
 ---
 
-## 0. 当前状态（2026-10-10 17:22，随时更新）
+## 0. Current status (2026-10-10 17:22, updated as we go)
 
-**人员**：teoguo（seat-116）+ liuyq（有经验）两人主力；另外三位新手做辅助，不计入关键路径。
-**题目**：做项目 2（`projects/02-kernel-agent`，NKI kernel agent，在芯片上跑）。CHALLENGE（Stage A，`kernelbench.py`）有时间再做，同一套 agent 搬过去。评分按 30/25/25/20 那一套（CHALLENGE 第 239 行写着 "Same rubric as every problem"）。
+**People**: teoguo (seat-116) + liuyq (experienced) are the two main contributors; three other newcomers help out and are not on the critical path.
+**Problem**: we do project 2 (`projects/02-kernel-agent`, NKI kernel agent, runs on the chip). The CHALLENGE (Stage A, `kernelbench.py`) only if time allows, moving the same agent over. Scoring follows the 30/25/25/20 rubric (CHALLENGE line 239 says "Same rubric as every problem").
 
-**仓库和 remote**（本地 checkout：`trainium-agent-labs/`，工作分支 `team`）
-| remote | 仓库 | 用途 |
+**Repos and remotes** (local checkout: `trainium-agent-labs/`, working branch `team`)
+| remote | repo | use |
 |---|---|---|
-| `team` | github.com/liuyq123/trainium-agent-labs | **共用仓库**，本地 `team` 分支跟踪 `team/master`，`git pull --rebase` / `git push` 直接用 |
-| `origin` | github.com/teoguo/trainium-agent-labs | teoguo 的 fork，以后从这里给原仓库提 PR（从 `master` 开分支） |
-| `upstream` | github.com/yahavb/trainium-agent-labs | 原仓库，只读 |
+| `team` | github.com/liuyq123/trainium-agent-labs | **shared repo**; the local `team` branch tracks `team/master`, use `git pull --rebase` / `git push` directly |
+| `origin` | github.com/teoguo/trainium-agent-labs | teoguo's fork; PRs to the original repo will go from here later (branch off `master`) |
+| `upstream` | github.com/yahavb/trainium-agent-labs | the original repo, read-only |
 
-**Baseline**（seat-116，`--all --rounds 8 --samples 4 --context 8192 --repeat 5`，10:50–12:43，已完成，424 次尝试）
+**Baseline** (seat-116, `--all --rounds 8 --samples 4 --context 8192 --repeat 5`, 10:50–12:43, finished, 424 attempts)
 ```
-          solved   5 次分数                      STATE.md 参考
-level 1   0/5      [0.30, 0.30, 0.30, 0.30, 0.30]   0/5，全部 0.30
+          solved   scores of the 5 runs             STATE.md reference
+level 1   0/5      [0.30, 0.30, 0.30, 0.30, 0.30]   0/5, all 0.30
 level 2   3/5      [1.00, 0.30, 1.00, 0.30, 1.00]   4/5
-level 3   0/5      [0.30, 0.30, 0.30, 0.30, 0.30]   0/5，全部 0.30
-level 4   0/5      [0.62, 0.62, 0.50, 0.62, 0.62]   0/5，全部 0.62
+level 3   0/5      [0.30, 0.30, 0.30, 0.30, 0.30]   0/5, all 0.30
+level 4   0/5      [0.62, 0.62, 0.50, 0.62, 0.62]   0/5, all 0.62
 ```
-**截止时间 18:30**（问过主办方）。座位 115/117/118/119 是组员的，可以并行跑；操作手册见 Claude 文档「Trainium 组员操作手册」。
-日志拉回本机：`scripts/sync.sh 116 pull` → `runs/seat-116/latest/`（gitignore，不提交）。
-重新生成分类表：`.venv/bin/python scripts/attempts_to_csv.py runs/seat-116/latest/projects/02-kernel-agent/attempts.jsonl -o analysis/baseline_seat116`
+**Deadline 18:30** (confirmed with the organizers). Seats 115/117/118/119 belong to teammates and can run in parallel; the runbook is the Claude doc "Trainium team member runbook".
+Pull logs back to this machine: `scripts/sync.sh 116 pull` → `runs/seat-116/latest/` (gitignored, not committed).
+Regenerate the category tables: `.venv/bin/python scripts/attempts_to_csv.py runs/seat-116/latest/projects/02-kernel-agent/attempts.jsonl -o analysis/baseline_seat116`
 
-**实验结果（执行 1 维护；全部 `--rounds 8 --samples 4 --context 8192 --repeat 5`，vLLM TP2/8192/seqs 4，模拟目标 trn2/gen3）**
+**Experiment results (maintained by executor 1; all `--rounds 8 --samples 4 --context 8192 --repeat 5`, vLLM TP2/8192/seqs 4, simulation target trn2/gen3)**
 
-> ⚠ **服务端是 greedy 解码**（14:30 实测）：同一请求在 temperature 0.7 下 4/4 输出逐字相同，`n=4` 也一样，带 `seed` 返回 HTTP 500 并把引擎弄崩（117 因此重启过一次）。批次组成不同时输出会变，所以不是完全确定。结论：`--samples 4` 往往只是 1 个样本，`--repeat 5` 往往是同一条轨迹重放 5 次，所以下表多一列「不同轨迹数」（整条轨迹的代码序列不同的 run 数）。baseline 116：106 轮里 89 轮 4 个样本逐字相同。
+> ⚠ **The server decodes greedily** (measured 14:30): the same request at temperature 0.7 gave 4/4 character-identical outputs, the same with `n=4`, and passing `seed` returns HTTP 500 and crashes the engine (117 was restarted once because of this). Outputs change when the batch composition differs, so it is not fully deterministic. Conclusion: `--samples 4` is often just 1 sample, and `--repeat 5` is often the same trajectory replayed 5 times, so the table below has an extra "distinct trajectories" column (the number of runs whose whole-trajectory code sequence differs). Baseline 116: in 89 of 106 rounds the 4 samples were character-identical.
 
-| 实验 | commit | level | 座位 | solved | 5 次分数（解出的轮次） | 不同轨迹数 | reaudit | 决定 |
+| experiment | commit | level | seat | solved | scores of the 5 runs (round solved) | distinct trajectories | reaudit | decision |
 |---|---|---|---|---|---|---|---|---|
-| baseline | 8f1ca41 前 | L1/L2/L3/L4 | 116 | 0/5、3/5、0/5、0/5 | 见上表 | L1 第 0 轮 5 次相同；L2–L4 第 0 轮各不相同 | L2 2 个 kernel PASS | 参照 |
-| baseline 复现 | upstream 8f1ca41 | L1/L2/L3/L4 | 119 | 0/5、2/5、0/5、0/5 | L2 [1,.3,.3,1,.3]，L4 [.62×4,.5] | — | — | 和 116 一致 |
-| E-A | 5ed7ec2（进程里是 26c43ed） | L1 | 116 | 0/5 | 全 0.30 | 1–2（日志没有 run 字段） | — | 作为铺路改动采用 |
-| E-v3 | c39c0ce | L4 | 117 | 1/2（停在第 3 次） | 1.0（第 6 轮）、0.75 | 2 | PASS | 被 v7 取代 |
-| E-F | ac258d2 | L1 | 116 | 0/5 | 全 0.30 | **1** | — | **不采用，已 revert（d97b5e4）** |
-| **E-v7** | ce0403c | L3 | 117 | **5/5** | 全 1.0（都在第 1 轮） | 4 | PASS（13 次解出，2 个不同 kernel） | **采用（主线）** |
-| **E-v7** | ce0403c | L4 | 118 | **5/5** | 全 1.0（都在第 3 轮） | **1** | PASS（20 次解出，1 个 kernel） | **采用（主线）** |
-| E-v7 | ce0403c | L1 | 119 | 0/1（第 2 次时为了 E-div 停掉） | 0.50 | — | — | 进行中止 |
-| E-v7 | ce0403c（按 SUBMISSION 的 clone 步骤部署） | L2 | 116 | 进行中（14:50 起） | | | | 回归检查 |
-| E-div | 81549a0（v7 + feedback_v8.py） | L3 / L4 | 119 / 118 | L3 5/5，L4 5/5 | L3 都在第 1 轮，L4 都在第 3 轮 | L3 3，L4 5 | PASS（每级只有 1 个 kernel） | 样本变化让轨迹变多，但收敛到同一个解 |
-| E-div | 81549a0 | L1 | 117 | 0/1（第 2 次时停掉） | 0.50 | — | — | — |
-| 消融 A1–A5 | ce0403c（v7 底座，--repeat 1） | L3 / L4 | 119 / 118 | 只有 A2（CARD=theirs）在 L3 上没解出 | A1 L4 第 2 轮；A2、A3 L4 第 5 轮；A4、A5 L4 第 3 轮 | — | — | L3 靠的是 CARD=category；L4 不依赖单个开关 |
-| v8（SKELETON 开） | 9a19bb0 | L4 / L3 / L1 | 118 / 119 / 117、119 | L4 0/2，L3 1/1（第 3 轮），L1 0/2 | L4 0.62 ×2 | — | — | **SKELETON 不采用**（模型把 <…> 填错，L4 越界卡死） |
-| v8（81c37cf 之后） | 6f11031 | L1 | 116 | 1/1（第 1 轮） | 1.0 | — | PASS，能 lower 到 trn2 | 第一次 L1 模拟器解出 |
-| L2 第 0 轮诊断 | 9a19bb0 / 原版 agent.py | L2 r0 ×20 | 116 / 119 | v8 0/20，v8p（原版首轮 prompt）0/20，**v8ps（原版 prompt + 原版采样）2/20，原版 agent.py 2/20** | — | — | — | **L2 退步的原因是 SAMPLING=qwen** |
-| **v8.2（最终候选）** | **96a9fc9**，md5 c2f81a；V7.md 的 export + SKELETON=0 TRUNCFIX=1 L1FIX=1 MIXSAMP=1 L2HINT=1 MIX=1 | **L1** | 117 ×3，118 ×2 | **5/5** | 解出轮次 2、2、0、4、2 | 5 个 kernel | PASS ×5，都能 lower 到 trn2 | **采用** |
-| **v8.2** | 96a9fc9 | **L2** | 116 ×3，119 ×2 | **3/5** | [.5, 1, .5, 1, 1]，解出轮次 4、2、1 | 3 个 kernel | PASS | 采用（≥ baseline，v7 是 0/3） |
-| **v8.2** | 96a9fc9 | **L3** | 118 ×3，119，116 | **5/5** | 解出轮次 0、2、0、0、0 | 3 个 kernel | PASS | 采用 |
-| **v8.2** | 96a9fc9 | **L4** | 119 ×5 | **5/5** | 都在第 2 轮 | 1 个 kernel（和 v7 相同） | PASS | 采用 |
-| **v8.3** | **5c3aba2**，md5 87ddb0；v8.2 那组开关 + L2CAT=1 | **L2** | 117 ×5，119 ×4 | **7/9** | 117: 1,1,1,1,.5；119: 1,1,.5,1 | — | trn2 完整编译 + birsim 全部 match | L1/L3/L4 的请求体和 96a9fc9 逐字节相同（假端点 --all，48 个请求），沿用 v8.2 的结果 |
-| v8.2 加跑 | 96a9fc9 | L1 / L2 | 118，117 | L1 +2/2，L2 +2/3 | — | — | — | v8.2 合计：L1 7/7，L2 5/9 |
-| final_all | 96a9fc9，`--all --repeat 1` | L1–L4 | 116 | L1 1.0，L2 1.0，**L3 0.30**，L4 1.0 | 第 6、7 轮解出，—，第 2 轮 | — | — | 一条命令跑完 4 级；这一次 L3 没解出（4 轮后同一失败重复，提前停止） |
+| baseline | before 8f1ca41 | L1/L2/L3/L4 | 116 | 0/5, 3/5, 0/5, 0/5 | see the table above | L1 round 0 identical in all 5; L2–L4 round 0 all different | L2 2 kernels PASS | reference |
+| baseline replica | upstream 8f1ca41 | L1/L2/L3/L4 | 119 | 0/5, 2/5, 0/5, 0/5 | L2 [1,.3,.3,1,.3], L4 [.62×4,.5] | — | — | consistent with 116 |
+| E-A | 5ed7ec2 (26c43ed in the process) | L1 | 116 | 0/5 | all 0.30 | 1–2 (log has no run field) | — | adopted as groundwork |
+| E-v3 | c39c0ce | L4 | 117 | 1/2 (stopped at the 3rd run) | 1.0 (round 6), 0.75 | 2 | PASS | superseded by v7 |
+| E-F | ac258d2 | L1 | 116 | 0/5 | all 0.30 | **1** | — | **not adopted, reverted (d97b5e4)** |
+| **E-v7** | ce0403c | L3 | 117 | **5/5** | all 1.0 (all in round 1) | 4 | PASS (13 solves, 2 distinct kernels) | **adopted (mainline)** |
+| **E-v7** | ce0403c | L4 | 118 | **5/5** | all 1.0 (all in round 3) | **1** | PASS (20 solves, 1 kernel) | **adopted (mainline)** |
+| E-v7 | ce0403c | L1 | 119 | 0/1 (stopped at the 2nd run for E-div) | 0.50 | — | — | aborted |
+| E-v7 | ce0403c (deployed by SUBMISSION's clone steps) | L2 | 116 | in progress (since 14:50) | | | | regression check |
+| E-div | 81549a0 (v7 + feedback_v8.py) | L3 / L4 | 119 / 118 | L3 5/5, L4 5/5 | L3 all in round 1, L4 all in round 3 | L3 3, L4 5 | PASS (only 1 kernel per level) | varying the samples gives more trajectories, but they converge to the same solution |
+| E-div | 81549a0 | L1 | 117 | 0/1 (stopped at the 2nd run) | 0.50 | — | — | — |
+| ablations A1–A5 | ce0403c (v7 base, --repeat 1) | L3 / L4 | 119 / 118 | only A2 (CARD=theirs) failed to solve L3 | A1 L4 round 2; A2, A3 L4 round 5; A4, A5 L4 round 3 | — | — | L3 relies on CARD=category; L4 does not depend on any single switch |
+| v8 (SKELETON on) | 9a19bb0 | L4 / L3 / L1 | 118 / 119 / 117, 119 | L4 0/2, L3 1/1 (round 3), L1 0/2 | L4 0.62 ×2 | — | — | **SKELETON not adopted** (the model fills the <…> wrongly, L4 gets stuck out of bounds) |
+| v8 (after 81c37cf) | 6f11031 | L1 | 116 | 1/1 (round 1) | 1.0 | — | PASS, lowers to trn2 | first L1 solve in the simulator |
+| L2 round-0 diagnosis | 9a19bb0 / original agent.py | L2 r0 ×20 | 116 / 119 | v8 0/20, v8p (original first-round prompt) 0/20, **v8ps (original prompt + original sampling) 2/20, original agent.py 2/20** | — | — | — | **the L2 regression is caused by SAMPLING=qwen** |
+| **v8.2 (final candidate)** | **96a9fc9**, md5 c2f81a; V7.md's exports + SKELETON=0 TRUNCFIX=1 L1FIX=1 MIXSAMP=1 L2HINT=1 MIX=1 | **L1** | 117 ×3, 118 ×2 | **5/5** | solved in rounds 2, 2, 0, 4, 2 | 5 kernels | PASS ×5, all lower to trn2 | **adopted** |
+| **v8.2** | 96a9fc9 | **L2** | 116 ×3, 119 ×2 | **3/5** | [.5, 1, .5, 1, 1], solved in rounds 4, 2, 1 | 3 kernels | PASS | adopted (≥ baseline; v7 is 0/3) |
+| **v8.2** | 96a9fc9 | **L3** | 118 ×3, 119, 116 | **5/5** | solved in rounds 0, 2, 0, 0, 0 | 3 kernels | PASS | adopted |
+| **v8.2** | 96a9fc9 | **L4** | 119 ×5 | **5/5** | all in round 2 | 1 kernel (same as v7) | PASS | adopted |
+| **v8.3** | **5c3aba2**, md5 87ddb0; v8.2's switches + L2CAT=1 | **L2** | 117 ×5, 119 ×4 | **7/9** | 117: 1,1,1,1,.5; 119: 1,1,.5,1 | — | trn2 full build + birsim all match | L1/L3/L4 request bodies are byte-identical to 96a9fc9's (mock endpoint --all, 48 requests); v8.2's results carry over |
+| v8.2 extra runs | 96a9fc9 | L1 / L2 | 118, 117 | L1 +2/2, L2 +2/3 | — | — | — | v8.2 totals: L1 7/7, L2 5/9 |
+| final_all | 96a9fc9, `--all --repeat 1` | L1–L4 | 116 | L1 1.0, L2 1.0, **L3 0.30**, L4 1.0 | solved in rounds 6, 7, —, round 2 | — | — | one command runs all 4 levels; this time L3 was not solved (the same failure repeated after 4 rounds, stopped early) |
 
-**芯片层面的验证（17:20）**
-- **trn2 完整编译 + birsim**（`check/compile_solves7.py`，只用 CPU）：v8.2 的 L1（5 个 kernel）、L2（3 个）、L3（3 个）、L4（1 个），以及 v8.3 的 L2 解，**全部能编译，birsim 全部 MATCHES**（L1 最大误差约为 RMS 的 1.9e-07，L2 为 0，L3 1.2e-06，L4 2.9e-06）。没有一个被编译器拒绝。
-- **NeuronCore 实测**（`check/device_check.py`，seat-116，先停 vLLM，测完再起回来）：L1 kernel 53900f4b **4/4 个 shape 在芯片上和参考一致**，device 误差 2.4e-07–4.8e-07。每次调用 1.5–2.0 秒，包含主机开销，不是 kernel 延迟。
-- 结果文件：`runs/seat-117/l1_compile/compile.txt`、各座位的 `/tmp/cmp/compile_s*.txt`、`/tmp/device_l1.json`（seat-116），都会拷进 `analysis/logs/final/`。
+**Chip-level verification (17:20)**
+- **trn2 full build + birsim** (`check/compile_solves7.py`, CPU only): v8.2's L1 (5 kernels), L2 (3), L3 (3), L4 (1), plus v8.3's L2 solves, **all compile, and birsim MATCHES for all** (max error as a fraction of RMS: L1 about 1.9e-07, L2 0, L3 1.2e-06, L4 2.9e-06). The compiler rejected none of them.
+- **Measured on a NeuronCore** (`check/device_check.py`, seat-116, vLLM stopped first and started again afterwards): L1 kernel 53900f4b **matches the reference on the chip for 4/4 shapes**, device error 2.4e-07–4.8e-07. 1.5–2.0 seconds per call, including host overhead; this is not kernel latency.
+- Result files: `runs/seat-117/l1_compile/compile.txt`, each seat's `/tmp/cmp/compile_s*.txt`, `/tmp/device_l1.json` (seat-116); all will be copied into `analysis/logs/final/`.
 
-日志：`runs/seat-<N>/<实验>/`（不进 git）。1.0 一律用 `scripts/reaudit.py` 复审。
+Logs: `runs/seat-<N>/<experiment>/` (not in git). Every 1.0 is re-audited with `scripts/reaudit.py`.
 
-**已确认的发现**
-1. **每轮约 50 秒，慢在模型生成，不在评分；没有便宜的提速办法。** 12:50 在 seat-116 实测：1 条并发 13.9 tok/s，4 条并发总共 22.1 tok/s（每条 5.5）。模型确实在 Trainium 上跑（`neuron-ls` 有进程；`PJRT_DEVICE=CPU` 是 vllm_neuron 自己设的）。CPU 配额 11 核只用了约 5 核，节流约 1%，所以不是 CPU 配额卡住；`vllm._C` 缺失在 Neuron 上是正常的。可调的只有 `--optimization-level 3`（默认 O1）或 TP=4，都要重新编译、耗时未知、还会让 baseline 失效，**决定不改**。对策：多座位并行，一次只测一个 level；输出 token 贵、输入 token 便宜（prefill 约 270 tok/s）。
-2. **失败分类**（5 次 run，424 次尝试，`analysis/baseline_seat116_summary.csv`）：
-   - 拷贝两边大小不一致 96 次（L1 40、L2 30、L3 26）
-   - 编造不存在的函数 80 次（全在 L1：`nisa.multiply`、`nisa.scalar_mul`）
-   - 下标越界 64 次（L2/L3/L4）
-   - tile 超过 128 行 55 次（L4 主要卡点）
-   - 乱用 reshape 50 次（L3 48）、tile 只有一维 22 次（L3）
-3. **harness 的反馈里已经附带了修改建议**（`agent.py` 的 `enrich()`），但同样的错误还是反复出现，说明现有建议没起作用。改反馈要从这里入手。
-4. **port-forward 没有权限**，agent 只能在 pod 里跑；`kubectl cp` / exec 可以用。
+**Confirmed findings**
+1. **About 50 seconds per round, spent in model generation, not in scoring; there is no cheap speed-up.** Measured on seat-116 at 12:50: 1 concurrent stream 13.9 tok/s, 4 concurrent streams 22.1 tok/s in total (5.5 each). The model really runs on Trainium (`neuron-ls` shows the process; `PJRT_DEVICE=CPU` is set by vllm_neuron itself). Of the 11-core CPU quota only about 5 cores are used and throttling is about 1%, so the CPU quota is not the bottleneck; `vllm._C` being missing is normal on Neuron. The only knobs are `--optimization-level 3` (default O1) or TP=4; both need a recompile of unknown duration and would invalidate the baseline, so **we decided not to change them**. Countermeasure: run several seats in parallel, testing one level at a time; output tokens are expensive, input tokens are cheap (prefill about 270 tok/s).
+2. **Failure categories** (5 runs, 424 attempts, `analysis/baseline_seat116_summary.csv`):
+   - copy with mismatched sizes on the two sides 96 (L1 40, L2 30, L3 26)
+   - invented functions that do not exist 80 (all in L1: `nisa.multiply`, `nisa.scalar_mul`)
+   - index out of bounds 64 (L2/L3/L4)
+   - tile over 128 rows 55 (the main blocker on L4)
+   - misused reshape 50 (L3 48), 1-D tile 22 (L3)
+3. **The harness's feedback already carries fix suggestions** (`enrich()` in `agent.py`), yet the same errors keep recurring, which means the existing suggestions do not work. Changes to the feedback should start there.
+4. **No permission for port-forward**; the agent can only run inside the pod; `kubectl cp` / exec work.
 
-**参考仓库：aws-neuron/neuron-agentic-development**（AWS 工程师推荐，已 clone 到 `../neuron-agentic-development/`，只读，不放进我们的仓库）
-- 最有用的是 `skills/neuron-nki-docs/references/`：`indices/symbol-lookup.md`（全部 NKI 符号和所在模块）、`programming/api/*.md`（API 签名）、`debugging/error-codes/`
-- 例子：`multiply` 存在，但它是 `nl.multiply`，是一个**操作类型**，要传给 `nisa.tensor_tensor(..., op=nl.multiply)` / `nisa.tensor_scalar(...)`，不是 `nki.isa` 里能直接调用的函数。现在 harness 按字母相似度推荐「scalar_engine…」，模型看了没用
-- ⚠️ 文档对应 NKI 0.4.0，pod 里是 **0.6.0**。写进反馈的名字要先在 pod 里确认存在
-- ⚠️ `references/downloads/*_nki_kernels.py`（average_pool2d、matmul、transpose2d）基本就是 level 1–4 的标准答案，**不能放进 prompt**（等于泄题），只给人看
+**Reference repo: aws-neuron/neuron-agentic-development** (recommended by an AWS engineer, cloned to `../neuron-agentic-development/`, read-only, not put into our repo)
+- The most useful part is `skills/neuron-nki-docs/references/`: `indices/symbol-lookup.md` (every NKI symbol and its module), `programming/api/*.md` (API signatures), `debugging/error-codes/`
+- Example: `multiply` exists, but it is `nl.multiply`, an **operation type** to be passed to `nisa.tensor_tensor(..., op=nl.multiply)` / `nisa.tensor_scalar(...)`, not a function in `nki.isa` that can be called directly. Right now the harness suggests "scalar_engine..." by letter similarity, which does not help the model
+- ⚠️ The docs are for NKI 0.4.0; the pod has **0.6.0**. Names written into the feedback must first be confirmed to exist in the pod
+- ⚠️ `references/downloads/*_nki_kernels.py` (average_pool2d, matmul, transpose2d) are essentially the reference answers for levels 1–4; **they must not go into the prompt** (that would leak the answers), they are for humans only
 
-**正在做 / 下一步**
-1. [实验 A 已接进 `enrich()` 的 `KNOWN_FIXES`，commit 5ed7ec2，待在 seat-116 上验证 L1] 编造的名字只有 4 种（nisa.multiply 36、transpose_moving 13、nisa.scalar_mul 12、tile_size() 1）；0.6.0 里 `nl.multiply` 可直接调用，`nc_matmul` 的转置参数叫 `is_transpose`
-2. 精简 API 卡片（level 1–4 用到的十几个函数，约 300 token）放进 prompt
-3. liuyq 的 `feedback_v2.py` / `feedback_v3.py`（commit fc137e7）已经覆盖 L4「tile 超过 128 行」和「拷贝大小不一致」；她在 4090 上 L4 解出 5/10（原版 0/15），待在 pod 上确认
-4. [硬件合法性检查：**已用真 nki 0.6.0 验证通过**（本机 Docker，按 `SETUP_PYTHON.md`）] 模拟器分配 tile 时不查上限，现在模拟时记录每个 `nl.ndarray/zeros/ones/full`，分区 >128、PSUM 每分区 >16 KiB、SBUF 每分区 >192 KiB 判「ILLEGAL ON HARDWARE」，优先于数值比较；跨多个 PSUM bank 合法，不判。验证：selftest 通过；4 个参考 kernel 全过（审计到 12/12/5/90 次分配）；「分配 (256,128) SBUF 但每次 DMA 只搬 128 行」的 L4 kernel，关审计真模拟器给 4/4（漏洞属实），开审计判 ILLEGAL；跨 2 个 bank 的 PSUM 不误伤。**修了一个坑（13:55 更正：比原来说的严重）**：nki 按文件路径缓存，同一进程里同一路径、**字节数相同**的后一个候选会被当成第一个来模拟——**数值和分配都是旧的**。实测：参考 L4 把 nc_matmul 两个操作数对调（长度不变，单独跑会报错），紧跟参考写到同一路径就判 4/4。所以 c39c0ce 之前同一进程连续评分的 run（baseline、4090 的 L4 5/10、117/116 早先的 run）都可能有**假解**，**任何 1.0 都要先用 `scripts/reaudit.py` 重审**。已重审：baseline L2（2 个 kernel）PASS；117 的 L4 v3 解 PASS。现在 `agent.py` / `feedback_v2.py` 每个候选写到唯一路径（`nkibench.candidate_path()`），v2 的 `locate()` 照常能指出出错行。**26c43ed 有这个坑，别用它跑实验**（或设 `NKIBENCH_NO_ALLOC_AUDIT=1`）。4090 上的 L4 5/10 是在没有审计时测的，复现时要重新审。
-   - **13:35 座位占用**：115 跑 `daykit/.../feedback_v7.py`（L2、L9）；116 跑实验 A（L1，`attempts_expA_L1.jsonl`）；117 跑 L4 v3 `--repeat 5`（`attempts_v3_L4.jsonl`，13:13 启动，`agent.py`/`feedback_v2.py` 是旧版，**解出的 kernel 要重审**）；118 在重启 vLLM（新配置，编译中）；119 跑 `agent.py --all --repeat 5`。
-   - **重审**：`python scripts/reaudit.py <attempts.jsonl ...>` 把每个 1.0 的 kernel 单独开新进程跑 `--check`（需要 nki：pod 或 SETUP_PYTHON.md 的 Docker）。已重审 baseline：4 次 L2 解出（2 个不同 kernel）全部 PASS，baseline 数字成立。
-5. agent 加 token 分段统计（prompt 里规则说明 / 上次代码 / 报错 / 失败记录各多少）和置信度输出
-6. 每个改动用 `--level X --repeat 5` 验证，变差就回滚；约 16:30 冻结，多座位并行跑最终对比，18:15 前提交
+**In progress / next steps**
+1. [Experiment A is wired into `KNOWN_FIXES` in `enrich()`, commit 5ed7ec2, to be verified on seat-116 on L1] There are only 4 invented names (nisa.multiply 36, transpose_moving 13, nisa.scalar_mul 12, tile_size() 1); in 0.6.0 `nl.multiply` can be called directly, and `nc_matmul`'s transpose parameter is called `is_transpose`
+2. Put a trimmed API card (the dozen or so functions levels 1–4 use, about 300 tokens) into the prompt
+3. liuyq's `feedback_v2.py` / `feedback_v3.py` (commit fc137e7) already cover L4's "tile over 128 rows" and "copy size mismatch"; on the 4090 she solved L4 5/10 (original 0/15); to be confirmed on the pod
+4. [Hardware legality check: **verified with real nki 0.6.0** (local Docker, per `SETUP_PYTHON.md`)] The simulator does not check limits when allocating tiles; we now record every `nl.ndarray/zeros/ones/full` during simulation and judge partitions >128, PSUM >16 KiB per partition, SBUF >192 KiB per partition as "ILLEGAL ON HARDWARE", ahead of the numeric comparison; spanning several PSUM banks is legal and not flagged. Verification: selftest passes; all 4 reference kernels pass (12/12/5/90 allocations audited); an L4 kernel that "allocates (256,128) SBUF but moves only 128 rows per DMA" gets 4/4 from the real simulator with the audit off (the hole is real) and is judged ILLEGAL with the audit on; a PSUM spanning 2 banks is not falsely flagged. **Fixed a pitfall (13:55 correction: more serious than first stated)**: nki caches by file path, so within one process a later candidate at the same path **with the same byte count** is simulated as if it were the first one -- **both the numbers and the allocations are stale**. Measured: the reference L4 with nc_matmul's two operands swapped (same length; on its own it raises an error) is judged 4/4 when written to the same path right after the reference. So runs that graded consecutively in one process before c39c0ce (baseline, the 4090's L4 5/10, earlier runs on 117/116) may contain **fake solves**; **every 1.0 must first be re-audited with `scripts/reaudit.py`**. Re-audited so far: baseline L2 (2 kernels) PASS; 117's L4 v3 solve PASS. Now `agent.py` / `feedback_v2.py` write each candidate to a unique path (`nkibench.candidate_path()`), and v2's `locate()` still points at the failing line. **26c43ed has this pitfall, do not run experiments with it** (or set `NKIBENCH_NO_ALLOC_AUDIT=1`). The 4090's L4 5/10 was measured without the audit and must be re-audited when reproduced.
+   - **13:35 seat usage**: 115 runs `daykit/.../feedback_v7.py` (L2, L9); 116 runs experiment A (L1, `attempts_expA_L1.jsonl`); 117 runs L4 v3 `--repeat 5` (`attempts_v3_L4.jsonl`, started 13:13, old `agent.py`/`feedback_v2.py`, **its solved kernels must be re-audited**); 118 is restarting vLLM (new config, compiling); 119 runs `agent.py --all --repeat 5`.
+   - **Re-audit**: `python scripts/reaudit.py <attempts.jsonl ...>` runs `--check` on every 1.0 kernel in a fresh process of its own (needs nki: the pod or SETUP_PYTHON.md's Docker). Baseline re-audited: all 4 L2 solves (2 distinct kernels) PASS; the baseline numbers hold.
+5. Add per-segment token accounting to the agent (how much of the prompt is rules / previous code / errors / failure ledger) and confidence output
+6. Validate every change with `--level X --repeat 5` and roll back if it gets worse; freeze around 16:30, run the final comparison on several seats in parallel, submit before 18:15
 
-**文件索引**：`上手指南.md`（连座位的命令）· `scripts/connect.sh` · `scripts/sync.sh` · `scripts/attempts_to_csv.py` · `analysis/`（分类表）· `projects/02-kernel-agent/{agent.py,nkibench.py}`（要改的代码）
+**File index**: `GETTING_STARTED.md` (commands to connect to a seat) · `scripts/connect.sh` · `scripts/sync.sh` · `scripts/attempts_to_csv.py` · `analysis/` (category tables) · `projects/02-kernel-agent/{agent.py,nkibench.py}` (the code to change)
 
 ---
 
-## 1. 评分标准（所有题目同一套）
+## 1. Scoring rubric (the same for every problem)
 
-| 权重 | 项目 | 要点 |
+| weight | item | key points |
 |---|---|---|
-| **30%** | 正确性 | 在**评委保留的 shape 和恶意数值**上通过几级，不是你自己的测试。**违反规则 = 0 分**，不是扣分。 |
-| **25%** | 交付成果 | 通过了几级 + 每级用了几次尝试。尝试次数少 = agent 设计好，而不是运气好。 |
-| **25%** | 方法与诚实 | **agent 知不知道自己失败了？** 报 "verified" 但实际没过的，比诚实报失败**更差**。外加 token 预算的统计、失败分类（taxonomy）。 |
-| **20%** | 演示与写作 | 要展示**一次失败和恢复**，不只是成功。别人能不能复现。 |
+| **30%** | Correctness | How many levels pass on **the judges' held-out shapes and adversarial values**, not your own tests. **Breaking a rule = 0 points**, not a deduction. |
+| **25%** | Deliverables | Levels passed + attempts used per level. Fewer attempts = good agent design, not luck. |
+| **25%** | Method and honesty | **Does the agent know when it failed?** Reporting "verified" when it did not pass is **worse** than honestly reporting a failure. Plus token budget accounting and a failure taxonomy. |
+| **20%** | Demo and write-up | Show **a failure and a recovery**, not just successes. Can others reproduce it. |
 
-**拉开差距的两件事：**
-- **校准（Calibration）**：agent 必须输出置信度，而且要准。"我验证不了 level 8" 比 "done" 然后撒谎更值钱。
-- **失败分类**：跑完整个 ladder，收集所有错误 kernel，归成几类有名字的失败模式并给出计数。不需要加速器，是评委最想留下的东西。
+**The two things that set teams apart:**
+- **Calibration**: the agent must output a confidence, and it must be accurate. "I cannot verify level 8" is worth more than "done" followed by a lie.
+- **Failure taxonomy**: run the whole ladder, collect every wrong kernel, group them into a few named failure modes with counts. Needs no accelerator, and it is what the judges most want to keep.
 
-> 「过 4 级 + 对另外 6 级做严谨失败分类」的队，会赢「声称过了 level 9 但拿不出验证」的队——这就是评分标准本身。
-
----
-
-## 2. 必交物
-
-**README Part 4（任何项目都要）：**
-1. **你的 checker**，以及它接受/拒绝什么的理由（这是主办方要留下的东西）。
-2. **attempt log**：每次尝试 + 分数（agent 已经写到 `attempts.jsonl`；`scripts/sync.sh <N> pull` 拉回本地 `runs/`）。
-3. **一页说明**：跑了什么、在什么上跑、结果如何——**包括跑了几次、分布（spread）是多少**。
-
-**CHALLENGE-kernel-agent.md（选 kernel agent 题时）：**
-1. agent 本身
-2. 验证 harness——**写明容差和理由**（"rtol=1e-5" 是答案，"看起来差不多" 不是）
-3. **eval set**：测过的 shape 和数值，含恶意值。**强制**。
-4. 失败分类（分组 + 计数）
-5. **token 统计**：每次尝试的输入 token 数和花在哪（docs / 错误上下文 / 代码）。一张「每次尝试 token 分配」图是 demo 里最有价值的东西 → 本机 venv 已装 matplotlib。
-6. 一页复现说明
+> A team that "passes 4 levels + gives a rigorous failure taxonomy of the other 6" beats a team that "claims to pass level 9 but cannot show verification" -- that is the rubric itself.
 
 ---
 
-## 3. 已知的坑（全部是实测出来的）
+## 2. Deliverables
 
-### 模型 / prompt
-- **不要开 thinking（`--think`）。** Qwen3 实测：每轮 ~8s → **446s**，分数 0.30–0.62 → **0.00**，每个样本都 `finish_reason=length` 截断在 ~9,900 字符、没有代码。**加大 token 预算也没用，解法是缩短 prompt。** agent 什么都没返回时先查这里。
-- **prompt 里不要堆规则。** 给一串约束 → 模型逐条自我审查、陷入循环、什么都不输出；不给约束 → 输出自信但违规的代码。**正确做法：先放开生成，让 verifier 抓违规，再回传「只改这一处」的单条指令。约束属于 verifier，不属于生成 prompt。**
-- **verdict ≠ instruction。** 把 `line 16: calls banned max` 原样回传 → 同样的违规又出现；改写成「用显式循环替换 np.max/np.sum，其余不变」→ 一轮修好。
-- **不要在反馈里给出目标值。** 给了正确系数，模型直接抄、什么都不推导。只说**哪里错、往哪个方向错**。
-- **给工具，不给提示。** 模型算不了积分 → 给它一个自己调用的计算器（project 1 的 `tool_calc.py`）。
-- **看似合理的 prompt 改进可能全面变差。** 加了一个「按 128 分块拷贝」的示例：level 2 从 2/5 → 0/5，level 4 从 0.62 → 0.30，已回滚。**没测量前不要加回去。**
-- **失败会转移而不是消失**；分数可能在理解变好时反而下降（权重分配导致）。
+**README Part 4 (required for every project):**
+1. **Your checker**, and the reasons for what it accepts/rejects (this is what the organizers want to keep).
+2. **attempt log**: every attempt + score (the agent already writes `attempts.jsonl`; `scripts/sync.sh <N> pull` pulls it to the local `runs/`).
+3. **One-page write-up**: what was run, on what, and the results -- **including how many runs and the spread**.
 
-### 测量
-- **用 `--repeat N` 报成功率，不报最好的一次。** Level 2 同样设置 5 次：`[1.00, 1.00, 1.00, 0.50, 1.00]`，纯运气就能 0.5↔1.0。
-- Level 1/3/4 五次结果完全一样（0 方差）= **能力墙**，改动效果可以干净归因；level 2 是**运气限制**，单次对比无意义。
-- 三面墙其实是同一个 NKI 习惯用法——**tiling**：
-  - L1：`SBUF and PSUM tensors must have at least 2 dimensions`（建了 1-D tile）
-  - L3：`cannot reshape array of size 32768 into shape (1,64)`（reshape 而不是切片）
-  - L4：`dma_copy dst partition dimension 256 exceeds maximum 128`（整个张量一个 tile）→ 0.62，4 个 shape 只过 1 个
-- **说清楚哪些数字来自模拟器、哪些来自设备**；layer 2/3（真实延迟）还没做，目前所有数字都是 `nki.simulate` 的吞吐推算。
-- 222 Flops/Byte 是 bf16 的 ridge，测试 shape 是 float32 → 结论只是参考值。
-
-### 参数
-- **`--context 8192`**（seat pod 里 server 就是 8192）。repair prompt 要装上一版 kernel + checker 指令 + 失败 ledger，4096 会挤掉回答空间。
-- 本地 Qwen3：`--samples 4`（server 同时跑 4 条，几乎免费）。
-- 共享 gpt-oss-20b：**greedy 解码** → `--samples 1`（多采样=完全相同的答案），`--terse 1`（长 prompt 会让它只推理不回答），重试原 prompt 毫无意义，`tools=` 参数无效，输入上限 8192 token，接近上限会**静默截断**——**每次调用都检查 `finish_reason`**，`max_tokens` 至少 2500。~4 req/s 全场共享。
-- 8B 在 level 4 **赢了** 20B（0.62 vs 0.30）：gpt-oss 6 轮里 4 轮在 ~10,000 字符隐藏推理后返回空。
-
-### 环境 / 集群
-- **凭证只在当前终端有效，而且会过期。** 新开终端/标签要重新粘贴；`ExpiredToken` 时粘贴频道里最新的块。**不要写进任何文件，不要提交。**
-- **没有 `kubectl port-forward` 权限**（RBAC 只给了 pods get/list/watch、pods/log、pods/exec）。本机调不到 pod 里的 `localhost:8000`，**agent 只能在 pod 里跑**。已在 seat-116 实测：`can-i create pods/portforward` = no，port-forward 报 `cannot create resource "pods/portforward"`。`kubectl cp` 双向可用（走 exec）。
-- `kubectl exec -it` 后**等 `root@seat-N:/workspace#` 提示符出现再打字**，否则输入进的是本机 shell。
-- 长任务一律 `nohup python agent.py ARGS > run.log 2>&1 < /dev/null &` + `tail -f run.log`，否则断线就没了。`pgrep -af agent.py` 看是否还在跑。
-- **pod 被替换，`/workspace` 就没了** → 及时 push 到自己的 git 或 `scripts/sync.sh pull` 拉回本地。
-- pod 里任何 git 命令前：`git config --global --add safe.directory /workspace`。
-- NeuronCore 不能两个进程共享：vLLM 占 NC 2–3，NC 0–1 空闲；以后做设备上计时用 `NEURON_RT_VISIBLE_CORES=0,1`（未验证）。
-- `nki` 只在 Trainium pod 里有，本机 import 失败是正常的。本机能跑的：`kernelbench.py`（Stage A，纯 NumPy）和 `nkibench.py --selftest`（跳过模拟部分）。
+**CHALLENGE-kernel-agent.md (when choosing the kernel agent problem):**
+1. The agent itself
+2. The verification harness -- **state the tolerance and the reason** ("rtol=1e-5" is an answer, "looks about right" is not)
+3. **eval set**: shapes and values tested, including adversarial values. **Mandatory**.
+4. Failure taxonomy (groups + counts)
+5. **Token accounting**: input tokens per attempt and where they go (docs / error context / code). A "token allocation per attempt" chart is the most valuable thing in the demo → matplotlib is installed in the local venv.
+6. A one-page reproduction guide
 
 ---
 
-## 4. 接下来该跑的命令
+## 3. Known pitfalls (all measured)
 
-### 本机（每个新终端）
+### Model / prompt
+- **Do not turn on thinking (`--think`).** Measured with Qwen3: per round ~8s → **446s**, scores 0.30–0.62 → **0.00**, every sample truncated with `finish_reason=length` at ~9,900 characters with no code. **A bigger token budget does not help; the fix is a shorter prompt.** Check this first when the agent returns nothing.
+- **Do not pile rules into the prompt.** Give a list of constraints → the model self-checks item by item, loops, and outputs nothing; give no constraints → it outputs confident but rule-breaking code. **The right way: let generation run free, let the verifier catch violations, then send back a single "change only this one thing" instruction. Constraints belong in the verifier, not in the generation prompt.**
+- **verdict ≠ instruction.** Sending back `line 16: calls banned max` as is → the same violation comes back; rewriting it as "replace np.max/np.sum with explicit loops, leave everything else unchanged" → fixed in one round.
+- **Do not put target values in the feedback.** Given the correct coefficients, the model copies them and derives nothing. Only say **where it is wrong and in which direction**.
+- **Give tools, not hints.** The model cannot compute integrals → give it a calculator it calls itself (project 1's `tool_calc.py`).
+- **A plausible prompt improvement can make everything worse.** Adding a "copy in blocks of 128" example: level 2 went from 2/5 → 0/5, level 4 from 0.62 → 0.30; rolled back. **Do not add it back without measuring.**
+- **Failures move rather than disappear**; scores can go down as understanding gets better (because of how the weights are split).
+
+### Measurement
+- **Report the success rate over `--repeat N`, not the best run.** Level 2 with the same settings 5 times: `[1.00, 1.00, 1.00, 0.50, 1.00]`; luck alone gives 0.5↔1.0.
+- Levels 1/3/4 gave identical results in all five runs (0 variance) = **a capability wall**, so the effect of a change can be attributed cleanly; level 2 is **luck-limited**, and single comparisons mean nothing.
+- The three walls are really the same NKI idiom -- **tiling**:
+  - L1: `SBUF and PSUM tensors must have at least 2 dimensions` (built a 1-D tile)
+  - L3: `cannot reshape array of size 32768 into shape (1,64)` (reshape instead of slicing)
+  - L4: `dma_copy dst partition dimension 256 exceeds maximum 128` (one tile for the whole tensor) → 0.62, only 1 of 4 shapes passes
+- **Say clearly which numbers come from the simulator and which from the device**; layer 2/3 (real latency) is not done yet, all numbers so far are throughput estimates from `nki.simulate`.
+- 222 Flops/Byte is the bf16 ridge and the test shapes are float32 → the conclusion is only indicative.
+
+### Parameters
+- **`--context 8192`** (the server in the seat pod is 8192). The repair prompt has to hold the previous kernel + checker instructions + the failure ledger; 4096 squeezes out room for the answer.
+- Local Qwen3: `--samples 4` (the server runs 4 streams at once, almost free).
+- Shared gpt-oss-20b: **greedy decoding** → `--samples 1` (multiple samples = identical answers), `--terse 1` (a long prompt makes it only reason and not answer), retrying the same prompt is pointless, the `tools=` parameter has no effect, input limit 8192 tokens, near the limit it **truncates silently** -- **check `finish_reason` on every call**, `max_tokens` at least 2500. ~4 req/s shared by everyone.
+- 8B **beat** 20B on level 4 (0.62 vs 0.30): in 4 of 6 rounds gpt-oss returned empty after ~10,000 characters of hidden reasoning.
+
+### Environment / cluster
+- **Credentials are only valid in the current terminal, and they expire.** Paste them again in a new terminal/tab; on `ExpiredToken` paste the latest block from the channel. **Never write them into any file, never commit them.**
+- **No `kubectl port-forward` permission** (RBAC only grants pods get/list/watch, pods/log, pods/exec). This machine cannot reach `localhost:8000` inside the pod, **the agent can only run inside the pod**. Measured on seat-116: `can-i create pods/portforward` = no, port-forward reports `cannot create resource "pods/portforward"`. `kubectl cp` works both ways (goes through exec).
+- After `kubectl exec -it`, **wait for the `root@seat-N:/workspace#` prompt before typing**, otherwise the input goes to the local shell.
+- Long jobs always use `nohup python agent.py ARGS > run.log 2>&1 < /dev/null &` + `tail -f run.log`, otherwise they die when the connection drops. `pgrep -af agent.py` shows whether it is still running.
+- **If the pod is replaced, `/workspace` is gone** → push to your own git or `scripts/sync.sh pull` back to this machine in time.
+- Before any git command in the pod: `git config --global --add safe.directory /workspace`.
+- A NeuronCore cannot be shared by two processes: vLLM uses NC 2–3, NC 0–1 are free; for on-device timing later use `NEURON_RT_VISIBLE_CORES=0,1` (not verified).
+- `nki` only exists in the Trainium pod; failing to import it locally is normal. What runs locally: `kernelbench.py` (Stage A, pure NumPy) and `nkibench.py --selftest` (skips the simulation part).
+
+---
+
+## 4. Commands to run next
+
+### Local (every new terminal)
 ```bash
-# 1) 粘贴频道里的 macOS/Linux 凭证块（export AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_SESSION_TOKEN）
-# 2) 连上自己的座位
+# 1) paste the macOS/Linux credentials block from the channel (export AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_SESSION_TOKEN)
+# 2) connect to your own seat
 scripts/connect.sh <N>
 kubectl exec -it seat-<N> -- bash
 ```
 
-### pod 里，终端 1：起模型
+### In the pod, terminal 1: start the model
 ```bash
 neuron-ls
-cd /workspace && ./serve.sh                      # ~4 分钟，等 READY；不要关
+cd /workspace && ./serve.sh                      # ~4 minutes, wait for READY; do not close it
 ```
 
-### pod 里，终端 2：跑 agent
+### In the pod, terminal 2: run the agent
 ```bash
 git config --global --add safe.directory /workspace
 cd /workspace/projects/02-kernel-agent
-python nkibench.py --selftest                     # 先证明 harness 可信
+python nkibench.py --selftest                     # first prove the harness can be trusted
 python nkibench.py --level 4 --check reference_level4.py
 nohup python agent.py --all --rounds 8 --samples 4 --context 8192 --repeat 5 > run.log 2>&1 < /dev/null &
-tail -f run.log                                   # 这就是 baseline，记下每级 solved x/5 和 spread
+tail -f run.log                                   # this is the baseline; record solved x/5 and the spread for each level
 ```
 
-### 本机：同步
+### Local: sync
 ```bash
-DRY_RUN=1 scripts/sync.sh <N> push             # 先看会推哪些文件
-scripts/sync.sh <N> push                       # 本地改的 projects/ 文件 → pod /workspace
-scripts/sync.sh <N> pull                       # pod 的 run*.log / *.jsonl → runs/seat-<N>/<时间>/
+DRY_RUN=1 scripts/sync.sh <N> push             # first see which files would be pushed
+scripts/sync.sh <N> push                       # locally changed projects/ files → pod /workspace
+scripts/sync.sh <N> pull                       # the pod's run*.log / *.jsonl → runs/seat-<N>/<time>/
 ```
 
-### 本机：不连集群也能做的 Stage A
+### Local: Stage A, doable without the cluster
 ```bash
 source .venv/bin/activate
 cd projects/02-kernel-agent
@@ -214,9 +214,9 @@ python kernelbench.py --level 1 --show
 python kernelbench.py --level 1 --check my_kernel.py
 ```
 
-### 建议顺序
-1. 先跑 `--repeat 5` 的 baseline，记录数字（这是之后所有对比的参照）。
-2. 只改 **checker 的反馈文案**（把 verdict 改成 instruction），一次只改一处，每次都 `--repeat 5`。
-3. 从第一天就记 token 分配（docs / 错误 / 代码 / ledger），最后画图。
-4. 持续收集错误 kernel，按失败模式归类计数。
-5. 给 agent 输出加置信度，并检验它准不准。
+### Suggested order
+1. First run the `--repeat 5` baseline and record the numbers (this is the reference for every later comparison).
+2. Change only **the checker's feedback wording** (turn verdicts into instructions), one change at a time, `--repeat 5` every time.
+3. Record the token allocation from day one (docs / errors / code / ledger) and plot it at the end.
+4. Keep collecting wrong kernels and count them by failure mode.
+5. Add a confidence to the agent's output and check whether it is accurate.
