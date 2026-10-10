@@ -5,6 +5,7 @@
 import argparse
 import csv
 import json
+from datetime import datetime
 from pathlib import Path
 
 import matplotlib
@@ -14,10 +15,26 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 
+def years_per_minute(report):
+    """Count forecast advances from the last initial state; use 365.25 days/year."""
+    initial = datetime.fromisoformat(report["initial_times"][-1])
+    first = datetime.fromisoformat(report["target_time_start"])
+    step_days = (first - initial).total_seconds() / 86400
+    if step_days <= 0:
+        raise ValueError("Forecast timestep must advance the initial state")
+    # Use counted forecast advances; calendar labels can include irregular gaps.
+    days = report["forecast_timesteps"] * step_days
+    return days / 365.25 * 60 / report["eval_range"]["total_forward_wall_seconds"]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("manifest", type=Path)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--metric", choices=("seconds", "years-per-minute"), default="seconds"
+    )
+    parser.add_argument("--cpu-reference", type=Path)
     args = parser.parse_args()
     experiments = json.loads(args.manifest.read_text())
     rows = []
@@ -69,6 +86,7 @@ def main():
                 "experiment": index,
                 "label": experiment["label"],
                 "forward_seconds": seconds,
+                "years_emulated_per_minute": years_per_minute(report),
                 "running_best_seconds": best,
                 "speed_record": improved,
                 "single_median_ms": 1000 * report["single_call"]["median_wall_seconds"],
@@ -94,6 +112,35 @@ def main():
         )
         writer.writeheader()
         writer.writerows(rows)
+    throughput = args.metric == "years-per-minute"
+    metric_key = "years_emulated_per_minute" if throughput else "forward_seconds"
+    cpu_value = None
+    if args.cpu_reference:
+        cpu = json.loads(args.cpu_reference.read_text())
+        if (
+            cpu["backend"] != "cpu"
+            or not cpu["complete_eval_range"]
+            or cpu["forecast_metrics_computed"]
+        ):
+            raise ValueError("Expected a complete CPU forward-only reference")
+        for key in (
+            "checkpoint_sha256",
+            "prepared_case_sha256",
+            "torch_version",
+            "dtype",
+            "cpu_threads",
+            "forecast_timesteps",
+            "target_time_start",
+            "target_time_end",
+            "timing_contract",
+        ):
+            if cpu[key] != baseline[key]:
+                raise ValueError(f"CPU reference workload mismatch: {key}")
+        cpu_value = (
+            years_per_minute(cpu)
+            if throughput
+            else cpu["eval_range"]["total_forward_wall_seconds"]
+        )
     fig, ax = plt.subplots(figsize=(16, 8))
     fig.subplots_adjust(bottom=0.17, top=0.91, left=0.09, right=0.98)
     for kept, color, label in (
@@ -103,7 +150,7 @@ def main():
         selected = [r for r in rows if r["speed_record"] == kept]
         ax.scatter(
             [r["experiment"] for r in selected],
-            [r["forward_seconds"] for r in selected],
+            [r[metric_key] for r in selected],
             s=65 if kept else 28,
             color=color,
             edgecolors="#345447" if kept else "none",
@@ -111,7 +158,11 @@ def main():
             zorder=3,
         )
     x = [r["experiment"] for r in rows]
-    y = [r["running_best_seconds"] for r in rows]
+    y = (
+        list(np.maximum.accumulate([r[metric_key] for r in rows]))
+        if throughput
+        else [r["running_best_seconds"] for r in rows]
+    )
     ax.step(
         x + [max(len(experiments) - 1, x[-1]) + 0.25],
         y + [y[-1]],
@@ -120,10 +171,24 @@ def main():
         linewidth=2.5,
         label="Running best",
     )
+    if cpu_value is not None:
+        ax.axhline(
+            cpu_value,
+            color="#637daf",
+            linestyle="--",
+            linewidth=1.5,
+            label=f"CPU reference: {cpu_value:.3f} "
+            + ("years/min" if throughput else "s"),
+        )
     for row in rows:
+        score = (
+            f"{row[metric_key]:.3f} years/min"
+            if throughput
+            else f"{row[metric_key]:.2f} s"
+        )
         ax.annotate(
-            f"{row['label']} ({row['forward_seconds']:.2f} s)",
-            (row["experiment"], row["forward_seconds"]),
+            f"{row['label']} ({score})",
+            (row["experiment"], row[metric_key]),
             xytext=(9, 9),
             textcoords="offset points",
             fontsize=11,
@@ -133,13 +198,20 @@ def main():
             va="bottom",
             color="#367550" if row["speed_record"] else "#666666",
         )
-    ax.set_xlim(-0.1, max(len(experiments) - 1, x[-1]) + 0.65)
+    ax.set_xlim(-0.1, max(len(experiments) - 1, x[-1]) + 1.3)
     spread = max(max(y) - min(y), max(y) * 0.12)
-    observed = [r["forward_seconds"] for r in rows]
-    ax.set_ylim(max(0, min(observed) - spread * 0.35), max(observed) + spread * 0.6)
+    observed = [r[metric_key] for r in rows]
+    if cpu_value is not None:
+        observed.append(cpu_value)
+    spread = max(max(observed) - min(observed), max(observed) * 0.12)
+    ax.set_ylim(max(0, min(observed) - spread * 0.2), max(observed) + spread * 0.6)
     ax.set_xticks(range(len(experiments)))
     ax.set_xlabel("Experiment #")
-    ax.set_ylabel("Full evaluation forward seconds (lower is better)")
+    ax.set_ylabel(
+        "Years emulated per minute (higher is better)"
+        if throughput
+        else "Full evaluation forward seconds (lower is better)"
+    )
     ax.set_title(
         f"Autoresearch Progress: {len(rows)} Experiments, "
         f"{sum(r['speed_record'] for r in rows[1:])} Speed Improvement(s)",
@@ -148,10 +220,16 @@ def main():
     )
     ax.grid(alpha=0.2)
     ax.set_axisbelow(True)
-    ax.legend(loc="upper right", frameon=True, fontsize=9)
+    ax.legend(
+        loc="upper left" if throughput else "upper right", frameon=True, fontsize=9
+    )
     footer = (
-        f"Matched workload: {rows[0]['calls']} calls · device-resident inputs · "
-        "compilation/warmup excluded\nSpeed records only: BF16 changes arithmetic; "
+        (
+            f"Matched workload: {rows[0]['calls']} calls · 598 five-day steps / 365.25 days per year · "
+            if throughput
+            else f"Matched workload: {rows[0]['calls']} calls · device-resident inputs · "
+        )
+        + "compilation/warmup excluded\nSpeed records only: BF16 changes arithmetic; "
         "prediction accuracy has not been evaluated."
     )
     if pending:
