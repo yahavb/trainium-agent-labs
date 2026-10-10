@@ -14,6 +14,10 @@ NKI 0.6.0 CPU simulator. On a seat the unset target resolves to trn2 (analysis/s
 | `ev3_L4/` | Feedback v3 (`MESSAGES=v3 REPAIR_PROMPT=restructure`), level 4. **Lines 1-28 are an earlier invocation that is not in `run_v3_L4.log`**; lines 29-52 are run 1 (solved in round 5, the recovery in analysis/recovery_v3_L4_run1.md), 53-84 run 2 (best 0.75), 85-100 run 3, stopped after 4 rounds. **Count it as 1/2** (runs 1-2, lines 29-84) | feedback_v3 (fc137e7); its nkibench has the allocation audit (the log contains ILLEGAL ON HARDWARE), so 26c43ed or later; exact commit not recorded | 117 | 4 segments, 2 complete runs (100) | `37836741ad1814efb52219fa63a729ec` | **yes, lines 29-84 only**. All 100 re-grade as logged (this commit; run 1 also in 9e5a7ef) |
 | `teammate_all_seat117/` | A teammate's `agent.py --all`, stopped at 14:00-14:05 during run 1 (levels 1-3 started). L1 0.30, L2 1.00, L3 0.30 | **unknown** | 117 | 1 partial run | `a30b0f6c0a36bd0b8ec7d369f0b16b92` | **no**: reference only, code version unknown |
 | `teammate_all_seat118/` | The same, on 118 (levels 1-2 started). L1 0.30, L2 0.30 | **unknown** | 118 | 1 partial run | `21e07d51140cee394061057c0b885834` | **no**: reference only, code version unknown |
+| `seat115_v7/` | liuyq's v7 runs on seat-115 (day kit), d1-d14 and t1: L1 0/1, L2 1/8 (0 build), L3 5/5, L4 5/5, L9 11/11, L11 0/5 (finished level-runs); d1-d12 cut short by server stops. Full builds in `compile.txt`. Summary: analysis/seat115_chip_and_l1rule.md | day kit v7 (the layers of 7417cf9, `GATE=static`) on the organizers' grader at 8f1ca41 | 115 | 33 finished level-runs (736 attempts) | per file in the .md | **no** for rates against the final run (different grader and server settings); every 1.0 full-built |
+| `seat115_l1rule/` | v7 + the level-1 rule (gate_nki.py of 89417dd), level 1, 15:50-16:08, stopped at the freeze: 1/3 finished runs solved (round 0; the rule never fired) | day kit + 89417dd's gate_nki.py | 115 | 3 finished (72) | s1a `adfd788b…`, s1b `4aaa9fd4…` | reference only |
+| `task15_4090_l1rule/` | **4090, not a seat.** v7 vs v7 + the level-1 rule, levels 1-2, 10 runs each, both at once on one server; full builds of every solve and every held kernel done on seat-115 (`*_solves.log`, `l1fix_held.log`). Builds: L1 4/10 vs 0/10, L2 5/10 vs 8/10 | rehearsal kit (= day kit) + 89417dd's gate_nki.py | 4090 | 2 x 2 x 10 (732) | l1base `90a9afb8…`, l1fix `2e7120e0…` | **yes, within the pair** |
+| `chip_seat115/` | kernels run on seat-115's NeuronCores: the morning 4090 picks, the level-1 rule's solves, today's seat picks; logs, json and the exact kernels | – | 115 | – | – | – |
 
 Console logs: `baseline/run.log` `8c370e736c34d9f0b3995800d964beee`, `replica_seat119/run.log`
 `c9e72a525d45c21f2939d5e233e48d9b`, `expA_L1/run_expA_L1.log` `84c0db8f318cdfa8c263b413e3358ff6`,
@@ -24,6 +28,11 @@ Console logs: `baseline/run.log` `8c370e736c34d9f0b3995800d964beee`, `replica_se
 "Re-grade as logged": every attempt scored again with the current checker, one fresh file path each,
 allocation audit on, `NEURON_PLATFORM_TARGET_OVERRIDE=trn2`, and compared with the logged reward
 (`scripts/calibrate.py`). This matters because runs before c39c0ce could hold false scores (ded1ef2).
+
+The four rows above `## Reproduce` were added from liuyq's session (16:15). Their files were scanned
+with the same patterns before committing; the two 4090 console logs had the desktop's home directory
+replaced with `~` (nothing else changed). Not re-graded with `scripts/calibrate.py`; every 1.0 was full-built
+instead (each kernel from its own file).
 
 ## Reproduce the tables
 

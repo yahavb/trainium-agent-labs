@@ -1,0 +1,52 @@
+nki target trn2, NEURON_LOGICAL_NC_CONFIG=1
+L1 reference_level1.py C,H,W=(32, 32, 32) pool=2: sim ok   2.44e-07 | device ok   2.44e-07 | 1514.316 ms/call (first 12.02 s)
+L1 reference_level1.py C,H,W=(128, 16, 16) pool=4: sim ok   2.41e-07 | device ok   4.82e-07 | 1492.341 ms/call (first 1.49 s)
+L1 reference_level1.py C,H,W=(8, 24, 24) pool=3: sim ok   1.73e-07 | device ok   3.46e-07 | 1503.910 ms/call (first 1.48 s)
+L1 reference_level1.py C,H,W=(64, 8, 8) pool=2: sim ok   2.41e-07 | device ok   2.41e-07 | 1501.608 ms/call (first 1.5 s)
+L1 l1fix_7a2ef959.py C,H,W=(32, 32, 32) pool=2: sim ok   2.44e-07 | device ok   2.44e-07 | 2270.556 ms/call (first 2.29 s)
+L1 l1fix_7a2ef959.py C,H,W=(128, 16, 16) pool=4: sim ok   2.41e-07 | device ok   4.82e-07 | 1491.663 ms/call (first 1.56 s)
+L1 l1fix_7a2ef959.py C,H,W=(8, 24, 24) pool=3: sim ok   1.73e-07 | device ok   3.46e-07 | 1801.992 ms/call (first 1.69 s)
+L1 l1fix_7a2ef959.py C,H,W=(64, 8, 8) pool=2: sim ok   2.41e-07 | device ok   2.41e-07 | 1552.300 ms/call (first 1.55 s)
+L1 l1fix_8f3f8ac7.py C,H,W=(32, 32, 32) pool=2: sim ok   2.44e-07 | device ok   2.44e-07 | 1997.645 ms/call (first 1.99 s)
+L1 l1fix_8f3f8ac7.py C,H,W=(128, 16, 16) pool=4: sim ok   2.41e-07 | device ok   4.82e-07 | 1518.019 ms/call (first 1.64 s)
+L1 l1fix_8f3f8ac7.py C,H,W=(8, 24, 24) pool=3: sim ok   1.73e-07 | device ok   3.46e-07 | 1803.099 ms/call (first 1.66 s)
+L1 l1fix_8f3f8ac7.py C,H,W=(64, 8, 8) pool=2: sim ok   2.41e-07 | device ok   2.41e-07 | 1496.239 ms/call (first 1.58 s)
+L1 l1fix_911e2ad4.py C,H,W=(32, 32, 32) pool=2: sim ok   2.44e-07 | device ok   2.44e-07 | 2058.280 ms/call (first 1.96 s)
+L1 l1fix_911e2ad4.py C,H,W=(128, 16, 16) pool=4: sim ok   2.41e-07 | device ok   4.82e-07 | 1593.282 ms/call (first 1.47 s)
+L1 l1fix_911e2ad4.py C,H,W=(8, 24, 24) pool=3: sim ok   1.73e-07 | device ok   3.46e-07 | 1802.189 ms/call (first 1.8 s)
+L1 l1fix_911e2ad4.py C,H,W=(64, 8, 8) pool=2: sim ok   2.41e-07 | device ok   2.41e-07 | 1605.125 ms/call (first 1.56 s)
+L1 l1fix_bb8217cc.py C,H,W=(32, 32, 32) pool=2: sim ok   2.44e-07 | device ok   2.44e-07 | 2023.729 ms/call (first 2.12 s)
+L1 l1fix_bb8217cc.py C,H,W=(128, 16, 16) pool=4: sim ok   2.41e-07 | device ok   4.82e-07 | 1600.334 ms/call (first 1.64 s)
+L1 l1fix_bb8217cc.py C,H,W=(8, 24, 24) pool=3: sim ok   1.73e-07 | device ok   3.46e-07 | 1792.424 ms/call (first 1.8 s)
+L1 l1fix_bb8217cc.py C,H,W=(64, 8, 8) pool=2: sim ok   2.41e-07 | device ok   2.41e-07 | 1508.132 ms/call (first 1.48 s)
+L1 held_195b96d9.py C,H,W=(32, 32, 32) pool=2: sim ok   2.44e-07 | device FAIL (NCCError: neuronx-cc compilation failed with exit code 70
+stderr:
+[INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed ===
+Reason: Invalid access of 1 partitions starting at partition 1
+Instruction: I-769_inst__I-4-0
+Opcode: TensorReduce
+Instruction Source: (T |  - Please open a support ticket at https://github.com/aws-neuron/aws-neuron-sdk/issues/new. You may also be able to obtain more information using the 'XLA_IR_DEBUG' and 'XLA_HLO_DEBUG' environment var)
+L1 held_195b96d9.py C,H,W=(128, 16, 16) pool=4: sim ok   2.41e-07 | device FAIL (NCCError: neuronx-cc compilation failed with exit code 70
+stderr:
+[INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed ===
+Reason: Invalid access of 1 partitions starting at partition 1
+Instruction: I-49_inst__I-4-0
+Opcode: TensorReduce
+Instruction Source: (Te |  - Please open a support ticket at https://github.com/aws-neuron/aws-neuron-sdk/issues/new. You may also be able to obtain more information using the 'XLA_IR_DEBUG' and 'XLA_HLO_DEBUG' environment var)
+L1 held_195b96d9.py C,H,W=(8, 24, 24) pool=3: sim ok   1.73e-07 | device FAIL (NCCError: neuronx-cc compilation failed with exit code 70
+stderr:
+[INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed ===
+Reason: Invalid access of 1 partitions starting at partition 1
+Instruction: I-193_inst__I-4-0
+Opcode: TensorReduce
+Instruction Source: (T |  - Please open a support ticket at https://github.com/aws-neuron/aws-neuron-sdk/issues/new. You may also be able to obtain more information using the 'XLA_IR_DEBUG' and 'XLA_HLO_DEBUG' environment var)
+L1 held_195b96d9.py C,H,W=(64, 8, 8) pool=2: sim ok   2.41e-07 | device FAIL (NCCError: neuronx-cc compilation failed with exit code 70
+stderr:
+[INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed ===
+Reason: Invalid access of 1 partitions starting at partition 1
+Instruction: I-49_inst__I-4-0
+Opcode: TensorReduce
+Instruction Source: (Te |  - Please open a support ticket at https://github.com/aws-neuron/aws-neuron-sdk/issues/new. You may also be able to obtain more information using the 'XLA_IR_DEBUG' and 'XLA_HLO_DEBUG' environment var)
+
+device: 20 of 24 kernel-shapes match the reference (simulator: 24). Written to /workspace/devtest/l1chip/device_l1.json
+exit 0

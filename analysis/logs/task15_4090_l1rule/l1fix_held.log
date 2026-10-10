@@ -1,0 +1,324 @@
+== l1_held_l1fix_8a2c4a18.py
+   C,H,W=(4, 8, 8) pool=2           FAILS: NCCError: neuronx-cc compilation failed with exit code 70 stderr: [INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed === Reason:
+   C,H,W=(8, 12, 12) pool=3         FAILS: NCCError: neuronx-cc compilation failed with exit code 70 stderr: [INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed === Reason:
+== l1_held_l1fix_d2d6023a.py
+   C,H,W=(4, 8, 8) pool=2           FAILS: NCCError: neuronx-cc compilation failed with exit code 70 stderr: [INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed === Reason:
+   C,H,W=(8, 12, 12) pool=3         FAILS: NCCError: neuronx-cc compilation failed with exit code 70 stderr: [INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed === Reason:
+== l1_held_l1fix_195b96d9.py
+   C,H,W=(4, 8, 8) pool=2           FAILS: NCCError: neuronx-cc compilation failed with exit code 70 stderr: [INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed === Reason:
+   C,H,W=(8, 12, 12) pool=3         FAILS: NCCError: neuronx-cc compilation failed with exit code 70 stderr: [INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed === Reason:
+== l1_held_l1fix_ab465d15.py
+   C,H,W=(4, 8, 8) pool=2           FAILS: NCCError: neuronx-cc compilation failed with exit code 70 stderr: [INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed === Reason:
+   C,H,W=(8, 12, 12) pool=3         FAILS: NCCError: neuronx-cc compilation failed with exit code 70 stderr: [INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed === Reason:
+== l1_held_l1fix_6ee93021.py
+   C,H,W=(4, 8, 8) pool=2           FAILS: NCCError: neuronx-cc compilation failed with exit code 70 stderr: [INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed === Reason:
+   C,H,W=(8, 12, 12) pool=3         FAILS: NCCError: neuronx-cc compilation failed with exit code 70 stderr: [INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed === Reason:
+== l2_held_l1fix_0af4454a.py
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: cannot align DMA operands: source has 12 elements but destination has 4; ensure source and destination tile shapes have matching element counts
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_0af4454a.py:30:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_0af4454a.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: failed to lower dma_copy
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_0af4454a.py:30:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_0af4454a.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_0af4454a.py:30:9: note: called from here
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_0af4454a.py:6:1: note: when tracing NKI kernel
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+   shape=(32, 12) as 3x4            FAILS: RuntimeError: error: failed to compile NKI kernel: Collected 2 different diagnostics: - [x1] error: cannot align DMA operands: source has 12 elements but destination has 4; e
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: cannot align DMA operands: source has 64 elements but destination has 8; ensure source and destination tile shapes have matching element counts
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_0af4454a.py:30:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_0af4454a.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: failed to lower dma_copy
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_0af4454a.py:30:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_0af4454a.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_0af4454a.py:30:9: note: called from here
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_0af4454a.py:6:1: note: when tracing NKI kernel
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+   shape=(128, 64) as 8x8           FAILS: RuntimeError: error: failed to compile NKI kernel: Collected 2 different diagnostics: - [x1] error: cannot align DMA operands: source has 64 elements but destination has 8; e
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: cannot align DMA operands: source has 128 elements but destination has 32; ensure source and destination tile shapes have matching element counts
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_0af4454a.py:30:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_0af4454a.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: failed to lower dma_copy
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_0af4454a.py:30:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_0af4454a.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_0af4454a.py:30:9: note: called from here
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_0af4454a.py:6:1: note: when tracing NKI kernel
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+   shape=(64, 128) as 4x32          FAILS: RuntimeError: error: failed to compile NKI kernel: Collected 2 different diagnostics: - [x1] error: cannot align DMA operands: source has 128 elements but destination has 32;
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: cannot align DMA operands: source has 35 elements but destination has 7; ensure source and destination tile shapes have matching element counts
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_0af4454a.py:30:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_0af4454a.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: failed to lower dma_copy
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_0af4454a.py:30:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_0af4454a.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_0af4454a.py:30:9: note: called from here
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_0af4454a.py:6:1: note: when tracing NKI kernel
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+   shape=(8, 35) as 5x7             FAILS: RuntimeError: error: failed to compile NKI kernel: Collected 2 different diagnostics: - [x1] error: cannot align DMA operands: source has 35 elements but destination has 7; e
+== l2_held_l1fix_22f74614.py
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: cannot align DMA operands: source has 12 elements but destination has 4; ensure source and destination tile shapes have matching element counts
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_22f74614.py:25:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_22f74614.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: failed to lower dma_copy
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_22f74614.py:25:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_22f74614.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_22f74614.py:25:9: note: called from here
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_22f74614.py:6:1: note: when tracing NKI kernel
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+   shape=(32, 12) as 3x4            FAILS: RuntimeError: error: failed to compile NKI kernel: Collected 2 different diagnostics: - [x1] error: cannot align DMA operands: source has 12 elements but destination has 4; e
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: cannot align DMA operands: source has 64 elements but destination has 8; ensure source and destination tile shapes have matching element counts
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_22f74614.py:25:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_22f74614.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: failed to lower dma_copy
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_22f74614.py:25:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_22f74614.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_22f74614.py:25:9: note: called from here
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_22f74614.py:6:1: note: when tracing NKI kernel
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+   shape=(128, 64) as 8x8           FAILS: RuntimeError: error: failed to compile NKI kernel: Collected 2 different diagnostics: - [x1] error: cannot align DMA operands: source has 64 elements but destination has 8; e
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: cannot align DMA operands: source has 128 elements but destination has 32; ensure source and destination tile shapes have matching element counts
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_22f74614.py:25:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_22f74614.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: failed to lower dma_copy
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_22f74614.py:25:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_22f74614.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_22f74614.py:25:9: note: called from here
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_22f74614.py:6:1: note: when tracing NKI kernel
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+   shape=(64, 128) as 4x32          FAILS: RuntimeError: error: failed to compile NKI kernel: Collected 2 different diagnostics: - [x1] error: cannot align DMA operands: source has 128 elements but destination has 32;
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: cannot align DMA operands: source has 35 elements but destination has 7; ensure source and destination tile shapes have matching element counts
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_22f74614.py:25:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_22f74614.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: failed to lower dma_copy
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_22f74614.py:25:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_22f74614.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_22f74614.py:25:9: note: called from here
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_22f74614.py:6:1: note: when tracing NKI kernel
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+   shape=(8, 35) as 5x7             FAILS: RuntimeError: error: failed to compile NKI kernel: Collected 2 different diagnostics: - [x1] error: cannot align DMA operands: source has 35 elements but destination has 7; e
+== l2_held_l1fix_b9a0c219.py
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: cannot align DMA operands: source has 12 elements but destination has 4; ensure source and destination tile shapes have matching element counts
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_b9a0c219.py:25:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_b9a0c219.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: failed to lower dma_copy
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_b9a0c219.py:25:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_b9a0c219.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_b9a0c219.py:25:9: note: called from here
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_b9a0c219.py:6:1: note: when tracing NKI kernel
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+   shape=(32, 12) as 3x4            FAILS: RuntimeError: error: failed to compile NKI kernel: Collected 2 different diagnostics: - [x1] error: cannot align DMA operands: source has 12 elements but destination has 4; e
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: cannot align DMA operands: source has 64 elements but destination has 8; ensure source and destination tile shapes have matching element counts
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_b9a0c219.py:25:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_b9a0c219.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: failed to lower dma_copy
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_b9a0c219.py:25:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_b9a0c219.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_b9a0c219.py:25:9: note: called from here
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_b9a0c219.py:6:1: note: when tracing NKI kernel
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+   shape=(128, 64) as 8x8           FAILS: RuntimeError: error: failed to compile NKI kernel: Collected 2 different diagnostics: - [x1] error: cannot align DMA operands: source has 64 elements but destination has 8; e
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: cannot align DMA operands: source has 128 elements but destination has 32; ensure source and destination tile shapes have matching element counts
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_b9a0c219.py:25:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_b9a0c219.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: failed to lower dma_copy
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_b9a0c219.py:25:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_b9a0c219.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_b9a0c219.py:25:9: note: called from here
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_b9a0c219.py:6:1: note: when tracing NKI kernel
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+   shape=(64, 128) as 4x32          FAILS: RuntimeError: error: failed to compile NKI kernel: Collected 2 different diagnostics: - [x1] error: cannot align DMA operands: source has 128 elements but destination has 32;
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: cannot align DMA operands: source has 35 elements but destination has 7; ensure source and destination tile shapes have matching element counts
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_b9a0c219.py:25:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_b9a0c219.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/opt/conda/lib/python3.13/site-packages/nki/isa/_copy.py:212:18: error: failed to lower dma_copy
+        result = get_backend().dma_copy(
+                 ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_b9a0c219.py:25:9: note: called from
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_b9a0c219.py:6:1: note: called from
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_b9a0c219.py:25:9: note: called from here
+        nisa.dma_copy(dst=tile_2d, src=tile[p])
+        ^
+/workspace/l1fix/live/out_l1fix_held/l2_held_l1fix_b9a0c219.py:6:1: note: when tracing NKI kernel
+def tensor_transpose2D_kernel_(x, shape2D):
+^
+   shape=(8, 35) as 5x7             FAILS: RuntimeError: error: failed to compile NKI kernel: Collected 2 different diagnostics: - [x1] error: cannot align DMA operands: source has 35 elements but destination has 7; e
+
+=== summary: distinct simulator-solved kernels, by what the compiler and birsim say
+level 1: {'does not lower': 5}
+    10 x neuronx-cc compilation failed with exit code 70 stderr: [INTERNAL_ERROR] [NCC_INLA001] Unhandled exc
+level 2: {'does not lower': 3}
+    12 x error: failed to compile NKI kernel: Collected 2 different diagnostics: - [x1] error: cannot align D

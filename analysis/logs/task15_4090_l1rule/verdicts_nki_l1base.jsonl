@@ -1,0 +1,20 @@
+{"t": 1791657288, "level": 1, "status": "FAILED", "confidence": 0.0, "best": 0.5, "rounds": 8, "claim": "not solved: best score 0.50 after 8 rounds"}
+{"t": 1791657424, "level": 1, "status": "FAILED", "confidence": 0.0, "best": 0.5, "rounds": 8, "claim": "not solved: best score 0.50 after 8 rounds"}
+{"t": 1791657541, "level": 1, "status": "FAILED", "confidence": 0.0, "best": 0.5, "rounds": 8, "claim": "not solved: best score 0.50 after 8 rounds"}
+{"t": 1791657668, "level": 1, "status": "FAILED", "confidence": 0.0, "best": 0.5, "rounds": 8, "claim": "not solved: best score 0.50 after 8 rounds"}
+{"t": 1791657789, "level": 1, "status": "FAILED", "confidence": 0.0, "best": 0.5, "rounds": 8, "claim": "not solved: best score 0.50 after 8 rounds"}
+{"t": 1791657845, "level": 1, "rounds": 3, "extra_cases": 35, "extra_failed": 0, "compiler_risks": [], "lowered": null, "status": "VERIFIED", "confidence": 0.901, "claim": "solved, and passes all 35 extra cases it was never graded on (not compiled on this machine)"}
+{"t": 1791657946, "level": 1, "status": "FAILED", "confidence": 0.0, "best": 0.5, "rounds": 8, "claim": "not solved: best score 0.50 after 8 rounds"}
+{"t": 1791658184, "level": 1, "status": "FAILED", "confidence": 0.0, "best": 0.5, "rounds": 4, "claim": "not solved: best score 0.50 after 4 rounds"}
+{"t": 1791658295, "level": 1, "status": "FAILED", "confidence": 0.0, "best": 0.5, "rounds": 8, "claim": "not solved: best score 0.50 after 8 rounds"}
+{"t": 1791658458, "level": 1, "status": "FAILED", "confidence": 0.0, "best": 0.5, "rounds": 8, "claim": "not solved: best score 0.50 after 8 rounds"}
+{"t": 1791658487, "level": 2, "rounds": 2, "extra_cases": 35, "extra_failed": 0, "compiler_risks": [], "lowered": null, "status": "VERIFIED", "confidence": 0.901, "claim": "solved, and passes all 35 extra cases it was never graded on (not compiled on this machine)"}
+{"t": 1791658514, "level": 2, "rounds": 2, "extra_cases": 35, "extra_failed": 0, "compiler_risks": [], "lowered": null, "status": "VERIFIED", "confidence": 0.901, "claim": "solved, and passes all 35 extra cases it was never graded on (not compiled on this machine)"}
+{"t": 1791658536, "level": 2, "rounds": 1, "extra_cases": 35, "extra_failed": 0, "compiler_risks": [], "lowered": null, "status": "VERIFIED", "confidence": 0.901, "claim": "solved, and passes all 35 extra cases it was never graded on (not compiled on this machine)"}
+{"t": 1791658592, "level": 2, "status": "FAILED", "confidence": 0.0, "best": 0.5, "rounds": 4, "claim": "not solved: best score 0.50 after 4 rounds"}
+{"t": 1791658617, "level": 2, "rounds": 2, "extra_cases": 35, "extra_failed": 0, "compiler_risks": [], "lowered": null, "status": "VERIFIED", "confidence": 0.901, "claim": "solved, and passes all 35 extra cases it was never graded on (not compiled on this machine)"}
+{"t": 1791658635, "level": 2, "rounds": 1, "extra_cases": 35, "extra_failed": 0, "compiler_risks": [], "lowered": null, "status": "VERIFIED", "confidence": 0.901, "claim": "solved, and passes all 35 extra cases it was never graded on (not compiled on this machine)"}
+{"t": 1791658688, "level": 2, "rounds": 1, "extra_cases": 35, "extra_failed": 0, "compiler_risks": [], "lowered": null, "status": "VERIFIED", "confidence": 0.901, "claim": "solved, and passes all 35 extra cases it was never graded on (not compiled on this machine)"}
+{"t": 1791658700, "level": 2, "rounds": 1, "extra_cases": 35, "extra_failed": 0, "compiler_risks": [], "lowered": null, "status": "VERIFIED", "confidence": 0.901, "claim": "solved, and passes all 35 extra cases it was never graded on (not compiled on this machine)"}
+{"t": 1791658744, "level": 2, "status": "FAILED", "confidence": 0.0, "best": 0.5, "rounds": 4, "claim": "not solved: best score 0.50 after 4 rounds"}
+{"t": 1791658769, "level": 2, "rounds": 1, "extra_cases": 35, "extra_failed": 0, "compiler_risks": [], "lowered": null, "status": "VERIFIED", "confidence": 0.901, "claim": "solved, and passes all 35 extra cases it was never graded on (not compiled on this machine)"}

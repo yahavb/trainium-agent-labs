@@ -1,0 +1,40 @@
+########## level 1
+feedback v7: PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen REPAIR_PROMPT=restructure GRADE_TIMEOUT=120 GATE=static USAGE_LOG=/workspace/out/s115/usage_nki_d1.jsonl
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 5 ################
+
+=========== level 1: average pooling 2D ===========
+round 0: this round 0.50  best so far 0.50  (73.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 22: `nisa.tensor_scalar(dst=m, data=s, op0=nl.multiply, operand0=1.0 / (p * p))` raised ValueError: input operand has more dimensions than allowed by the axis remapping
+round 1: this round 0.30  best so far 0.50  (154.1s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 21: `s_flat = nl.reshape(s, (-1,))` raised AttributeError: module 'nki.language' has no attribute 'reshape' `nki.language` has no `reshape`. The closest real names are: greater, transpose, range, shared_hbm, negative, greater_equal. Pick one of those or use a different approach.
+round 2: same failure again (0.30, best so far 0.50)
+  same failure 2x — adding a ledger of 2 failed attempts to break the repeat
+round 3: this round 0.30  best so far 0.50  (188.9s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 25: `s_flat = nl.ndarray((C * (H // p) * (W // p)), dtype=x.dtype, buffer=nl.sbuf)` raised TypeError: object of type 'int' has no len()
+round 4: same failure again (0.30, best so far 0.50)
+  same failure 2x — adding a ledger of 3 failed attempts to break the repeat
+round 5: same failure again (0.30, best so far 0.50)
+  same failure 3x — adding a ledger of 3 failed attempts to break the repeat
+round 6: same failure again (0.30, best so far 0.50)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 25: `s_flat = nl.ndarray((C * (H // p) * (W // p)), d
+    2x  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 21: `s_flat = nl.reshape(s, (-1,))` raised AttributeE
+    1x  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 22: `nisa.tensor_scalar(dst=m, data=s, op0=nl.multipl
+  VERDICT level 1: FAILED, confidence 0.00: not solved: best score 0.50 after 7 rounds
+
+=========== summary ===========
+  level 1  reward 0.50 after 7 round(s)
+  solved 0/1
+
+################ run 2 of 5 ################
+
+=========== level 1: average pooling 2D ===========
+    (TRUNCATED: finish_reason=length after 12755 chars; prompt is 4160 chars)
+round 0: this round 0.30  best so far 0.30  (465.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 18: `s = nl.sum(tile, axis=[2, 4], keepdims=True)` raised AssertionError: tensor_reduce axis must be the last contiguous dim(s) of the tile. For a 3D tensor, expected axis=(1, 2) (or a shorter trailing subset). Got axis=(2, 4)
+round 1: this round 0.30  best so far 0.30  (145.2s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: Line 19: `s = nl.sum(tile, axis=[2, 3], keepdims=True)` raised AssertionError: tensor_reduce axis must be the last contiguous dim(s) of the tile. For a 3D tensor, expected axis=(1, 2) (or a shorter trailing subset). Got axis=(2, 3)
+round 2: this round 0.50  best so far 0.50  (160.9s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: NON-FINITE OUTPUT: 8192 NaN and 0 Inf, first at (0, 0, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.

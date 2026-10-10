@@ -1,0 +1,51 @@
+== l1_nki_l1base_d2c82452.py
+   C,H,W=(4, 8, 8) pool=2           FAILS: NCCError: neuronx-cc compilation failed with exit code 70 stderr: [INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed === Reason:
+   C,H,W=(8, 12, 12) pool=3         FAILS: NCCError: neuronx-cc compilation failed with exit code 70 stderr: [INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed === Reason:
+== l1_nki_l1base_07c4c380.py
+   C,H,W=(4, 8, 8) pool=2           FAILS: NCCError: neuronx-cc compilation failed with exit code 70 stderr: [INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed === Reason:
+   C,H,W=(8, 12, 12) pool=3         FAILS: NCCError: neuronx-cc compilation failed with exit code 70 stderr: [INTERNAL_ERROR] [NCC_INLA001] Unhandled exception with message: === BIR verification failed === Reason:
+== l2_nki_l1base_28c388bc.py
+   shape=(32, 12) as 3x4            predicted       2.6 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(128, 64) as 8x8           predicted       2.7 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(64, 128) as 4x32          predicted       2.7 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(8, 35) as 5x7             predicted       2.6 us; birsim MATCHES: worst error 0.00e+00 of RMS
+== l2_nki_l1base_b3acb823.py
+   shape=(32, 12) as 3x4            predicted       3.9 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(128, 64) as 8x8           predicted       4.1 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(64, 128) as 4x32          predicted       4.1 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(8, 35) as 5x7             predicted       3.9 us; birsim MATCHES: worst error 0.00e+00 of RMS
+== l2_nki_l1base_702a7a80.py
+   shape=(32, 12) as 3x4            predicted      44.2 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(128, 64) as 8x8           predicted     169.1 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(64, 128) as 4x32          predicted      85.9 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(8, 35) as 5x7             predicted      13.0 us; birsim MATCHES: worst error 0.00e+00 of RMS
+== l2_nki_l1base_4045722c.py
+   shape=(32, 12) as 3x4            predicted       2.6 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(128, 64) as 8x8           predicted       2.7 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(64, 128) as 4x32          predicted       2.7 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(8, 35) as 5x7             predicted       2.6 us; birsim MATCHES: worst error 0.00e+00 of RMS
+== l2_nki_l1base_a2558c4e.py
+   shape=(32, 12) as 3x4            predicted      44.2 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(128, 64) as 8x8           predicted     169.1 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(64, 128) as 4x32          predicted      85.9 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(8, 35) as 5x7             predicted      13.0 us; birsim MATCHES: worst error 0.00e+00 of RMS
+== l2_nki_l1base_a7fc1c34.py
+   shape=(32, 12) as 3x4            predicted       3.9 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(128, 64) as 8x8           predicted       4.1 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(64, 128) as 4x32          predicted       4.1 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(8, 35) as 5x7             predicted       3.9 us; birsim MATCHES: worst error 0.00e+00 of RMS
+== l2_nki_l1base_71f3d5d4.py
+   shape=(32, 12) as 3x4            predicted       2.6 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(128, 64) as 8x8           predicted       2.7 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(64, 128) as 4x32          predicted       2.7 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(8, 35) as 5x7             predicted       2.6 us; birsim MATCHES: worst error 0.00e+00 of RMS
+== l2_nki_l1base_f99cc67b.py
+   shape=(32, 12) as 3x4            predicted      44.2 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(128, 64) as 8x8           predicted     169.1 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(64, 128) as 4x32          predicted      85.9 us; birsim MATCHES: worst error 0.00e+00 of RMS
+   shape=(8, 35) as 5x7             predicted      13.0 us; birsim MATCHES: worst error 0.00e+00 of RMS
+
+=== summary: distinct simulator-solved kernels, by what the compiler and birsim say
+level 1: {'does not lower': 2}
+    4 x neuronx-cc compilation failed with exit code 70 stderr: [INTERNAL_ERROR] [NCC_INLA001] Unhandled exc
+level 2: {'match': 8}

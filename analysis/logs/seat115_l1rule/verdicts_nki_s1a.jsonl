@@ -1,0 +1,2 @@
+{"t": 1791662812, "level": 1, "status": "FAILED", "confidence": 0.0, "best": 0.5, "rounds": 8, "claim": "not solved: best score 0.50 after 8 rounds"}
+{"t": 1791662951, "level": 1, "rounds": 1, "extra_cases": 35, "extra_failed": 0, "compiler_risks": [], "lowered": true, "status": "VERIFIED", "confidence": 0.901, "claim": "solved, and passes all 35 extra cases it was never graded on, and lowers for trn2"}

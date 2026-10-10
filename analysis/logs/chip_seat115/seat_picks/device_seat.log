@@ -1,0 +1,12 @@
+nki target trn2, NEURON_LOGICAL_NC_CONFIG=1
+L3 l3.py K=128 M=64 N=512: sim ok   0.00e+00 | device ok   2.01e-06 | 1480.355 ms/call (first 11.44 s)
+L4 l4.py K=128 M=128 N=512: sim ok   0.00e+00 | device ok   2.36e-06 | 1499.303 ms/call (first 1.58 s)
+L4 l4.py K=256 M=256 N=1024: sim ok   2.87e-06 | device ok   3.11e-06 | 1510.646 ms/call (first 1.68 s)
+L4 l4.py K=512 M=128 N=512: sim ok   2.69e-06 | device ok   2.19e-06 | 1550.654 ms/call (first 1.58 s)
+L4 l4.py K=256 M=512 N=1024: sim ok   3.10e-06 | device ok   2.86e-06 | 1589.533 ms/call (first 1.62 s)
+L9 l9.py R=128 C=64: sim ok   5.91e-07 | device ok   2.36e-05 | 1488.738 ms/call (first 1.52 s)
+L9 l9.py R=64 C=512: sim ok   5.87e-07 | device ok   4.82e-05 | 1499.173 ms/call (first 1.5 s)
+L9 l9.py R=256 C=128 scale=30.0: sim ok   3.51e-07 | device ok   2.77e-05 | 1509.271 ms/call (first 1.59 s)
+
+device: 8 of 8 kernel-shapes match the reference (simulator: 8). Written to /workspace/devtest/seatpicks/device_seat.json
+exit 0

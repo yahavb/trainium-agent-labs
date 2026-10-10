@@ -1,0 +1,7 @@
+########## level 2
+feedback v7: PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen REPAIR_PROMPT=restructure GRADE_TIMEOUT=120 GATE=static USAGE_LOG=/workspace/out/s115/usage_nki_d9.jsonl
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 5 ################
+
+=========== level 2: 2D transpose ===========

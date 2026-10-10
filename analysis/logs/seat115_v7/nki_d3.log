@@ -1,0 +1,13 @@
+########## level 2
+feedback v7: PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen REPAIR_PROMPT=restructure GRADE_TIMEOUT=120 GATE=static USAGE_LOG=/workspace/out/s115/usage_nki_d3.jsonl
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 5 ################
+
+=========== level 2: 2D transpose ===========
+round 0: this round 0.30  best so far 0.30  (64.8s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 18: `nisa.dma_copy(dst=tile, src=x)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=16384 `tile` holds 16384 elements but `x` holds 384. Replace line 18 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile = nl.n
+round 1: this round 0.30  best so far 0.30  (146.8s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 27: `tile_view = tile.reshape((F1, F2))` raised AssertionError: Partition dim size must be preserved, got 32 -> 3

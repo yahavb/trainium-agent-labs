@@ -1,0 +1,6 @@
+nki target trn2, NEURON_LOGICAL_NC_CONFIG=1
+L1 reference_level1.py C,H,W=(32, 32, 32) pool=2: sim ok   2.44e-07 | device ok   2.44e-07 | 1194.622 ms/call (first 9.76 s)
+L1 reference_level1.py C,H,W=(128, 16, 16) pool=4: sim ok   2.41e-07 | device ok   4.82e-07 | 1192.049 ms/call (first 1.2 s)
+L1 reference_level1.py C,H,W=(8, 24, 24) pool=3: sim ok   1.73e-07 | device ok   3.46e-07 | 1193.456 ms/call (first 1.24 s)
+L1 reference_level1.py C,H,W=(64, 8, 8) pool=2: sim ok   2.41e-07 | device ok   2.41e-07 | 1193.096 ms/call (first 1.18 s)
+L3 reference_level3.py K=128 M=64 N=512: sim ok   0.00e+00 | device ok   2.01e-06 | 1177.937 ms/call (first 1.18 s)

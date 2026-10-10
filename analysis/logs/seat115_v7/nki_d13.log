@@ -1,0 +1,628 @@
+########## level 2
+feedback v7: PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen REPAIR_PROMPT=restructure GRADE_TIMEOUT=120 GATE=static USAGE_LOG=/workspace/out/s115/usage_nki_d13.jsonl
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 5 ################
+
+=========== level 2: 2D transpose ===========
+round 0: this round 0.30  best so far 0.30  (125.1s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 18: `nisa.dma_copy(dst=tile, src=x)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=16384 `tile` holds 16384 elements but `x` holds 384. Replace line 18 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile = nl.n
+round 1: this round 0.30  best so far 0.30  (114.8s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 24: `nisa.dma_copy(dst=tile, src=x[p:p+128, :])` raised AssertionError: Out-of-bound access for tensor `unnamed` on dimension 0: index range [0, 127] exceed dimension size of 32. You indexed up to 127 on dimension 0, which is only 32 long. Tile limits are a MAXIMUM, not a target. Derive every bound from the tensor's own shape -- use min(limit, s
+round 2: this round 0.30  best so far 0.30  (127.0s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 30: `tile_view = tile.reshape((F1, F2))` raised AssertionError: Partition dim size must be preserved, got 32 -> 3
+round 3: this round 0.30  best so far 0.30  (134.4s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 32: `row_view = row.reshape((F1, F2))` raised AssertionError: Partition dim size must be preserved, got 1 -> 3
+round 4: this round 0.30  best so far 0.30  (147.8s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 35: `row_view = row.reshape((F1, F2))` raised AssertionError: Partition dim size must be preserved, got 1 -> 3
+round 5: this round 0.30  best so far 0.30  (159.1s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 37: `row_view = row.reshape((F1, F2))` raised AssertionError: Partition dim size must be preserved, got 1 -> 3
+    (TRUNCATED: finish_reason=length after 10188 chars; prompt is 2012 chars)
+round 6: this round 0.50  best so far 0.50  (854.7s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: WRONG SHAPE: returned (), reference is (32, 12). Check the output-size arithmetic, not the values.
+    (TRUNCATED: finish_reason=length after 10188 chars; prompt is 10635 chars)    (TRUNCATED: finish_reason=length after 10188 chars; prompt is 10635 chars)    (TRUNCATED: finish_reason=length after 10188 chars; prompt is 10635 chars)    (TRUNCATED: finish_reason=length after 10188 chars; prompt is 10635 chars)
+
+
+
+round 7: same failure again (0.50, best so far 0.50)
+  same failure 2x — adding a ledger of 7 failed attempts to break the repeat
+  not solved in 8 rounds; best reward 0.50
+  VERDICT level 2: FAILED, confidence 0.00: not solved: best score 0.50 after 8 rounds
+
+=========== summary ===========
+  level 2  reward 0.50 after 8 round(s)
+  solved 0/1
+
+################ run 2 of 5 ################
+
+=========== level 2: 2D transpose ===========
+round 0: this round 0.30  best so far 0.30  (150.7s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 18: `nisa.dma_copy(dst=tile, src=x)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=16384 `tile` holds 16384 elements but `x` holds 384. Replace line 18 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile = nl.n
+round 1: this round 0.30  best so far 0.30  (119.5s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 23: `tile_p = tile[p, 0:128]` raised AssertionError: Out-of-bound access for tensor `unnamed` on dimension 1: index range [0, 127] exceed dimension size of 12. You indexed up to 127 on dimension 1, which is only 12 long. Tile limits are a MAXIMUM, not a target. Derive every bound from the tensor's own shape -- use min(limit, size) and let the fi
+round 2: this round 0.30  best so far 0.30  (123.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 23: `tile_p = tile[p, 0:nl.min(128, F)]` raised AttributeError: 'int' object has no attribute 'dtype' A int is not a numpy array, so it has no `dtype`. Use the nl/nisa functions instead.
+round 3: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 3 failed attempts to break the repeat
+round 4: this round 0.30  best so far 0.30  (129.6s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 23: `num_elements = nl.min(128, F)` raised AttributeError: 'int' object has no attribute 'dtype' A int is not a numpy array, so it has no `dtype`. Use the nl/nisa functions instead.
+round 5: this round 0.30  best so far 0.30  (132.9s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 23: `num_elements = nl.min(nl.literal(128), nl.shape(x)[1])` raised AttributeError: module 'nki.language' has no attribute 'literal' `nki.language` has no `literal`. The closest real names are: not_equal, greater_equal, equal, logical_or, less_equal, bitwise_or. Pick one of those or use a different approach.
+round 6: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 5 failed attempts to break the repeat
+round 7: this round 0.30  best so far 0.30  (131.9s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 23: `num_elements = min(nl.literal(128), nl.shape(x)[1])` raised AttributeError: module 'nki.language' has no attribute 'literal' `nki.language` has no `literal`. The closest real names are: not_equal, greater_equal, equal, logical_or, less_equal, bitwise_or. Pick one of those or use a different approach.
+  not solved in 8 rounds; best reward 0.30
+  VERDICT level 2: FAILED, confidence 0.00: not solved: best score 0.30 after 8 rounds
+
+=========== summary ===========
+  level 2  reward 0.30 after 8 round(s)
+  solved 0/1
+
+################ run 3 of 5 ################
+
+=========== level 2: 2D transpose ===========
+round 0: this round 0.30  best so far 0.30  (133.1s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 18: `nisa.dma_copy(dst=tile, src=x)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=16384 `tile` holds 16384 elements but `x` holds 384. Replace line 18 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile = nl.n
+round 1: this round 0.30  best so far 0.30  (127.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 22: `tile[0:128, 0:128] = x[p, 0:128, 0:128]` raised AssertionError: Out-of-bound access for tensor `unnamed` on dimension 1: index range [0, 127] exceed dimension size of 12. You indexed up to 127 on dimension 1, which is only 12 long. Tile limits are a MAXIMUM, not a target. Derive every bound from the tensor's own shape -- use min(limit, size
+round 2: this round 0.30  best so far 0.30  (150.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 25: `tile[0:128, 0:actual_size] = x[p, 0:128, 0:actual_size]` raised AssertionError: Out-of-bound access for tensor `unnamed` on dimension 1: index range [0, 127] exceed dimension size of 12. You indexed up to 127 on dimension 1, which is only 12 long. Tile limits are a MAXIMUM, not a target. Derive every bound from the tensor's own shape -- use
+round 3: this round 0.30  best so far 0.30  (134.5s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 25: `tile[0:actual_size, 0:128] = x[p, 0:actual_size, 0:128]` raised AssertionError: Out-of-bound access for tensor `unnamed` on dimension 1: index range [0, 127] exceed dimension size of 12. You indexed up to 127 on dimension 1, which is only 12 long. Tile limits are a MAXIMUM, not a target. Derive every bound from the tensor's own shape -- use
+round 4: this round 0.30  best so far 0.30  (131.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 25: `tile[0:actual_size, 0:F] = x[p, 0:actual_size, 0:F]` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=12, dst=144 The tile you allocated holds 144 elements but you copied 12 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you ar
+round 5: this round 0.30  best so far 0.30  (139.9s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 26: `nisa.dma_copy(dst=tile_slice, src=x[p, 0:actual_size, 0:F])` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=12, dst=144 `tile_slice` holds 144 elements but `x[p, 0:actual_size, 0:F]` holds 12. Replace line 26 with these two lines, so the tile is allocated with exactly the shape of what goes
+round 6: this round 0.30  best so far 0.30  (143.0s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 25: `tile_slice = nl.ndarray(x[p, 0:actual_size, 0:F].shape, dtype=x.dtype, buffer=nl.sbuf)` raised AssertionError: SBUF and PSUM tensors must have at least 2 dimensions (partition-dim and free-dim) The shape on this line has fewer than 2 dimensions. Every sbuf and psum tile is (partition, free): write the shape as a 2-element tuple, for example
+round 7: this round 0.30  best so far 0.30  (150.6s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 28: `nisa.dma_copy(dst=tile_slice, src=x[p, 0:actual_size, 0:F])` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=12, dst=144 `tile_slice` holds 144 elements but `x[p, 0:actual_size, 0:F]` holds 12. Replace line 28 with these two lines, so the tile is allocated with exactly the shape of what goes
+  not solved in 8 rounds; best reward 0.30
+  VERDICT level 2: FAILED, confidence 0.00: not solved: best score 0.30 after 8 rounds
+
+=========== summary ===========
+  level 2  reward 0.30 after 8 round(s)
+  solved 0/1
+
+################ run 4 of 5 ################
+
+=========== level 2: 2D transpose ===========
+round 0: this round 0.30  best so far 0.30  (116.8s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 18: `nisa.dma_copy(dst=tile, src=x)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=16384 `tile` holds 16384 elements but `x` holds 384. Replace line 18 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile = nl.n
+round 1: this round 0.30  best so far 0.30  (115.5s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 24: `nisa.dma_copy(dst=tile, src=x[p:p+128, :])` raised AssertionError: Out-of-bound access for tensor `unnamed` on dimension 0: index range [0, 127] exceed dimension size of 32. You indexed up to 127 on dimension 0, which is only 32 long. Tile limits are a MAXIMUM, not a target. Derive every bound from the tensor's own shape -- use min(limit, s
+round 2: this round 0.30  best so far 0.30  (138.3s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 30: `tile_view = tile.reshape((F1, F2))` raised AssertionError: Partition dim size must be preserved, got 32 -> 3
+round 3: this round 0.30  best so far 0.30  (137.6s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 31: `tile_view = tile[start_p:end_p, :].reshape((F1, F2))` raised AssertionError: Partition dim size must be preserved, got 32 -> 3
+round 4: this round 0.30  best so far 0.30  (138.8s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 31: `tile_view = tile[start_p:end_p, :].reshape((end_p - start_p, F2))` raised AssertionError: cannot reshape tensor of size 384 (shape (32, 12)) into shape (32, 4) (size 128)
+round 5: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 5 failed attempts to break the repeat
+round 6: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 5 failed attempts to break the repeat
+round 7: same failure again (0.30, best so far 0.30)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 31: `tile_view = tile[start_p:end_p, :].reshape((end_p - 
+    1x  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 18: `nisa.dma_copy(dst=tile, src=x)` raised AssertionErro
+    1x  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 24: `nisa.dma_copy(dst=tile, src=x[p:p+128, :])` raised A
+    1x  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 30: `tile_view = tile.reshape((F1, F2))` raised Assertion
+    1x  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 31: `tile_view = tile[start_p:end_p, :].reshape((F1, F2))
+  VERDICT level 2: FAILED, confidence 0.00: not solved: best score 0.30 after 8 rounds
+
+=========== summary ===========
+  level 2  reward 0.30 after 8 round(s)
+  solved 0/1
+
+################ run 5 of 5 ################
+
+=========== level 2: 2D transpose ===========
+round 0: this round 0.30  best so far 0.30  (105.8s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 18: `nisa.dma_copy(dst=tile, src=x)` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=16384 `tile` holds 16384 elements but `x` holds 384. Replace line 18 with these two lines, so the tile is allocated with exactly the shape of what goes into it, right where it is filled:
+
+    tile = nl.n
+round 1: this round 0.50  best so far 0.50  (109.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 27: `out[p, j * F2 + i] = tile[p, i * F2 + j]` raised AssertionError: Out-of-bound access for tensor `unnamed` on dimension 1: index 12 exceed dimension size of 12.
+round 2: this round 0.50  best so far 0.50  (107.9s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: Line 27: `out[p, i, j] = tile[p, j * F2 + i]` raised AssertionError: Out-of-bound access for tensor `unnamed` on dimension 1: index 12 exceed dimension size of 12.
+round 3: this round 0.50  best so far 0.50  (90.7s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: WRONG SHAPE: returned (32, 3, 4), reference is (32, 12). Check the output-size arithmetic, not the values.
+round 4: this round 0.50  best so far 0.50  (89.3s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: NUMERICAL MISMATCH: worst error 4.21 of the output's RMS (1.01), tolerance 0.02.
+  at index (4, 2): expected +2.37489, got -1.87253
+  90.9% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+round 5: this round 0.50  best so far 0.50  (90.3s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: NUMERICAL MISMATCH: worst error 3.54 of the output's RMS (1.01), tolerance 0.02.
+  at index (24, 9): expected +2.62617, got -0.948358
+  91.4% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+round 6: this round 0.50  best so far 0.50  (91.7s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: NUMERICAL MISMATCH: worst error 4.21 of the output's RMS (1.01), tolerance 0.02.
+  at index (4, 2): expected +2.37489, got -1.87253
+  90.9% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+round 7: same failure again (0.50, best so far 0.50)
+  same failure 2x — adding a ledger of 6 failed attempts to break the repeat
+  not solved in 8 rounds; best reward 0.50
+  VERDICT level 2: FAILED, confidence 0.00: not solved: best score 0.50 after 8 rounds
+
+=========== summary ===========
+  level 2  reward 0.50 after 8 round(s)
+  solved 0/1
+
+=========== over 5 runs ===========
+  level 2: solved 0/5  best 0.50  worst 0.30  mean 0.38  all=[0.5, 0.3, 0.3, 0.3, 0.5]
+
+  Report the rate, not your best run. A level that solves 1 in 3 times is not solved.
+
+attempts logged to /workspace/out/s115/attempts_nki_d13.jsonl
+########## level 3
+feedback v7: PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen REPAIR_PROMPT=restructure GRADE_TIMEOUT=120 GATE=static USAGE_LOG=/workspace/out/s115/usage_nki_d13.jsonl
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 5 ################
+
+=========== level 3: matmul, single tile ===========
+round 0: this round 1.00  best so far 1.00  (116.7s)
+  Correct on every shape. MEMORY BOUND: 19.7 Flops/Byte against a ridge of 222, so 9% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 11.3x more reuse needed.
+  SOLVED on round 0. Correct on every shape. MEMORY BOUND: 19.7 Flops/Byte against a ridge of 222, so 9% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 11.3x more reuse needed.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_matmul_basic_(lhsT, rhs):
+      # Allocate SBUF tiles for lhsT and rhs
+      lhs_tile = nl.ndarray(lhsT.shape, dtype=lhsT.dtype, buffer=nl.sbuf)
+      rhs_tile = nl.ndarray(rhs.shape, dtype=rhs.dtype, buffer=nl.sbuf)
+      # Allocate PSUM tile for result
+      psum_tile = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=nl.float32, buffer=nl.psum)
+    
+      # Copy lhsT to SBUF
+      nisa.dma_copy(dst=lhs_tile, src=lhsT)
+      # Copy rhs to SBUF
+      nisa.dma_copy(dst=rhs_tile, src=rhs)
+    
+      # Perform matrix multiplication
+      nisa.nc_matmul(dst=psum_tile, stationary=lhs_tile, moving=rhs_tile)
+    
+      # Copy result from PSUM to SBUF
+      result_tile = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=lhsT.dtype, buffer=nl.sbuf)
+      nisa.tensor_copy(dst=result_tile, src=psum_tile)
+    
+      # Copy result from SBUF to HBM
+      out = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+      nisa.dma_copy(dst=out, src=result_tile)
+    
+      return out
+  -------------------------------------------
+  VERDICT level 3: VERIFIED, confidence 0.74: solved, and passes all 11 extra cases it was never graded on, and lowers for trn2
+
+=========== summary ===========
+  level 3  reward 1.00 after 1 round(s)  SOLVED
+  solved 1/1
+
+################ run 2 of 5 ################
+
+=========== level 3: matmul, single tile ===========
+round 0: this round 1.00  best so far 1.00  (115.6s)
+  Correct on every shape. MEMORY BOUND: 19.7 Flops/Byte against a ridge of 222, so 9% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 11.3x more reuse needed.
+  SOLVED on round 0. Correct on every shape. MEMORY BOUND: 19.7 Flops/Byte against a ridge of 222, so 9% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 11.3x more reuse needed.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_matmul_basic_(lhsT, rhs):
+      # Allocate SBUF tiles for lhsT and rhs
+      lhs_tile = nl.ndarray(lhsT.shape, dtype=lhsT.dtype, buffer=nl.sbuf)
+      rhs_tile = nl.ndarray(rhs.shape, dtype=rhs.dtype, buffer=nl.sbuf)
+      # Allocate PSUM tile for result
+      psum_tile = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=nl.float32, buffer=nl.psum)
+    
+      # Copy lhsT to SBUF
+      nisa.dma_copy(dst=lhs_tile, src=lhsT)
+      # Copy rhs to SBUF
+      nisa.dma_copy(dst=rhs_tile, src=rhs)
+    
+      # Perform matrix multiplication
+      nisa.nc_matmul(dst=psum_tile, stationary=lhs_tile, moving=rhs_tile)
+    
+      # Copy result from PSUM to SBUF
+      result_tile = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=lhsT.dtype, buffer=nl.sbuf)
+      nisa.tensor_copy(dst=result_tile, src=psum_tile)
+    
+      # Copy result from SBUF to HBM
+      out = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+      nisa.dma_copy(dst=out, src=result_tile)
+    
+      return out
+  -------------------------------------------
+  VERDICT level 3: VERIFIED, confidence 0.74: solved, and passes all 11 extra cases it was never graded on, and lowers for trn2
+
+=========== summary ===========
+  level 3  reward 1.00 after 1 round(s)  SOLVED
+  solved 1/1
+
+################ run 3 of 5 ################
+
+=========== level 3: matmul, single tile ===========
+round 0: this round 1.00  best so far 1.00  (115.7s)
+  Correct on every shape. MEMORY BOUND: 19.7 Flops/Byte against a ridge of 222, so 9% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 11.3x more reuse needed.
+  SOLVED on round 0. Correct on every shape. MEMORY BOUND: 19.7 Flops/Byte against a ridge of 222, so 9% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 11.3x more reuse needed.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_matmul_basic_(lhsT, rhs):
+      # Allocate SBUF tiles for lhsT and rhs
+      lhs_tile = nl.ndarray(lhsT.shape, dtype=lhsT.dtype, buffer=nl.sbuf)
+      rhs_tile = nl.ndarray(rhs.shape, dtype=rhs.dtype, buffer=nl.sbuf)
+      # Allocate PSUM tile for result
+      psum_tile = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=nl.float32, buffer=nl.psum)
+    
+      # Copy lhsT to SBUF
+      nisa.dma_copy(dst=lhs_tile, src=lhsT)
+      # Copy rhs to SBUF
+      nisa.dma_copy(dst=rhs_tile, src=rhs)
+    
+      # Perform matrix multiplication
+      nisa.nc_matmul(dst=psum_tile, stationary=lhs_tile, moving=rhs_tile)
+    
+      # Copy result from PSUM to SBUF
+      result_tile = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=lhsT.dtype, buffer=nl.sbuf)
+      nisa.tensor_copy(dst=result_tile, src=psum_tile)
+    
+      # Copy result from SBUF to HBM
+      out = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+      nisa.dma_copy(dst=out, src=result_tile)
+    
+      return out
+  -------------------------------------------
+  VERDICT level 3: VERIFIED, confidence 0.74: solved, and passes all 11 extra cases it was never graded on, and lowers for trn2
+
+=========== summary ===========
+  level 3  reward 1.00 after 1 round(s)  SOLVED
+  solved 1/1
+
+################ run 4 of 5 ################
+
+=========== level 3: matmul, single tile ===========
+round 0: this round 1.00  best so far 1.00  (115.7s)
+  Correct on every shape. MEMORY BOUND: 19.7 Flops/Byte against a ridge of 222, so 9% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 11.3x more reuse needed.
+  SOLVED on round 0. Correct on every shape. MEMORY BOUND: 19.7 Flops/Byte against a ridge of 222, so 9% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 11.3x more reuse needed.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_matmul_basic_(lhsT, rhs):
+      # Allocate SBUF tiles for lhsT and rhs
+      lhs_tile = nl.ndarray(lhsT.shape, dtype=lhsT.dtype, buffer=nl.sbuf)
+      rhs_tile = nl.ndarray(rhs.shape, dtype=rhs.dtype, buffer=nl.sbuf)
+      # Allocate PSUM tile for result
+      psum_tile = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=nl.float32, buffer=nl.psum)
+    
+      # Copy lhsT to SBUF
+      nisa.dma_copy(dst=lhs_tile, src=lhsT)
+      # Copy rhs to SBUF
+      nisa.dma_copy(dst=rhs_tile, src=rhs)
+    
+      # Perform matrix multiplication
+      nisa.nc_matmul(dst=psum_tile, stationary=lhs_tile, moving=rhs_tile)
+    
+      # Copy result from PSUM to SBUF
+      result_tile = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=lhsT.dtype, buffer=nl.sbuf)
+      nisa.tensor_copy(dst=result_tile, src=psum_tile)
+    
+      # Copy result from SBUF to HBM
+      out = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+      nisa.dma_copy(dst=out, src=result_tile)
+    
+      return out
+  -------------------------------------------
+  VERDICT level 3: VERIFIED, confidence 0.74: solved, and passes all 11 extra cases it was never graded on, and lowers for trn2
+
+=========== summary ===========
+  level 3  reward 1.00 after 1 round(s)  SOLVED
+  solved 1/1
+
+################ run 5 of 5 ################
+
+=========== level 3: matmul, single tile ===========
+round 0: this round 1.00  best so far 1.00  (115.3s)
+  Correct on every shape. MEMORY BOUND: 19.7 Flops/Byte against a ridge of 222, so 9% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 11.3x more reuse needed.
+  SOLVED on round 0. Correct on every shape. MEMORY BOUND: 19.7 Flops/Byte against a ridge of 222, so 9% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 11.3x more reuse needed.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_matmul_basic_(lhsT, rhs):
+      # Allocate SBUF tiles for lhsT and rhs
+      lhs_tile = nl.ndarray(lhsT.shape, dtype=lhsT.dtype, buffer=nl.sbuf)
+      rhs_tile = nl.ndarray(rhs.shape, dtype=rhs.dtype, buffer=nl.sbuf)
+      # Allocate PSUM tile for result
+      psum_tile = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=nl.float32, buffer=nl.psum)
+    
+      # Copy lhsT and rhs into SBUF tiles
+      nisa.dma_copy(dst=lhs_tile, src=lhsT)
+      nisa.dma_copy(dst=rhs_tile, src=rhs)
+    
+      # Perform matrix multiplication into PSUM
+      nisa.nc_matmul(dst=psum_tile, stationary=lhs_tile, moving=rhs_tile)
+    
+      # Copy result from PSUM to SBUF
+      result_tile = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=lhsT.dtype, buffer=nl.sbuf)
+      nisa.tensor_copy(dst=result_tile, src=psum_tile)
+    
+      # Copy result from SBUF to shared HBM
+      out = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+      nisa.dma_copy(dst=out, src=result_tile)
+    
+      return out
+  -------------------------------------------
+  VERDICT level 3: VERIFIED, confidence 0.74: solved, and passes all 11 extra cases it was never graded on, and lowers for trn2
+
+=========== summary ===========
+  level 3  reward 1.00 after 1 round(s)  SOLVED
+  solved 1/1
+
+=========== over 5 runs ===========
+  level 3: solved 5/5  best 1.00  worst 1.00  mean 1.00  all=[1.0, 1.0, 1.0, 1.0, 1.0]
+
+  Report the rate, not your best run. A level that solves 1 in 3 times is not solved.
+
+attempts logged to /workspace/out/s115/attempts_nki_d13.jsonl
+########## level 4
+feedback v7: PROMPT1=v2 MESSAGES=v5 CARD=category SAMPLING=qwen REPAIR_PROMPT=restructure GRADE_TIMEOUT=120 GATE=static USAGE_LOG=/workspace/out/s115/usage_nki_d13.jsonl
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.30  best so far 0.30  (114.2s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: Line 25: `nisa.tensor_copy(dst=lhs_tile, src=psum_tile)` raised ValueError: shape mismatch: value array of shape (65536,) could not be broadcast to indexing result of shape (16384,) `lhs_tile` holds 16384 elements, but the result written into it holds 65536. A destination must have exactly the shape of what goes into it, so do not reuse a tile you alloca
+round 1: this round 0.62  best so far 0.62  (125.4s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: Line 17: `nisa.dma_copy(dst=lhs_tile, src=lhsT)` raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 `lhs_tile` and `rhs_tile` are bigger than one nc_matmul takes: at most 128 rows of K, at most 128 columns of the stationary operand, and at most 512 columns of the moving operand. Tile all three dimensions at once. Replace eve
+round 2: this round 1.00  best so far 1.00  (148.1s)
+  Correct on every shape. MEMORY BOUND: 36.6 Flops/Byte against a ridge of 222, so 16% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 6.1x more reuse needed.
+  SOLVED on round 2. Correct on every shape. MEMORY BOUND: 36.6 Flops/Byte against a ridge of 222, so 16% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 6.1x more reuse needed.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_matmul_tiled_(lhsT, rhs):
+      # Allocate output buffer in shared HBM
+      out = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+    
+      TK = min(128, lhsT.shape[0])
+      TM = min(128, lhsT.shape[1])
+      TN = min(512, rhs.shape[1])
+    
+      for m in nl.affine_range(lhsT.shape[1] // TM):
+          for n in nl.affine_range(rhs.shape[1] // TN):
+              psum_tile = nl.ndarray((TM, TN), dtype=nl.float32, buffer=nl.psum)
+              for k in nl.affine_range(lhsT.shape[0] // TK):
+                  lhs_tile = nl.ndarray((TK, TM), dtype=lhsT.dtype, buffer=nl.sbuf)
+                  rhs_tile = nl.ndarray((TK, TN), dtype=rhs.dtype, buffer=nl.sbuf)
+                  nisa.dma_copy(dst=lhs_tile, src=lhsT[k * TK:(k + 1) * TK, m * TM:(m + 1) * TM])
+                  nisa.dma_copy(dst=rhs_tile, src=rhs[k * TK:(k + 1) * TK, n * TN:(n + 1) * TN])
+                  nisa.nc_matmul(dst=psum_tile, stationary=lhs_tile, moving=rhs_tile)
+              res = nl.ndarray((TM, TN), dtype=out.dtype, buffer=nl.sbuf)
+              nisa.tensor_copy(dst=res, src=psum_tile)
+              nisa.dma_copy(dst=out[m * TM:(m + 1) * TM, n * TN:(n + 1) * TN], src=res)
+    
+      return out
+  -------------------------------------------
+  VERDICT level 4: VERIFIED, confidence 0.88: solved, and passes all 29 extra cases it was never graded on, and lowers for trn2
+
+=========== summary ===========
+  level 4  reward 1.00 after 3 round(s)  SOLVED
+  solved 1/1
+
+################ run 2 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.30  best so far 0.30  (58.0s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: Line 25: `nisa.tensor_copy(dst=lhs_tile, src=psum_tile)` raised ValueError: shape mismatch: value array of shape (65536,) could not be broadcast to indexing result of shape (16384,) `lhs_tile` holds 16384 elements, but the result written into it holds 65536. A destination must have exactly the shape of what goes into it, so do not reuse a tile you alloca
+round 1: this round 0.62  best so far 0.62  (61.5s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: Line 17: `nisa.dma_copy(dst=lhs_tile, src=lhsT)` raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 `lhs_tile` and `rhs_tile` are bigger than one nc_matmul takes: at most 128 rows of K, at most 128 columns of the stationary operand, and at most 512 columns of the moving operand. Tile all three dimensions at once. Replace eve
+round 2: this round 1.00  best so far 1.00  (76.9s)
+  Correct on every shape. MEMORY BOUND: 36.6 Flops/Byte against a ridge of 222, so 16% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 6.1x more reuse needed.
+  SOLVED on round 2. Correct on every shape. MEMORY BOUND: 36.6 Flops/Byte against a ridge of 222, so 16% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 6.1x more reuse needed.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_matmul_tiled_(lhsT, rhs):
+      # Allocate output buffer in shared HBM
+      out = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+    
+      TK = min(128, lhsT.shape[0])
+      TM = min(128, lhsT.shape[1])
+      TN = min(512, rhs.shape[1])
+    
+      for m in nl.affine_range(lhsT.shape[1] // TM):
+          for n in nl.affine_range(rhs.shape[1] // TN):
+              psum_tile = nl.ndarray((TM, TN), dtype=nl.float32, buffer=nl.psum)
+              for k in nl.affine_range(lhsT.shape[0] // TK):
+                  lhs_tile = nl.ndarray((TK, TM), dtype=lhsT.dtype, buffer=nl.sbuf)
+                  rhs_tile = nl.ndarray((TK, TN), dtype=rhs.dtype, buffer=nl.sbuf)
+                  nisa.dma_copy(dst=lhs_tile, src=lhsT[k * TK:(k + 1) * TK, m * TM:(m + 1) * TM])
+                  nisa.dma_copy(dst=rhs_tile, src=rhs[k * TK:(k + 1) * TK, n * TN:(n + 1) * TN])
+                  nisa.nc_matmul(dst=psum_tile, stationary=lhs_tile, moving=rhs_tile)
+              res = nl.ndarray((TM, TN), dtype=out.dtype, buffer=nl.sbuf)
+              nisa.tensor_copy(dst=res, src=psum_tile)
+              nisa.dma_copy(dst=out[m * TM:(m + 1) * TM, n * TN:(n + 1) * TN], src=res)
+    
+      return out
+  -------------------------------------------
+  VERDICT level 4: VERIFIED, confidence 0.88: solved, and passes all 29 extra cases it was never graded on, and lowers for trn2
+
+=========== summary ===========
+  level 4  reward 1.00 after 3 round(s)  SOLVED
+  solved 1/1
+
+################ run 3 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.30  best so far 0.30  (56.3s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: Line 25: `nisa.tensor_copy(dst=lhs_tile, src=psum_tile)` raised ValueError: shape mismatch: value array of shape (65536,) could not be broadcast to indexing result of shape (16384,) `lhs_tile` holds 16384 elements, but the result written into it holds 65536. A destination must have exactly the shape of what goes into it, so do not reuse a tile you alloca
+round 1: this round 0.62  best so far 0.62  (61.5s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: Line 17: `nisa.dma_copy(dst=lhs_tile, src=lhsT)` raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 `lhs_tile` and `rhs_tile` are bigger than one nc_matmul takes: at most 128 rows of K, at most 128 columns of the stationary operand, and at most 512 columns of the moving operand. Tile all three dimensions at once. Replace eve
+round 2: this round 1.00  best so far 1.00  (76.9s)
+  Correct on every shape. MEMORY BOUND: 36.6 Flops/Byte against a ridge of 222, so 16% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 6.1x more reuse needed.
+  SOLVED on round 2. Correct on every shape. MEMORY BOUND: 36.6 Flops/Byte against a ridge of 222, so 16% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 6.1x more reuse needed.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_matmul_tiled_(lhsT, rhs):
+      # Allocate output buffer in shared HBM
+      out = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+    
+      TK = min(128, lhsT.shape[0])
+      TM = min(128, lhsT.shape[1])
+      TN = min(512, rhs.shape[1])
+    
+      for m in nl.affine_range(lhsT.shape[1] // TM):
+          for n in nl.affine_range(rhs.shape[1] // TN):
+              psum_tile = nl.ndarray((TM, TN), dtype=nl.float32, buffer=nl.psum)
+              for k in nl.affine_range(lhsT.shape[0] // TK):
+                  lhs_tile = nl.ndarray((TK, TM), dtype=lhsT.dtype, buffer=nl.sbuf)
+                  rhs_tile = nl.ndarray((TK, TN), dtype=rhs.dtype, buffer=nl.sbuf)
+                  nisa.dma_copy(dst=lhs_tile, src=lhsT[k * TK:(k + 1) * TK, m * TM:(m + 1) * TM])
+                  nisa.dma_copy(dst=rhs_tile, src=rhs[k * TK:(k + 1) * TK, n * TN:(n + 1) * TN])
+                  nisa.nc_matmul(dst=psum_tile, stationary=lhs_tile, moving=rhs_tile)
+              res = nl.ndarray((TM, TN), dtype=out.dtype, buffer=nl.sbuf)
+              nisa.tensor_copy(dst=res, src=psum_tile)
+              nisa.dma_copy(dst=out[m * TM:(m + 1) * TM, n * TN:(n + 1) * TN], src=res)
+    
+      return out
+  -------------------------------------------
+  VERDICT level 4: VERIFIED, confidence 0.88: solved, and passes all 29 extra cases it was never graded on, and lowers for trn2
+
+=========== summary ===========
+  level 4  reward 1.00 after 3 round(s)  SOLVED
+  solved 1/1
+
+################ run 4 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.30  best so far 0.30  (56.3s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: Line 25: `nisa.tensor_copy(dst=lhs_tile, src=psum_tile)` raised ValueError: shape mismatch: value array of shape (65536,) could not be broadcast to indexing result of shape (16384,) `lhs_tile` holds 16384 elements, but the result written into it holds 65536. A destination must have exactly the shape of what goes into it, so do not reuse a tile you alloca
+round 1: this round 0.62  best so far 0.62  (61.5s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: Line 17: `nisa.dma_copy(dst=lhs_tile, src=lhsT)` raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 `lhs_tile` and `rhs_tile` are bigger than one nc_matmul takes: at most 128 rows of K, at most 128 columns of the stationary operand, and at most 512 columns of the moving operand. Tile all three dimensions at once. Replace eve
+round 2: this round 1.00  best so far 1.00  (77.0s)
+  Correct on every shape. MEMORY BOUND: 36.6 Flops/Byte against a ridge of 222, so 16% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 6.1x more reuse needed.
+  SOLVED on round 2. Correct on every shape. MEMORY BOUND: 36.6 Flops/Byte against a ridge of 222, so 16% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 6.1x more reuse needed.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_matmul_tiled_(lhsT, rhs):
+      # Allocate output buffer in shared HBM
+      out = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+    
+      TK = min(128, lhsT.shape[0])
+      TM = min(128, lhsT.shape[1])
+      TN = min(512, rhs.shape[1])
+    
+      for m in nl.affine_range(lhsT.shape[1] // TM):
+          for n in nl.affine_range(rhs.shape[1] // TN):
+              psum_tile = nl.ndarray((TM, TN), dtype=nl.float32, buffer=nl.psum)
+              for k in nl.affine_range(lhsT.shape[0] // TK):
+                  lhs_tile = nl.ndarray((TK, TM), dtype=lhsT.dtype, buffer=nl.sbuf)
+                  rhs_tile = nl.ndarray((TK, TN), dtype=rhs.dtype, buffer=nl.sbuf)
+                  nisa.dma_copy(dst=lhs_tile, src=lhsT[k * TK:(k + 1) * TK, m * TM:(m + 1) * TM])
+                  nisa.dma_copy(dst=rhs_tile, src=rhs[k * TK:(k + 1) * TK, n * TN:(n + 1) * TN])
+                  nisa.nc_matmul(dst=psum_tile, stationary=lhs_tile, moving=rhs_tile)
+              res = nl.ndarray((TM, TN), dtype=out.dtype, buffer=nl.sbuf)
+              nisa.tensor_copy(dst=res, src=psum_tile)
+              nisa.dma_copy(dst=out[m * TM:(m + 1) * TM, n * TN:(n + 1) * TN], src=res)
+    
+      return out
+  -------------------------------------------
+  VERDICT level 4: VERIFIED, confidence 0.88: solved, and passes all 29 extra cases it was never graded on, and lowers for trn2
+
+=========== summary ===========
+  level 4  reward 1.00 after 3 round(s)  SOLVED
+  solved 1/1
+
+################ run 5 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.30  best so far 0.30  (56.3s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: Line 25: `nisa.tensor_copy(dst=lhs_tile, src=psum_tile)` raised ValueError: shape mismatch: value array of shape (65536,) could not be broadcast to indexing result of shape (16384,) `lhs_tile` holds 16384 elements, but the result written into it holds 65536. A destination must have exactly the shape of what goes into it, so do not reuse a tile you alloca
+round 1: this round 0.62  best so far 0.62  (61.5s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: Line 17: `nisa.dma_copy(dst=lhs_tile, src=lhsT)` raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 `lhs_tile` and `rhs_tile` are bigger than one nc_matmul takes: at most 128 rows of K, at most 128 columns of the stationary operand, and at most 512 columns of the moving operand. Tile all three dimensions at once. Replace eve
+round 2: this round 1.00  best so far 1.00  (76.9s)
+  Correct on every shape. MEMORY BOUND: 36.6 Flops/Byte against a ridge of 222, so 16% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 6.1x more reuse needed.
+  SOLVED on round 2. Correct on every shape. MEMORY BOUND: 36.6 Flops/Byte against a ridge of 222, so 16% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 6.1x more reuse needed.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_matmul_tiled_(lhsT, rhs):
+      # Allocate output buffer in shared HBM
+      out = nl.ndarray((lhsT.shape[1], rhs.shape[1]), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+    
+      TK = min(128, lhsT.shape[0])
+      TM = min(128, lhsT.shape[1])
+      TN = min(512, rhs.shape[1])
+    
+      for m in nl.affine_range(lhsT.shape[1] // TM):
+          for n in nl.affine_range(rhs.shape[1] // TN):
+              psum_tile = nl.ndarray((TM, TN), dtype=nl.float32, buffer=nl.psum)
+              for k in nl.affine_range(lhsT.shape[0] // TK):
+                  lhs_tile = nl.ndarray((TK, TM), dtype=lhsT.dtype, buffer=nl.sbuf)
+                  rhs_tile = nl.ndarray((TK, TN), dtype=rhs.dtype, buffer=nl.sbuf)
+                  nisa.dma_copy(dst=lhs_tile, src=lhsT[k * TK:(k + 1) * TK, m * TM:(m + 1) * TM])
+                  nisa.dma_copy(dst=rhs_tile, src=rhs[k * TK:(k + 1) * TK, n * TN:(n + 1) * TN])
+                  nisa.nc_matmul(dst=psum_tile, stationary=lhs_tile, moving=rhs_tile)
+              res = nl.ndarray((TM, TN), dtype=out.dtype, buffer=nl.sbuf)
+              nisa.tensor_copy(dst=res, src=psum_tile)
+              nisa.dma_copy(dst=out[m * TM:(m + 1) * TM, n * TN:(n + 1) * TN], src=res)
+    
+      return out
+  -------------------------------------------
+  VERDICT level 4: VERIFIED, confidence 0.88: solved, and passes all 29 extra cases it was never graded on, and lowers for trn2
+
+=========== summary ===========
+  level 4  reward 1.00 after 3 round(s)  SOLVED
+  solved 1/1
+
+=========== over 5 runs ===========
+  level 4: solved 5/5  best 1.00  worst 1.00  mean 1.00  all=[1.0, 1.0, 1.0, 1.0, 1.0]
+
+  Report the rate, not your best run. A level that solves 1 in 3 times is not solved.
+
+attempts logged to /workspace/out/s115/attempts_nki_d13.jsonl
+=========== over all runs: job finished
