@@ -408,6 +408,7 @@ def main():
                          "never, so every arm spends its whole budget, which a fair comparison needs")
     ap.add_argument("--start", default=None, help="start kernel; default P2's kernels/matmul_start.py "
                                                   "if it exists, else reference_level4.py")
+    ap.add_argument("--no-p3-rules", action="store_true", help="Compatibility flag: P1 owns all safe diagnostics in this integrated agent.")
     ap.add_argument("--tag", default="", help="prefixed onto the run id, e.g. v2 -> matmul-referee-v2-...")
     ap.add_argument("--seat", type=int, default=seat_from_hostname())
     ap.add_argument("--max-tokens", type=int, default=agent02.MIN_ANSWER_TOKENS)
