@@ -528,6 +528,53 @@ class _PreflightFixer(ast.NodeTransformer):
         return node
 
 
+def _slice_from_src_slice(value):
+    if not isinstance(value, ast.Tuple):
+        return None
+    parts = list(value.elts)
+    dims = []
+    if len(parts) % 2 == 1:
+        dims.append(parts.pop(0))
+    if len(parts) % 2 != 0:
+        return None
+    for i in range(0, len(parts), 2):
+        dims.append(ast.Slice(lower=parts[i], upper=parts[i + 1], step=None))
+    return ast.Tuple(elts=dims, ctx=ast.Load())
+
+
+class _DmaCopyKeywordFixer(ast.NodeTransformer):
+    def __init__(self):
+        self.fixes = []
+
+    def visit_Call(self, node):
+        node = self.generic_visit(node)
+        if not (isinstance(node.func, ast.Attribute)
+                and node.func.attr == "dma_copy"
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id == "nisa"):
+            return node
+        src_kw = None
+        src_slice_kw = None
+        kept = []
+        for kw in node.keywords:
+            if kw.arg == "src":
+                src_kw = kw
+                kept.append(kw)
+            elif kw.arg == "src_slice":
+                src_slice_kw = kw
+            else:
+                kept.append(kw)
+        if src_kw is None or src_slice_kw is None:
+            return node
+        src_slice = _slice_from_src_slice(src_slice_kw.value)
+        if src_slice is None:
+            return node
+        src_kw.value = ast.Subscript(value=src_kw.value, slice=src_slice, ctx=ast.Load())
+        node.keywords = kept
+        self.fixes.append("moved dma_copy src_slice into src[...] and removed unsupported keyword")
+        return node
+
+
 def static_preflight_fix(source):
     """Patch obvious global NKI API typos before the verifier sees the candidate."""
     fixed = source
@@ -554,6 +601,16 @@ def static_preflight_fix(source):
     if fixer.fixes:
         fixed = ast.unparse(tree)
         fixes.extend(fixer.fixes)
+    try:
+        tree = ast.parse(fixed)
+    except SyntaxError:
+        return fixed, fixes
+    dma_fixer = _DmaCopyKeywordFixer()
+    tree = dma_fixer.visit(tree)
+    ast.fix_missing_locations(tree)
+    if dma_fixer.fixes:
+        fixed = ast.unparse(tree)
+        fixes.extend(dma_fixer.fixes)
     return fixed, fixes
 
 
@@ -1563,7 +1620,8 @@ def summarize_log(path):
             f"  L{r.get('level')} R{r.get('round')}: reward={r.get('reward'):.2f} "
             f"cat={r.get('failure_category', 'unknown')} "
             f"key={r.get('failure_key', '?')} "
-            f"prompt~{b.get('total', len(str(r.get('prompt_chars', ''))) // 4)}tok "
+            f"prompt~{b.get('actual_prompt', b.get('total', len(str(r.get('prompt_chars', ''))) // 4))}tok "
+            f"limit={b.get('limit', '?')} "
             f"docs~{docs} evidence~{evidence} code~{b.get('code', 0)} "
             f"cards={cards or 'none'}"
         )
@@ -1734,7 +1792,9 @@ def solve(a, level, log):
             row = dict(level=level, round=rnd, reward=reward, parts=parts,
                        prompt_chars=len(prompt), reply_chars=len(reply),
                        context_cards=prompt_cards,
-                       prompt_budget=prompt_budget,
+                       prompt_budget={**prompt_budget,
+                                      "actual_prompt": estimate_tokens(prompt),
+                                      "limit": a.context},
                        failure_category=failure_category,
                        failure_key=failure_key(feedback),
                        failure=failure,
