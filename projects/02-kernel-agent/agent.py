@@ -1777,28 +1777,31 @@ def solve(a, level, log):
         graded = []
         for reply in replies:
             patch_text, patch_error = "", ""
+            patch_source = None
             reply_patch = extract_patch(reply)
             if reply_patch and repair_base and (repair_base[0] or "").strip():
+                patch_source = repair_base[0]
                 patch_text = reply_patch
                 try:
-                    src = apply_unified_patch(repair_base[0], patch_text)
+                    src = apply_unified_patch(patch_source, patch_text)
                 except Exception as e:
                     patch_error = f"{type(e).__name__}: {e}"
                     fallback_src = extract_code(reply)
-                    src = fallback_src if fallback_src.strip() else repair_base[0]
+                    src = fallback_src if fallback_src.strip() else patch_source
             elif patch_base and a.repair_mode == "patch":
+                patch_source = patch_base[0]
                 patch_text = extract_patch(reply)
                 try:
-                    src = apply_unified_patch(patch_base[0], patch_text)
+                    src = apply_unified_patch(patch_source, patch_text)
                 except Exception as e:
                     patch_error = f"{type(e).__name__}: {e}"
                     fallback_src = extract_code(reply)
-                    src = fallback_src if fallback_src.strip() else patch_base[0]
+                    src = fallback_src if fallback_src.strip() else patch_source
             else:
                 src = extract_code(reply)
             src, preflight_fixes = static_preflight_fix(src)
             reward, parts, feedback = grade(src, level)
-            if patch_error and src == patch_base[0]:
+            if patch_error and patch_source is not None and src == patch_source:
                 reward = 0.0
                 parts = dict(parses=False, rules=False, runs=False, correct=False)
                 feedback = f"Patch could not be applied: {patch_error}. Return a valid unified diff."
