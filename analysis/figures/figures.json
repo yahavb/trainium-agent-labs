@@ -1,0 +1,259 @@
+{
+ "note": "logs pulled by 17:50 (v8.2 L3/L4: only the runs pulled so far); final logs pending",
+ "solved": {
+  "baseline": {
+   "1": [
+    0,
+    10
+   ],
+   "2": [
+    5,
+    10
+   ],
+   "3": [
+    0,
+    10
+   ],
+   "4": [
+    0,
+    10
+   ]
+  },
+  "v7": {
+   "1": [
+    0,
+    1
+   ],
+   "2": [
+    0,
+    3
+   ],
+   "3": [
+    5,
+    5
+   ],
+   "4": [
+    5,
+    5
+   ]
+  },
+  "v8.2": {
+   "1": [
+    6,
+    6
+   ],
+   "2": [
+    5,
+    9
+   ],
+   "3": [
+    1,
+    1
+   ],
+   "4": [
+    2,
+    2
+   ]
+  },
+  "final (v8.2 + v8.3 L2)": {
+   "1": [
+    6,
+    6
+   ],
+   "2": [
+    8,
+    10
+   ],
+   "3": [
+    1,
+    1
+   ],
+   "4": [
+    2,
+    2
+   ]
+  }
+ },
+ "first_solve": {
+  "1": {
+   "rounds": [
+    0,
+    2,
+    2,
+    2,
+    4,
+    7
+   ],
+   "attempts": [
+    3,
+    9,
+    9,
+    9,
+    17,
+    29
+   ],
+   "runs": 6
+  },
+  "2": {
+   "rounds": [
+    0,
+    1,
+    1,
+    1,
+    2,
+    2,
+    3,
+    4
+   ],
+   "attempts": [
+    3,
+    5,
+    5,
+    5,
+    9,
+    11,
+    15,
+    19
+   ],
+   "runs": 10
+  },
+  "3": {
+   "rounds": [
+    0
+   ],
+   "attempts": [
+    1
+   ],
+   "runs": 1
+  },
+  "4": {
+   "rounds": [
+    2,
+    2
+   ],
+   "attempts": [
+    9,
+    9
+   ],
+   "runs": 2
+  }
+ },
+ "modes": {
+  "baseline": {
+   "copy_size_mismatch": 196,
+   "invented_name": 162,
+   "partition_over_128": 110,
+   "out_of_bounds": 96,
+   "reshape": 98,
+   "broadcast": 18,
+   "tile_1d": 55,
+   "wrong_signature": 42,
+   "failed attempts": 837
+  },
+  "v7": {
+   "copy_size_mismatch": 12,
+   "invented_name": 34,
+   "partition_over_128": 20,
+   "out_of_bounds": 20,
+   "reshape": 0,
+   "broadcast": 20,
+   "tile_1d": 0,
+   "wrong_signature": 12,
+   "failed attempts": 167
+  },
+  "v8.2": {
+   "copy_size_mismatch": 138,
+   "invented_name": 7,
+   "partition_over_128": 2,
+   "out_of_bounds": 4,
+   "reshape": 1,
+   "broadcast": 29,
+   "tile_1d": 6,
+   "wrong_signature": 5,
+   "failed attempts": 296
+  },
+  "final (v8.2 + v8.3 L2)": {
+   "copy_size_mismatch": 104,
+   "invented_name": 10,
+   "partition_over_128": 2,
+   "out_of_bounds": 5,
+   "reshape": 1,
+   "broadcast": 31,
+   "tile_1d": 6,
+   "wrong_signature": 5,
+   "failed attempts": 253
+  }
+ },
+ "files": {
+  "baseline": [
+   "analysis/logs/baseline/attempts.jsonl",
+   "analysis/logs/replica_seat119/attempts.jsonl"
+  ],
+  "v7": [
+   "../trainium-agent-labs/runs/seat-116/Ev7_L2/Ev7_L2.jsonl",
+   "../trainium-agent-labs/runs/seat-117/Ev7_L3/Ev7_L3.jsonl",
+   "../trainium-agent-labs/runs/seat-118/Ev7_L4/Ev7_L4.jsonl",
+   "../trainium-agent-labs/runs/seat-119/Ev7_L1/Ev7_L1.jsonl"
+  ],
+  "v8.2": [
+   "../trainium-agent-labs/runs/seat-116/v82/v82_L2_s116.jsonl",
+   "../trainium-agent-labs/runs/seat-116/v82/v82_L3_s116.jsonl",
+   "../trainium-agent-labs/runs/seat-117/v82/v82_L1_s117.jsonl",
+   "../trainium-agent-labs/runs/seat-117/v82/v82_L1b_s117.jsonl",
+   "../trainium-agent-labs/runs/seat-117/v82/v82_L1c_s117.jsonl",
+   "../trainium-agent-labs/runs/seat-117/v82x_partial/v82x_L1_s117.jsonl",
+   "../trainium-agent-labs/runs/seat-117/v82x_partial/v82x_L2_s117.jsonl",
+   "../trainium-agent-labs/runs/seat-118/stopped_1713/v82x_L1_s118.jsonl",
+   "../trainium-agent-labs/runs/seat-118/stopped_1713/v82x_L1b_s118.jsonl",
+   "../trainium-agent-labs/runs/seat-118/v82/v82_L1_s118.jsonl",
+   "../trainium-agent-labs/runs/seat-118/v82/v82_L1b_s118.jsonl",
+   "../trainium-agent-labs/runs/seat-118/v82_L2/v82_L2_s118.jsonl",
+   "../trainium-agent-labs/runs/seat-118/v82_L2/v82x_L2_s118.jsonl",
+   "../trainium-agent-labs/runs/seat-119/stopped_1713/v82x_L1_s119.jsonl",
+   "../trainium-agent-labs/runs/seat-119/v82/v82_L2_s119.jsonl",
+   "../trainium-agent-labs/runs/seat-119/v82/v82_L4_s119.jsonl",
+   "../trainium-agent-labs/runs/seat-119/v82/v82_L4b_s119.jsonl",
+   "../trainium-agent-labs/runs/seat-119/v82/v82_L4c_s119.jsonl",
+   "../trainium-agent-labs/runs/seat-119/v82x_partial/v82x_L1_s119.jsonl"
+  ],
+  "final (v8.2 + v8.3 L2)": [
+   "../trainium-agent-labs/runs/seat-116/v82/v82_L3_s116.jsonl",
+   "../trainium-agent-labs/runs/seat-117/v82/v82_L1_s117.jsonl",
+   "../trainium-agent-labs/runs/seat-117/v82/v82_L1b_s117.jsonl",
+   "../trainium-agent-labs/runs/seat-117/v82/v82_L1c_s117.jsonl",
+   "../trainium-agent-labs/runs/seat-117/v82x_partial/v82x_L1_s117.jsonl",
+   "../trainium-agent-labs/runs/seat-117/v83/v83_L2_s117.jsonl",
+   "../trainium-agent-labs/runs/seat-117/v83/v83_L2b_s117.jsonl",
+   "../trainium-agent-labs/runs/seat-117/v83/v83_L2c_s117.jsonl",
+   "../trainium-agent-labs/runs/seat-117/v83/v83_L2d_s117.jsonl",
+   "../trainium-agent-labs/runs/seat-118/stopped_1713/v82x_L1_s118.jsonl",
+   "../trainium-agent-labs/runs/seat-118/stopped_1713/v82x_L1b_s118.jsonl",
+   "../trainium-agent-labs/runs/seat-118/v82/v82_L1_s118.jsonl",
+   "../trainium-agent-labs/runs/seat-118/v82/v82_L1b_s118.jsonl",
+   "../trainium-agent-labs/runs/seat-119/stopped_1713/v82x_L1_s119.jsonl",
+   "../trainium-agent-labs/runs/seat-119/stopped_1713/v83_L2b_s119.jsonl",
+   "../trainium-agent-labs/runs/seat-119/v82/v82_L4_s119.jsonl",
+   "../trainium-agent-labs/runs/seat-119/v82/v82_L4b_s119.jsonl",
+   "../trainium-agent-labs/runs/seat-119/v82/v82_L4c_s119.jsonl",
+   "../trainium-agent-labs/runs/seat-119/v82x_partial/v82x_L1_s119.jsonl",
+   "../trainium-agent-labs/runs/seat-119/v83/v83_L2_s119.jsonl"
+  ]
+ },
+ "left_out": {
+  "baseline": [],
+  "v7": [
+   "Ev7_L2.jsonl run 3 L2",
+   "Ev7_L1.jsonl run 1 L1"
+  ],
+  "v8.2": [
+   "v82x_L1_s117.jsonl run 0 L1",
+   "v82x_L1_s119.jsonl run 0 L1",
+   "v82x_L1_s119.jsonl run 0 L1"
+  ],
+  "final (v8.2 + v8.3 L2)": [
+   "v82x_L1_s117.jsonl run 0 L1",
+   "v82x_L1_s119.jsonl run 0 L1",
+   "v82x_L1_s119.jsonl run 0 L1"
+  ]
+ }
+}
