@@ -91,9 +91,9 @@ baseline 回溯校准（b39989f）：3 次解出置信度 0.90，保留集 16/16
 |---|---|---|---|---|
 | E-A | `enrich()` 的 KNOWN_FIXES：把编造的名字换成 0.6.0 里真实的写法（5ed7ec2） | L1 | 0/5，全 0.30。编造函数 80→20；新出现 tensor_scalar() 缺参数 40 次（属于「函数参数用错」，不算新类别）；拷贝大小不一致 40→60。模型照反馈改了，然后卡在下一层 | **作为铺路改动采用** |
 | E-v3 | 换成 feedback_v3（MESSAGES=v3 REPAIR_PROMPT=restructure） | L4 | 跑完 1 次，1/1，第 6 轮解出，reaudit PASS（ded1ef2）。14:05 停掉，让座位给 v7 | 被 v7 取代，只当证据和失败加恢复素材 |
-| **E-v7** | 换成 liuyq 的 feedback_v7，配置和命令照 V7.md（PROMPT1=v2、CARD=category、MESSAGES=v5、REPAIR_PROMPT=restructure、SAMPLING=qwen、GATE=static、模拟目标 trn2） | L4（117）、L1（119）、L3（118），然后 L2 | 14:10 起 | D2 决定 |
+| **E-v7** | 换成 liuyq 的 feedback_v7，配置和命令照 V7.md（PROMPT1=v2、CARD=category、MESSAGES=v5、REPAIR_PROMPT=restructure、SAMPLING=qwen、GATE=static、模拟目标 trn2） | L4（117）、L1（119）、L3（118），然后 L2 | 14:10 起，**commit ce0403c，在 E-F 之前**（v7 会调用 agent.enrich()，用 ≥ac258d2 的版本就会把 E-F 一起带进去） | D2 决定。v7 和 E-F 都采用的话，第 3 轮在 L1 上测 v7 + E-F |
 | E-C | 「cannot reshape」改成一条指令：出错那一行用切片取 tile | L3 | 候选，看 v7 之后 L3 还剩不剩这一类 | |
-| E-F | 函数缺参数、多参数或参数名不对时，反馈给出：出错那一行、运行时 inspect.signature 取到的真实签名、一句「按签名改这一处」 | L1 | 116 上 14:15 开跑。参照 E-A：tensor_scalar 缺参数 40、拷贝大小不一致 60 | D2 决定 |
+| E-F | 函数缺参数、多参数或参数名不对时，反馈给出：出错那一行、运行时 inspect.signature 取到的真实签名、一句「按签名改这一处」 | L1 | ac258d2，116 上 14:04 开跑，约 14:45 出结果。参照 E-A（重新打分后）：wrong_signature 60、拷贝大小不一致 60 | D2 决定 |
 | E-E | 「拷贝两边大小不一致」改成指出两边各自的 shape 和出错行 | 看情况 | 候选 | |
 
 可选：liuyq 自己加的保留题 L9–L11 不在官方 ladder 里，但可以作为泛化的证据。前提是在我们的 harness 上 reaudit 过；只在有空座位时跑。
