@@ -1,6 +1,6 @@
 """Run the solved kernels on the REAL Trainium2 chip (not the simulator): correctness, and timing.
 
-    NEURON_PLATFORM_TARGET_OVERRIDE=trn2 NEURON_RT_VISIBLE_CORES=0 python device_check.py
+    NEURON_PLATFORM_TARGET_OVERRIDE=trn2 NEURON_RT_NUM_CORES=1 python checks/device_check.py
 
 Needs a NeuronCore no model server is using. Timing is OFF by default (DEVICE_REPS=0): measured, an NKI
 0.6 call re-compiles the kernel every time (~1.7 s per call for level 1), so host wall-clock measures the
@@ -9,6 +9,9 @@ trivial copy kernel as the launch floor. Real kernel latency needs neuron-profil
 """
 import importlib.util, json, os, time
 import numpy as np
+import sys
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # the project folder
+sys.path.insert(0, ROOT); os.chdir(ROOT)
 import nki
 import nki.isa as nisa
 import nki.language as nl

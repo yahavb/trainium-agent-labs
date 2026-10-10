@@ -5,9 +5,11 @@ result exactly as the agent loop does (lint + simulator + hints + wrong-variant 
 that the feedback names the expected category. A checker crash is its own outcome. Run on a seat (needs
 nki for the simulator; no NeuronCore):
 
-    python mutation_check.py
+    python checks/mutation_check.py
 """
-import re, sys
+import os, re, sys
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # the project folder
+sys.path.insert(0, ROOT); os.chdir(ROOT)
 import agent
 
 agent.LINT, agent.LEVEL_HINTS = True, True

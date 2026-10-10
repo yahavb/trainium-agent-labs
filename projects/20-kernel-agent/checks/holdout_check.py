@@ -17,9 +17,9 @@ uses) and is compared with the NumPy reference by nkibench.describe_mismatch at 
 tolerance (2e-2 of the output RMS). Levels 5-7 also report HBM traffic against the byte floor and
 against the level's traffic bar on every new shape.
 
-    python holdout_check.py                 # all levels, one subprocess per level, markdown out
-    python holdout_check.py --level 10      # one level, printed
-    python holdout_check.py --level 10 --json out.json
+    python checks/holdout_check.py                 # all levels, one subprocess per level, markdown out
+    python checks/holdout_check.py --level 10      # one level, printed
+    python checks/holdout_check.py --level 10 --json out.json
 
 It writes only holdout_out/ and holdout_results.md. It needs the Neuron SDK (nki) to do anything useful; run it on
 the pod.
@@ -35,7 +35,7 @@ import time
 
 import numpy as np
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # the project folder
 sys.path.insert(0, HERE)
 
 import nkibench as nb  # noqa: E402

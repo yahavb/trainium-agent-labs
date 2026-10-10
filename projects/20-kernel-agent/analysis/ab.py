@@ -3,7 +3,7 @@
 ab.py — a matched A/B experiment: baseline and improved runs ALTERNATE in counterbalanced order (AB, BA, AB, ...), with the same
 budget and frozen code, so a difference can be attributed to the switch and not to time or server load.
 
-    python ab.py --level 8 --pairs 3 --b "--lint --prompt-portfolio" -- --level-hints --echo-check
+    python analysis/ab.py --level 8 --pairs 3 --b "--lint --prompt-portfolio" -- --level-hints --echo-check
                  |                    |                              '-- flags both arms share
                  |                    '-- flags only arm B gets
                  '-- level and how many A/B pairs
@@ -13,7 +13,7 @@ of the source files, and the flags. The script stops if the source changes mid-e
 """
 import argparse, hashlib, json, os, shlex, subprocess, sys, time
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # the project folder
 
 
 def source_hash():
