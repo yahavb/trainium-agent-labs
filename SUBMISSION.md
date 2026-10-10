@@ -235,7 +235,11 @@ model would have to work out slices and shapes itself. On level 4 it could not. 
 skeleton, rounds 0 and 1 are identical (0.30 broadcast error, then 0.62 partition over 128). They part at
 the message sent after round 1, v5's "Tile all three dimensions at once": given the code, every run solved
 in round 2; given `for m in nl.affine_range(<…>):` and `nl.ndarray(<…>, …)`, the model filled the holes with
-out-of-range slices and stayed at 0.30, out of bounds, for six rounds running (best 0.62, both runs). So the
+out-of-range slices and stayed at 0.30, out of bounds, for six rounds running (best 0.62, both runs). How it
+filled them: `affine_range` written like Python's `range(start, stop, step)` (`nl.affine_range(0, lhsT.shape[1], TM)`),
+loop indices used as element offsets (`lhsT[k:k+TK, m:m+TM]`), and `rhs` indexed with its axes swapped
+(`rhs[n:n+TN, k:k+TK]` for a (K, N) tensor), which raised `dimension 0: index range [0, 511]` from round 2 to
+round 7. ([analysis/taxonomy_versions.md](analysis/taxonomy_versions.md), "How SKELETON broke level 4") So the
 code in v7's messages is not decoration; on level 4 it is the part of the solution the model does not find
 on its own. We report that rather than claim the model wrote it.
 
