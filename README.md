@@ -352,6 +352,108 @@ Adding a project is a folder under `projects/` with a README and a checker. Addi
 
 ---
 
+# Part 4b — Our extension: a latency simulator for NKI matmul tiling
+
+The kernel agent can check whether a kernel is **correct**, but it cannot tell whether it is **fast**
+(Part 2 of project 2: "latency cannot be measured at all"). The same matmul can run 4× slower with a bad
+tiling: at 2048×2048×2048 bf16 we measured **319 µs** with K-tile 128 / N-tile 512, and **1270 µs** with
+K-tile 64 / N-tile 128. Finding the fast tiling normally means compiling and timing every option on the chip,
+at about 24 s per kernel, almost all of it compile time.
+
+We built a simulator that predicts a kernel's latency **from its tile sizes alone, on a CPU, in
+milliseconds**. The method follows EnergAIzer (ISPASS'26): count the work the tiling implies, then fit the
+cost of each unit of work to measurements from the real chip.
+
+**What it counts** (from shape and tiles): columns streamed through the 128×128 matmul array; the same
+columns weighted by idle array rows (K-tile 64 leaves half the array empty); the same columns weighted by
+accumulation-chain length (K / K-tile); and input DMAs.
+
+**What it learned**, from 96 kernels (12 tilings × 8 shapes) timed on Trainium2:
+
+| Cost | Fitted value |
+|---|---|
+| Launch overhead per kernel | 65.7 µs |
+| Per column through the matmul array | 0.32 ns |
+| Extra per column when the array is half empty (K-tile 64) | 0.31 ns, about 2× per column |
+| Extra per column per 16 accumulation steps | 0.18 ns |
+| Per input DMA | 7.9 ns |
+
+Loading data from HBM costs almost nothing in the fit: the hand-written "naive" and "hoisted" loop nests time
+within about 5% of each other, so the compiler hides or removes most redundant loads.
+
+## Results
+
+**Prediction accuracy, leave-one-shape-out** (each shape predicted by a model fitted without it; 96 kernels,
+8 shapes):
+
+| Model | Mean error | Picks the true fastest tiling | Its pick is slower than the best by |
+|---|---|---|---|
+| Roofline (peak FLOPs vs peak bandwidth) | 88.3% | 0/8 | 171% |
+| **Our simulator** | **12.2%** | **5/8** | **6.3%** |
+
+The roofline gives every tiling of a shape the same time, so it cannot rank tilings. The model's terms were
+chosen using this same evaluation, so treat 12.2% as optimistic. The test below is the honest one.
+
+**Tile search on 10 new random shapes** (120 kernels, never used in fitting; K 1024–4096, M 256–2048,
+N 512–2048). Brute force times all 12 tilings of each shape on the chip; the simulator ranks them on the CPU
+and only its top picks are timed:
+
+| Method | Chip time | Cheaper by | Found the true best | Avg pick slower than best | Worst |
+|---|---|---|---|---|---|
+| Brute force: time all 12 tilings | 47.7 min (12.7 min on 4 cores) | — | 10/10 by definition | 0% | 0% |
+| **Simulator + time its top 3** | **11.8 min** | **4.0×** | **9/10** | **0.3%** | **3%** |
+
+The simulator ranks all 120 kernels in **0.2 ms** on the CPU. Chip time counts compile plus run for each
+kernel; each kernel is timed as the median of 20 runs after 5 warm-up runs.
+
+**In one line:** ranking with the simulator and timing only its top 3 finds a tiling within 3% of the best on
+every one of 10 unseen shapes, with 4× less chip time.
+
+## Limits
+
+- **Prediction error on the new shapes is 21.8%** (74% worst), higher than the 12.2% above: some new shapes
+  have M = 256 or 384, smaller than anything in the training data. The model ranks better than it predicts.
+- **Known miss:** when N = 512, N-tile 256 can beat N-tile 512 by 2× (3584×1536×512: 145 vs 306 µs), and the
+  model always prefers 512. Our untested guess is that a single column of output tiles leaves too little
+  independent work to overlap.
+- **Long K:** at K = 8192, twice the training range, it predicted 620 µs against a measured 501 µs.
+- **Matmul only**, K-tile 64 or 128, M-tile 128, bf16.
+- **Correctness was checked in the CPU simulator, not on the device:** `nki.baremetal` reads back zeros in this
+  image, so outputs could not be compared on hardware. Timing uses `neuronxcc.nki.benchmark` (neuron-bench).
+
+## Plugged into the kernel agent
+
+When a matmul kernel (levels 3–4) is correct, the grader now records the tile sizes of every `nc_matmul` call
+during simulation, asks the simulator, and adds a speed hint to the feedback. For a K-tile 64 / N-tile 128
+kernel the agent is told it would take about 1230 µs at 2048³, that the best known tiling takes about 344 µs
+(3.6× faster), and to use a K-tile of 128 and an N-tile of 512. It is advice only and does not change the
+score. The costs were measured on `neuronxcc`-style kernels, while the agent writes `nki` 0.6-style ones;
+whether the costs carry over has not been timed.
+
+## Reproduce
+
+All files are in `projects/02-kernel-agent/`. Run inside a seat pod, one benchmark process per free core:
+
+```bash
+python bench.py --check                                    # every tiling correct on the CPU simulator
+for i in 0 1 2 3; do NEURON_RT_VISIBLE_CORES=$i nohup python bench.py --shard $i/4 > bench$i.log 2>&1 & done
+python fit.py                                              # held-out accuracy vs roofline; writes latency_coef.json
+python fit.py --search 2048 2048 2048                      # rank every tiling of a shape
+python search_savings.py                                   # brute force vs simulator, needs results_new_*.csv
+python demo_hint.py                                        # the speed feedback the agent receives
+```
+
+| File | What it does |
+|---|---|
+| `bench.py` | Generates tiled-matmul kernels and times each on the device; `--one` times a single tiling |
+| `model.py` | Counts the work each tiling implies |
+| `fit.py` | Fits the unit costs, evaluates on held-out shapes, searches tilings |
+| `search_savings.py` | Brute-force search vs simulator search on new shapes |
+| `latency_hint.py`, `latency_coef.json` | Turn a kernel's tiles into a predicted latency and advice for the agent |
+| `results_*.csv` | Every measured kernel: 96 for fitting, 120 on new shapes |
+
+---
+
 # Part 5 — The shared `gpt-oss-20b` endpoint
 
 A 20-billion-parameter open-weight model on Trainium2, behind an OpenAI-compatible API, on hardware separate

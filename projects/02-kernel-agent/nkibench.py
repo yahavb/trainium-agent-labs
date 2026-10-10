@@ -646,7 +646,24 @@ def simulate_and_count(kernel, args):
     # They are also not noise: one of them says the pattern produces INCORRECT RESULTS on hardware,
     # which the agent should be told rather than have scrolled past.
     import warnings
+    # Record each matmul's tile shape (contraction rows, stationary width, moving width) so the
+    # latency model can predict speed from the kernel's real tiling -- see latency_hint.py.
+    counter["matmul_tiles"] = []
+    original_mm = getattr(nisa, "nc_matmul", None)
+
+    def counting_nc_matmul(*a, **kw):
+        try:
+            stat = kw.get("stationary", a[1] if len(a) > 1 else None)
+            mov = kw.get("moving", a[2] if len(a) > 2 else None)
+            counter["matmul_tiles"].append(
+                (int(mov.shape[0]), int(stat.shape[-1]), int(mov.shape[-1])))
+        except Exception:
+            pass
+        return original_mm(*a, **kw)
+
     nisa.dma_copy = counting_dma_copy
+    if original_mm is not None:
+        nisa.nc_matmul = counting_nc_matmul
     try:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
@@ -659,6 +676,8 @@ def simulate_and_count(kernel, args):
         counter["warnings"] = seen[:3]
     finally:
         nisa.dma_copy = original
+        if original_mm is not None:
+            nisa.nc_matmul = original_mm
     return out, counter
 
 
