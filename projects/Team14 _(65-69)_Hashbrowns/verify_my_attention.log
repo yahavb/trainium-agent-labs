@@ -1,0 +1,51 @@
+kernel: /workspace/projects/03-attention-kernel/my_attention.py
+
+1. WHICH SDK
+  nki            0.6.0+31049202112.g85070674
+  neuronxcc      2.27.5334.0+f702b353
+  torch_neuronx  not installed
+  torch          2.11.0+cu130
+  numpy          2.4.6
+  ok    nki exposes a CPU simulator
+
+2. THE API -- names and keywords checked against the installed SDK
+  ok    line 44: nl.ndarray(dtype=, buffer=)
+  ok    line 50: nisa.dma_copy(dst=, src=)
+  ok    line 57: nisa.nc_transpose(dst=, data=)
+  ok    line 64: nisa.activation(dst=, op=, data=, scale=)
+  ok    line 65: nisa.tensor_copy(dst=, src=)
+  ok    line 69: nisa.nc_matmul(dst=, stationary=, moving=)
+  ok    line 74: nisa.tensor_reduce(dst=, op=, data=, axis=, negate=)
+  ok    line 81: nisa.activation_reduce(dst=, op=, data=, bias=, reduce_op=, reduce_res=)
+  ok    line 96: nisa.tensor_scalar(dst=, data=, op0=, operand0=)
+  ok    nl.exp exists (used as an op)
+  ok    nl.maximum exists (used as an op)
+  ok    nl.add exists (used as an op)
+  ok    nl.multiply exists (used as an op)
+  ok    nl.divide exists (used as an op)
+  ok    nl.copy exists (used as an op)
+
+2b. THE V1 SCHEDULE -- the SDK features it leans on, and the fallback for each
+  ok    row sum accumulated by the exp instruction (my_attention.py uses the first spelling)
+          has      nisa.activation_reduce(..., bias=, reduce_op=, reduce_res=)
+          has      nisa.activation(..., reduce_op=, reduce_res=)
+  ok    -max straight out of the max reduction
+          has      nisa.tensor_reduce(..., negate=)
+  ok    qT leaves PSUM through the Scalar engine, scaled on the way
+          has      nl.copy as an activation op
+  info  for the next step (Q, K loaded pre-transposed): dma_transpose(dst: 'NkiTensor', src: 'NkiTensor', axes=None, priority=None, dge_mode=<dge_mode.unknown: 0>, oob_mode=<oob_mode.error: 0>, name=None)
+
+3. THE NUMBERS -- nki.simulate vs float64, pass at error <= 0.02 of output RMS
+  ok    level-8         seq=128  dim=64   error 2.93e-06  HBM 131,072 B (1.00x floor)
+  ok    level-8         seq=64   dim=128  error 3.41e-06  HBM 131,072 B (1.00x floor)
+  ok    level-8         seq=96   dim=32   error 2.32e-06  HBM 49,152 B (1.00x floor)
+  ok    ragged seq      seq=1    dim=64   error 0.00e+00  HBM 1,024 B (1.00x floor)
+  ok    ragged seq      seq=37   dim=64   error 1.37e-06  HBM 37,888 B (1.00x floor)
+  ok    ragged seq      seq=127  dim=128  error 5.48e-06  HBM 260,096 B (1.00x floor)
+  ok    large values    seq=128  dim=64   error 6.36e-04  HBM 131,072 B (1.00x floor)
+  ok    identical rows  seq=128  dim=64   error 6.14e-07  HBM 131,072 B (1.00x floor)
+
+4. HARDWARE HAZARDS reported by the simulator
+  ok    no warning says the kernel would be wrong on the device
+
+VERIFIED: every check passed. These are SIMULATOR results; the device is not tested here -- run compare_torch.py --device for that.

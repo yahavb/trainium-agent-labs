@@ -1,0 +1,61 @@
+Looking for a free NeuronCore at LNC 1:
+  core 0: busy
+  core 1: busy
+  core 2: busy
+  core 3: busy
+  core 4: free -- using it
+nki 0.6.0+31049202112.g85070674   NeuronCore 4   LNC 1   target trn2   warm-up 20, 200 timed iterations x 5 rounds, end-to-end 100 calls x 5 rounds
+
+================ seq=128 dim=64
+
+COMPILE + CORRECT ON THE DEVICE -- error = worst |got - float64 ref| / output RMS
+  my_attention                       ok    compiled in 2.0 s;  random 3.4e-05 (max abs 5.3e-06);  large 1.8e-07 (max abs 5.5e-06);  public call 3.4e-05
+  my_attention_v5_hwdge              ok    compiled in 1.5 s;  random 3.4e-05 (max abs 5.3e-06);  large 1.8e-07 (max abs 5.5e-06);  public call 3.4e-05
+  my_attention_v6_hwdge_bf16         ok    compiled in 1.5 s;  random 1.2e-02 (max abs 1.8e-03);  large 8.2e-03 (max abs 2.5e-01);  public call 1.2e-02
+
+TIMING -- microseconds unless marked. device = CompiledKernel.benchmark, median of the per-round means; end-to-end = host time per run() call
+  variant                             compile  1st call     device     min     max    std    e2e p50      p90      p99   estimate   speedup
+  my_attention                           2.0s      1.6s      17.71   17.46   19.34   0.10      132.4    144.5    183.0          -    1.00x
+  my_attention_v5_hwdge                  1.5s      1.5s      16.07   15.77   16.38   0.08      128.5    133.8    156.7          -    1.10x
+  my_attention_v6_hwdge_bf16             1.5s      1.5s      15.63   15.36   16.05   0.09      127.5    132.0    167.4          -    1.13x
+
+  per-round device means (us): my_attention 17.72 17.71 17.71 17.72 17.70; my_attention_v5_hwdge 16.06 16.07 16.07 16.07 16.06; my_attention_v6_hwdge_bf16 15.64 15.63 15.64 15.62 15.62
+  my_attention_v5_hwdge: FASTER than my_attention
+  my_attention_v6_hwdge_bf16: FASTER than my_attention
+
+================ seq=64 dim=128
+
+COMPILE + CORRECT ON THE DEVICE -- error = worst |got - float64 ref| / output RMS
+  my_attention                       ok    compiled in 1.5 s;  random 1.4e-05 (max abs 2.8e-06);  large 2.6e-07 (max abs 7.7e-06);  public call 1.4e-05
+  my_attention_v5_hwdge              ok    compiled in 1.5 s;  random 1.4e-05 (max abs 2.8e-06);  large 2.6e-07 (max abs 7.7e-06);  public call 1.4e-05
+  my_attention_v6_hwdge_bf16         ok    compiled in 1.5 s;  random 1.3e-02 (max abs 2.6e-03);  large 8.3e-03 (max abs 2.5e-01);  public call 1.3e-02
+
+TIMING -- microseconds unless marked. device = CompiledKernel.benchmark, median of the per-round means; end-to-end = host time per run() call
+  variant                             compile  1st call     device     min     max    std    e2e p50      p90      p99   estimate   speedup
+  my_attention                           1.5s      1.5s      17.10   16.92   17.45   0.08      129.4    141.4    194.2          -    1.00x
+  my_attention_v5_hwdge                  1.5s      1.5s      15.32   15.06   15.95   0.08      125.3    129.8    161.0          -    1.12x
+  my_attention_v6_hwdge_bf16             1.5s      1.5s      14.92   14.70   15.25   0.08      124.4    128.7    165.5          -    1.15x
+
+  per-round device means (us): my_attention 17.11 17.10 17.10 17.09 17.09; my_attention_v5_hwdge 15.33 15.32 15.31 15.32 15.31; my_attention_v6_hwdge_bf16 14.92 14.93 14.92 14.93 14.92
+  my_attention_v5_hwdge: FASTER than my_attention
+  my_attention_v6_hwdge_bf16: FASTER than my_attention
+
+================ seq=96 dim=32
+
+COMPILE + CORRECT ON THE DEVICE -- error = worst |got - float64 ref| / output RMS
+  my_attention                       ok    compiled in 1.5 s;  random 1.0e-05 (max abs 1.6e-06);  large 2.8e-05 (max abs 8.2e-04);  public call 1.0e-05
+  my_attention_v5_hwdge              ok    compiled in 1.5 s;  random 1.0e-05 (max abs 1.6e-06);  large 2.8e-05 (max abs 8.2e-04);  public call 1.0e-05
+  my_attention_v6_hwdge_bf16         ok    compiled in 1.5 s;  random 1.0e-02 (max abs 1.6e-03);  large 8.2e-03 (max abs 2.4e-01);  public call 1.0e-02
+
+TIMING -- microseconds unless marked. device = CompiledKernel.benchmark, median of the per-round means; end-to-end = host time per run() call
+  variant                             compile  1st call     device     min     max    std    e2e p50      p90      p99   estimate   speedup
+  my_attention                           1.5s      1.5s      16.85   16.56   17.18   0.08      121.0    131.4    293.9          -    1.00x
+  my_attention_v5_hwdge                  1.5s      1.5s      15.20   14.93   15.60   0.09      117.1    121.9    149.0          -    1.11x
+  my_attention_v6_hwdge_bf16             1.5s      1.5s      15.15   14.94   15.55   0.12      116.6    120.5    154.4          -    1.11x
+
+  per-round device means (us): my_attention 16.83 16.85 16.84 16.85 16.86; my_attention_v5_hwdge 15.19 15.20 15.19 15.20 15.20; my_attention_v6_hwdge_bf16 15.16 15.16 15.15 15.15 15.15
+  my_attention_v5_hwdge: FASTER than my_attention
+  my_attention_v6_hwdge_bf16: FASTER than my_attention
+
+NEFFs listed in bench_out/neffs.json. For per-engine detail, next run:
+    python bench_device.py --profile

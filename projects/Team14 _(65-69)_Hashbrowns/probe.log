@@ -1,0 +1,411 @@
+python 3.13.7   NEURON_RT_VISIBLE_CORES=0
+
+========== 1. nki, top level
+  nki 0.6.0+31049202112.g85070674 at /opt/conda/lib/python3.13/site-packages/nki
+  nki.Kernel  [class] (func: Callable, lnc: int = 1, schedule: tuple = (), address_rotation: bool = True, barrier_check: bool = False, _invocation_frame: frame | None = None) -> None
+      Wrapper around a NKI kernel function returned by ``@nki.jit``.
+  nki.Union  [callable] (*args, **kwds)
+      Union type; Union[X, Y] means either X or Y.
+  nki.compiler  [module] 
+  nki.debug  [callable] (kernel, dump_dir, core_id=0, interactive=False, rtol=0.01, atol=0.1)
+      Create a debug replay version of a NKI kernel.
+  nki.debugger  [module] 
+  nki.dtype  [callable] (*args, **kwargs)
+  nki.framework  [module] 
+  nki.isa  [module] 
+  nki.jit  [callable] (fn=None, **kwargs)
+      Just-in-time compile a top-level NKI function to run on NeuronDevices.
+  nki.language  [module] 
+  nki.simulate  [callable] (kernel)
+      Create a CPU-simulated version of an NKI kernel.
+  nki.utils  [module] 
+  nki.warnings  [module] 
+
+========== 2. nki.jit
+  nki.jit(fn=None, **kwargs)
+    Just-in-time compile a top-level NKI function to run on NeuronDevices.
+    
+    The returned callable detects the current framework and compiles the function as a
+    custom operator. It detects the current framework by inspecting its arguments:
+    
+    - ``torch.Tensor``: uses PyTorch integration.
+    - ``jax.Array``: uses JAX integration.
+    - ``np.ndarray``: compiles and executes standalone kernel, without a framework.
+    
+    You might need to explicitly set the target platform using the
+    ``NEURON_PLATFORM_TARGET_OVERRIDE`` environment variable. Supported values:
+    
+    - ``trn1|inf2|gen2``
+    - ``trn2|gen3``
+    - ``trn3|gen4``
+    
+    The LNC (Logical NeuronCore) degree can be set at the callsite using bracket syntax:
+    ``kernel[lnc](args)``. The default is LNC=1. The LNC value must match the
+    ``NEURON_LOGICAL_NC_CONFIG`` environment variable set for the Neuron Runtime.
+    Mismatching the two will cause a runtime error. For example, if
+    ``NEURON_LOGICAL_NC_CONFIG=1``, the kernel must be launched with ``kernel[1](...)``
+    or ``kernel(...)``.
+    
+    Returns a :class:`Kernel` instance wrapping the decorated function.
+
+========== 3. what @nki.jit returns
+  type nki.framework.kernel.Kernel
+  mro  ['Kernel', 'object']
+  kernel.address_rotation  [bool] 
+      Returns True when the argument is true, False otherwise.
+  kernel.barrier_check  [bool] 
+      Returns True when the argument is true, False otherwise.
+  kernel.disable_address_rotation  [callable] ()
+      Disable address rotation optimization for multi-buffered tensors.
+  kernel.disable_core_barrier_checker  [callable] ()
+      Compile this kernel without the LNC core barrier checker (default).
+  kernel.enable_address_rotation  [callable] ()
+      Enable address rotation optimization for multi-buffered tensors.
+  kernel.enable_core_barrier_checker  [callable] ()
+      Compile this kernel with the LNC core barrier checker enabled.
+  kernel.func  [callable] (q, k, v)
+  kernel.lnc  [int] 
+      int([x]) -> integer
+  kernel.schedule  [tuple] 
+      Built-in immutable sequence.
+  kernel.with_schedule  [callable] (edges)
+      Attach dependency edges to control instruction scheduling.
+  class docstring:
+    Wrapper around a NKI kernel function returned by ``@nki.jit``.
+    See the documentation for ``@nki.jit`` for more details.
+
+========== 4. nki's modules
+  168 modules
+  nki._backends
+  nki._backends.context
+  nki._backends.debugger
+  nki._backends.debugger.debugger_isa_ops
+  nki._backends.debugger.dual_value
+  nki._backends.debugger.dump_loader
+  nki._backends.debugger.op_wrapper
+  nki._backends.debugger.repl
+  nki._backends.debugger.state
+  nki._backends.mlir_tracer
+  nki._backends.mlir_tracer.allocation
+  nki._backends.mlir_tracer.context
+  nki._backends.mlir_tracer.control_flow
+  nki._backends.mlir_tracer.device_dump
+  nki._backends.mlir_tracer.function
+  nki._backends.mlir_tracer.handles
+  nki._backends.mlir_tracer.isa
+  nki._backends.mlir_tracer.isa_emit
+  nki._backends.mlir_tracer.register
+  nki._backends.mlir_tracer.source_loc
+  nki._backends.mlir_tracer.target_info
+  nki._backends.mlir_tracer.tensor
+  nki._backends.mlir_tracer.tensor_view
+  nki._backends.simulator
+  nki._backends.simulator.activation
+  nki._backends.simulator.advanced
+  nki._backends.simulator.alloc
+  nki._backends.simulator.copy
+  nki._backends.simulator.dtype_cast
+  nki._backends.simulator.dtypes
+  nki._backends.simulator.gather
+  nki._backends.simulator.iota
+  nki._backends.simulator.lnc
+  nki._backends.simulator.lnc_ops
+  nki._backends.simulator.matmul
+  nki._backends.simulator.misc
+  nki._backends.simulator.oob_utils
+  nki._backends.simulator.rng
+  nki._backends.simulator.scan
+  nki._backends.simulator.shuffle
+  nki._backends.simulator.state
+  nki._backends.simulator.stats
+  nki._backends.simulator.tensor_ops
+  nki._backends.simulator.tensor_view
+  nki._backends.simulator.transpose
+  nki._simulator
+  nki._version
+  nki.collectives
+  nki.collectives._ops
+  nki.collectives._utils
+  nki.compiler
+  nki.compiler._baremetal_driver
+  nki.compiler._builtins
+  nki.compiler._disk_cache
+  nki.compiler._dtypes
+  nki.compiler._errors
+  nki.compiler._internal
+  nki.compiler._internal._mlir_libs
+  nki.compiler._internal._mlir_libs._frontend
+  nki.compiler._internal._mlir_libs._mlir
+  nki.compiler._internal._mlir_libs._mlirDialectsTransform
+  nki.compiler._internal._mlir_libs._mlirTransformInterpreter
+  nki.compiler._internal._mlir_libs._nisaDialectsNanobind
+  nki.compiler._internal._mlir_libs._nki
+  nki.compiler._internal._mlir_libs._nki_irbuilder
+  nki.compiler._internal._mlir_libs._nki_simulator
+  nki.compiler._internal._mlir_libs.libNkiPythonCAPI
+  nki.compiler._internal.dialects
+  nki.compiler._internal.dialects._arith_enum_gen
+  nki.compiler._internal.dialects._arith_ops_gen
+  nki.compiler._internal.dialects._builtin_ops_gen
+  nki.compiler._internal.dialects._cf_ops_gen
+  nki.compiler._internal.dialects._func_ops_gen
+  nki.compiler._internal.dialects._memref_ops_gen
+  nki.compiler._internal.dialects._ods_common
+  nki.compiler._internal.dialects._scf_ops_gen
+  nki.compiler._internal.dialects._transform_enum_gen
+  nki.compiler._internal.dialects._transform_ops_gen
+  nki.compiler._internal.dialects.arith
+  nki.compiler._internal.dialects.builtin
+  nki.compiler._internal.dialects.cf
+  nki.compiler._internal.dialects.func
+  nki.compiler._internal.dialects.memref
+  nki.compiler._internal.dialects.nisa
+  nki.compiler._internal.dialects.scf
+  nki.compiler._internal.dialects.transform
+  nki.compiler._internal.dialects.transform.extras
+  nki.compiler._internal.dialects.transform.interpreter
+  nki.compiler._internal.ir
+  nki.compiler._internal.passmanager
+  nki.compiler._internal.rewrite
+  nki.compiler._ncc_error_translator
+  nki.compiler._parallel
+  nki.compiler._trace_cache
+  nki.compiler._version
+  nki.compiler.driver
+  nki.compiler.frontend
+  nki.compiler.kernel_builder
+  nki.compiler.kernel_builder._control_flow
+  nki.compiler.kernel_builder._einops
+  nki.compiler.kernel_builder._errors
+  nki.compiler.kernel_builder._register
+  nki.compiler.kernel_builder._simulate
+  nki.compiler.kernel_builder._slice_utils
+  nki.compiler.kernel_builder._target_info
+  nki.compiler.kernel_builder.builder
+  nki.compiler.kernel_builder.compiler
+  nki.compiler.kernel_builder.isa
+  nki.compiler.kernel_builder.nisa_apis
+  nki.compiler.kernel_builder.tensor
+  nki.compiler.ncc_driver
+  nki.compiler.target
+  nki.debugger
+  nki.dtype
+  nki.experimental
+  nki.experimental._alloc
+  nki.experimental._pipeline
+  nki.experimental._sync_type
+  nki.experimental.dequantize
+  nki.experimental.isa
+  nki.experimental.isa.target
+  nki.framework
+  nki.framework._debug
+  nki.framework._simulate
+  nki.framework._torch_convert
+  nki.framework._torch_xla
+  nki.framework.compiled
+  nki.framework.jax
+  nki.framework.kernel
+  nki.framework.torch_native
+  nki.isa
+  nki.isa._activation
+  nki.isa._advanced
+  nki.isa._copy
+  nki.isa._enums
+  nki.isa._gather
+  nki.isa._instruction
+  nki.isa._iota
+  nki.isa._lnc
+  nki.isa._matmul
+  nki.isa._misc
+  nki.isa._rng
+  nki.isa._scan
+  nki.isa._shuffle
+  nki.isa._stats
+  nki.isa._tensor_ops
+  nki.isa._transpose
+  nki.isa._validation
+  nki.isa._virtual_register
+  nki.isa.constants
+  nki.language
+  nki.language._core
+  nki.language._directives
+  nki.language._dtypes
+  nki.language._identity
+  nki.language._math_funcs
+  nki.language._nki_base
+  nki.language._operators
+  nki.language._ops
+  nki.language._ranges
+  nki.language._tile_size
+  nki.language.buffers
+  nki.language.opcode
+  nki.language.tensor
+  nki.runtime
+  nki.simulator
+  nki.typing
+  nki.utils
+
+========== 5. nki's source: entry points, modes, NEFFs, frameworks, runtime
+  305 source files (compiled extensions are not searched)
+
+  -- entry points: 35 lines (first 25)
+    nki/__init__.pyi:33: def simulate(kernel):
+    nki/_simulator.py:126: def simulate_kernel(kernel_fn, args, kwargs, lnc=1, target=None):
+    nki/simulator.py:24: def simulate_kernel(kernel_fn, args, kwargs, lnc=1, target=None):
+    nki/_backends/debugger/dump_loader.py:117: def load_device_dump(data_dir: str) -> DeviceDumpEntry | None:
+    nki/_backends/mlir_tracer/register.py:308: def load_register(src, name: str | None = None) -> RegisterHandle:
+    nki/_backends/simulator/advanced.py:664: def load_register(src):
+    nki/compiler/_baremetal_driver.py:426: def compile_mlir_to_baremetal_ir(
+    nki/compiler/_baremetal_driver.py:554: def compile_mlir_to_neff_baremetal(
+    nki/compiler/_builtins.py:103: def load_register(src: TensorApView) -> RegisterHandle: ...
+    nki/compiler/_trace_cache.py:795: def load(self, key: str) -> Optional[TraceCacheEntry]:
+    nki/compiler/driver.py:26: def compile_to_bir(
+    nki/compiler/driver.py:130: def compile_to_late_bir(
+    nki/compiler/frontend.py:132: def compile(
+    nki/compiler/ncc_driver.py:337: def run(
+    nki/compiler/ncc_driver.py:437: def execute(
+    nki/compiler/ncc_driver.py:505: def benchmark(
+    nki/compiler/ncc_driver.py:1063: def compile_mlir_to_bir(
+    nki/compiler/ncc_driver.py:1360: def compile_bir_to_neff(
+    nki/compiler/ncc_driver.py:1425: def compile_mlir_to_neff(
+    nki/compiler/_internal/_mlir_libs/_mlir/ir.pyi:1013: def load_all_available_dialects(self) -> None: ...
+    nki/compiler/_internal/_mlir_libs/_mlir/passmanager.pyi:33: def run(self, module: _ir._OperationBase) -> None: ...
+    nki/compiler/_internal/dialects/_memref_ops_gen.py:256: def load(memref, indices, *, nontemporal=None, loc=None, ip=None) -> _ods_ir.Value:
+    nki/compiler/kernel_builder/_simulate.py:61: def simulate_kernel(
+    nki/compiler/kernel_builder/builder.py:424: def compile_kernel(
+    nki/compiler/kernel_builder/builder.py:609: def compile_and_execute(
+
+  -- modes / targets: 100 lines (first 25)
+    nki/__init__.py:40: ``NEURON_PLATFORM_TARGET_OVERRIDE`` environment variable. Supported values:
+    nki/__init__.py:58: if "platform_target" in kwargs:
+    nki/__init__.py:60: "nki.jit 'platform_target' parameter is deprecated. "
+    nki/__init__.py:61: "Use the NEURON_PLATFORM_TARGET_OVERRIDE environment variable instead."
+    nki/__init__.pyi:17: ``NEURON_PLATFORM_TARGET_OVERRIDE`` environment variable. Supported values:
+    nki/_simulator.py:126: def simulate_kernel(kernel_fn, args, kwargs, lnc=1, target=None):
+    nki/_simulator.py:132: target = resolve_target(kernel_fn, explicit_target=target)
+    nki/_simulator.py:134: main_ctx = SimulatorContext(target=target, precise_fp=precise_fp)
+    nki/_simulator.py:196: threading.Thread(target=run_kernel, args=(i,)) for i in range(lnc)
+    nki/debugger.py:97: target = resolve_target(kernel_fn)
+    nki/debugger.py:100: target=target,
+    nki/debugger.py:224: target=target,
+    nki/debugger.py:278: threads = [threading.Thread(target=run_core, args=(i,)) for i in range(lnc)]
+    nki/simulator.py:24: def simulate_kernel(kernel_fn, args, kwargs, lnc=1, target=None):
+    nki/simulator.py:28: return _simulate_kernel(kernel_fn, args, kwargs, lnc=lnc, target=target)
+    nki/_backends/debugger/state.py:38: super().__init__(target=target, precise_fp=precise_fp)
+    nki/_backends/mlir_tracer/context.py:58: self.target = target
+    nki/_backends/mlir_tracer/target_info.py:38: target = ctx.target
+    nki/_backends/mlir_tracer/target_info.py:41: target = _TARGET_ALIASES.get(target.lower(), target.lower())
+    nki/_backends/simulator/matmul.py:69: Two strategies depending on performance mode:
+    nki/_backends/simulator/state.py:43: self.target = target
+    nki/_backends/simulator/state.py:69: c = SimulatorContext(target=self.target, precise_fp=self.precise_fp)
+    nki/_backends/simulator/tensor_view.py:396: flat_as_target = self.tensor.view(to_numpy_dtype(target_dtype)).ravel()
+    nki/_backends/simulator/tensor_view.py:436: target = self._identity_as_target()
+    nki/_backends/simulator/tensor_view.py:455: flat_as_target = self.tensor.view(to_numpy_dtype(target_dtype)).ravel()
+
+  -- NEFF / artifacts: 169 lines (first 25)
+    nki/compiler/_baremetal_driver.py:150: neff_name: str,
+    nki/compiler/_baremetal_driver.py:157: """Run neuronx-cc to compile BIR JSON to .neff file."""
+    nki/compiler/_baremetal_driver.py:158: assert not cwd or os.path.isabs(neff_name), (
+    nki/compiler/_baremetal_driver.py:159: f"neff_name must be absolute when cwd is set, got: {neff_name}"
+    nki/compiler/_baremetal_driver.py:192: cmd.extend([f"--output={neff_name}"])
+    nki/compiler/_baremetal_driver.py:214: if not os.path.exists(neff_name):
+    nki/compiler/_baremetal_driver.py:216: f"neuronx-cc compilation failed: output file '{neff_name}' not found"
+    nki/compiler/_baremetal_driver.py:337: # directly), corrupting the NEFF.
+    nki/compiler/_baremetal_driver.py:439: if compile_opts.dump_mlir and compile_opts.artifacts_dir:
+    nki/compiler/_baremetal_driver.py:482: if compile_opts.dump_mlir and compile_opts.artifacts_dir:
+    nki/compiler/_baremetal_driver.py:554: def compile_mlir_to_neff_baremetal(
+    nki/compiler/_baremetal_driver.py:565: """Compile MLIR module to NEFF using baremetal mode.
+    nki/compiler/_baremetal_driver.py:580: Same as ncc_driver.compile_mlir_to_neff.
+    nki/compiler/_baremetal_driver.py:588: if compile_opts.artifacts_dir:
+    nki/compiler/_baremetal_driver.py:589: os.makedirs(compile_opts.artifacts_dir, exist_ok=True)
+    nki/compiler/_baremetal_driver.py:590: work_dir = compile_opts.artifacts_dir
+    nki/compiler/_baremetal_driver.py:592: # mkdtemp intentionally: the returned CompiledKernel.neff_path lives
+    nki/compiler/_baremetal_driver.py:594: # so a TemporaryDirectory (auto-cleanup) would delete the neff too early.
+    nki/compiler/_baremetal_driver.py:699: neff_path=compile_opts.output_path,
+    nki/compiler/_baremetal_driver.py:702: artifacts_dir=compile_opts.artifacts_dir,
+    nki/compiler/_disk_cache.py:16: neuronx-cc copies multiple kernels into a shared directory, and to make artifacts easy
+    nki/compiler/_disk_cache.py:83: def cache_bir_artifacts(
+    nki/compiler/_disk_cache.py:94: directory by neuronx-cc, and to make it easy to identify artifacts.
+    nki/compiler/_parallel.py:24: summary = parallel_compile(specs, {"target": "trn2"}, "./artifacts", max_workers=8)
+    nki/compiler/_parallel.py:71: neff_path: Optional[str] = None
+
+  -- frameworks: 40 lines (first 25)
+    nki/__init__.py:36: - ``jax.Array``: uses JAX integration.
+    nki/__init__.pyi:13: - ``jax.Array``: uses JAX integration.
+    nki/compiler/_disk_cache.py:5: When compiling NKI kernels for framework integration (Jax, TorchXLA),
+    nki/compiler/driver.py:109: # Jax/TorchXLA callers don't manage temp dirs; the NirResult must
+    nki/compiler/ncc_driver.py:38: Public API for external callers (PyTorch/JAX/standalone/native codegen) that
+    nki/compiler/ncc_driver.py:906: (JAX, TorchXLA, TorchEager). Frameworks depend on these fields.
+    nki/compiler/ncc_driver.py:1075: Includes disk caching for Jax/TorchXLA deterministic paths.
+    nki/compiler/ncc_driver.py:1134: # Cache kernel BIR for Jax/TorchXLA deterministic paths.
+    nki/framework/_torch_convert.py:6: (simulate.py) and the framework integration (torch_xla.py) share a single
+    nki/framework/_torch_convert.py:18: torch_neuronx) cannot load.  All torch usage is deferred to first call.
+    nki/framework/_torch_convert.py:115: # torch_neuronx's longstanding behavior (bool tensors flow as 8-bit unsigned
+    nki/framework/_torch_xla.py:1: """[INTERNAL] TorchXlaKernel for PyTorch/XLA execution of NKI kernels.
+    nki/framework/_torch_xla.py:9: from torch_neuronx.pyhlo import xla_data_pb2
+    nki/framework/_torch_xla.py:10: from torch_neuronx.xla_impl.base import xla_hlo_call
+    nki/framework/_torch_xla.py:11: from torch_neuronx.xla_impl.custom_call_targets import AwsNeuronNkiKernel
+    nki/framework/_torch_xla.py:40: "float8_e8m0fnu": "f8e8m0fnu",  # TODO: torch_xla doesn't support this yet (NKI-2212)
+    nki/framework/_torch_xla.py:118: class TorchXlaKernel(CompileKernel):
+    nki/framework/compiled.py:60: Framework integrations (JAX, TorchXLA, TorchEager) use this as
+    nki/framework/compiled.py:417: if arg_list and any(t.startswith(("jaxlib.", "jax.")) for t in arg_types):
+    nki/framework/compiled.py:418: from nki.framework.jax import JaxKernel
+    nki/framework/compiled.py:423: from nki.framework._torch_xla import TorchXlaKernel
+    nki/framework/compiled.py:425: return TorchXlaKernel
+    nki/framework/jax.py:1: """[INTERNAL] JaxKernel for JAX execution of NKI kernels.
+    nki/framework/jax.py:10: import jax
+    nki/framework/jax.py:11: import jax.numpy as jnp
+
+  -- runtime: 23 lines
+    nki/debugger.py:83: (NEURON_RT_DEBUG_OUTPUT_DIR from device execution)
+    nki/_backends/debugger/dump_loader.py:12: # Map NRT dtype strings (from runtime/lib/dtype.h to_nrt_string())
+    nki/_backends/debugger/dump_loader.py:16: _NRT_DTYPE_MAP: dict | None = None
+    nki/_backends/debugger/dump_loader.py:19: def _get_nrt_dtype_map() -> dict:
+    nki/_backends/debugger/dump_loader.py:21: global _NRT_DTYPE_MAP
+    nki/_backends/debugger/dump_loader.py:22: if _NRT_DTYPE_MAP is None:
+    nki/_backends/debugger/dump_loader.py:25: _NRT_DTYPE_MAP = {
+    nki/_backends/debugger/dump_loader.py:50: return _NRT_DTYPE_MAP
+    nki/_backends/debugger/dump_loader.py:133: data = np.fromfile(bin_path, dtype=_get_nrt_dtype_map()[dtype_str])
+    nki/_backends/mlir_tracer/device_dump.py:7: tensor data is captured at runtime via NEURON_RT_DEBUG_OUTPUT_DIR for offline
+    nki/compiler/ncc_driver.py:177: """Extract performance metrics from NTFF profile using neuron-profile CLI.
+    nki/compiler/ncc_driver.py:182: verbose: If True, print warnings on neuron-profile failure or parse errors.
+    nki/compiler/ncc_driver.py:185: Complete metrics dict from neuron-profile summary-json, or None on failure.
+    nki/compiler/ncc_driver.py:188: "neuron-profile",
+    nki/compiler/ncc_driver.py:205: print(f"Warning: neuron-profile failed (exit {e.returncode})")
+    nki/compiler/ncc_driver.py:209: print(f"Warning: neuron-profile output parsing failed: {e}")
+    nki/framework/_debug.py:58: (NEURON_RT_DEBUG_OUTPUT_DIR from device execution).
+    nki/isa/__init__.pyi:556: ensures neuron-profile identifies this instruction as a transpose for performance metric accounting purposes.
+    nki/isa/_matmul.py:117: ensures neuron-profile identifies this instruction as a transpose for performance metric accounting purposes.
+    nki/language/__init__.pyi:2665: ``NEURON_RT_DEBUG_OUTPUT_DIR`` to a directory path enables the default stream consumer,
+    nki/language/_core.py:242: ``NEURON_RT_DEBUG_OUTPUT_DIR`` to a directory path enables the default stream consumer,
+    nki/runtime/__init__.py:6: platforms where the Neuron Runtime (libnrt) ships — currently amd64 Linux
+    nki/runtime/__init__.py:29: "(libnrt) is only shipped for amd64 Linux. Compile NKI kernels on "
+
+========== 6. frameworks installed
+  neuronxcc        2.27.5334.0+f702b353
+  neuronxcc.nki    installed
+  torch            2.11.0+cu130
+  torch_xla        2.11.0
+  torch_neuronx    not importable (ModuleNotFoundError)
+  jax              not importable (ModuleNotFoundError)
+  jax_neuronx      not importable (ModuleNotFoundError)
+  libneuronxla     not importable (ModuleNotFoundError)
+  the OLD API in neuronxcc.nki has: baremetal, benchmark, profile, simulate_kernel, jit  (it predates dst= keywords, so it may not accept these kernels)
+
+========== 7. V0 on the device through torch-xla
+  torch-xla device type: NEURON
+/workspace/projects/03-attention-kernel/probe_nki.py:165: DeprecationWarning: Use torch_xla.device instead
+  dev = xm.xla_device()
+  RAISED:
+        dev = xm.xla_device()
+      File "/opt/conda/lib/python3.13/site-packages/typing_extensions.py", line 3140, in wrapper
+        return arg(*args, **kwargs)
+      File "/opt/conda/lib/python3.13/site-packages/torch_xla/core/xla_model.py", line 137, in xla_device
+        return torch_xla.device(n)
+               ~~~~~~~~~~~~~~~~^^^
+      File "/opt/conda/lib/python3.13/site-packages/torch_xla/torch_xla.py", line 40, in device
+        return torch.device(torch_xla._XLAC._xla_get_default_device())
+                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+      File "/opt/conda/lib/python3.13/site-packages/torch_xla/_internal/neuron.py", line 118, in library_path
+        from libneuronxla.libneuronpjrt_path import libneuronpjrt_path
+    ModuleNotFoundError: No module named 'libneuronxla'

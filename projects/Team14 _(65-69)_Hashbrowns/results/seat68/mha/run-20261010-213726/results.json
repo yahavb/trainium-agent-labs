@@ -1,0 +1,225 @@
+{
+ "suite": "mha",
+ "core": "2",
+ "lnc": 1,
+ "warmup": 20,
+ "iterations": 2000,
+ "results": [
+  {
+   "version": "M0 V0 per head",
+   "shape": "seq=128 heads=16 dim=64",
+   "case": 0,
+   "mean_us": 74.463442,
+   "min_us": 74.192,
+   "max_us": 74.976,
+   "std_us": 0.10336764791751833,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213726/M0_V0_per_head_case0/build/kernel.neff"
+  },
+  {
+   "version": "M4 V4 per head",
+   "shape": "seq=128 heads=16 dim=64",
+   "case": 0,
+   "mean_us": 61.612847499999994,
+   "min_us": 61.288,
+   "max_us": 62.54700000000001,
+   "std_us": 0.17561141831825738,
+   "correct": false,
+   "mismatch": "NUMERICAL MISMATCH: worst error 0.0245 of the output's RMS (0.1425), tolerance 0.02.\n  at index (92, 8, 34): expected +1.54337, got +1.54686\n  0.0% of elements are outside tolerance\n  inside a full tile, so look at the accumulation rather than the edges",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213726/M4_V4_per_head_case0/build/kernel.neff"
+  },
+  {
+   "version": "fast, 1 core",
+   "shape": "seq=128 heads=16 dim=64",
+   "case": 0,
+   "mean_us": 51.538754,
+   "min_us": 50.983000000000004,
+   "max_us": 52.321999999999996,
+   "std_us": 0.16142570886943627,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213726/fast,_1_core_case0/build/kernel.neff"
+  },
+  {
+   "version": "fast, 2 cores",
+   "shape": "seq=128 heads=16 dim=64",
+   "case": 0,
+   "mean_us": 33.84550599999999,
+   "min_us": 33.213,
+   "max_us": 36.473,
+   "std_us": 0.22899625207413327,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213726/fast,_2_cores_case0/build/kernel.neff"
+  },
+  {
+   "version": "fast balanced, 2 cores",
+   "shape": "seq=128 heads=16 dim=64",
+   "case": 0,
+   "error": "AssertionError: error: failed to compile NKI kernel:\nCollected 1 different diagnostics:\n- [x2] error: assertion failed: tensor_scalar data must be in [sbuf], got psum\n"
+  },
+  {
+   "version": "M0 V0 per head",
+   "shape": "seq=128 heads=16 dim=128",
+   "case": 1,
+   "mean_us": 76.08858599999999,
+   "min_us": 75.829,
+   "max_us": 77.021,
+   "std_us": 0.09873137092130353,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213726/M0_V0_per_head_case1/build/kernel.neff"
+  },
+  {
+   "version": "M4 V4 per head",
+   "shape": "seq=128 heads=16 dim=128",
+   "case": 1,
+   "mean_us": 68.75125399999999,
+   "min_us": 68.47399999999999,
+   "max_us": 69.198,
+   "std_us": 0.1041955732456997,
+   "correct": false,
+   "mismatch": "NUMERICAL MISMATCH: worst error 0.025 of the output's RMS (0.1406), tolerance 0.02.\n  at index (24, 5, 120): expected +0.887531, got +0.884019\n  0.0% of elements are outside tolerance\n  inside a full tile, so look at the accumulation rather than the edges",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213726/M4_V4_per_head_case1/build/kernel.neff"
+  },
+  {
+   "version": "fast, 1 core",
+   "shape": "seq=128 heads=16 dim=128",
+   "case": 1,
+   "mean_us": 50.6806815,
+   "min_us": 48.013999999999996,
+   "max_us": 54.617999999999995,
+   "std_us": 1.6391200194182702,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213726/fast,_1_core_case1/build/kernel.neff"
+  },
+  {
+   "version": "fast, 2 cores",
+   "shape": "seq=128 heads=16 dim=128",
+   "case": 1,
+   "mean_us": 34.40565975,
+   "min_us": 33.241,
+   "max_us": 35.942,
+   "std_us": 0.5456689261630513,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213726/fast,_2_cores_case1/build/kernel.neff"
+  },
+  {
+   "version": "fast balanced, 2 cores",
+   "shape": "seq=128 heads=16 dim=128",
+   "case": 1,
+   "error": "AssertionError: error: failed to compile NKI kernel:\nCollected 1 different diagnostics:\n- [x2] error: assertion failed: tensor_scalar data must be in [sbuf], got psum\n"
+  },
+  {
+   "version": "M0 V0 per head",
+   "shape": "seq=96 heads=8 dim=32",
+   "case": 2,
+   "mean_us": 38.357786,
+   "min_us": 38.107,
+   "max_us": 38.803,
+   "std_us": 0.09151250845649465,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213726/M0_V0_per_head_case2/build/kernel.neff"
+  },
+  {
+   "version": "M4 V4 per head",
+   "shape": "seq=96 heads=8 dim=32",
+   "case": 2,
+   "mean_us": 33.850281,
+   "min_us": 33.553999999999995,
+   "max_us": 34.35,
+   "std_us": 0.10460970336923818,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213726/M4_V4_per_head_case2/build/kernel.neff"
+  },
+  {
+   "version": "fast, 1 core",
+   "shape": "seq=96 heads=8 dim=32",
+   "case": 2,
+   "mean_us": 27.501513,
+   "min_us": 27.232,
+   "max_us": 27.952,
+   "std_us": 0.09589978535429576,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213726/fast,_1_core_case2/build/kernel.neff"
+  },
+  {
+   "version": "fast, 2 cores",
+   "shape": "seq=96 heads=8 dim=32",
+   "case": 2,
+   "mean_us": 21.6084245,
+   "min_us": 21.254,
+   "max_us": 22.218999999999998,
+   "std_us": 0.16590747963774874,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213726/fast,_2_cores_case2/build/kernel.neff"
+  },
+  {
+   "version": "fast balanced, 2 cores",
+   "shape": "seq=96 heads=8 dim=32",
+   "case": 2,
+   "error": "AssertionError: error: failed to compile NKI kernel:\nCollected 1 different diagnostics:\n- [x2] error: assertion failed: tensor_scalar data must be in [sbuf], got psum\n"
+  },
+  {
+   "version": "M0 V0 per head",
+   "shape": "seq=128 heads=32 dim=128",
+   "case": 3,
+   "mean_us": 125.323948,
+   "min_us": 125.00099999999999,
+   "max_us": 126.138,
+   "std_us": 0.11102596676453645,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213726/M0_V0_per_head_case3/build/kernel.neff"
+  },
+  {
+   "version": "M4 V4 per head",
+   "shape": "seq=128 heads=32 dim=128",
+   "case": 3,
+   "mean_us": 128.3357045,
+   "min_us": 128.057,
+   "max_us": 128.85899999999998,
+   "std_us": 0.14212113558422632,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213726/M4_V4_per_head_case3/build/kernel.neff"
+  },
+  {
+   "version": "fast, 1 core",
+   "shape": "seq=128 heads=32 dim=128",
+   "case": 3,
+   "mean_us": 76.617163,
+   "min_us": 71.905,
+   "max_us": 81.21000000000001,
+   "std_us": 1.6522127890895286,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213726/fast,_1_core_case3/build/kernel.neff"
+  },
+  {
+   "version": "fast, 2 cores",
+   "shape": "seq=128 heads=32 dim=128",
+   "case": 3,
+   "mean_us": 47.09433049999999,
+   "min_us": 44.374,
+   "max_us": 50.299,
+   "std_us": 0.9913327444757135,
+   "correct": true,
+   "mismatch": "",
+   "neff": "/workspace/projects/02-kernel-agent/profiles/mha/run-20261010-213726/fast,_2_cores_case3/build/kernel.neff"
+  },
+  {
+   "version": "fast balanced, 2 cores",
+   "shape": "seq=128 heads=32 dim=128",
+   "case": 3,
+   "error": "AssertionError: error: failed to compile NKI kernel:\nCollected 1 different diagnostics:\n- [x2] error: assertion failed: tensor_scalar data must be in [sbuf], got psum\n"
+  }
+ ]
+}

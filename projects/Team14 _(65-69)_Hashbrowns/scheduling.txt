@@ -1,0 +1,34 @@
+ 1   34  dma_copy       DMA     HBM -> SBUF       96x32        12,288 byte    -          (values not readable)
+         nisa.dma_copy(dst=q_sb, src=q)
+ 2   35  dma_copy       DMA     HBM -> SBUF       96x32        12,288 byte    -          (values not readable)
+         nisa.dma_copy(dst=k_sb, src=k)
+ 3   36  dma_copy       DMA     HBM -> SBUF       96x32        12,288 byte    -          (values not readable)
+         nisa.dma_copy(dst=v_sb, src=v)
+ 4   41  nc_transpose   Tensor  SBUF -> PSUM      32x96         3,072 elem moved  1          (values not readable)
+         nisa.nc_transpose(dst=qT_ps, data=q_sb)                                    # VERIFY
+ 5   42  nc_transpose   Tensor  SBUF -> PSUM      32x96         3,072 elem moved  2          (values not readable)
+         nisa.nc_transpose(dst=kT_ps, data=k_sb)                                    # VERIFY
+ 6   45  tensor_copy    Vector  PSUM -> SBUF      32x96         3,072 elem moved  4          (values not readable)
+         nisa.tensor_copy(dst=qT, src=qT_ps)
+ 7   46  tensor_copy    Vector  PSUM -> SBUF      32x96         3,072 elem moved  5          (values not readable)
+         nisa.tensor_copy(dst=kT, src=kT_ps)
+ 8   50  nc_matmul      Tensor  SBUF -> PSUM      96x96       589,824 FLOP    6,7        (values not readable)
+         nisa.nc_matmul(dst=s_ps, stationary=qT, moving=kT)
+ 9   54  tensor_reduce  Vector  PSUM -> SBUF      96x1          9,216 FLOP    8          (values not readable)
+         nisa.tensor_reduce(dst=row_max, op=nl.maximum, data=s_ps, axis=1)          # VERIFY
+10   56  tensor_scalar  Vector  SBUF -> SBUF      96x1             96 FLOP    9          (values not readable)
+         nisa.tensor_scalar(dst=neg_max, data=row_max, op0=nl.multiply, operand0=-scale)
+11   60  activation     Scalar  PSUM+SBUF -> SBUF 96x96        27,648 FLOP    8,10       (values not readable)
+         nisa.activation(dst=p, op=nl.exp, data=s_ps, bias=neg_max, scale=scale)    # VERIFY
+12   63  tensor_reduce  Vector  SBUF -> SBUF      96x1          9,216 FLOP    11         (values not readable)
+         nisa.tensor_reduce(dst=row_sum, op=nl.add, data=p, axis=1)                 # VERIFY
+13   67  nc_transpose   Tensor  SBUF -> PSUM      96x96         9,216 elem moved  11         (values not readable)
+         nisa.nc_transpose(dst=pT_ps, data=p)                                       # VERIFY
+14   69  tensor_copy    Vector  PSUM -> SBUF      96x96         9,216 elem moved  13         (values not readable)
+         nisa.tensor_copy(dst=pT, src=pT_ps)
+15   73  nc_matmul      Tensor  SBUF -> PSUM      96x32       589,824 FLOP    3,14       (values not readable)
+         nisa.nc_matmul(dst=o_ps, stationary=pT, moving=v_sb)
+16   77  tensor_scalar  Vector  PSUM+SBUF -> SBUF 96x32         3,072 FLOP    12,15      (values not readable)
+         nisa.tensor_scalar(dst=o_sb, data=o_ps, op0=nl.divide, operand0=row_sum)  # VERIFY per-row operand
+17   80  dma_copy       DMA     SBUF -> HBM       96x32        12,288 byte    16         (values not readable)
+         nisa.dma_copy(dst=out, src=o_sb)
