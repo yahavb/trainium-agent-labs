@@ -407,7 +407,8 @@ part in it.
 | 2 | **1.00** | sample 1, the repair | the held kernel with the gate's rewrite applied |
 
 Without E-mix the near-solution would not have been drawn: the repair sample was stuck at 0.30. Without the
-gate it would have been scored 1.0 as it stood and reported as a solve that a trn2 build rejects. Before the
+gate it would have scored 1.0 as it stood, in a form that failed every full trn2 build liuyq ran on it
+(89417dd); we did not full-build this particular kernel. Before the
 held-out set ran, the agent stated 0.90; held-out 20/20, re-audit PASS, VERIFIED by both verdicts, and the
 kernel lowers for trn2 (a lowering, not a full build). 12 requests, 13,595 prompt and 10,935 answer tokens,
 counted by the server.
