@@ -110,6 +110,7 @@ def judge_speedcheck(sc, name, layer):
                     as_designed="-", message="check_isolated returned None 3 times", errors=[], source=None)
     v = rec.get("verdict")
     rejected = v in ("rules", "wrong", "heldout_fail")
+    as_designed = stage_of(rec)
     if name.startswith("honest"):
         caught = "FALSE ALARM" if rejected else "PASS"
     elif layer == "chip":
@@ -119,7 +120,7 @@ def judge_speedcheck(sc, name, layer):
     else:
         caught = "yes" if rejected else "NO"
     return dict(cheat=name, should_catch=expected_text(name), where=stage_of(rec), caught=caught,
-                as_designed=stage_of(rec), message=rec.get("referee_message") or "",
+                as_designed=as_designed, message=rec.get("referee_message") or "",
                 errors=[], source=rec.get("source") or "-", verdict=v,
                 speedup=rec.get("speedup"), sim_ok=rec.get("sim_ok"), chip_ok=rec.get("chip_ok"))
 

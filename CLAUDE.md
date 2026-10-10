@@ -9,7 +9,11 @@ planted cheating kernels.
   run or "test" kernels here, and never add workarounds that fake nki. Edit here, push, pull and run in
   the pod.
 - Fork: github.com/likhith2366/trainium-agent-labs, main branch `master`. One branch per person.
-- Pod: vLLM serves Qwen3-8B on NeuronCores 2-3; cores 0-1 are free (NEURON_RT_VISIBLE_CORES=0,1).
+- Pod: vLLM serves Qwen3-8B on NeuronCores 0-1 (measured, STATUS.md; older docs say 2-3). The referee
+  times kernels on core 2, fallback 3, so at most two core holders per seat (check_isolated,
+  RefereeWorker, heldout_grid.py, timing --selftest); give each its own CHIPBOOST_CORE.
+- Referee API: REFEREE.md. Loops call speedcheck.check_isolated(path, op=...); None means the referee
+  failed (retry), never a verdict on the kernel.
 - NKI 0.6.0 imports: `import nki`, `import nki.language as nl`, `import nki.isa as nisa`. Simulate with
   `nki.simulate(kernel)(*args)`. There is no public `nki.benchmark`; a plain kernel(*args) call
   recompiles (~1.5 s), so never time that call.
