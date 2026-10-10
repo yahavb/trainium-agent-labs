@@ -3,21 +3,17 @@
 **An agent writes small programs that run directly on the chip, and keeps verifying its own output
 as it goes.**
 
-> ## STATUS: RUNNABLE, NOT YET SOLVED
+> ## STATUS (team 20): 10 OF 11 LEVELS SOLVED — LEVEL 8 (ATTENTION) STILL OPEN
 >
-> **Works today, verified on a trn2 node:** the ladder, the checker (`nkibench.py`), four reference
-> kernels that pass it, and the agent loop (`agent.py`) writing kernels against a live model.
+> **Results, charts and limits: [RESULTS.md](RESULTS.md).** The same Qwen3-8B now solves levels 1–7 and
+> our stepping-stone levels 9–11, re-checked on 228 unseen inputs (210 pass, none with wrong numbers) and
+> 15/15 on the real chip. What changed: feedback that names the fix, a static check (`lint.py`) that lists
+> every mistake at once, reuse of the agent's own verified kernels, and the model server on the whole chip
+> (7× faster rounds).
 >
-> **Not there yet:** the agent has not solved a single level. Its best score is 0.30 of 1.0 — code
-> that parses, obeys the rules and runs, but computes the wrong numbers. The transcripts below show
-> exactly where it stalls, and that is the problem you are being handed.
->
-> **Also missing:** reference kernels for levels 5 to 7, so the optimization half of the ladder is
-> unmarked; and layers 2 and 3 of the checker, so **latency cannot be measured at all yet** — every
-> number here is throughput reasoning from the simulator.
->
-> This is a genuinely open problem, not a tidied-up exercise with a hidden answer. If you get a level
-> to 1.0, you have done something nobody here has.
+> **Still open:** level 8 (full attention) — the agent has not solved it. `reference_level8.py` is our
+> hand-written kernel proving it is solvable; the agent never sees it. Kernel speed on the device is not
+> measured. The original README below is kept as the problem statement.
 
 ---
 
