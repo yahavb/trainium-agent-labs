@@ -231,7 +231,9 @@ def ref_row_softmax(x):
 
 def ref_attention_scores(q, k):
     """Level 11: the first stage of attention, scores = q k^T / sqrt(d), shape (seq, seq)."""
-    return (q @ k.T) / np.sqrt(q.shape[1])
+    # cast back: dividing a float32 array by np.sqrt(int) (a float64 scalar) gives float64 under NumPy 2,
+    # which doubled the output bytes in the traffic floor and reported a 1.5x kernel as 1.00x
+    return ((q @ k.T) / np.sqrt(q.shape[1])).astype(q.dtype)
 
 
 def _args_two_tiles(spec, r):

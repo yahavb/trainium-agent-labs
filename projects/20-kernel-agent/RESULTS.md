@@ -72,10 +72,20 @@ level 3, 4, 7, 9 and 10 programs gave **15 of 15 correct**.
 * `reference_level8.py` is **hand-written by us**, never shown to the agent: it only proves level 8 is solvable.
 * We checked correctness on the chip, **not kernel speed**; levels 6 and 11 were not run on the chip.
   Level 6 zeroes PSUM before accumulating, which AWS documents as a hazard on older chips — unverified here.
+* Level 11's kernel is correct but writes its output twice: 1.2–1.6× the minimum traffic (level 11 has no
+  traffic bar). A dtype bug in its reference had reported this as 1.00×; fixed.
 * Levels 5–7 load whole inputs on chip and the matrix programs need tile-multiple sizes: fine for the
   tests, not general.
 * Most changes are switches (`--lint`, `--level-hints`, `--blocks`, …). Always on: the scoring fixes above,
   the level-2 text fix, and stricter re-checks.
+
+## Next steps (from an independent audit of the level-8 failures)
+
+* Level 8 fails on composition, not maths: it pastes the scores block's HBM stores into the middle of
+  attention, sizes P as (seq, dim), and transposes V instead of P. Give **composable SBUF-to-SBUF stages**
+  as building blocks, not standalone kernels.
+* Name the exact P·V repair ("transpose the probabilities, keep v as is") instead of the generic Aᵀ·B advice.
+* Detect A→B→A cycles across a run (code hashes), not only an unchanged reply.
 
 ## Rerun it
 
