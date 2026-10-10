@@ -46,6 +46,14 @@ def parse_args() -> argparse.Namespace:
         "--hardware",
         default=os.environ.get("TRAINIUM_HARDWARE", "aws-trainium"),
     )
+    parser.add_argument(
+        "--torch-profile",
+        type=Path,
+        default=None,
+        help="opt-in: after timing, profile extra runs with torch.profiler into this "
+        "directory. See PROFILING.md.",
+    )
+    parser.add_argument("--torch-profile-runs", type=int, default=3)
     return parser.parse_args()
 
 
@@ -135,9 +143,13 @@ def main() -> int:
     }
     adapter_module = load_adapter(args.adapter)
 
+    # Wall-clock bounds of prepare(), so runners/profiling.py can find the
+    # programs compiled here in the Neuron compile cache.
+    compile_started_unix = time.time()
     compile_start = time.perf_counter()
     prepared = adapter_module.prepare(inputs, context)
     compile_seconds = time.perf_counter() - compile_start
+    compile_finished_unix = time.time()
     run = getattr(prepared, "run", None)
     if not callable(run):
         raise ValueError("Prepared adapter must define run()")
@@ -168,6 +180,16 @@ def main() -> int:
             prediction = as_numpy(output[prediction_key], np).copy()
         else:
             prediction = as_numpy(output, np).copy()
+        if args.torch_profile is not None:
+            # Runs after the timed loop, so profiler overhead never reaches
+            # the reported latency.
+            from profiling import torch_profile
+
+            def profiled_step() -> None:
+                run()
+                synchronize()
+
+            torch_profile(profiled_step, args.torch_profile_runs, args.torch_profile)
         adapter_metrics = getattr(prepared, "metrics", None)
         if callable(adapter_metrics):
             extra_metrics = adapter_metrics()
@@ -197,6 +219,8 @@ def main() -> int:
         "input_shapes": {key: list(value.shape) for key, value in inputs.items()},
         "output_shape": list(prediction.shape),
         "compile_seconds": compile_seconds,
+        "compile_started_unix": compile_started_unix,
+        "compile_finished_unix": compile_finished_unix,
         "warmup_runs": args.warmup,
         "warmup_seconds": warmup_seconds,
         "timed_runs": args.repeats,
@@ -209,6 +233,8 @@ def main() -> int:
     }
     if extra_metrics is not None:
         metrics["adapter_metrics"] = extra_metrics
+    if args.torch_profile is not None:
+        metrics["torch_profile_dir"] = str(args.torch_profile)
 
     args.metrics_json.parent.mkdir(parents=True, exist_ok=True)
     args.metrics_json.write_text(
