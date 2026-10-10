@@ -1,0 +1,74 @@
+run C rep 1: 20 problems (0 already done), budget 6, feedback located, model Qwen/Qwen3-8B, seats seat-92, code 1d47f65 -> runs/dev/C-s3rewrite-full-1.jsonl
+Prob001_zero                       C  r1  seat-92   L0 0.10  'This always block has no trigger. Use `always @(*)` (or `always_comb`)'
+Prob012_xnorgate                   C  r1  seat-92   L2 1.00  PASS
+Prob001_zero                       C  r2  seat-92   L2 1.00  PASS
+Prob027_fadd                       C  r1  seat-92   L2 1.00  PASS
+Prob021_mux256to1v                 C  r1  seat-92   L0 0.10  "Line 12 does not compile: `A reference to a wire or reg (`index') is n"
+Prob050_kmap1                      C  r1  seat-92   L3 0.82  'When a=1, b=0, c=0, your `out` is 0, which is wrong. Re-derive `out` f'
+Prob054_edgedetect                 C  r1  seat-92   L2 0.58  'Output `pedge` first goes wrong at clock cycle 4. At that cycle the in'
+Prob035_count1to10                 C  r1  seat-92   L2 1.00  PASS
+Prob050_kmap1                      C  r2  seat-92   L3 0.88  'When a=0, b=0, c=1, your `out` is 0, which is wrong. Re-derive `out` f'
+Prob050_kmap1                      C  r3  seat-92   L3 0.93  'When a=0, b=1, c=0, your `out` is 0, which is wrong. Re-derive `out` f'
+Prob066_edgecapture                C  r1  seat-92   L2 0.57  'Output `out` first goes wrong at clock cycle 10. At that cycle the inp'
+Prob050_kmap1                      C  r4  seat-92   L3 0.87  'When a=0, b=0, c=0, your `out` is 1, which is wrong. Re-derive `out` f'
+Prob050_kmap1                      C  r5  seat-92   L3 0.82  'When a=1, b=0, c=0, your `out` is 0, which is wrong. Re-derive `out` f'
+Prob021_mux256to1v                 C  r2  seat-92   L0 0.10  "Line 12 does not compile: `A reference to a wire or reg (`index') is n"
+Prob050_kmap1                      C  r6  seat-92   L3 0.88  'When a=0, b=0, c=1, your `out` is 0, which is wrong. Re-derive `out` f'
+Prob066_edgecapture                C  r2  seat-92   L2 0.74  'Output `out` first goes wrong at clock cycle 4. At that cycle the inpu'
+Prob054_edgedetect                 C  r2  seat-92   L2 0.59  'Output `pedge` first goes wrong at clock cycle 1. At that cycle the in'
+Prob071_always_casez               C  r1  seat-92   L0 0.10  'Icarus does not support `break`. Replace it with a flag variable or re'
+Prob054_edgedetect                 C  r3  seat-92   L2 0.60  'Output `pedge` first goes wrong at clock cycle 11. At that cycle the i'
+Prob021_mux256to1v                 C  r3  seat-92   L0 0.10  "Line 18 does not compile: `A reference to a wire or reg (`index_reg') "
+Prob071_always_casez               C  r2  seat-92   L0 0.10  'Line 8 does not compile: `syntax error`. Fix only that line.'
+Prob066_edgecapture                C  r3  seat-92   L2 0.74  'Output `out` first goes wrong at clock cycle 4. At that cycle the inpu'
+Prob071_always_casez               C  r3  seat-92   L0 0.10  'Line 8 does not compile: `syntax error`. Fix only that line.'
+Prob071_always_casez               C  r4  seat-92   L0 0.10  'Line 8 does not compile: `syntax error`. Fix only that line.'
+Prob021_mux256to1v                 C  r4  seat-92   L0 0.10  "Line 18 does not compile: `A reference to a wire or reg (`index_reg') "
+Prob054_edgedetect                 C  r4  seat-92   L2 0.60  'Output `pedge` first goes wrong at clock cycle 11. At that cycle the i'
+Prob073_dff16e                     C  r1  seat-92   L0 0.10  'Line 18 does not compile: `can not select part of scalar: byteena`. Fi'
+Prob066_edgecapture                C  r4  seat-92   L2 0.74  'Output `out` first goes wrong at clock cycle 4. At that cycle the inpu'
+Prob086_lfsr5                      C  r1  seat-92   L2 0.50  'When `reset` is high, the outputs do not take their reset values. Test'
+Prob021_mux256to1v                 C  r5  seat-92   L0 0.10  "Line 22 does not compile: `A reference to a wire or reg (`index_tmp') "
+Prob073_dff16e                     C  r2  seat-92   L2 0.56  'When `resetn` is high, the outputs do not take their reset values. Tes'
+Prob054_edgedetect                 C  r5  seat-92   L2 0.60  'Output `pedge` first goes wrong at clock cycle 11. At that cycle the i'
+Prob021_mux256to1v                 C  r6  seat-92   L0 0.10  "Line 18 does not compile: `A reference to a wire or reg (`index_reg') "
+Prob086_lfsr5                      C  r2  seat-92   L2 0.50  'When `reset` is high, the outputs do not take their reset values. Test'
+Prob086_lfsr5                      C  r3  seat-92   L2 0.50  'When `reset` is high, the outputs do not take their reset values. Test'
+Prob098_circuit7                   C  r1  seat-92   L2 0.51  'Output `q` first goes wrong at clock cycle 2. At that cycle the inputs'
+Prob092_gatesv100                  C  r1  seat-92   L3 0.50  "When in=100'h0000000000000000000000004, your `out_any` is 100'h0000000"
+Prob098_circuit7                   C  r2  seat-92   L2 0.77  'Output `q` first goes wrong at clock cycle 2. At that cycle the inputs'
+Prob093_ece241_2014_q3             C  r1  seat-92   L3 0.50  "When c=0, d=0, your `mux_in` is 4'b0000, which is wrong. Re-derive `mu"
+Prob098_circuit7                   C  r3  seat-92   L2 0.77  'Output `q` first goes wrong at clock cycle 2. At that cycle the inputs'
+Prob073_dff16e                     C  r3  seat-92   L2 0.56  'When `resetn` is high, the outputs do not take their reset values. Tes'
+Prob092_gatesv100                  C  r2  seat-92   L3 0.50  "When in=100'h0000000000000000000000004, your `out_any` is 100'h0000000"
+Prob098_circuit7                   C  r4  seat-92   L2 0.62  'Output `q` first goes wrong at clock cycle 2. At that cycle the inputs'
+Prob093_ece241_2014_q3             C  r2  seat-92   L3 0.50  "When c=0, d=0, your `mux_in` is 4'b0000, which is wrong. Re-derive `mu"
+Prob092_gatesv100                  C  r3  seat-92   L3 0.50  "When in=100'h0000000000000000000000004, your `out_any` is 100'h0000000"
+Prob100_fsm3comb                   C  r1  seat-92   L0 0.10  '`next_state` is assigned inside an always block, so declare it as `out'
+Prob109_fsm1                       C  r1  seat-92   L0 0.10  '`out` is assigned inside an always block, so declare it as `output log'
+Prob093_ece241_2014_q3             C  r3  seat-92   L3 0.50  "When c=0, d=0, your `mux_in` is 4'b1000, which is wrong. Re-derive `mu"
+Prob073_dff16e                     C  r4  seat-92   L2 0.56  'Output `q` first goes wrong at clock cycle 4. At that cycle the inputs'
+Prob100_fsm3comb                   C  r2  seat-92   L0 0.10  '`next_state` is assigned inside an always block, so declare it as `out'
+Prob109_fsm1                       C  r2  seat-92   L0 0.10  '`out` is assigned inside an always block, so declare it as `output log'
+Prob100_fsm3comb                   C  r3  seat-92   L0 0.10  '`next_state` is assigned inside an always block, so declare it as `out'
+Prob109_fsm1                       C  r3  seat-92   L0 0.10  '`out` is assigned inside an always block, so declare it as `output log'
+Prob112_always_case2               C  r1  seat-92   L2 0.77  "When in=4'b1000, your `pos` is 2'b00, which is wrong. Re-derive `pos` "
+Prob093_ece241_2014_q3             C  r4  seat-92   L3 0.50  "When c=0, d=0, your `mux_in` is 4'b0011, which is wrong. Re-derive `mu"
+Prob112_always_case2               C  r2  seat-92   L2 0.77  "When in=4'b1000, your `pos` is 2'b00, which is wrong. Re-derive `pos` "
+Prob073_dff16e                     C  r5  seat-92   L2 0.51  'Output `q` first goes wrong at clock cycle 4. At that cycle the inputs'
+Prob128_fsm_ps2                    C  r1  seat-92   L2 0.84  'Output `done` first goes wrong at clock cycle 21. At that cycle the in'
+Prob073_dff16e                     C  r6  seat-92   L2 0.56  'Output `q` first goes wrong at clock cycle 4. At that cycle the inputs'
+Prob128_fsm_ps2                    C  r2  seat-92   L2 0.84  'Output `done` first goes wrong at clock cycle 21. At that cycle the in'
+Prob093_ece241_2014_q3             C  r5  seat-92   L3 0.50  "When c=0, d=0, your `mux_in` is 4'b0000, which is wrong. Re-derive `mu"
+Prob112_always_case2               C  r3  seat-92   L2 0.77  "When in=4'b1000, your `pos` is 2'b00, which is wrong. Re-derive `pos` "
+Prob142_lemmings2                  C  r1  seat-92   L0 0.10  '`walk_left` is assigned inside an always block, so declare it as `outp'
+Prob128_fsm_ps2                    C  r3  seat-92   L2 0.84  'Output `done` first goes wrong at clock cycle 21. At that cycle the in'
+Prob093_ece241_2014_q3             C  r6  seat-92   L3 0.50  "When c=0, d=0, your `mux_in` is 4'b0000, which is wrong. Re-derive `mu"
+Prob142_lemmings2                  C  r2  seat-92   L0 0.10  '`walk_left` is assigned inside an always block, so declare it as `outp'
+Prob156_review2015_fancytimer      C  r1  seat-92   L2 0.50  'Output `count` first goes wrong at clock cycle 13. At that cycle the i'
+Prob142_lemmings2                  C  r3  seat-92   L0 0.10  '`walk_left` is assigned inside an always block, so declare it as `outp'
+Prob156_review2015_fancytimer      C  r2  seat-92   L2 0.50  'Output `count` first goes wrong at clock cycle 13. At that cycle the i'
+Prob156_review2015_fancytimer      C  r3  seat-92   L2 0.50  'Output `count` first goes wrong at clock cycle 13. At that cycle the i'
+
+=========== run C rep 1 ===========
+  solved 4/20   unverified 0   wall 1039s   -> runs/dev/C-s3rewrite-full-1.jsonl

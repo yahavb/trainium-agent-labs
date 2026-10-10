@@ -1,0 +1,6 @@
+__pycache__/
+.venv/
+*.vcd
+# The repo root ignores every runs/ folder. Ours hold deliverables (CHANGELOG: "What gets committed"),
+# so re-include them here. Simulator output (*.vcd) stays ignored.
+!runs/
