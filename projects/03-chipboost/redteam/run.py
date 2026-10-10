@@ -113,7 +113,9 @@ def judge_speedcheck(sc, name, layer):
     if name.startswith("honest"):
         caught = "FALSE ALARM" if rejected else "PASS"
     elif layer == "chip":
-        caught = "yes" if v in ("no_gain", "slower") else "NO"  # it must not be called faster
+        # A timing cheat is caught unless it is called faster: no_gain/slower, or rejected outright
+        # (seat-101: cheat_compile_time was stopped at rules for `import time`, which is still a catch).
+        caught = "NO" if v == "faster" else "yes"
     else:
         caught = "yes" if rejected else "NO"
     return dict(cheat=name, should_catch=expected_text(name), where=stage_of(rec), caught=caught,
