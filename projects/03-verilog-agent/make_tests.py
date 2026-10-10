@@ -191,12 +191,15 @@ def run(names):
     perfect = 0
     for n, lvl, g, b in rows:
         tbok = g and g["behaviour_tested"]
-        ok = "PASS ✓" if g and g["passed"] else "FAIL ✗"
+        ok = "PASS ✓" if g and g["passed"] else ("REVIEW ⚠" if g and g.get("testbench_suspect") else "FAIL ✗")
         caught = ("caught ✓" if b and not b["passed"] else "MISSED ✗") if tbok else "-"
         mut = f"{g['mutation']['killed']}/{g['mutation']['total']}" if g and g.get("mutation") else "-"
         perfect += bool(tbok and g["passed"] and b and not b["passed"])
         print(f"{n:10s} {lvl:10s} {'built' if tbok else 'NONE':10s} {ok:8s} {caught:12s} {mut}")
+    review = sum(1 for _, _, g, _ in rows if g and g.get("testbench_suspect"))
     print(f"\nperfect (testbench built, correct passed, bug caught): {perfect}/{len(rows)}")
+    if review:
+        print(f"sent to human review instead of wrongly blaming a correct design: {review}")
 
 if __name__ == "__main__":
     if "--run" in sys.argv:

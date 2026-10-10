@@ -51,7 +51,8 @@ def verify(folder, regen=False, do_mutation=True, print_tb=True):
         print("  no spec.txt -> cannot write a testbench; syntax check only", flush=True)
     else:
         # the header the testbench must match: from the spec if it has one, else from the design
-        hdr_src = spec if header(spec) else design
+        dh = vagent.ansi_header(design)
+        hdr_src = design if dh and vagent.ports(dh) else (spec if header(spec) else design)
         with open(os.path.join(folder, "tb_attempts.jsonl"), "a") as log:
             tb = auto_tb(spec, hdr_src, log, name)
         report["testbench"] = "AI-written" if tb else "none (AI could not write a valid one)"
@@ -98,6 +99,9 @@ def verify(folder, regen=False, do_mutation=True, print_tb=True):
                 mism2 = [l for l in detailed.splitlines() if l.startswith("MISMATCH")]
                 if score < 1.0 and mism2:
                     verdict2, details2 = vagent.judge(spec, vagent.ansi_header(hdr_src), tb, mism2)
+                    print(f"  [judge] after rebuild: design or golden model? -> {verdict2}", flush=True)
+                    for d_ in details2:
+                        print(f"    {d_}", flush=True)
                     report["judge"]["after_rebuild"] = dict(verdict=verdict2, details=details2)
                     if verdict2 == "design":
                         report["testbench_suspect"] = True
