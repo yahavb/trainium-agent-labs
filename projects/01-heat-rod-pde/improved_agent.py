@@ -124,6 +124,8 @@ def solve(problem, a, log, run_id):
         print(f"{problem['name']} round {rnd}: rewards {[g['reward'] for g in valid]}, errors {len(answers)-len(valid)}", flush=True)
         if best['reward'] == 1.0:
             return {'problem': problem['name'], 'seed': a.seed, 'status': 'solved', 'reward': 1.0,
+                    'original_reward': best['original_reward'],
+                    'validation_status': best['validation_status'],
                     'rounds': rnd + 1, 'requests': calls, 'errors': errors,
                     'seconds': time.perf_counter() - started, 'answer': best['expr'],
                     'validation': best['validation']}
@@ -131,6 +133,8 @@ def solve(problem, a, log, run_id):
             history.append(candidate)
         prompt = repair_prompt(problem, best, history)
     return {'problem': problem['name'], 'seed': a.seed, 'status': 'unsolved', 'reward': best['reward'],
+            'original_reward': best['original_reward'],
+            'validation_status': best['validation_status'],
             'rounds': a.rounds, 'requests': calls, 'errors': errors,
             'seconds': time.perf_counter() - started, 'answer': best['expr']}
 

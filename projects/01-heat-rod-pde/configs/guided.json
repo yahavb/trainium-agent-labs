@@ -1,0 +1,15 @@
+{
+  "level": 1,
+  "sub": 3,
+  "seed": 0,
+  "samples": 4,
+  "rounds": 4,
+  "max_tokens": 1200,
+  "tool_steps": 1,
+  "no_tools": false,
+  "think": false,
+  "feedback_style": "baseline",
+  "tool_prompt_style": "baseline",
+  "solution_style": "guided",
+  "repeats": 5
+}

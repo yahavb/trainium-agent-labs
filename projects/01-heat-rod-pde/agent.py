@@ -36,6 +36,27 @@ import level1_heatrod
 LEVELS = {0: level0_heatrod, 1: level1_heatrod}
 
 
+GUIDED_METHOD = """Method checklist for this heat equation:
+- For a spatial wave sin(mu*x) or cos(mu*x), its time factor is exp(-k*mu**2*t).
+  Read mu from that SAME wave, including any division by the rod length. Do not
+  confuse the mode index with mu. Keep the squared frequency unevaluated in Python.
+- First inspect the initial shape. If it already consists of allowed sine/cosine
+  waves, retain their stated coefficients and frequencies; do not calculate a new
+  Fourier series or derive unused modes.
+- Otherwise choose waves satisfying BOTH boundary conditions and compute their
+  coefficients using the projection integral given in the question. Use the
+  calculator, not guessed coefficients. Retain enough nonzero modes for the stated
+  initial-shape tolerance.
+- Before the final answer, check each wave's frequency against its own exponential.
+  Keep any explanation short so a complete answer fits in the output budget.
+The checklist is a general method; determine all problem-specific values yourself.
+"""
+
+
+def solution_prompt(base_prompt, style):
+    return base_prompt if style == "baseline" else f"{base_prompt}\n\n{GUIDED_METHOD}"
+
+
 def ask_once(a, prompt):
     import httpx
     body = dict(model=a.model, messages=[{"role": "user", "content": prompt}],
@@ -133,7 +154,8 @@ def repair_prompt(base_prompt, best, style):
 
 
 def solve(problem, a, log):
-    base_prompt = pdecheck.prompt_of(problem)
+    solution_style = getattr(a, "solution_style", "baseline")
+    base_prompt = solution_prompt(pdecheck.prompt_of(problem), solution_style)
     print(f"\n=========== {problem['name']} ===========")
     print(base_prompt)
     prompt, best_ever = base_prompt, 0.0
@@ -154,6 +176,7 @@ def solve(problem, a, log):
                                       start_error=g["start_error"], feedback=g["feedback"],
                                       feedback_style=a.feedback_style, offline=a.offline,
                                       tool_prompt_style=a.tool_prompt_style,
+                                      solution_style=solution_style,
                                       trace=trace,
                                       generation_and_tools_seconds=generation_seconds,
                                       checker_seconds=checker_seconds)) + "\n")
@@ -199,6 +222,8 @@ def main():
                     help="baseline preserves the original prompt; structured is experimental")
     ap.add_argument("--tool-prompt-style", choices=("baseline", "concise"), default="baseline",
                     help="experimental concise calculator-request protocol; token budget unchanged")
+    ap.add_argument("--solution-style", choices=("baseline", "guided"), default="baseline",
+                    help="opt-in general spectral-method checklist; no problem-specific answers")
     ap.add_argument("--model", default=os.environ.get("HEATROD_MODEL", "Qwen/Qwen3-8B"))
     ap.add_argument("--base", default=os.environ.get("HEATROD_BASE_URL"))
     ap.add_argument("--log", default="attempts.jsonl")

@@ -38,7 +38,23 @@ class PhysicsTests(unittest.TestCase):
         answer = sp.sstr(problem['exact']) + f" + exp(-1000000*t)*sin(1600*pi*x/{problem['L']})"
         self.assertEqual(pdecheck.check(problem, answer)['reward'], 1.0)
         self.assertFalse(validation.verify(problem, answer)['accepted'])
-        self.assertLess(validation.grade(problem, answer)['reward'], 1.0)
+        grade = validation.grade(problem, answer)
+        self.assertEqual(grade['original_reward'], 1.0)
+        self.assertTrue(all(grade['original_parts'].values()))
+        self.assertEqual(grade['validation_status'], 'failed')
+        self.assertLess(grade['reward'], 1.0)
+
+    def test_original_score_and_validation_status_are_distinct(self):
+        problem = level0.make(1)
+        good = validation.grade(problem, sp.sstr(problem['exact']))
+        self.assertEqual(good['original_reward'], 1.0)
+        self.assertEqual(good['validation_status'], 'passed')
+        wrong = validation.grade(problem, sp.sstr(problem['f']))
+        self.assertEqual(wrong['original_reward'], wrong['reward'])
+        self.assertEqual(wrong['validation_status'], 'not_run')
+        invalid = validation.grade(problem, 'x.__class__')
+        self.assertIsNone(invalid['original_reward'])
+        self.assertEqual(invalid['validation_status'], 'syntax_rejected')
 
     def test_untrusted_expression_rejected(self):
         for answer in ('x.__class__', '__import__("os")', '[x for x in (1,2)]', 'sin(x).evalf()', 'x if t else 0'):

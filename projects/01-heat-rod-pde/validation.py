@@ -77,9 +77,17 @@ def grade(problem, answer):
         result = pdecheck.check(problem, answer)
     except Exception as exc:
         return {'reward': 0.0, 'parts': {}, 'expr': None, 'start_error': None,
-                'feedback': f'Invalid answer: {exc}', 'validation': {'accepted': False}}
+                'feedback': f'Invalid answer: {exc}', 'validation': {'accepted': False},
+                'original_reward': None, 'original_parts': {},
+                'validation_status': 'syntax_rejected'}
+    # Preserve the original checker outcome before a held-out check can lower it.
+    # This lets reports compare agents using the same scoring rule.
+    result['original_reward'] = result['reward']
+    result['original_parts'] = dict(result['parts'])
+    result['validation_status'] = 'not_run'
     if result['reward'] == 1.0:
         result['validation'] = verify(problem, answer)
+        result['validation_status'] = ('passed' if result['validation']['accepted'] else 'failed')
         if not result['validation']['accepted']:
             parts = result['validation']['parts']
             result['reward'] = round(sum(pdecheck.WEIGHTS[n] for n, ok in parts.items() if ok), 3)

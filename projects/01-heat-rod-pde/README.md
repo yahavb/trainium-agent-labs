@@ -1,5 +1,8 @@
 # Project 1 — The heat-rod agent
 
+**小组共同版本：** [整合说明](TEAM_INTEGRATION.zh-CN.md) ·
+[完整调优过程](TUNING_WALKTHROUGH.zh-CN.md)。
+
 **小组实验入口：** [中文上手指南](TEAM_GUIDE.zh-CN.md) ·
 [原版配置](configs/baseline.json) · [实验反馈配置](configs/structured.json) ·
 [简洁工具配置](configs/concise_tools.json) ·

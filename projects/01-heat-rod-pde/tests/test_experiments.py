@@ -18,6 +18,17 @@ import run_experiments as experiments
 
 
 class ExperimentTests(unittest.TestCase):
+    def test_guided_method_is_opt_in_and_config_keeps_the_same_budget(self):
+        baseline = experiments.load_config(PROJECT / "configs/baseline.json")
+        guided = experiments.load_config(PROJECT / "configs/guided.json")
+        self.assertEqual({k for k in baseline if baseline[k] != guided[k]}, {"solution_style"})
+        question = "a new problem with unknown values"
+        self.assertEqual(agent.solution_prompt(question, "baseline"), question)
+        self.assertTrue(agent.solution_prompt(question, "guided").startswith(question))
+        # The guide contains no evaluated coefficients from the known parabola case.
+        self.assertNotIn("32/pi", agent.GUIDED_METHOD)
+        self.assertNotIn("series_answer", agent.GUIDED_METHOD)
+
     def test_configs_change_only_feedback(self):
         baseline = experiments.load_config(PROJECT / "configs/baseline.json")
         structured = experiments.load_config(PROJECT / "configs/structured.json")

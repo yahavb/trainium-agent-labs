@@ -19,7 +19,8 @@ from urllib.parse import urlparse
 PROJECT = Path(__file__).resolve().parent
 DEFAULTS = dict(level=1, sub=3, seed=0, samples=4, rounds=4, max_tokens=1200,
                 tool_steps=1, no_tools=False, think=False,
-                feedback_style="baseline", tool_prompt_style="baseline", repeats=5)
+                feedback_style="baseline", tool_prompt_style="baseline",
+                solution_style="baseline", repeats=5)
 
 
 def load_config(path):
@@ -44,6 +45,8 @@ def load_config(path):
         raise ValueError("feedback_style must be baseline or structured")
     if config["tool_prompt_style"] not in ("baseline", "concise"):
         raise ValueError("tool_prompt_style must be baseline or concise")
+    if config["solution_style"] not in ("baseline", "guided"):
+        raise ValueError("solution_style must be baseline or guided")
     return config
 
 
@@ -133,6 +136,8 @@ def main(argv=None):
     label = ("offline-" if args.offline else "live-") + config["feedback_style"]
     if config["tool_prompt_style"] != "baseline":
         label += "-tools-" + config["tool_prompt_style"]
+    if config["solution_style"] != "baseline":
+        label += "-solution-" + config["solution_style"]
     batch = Path(tempfile.mkdtemp(prefix=f"{label}-{stamp}-", dir=root))
     source = batch / "source"
     source.mkdir()
