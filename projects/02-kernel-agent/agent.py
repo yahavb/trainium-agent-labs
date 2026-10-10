@@ -332,7 +332,12 @@ def grade(source, level):
     """grade_run(), plus the static check's findings in front of the feedback when not correct."""
     reward, parts, feedback = grade_run(source, level)
     if STATIC_CHECK and parts.get("parses") and not parts.get("correct"):
-        findings = static_check(source)
+        try:
+            findings = static_check(source)
+        except Exception as e:
+            # Never let the checker's own bug end a run: it is an extra, not the grade.
+            print(f"    (static check skipped: {type(e).__name__}: {e})")
+            findings = []
         if findings:
             feedback = ("Before running, a static check of your code found: "
                         + " ".join(f"({i + 1}) {f}" for i, f in enumerate(findings))
@@ -690,7 +695,33 @@ def first_prompt(level, terse=0, spec="code", described=None):
         f"Reply with ONE python code block containing the imports and the function. No prose.")
 
 
-def repair_prompt(level, source, feedback, card=True):
+HISTORY_MAX_CHARS = 6000      # ~1,500 tokens: what the merge summary can spare at an 8k context
+
+
+def history_block(attempts, keep):
+    """Earlier failed attempts -- code and checker report only, no model-written explanation, so
+    nothing in it can be a wrong diagnosis. Newest first until --history attempts or
+    HISTORY_MAX_CHARS is reached, identical code shown once, then printed oldest first."""
+    if keep <= 0 or not attempts:
+        return ""
+    picked, used, codes = [], 0, set()
+    for rnd, code, feedback in reversed(attempts):
+        if code in codes:
+            continue
+        entry = (f"--- round {rnd} ---\n```python\n{code}\n```\n"
+                 f"Checker: {feedback[:600]}{' ...' if len(feedback) > 600 else ''}\n")
+        if picked and used + len(entry) > HISTORY_MAX_CHARS:
+            break
+        picked.append(entry)
+        codes.add(code)
+        used += len(entry)
+        if len(picked) >= keep:
+            break
+    return ("Earlier attempts that also failed, oldest first. Do not go back to any of them:\n\n"
+            + "\n".join(reversed(picked)) + "\n")
+
+
+def repair_prompt(level, source, feedback, card=True, history=""):
     """One named change, and the previous code. No rules list, no reference re-sent.
 
     The lesson this whole repo keeps re-learning: feeding a verifier's report back verbatim
@@ -708,6 +739,7 @@ def repair_prompt(level, source, feedback, card=True):
     """
     api = f"{API_CARD}\n" if card else ""
     return (
+        f"{history}"
         f"This NKI kernel for {nkibench.LEVELS[level]['op']} is not right yet.\n\n"
         f"```python\n{source}\n```\n\n"
         f"{api}"
@@ -1018,6 +1050,7 @@ def solve(a, level, log, transcript=None, run=0):
     prompt = first_prompt(level, terse, a.spec, described)
     best = (0.0, None, "")
     tried, streak, seen = [], 0, {}
+    attempts = []                       # (round, code, feedback) of the attempt each round repaired
     latest = ("", "")
     for rnd in range(a.rounds):
         t0 = time.perf_counter()
@@ -1047,6 +1080,9 @@ def solve(a, level, log, transcript=None, run=0):
         # stuck at 0.10 for four rounds while the prompt still carried the 0.50 code.
         if (top[1] or "").strip():
             latest = (top[1], top[2])
+            attempts.append((rnd, top[1], top[2]))
+        # The latest attempt is already in the repair prompt in full, so history is the ones before.
+        hist = history_block([x for x in attempts if x[1] != latest[0]], a.history)
         same = top[2] == (tried[-1] if tried else None)
         if same:
             # Collapse. Fifteen identical multi-line blocks is noise, not information.
@@ -1079,7 +1115,7 @@ def solve(a, level, log, transcript=None, run=0):
             # answer. Measured: the same TypeError 19 rounds running. Changing the prompt is the
             # only thing that can change the answer, so say what has already been tried.
             ledger = "\n".join(f"- {t[:160]}" for t in dict.fromkeys(tried))
-            prompt = (repair_prompt(level, latest[0], latest[1], a.repair_card)
+            prompt = (repair_prompt(level, latest[0], latest[1], a.repair_card, hist)
                       + f"\n\nThese approaches have already failed, so do something different:\n"
                         f"{ledger}")
             print(f"  same failure {repeats}x — adding a ledger of {len(set(tried))} failed "
@@ -1093,7 +1129,7 @@ def solve(a, level, log, transcript=None, run=0):
             prompt = first_prompt(level, terse, a.spec, described)
             print(f"  no code yet, so re-asking with a shorter prompt (terseness {terse})")
         else:
-            prompt = repair_prompt(level, latest[0], latest[1], a.repair_card)
+            prompt = repair_prompt(level, latest[0], latest[1], a.repair_card, hist)
     print(f"  not solved in {a.rounds} rounds; best reward {best[0]:.2f}")
     return best[0], a.rounds
 
@@ -1126,6 +1162,10 @@ def main():
     ap.add_argument("--repair-card", type=int, default=1, choices=(0, 1),
                     help="1 (default) puts the API card in every repair prompt as well as the first "
                          "one; 0 is the original behaviour, for comparison")
+    ap.add_argument("--history", type=int, default=0,
+                    help="put up to N earlier failed attempts (their code and checker report, no "
+                         "explanation) in every repair prompt, capped at ~1,500 tokens. 0 (default): "
+                         "only the latest attempt, as in earlier runs")
     ap.add_argument("--static-check", type=int, default=1, choices=(0, 1),
                     help="1 (default): before running, check every NKI name and keyword argument "
                          "against the real modules and flag results that are thrown away, and put "
