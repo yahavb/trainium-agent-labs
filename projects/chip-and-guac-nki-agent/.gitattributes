@@ -1,0 +1,3 @@
+# Preserve the model's exact output and its archival diff, including blank-line spaces.
+examples/winning_kernel.py -text whitespace=-blank-at-eol
+results/guided_repair.diff -text whitespace=-blank-at-eol

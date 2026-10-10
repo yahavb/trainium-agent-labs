@@ -1,0 +1,53 @@
+import nki
+import nki.isa as nisa
+import nki.language as nl
+
+@nki.jit
+def nki_matmul_tiled_(lhsT, rhs):
+    M = lhsT.shape[1]
+    N = rhs.shape[1]
+    K = lhsT.shape[0]
+    
+    # Allocate output buffer in shared HBM
+    out = nl.ndarray((M, N), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+    
+    # Loop over output tiles in M and N
+    for m0 in nl.affine_range(0, M, 128):
+        mt = min(128, M - m0)
+        for n0 in nl.affine_range(0, N, 512):
+            nt = min(512, N - n0)
+            
+            # Allocate PSUM buffer for current output tile
+            psum = nl.ndarray((mt, nt), dtype=nl.float32, buffer=nl.psum)
+            
+            # Allocate SBUF for stationary and moving operands
+            sbuf_stationary = nl.ndarray((K, mt), dtype=lhsT.dtype, buffer=nl.sbuf)
+            sbuf_moving = nl.ndarray((K, nt), dtype=rhs.dtype, buffer=nl.sbuf)
+            
+            # Copy lhsT to sbuf_stationary in chunks
+            for k0 in nl.affine_range(0, K, 128):
+                kt = min(128, K - k0)
+                src = lhsT[k0:k0+kt, m0:m0+mt]
+                dst = sbuf_stationary[k0:k0+kt, :]
+                nisa.dma_copy(dst=dst, src=src)
+            
+            # Copy rhs to sbuf_moving in chunks
+            for k0 in nl.affine_range(0, K, 128):
+                kt = min(128, K - k0)
+                src = rhs[k0:k0+kt, n0:n0+nt]
+                dst = sbuf_moving[k0:k0+kt, :]
+                nisa.dma_copy(dst=dst, src=src)
+            
+            # Perform NC matmul in chunks and accumulate in the same psum buffer
+            for k0 in nl.affine_range(0, K, 128):
+                kt = min(128, K - k0)
+                nisa.nc_matmul(dst=psum, stationary=sbuf_stationary[k0:k0+kt, :], moving=sbuf_moving[k0:k0+kt, :], accumulate=(k0 > 0))
+            
+            # Copy result from PSUM to SBUF
+            sbuf_out = nl.ndarray((mt, nt), dtype=lhsT.dtype, buffer=nl.sbuf)
+            nisa.tensor_copy(dst=sbuf_out, src=psum)
+            
+            # Copy result from SBUF to shared HBM
+            nisa.dma_copy(dst=out[m0:m0+mt, n0:n0+nt], src=sbuf_out)
+    
+    return out
