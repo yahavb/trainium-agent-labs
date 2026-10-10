@@ -1,6 +1,6 @@
 # nki-sched — a scheduling language on top of NKI
 
-**Status: plan only. No implementation code exists yet.**
+**Status: M0–M3 implemented for matmul (see §13); M4+ (multibuffer / pipeline / overlap, blocking, attention) is still plan.**
 Companion docs: [`SYNTAX.md`](SYNTAX.md) (language draft with worked schedules), [`docs/PRIOR_ART.md`](docs/PRIOR_ART.md) (what was read, what we take from each).
 
 ---
@@ -27,7 +27,7 @@ Auto-scheduling/search (we only make schedules parameterisable), multi-core/LNC 
 | Hardware | fixed targets | memory scopes + tensorize (declared in tensor-expr lang) | memories/instrs/config as *user library*; `replace` by unification | **Exo+TVM**: NKI ISA & memories are a table in a library, no compiler special-casing |
 | Latency hiding | n/a (sliding window, CPU) | virtual threads → dependence tokens | not in core | **No sync tokens in NKI 0.6.0** (verified): `pipeline`/`overlap` = reordering + buffer rotation; a token-injection pass slot is reserved |
 | Safety | by construction (inferred bounds) | by construction of primitives, weak checking | effect analysis + SMT | **Layered**: primitive-local legality (affine/interval) + differential testing; z3 later |
-| References | named vars/Funcs | stage objects & axes | pattern strings → **cursors with forwarding** | **Both**: `s.loop("C.m")`/`s.buf("acc")` for the common case; `s.find(pattern)` cursors for the rest; forwarding for all |
+| References | named vars/Funcs | stage objects & axes | pattern strings → **cursors with forwarding** | **Both**: `s.loop("C.m")`/`s.buf("matmul")` for the common case; `s.find(pattern)` cursors for the rest; forwarding for all |
 
 ---
 
@@ -86,7 +86,7 @@ SBUF/PSUM capacities, PSUM bank count/size, DMA queue/engine selection kwargs, w
                                                     diff ◄── device (baremetal) + profile ◄───────────┘
 ```
 
-Package layout (planned):
+Package layout as originally planned (the implementation is flat modules under `nki_sched/`; see §13):
 
 ```
 nki-sched/
@@ -100,10 +100,10 @@ nki-sched/
     sched/      cursor.py (handles+forwarding), api.py (Sched), core/ (one file per primitive),
                 derived/ (hoist, multibuffer, pipeline, tile, …), errors.py
     hw/         config.py (HardwareConfig), memories.py (HBM/SBUF/PSUM), nisa.py (instr table)
-    emit/       nki_py.py (IR → NKI source), rules.py (post-emit self-check vs nkibench rules)
-    verify/     diff.py (interp vs torch), hostile_inputs.py, nkibench_bridge.py
-  tests/        per-primitive property tests, golden IR/source tests, ladder acceptance tests
-  examples/     matmul_l4.py … matmul_l8.py, attention.py
+    emit/       nki_py.py (IR → NKI source)
+    verify/     diff.py (interp vs torch), hostile_inputs.py
+  tests/        unit tests per module + examples smoke tests (no nkibench/Neuron dependency)
+  examples/     small examples, the matmul ladder, later attention.py
 ```
 
 Implementation language: Python 3.10+, `dataclasses` + hand-rolled pattern matching; deps: `torch`, `numpy`, (later) `z3-solver`/`islpy`. No LLVM build.
@@ -138,7 +138,7 @@ Key properties:
 * **Explicit and executable**: the interpreter runs *any* version of the IR (including with `Call(instr)` nodes, by executing the instr's `semantic_body`). Correctness of intermediate states is therefore testable at every step, not only at the end.
 * **Two instruction spellings.** The ns-level IR names instructions `ns.<engine>.<inst>` (engine is part of the call: `ns.tensor.matmul`, `ns.vector.tensor_copy`, `ns.sync.dma_copy`, `ns.scalar.activation`…). The final NKI source uses real NKI names (`nisa.nc_matmul`, …). Lowering ns → NKI source is a table lookup in the `Instr` entry (see §8).
 * **Instruction table as data** (Exo/TVM): `ns.tensor.matmul` is an `Instr` with semantic body `for k,m,n: dst[m,n] += st[k,m]*mv[k,n]`, arg memories `(PSUM, SBUF, SBUF)`, caps `k≤128, m≤128, n≤512`, emit template `nisa.nc_matmul(dst=…, stationary=…, moving=…)`. Likewise `dma_copy`, `tensor_copy` (PSUM→SBUF + cast), later `nc_transpose`, `activation`, `tensor_reduce`, `exponential`.
-* **Stage structure is retained as metadata** (which loops belong to which Func) so that Halide-style `compute_at` and name-based references (`"acc.k"`) remain available after lowering.
+* **Stage structure is retained as metadata** (which loops belong to which Func) so that Halide-style `compute_at` and name-based references (`"matmul.k"`) remain available after lowering.
 * Small affine simplifier (`expr.py`) to keep indices canonical so interval analysis and `replace` unification stay simple. Where affine isn't enough (tail guards), use explicit `If` + `cut`.
 
 ### 5.3 Analyses
@@ -157,7 +157,7 @@ An imperative-looking facade (`s.split(...)`) over an immutable-IR history (so `
 Core (each independently checked): `split, reorder, fuse, unroll, fission, compute_at, store_at, stage_in, stage_out, set_memory, expand_dim, lift_alloc, sink_alloc, fold_init, replace, mark`. Derived (library code over core): `tile, hoist, multibuffer, pipeline, overlap, fold_partition, transpose_input, set_engine`. `stage_in`/`stage_out` emit the right ns copy instruction directly (no `lower_copies` step) and loop kinds are inferred at emission (`mark` only asserts). Table with legality rules in SYNTAX §3.
 
 ### 6.3 References and forwarding
-* **Kinds**: loops (`"stage.var"` names, returned handles), buffers/stages (`s.buf`, `s.stage`), statements/blocks/gaps via patterns (`s.find("for ki in _: _ #1")`, `s.find("acc[_] += _")`, `many=True`), plus navigation (`parent/body/next/before/after`) and inspection (`extent, window, footprint, is_reduction`).
+* **Kinds**: loops (`"stage.var"` names, returned handles), buffers/stages (`s.buf`, `s.stage`), statements/blocks/gaps via patterns (`s.find("for ki in _: _ #1")`, `s.find("matmul[_] += _")`, `many=True`), plus navigation (`parent/body/next/before/after`) and inspection (`extent, window, footprint, is_reduction`).
 * **Handle = (stable node id, version)**. Every primitive returns `forward: id → id | Invalid | Split(outer,inner) | …`. Node ids of untouched nodes are preserved by the persistent tree; for restructured nodes the primitive registers an explicit mapping (e.g. `split`: `old_loop ↦ outer`, with inner reachable as `outer.inner`). Using a handle resolves it through the forwarding chain from its birth version to the current one; if the node was destroyed → clear `InvalidHandle` error naming the primitive that destroyed it. Ambiguous cases (loop that was split) error with a hint rather than guessing.
 * Patterns use Exo's string syntax (`_` wildcard, `#n` selector, `;` sequences) so they compose with a future text dump of the IR.
 
@@ -264,3 +264,28 @@ Multiple stages with producer–consumer placement (`compute_at` generalises bey
 5. **Interval analysis too coarse** for tails/modular indices ⇒ restrict v0 to divisible shapes + `cut`.
 6. **Scope creep to a general compiler**. Guardrail: ops added only when a ladder rung or attention needs them.
 7. **Open question for the user**: is `lhsT`-in-the-spec acceptable for v0 (my default), or should `A[M,K]` + automatic transpose be in the first milestone? Also: Python-source emission only, or also keep an option for `nki.baremetal`/`neuron-profile` integration inside the tool (my default: later, as a thin wrapper around what `nkibench` layers 2–3 will do).
+
+
+---
+
+## 13. Implementation status
+
+Code: `nki_sched/` (expr, ir, hw, interp, frontend, analysis, lower, sched, emit, verify), `tests/` (unit tests per module, no Neuron SDK and no nkibench needed), `examples/` (small examples that print the IR and the emitted NKI code, plus the matmul ladder), `scripts/` (integration against a Trainium node and against nkibench).
+
+| Milestone | State | Notes |
+|---|---|---|
+| M0 skeleton, interpreter, torch trace, naive IR | **done** | the frontend expands the exported ATen graph generically (matmul, transposes, casts); `HardwareConfig` values other than tile caps are `[unverified]` defaults |
+| M1 core loop prims + differential testing | **done, simplified** | handles are unique names (no cursors/forwarding, no `s.find`); `split` supports only `perfect` (assumption → emitted assert), no `cut`/`guard`; no `fuse`/`unroll`; no property-based fuzzing |
+| M2 compute_at, staging, memory, replace, emitter | **done** | structural `replace` for matmul/copies (no general unification); interval analysis only |
+| M3 hoist, traffic | **minimal** | `hoist` and a static `dma_bytes` traffic analysis exist; levels 5–7 of the ladder are examples that keep whole strips in SBUF and are **not** a blocking strategy |
+| M4 multibuffer / pipeline / overlap / set_engine | not started | no sync API in NKI 0.6.0 (verified) → these are reorderings + buffer rotation |
+| M5 device latency | not started | correctness on a NeuronCore was checked, performance was not |
+| M6 attention | not started | |
+
+**Tests:** `pytest` runs 300+ tests in a few seconds: expression algebra, IR traversal/printing, interpreter semantics (dtypes, windows, matmul accumulate modes, error paths), region/injectivity analysis, hardware legality, copy recognition, loop-kind inference, the frontend over several specs (checked against torch), every primitive's structure and error messages, the emitter (exact golden source), the verification hooks, and the examples (including that the static HBM traffic of the ladder equals what nkibench measured). Every per-step oracle check also re-runs the program with affine loops iterated in reverse, so the inferred `affine` annotations are tested rather than trusted.
+
+**Integration (needs a Trainium node; not part of `pytest`):** `scripts/device_check.sh l4` emits a schedule, runs it through nkibench (rule scan, numerics, HBM-traffic bar), through `nki.simulate` with float32 and bfloat16 inputs, and compiles and runs it on the NeuronCore. `scripts/nkibench_rules.py` runs just nkibench's static rule scan anywhere nkibench.py is available.
+
+**What was last verified on `seat-270`** (with the code in this repository, all four ladder schedules `l4`-`l7`): `nkibench` rules clean and numerics 4/4 at levels 4-7; the float32/bfloat16 `nki.simulate` check; and compiling with `neuronx-cc` and running on the NeuronCore in float32 and bfloat16 on the four shapes (correctness only). Wall time per call on a core is launch-dominated (about 1.6 s for every kernel and shape), so no performance claim is made.
+
+**Known limits:** `perfect` splits are guarded only by an emitted assert; the dependence analysis is conservative and covers only the access shapes the matmul produces (affine boxes); floating-point reassociation is recorded in `Sched.notes` but not gated by a tolerance; the SBUF-footprint assert assumes 4 bytes per element and no buffer reuse.
