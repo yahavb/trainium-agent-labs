@@ -22,6 +22,12 @@ def jl(path):
                 pass
     return out
 
+def jl_one(path):
+    try:
+        return json.load(open(path))
+    except Exception:
+        return None
+
 def ts(t):
     return time.strftime("%H:%M:%S", time.localtime(t)) if t else ""
 
@@ -79,6 +85,16 @@ def main(root="designs", out_md="ATTEMPT_LOG.md", out_csv="attempt_log.csv"):
             events.append((h.get("time", 0), "check",
                            f"{h.get('outcome')}: {h.get('first', '')}"
                            + (f" (judge: {h['judge']})" if h.get("judge") else ""), f"{h.get('score', 0):.3f}"))
+        for vp in sorted(glob.glob(os.path.join(d, "opt_work", "verification_round_*.json")),
+                         key=lambda x: int(re.findall(r"(\d+)", os.path.basename(x))[-1])):
+            v = jl_one(vp)
+            if not v:
+                continue
+            rn = re.findall(r"(\d+)", os.path.basename(vp))[-1]
+            events.append((os.path.getmtime(vp), "optimize",
+                           f"round {rn}: smaller version {'ACCEPTED' if v.get('optimization_accepted') else 'REJECTED'}"
+                           f" (original {v.get('original', {}).get('score')}, smaller {v.get('optimized', {}).get('score')})",
+                           f"{v.get('optimized', {}).get('score', 0):.3f}"))
         rep = json.load(open(os.path.join(d, "report.json"))) if os.path.exists(os.path.join(d, "report.json")) else {}
         if not events and not rep:
             continue
@@ -95,12 +111,18 @@ def main(root="designs", out_md="ATTEMPT_LOG.md", out_csv="attempt_log.csv"):
             md.append(f"| {i} | {ts(t)} | {step} | {what.replace('|', '/')} | {score} |")
             rows.append(dict(circuit=name, n=i, time=ts(t), step=step, what=what, score=score))
         scores = [f"{h.get('score', 0):.3f}" for h in hist]
+        opt = jl_one(os.path.join(d, "optimize_report.json"))
+        if opt and opt.get("cells_before") is not None:
+            totals.setdefault("optimized", []).append((opt["cells_before"], opt["cells_after"]))
         md += ["", f"**Result:** {'PASS' if rep.get('passed') else (hist[-1]['outcome'] if hist else 'FAIL')}"
                + (f" · scores {' → '.join(scores)}" if scores else "")
-               + (f" · testbench caught {mut['killed']}/{mut['total']} planted bugs" if mut else ""), ""]
+               + (f" · testbench caught {mut['killed']}/{mut['total']} planted bugs" if mut else "")
+               + (f" · optimized {opt['cells_before']} → {opt['cells_after']} cells" if opt and opt.get("cells_before") is not None else ""), ""]
 
+    opts = totals.get("optimized", [])
+    opt_txt = (f" · optimized {len(opts)} design(s): " + ", ".join(f"{b}→{a_}" for b, a_ in opts) + " cells") if opts else ""
     md[3:3] = [f"**Totals:** {totals['circuits']} circuits · {totals['passed']} passing now · "
-               f"{totals['checks']} checks · testbench attempts accepted {totals['tb_ok']}/{totals['tb']}", ""]
+               f"{totals['checks']} checks · testbench attempts accepted {totals['tb_ok']}/{totals['tb']}{opt_txt}", ""]
     open(out_md, "w").write("\n".join(md) + "\n")
     with open(out_csv, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=["circuit", "n", "time", "step", "what", "score"])

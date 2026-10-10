@@ -38,9 +38,10 @@ thinking mode off, ~14 tokens/s per request. Simulation and checks run on the po
 - **Bugs caught:** 9/9 planted bugs in each v14 run.
 - **Testbench strength:** 45/45 mutants (planted single bugs) killed on the 7 passing designs.
 - **Feedback engine:** 263/263 unit tests pass. In the loop it located a missing `;` by line and flagged `|` used where `^` was needed.
-- **End-to-end** (`run.py` / menu): [fill in: N designs, how many passed first try, after k fixes, failed].
-- **Optimizer:** [fill in: N designs, gates before → after (mean / range), runs, how often a candidate was rejected for
-  mismatching outputs].
+- **End-to-end** (menu, real pod runs): buggy popcount → score 0.5 → feedback → AI fix → PASS 1.0 (14/14 mutants, 144 s);
+  gt8 comparator → PASS first try (13/14 mutants, 35 s).
+- **Optimizer:** gt8 (redundant 8-bit comparator) **61 → 38 Yosys cells (38% smaller)**, smaller version passed the same
+  testbench (comparator.py). Best possible is 33 (`a > b`). 1 run so far; more runs needed for a spread.
 
 ## What we learned
 
