@@ -63,6 +63,8 @@ WEIGHTS = dict(parses=0.1, rules=0.2, runs=0.2, correct=0.5)
 #   raw       the bare exception, nothing added        (the ablation's floor)
 #   enriched  the exception plus the fix instruction   (the repo's original behaviour)
 #   located   enriched, plus the failing line quoted   (the default)
+#   directed  located, plus messages rewritten from what real runs showed the model doing:
+#             the actual shapes in a failed copy, and where a misplaced name really lives
 
 FEEDBACK_MODE = "located"
 LOCATED = " The failing line is line "
@@ -117,10 +119,15 @@ def explain(exc, path, source, prefix="raised ", add_fix=True):
         return text
     if add_fix:
         text = enrich(text)
-    if FEEDBACK_MODE == "located":
+    if FEEDBACK_MODE in ("located", "directed"):
         where = locate(exc, path, source)
         if where:
-            text += f"{LOCATED}{where[0]} of your kernel: `{where[1]}`. That is the line to change."
+            # A size mismatch can be fixed at either end, so do not point at the copy alone.
+            close = ("Change that line, or the line that allocates its destination, so the two "
+                     "shapes match."
+                     if FEEDBACK_MODE == "directed" and "same number of elements" in text
+                     else "That is the line to change.")
+            text += f"{LOCATED}{where[0]} of your kernel: `{where[1]}`. {close}"
         elif not explain.warned:
             explain.warned = True
             frames = [f"{os.path.basename(f.f_code.co_filename)}:{n}"
@@ -338,8 +345,68 @@ def real_signature(func_name):
     return ""
 
 
+ALIAS = {"nki.language": "nl", "nki.isa": "nisa", "nki": "nki"}
+
+
+def _shape(x):
+    try:
+        return tuple(int(v) for v in x)
+    except Exception:
+        return None
+
+
+def directed(error_text):
+    """Feedback written from what the model was SEEN to do on the chip, or None.
+
+    Both cases were measured on a seat, level 1, with the failing line already quoted back:
+
+    * `dma_copy requires src and dst to have the same number of elements, got src=4, dst=16384`.
+      Four rounds, no progress. The message gave element counts and an unrelated 128x512 example.
+      The model needs the two SHAPES, which only the checker can see.
+    * `module 'nki.isa' has no attribute 'multiply'`. The old message listed the first 25 names
+      of nki.isa alphabetically. The name exists -- in nki.language. Say that.
+    """
+    if "dma_copy requires src and dst to have the same number of elements" in error_text:
+        dst, src = _shape(nkibench.LAST_DMA.get("dst")), _shape(nkibench.LAST_DMA.get("src"))
+        if dst and src:
+            return (error_text + f" The destination you allocated has shape {dst} and the piece "
+                    f"you are copying into it has shape {src}. nisa.dma_copy needs the two shapes "
+                    f"to be IDENTICAL. Make them match: either allocate the destination as "
+                    f"nl.ndarray({src}, dtype=..., buffer=nl.sbuf), or copy a slice whose shape "
+                    f"is {dst}.")
+    m = re.search(r"module '([\w.]+)' has no attribute '(\w+)'", error_text)
+    if m:
+        import difflib
+        import importlib
+        mod_name, attr = m.groups()
+        here = ALIAS.get(mod_name, mod_name)
+        found, pool = [], {}
+        for other in ("nki.language", "nki.isa"):
+            try:
+                mod = importlib.import_module(other)
+            except Exception:
+                continue
+            if other != mod_name and hasattr(mod, attr):
+                found.append(f"{ALIAS[other]}.{attr}")
+            for n in dir(mod):
+                if not n.startswith("_"):
+                    pool.setdefault(n, f"{ALIAS[other]}.{n}")
+        if found:
+            return (error_text + f" `{attr}` is not in `{here}`. It exists as `{found[0]}`. "
+                    f"Write `{found[0]}` instead of `{here}.{attr}`.")
+        close = difflib.get_close_matches(attr, list(pool), n=5, cutoff=0.5)
+        if close:
+            return (error_text + f" Nothing called `{attr}` exists in nl or nisa. The closest real "
+                    f"names are: {', '.join(pool[c] for c in close)}. Use one of those.")
+    return None
+
+
 def enrich(error_text):
     """Add the real names when the failure is an invented API call."""
+    if FEEDBACK_MODE == "directed":
+        better = directed(error_text)
+        if better:
+            return better
     if "'MemoryRegion' object is not callable" in error_text:
         return (error_text + " nl.sbuf, nl.psum and nl.shared_hbm are memory regions, not "
                 "functions. Do not call them. Allocate with "
@@ -739,11 +806,14 @@ def main():
     ap.add_argument("--think", action="store_true",
                     help="let the model reason first; costs budget, and it ran out")
     ap.add_argument("--offline", action="store_true")
-    ap.add_argument("--feedback", default="located", choices=("raw", "enriched", "located"),
+    ap.add_argument("--feedback", default="located",
+                    choices=("raw", "enriched", "located", "directed"),
                     help="what the checker sends back when the kernel raises. raw: the bare "
                          "exception. enriched: plus the fix instruction (the original behaviour). "
-                         "located: plus the model's own failing line, quoted. Run the same level "
-                         "under each to measure what the feedback is worth.")
+                         "located: plus the model's own failing line, quoted. directed: plus "
+                         "messages rewritten from what real runs showed (actual shapes, where a "
+                         "name really lives). Run the same level under each to measure what the "
+                         "feedback is worth.")
     a = ap.parse_args()
     global FEEDBACK_MODE
     FEEDBACK_MODE = a.feedback

@@ -18,13 +18,15 @@
 #   SUMMARY.md            the solve rates side by side
 #
 # Settings can be overridden:  MODES="located" REPEAT=5 bash go.sh
+# A further mode, kept apart from earlier results:  OUT=results-directed MODES=directed bash go.sh
+# (use the same OUT= with "status" and "stop")
 set -uo pipefail
 # Resolve this script's own path BEFORE changing directory: it re-runs itself for the background
 # job, and a relative path such as projects/02-kernel-agent/go.sh stops resolving after the cd.
 cd "$(dirname "$0")"
 SELF="$(pwd)/$(basename "$0")"
 
-OUT=results
+OUT=${OUT:-results}
 MODES=${MODES:-"located enriched"}
 REPEAT=${REPEAT:-3}
 AGENT_ARGS=${AGENT_ARGS:-"--all --rounds 8 --samples 4 --context 8192"}
