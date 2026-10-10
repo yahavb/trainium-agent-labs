@@ -59,16 +59,17 @@ from 0: round 0 is the first prompt, round k the k-th repair. [[TBD: final-run t
 2. **A simulator pass is not a chip pass.** Our allocation audit rejects kernels the simulator runs but
    no chip can hold (§8 shows one in a live run). liuyq's compiler gate finds level-1 kernels the simulator
    accepts and the trn2 compiler rejects.
-3. **The model server decodes greedily**, whatever the temperature, so 5 runs were often one run five
-   times. We report distinct trajectories next to every rate, and v8 makes the samples differ (§4).
+3. **The model server is deterministic**: the same request returns the same text, even at temperature
+   0.7, so 5 runs were often one run five times. We report distinct trajectories next to every rate, and v8 makes the samples differ (§4).
 4. **The token budget was not what bound us; reading `finish_reason` was.** Prompts stay near 1,100
    tokens, repairs near 750, far below 8,192 (§6). But one layer dropped the `finish_reason` check, and a
    level-1 run lost 22 minutes to cut-off answers graded as syntax errors (§9).
 
 **How many runs, and the spread.** Every cell is 5 runs of one configuration. We report the rate, never the
-best run, and next to it the number of **distinct trajectories**: the seat's model server decodes greedily in
-practice (4 concurrent requests at temperature 0.7 come back byte-identical, and so does `n=4`), so 5 runs
-are often the same run 5 times. [[TBD: E-div result: whether per-sample prompt variation made the runs distinct]] [[TBD: one sentence on the spread of the final run.]] The baseline was run twice,
+best run, and next to it the number of **distinct trajectories**: the seat's model server is deterministic
+(4 concurrent identical requests at temperature 0.7 come back byte-identical, and so does `n=4`; only a
+different request, or different sampling settings, gives different text), so 5 runs are often the same run
+5 times. [[TBD: E-div result: whether per-sample prompt variation made the runs distinct]] [[TBD: one sentence on the spread of the final run.]] The baseline was run twice,
 on two seats with the organizers' agent: L1 0/5, L2 3/5 and 2/5, L3 0/5, L4 0/5 both times, with identical
 scores on L1, L3 and L4. Both logs were re-graded from scratch with the current checker under trn2, and
 every attempt matched ([analysis/calibration_baseline_seat116.md](analysis/calibration_baseline_seat116.md),
@@ -163,10 +164,10 @@ final agent stacks these layers (full list and sources: [V7.md](projects/02-kern
 | invented-name map (our experiment A) | known invented calls (`nisa.multiply`, `transpose_moving`, …) mapped to the real 0.6.0 call | invented APIs |
 | grading fixes, compiler gate | a fixed `grade()` with a 120 s timeout; a full-score kernel using a form the trn2 compiler rejects is held at 0.95 and given the rewrite | compiler-only failures |
 | verdict | after each level: a confidence, then extra hostile cases and lowering for trn2 | see §5 |
-| sampling (`SAMPLING=qwen`) | Qwen3's thinking-off sampling settings | none in practice: the server decodes greedily |
+| sampling (`SAMPLING=qwen`) | Qwen3's thinking-off sampling settings | none on levels 3 and 4 (ablation below); [[TBD: level 2]] |
 
 **Which layer did it: leave-one-out ablation.** Each row switches one v7 layer back to the organizers'
-original and keeps the rest. Under greedy decoding one run is the trajectory, so each cell is one run.
+original and keeps the rest. Because the server is deterministic, one run is the trajectory, so each cell is one run.
 Rounds count from 0. [[TBD: compare.py table and log paths]]
 
 | switched back | level 3 | level 4 |
@@ -180,8 +181,8 @@ Rounds count from 0. [[TBD: compare.py table and log paths]]
 
 Level 3 needs exactly one layer, the worked example in the first prompt; without it, level 3 stays
 unsolved at 0.30. [[TBD: its failure modes]] Level 4 needs no single layer: the example and the all-dims tiling
-message each save two rounds, and v7's longer first prompt costs one. Changing the sampling settings
-changes nothing, which is the greedy server again.
+message each save two rounds, and v7's longer first prompt costs one. On level 4, switching the sampling
+settings back did not move the trajectory (rounds 0–1 identical).
 
 The rule for feedback: one failure, one instruction, naming the failing line. A verdict ("line 16 calls a
 banned function") is rewritten as an instruction ("change this call; keep everything else"). **For known
@@ -211,9 +212,9 @@ written down before the results came in ([PLAN.md](PLAN.md) §4).
 |---|---|---|---|---|
 | E-A | invented NKI names mapped to the real 0.6.0 calls | L1 | 0/5, all 0.30; invented names 80 → 20, the failures moved one layer deeper | kept as groundwork |
 | E-v3 | feedback_v3 | L4 | 1/2 before the seat went to v7: solved on round 6, then a 0.75 | superseded by v7 |
-| E-F | wrong argument list: failing line + real signature + one instruction | L1 | 0/5, all 0.30, one trajectory; wrong-signature errors 8 → 3 per run, the run then stalls on copy sizes | not carried into v7: v7's level-1 failures are different, and with greedy decoding any message change can move v7's solved trajectories |
+| E-F | wrong argument list: failing line + real signature + one instruction | L1 | 0/5, all 0.30, one trajectory; wrong-signature errors 8 → 3 per run, the run then stalls on copy sizes | not carried into v7: v7's level-1 failures are different, and with a deterministic server any message change can move v7's solved trajectories |
 | E-v7 | feedback_v7 as a whole | L1, L3, L4, L2 | L3 5/5 (round 1), L4 4/4 (round 3, one trajectory), L1 [[TBD]], L2 [[TBD]]; all solves VERIFIED [[TBD: final after re-audit]] | adopted |
-| E-div | v7, plus a one-line `(attempt k of n, run r)` tag on samples 2–4 so a greedy server returns different samples | L1–L4 | [[TBD]] | [[TBD]] |
+| E-div | v7, plus a one-line `(attempt k of n, run r)` tag on samples 2–4 so a deterministic server returns different samples | L1–L4 | [[TBD]] | [[TBD]] |
 
 What did not work, kept here because each one cost us time:
 
@@ -221,10 +222,10 @@ What did not work, kept here because each one cost us time:
   80 to 20 and E-F cut wrong-signature errors from 8 to 3 per run; both stayed at 0.30, stuck on the next wall.
 - **Compiling the model server with -O3** to make rounds faster: still compiling after 33 minutes. Dropped;
   it would also have invalidated the baseline.
-- **A `seed` parameter**, to get independent samples from a greedy server: HTTP 500, and it took the server
+- **A `seed` parameter**, to get independent samples from a deterministic server: HTTP 500, and it took the server
   down once.
-- **Splitting an experiment's runs across seats** to get results sooner: under greedy decoding the runs are
-  mostly copies, so it buys speed without information. E-div (§4 table) is the fix we tried instead.
+- **Splitting an experiment's runs across seats** to get results sooner: with a deterministic server the runs
+  are mostly copies, so it buys speed without information. E-div (§4 table) is the fix we tried instead.
 
 ## 5. Does the agent know when it failed?
 
@@ -304,8 +305,8 @@ The solving kernel is correct, not fast: 36.6 Flops/Byte, memory-bound.
   NKI 0.6.0 simulates trn3. A level-4 kernel with a 1024-wide moving tile passes 2/4 shapes under trn3 and
   0/4 under trn2 ("moving free dimension 1024 exceeds max 512 for nc_version.gen3"). We set trn2
   explicitly and re-graded earlier runs under it. ([analysis/sim_target_check.md](analysis/sim_target_check.md))
-- **Greedy decoding.** The seat's model server ignores the sampling temperature in practice, so repeated runs of
-  one configuration are mostly copies, and "5/5" can mean one trajectory five times. We report distinct
+- **A deterministic server.** The seat's model server returns the same text for the same request, whatever the
+  temperature, so repeated runs of one configuration are mostly copies, and "5/5" can mean one trajectory five times. We report distinct
   trajectories next to every rate. A request with a `seed` parameter returned HTTP 500 and took the server down once.
 - **Simulator numbers.** Every score comes from `nki.simulate` on a CPU. [[TBD: which hand-in kernels were
   also compiled for trn2 and run on a NeuronCore]]
