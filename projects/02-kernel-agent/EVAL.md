@@ -80,18 +80,36 @@ from what the loop saw:
     are hardware limits and don't count)
   - × 0.6 if the output allocation hard-codes a dtype
 
-Then the held-out set runs, and the verdict is one of:
+It is printed (`CONFIDENCE level N: ...`) and timestamped (`confidence_time`) before the held-out
+check starts (`heldout_time`). Then the held-out set runs, on by default (`--no-eval` turns it off),
+and the claim is one of:
 
 - `VERIFIED`: passes the loop set and every held-out case
 - `PASSES THE LOOP'S SHAPES ONLY`: solved, but some held-out case fails; the first failure is named
-- `NOT SOLVED`
-- (a kernel that breaks a rule fails held-out outright, since a rule violation scores zero)
-- `UNVERIFIED`: no simulator, or `--no-eval`
+- `NOT SOLVED` (a kernel that breaks a rule fails held-out outright, since a rule violation scores
+  zero)
+- `UNVERIFIED`: the check did not run or raised (`--no-eval`, no simulator, or any exception). The
+  error is recorded and the run goes on to the next level or repeat.
 
-Each verdict goes to `verdicts.jsonl` (claim, confidence, reasons, held-out result, tokens). At the
+**The held-out result never reaches the model.** `verdict()` is called only from `main()`, after
+`solve()` has returned, and each level's `solve()` starts again from `first_prompt()`. Checked with
+an AST scan: `first_prompt`, `repair_prompt`, `solve`, `grade`, `enrich`, `ask` read none of
+`verdict`, `evaluate`, `EVAL_SHAPES`, `confidence`. Checked byte for byte: the agent before this
+change (4350038) and after it, run against the same deterministic mock endpoint
+(`--all --rounds 6 --samples 3 --repeat 2`), sent the same 54 requests: identical prompts and
+`max_tokens`, and identical attempt sequences (level, round, reward, feedback, code).
+
+`verdicts.jsonl`, one line per level per run: `level`, `run`, `claim`, `confidence`, `reasons`,
+`heldout_passed` / `heldout_total`, `first_failure`, `heldout_failures` (first 8), `error`,
+`tokens_total` (= `prompt_tokens` + `completion_tokens` for the level), `reward`, `rounds`. At the
 end of a run, `calibration_report` prints confidence buckets against the held-out outcome, a Brier
 score, and the number of "confident (≥ 0.5) but wrong" cases. The heuristic weights are stated,
 not fitted. Whether they are calibrated is what the report measures.
+
+Verified in nki 0.6.0 through the whole agent, not just `--eval`: the 4 reference kernels
+(offline, `--all --repeat 2`) are `VERIFIED` 8/8; each of the 4 mutants, served as the model's
+answer, solves the loop and is judged `PASSES THE LOOP'S SHAPES ONLY` (confidence 0.90, 0.90, 0.54,
+0.54: the dtype heuristic catches two of them, and only the held-out set catches the other two).
 
 ## Token accounting
 

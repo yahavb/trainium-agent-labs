@@ -54,6 +54,8 @@ MODES = [
     ("broadcast", "index arithmetic", "assigns a value of the wrong shape",
      r"could not be broadcast|shape mismatch|operands could not"),
     ("wrong_output_shape", "index arithmetic", "returns the wrong output shape", r"WRONG SHAPE"),
+    ("bad_access_pattern", "index arithmetic", "a strided .ap() view that does not fit the tile",
+     r"ap\(\) pattern|invalid partition stride"),
     # it runs, and the numbers are wrong
     ("partial_output", "silent wrong numbers", "some or all output tiles never written",
      r"OUTPUT IS \d+% ZEROS|of the output is zero"),
@@ -226,8 +228,9 @@ def main():
 
     verdicts = [json.loads(l) for p in a.verdicts for l in open(p) if l.strip()]
     if verdicts:
-        status = collections.Counter((v["level"], v.get("status", "").split(":")[0].split(" (")[0])
-                                     for v in verdicts)
+        status = collections.Counter(
+            (v["level"], v.get("claim") or v.get("status", "").split(":")[0].split(" (")[0])
+            for v in verdicts)
         held = collections.Counter()
         for v in verdicts:
             if v.get("solved"):

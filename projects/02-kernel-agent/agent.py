@@ -727,48 +727,61 @@ def confidence(level, source, solved):
 
 
 def verdict(a, level, reward, rounds, source, spent):
-    """What the agent claims about this level, and whether the held-out set agrees."""
+    """What the agent claims about this level, and whether the held-out set agrees.
+
+    The confidence is computed and printed FIRST, from the loop's evidence only; the held-out set
+    runs after it. Nothing here is ever passed to first_prompt / repair_prompt / solve. Any error in
+    the held-out check makes the claim UNVERIFIED; it never ends the run."""
     full = sum(WEIGHTS.values())
     solved = reward >= full - 1e-9
     conf, why = confidence(level, source, solved) if (source or "").strip() else (0.0, ["no code"])
     v = dict(type="verdict", level=level, run=getattr(a, "run", 0), solved=solved,
-             reward=round(reward, 3), rounds=rounds, confidence=conf, reasons=why,
-             prompt_tokens=spent["prompt"], completion_tokens=spent["completion"],
-             heldout_passed=None, heldout_total=None, heldout_failures=[])
+             reward=round(reward, 3), rounds=rounds, claim=None, confidence=conf, reasons=why,
+             confidence_time=time.time(), heldout_time=None,
+             heldout_passed=None, heldout_total=None, first_failure=None, heldout_failures=[],
+             error=None, prompt_tokens=spent["prompt"], completion_tokens=spent["completion"],
+             tokens_total=spent["prompt"] + spent["completion"])
+    print(f"\n  CONFIDENCE level {level}: {conf:.2f} ({'; '.join(why)}) -- stated before the "
+          f"held-out check")
+    res = None
     if a.no_eval or not (source or "").strip() or level not in nkibench.EVAL_SHAPES:
-        status = "UNVERIFIED (no held-out check ran)"
+        v["error"] = "no held-out check ran"
     else:
-        violations = nkibench.check_rules(source, level)
+        v["heldout_time"] = time.time()
         try:
+            violations = nkibench.check_rules(source, level)
             if violations:
                 # A rule violation scores zero whatever the numbers say, so it fails held-out too.
-                raise RuntimeError("rule violation: " + " ".join(violations))
-            path = nkibench.candidate_path(f"_heldout_level{level}")
-            with open(path, "w") as f:
-                f.write(source)
-            res = nkibench.evaluate(nkibench.load_kernel(path, nkibench.LEVELS[level]["entry"]),
-                                    level)
-        except nkibench.NkiMissing:
-            res = None
-        except Exception as e:
-            res = [dict(case="load", kind="-", ok=False, why=f"{type(e).__name__}: {e}"[:300])]
-        if res is None:
-            status = "UNVERIFIED (no simulator here)"
-        else:
-            ok = sum(r["ok"] for r in res)
-            v.update(heldout_passed=ok, heldout_total=len(res),
-                     heldout_failures=[r for r in res if not r["ok"]][:8])
-            if solved and ok == len(res):
-                status = f"VERIFIED: loop shapes and {ok}/{len(res)} held-out cases"
-            elif solved:
-                bad = v["heldout_failures"][0]
-                status = (f"PASSES THE LOOP'S SHAPES ONLY: held-out {ok}/{len(res)}, e.g. "
-                          f"{bad['case']} {bad['kind']}: {bad['why'][:100]}")
+                res = [dict(case="rules", kind="-", ok=False, why=" ".join(violations)[:300])]
             else:
-                status = f"NOT SOLVED (best reward {reward:.2f}; held-out {ok}/{len(res)})"
+                path = nkibench.candidate_path(f"_heldout_level{level}")
+                with open(path, "w") as f:
+                    f.write(source)
+                res = nkibench.evaluate(
+                    nkibench.load_kernel(path, nkibench.LEVELS[level]["entry"]), level)
+        except nkibench.NkiMissing:
+            v["error"] = "no simulator here"
+        except Exception as e:
+            v["error"] = f"held-out check failed: {type(e).__name__}: {e}"[:300]
+    if res is None:
+        v["claim"], status = "UNVERIFIED", f"UNVERIFIED ({v['error']})"
+    else:
+        ok = sum(r["ok"] for r in res)
+        bad = [r for r in res if not r["ok"]]
+        v.update(heldout_passed=ok, heldout_total=len(res), heldout_failures=bad[:8],
+                 first_failure=(f"{bad[0]['case']} {bad[0]['kind']}: {bad[0]['why']}"[:300]
+                                if bad else None))
+        if solved and not bad:
+            v["claim"] = "VERIFIED"
+            status = f"VERIFIED: loop shapes and {ok}/{len(res)} held-out cases"
+        elif solved:
+            v["claim"] = "PASSES THE LOOP'S SHAPES ONLY"
+            status = f"{v['claim']}: held-out {ok}/{len(res)}, e.g. {v['first_failure'][:110]}"
+        else:
+            v["claim"] = "NOT SOLVED"
+            status = f"NOT SOLVED (best reward {reward:.2f}; held-out {ok}/{len(res)})"
     v["status"] = status
-    print(f"\n  VERDICT level {level}: {status}")
-    print(f"    confidence stated before the held-out check: {conf:.2f} ({'; '.join(why)})")
+    print(f"  VERDICT level {level}: {status}")
     print(f"    tokens spent: {spent['prompt']:,} prompt + {spent['completion']:,} answer over "
           f"{spent['rounds']} round(s)")
     return v
@@ -869,9 +882,15 @@ def main():
                     verdicts.append(verdict(a, level, reward, rounds, source, spent))
                 except Exception as e:   # bookkeeping must never end a long run
                     print(f"  (verdict failed: {type(e).__name__}: {e})")
-                    verdicts.append(dict(type="verdict", level=level, run=rep, confidence=0.0,
-                                         status=f"UNVERIFIED (verdict error: {e})"[:120],
-                                         heldout_total=None, reward=round(reward, 3)))
+                    verdicts.append(dict(
+                        type="verdict", level=level, run=rep, solved=None, reward=round(reward, 3),
+                        rounds=rounds, claim="UNVERIFIED", confidence=0.0,
+                        reasons=["the verdict itself failed"], heldout_passed=None,
+                        heldout_total=None, first_failure=None, heldout_failures=[],
+                        error=f"verdict failed: {type(e).__name__}: {e}"[:300],
+                        prompt_tokens=spent["prompt"], completion_tokens=spent["completion"],
+                        tokens_total=spent["prompt"] + spent["completion"],
+                        status=f"UNVERIFIED (verdict error: {e})"[:120]))
                 vlog.write(json.dumps(verdicts[-1]) + "\n")
                 vlog.flush()
 
