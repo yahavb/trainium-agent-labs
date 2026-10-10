@@ -42,3 +42,7 @@ projects/*/attempts.jsonl
 
 # agent runs started with nohup ... > run.log (README pattern for surviving a dropped kubectl exec)
 run*.log
+
+# Local Decider weights, authentication, process state and evaluation output
+projects/20-kernel-agent/local_decider/models/
+projects/20-kernel-agent/local_decider/runs/
