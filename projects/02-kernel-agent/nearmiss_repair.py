@@ -23,8 +23,8 @@ import numpy as np
 import nkibench
 import traffic_eval
 from agent import extract_code
-from traffic_agent import (MODEL, TokenCounter, ask, candidate_valid, demo_block, kernel_block,
-                           progress)
+from traffic_agent import (MODEL, TokenCounter, ask, candidate_valid, demo_block,
+                           enrich_feedback, kernel_block, progress)
 
 
 def _close(got, pred, atol=2e-2):
@@ -104,12 +104,12 @@ def case_table(ev):
     return "\n".join(lines)
 
 
-def prompt_for(level, src, ev, diag, demo_path):
+def prompt_for(level, src, ev, extra, demo_path):
     parts = [demo_block(demo_path),
              kernel_block(level, src),
              "The current kernel measured:\n" + case_table(ev)]
-    if diag:
-        parts.append("The checker's behavioral diagnosis:\n" + diag)
+    if extra:
+        parts.append("The checker's diagnosis:\n" + extra)
     parts.append("Change exactly what the diagnosis names and keep everything else identical. "
                  "The bytes you already save must not regress. Reply with ONE complete python "
                  "code block (imports + the full kernel), then STRATEGY and CONFIDENCE lines.")
@@ -175,7 +175,8 @@ def main():
         if best is None or prg > best[0]:
             best = (prg, src, ev)
 
-        prompt = prompt_for(a.level, src, ev, diag, a.demo)
+        prompt = prompt_for(a.level, src, ev, diag or enrich_feedback(ev.get("feedback") or ""),
+                            a.demo)
         ptok = counter.count(prompt)
         budget = min(a.max_tokens, max(256, a.context - ptok - 64))
         if ptok + budget + 64 > a.context:
