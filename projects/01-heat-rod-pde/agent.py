@@ -41,12 +41,19 @@ def ask_once(a, prompt):
     body = dict(model=a.model, messages=[{"role": "user", "content": prompt}],
                 max_tokens=a.max_tokens, temperature=0.6, top_p=0.95,
                 chat_template_kwargs={"enable_thinking": a.think})
+    started = time.perf_counter()
     r = httpx.post(f"{a.base.rstrip('/')}/chat/completions", json=body,
                    timeout=900, verify=False)
     if r.status_code != 200:
         raise SystemExit(f"the server returned HTTP {r.status_code}:\n{r.text[:800]}\n\n"
                          f"request was: {json.dumps(body)[:400]}")
-    return r.json()["choices"][0]["message"].get("content") or ""
+    payload = r.json()
+    choice = payload["choices"][0]
+    return choice["message"].get("content") or "", dict(
+        api_seconds=time.perf_counter() - started,
+        finish_reason=choice.get("finish_reason"),
+        usage=payload.get("usage") or {},
+    )
 
 
 def one_attempt(a, problem, prompt, rnd):
@@ -57,20 +64,28 @@ def one_attempt(a, problem, prompt, rnd):
     which is the part worth measuring, and sympy does the arithmetic it cannot do reliably.
     """
     if a.offline:
-        return fake_model(problem, 1, rnd)[0], 0
-    convo = prompt if a.no_tools else f"{prompt}\n\n{tool_calc.INSTRUCTIONS}"
-    used = 0
+        return fake_model(problem, 1, rnd)[0], 0, []
+    instructions = (tool_calc.CONCISE_INSTRUCTIONS if a.tool_prompt_style == "concise"
+                    else tool_calc.INSTRUCTIONS)
+    convo = prompt if a.no_tools else f"{prompt}\n\n{instructions}"
+    used, trace = 0, []
     for step in range(a.tool_steps + 1):
-        reply = ask_once(a, convo)
+        reply, metrics = ask_once(a, convo)
         asks = [] if a.no_tools else tool_calc.requests_in(reply)
+        turn = dict(prompt=convo, answer=reply, tool_requests=asks, **metrics)
+        trace.append(turn)
         if not asks or step == a.tool_steps:
-            return reply, used
+            return reply, used, trace
         used += len(asks)
+        started = time.perf_counter()
+        results = tool_calc.answer_block(asks)
+        turn["tool_seconds"] = time.perf_counter() - started
+        turn["tool_results"] = results
         convo = (f"{convo}\n\n{reply}\n\n"
-                 f"{tool_calc.answer_block(asks)}\n\n"
+                 f"{results}\n\n"
                  f"Use those values and give the final answer now, as one line "
                  f"u(x, t) = <expression> with every number filled in.")
-    return reply, used
+    return reply, used, trace
 
 
 def ask_round(a, problem, prompt, rnd):
@@ -98,6 +113,25 @@ def fake_model(problem, n, rnd):
             for _ in range(n)]
 
 
+def repair_prompt(base_prompt, best, style):
+    """An experimental feedback format; checker scores and tolerances stay unchanged."""
+    previous = (f"{base_prompt}\n\nA previous attempt was:\n"
+                f"  u(x, t) = {best['expr']}\n")
+    if style == "baseline":
+        return (previous + f"A checker found this problem with it: {best['feedback']}\n"
+                f"Fix it.")
+    labels = dict(equation="heat equation", left_bc="left boundary",
+                  right_bc="right boundary", start_shape="initial temperature")
+    status = "\n".join(f"- {label}: {'PASS' if best['parts'][key] else 'FAIL'}"
+                       for key, label in labels.items() if key in best["parts"])
+    return (previous + f"Checker results:\n{status or '- answer could not be evaluated'}\n"
+            f"Diagnosis: {best['feedback']}\n"
+            "Repair the failed checks while preserving conditions that already pass. "
+            "If you change a wave's frequency, make its decay rate consistent with the "
+            "heat equation. If coefficients need calculation, use the calculator when "
+            "available. Recheck all conditions and end with the complete answer line.")
+
+
 def solve(problem, a, log):
     base_prompt = pdecheck.prompt_of(problem)
     print(f"\n=========== {problem['name']} ===========")
@@ -106,15 +140,23 @@ def solve(problem, a, log):
     for rnd in range(a.rounds):
         t0 = time.perf_counter()
         attempts = ask_round(a, problem, prompt, rnd)
-        answers = [ans for ans, _ in attempts]
-        tool_calls = sum(used for _, used in attempts)
+        generation_seconds = time.perf_counter() - t0
+        answers = [ans for ans, _, _ in attempts]
+        tool_calls = sum(used for _, used, _ in attempts)
+        started = time.perf_counter()
         graded = [pdecheck.check(problem, ans) for ans in answers]
-        for (ans, used), g in zip(attempts, graded):
+        checker_seconds = time.perf_counter() - started
+        for sample, ((ans, used, trace), g) in enumerate(zip(attempts, graded)):
             log.write(json.dumps(dict(problem=problem["name"], seed=problem["seed"],
-                                      round=rnd, prompt=prompt, answer=ans,
+                                      round=rnd, sample=sample, prompt=prompt, answer=ans,
                                       tool_calls=used, reward=g["reward"],
                                       parts=g["parts"],
-                                      start_error=g["start_error"])) + "\n")
+                                      start_error=g["start_error"], feedback=g["feedback"],
+                                      feedback_style=a.feedback_style, offline=a.offline,
+                                      tool_prompt_style=a.tool_prompt_style,
+                                      trace=trace,
+                                      generation_and_tools_seconds=generation_seconds,
+                                      checker_seconds=checker_seconds)) + "\n")
         log.flush()
         rewards = [g["reward"] for g in graded]
         best = max(graded, key=lambda g: g["reward"])
@@ -122,14 +164,18 @@ def solve(problem, a, log):
         print(f"\nround {rnd}: rewards {rewards}  mean {sum(rewards) / len(rewards):.2f}  "
               f"best {best['reward']:.1f}  {tool_calls} tool call(s)  "
               f"({time.perf_counter() - t0:.1f}s)")
+        print(f"  timing: generation + tools {generation_seconds:.1f}s; "
+              f"checker {checker_seconds:.1f}s")
+        if any(turn.get("finish_reason") == "length"
+               for _, _, trace in attempts for turn in trace):
+            print("  WARNING: a model reply hit its token limit; inspect trace before "
+                  "treating it as a reasoning failure.")
         if best["reward"] == 1.0:
             print(f"SOLVED: u(x, t) = {best['expr']}")
             return 1.0, rnd + 1
         print(f"  best: {best['expr']}")
         print(f"  checker: {best['feedback']}")
-        prompt = (f"{base_prompt}\n\nA previous attempt was:\n  u(x, t) = {best['expr']}\n"
-                  f"A checker found this problem with it: {best['feedback']}\n"
-                  f"Fix it.")
+        prompt = repair_prompt(base_prompt, best, a.feedback_style)
     print(f"not solved in {a.rounds} rounds; best reward {best_ever:.1f}")
     return best_ever, a.rounds
 
@@ -149,11 +195,22 @@ def main():
                     help="rounds of COMPUTE: exchanges allowed per attempt")
     ap.add_argument("--no-tools", action="store_true",
                     help="withhold the calculator, to measure what it buys")
+    ap.add_argument("--feedback-style", choices=("baseline", "structured"), default="baseline",
+                    help="baseline preserves the original prompt; structured is experimental")
+    ap.add_argument("--tool-prompt-style", choices=("baseline", "concise"), default="baseline",
+                    help="experimental concise calculator-request protocol; token budget unchanged")
     ap.add_argument("--model", default=os.environ.get("HEATROD_MODEL", "Qwen/Qwen3-8B"))
     ap.add_argument("--base", default=os.environ.get("HEATROD_BASE_URL"))
     ap.add_argument("--log", default="attempts.jsonl")
     ap.add_argument("--offline", action="store_true")
     a = ap.parse_args()
+    for key in ("samples", "rounds", "max_tokens"):
+        if getattr(a, key) < 1:
+            ap.error(f"--{key.replace('_', '-')} must be positive")
+    if a.tool_steps < 0:
+        ap.error("--tool-steps must be nonnegative")
+    if a.sub is not None and a.sub not in LEVELS[a.level].SUBS:
+        ap.error(f"--sub must be one of {LEVELS[a.level].SUBS}")
 
     if not a.base and not a.offline:
         sys.exit("set HEATROD_BASE_URL to your vLLM endpoint, or pass --offline")

@@ -87,6 +87,15 @@ INSTRUCTIONS = (
     "guessing the coefficients."
 )
 
+# An experimental output protocol, not a smaller token limit or a supplied answer.
+CONCISE_INSTRUCTIONS = (
+    "You have a calculator. Set up the integrals yourself. To request calculations, "
+    "reply with only COMPUTE: <expression> lines, one expression per line. Example:\n"
+    "COMPUTE: Integral(x*(2 - x)*sin(pi*x/2), (x, 0, 2))\n"
+    "Send those lines directly, without an explanation. After receiving the values, "
+    "give only the complete u(x, t) = <expression> answer line."
+)
+
 
 def requests_in(text):
     """The COMPUTE: lines a reply is asking for."""
