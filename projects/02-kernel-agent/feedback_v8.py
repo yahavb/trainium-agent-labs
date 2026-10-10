@@ -38,8 +38,15 @@ transposing x itself (an index past x.shape[1] on axis 1, or the partition size 
 named the symptom only. On those errors at level 2 the feedback adds one sentence restating what the
 level asks (rows stay put; each row's F1-by-F2 matrix is transposed), with no code.
 
+MIX=1 (planner's E-mix). Level 2 was only ever solved in round 0 (0 of 104 baseline and replica repair
+samples), and level 1's one simulator solve came from a near-right round-0 kernel. So from round 1 on,
+sample 1 keeps repairing with v7's prompt (byte-identical, so L3/L4 keep their path) while samples 2..n
+get the FIRST prompt again plus "(fresh attempt k, round t, run r)": about 27 fresh attempts per run
+instead of 4. The best of the round is repaired next, ties to sample 1. attempts.jsonl's prompt_chars /
+prompt_split describe sample 1's prompt.
+
 Run it exactly like feedback_v7.py, with the exports in V7.md (plus SKELETON / L1FIX / TRUNCFIX / MIXSAMP /
-L2HINT when testing them):
+L2HINT / MIX when testing them):
 
     python3 feedback_v8.py --level 4 --rounds 8 --samples 4 --context 8192 --repeat 5 \\
         --log Ediv_L4.jsonl --verdicts verdicts_div_L4.jsonl
@@ -56,6 +63,7 @@ L1FIX = os.environ.get("L1FIX", "0") == "1"
 TRUNCFIX = os.environ.get("TRUNCFIX", "0") == "1"
 MIXSAMP = os.environ.get("MIXSAMP", "0") == "1"
 L2HINT = os.environ.get("L2HINT", "0") == "1"
+MIX = os.environ.get("MIX", "0") == "1"
 L2_NOTE = (" This level keeps every row where it is: row p of x holds an F1-by-F2 matrix stored row-major "
            "(F1, F2 = shape2D), and row p of the output holds the same F1*F2 values of that small matrix "
            "transposed, i.e. stored column-major. Nothing moves between rows, so the first (partition) "
@@ -170,9 +178,28 @@ def _ask_k(a, prompt, k):
     return agent.ask(a, prompt)
 
 
+_mix = dict(key=None, round=0)          # which round of which (run, level) the loop is asking for
+
+
+def mix_prompts(a, prompt, n):
+    """MIX: sample 1 repairs (v7's prompt, unchanged); samples 2..n start over from the first prompt."""
+    run = getattr(a, "run", 0)
+    repair = prompt.startswith("This NKI kernel for")
+    level = v7.v5._level_of(prompt)
+    key = (run, level)
+    _mix["round"] = _mix["round"] + 1 if (repair and _mix["key"] == key) else 0
+    _mix["key"] = key
+    if not repair or level is None:
+        return [variant(prompt, k, n, run) for k in range(1, n + 1)]
+    first = agent.first_prompt(level, getattr(a, "terse", 0))
+    return [prompt] + [f"{first}\n\n(fresh attempt {k}, round {_mix['round']}, run {run + 1})"
+                       for k in range(2, n + 1)]
+
+
 def ask_parallel_div(a, prompt, n):
     run = getattr(a, "run", 0)
-    prompts = [variant(prompt, k, n, run) for k in range(1, n + 1)]
+    prompts = (mix_prompts(a, prompt, n) if MIX else
+               [variant(prompt, k, n, run) for k in range(1, n + 1)])
     with cf.ThreadPoolExecutor(max_workers=n) as ex:
         return [f.result() for f in [ex.submit(_ask_k, a, p, k) for k, p in enumerate(prompts, 1)]]
 
@@ -272,5 +299,5 @@ if __name__ == "__main__":
     print(f"feedback v8: v7 (PROMPT1={v7.PROMPT1} MESSAGES={v7.v6.MESSAGES} CARD={v7.v5.CARD} "
           f"SAMPLING={v7.v5.SAMPLING} GATE={v7.GATE or 'off'}) + one prompt line per sample k>=2"
           f" SKELETON={int(SKELETON)} L1FIX={int(L1FIX)} TRUNCFIX={int(TRUNCFIX)} MIXSAMP={int(MIXSAMP)}"
-          f" L2HINT={int(L2HINT)}")
+          f" L2HINT={int(L2HINT)} MIX={int(MIX)}")
     agent.main()
