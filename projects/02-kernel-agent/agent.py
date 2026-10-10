@@ -245,6 +245,31 @@ POOL_API_CARD = """NKI pooling primitives:
 """
 
 
+MATMUL_SHAPES = """This is a single-tile matmul. Read K, M = lhsT.shape and K_rhs, N = rhs.shape.
+The input shapes are (K, M) and (K, N); the output shape is (M, N).
+lhsT.shape[1:] is only (M,), so it is not a valid result shape.
+The left input already has the layout nc_matmul needs: K is the partition axis
+of BOTH inputs. The supported level-3 inputs fit one hardware tile.
+"""
+
+MATMUL_API_CARD = """Allocate separate tiles for these roles:
+  left:   shape (K, M), dtype lhsT.dtype, buffer nl.sbuf
+  right:  shape (K, N), dtype rhs.dtype,  buffer nl.sbuf
+  accum:  shape (M, N), dtype nl.float32, buffer nl.psum
+  result: shape (M, N), dtype lhsT.dtype, buffer nl.sbuf
+  output: shape (M, N), dtype lhsT.dtype, buffer nl.shared_hbm
+Use nl.ndarray(shape, dtype=..., buffer=...) for allocations.
+Load each input into its own matching SBUF tile with nisa.dma_copy(dst=, src=).
+Keep both input tiles alive until matmul: loading rhs into the left tile overwrites
+lhsT. Allocate from each input shape, not fixed hardware maxima.
+Call nisa.nc_matmul(dst=accum, stationary=left, moving=right).
+Copy accum to the separate result SBUF tile with nisa.tensor_copy(dst=, src=),
+then store result to output with nisa.dma_copy(dst=, src=) and return output.
+Both result copies preserve the (M, N) shape; an input tile has a different role
+and shape, so using it as the result buffer loses the required dimensions.
+"""
+
+
 def available_names(dotted):
     """Turn 'no attribute X' into 'here are the real ones'.
 
@@ -327,6 +352,14 @@ def enrich(error_text, level=None):
                     f"nl.sum(view, axis=[...]) over those axes and scale by 1/(pool_size*pool_size). "
                     f"The separate, smaller OUTPUT tile is what you write the reduced result into "
                     f"before dma_copy'ing it out.")
+        if level == 3:
+            return (error_text + f" The source has {src} elements but the destination has {dst}. "
+                    "For this single-tile matmul, load lhsT into a (K, M) SBUF tile and rhs "
+                    "into a different (K, N) SBUF tile. The PSUM result, result SBUF tile "
+                    "and returned HBM output must all be (M, N). Derive K and M from "
+                    "lhsT.shape and N from rhs.shape[1]; match each copy to its own tensor. "
+                    "Keep the two input buffers distinct: loading rhs into the same "
+                    "buffer or an overlapping view destroys lhsT before matmul.")
         return (error_text + f" The tile you allocated holds {dst} elements but you copied {src} "
                 f"into it. nisa.dma_copy does not slice or broadcast: allocate the destination with "
                 f"EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a "
@@ -514,6 +547,10 @@ def first_prompt(level, terse=0, a=None):
     """
     s = nkibench.LEVELS[level]
     import inspect
+    # Optional, flag-gated prompt segments. Assigned once here so every branch below (including
+    # the level-3 matmul card and the generic default) can reference them without a NameError.
+    tiles_seg, skill_seg = _extras(a, level) if a is not None else ("", "")
+    tools_seg = _tools_preamble(a) if a is not None and getattr(a, "tools", None) else ""
     if level == 1:
         # A task-specific card avoids teaching matmul's PSUM workflow to a
         # reduction. Retain the operation and scalar API when shortening retries.
@@ -530,6 +567,24 @@ def first_prompt(level, terse=0, a=None):
             f"{inspect.getsource(s['ref'])}\n{POOL_METHOD}\n{card}\n"
             f"Import nki, nki.language as nl, and nki.isa as nisa. "
             f"Reply with ONE python code block containing the imports and function.")
+    if level == 3:
+        # A dedicated matmul card, mirroring level 1's dedicated pooling card. The seat-21
+        # baseline cycled on a one-dimensional (M,) output allocation; the shape contract and
+        # per-role allocation card name the fix instead of restating the verdict.
+        card = MATMUL_API_CARD if terse == 0 else (
+            "Use separate input SBUF tiles, a float32 (M, N) PSUM tile, and separate "
+            "(M, N) result SBUF and HBM tiles. dma_copy loads inputs; "
+            "nc_matmul(dst=, stationary=, moving=) writes PSUM; tensor_copy moves "
+            "PSUM to result SBUF; dma_copy stores the result in HBM.\n")
+        if terse >= 2:
+            card = ("Use nc_matmul into float32 PSUM, tensor_copy into a separate (M, N) SBUF "
+                    "tile, then dma_copy to HBM.\n")
+        return _assemble(a or _Dummy(), dict(
+            task=(f"Write an NKI kernel `{s['entry']}` decorated with @nki.jit.\n"
+                  f"Match this NumPy reference:\n\n{inspect.getsource(s['ref'])}"),
+            shapes=MATMUL_SHAPES, card=card, tiles=tiles_seg, skill=skill_seg, tools=tools_seg,
+            reply=("Import nki, nki.language as nl, and nki.isa as nisa. "
+                   "Reply with ONE complete python code block.")))
     if terse >= 2:
         # Last resort. Measured on this endpoint: one-sentence prompts answered in 300-700
         # tokens while every structured, rule-carrying prompt spiralled.
@@ -592,6 +647,14 @@ def repair_prompt(level, source, feedback, a=None, ledger=""):
     The lesson this whole repo keeps re-learning: feeding a verifier's report back verbatim
     reproduces the same mistake, because a report says what is wrong and never what to do.
     """
+    if level == 3:
+        return (
+            f"Repair this single-tile NKI matmul:\n\n```python\n{source}\n```\n\n"
+            f"A checker reports:\n{feedback}\n\n"
+            f"{MATMUL_SHAPES}\n{MATMUL_API_CARD}\n"
+            f"Fix the reported allocation and any dependent buffer shapes or copies. "
+            f"Preserve the entry point, arguments and required output dtype. "
+            f"Reply with ONE complete python code block.")
     if level == 1:
         # A local API repair cannot rescue an algorithm that multiplies a window
         # by itself. Let the model replace that computation while preserving the
