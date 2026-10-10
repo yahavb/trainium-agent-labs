@@ -804,6 +804,56 @@ def enrich(error_text, level=None):
                 f"`{m.group(2)}`. Use the nl/nisa functions instead.")
     return error_text
 
+# --attention-plan (level 8). Ported from team 20's seat-97 work: with this contract and an explicit
+# buffer inventory + 13-stage plan, Qwen3-8B solved level 8 in 2 of 2 runs on round 0 (4 of 4 samples
+# correct); with lighter guidance it solved 0 of 2 there and 0 of 4 here. Very prescriptive -- every
+# buffer and instruction is named -- so a solve with it is the checker teaching the method.
+ATTENTION_PLAN = False
+ATTENTION_CONTRACT = """Attention contract for this SDK:
+Q, K, V all arrive in HBM with shape (seq, dim), WITHOUT a pre-transpose.
+Return shape (seq, dim): softmax(Q @ K.T / sqrt(dim), axis=1) @ V.
+nisa.nc_matmul computes stationary.T @ moving, reading sbuf and writing psum.
+For scores (seq, seq), transpose Q and K into (dim, seq), then use Q_T and K_T.
+Scale scores by multiplying by the Python scalar 1.0 / (dim ** 0.5).
+Stable row softmax: subtract nl.max(scores, axis=[1], keepdims=True), exp,
+then normalize with nl.sum(exp_scores, axis=[1], keepdims=True) and nisa.reciprocal.
+Use nisa.tensor_scalar for tile/scalar or tile/row-vector operations and nisa.activation(op=nl.exp).
+For PV, transpose probabilities into P_T (seq, seq); use stationary=P_T, moving=V_sbuf.
+Every nc_transpose reads sbuf and writes a fresh psum tile; tensor_copy that result to sbuf.
+Every nc_matmul writes a fresh float32 psum tile; tensor_copy to sbuf before DMA to HBM.
+Allocate with nl.ndarray(shape, dtype=nl.float32, buffer=nl.sbuf/nl.psum/nl.shared_hbm).
+nisa.dma_copy(dst=, src=) loads/stores; nisa.tensor_copy(dst=, src=) moves on-chip tiles.
+nl.float32 is a dtype, not a function. Row reductions use nl.sum/nl.max, not nisa.sum.
+Use distinct intermediate buffers so the original inputs stay unchanged.
+"""
+
+
+ATTENTION_LAYOUT_PLAN = """Use this buffer inventory and stage plan; generate the complete kernel yourself.
+All dimensions below are Python shape integers. Every buffer name denotes a DISTINCT allocation.
+SBUF (seq,dim): q_sb, k_sb, v_sb, out_sb.
+SBUF (dim,seq): qT_sb, kT_sb. PSUM (dim,seq): qT_ps, kT_ps.
+PSUM (seq,seq): scores_ps, pT_ps.
+SBUF (seq,seq): scores_sb, shifted, exp_scores, probabilities, pT_sb.
+SBUF (seq,1): inverse_sum. row_max and row_sum are returned by nl.max and nl.sum.
+PSUM (seq,dim): out_ps. Shared HBM (seq,dim): out, dtype=q.dtype.
+Use float32 for the on-chip buffers.
+Stage 1: dma_copy q->q_sb, k->k_sb, v->v_sb. HBM inputs are never compute operands.
+Stage 2: nc_transpose q_sb->qT_ps and k_sb->kT_ps; tensor_copy each to its OWN *_sb.
+Stage 3: nc_matmul dst=scores_ps, stationary=qT_sb, moving=kT_sb. No transpose flags.
+Stage 4: tensor_scalar dst=scores_sb, data=scores_ps, op0=nl.multiply, operand0=1.0/(dim**0.5).
+Stage 5: row_max=nl.max(scores_sb, axis=[1], keepdims=True).
+Stage 6: tensor_scalar dst=shifted, data=scores_sb, op0=nl.subtract, operand0=row_max.
+Stage 7: activation dst=exp_scores, data=shifted, op=nl.exp.
+Stage 8: row_sum=nl.sum(exp_scores, axis=[1], keepdims=True).
+Stage 9: reciprocal dst=inverse_sum, data=row_sum.
+Stage 10: tensor_scalar dst=probabilities, data=exp_scores, op0=nl.multiply, operand0=inverse_sum.
+Stage 11: nc_transpose probabilities->pT_ps; tensor_copy pT_ps->pT_sb.
+Stage 12: nc_matmul dst=out_ps, stationary=pT_sb, moving=v_sb.
+Stage 13: tensor_copy out_ps->out_sb; dma_copy out_sb->out; return out (not the DMA return value).
+Every instruction above is nisa.<name>(keyword arguments). Allocations use nl.ndarray.
+"""
+
+
 def first_prompt(level, terse=0):
     """Deliberately short, and it does NOT list the rules.
 
@@ -814,6 +864,11 @@ def first_prompt(level, terse=0):
     """
     s = nkibench.LEVELS[level]
     import inspect
+    if level == 8 and ATTENTION_PLAN:
+        return (f"Write an AWS Neuron NKI kernel named `{s['entry']}` with @nki.jit. "
+                "Import nki, nki.language as nl, and nki.isa as nisa.\n\n"
+                f"{inspect.getsource(s['ref'])}\n{ATTENTION_CONTRACT}\n{ATTENTION_LAYOUT_PLAN}\n"
+                "Reply with ONE complete Python code block, no prose." + api_extra(level) + blocks_text())
     if terse >= 2:
         # Last resort. Measured on this endpoint: one-sentence prompts answered in 300-700
         # tokens while every structured, rule-carrying prompt spiralled.
@@ -865,6 +920,11 @@ def repair_prompt(level, source, feedback):
     The lesson this whole repo keeps re-learning: feeding a verifier's report back verbatim
     reproduces the same mistake, because a report says what is wrong and never what to do.
     """
+    if level == 8 and ATTENTION_PLAN:
+        return (f"Repair this NKI attention kernel. Preserve the following mathematical and layout contract "
+                f"while fixing ALL reported errors and their dependent stages.\n{ATTENTION_CONTRACT}\n"
+                f"{ATTENTION_LAYOUT_PLAN}\n```python\n{source}\n```\nChecker feedback:\n{feedback}\n"
+                "Reply with ONE complete Python code block, no prose." + api_extra(level) + blocks_text())
     return (
         f"This NKI kernel for {nkibench.LEVELS[level]['op']} is not right yet.\n\n"
         f"```python\n{source}\n```\n\n"
@@ -1185,6 +1245,9 @@ def main():
     ap.add_argument("--prompt-portfolio", action="store_true",
                     help="give each sample a different framing (as-is / plan the tiles first / rewrite / "
                          "smallest change) -- measured to be a stronger lever than temperature")
+    ap.add_argument("--attention-plan", action="store_true",
+                    help="level 8: give the attention contract and the explicit 13-stage buffer plan "
+                         "(team 20 seat-97 work; very prescriptive)")
     ap.add_argument("--lint", action="store_true",
                     help="check every tile's memory and every operator BEFORE simulating, and report all "
                          "problems at once with line numbers (the simulator stops at the first)")
@@ -1209,7 +1272,8 @@ def main():
         commit = None
     a._provenance = dict(session=uuid.uuid4().hex[:8], source_hash=digest.hexdigest()[:12], commit=commit,
                          flags=" ".join(sys.argv[1:]))
-    global LEVEL_HINTS, BLOCKS, LINT
+    global LEVEL_HINTS, BLOCKS, LINT, ATTENTION_PLAN
+    ATTENTION_PLAN = a.attention_plan
     LEVEL_HINTS = a.level_hints
     LINT = a.lint
     if a.blocks:

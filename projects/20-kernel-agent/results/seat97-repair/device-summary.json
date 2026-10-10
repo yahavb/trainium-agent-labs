@@ -1,0 +1,45 @@
+{
+  "date_utc": "2026-10-10T21:23:48.499953+00:00",
+  "host": "seat-97",
+  "instance_type": "trn2.48xlarge",
+  "nki_version": "0.6.0+31049202112.g85070674",
+  "kernel_sha256": "50840792fec8c59fec2d34a3f29b9f92e86db7ac943f61ad4c6c859728a070e3",
+  "runner_sha256": "8a0c7e54d56ecc3c0b40fa6345421dcd3e4e859e675f111f34ca81d62a16b813",
+  "execution": "nki.jit NumPy standalone -> neuronx-cc NEFF -> Neuron Runtime device execution; no simulator",
+  "env": {
+    "NEURON_RT_NUM_CORES": "1",
+    "NEURON_RT_VISIBLE_CORES": null,
+    "NEURON_LOGICAL_NC_CONFIG": "2",
+    "NEURON_PLATFORM_TARGET_OVERRIDE": "trn2"
+  },
+  "official_hardware_cases_passed": 3,
+  "official_hardware_cases_total": 3,
+  "calls_per_case": 2,
+  "all_inputs_unchanged": true,
+  "all_repeats_bitwise_equal": true,
+  "normalized_max_error": 1.2221260755731916e-05,
+  "compiled_shapes": 3,
+  "compile_only_device_executed": false,
+  "manual_core0_and_core1_attempts": "NRT_FAILURE during runtime initialization; no numerical execution",
+  "successful_allocation": "automatic one-free-core request",
+  "model_server_paused": false,
+  "server_health": {
+    "status": 200,
+    "server_pid_103_exists": true,
+    "content": "SEAT97_SERVER_KEPT_RUNNING"
+  },
+  "timing_scope": "Recorded call times include compilation/host/runtime/transfers and are not isolated kernel latency.",
+  "files": {
+    "device-core0.log": "a5f81caea8b9cbe57918ac5f11a1439005e52d6a44e1e39ffa7543cd225706c0",
+    "device-core0.json": "8b88a2102a52c809b5050042b5f4089a773c6f2a08735c3bbedf7240ecf86655",
+    "device-core1.log": "fcafb1c5958367c33b9979022688da4df9e0b2770f78513921eb6f8a9e8edd5e",
+    "device-core1.json": "24d4b1a970909a8d82ccae0a9d8a103f47d785f34c7bb3b233a1a46271d8d9f4",
+    "device-auto.log": "a49605dea4a53bc186e4b8d7a34b4880a4e0918988e5bb8fe836fae623c6be2e",
+    "device-auto.json": "c5d5239b806896336f195b4c2a4f413b184e6ad39830f511136eb1bc635135cc",
+    "device-compile-only.log": "b9f3e5c15980561b0b383b9d19e48b0b269033a4da5065549b5b57099c87ce1c",
+    "device-compile-only.json": "8180cbcb76e5b59a8013fc458e04fb01748c6e7f5dccec8b163c51d556b4f2d4",
+    "device-compile-only.py": "f8edd0f8a6a19e1cff829cf5ae23c8bf2ef1c073f1253be92134d6d22476d92c",
+    "device-environment.json": "47c3cd01e5de9ed8e39dcbdcfb8a62253bcb7a1b5bccb0768de93c744df7be33",
+    "device-server-health.json": "f599047c02610b58d32341cad13a2c89278963cc52d93ae8a96b82cc5457a9e5"
+  }
+}

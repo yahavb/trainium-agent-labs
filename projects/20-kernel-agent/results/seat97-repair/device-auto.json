@@ -1,0 +1,57 @@
+{
+  "host": "seat-97",
+  "execution": "nki.jit standalone device execution",
+  "candidate": "/workspace/level8-repair-shubham-97-planned/solved/level08_attention.py",
+  "sha256": "50840792fec8c59fec2d34a3f29b9f92e86db7ac943f61ad4c6c859728a070e3",
+  "lnc": 2,
+  "cores": "automatic",
+  "requested_core_count": "1",
+  "platform": "trn2",
+  "suite": "official",
+  "cases": [
+    {
+      "case": "seq=128 dim=64",
+      "passed": true,
+      "error": null,
+      "shape": [
+        128,
+        64
+      ],
+      "normalized_max_error": 1.1995490154431963e-05,
+      "inputs_unchanged": true,
+      "repeatable": true,
+      "first_call_wall_s": 10.211402667991933,
+      "second_call_wall_s": 1.7279864380107028
+    },
+    {
+      "case": "seq=64 dim=128",
+      "passed": true,
+      "error": null,
+      "shape": [
+        64,
+        128
+      ],
+      "normalized_max_error": 1.0580578076374143e-05,
+      "inputs_unchanged": true,
+      "repeatable": true,
+      "first_call_wall_s": 1.6989930470008403,
+      "second_call_wall_s": 1.6893664069939405
+    },
+    {
+      "case": "seq=96 dim=32",
+      "passed": true,
+      "error": null,
+      "shape": [
+        96,
+        32
+      ],
+      "normalized_max_error": 1.2221260755731916e-05,
+      "inputs_unchanged": true,
+      "repeatable": true,
+      "first_call_wall_s": 1.7963728489994537,
+      "second_call_wall_s": 1.7982224599982146
+    }
+  ],
+  "passed": 3,
+  "total": 3
+}

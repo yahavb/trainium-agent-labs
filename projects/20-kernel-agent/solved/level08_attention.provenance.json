@@ -1,0 +1,39 @@
+{
+  "level": 8,
+  "run": 1,
+  "round": 0,
+  "sample": 0,
+  "temperature": 0.2,
+  "reward": 1.0,
+  "parts": {
+    "parses": true,
+    "rules": true,
+    "runs": true,
+    "correct": true
+  },
+  "finish": "stop",
+  "prompt_tokens": 1441,
+  "completion_tokens": 1023,
+  "session": "63389717",
+  "source_hash": "d86182cbbed9",
+  "flags": "--level 8 --rounds 4 --samples 2 --repeat 2 --context 8192 --max-tokens 3000 --base http://localhost:8000/v1 --model Qwen/Qwen3-8B --lint --level-hints --portfolio --echo-check --log results/agent-planned.jsonl",
+  "model": "Qwen/Qwen3-8B",
+  "pod": "seat-97",
+  "guidance": "Explicit hand-written attention buffer inventory and 13-stage plan; no complete hand-written kernel, seed-from, or blocks supplied.",
+  "artifact_sha256": "50840792fec8c59fec2d34a3f29b9f92e86db7ac943f61ad4c6c859728a070e3",
+  "independent_cases": "24/24; results/seat97-repair/generated-run1-independent.json",
+  "validation": "Static gates; NKI CPU simulation (24 independent cases); actual Trainium2 compilation and device execution (3 official shapes, each twice); no isolated kernel latency measurement",
+  "hardware_validation": {
+    "pod": "seat-97",
+    "instance_type": "trn2.48xlarge",
+    "official_cases": "3/3",
+    "calls_per_case": 2,
+    "repeat_outputs_bitwise_equal": true,
+    "inputs_unchanged": true,
+    "max_normalized_error": 1.2221260755731916e-05,
+    "lnc": 2,
+    "core_allocation": "automatic; NEURON_RT_NUM_CORES=1; NEURON_RT_VISIBLE_CORES unset",
+    "model_server_paused": false,
+    "evidence": "results/seat97-repair/device-summary.json"
+  }
+}

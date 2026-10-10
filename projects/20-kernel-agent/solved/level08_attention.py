@@ -1,15 +1,3 @@
-"""
-Reference kernel for level 8 (single-head attention) of the ladder in nkibench.py.
-
-Written by team 20 by hand -- NOT produced by the agent, and never shown to it. It exists to prove the
-level is solvable with this NKI version and to give the checker a ground truth:
-    python nkibench.py --level 8 --check reference_level8.py      # 3/3 shapes, traffic at the floor
-
-softmax(q k^T / sqrt(d)) v for q, k, v of shape (seq, dim), everything in one tile (seq <= 128):
-transpose q and k so dim is the contraction (partition) axis, nc_matmul the scores into psum, scale,
-subtract the row max, exp, divide by the row sum, transpose the probabilities so seq is the contraction
-axis, and nc_matmul them with v.
-"""
 import nki
 import nki.language as nl
 import nki.isa as nisa
