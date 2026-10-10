@@ -103,7 +103,8 @@ def test_params_and_assumptions_become_python_statements():
 
 def test_engine_and_accumulate_attributes_are_emitted_only_when_explicit():
     assert "engine" not in emit_nki(tiny_proc(copy_call()))
-    assert "dma_copy(dst=y[0:8], src=x[0:8], engine=nisa.vector_engine)" in emit_nki(tiny_proc(copy_call(engine="vector")))
+    assert "dma_copy(dst=y[0:8], src=x[0:8], engine=nisa.engine.vector)" in emit_nki(tiny_proc(copy_call(engine="vector")))
+    assert "dge_mode=nisa.dge_mode.hwdge, engine=nisa.engine.sync" in emit_nki(tiny_proc(copy_call(dge="hwdge", engine="sync")))
 
 
 def test_loop_kinds_map_to_nl_range_functions():
