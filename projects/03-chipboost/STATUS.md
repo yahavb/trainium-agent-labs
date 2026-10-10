@@ -19,8 +19,12 @@
 | Consolidated Qwen-only v2 | Complete: 7 `wrong`, 1 `faster` in 8 attempts; winner 1.517123964x; two unchanged-source replays `faster` at 1.516961251x and 1.516817767x |
 
 The v2 winner and both replay records are preserved under `experiments/qwen-v2-feedback/` and
-`experiments/qwen-winner-replication/`. The 80-attempt dashboard separates v1 from v2 and excludes
+`experiments/qwen-winner-replication/`. The 100-attempt dashboard separates v1, v2, P1-fix repeats and continuation, and excludes
 replays from the optimization budget. V2 is one exploratory multi-change run, not a controlled feedback ablation.
+
+Final P1-fix repeats completed 16 attempts: 14 `wrong`, 2 `faster` (both in r0; r1 was 8 `wrong`).
+Winner continuation completed four more attempts, all `wrong`; no new improvement. The frozen 1.517x
+winner remains verified and preserved. Startup checks and unchanged-source replays are not model attempts.
 
 See [RESULTS-SUMMARY.md](RESULTS-SUMMARY.md) for exact measurements, provenance, and cohort limitations.
 Original v1: referee 22 `wrong` + 2 `no_gain`; model alone 2 `wrong` + 22 `no_gain`;

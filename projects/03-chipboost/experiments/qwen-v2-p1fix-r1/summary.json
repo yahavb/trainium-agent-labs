@@ -1,0 +1,25 @@
+{
+  "phase": "complete",
+  "core": 3,
+  "model": "Qwen/Qwen3-8B",
+  "tag": "v2-p1fix-r1",
+  "run_id": "matmul-referee-v2-p1fix-r1-203830-0",
+  "attempts": 8,
+  "verdict_counts": {
+    "wrong": 8
+  },
+  "max_valid_speedup": null,
+  "best_verified_with_baseline": 1.0,
+  "faster_attempts": [],
+  "acceptance_verdict": "no_gain",
+  "sources": {
+    "03-chipboost/speedcheck.py": "577cf5eb6f645c2ba632e4f162abfa510714b6fd078ec174951a4e4224276f66",
+    "03-chipboost/agent.py": "9ecb816beb6db38b8510d4db59afdfc2e6919726b15f78a6c400fb3b422d7340",
+    "02-kernel-agent/reference_level4.py": "0dde78bd65e0a724a4fab05b2b893b215c8335e2086bc6c945ed43250a1f728b",
+    "02-kernel-agent/agent.py": "a5e147d71d7d25e422516eaad1fef1873ae6269f9df1fec279048e8246d727cf",
+    "02-kernel-agent/nkibench.py": "5f291dd455c435c924cf3799efeef6981933c2df9f84a6e4b74961039b8806a9",
+    "03-chipboost/schema.py": "d0ac871a344a7c496bcaa5561eb0796675acc0fb82860fb87e0b945d10d8d89e"
+  },
+  "pilot_sha256": "5db5517845e9e7b55f93423d26cc30eb76b48d3ea55178b6f7bc120535513828",
+  "note": "One exploratory eight-attempt Qwen referee-guided run, distinct from earlier v1 and consolidated v2 cohorts."
+}
