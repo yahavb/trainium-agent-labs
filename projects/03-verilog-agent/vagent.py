@@ -179,21 +179,44 @@ def check(name, code):
 SYSTEM = "You are a Verilog engineer. Reply with ONLY the complete module in one ```verilog code block. No explanation."
 TB_SYSTEM = "You are a Verilog verification engineer. Reply with ONLY one ```verilog code block containing a self-checking testbench module named tb. No explanation."
 
-def ask(user, system=SYSTEM):
-    body = {"model": MODEL, "max_tokens": 2000, "temperature": 0.7,
+SAMPLES = 1   # answers per request (--samples); the server generates them in parallel
+
+def ask_many(user, system=SYSTEM, n=None):
+    """One request, n different answers (temperature 0.7 makes them differ)."""
+    body = {"model": MODEL, "max_tokens": 2000, "temperature": 0.7, "n": n or SAMPLES,
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
             "chat_template_kwargs": {"enable_thinking": False}}
     req = urllib.request.Request(URL, json.dumps(body).encode(), {"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=900) as r:
-        return json.load(r)["choices"][0]["message"]["content"]
+        return [c["message"]["content"] or "" for c in json.load(r)["choices"]]
+
+def ask(user, system=SYSTEM):
+    return ask_many(user, system, 1)[0]
+
+MOD = re.compile(r"\bmodule\s+(\w+).*?\bendmodule\b", re.S)
+
+def _blocks(txt):
+    txt = re.sub(r"<think>.*?</think>", "", txt, flags=re.S)
+    b = re.findall(r"```(?:verilog|systemverilog|sv|v)?\s*\n(.*?)```", txt, re.S)
+    return [re.sub(r"^\s*`include.*$", "", x, flags=re.M) for x in (b or [txt])]
 
 def extract(txt):
-    txt = re.sub(r"<think>.*?</think>", "", txt, flags=re.S)
-    blocks = re.findall(r"```(?:verilog|systemverilog|v)?\s*\n(.*?)```", txt, re.S)
-    if blocks:
-        return blocks[-1]
-    m = re.search(r"(module\b.*?endmodule)", txt, re.S)
-    return m[1] if m else txt
+    """Design code only: every module except a testbench called tb."""
+    for b in reversed(_blocks(txt)):
+        mods = [m[0] for m in MOD.finditer(b) if m[1] != "tb"]
+        if mods:
+            return "\n\n".join(mods) + "\n"
+    return txt
+
+def extract_tb(txt):
+    """Testbench only: module tb (+ `timescale). Drops any copy of the design the AI pasted in,
+    which would otherwise be defined twice and fail to compile."""
+    for b in reversed(_blocks(txt)):
+        m = re.search(r"\bmodule\s+tb\b.*?\bendmodule\b", b, re.S)
+        if m:
+            ts = re.search(r"`timescale[^\n]*", b)
+            return (ts[0] + "\n" if ts else "") + m[0] + "\n"
+    return txt
 
 # ---------------- automatic testbench ----------------
 TB_PROMPT = """Write a self-checking Verilog testbench (module tb) for this design.
@@ -223,7 +246,8 @@ def validate_tb(tb, stub):
     c = subprocess.run(["iverilog", "-g2012", "-o", f"{d}/sim", f"{d}/stub.v", f"{d}/tb.v"],
                        capture_output=True, text=True, timeout=30)
     if c.returncode:
-        return False, "it does not compile:\n" + (c.stderr + c.stdout).replace(d + "/", "")[-600:]
+        errs = [l for l in (c.stderr + c.stdout).replace(d + "/", "").splitlines() if l.strip()]
+        return False, "it does not compile: " + " | ".join(errs[:4])[:600]
     try:
         s = subprocess.run(["vvp", f"{d}/sim"], capture_output=True, text=True, timeout=10)
     except subprocess.TimeoutExpired:
@@ -252,13 +276,16 @@ def auto_tb(spec, code, log, tag, tries=3):
             prompt += f"\n\nYour previous testbench was rejected because {why}\nWrite a corrected one."
         t0 = time.time()
         try:
-            tb = extract(ask(prompt, TB_SYSTEM))
+            cands = [extract_tb(x) for x in ask_many(prompt, TB_SYSTEM)]
         except Exception as ex:
             print(f"  [tb] request failed: {ex}", flush=True)
             return None
-        ok, why = validate_tb(tb, stub)
-        print(f"  [tb] attempt {i}: {'accepted' if ok else 'rejected - ' + why.splitlines()[0]} "
-              f"({time.time() - t0:.0f}s)", flush=True)
+        for tb in cands:
+            ok, why = validate_tb(tb, stub)
+            if ok:
+                break
+        print(f"  [tb] attempt {i}: {'accepted' if ok else 'rejected - ' + why[:200]} "
+              f"({time.time() - t0:.0f}s, {len(cands)} candidate(s))", flush=True)
         log.write(json.dumps(dict(problem=tag, kind="testbench", attempt=i, accepted=ok,
                                   reason=why, tb=tb)) + "\n")
         log.flush()
@@ -286,11 +313,18 @@ def loop(spec, code, tb, rounds, mode, log, tag, rep=1, verbose=False):
                       f"Checker result: {fb}\n\nFix the module so it meets the spec and passes the checker.")
         t0 = time.time()
         try:
-            reply = ask(prompt)
+            replies = ask_many(prompt)
         except Exception as ex:
-            reply = f"(request failed: {ex})"
-        code = extract(reply)
-        score, det, basic = simulate(code, tb)
+            replies = [f"(request failed: {ex})"]
+        best = None
+        for rep_txt in replies:
+            cand = extract(rep_txt)
+            res = simulate(cand, tb)
+            if best is None or res[0] > best[0][0]:
+                best = (res, cand)
+            if res[0] == 1.0:
+                break
+        (score, det, basic), code = best
         dt = time.time() - t0
         print(f"  [{mode}] {tag} rep{rep} round{rnd}: score={score:.3f} ({dt:.0f}s) {det.splitlines()[0]}", flush=True)
         if verbose and score < 1.0:
@@ -453,6 +487,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", choices=["basic", "detailed", "both"])
     ap.add_argument("--rounds", type=int, default=5)
+    ap.add_argument("--samples", type=int, default=1, help="answers per request, generated in parallel; keeps the best")
     ap.add_argument("--repeat", type=int, default=3)
     ap.add_argument("--problems", default="all")
     ap.add_argument("--log", default="attempts.jsonl")
@@ -460,6 +495,8 @@ def main():
     ap.add_argument("--tbtest", action="store_true", help="measure whether AI testbenches catch the built-in bugs")
     a = ap.parse_args()
     names = list(P) if a.problems == "all" else a.problems.split(",")
+    global SAMPLES
+    SAMPLES = max(1, a.samples)
 
     if a.selftest:  # prove the checker: buggy must fail, reference must pass
         ok = True
