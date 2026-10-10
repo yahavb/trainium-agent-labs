@@ -7,7 +7,7 @@
 
 ---
 
-## 0. 当前状态（2026-10-10 13:35，随时更新）
+## 0. 当前状态（2026-10-10 14:55，随时更新）
 
 **人员**：teoguo（seat-116）+ liuyq（有经验）两人主力；另外三位新手做辅助，不计入关键路径。
 **题目**：做项目 2（`projects/02-kernel-agent`，NKI kernel agent，在芯片上跑）。CHALLENGE（Stage A，`kernelbench.py`）有时间再做，同一套 agent 搬过去。评分按 30/25/25/20 那一套（CHALLENGE 第 239 行写着 "Same rubric as every problem"）。
@@ -30,6 +30,25 @@ level 4   0/5      [0.62, 0.62, 0.50, 0.62, 0.62]   0/5，全部 0.62
 **截止时间 18:30**（问过主办方）。座位 115/117/118/119 是组员的，可以并行跑；操作手册见 Claude 文档「Trainium 组员操作手册」。
 日志拉回本机：`scripts/sync.sh 116 pull` → `runs/seat-116/latest/`（gitignore，不提交）。
 重新生成分类表：`.venv/bin/python scripts/attempts_to_csv.py runs/seat-116/latest/projects/02-kernel-agent/attempts.jsonl -o analysis/baseline_seat116`
+
+**实验结果（执行 1 维护；全部 `--rounds 8 --samples 4 --context 8192 --repeat 5`，vLLM TP2/8192/seqs 4，模拟目标 trn2/gen3）**
+
+> ⚠ **服务端是 greedy 解码**（14:30 实测）：同一请求在 temperature 0.7 下 4/4 输出逐字相同，`n=4` 也一样，带 `seed` 返回 HTTP 500 并把引擎弄崩（117 因此重启过一次）。批次组成不同时输出会变，所以不是完全确定。结论：`--samples 4` 往往只是 1 个样本，`--repeat 5` 往往是同一条轨迹重放 5 次，所以下表多一列「不同轨迹数」（整条轨迹的代码序列不同的 run 数）。baseline 116：106 轮里 89 轮 4 个样本逐字相同。
+
+| 实验 | commit | level | 座位 | solved | 5 次分数（解出的轮次） | 不同轨迹数 | reaudit | 决定 |
+|---|---|---|---|---|---|---|---|---|
+| baseline | 8f1ca41 前 | L1/L2/L3/L4 | 116 | 0/5、3/5、0/5、0/5 | 见上表 | L1 第 0 轮 5 次相同；L2–L4 第 0 轮各不相同 | L2 2 个 kernel PASS | 参照 |
+| baseline 复现 | upstream 8f1ca41 | L1/L2/L3/L4 | 119 | 0/5、2/5、0/5、0/5 | L2 [1,.3,.3,1,.3]，L4 [.62×4,.5] | — | — | 和 116 一致 |
+| E-A | 5ed7ec2（进程里是 26c43ed） | L1 | 116 | 0/5 | 全 0.30 | 1–2（日志没有 run 字段） | — | 作为铺路改动采用 |
+| E-v3 | c39c0ce | L4 | 117 | 1/2（停在第 3 次） | 1.0（第 6 轮）、0.75 | 2 | PASS | 被 v7 取代 |
+| E-F | ac258d2 | L1 | 116 | 0/5 | 全 0.30 | **1** | — | **不采用，已 revert（d97b5e4）** |
+| **E-v7** | ce0403c | L3 | 117 | **5/5** | 全 1.0（都在第 1 轮） | 4 | PASS（13 次解出，2 个不同 kernel） | **采用（主线）** |
+| **E-v7** | ce0403c | L4 | 118 | **5/5** | 全 1.0（都在第 3 轮） | **1** | PASS（20 次解出，1 个 kernel） | **采用（主线）** |
+| E-v7 | ce0403c | L1 | 119 | 0/1（第 2 次时为了 E-div 停掉） | 0.50 | — | — | 进行中止 |
+| E-v7 | ce0403c（按 SUBMISSION 的 clone 步骤部署） | L2 | 116 | 进行中（14:50 起） | | | | 回归检查 |
+| E-div | 81549a0（v7 + feedback_v8.py） | L1 / L4 / L3 | 117 / 118 / 119 | 进行中（14:44 / 14:47 / 14:48 起） | | | | 判定：L3、L4 ≥4/5 且 L2 ≥2/5 |
+
+日志：`runs/seat-<N>/<实验>/`（不进 git）。1.0 一律用 `scripts/reaudit.py` 复审。
 
 **已确认的发现**
 1. **每轮约 50 秒，慢在模型生成，不在评分；没有便宜的提速办法。** 12:50 在 seat-116 实测：1 条并发 13.9 tok/s，4 条并发总共 22.1 tok/s（每条 5.5）。模型确实在 Trainium 上跑（`neuron-ls` 有进程；`PJRT_DEVICE=CPU` 是 vllm_neuron 自己设的）。CPU 配额 11 核只用了约 5 核，节流约 1%，所以不是 CPU 配额卡住；`vllm._C` 缺失在 Neuron 上是正常的。可调的只有 `--optimization-level 3`（默认 O1）或 TP=4，都要重新编译、耗时未知、还会让 baseline 失效，**决定不改**。对策：多座位并行，一次只测一个 level；输出 token 贵、输入 token 便宜（prefill 约 270 tok/s）。
