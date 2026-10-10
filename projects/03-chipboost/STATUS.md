@@ -152,7 +152,33 @@ Three independent checks attacked the first referee. Every hole below let a wron
 - **Stricter "faster".** It requires beating the noise on the total, no regression on any shape, and passing random held-out shapes.
 - **Clean failures.** Candidate error text is quoted as data, never turned into an instruction. Infrastructure failures raise `RefereeError`, which is never logged as a verdict.
 
-Final verification of this version, the full suite plus new sandbox attacks, is running. Results go here.
+### Final verification of the hardened referee (core 2, full regression on the final code)
+
+**Every test gives the expected result.** Rows are in `results_p1.json`.
+
+| Group | Result |
+|---|---|
+| Honest kernels (8) | all accepted: h1 1.000x; **h2 1.541x, h3 1.203x, c5a 1.857x, c5b 1.858x, c5c 1.319x FASTER** with held-out passed; c5e, h4 1.000x |
+| Round-1 cheats (21) | all rejected (rules / simulator / chip) |
+| `c3a` (wrong only off the timing shapes, not faster) | `slower` by design: held-out is checked before any `faster` |
+| Round-2 attacks a1-a4 + a new `np.f2py.os.posix_spawnp` shell | all rejected, **no side effects**, no survivors |
+| Sandbox probes (rules bypassed, fed straight to the child) | runs as a fresh uid with **zero capabilities, NoNewPrivs**; PermissionError on /workspace, the referee, the cache and site-packages; fork bomb stopped at 2047 by RLIMIT_NPROC; 60 GB allocation -> MemoryError; setsid daemon and a pid-hopper both killed; device init fails |
+| Busy core (`CHIPBOOST_CORE=0`) | `check_isolated` -> `None` (referee error, not a verdict) |
+| Infinite loop at trace time | `wrong` at the timeout, with how it ended |
+
+**Bugs that verification found and fixed:**
+1. Tamper-snapshot noise from `__pycache__` turned honest kernels into `rules`.
+2. `nl.load`/`nl.store` were rejected as file operations.
+3. The child could swap its workdir for a symlink. Now the workdir is root-owned and only `out/` is writable.
+4. A malformed `result.json` could crash the referee.
+5. Tensor names from the NEFF could inject text into `instruction_given`.
+
+Plus: the kill runs as the sandbox uid (atomic against forks), the referee reaps its orphans, and the NKI compile cache is no longer world-writable.
+
+**Still open:**
+- `/dev/neuron0` is 0666. The child's lack of a core depends on `NEURON_RT_VISIBLE_CORES` plus vLLM holding cores 0-1; nothing enforces it.
+- c5a/c5b (`dma_compute` loads) at ~1.86x deserve a human look at why.
+- A `check_isolated` timeout kills the referee but leaves its child bounded only by RLIMIT_CPU.
 
 ## Next
 

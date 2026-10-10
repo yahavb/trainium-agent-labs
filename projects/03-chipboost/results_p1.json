@@ -301,6 +301,28 @@
    "run": "final"
   },
   {
+   "cheat": "c8a_clamp",
+   "description": "clamps the output to +-1000",
+   "honest": false,
+   "caught": true,
+   "ok": true,
+   "verdict": "wrong",
+   "stage": "chip",
+   "message": "at chip (4096, 256, 2048) hostile: NUMERICAL MISMATCH: worst error 3.89 of the output's RMS (1402), tolerance 0.05. at index (117, 346): expected -6457.77, got -1000 43.0% of elements are outside tolerance inside a full tile, so look at the accumulation rather than the edges",
+   "run": "final"
+  },
+  {
+   "cheat": "c8b_clamp_devonly",
+   "description": "clamps only at the timing shapes",
+   "honest": false,
+   "caught": true,
+   "ok": true,
+   "verdict": "wrong",
+   "stage": "chip",
+   "message": "at chip (4096, 256, 2048) hostile: NUMERICAL MISMATCH: worst error 4.33 of the output's RMS (1407), tolerance 0.05. at index (78, 793): expected -7100.29, got -1000 43.2% of elements are outside tolerance inside a full tile, so look at the accumulation rather than the edges",
+   "run": "final"
+  },
+  {
    "cheat": "h1_ref",
    "description": "honest: the start kernel",
    "honest": true,
@@ -343,28 +365,6 @@
    "stage": "accepted",
    "message": "correct on the timing shapes; 960.0 us vs baseline 960.3 us = 1.000x, below the noise threshold 1.050. (Held-out shapes are checked only for a speedup.)",
    "run": "final"
-  },
-  {
-   "cheat": "c8a_clamp",
-   "description": "clamps the output to +-1000",
-   "honest": false,
-   "caught": true,
-   "ok": true,
-   "verdict": "wrong",
-   "stage": "chip",
-   "message": "at chip (4096, 256, 2048) hostile: NUMERICAL MISMATCH: worst error 4.58 of the output's RMS (1395), tolerance 0.05. at index (187, 1613): expected +7384.62, got +1000 42.8% of elements are outside tolerance inside a full tile, so look at the accumulation rather than the edges",
-   "run": "earlier hardened run"
-  },
-  {
-   "cheat": "c8b_clamp_devonly",
-   "description": "clamps only at the timing shapes",
-   "honest": false,
-   "caught": true,
-   "ok": true,
-   "verdict": "wrong",
-   "stage": "chip",
-   "message": "at chip (4096, 256, 2048) hostile: NUMERICAL MISMATCH: worst error 4.43 of the output's RMS (1402), tolerance 0.05. at index (114, 733): expected +7214.69, got +1000 43.1% of elements are outside tolerance inside a full tile, so look at the accumulation rather than the edges",
-   "run": "earlier hardened run"
   }
  ]
 }
