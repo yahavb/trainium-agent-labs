@@ -203,6 +203,8 @@ class Context:
                 raise ServiceError('Empty model response')
             return reply, choice.get('finish_reason')
         except httpx.TimeoutException as exc:
+            with self.lock:
+                self.unknown_usage += 1
             event = dict(type='deadline', request_id=request_id, attempt_id=attempt_id,
                          error=type(exc).__name__, seconds=time.monotonic()-started)
             trace.append(event)
@@ -211,6 +213,8 @@ class Context:
                 raise ServiceError(str(exc)) from exc
             raise BudgetError(str(exc)) from exc
         except (httpx.HTTPError, KeyError, ValueError, IndexError, TypeError) as exc:
+            with self.lock:
+                self.unknown_usage += 1
             self.record(dict(type='service_error', request_id=request_id, attempt_id=attempt_id, error=str(exc)))
             raise ServiceError(str(exc)) from exc
 
@@ -332,7 +336,7 @@ def solve(raw, a, log, run_id):
                     invalid += 1
                 try:
                     key = research_math.canonical_expression(grade['expr']) if grade.get('expr') else result['answer'].strip()
-                except (ValueError, TypeError):
+                except (ValueError, TypeError, SyntaxError):
                     key = result['answer'].strip()
                 duplicate = key in seen
                 duplicates += duplicate

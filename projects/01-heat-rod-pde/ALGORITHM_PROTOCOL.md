@@ -67,3 +67,18 @@ Stop the affected live suite on unavailable inference, permission failure or res
 exhaustion; preserve partial evidence. Do not substitute offline outputs or selectively
 drop failures. Official selftests and all regression tests run before live inference.
 No main/master merge is authorized by this study.
+
+## Pilot corrections before the full diagnostic suite
+
+The first launch at source 67de8f6 used an incorrect explicit service hostname and stopped
+before inference (zero requests). The Pod's configured HEATROD_BASE_URL is the working
+localhost endpoint; use that configuration, not a guessed Kubernetes service name.
+The corrected-address pilot then made two real requests on core / Level 1.1 seed 0.
+Both outputs hit the token limit, and an uncaught SyntaxError in candidate deduplication
+stopped the worker before attempt logging. Full request/response telemetry and source
+snapshots are retained; this pilot is a worker failure, not a completed mathematical trial.
+
+Revision 2 catches malformed LaTeX in deduplication and records failed-request usage as
+unknown in standalone summaries. Two regressions cover these issues. No prompt, budget,
+checker, problem or feature hypothesis changes. Restart the complete diagnostic suite
+under the revised commit, keeping the two pilot requests as separately reported costs.

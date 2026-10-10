@@ -123,6 +123,26 @@ class AlgorithmTests(unittest.TestCase):
         self.assertEqual(result['status'],'evaluation_error')
         self.assertIsNone(json.loads(log.getvalue().splitlines()[0])['grade']['reward'])
 
+    def test_latex_candidate_deduplication_does_not_abort_logging(self):
+        a=settings()
+        response=dict(answer=r'u(x,t) = \sum_{n=1}^{\infty} B_n e^{-n**2*pi**2*t}',
+                      trace=[],structure=None,tool_calls=0,tool_executions=0,cache_hits=0,error=None)
+        log=io.StringIO()
+        with patch.object(aa,'run_attempt',side_effect=lambda *args:dict(response)):
+            result=aa.solve(level1.make(1),a,log,'latex')
+        rows=[json.loads(line) for line in log.getvalue().splitlines()]
+        self.assertEqual(len(rows),a.rounds)
+        self.assertEqual(result['status'],'unsolved')
+        self.assertEqual(result['duplicate_candidates'],1)
+        self.assertTrue(all(r['grade']['reward']==0 for r in rows))
+
+    def test_failed_request_usage_is_unknown(self):
+        ctx=aa.Context(settings())
+        with patch.object(httpx,'post',side_effect=httpx.ReadTimeout('deadline')):
+            with self.assertRaises(aa.BudgetError):
+                ctx.ask([],[],'initial')
+        self.assertEqual(ctx.unknown_usage,1)
+
     def test_summary_preserves_timeout_and_unknown_token_usage(self):
         with tempfile.TemporaryDirectory() as tmp:
             p=Path(tmp)
