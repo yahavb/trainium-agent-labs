@@ -96,8 +96,8 @@ different request, or different sampling settings, gives different text), so 5 r
 5 times. Tagging samples 2–4 (E-div) and restarting them from the first prompt (E-mix) made v8.2's runs
 differ where it matters: five level-1 runs, five different kernels. Level 4's runs still repeat one path.
 [[TBD: one sentence on the spread of the final run.]] The baseline was run twice,
-on two seats with the organizers' agent: L1 0/5, L2 3/5 and 2/5, L3 0/5, L4 0/5 both times, with identical
-scores on L1, L3 and L4. Both logs were re-graded from scratch with the current checker under trn2, and
+on two seats with the organizers' agent: L1 0/5, L2 3/5 and 2/5, L3 0/5, L4 0/5 both times, with the same
+scores on L1, L3 and L4 (in a different order on L4). Both logs were re-graded from scratch with the current checker under trn2, and
 every attempt matched ([analysis/calibration_baseline_seat116.md](analysis/calibration_baseline_seat116.md),
 [analysis/calibration_replica_seat119.md](analysis/calibration_replica_seat119.md)).
 
@@ -134,7 +134,7 @@ The tables, from the logs (on a laptop; `python3` with matplotlib for the token 
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install matplotlib
-.venv/bin/python scripts/report.py analysis/final analysis/logs/final      # checks, summary, taxonomy, token chart
+.venv/bin/python scripts/final_auto.py analysis/logs/final analysis/final   # groups runs by version, then checks, summary, taxonomy, token chart
 .venv/bin/python scripts/report.py /tmp/baseline analysis/logs/baseline    # the baseline: L1 0/5, L2 3/5, L3 0/5, L4 0/5
 ```
 
@@ -160,7 +160,7 @@ Full account: [CHECKER.md](projects/02-kernel-agent/CHECKER.md). The decisions t
   output dtype check. The reference kernels pass all of it (20/20, 16/16, 4/4, 16/16). Four deliberately
   wrong kernels that pass every loop shape are all caught. [EVAL.md](projects/02-kernel-agent/EVAL.md)
 - **Levels 5–7** compute the same matmul as level 4 and add a traffic bar: a correct kernel that moves more
-  HBM bytes than the level allows (1.60× the byte floor for level 5) scores 0.5 + 0.5 × the shapes that pass.
+  HBM bytes than the level allows (1.60× the byte floor for level 5) scores 0.5 + 0.5 × the fraction of loop shapes that pass (3 of 4 → 0.875).
   Their held-out set checks values on new shapes, not traffic; the bar is enforced on the loop shapes, and the
   final solves' traffic was re-measured afterwards on a larger multi-block shape. [[TBD: that result, if L5–7 run]]
 - **Bugs we found in our own checker, and what we re-checked.**
@@ -246,16 +246,16 @@ written down before the results came in ([PLAN.md](PLAN.md) §4).
 | id | change | level | result (solved, scores) | decision |
 |---|---|---|---|---|
 | E-A | invented NKI names mapped to the real 0.6.0 calls | L1 | 0/5, all 0.30; invented names 80 → 20, the failures moved one layer deeper | kept as groundwork |
-| E-v3 | feedback_v3 | L4 | 1/2 before the seat went to v7: solved on round 6, then a 0.75 | superseded by v7 |
+| E-v3 | feedback_v3 | L4 | 1/2 before the seat went to v7: solved in round 5, then a 0.75 | superseded by v7 |
 | E-F | wrong argument list: failing line + real signature + one instruction | L1 | 0/5, all 0.30, one trajectory; wrong-signature errors 8 → 3 per run, the run then stalls on copy sizes | not carried into v7: v7's level-1 failures are different, and with a deterministic server any message change can move v7's solved trajectories |
 | E-v7 | feedback_v7 as a whole | L1, L3, L4, L2 | L3 5/5 (round 0), L4 5/5 (round 2, one trajectory), L1 0/1 (best 0.50), L2 0/3; every solve re-audited and VERIFIED | adopted, then built on |
-| E-div | v7, plus a one-line `(attempt k of n, run r)` tag on samples 2–4 so a deterministic server returns different samples | L3, L4 | L3 5/5 (3 distinct runs, was 1 under v7's L4), L4 4/4 | kept (in v8) |
+| E-div | v7, plus a one-line `(attempt k of n, run r)` tag on samples 2–4 so a deterministic server returns different samples | L3, L4 | L3 5/5 (3 distinct runs, as under v7); L4 5/5 (5 distinct runs; v7: 1), round 2 each | kept (in v8) |
 | v8 | E-div + skeleton feedback + cut-off answers not graded + level-1 call fixes; liuyq's level-1 compiler gate in the base | L1–L4 | **L1: our first level-1 solve**, in its first repair round; VERIFIED by both verdicts, held-out 20/20, lowers for trn2, re-audit PASS (1 of 3 runs). L4: 0.62 twice (v7: 5/5). L3: solved, two rounds later than v7. L2, round 0 only: 0/20 | skeleton dropped (see below); the rest kept |
 | L2 sampling | v8 with the first prompt and the sampling settings back to the organizers' | L2, round 0, 20 samples | 2/20, the same as the organizers' agent re-run today (2/20); with v7's sampling settings 0/20 | the level-2 regression was v7's sampling settings |
-| v8.1 | v8 without the skeleton, plus samples 1 and 3 on the original sampling and 2 and 4 on v7's, plus one sentence restating the level-2 task when the model transposes the whole input | L2 | the first level-2 solve in a repair round today (round 2), through the existing numeric-mismatch message; stopped after one run for v8.2 | folded into v8.2 |
+| v8.1 | v8 without the skeleton, plus samples 1 and 3 on the original sampling and 2 and 4 on v7's, plus one sentence restating the level-2 task when the model transposes the whole input | L2 | the first level-2 solve in a repair round today (round 1), through the existing numeric-mismatch message; stopped after one run for v8.2 | folded into v8.2 |
 | v8.3 (5c3aba2) | v8.2 plus **error distillation on level 2**: when a level-2 kernel runs but its numbers are wrong, the checker runs it once more on `arange` input, reads off where each output element came from, and says what the kernel actually did ("your output at row position i*B+j holds x[i]: the source index uses only i") and what the task needs, without code. Only level 2's mismatch path changes: on levels 1, 3 and 4, v8.3 sends byte-identical requests to v8.2 (27 requests, 18 of them repair rounds, compared by two of us separately: [analysis/v83_l134_identity.md](analysis/v83_l134_identity.md)), so v8.2's runs on those levels are v8.3's runs | L2 | **7/9** so far, against v8.2's 5/9 on the same seats. In 3 of the 5 solves the best kernel's feedback carried the distilled explanation in the round before (e.g. 0.50 → 1.00); the one miss stalled on `WRONG SHAPE: returned ()`, which is not a numeric error, so the distillation never spoke | final if it holds at 17:45 [[TBD]] |
 | v8.4 (15fb0d5) | v8.3 plus **WARM** on levels 5–7 only: round 0 starts from the agent's own verified level-4 kernel and the checker's traffic verdict on it ("CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 2.00x the byte floor, and level 5 requires 1.60x or better"), and the agent repairs from there. On levels 1–4 v8.4 sends byte-identical requests to v8.3 (63 requests, 51 of them repair rounds) | L5–L7 | [[TBD]] | [[TBD]] |
-| **v8.2** (final candidate, 96a9fc9) | v8.1 plus **E-mix**: in every repair round, sample 1 repairs the best kernel as before and samples 2–4 start over from the first prompt, each tagged differently. Level 2 had only ever been solved in round 0, so its repair rounds now also buy fresh first attempts | L1–L4 | **L1 5/5** (rounds 2, 2, 0, 4, 2; five different kernels, all built in full for trn2 and matching in birsim), **L2 5/9**, **L3 5/5**, **L4 5/5** (one trajectory); every solve re-audited, VERIFIED on the held-out set. Two level-1 solves are told in §8 | final candidate |
+| **v8.2** (final candidate, 96a9fc9) | v8.1 plus **E-mix**: in every repair round, sample 1 repairs the best kernel as before and samples 2–4 start over from the first prompt, each tagged differently. Level 2 had only ever been solved in round 0, so its repair rounds now also buy fresh first attempts | L1–L4 | **L1 5/5** (rounds 2, 2, 0, 4, 2; five different kernels, all built in full for trn2 and matching in birsim), **L2 5/9**, **L3 5/6** (the sixth inside the `--all` run), **L4 5/5** (one trajectory); every solve re-audited, VERIFIED on the held-out set. Two level-1 solves are told in §8 | final candidate |
 
 **The skeleton gamble, and why it lost.** v8 hollowed out the code in the repair messages (`t[<…>]`) so that the
 model would have to work out slices and shapes itself. On level 4 it could not. With and without the
@@ -446,14 +446,15 @@ counted by the server.
   NKI 0.6.0 simulates trn3. A level-4 kernel with a 1024-wide moving tile passes 2/4 shapes under trn3 and
   0/4 under trn2 ("moving free dimension 1024 exceeds max 512 for nc_version.gen3"). We set trn2
   explicitly and re-graded earlier runs under it. ([analysis/sim_target_check.md](analysis/sim_target_check.md))
-- **A deterministic server.** The seat's model server returns the same text for the same request, whatever the
-  temperature, so repeated runs of one configuration are mostly copies, and "5/5" can mean one trajectory five times. We report distinct
+- **A deterministic server.** In the standard seat configuration (`--max-num-seqs 4`, which every number above
+  uses), the model server returns the same text for the same request at temperature 0.7, so repeated runs of one configuration are mostly copies, and "5/5" can mean one trajectory five times. We report distinct
   trajectories next to every rate. On seat-115 (`--max-num-seqs 8`) sampling was applied (six identical
   requests at temperature 1.0 gave six different answers), but samples still repeated far more than on a
   GPU: 50% of sample pairs identical in first rounds and 87% in repair rounds, against 1% and 54% on an
   RTX 4090. A request with a `seed` parameter returned HTTP 500 and took the server down once.
-- **Simulator numbers.** Every score comes from `nki.simulate` on a CPU. The hand-in candidates for
-  levels 1-4, 9 and 11 were also built in full for trn2 and run on a NeuronCore (§5); no other score was.
+- **Simulator numbers.** Every score comes from `nki.simulate` on a CPU. Beyond it: every v8.2 and v8.3 solve
+  on levels 1–4 was built in full for trn2 and matched in birsim; one level-1 solve, and liuyq's hand-in
+  candidates for levels 1–4, 9 and 11, also ran on a NeuronCore (§5, §10). Speed on the chip was not measured.
   [[TBD: the final run's kernels, if built]] Chip timing was not measured: a standalone call costs ~1.5 s
   of launch.
 - **Five runs per cell, and fewer distinct trajectories.** A 3/5 against a 4/5 is noise.
