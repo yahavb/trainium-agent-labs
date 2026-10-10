@@ -259,7 +259,12 @@ def copy_kernel(a):
 # rounds fixing that operation's API instead of computing a window average.
 POOL_METHOD = """Average pooling is a window reduction: sum each pool_size by pool_size window,
 then scale by 1.0 / (pool_size * pool_size). Keep channels on the partition axis.
-Use nl.sum for the reduction and nisa.tensor_scalar with op0=nl.multiply to scale.
+For the one .ap() on the ORIGINAL full input tile (C,H,W), use exactly this layout; every pair is
+[element_stride, count], and the first stride MUST be H*W:
+  view = in_tile.ap([[H*W, C], [pool_size*W, H//pool_size],
+                     [pool_size, W//pool_size], [W, pool_size], [1, pool_size]])
+Then use nl.sum(view, axis=[3, 4]) and nisa.tensor_scalar with op0=nl.multiply to scale.
+Do not use 0 or 1 as the first stride, and do not call .ap() on an already-created view.
 """
 
 POOL_API_CARD = """NKI pooling primitives:
@@ -268,9 +273,14 @@ POOL_API_CARD = """NKI pooling primitives:
   nisa.dma_copy(dst=tile, src=input_slice) loads a tile; both sides must have the
     same element count. Derive tile sizes from the input, with at most 128 channels.
     Preserve the channel axis when slicing, even for a single channel.
-  tile.ap([[stride, count], ...]) creates a view, with strides in ELEMENTS.
-    For pooling, group the tile as [channels, output_rows, output_cols, pool_rows,
-    pool_cols]. Derive strides from the original row width and pool_size.
+  tile.ap([[stride, count], ...]) creates a view, with strides in ELEMENTS. Each pair
+    is [element_stride, count]. For the original in_tile of shape (C,H,W), the exact
+    pooling view is:
+    in_tile.ap([[H*W, C], [pool_size*W, H//pool_size],
+                [pool_size, W//pool_size], [W, pool_size], [1, pool_size]])
+    The first stride H*W is mandatory (it is the original tile's free-dimension size);
+    do not use 0 or 1 there. Call .ap() once on in_tile, not on another view.
+    This produces [channels, output_rows, output_cols, pool_rows, pool_cols].
   sums = nl.sum(window_view, axis=[3, 4]) reduces the two window axes.
   scaled = nl.ndarray(sums.shape, dtype=sums.dtype, buffer=nl.sbuf)
   nisa.tensor_scalar(dst=scaled, data=sums, op0=nl.multiply,
@@ -425,6 +435,19 @@ def enrich(error_text, level=None, shape=None):
                 f"as mi*TILE_M and ni*TILE_N, not directly from mi/ni; derive tile counts "
                 f"with ceiling division and bound ends with min(start+tile_size, dimension)."
             )
+        return error_text + detail
+    if level == 1 and "ap() pattern has invalid partition stride" in error_text.lower():
+        detail = (
+            " The access pattern must be applied ONCE to the original full-input SBUF tile "
+            "with shape (C,H,W), not to a pooled/output tile or another view. Replace the "
+            "entire pattern with exactly `in_tile.ap([[H*W, C], "
+            "[pool_size*W, H//pool_size], [pool_size, W//pool_size], "
+            "[W, pool_size], [1, pool_size]])`. Each pair is [element_stride, count]. "
+            "The first stride must be H*W because that is the original tile's free-dimension "
+            "size; never use 0 or 1 there. This pattern gives "
+            "[C, H//pool_size, W//pool_size, pool_size, pool_size]; reduce axes [3,4] and "
+            "scale by 1/(pool_size*pool_size). Keep the full input tile shape for DMA."
+        )
         return error_text + detail
     if level == 4 and (
             "module 'nki.isa' has no attribute 'fill'" in error_text
@@ -705,10 +728,14 @@ def first_prompt(level, terse=0, a=None):
         card = POOL_API_CARD if terse == 0 else (
             "Allocate with nl.ndarray(shape, dtype=..., buffer=nl.sbuf); return an "
             "nl.shared_hbm output. Move matching slices with nisa.dma_copy(dst=, src=). "
-            "Use tile.ap([[stride, count], ...]) to group windows, nl.sum(view, axis=[3, 4]), "
+            "On the original (C,H,W) input tile use ap([[H*W,C],[p*W,H//p], "
+            "[p,W//p],[W,p],[1,p]]) (pairs are [stride,count]; first stride MUST be H*W). "
+            "Then nl.sum(view, axis=[3, 4]), "
             "then nisa.tensor_scalar(dst=, data=, op0=nl.multiply, operand0=).\n")
         if terse >= 2:
-            card = "Scale with nisa.tensor_scalar(dst=, data=, op0=nl.multiply, operand0=).\n"
+            card = ("On the original input tile (C,H,W), use ap([[H*W,C],[p*W,H//p], "
+                    "[p,W//p],[W,p],[1,p]]); first stride MUST be H*W. Sum axes [3,4], "
+                    "then scale with nisa.tensor_scalar(op0=nl.multiply).\n")
         return (
             f"Write an AWS Neuron NKI kernel named `{s['entry']}`, decorated with @nki.jit.\n"
             f"Compute exactly what this NumPy reference computes:\n\n"
