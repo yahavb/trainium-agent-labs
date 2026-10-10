@@ -1,6 +1,6 @@
 # PLAN：项目 2（NKI kernel agent）
 
-> **v1，14:05。teoguo 已确认 Q1/Q4/Q5/Q6（见 §8）。** 这个文件只有总规划写。实验数字写在 NOTES §0，只由执行 1 写；这里只放任务、负责人、验收标准和决策。
+> **v1.1，14:00。teoguo 已确认 Q1/Q4/Q5/Q6（见 §8）。** 这个文件只有总规划写。实验数字写在 NOTES §0，只由执行 1 写；这里只放任务、负责人、验收标准和决策。
 > 时间锚点：16:30 开始写文档 · **17:00 冻结代码** · 17:00–17:45 最终跑 · **18:15 提交（teoguo 提 PR）** · 18:30 截止。
 
 ## 0. 目标
@@ -23,31 +23,34 @@ baseline 回溯校准（b39989f）：3 次解出置信度 0.90，保留集 16/16
 |---|---|---|
 | 总规划（本会话） | PLAN.md、挑实验、决定采用还是回滚、16:30 起写 SUBMISSION.md | 不改代码、不碰 pod |
 | 执行 1 | 唯一操作 seat-115~119 的会话：部署、跑实验、reaudit、拉日志、写 NOTES §0 的数字；实验需要的代码改动也由它提交 | 不改执行 2 的文件；不碰 liuyq 在 115 上的进程 |
-| 执行 2（../tal-deliv） | 已完成：eval set eeb13e9、token 统计 a681b90、置信度/校准 7868c08→e7663a3、分类脚本 f41b84e。接下来出 baseline 回溯校准、v7 兼容性检查、失败加恢复素材、最终的表和图 | 不碰 pod；不再改 agent.py |
+| 执行 2（../tal-deliv） | 已完成：eval set eeb13e9、token 统计 a681b90、置信度/校准 7868c08→e7663a3、分类脚本 f41b84e、baseline 回溯校准 b39989f、CHECKER.md 草稿 ab075c1。接下来：E-A 重新打分、结果汇总脚本、v7 兼容性检查、失败加恢复素材、最终的表和图 | 不碰 pod；不再改 agent.py |
 | teoguo | 拍板决策点、和 liuyq 对接、刷新凭证、18:15 提 PR | |
 | liuyq | feedback_v7（**主线反馈**，取代 v3）：推进 team/master，给出最终配置 | |
 | 新手 ×3 | 17:45 后照一页说明从头复现一遍，报告卡在哪一步 | 不在关键路径上 |
 
-## 2. 座位（13:44 执行 1 回报）
+## 2. 座位（13:44 执行 1 回报，14:00 更新）
 
 | 座位 | 现在 | 代码 | vLLM | 空出来 |
 |---|---|---|---|---|
 | 115 | liuyq：daykit feedback_v7，L2 和 L9 各 ×5，两个进程共用一个服务（13:18 起）。L9 2/2 VERIFIED。另据 183b384 的提交说明：v7 写出的 L2/L3/L4/L9/L11 kernel 已经在**芯片上**跑对 | daykit 自己的代码，projects/ 是 upstream（没有审计） | READY，**max-num-seqs 8，和 baseline 不同** | 14:30 后，liuyq 的，不碰 |
-| 116 | 空闲（E-A 已跑完），正在部署 e7663a3 | → e7663a3 | READY，同 baseline | 现在 |
-| 117 | (a) E-v3 L4 ×5，13:26 起，run 1 第 6 轮 SOLVED；(b) **来路不明**的 `agent.py --all --repeat 5`，13:29 起。两个进程抢一个服务，每轮约 175 秒 | c39c0ce | READY，同 baseline | 15:00–15:30（停掉 b 能快一倍） |
-| 118 | 试 O3 编译失败，放弃，恢复默认配置 | → e7663a3 | 恢复中 | ~14:00 |
-| 119 | 组员的 baseline 复现，4/5 | upstream 8f1ca41 | READY，同 baseline | ~14:05 |
+| 116 | f41b84e 验证通过（13:53），改部署 735fa48；**14:15 起跑 E-F（L1 ×5）** | → 735fa48 + E-F | READY，同 baseline | ~15:00 |
+| 117 | (a) E-v3 L4 ×5，13:26 起，run 1 第 6 轮 SOLVED；(b) 组员的 `agent.py --all`（13:29 起），**组员同意停掉**（14:00），停之前先拉日志 | c39c0ce | READY，同 baseline | (a) 约 14:35；之后跑 v7 L3 |
+| 118 | O3 编译 33 分钟没好，放弃；13:52 用默认配置重启 | → 735fa48 | ~13:57 READY | 等 v7（L4） |
+| 119 | 组员的 baseline 复现，4/5，跑完拉日志 | upstream 8f1ca41 → 735fa48 | READY，同 baseline | ~14:05 后等 v7（L1） |
 
 ## 3. 时间表
 
 | 时间 | 任务 | 负责 | 验收 |
 |---|---|---|---|
-| 14:05–14:20 | 116/118/119 部署 e7663a3 并验证 | 执行 1 | 每个座位一行：selftest、4 个参考 `--eval`、offline 8 个 VERIFIED + Brier、只有一个 vLLM 且配置同 baseline、没有别的 agent 进程 |
-| 14:05–14:20 | **v7 进 team/master**：代码、依赖、最终配置（MESSAGES/CARD/PROMPT1 等环境变量）、一条能直接跑的命令、每处改动一句话说明 | liuyq（teoguo 去对接） | 在 e7663a3 上能直接跑 |
-| 14:05–14:45 | baseline 回溯校准（已派） | 执行 2 | analysis/calibration_baseline_seat116.md |
-| 14:20–14:35 | v7 兼容性检查：在 e7663a3 上离线跑通，有 prompt_split 和 verdicts；和不带 e7663a3 时的 prompt 逐字节相同 | 执行 2 | 回报提交号和证据 |
+| 14:00–14:05 | 停掉 117 的 (b)（先拉日志，按 PID 只停它） | 执行 1 | 只剩 v3 L4 一个进程 |
+| 14:05–14:20 | 116/118/119 部署 735fa48 并验证 | 执行 1 | 每个座位一行：selftest、4 个参考 `--eval`、offline 8 个 VERIFIED + Brier、只有一个 vLLM 且配置同 baseline、没有别的 agent 进程 |
+| 14:05–14:20 | **v7 进 team/master**：代码、依赖、最终配置（MESSAGES/CARD/PROMPT1 等环境变量）、一条能直接跑的命令、每处改动一句话说明 | liuyq（teoguo 去对接） | 在 735fa48 上能直接跑 |
+| 14:00–14:20 | E-A 日志全量重新打分（E-A 进程加载的是有缓存 bug 的 26c43ed） | 执行 2 | 不一致条数；analysis/calibration_expA_L1.md |
+| 14:20–15:00 | 结果汇总脚本：吃多个座位的 attempts + verdicts，出每个 level 的 solved x/n、5 次分数、解出用几次尝试、token、保留集结论（markdown 表）。17:45 后要在 15 分钟内出最终数字，所以现在先用 baseline 和 E-A 测好 | 执行 2 | 对 baseline 的输出和 NOTES §0 的数字一致 |
+| 14:20–14:35 | v7 兼容性检查：在 735fa48 上离线跑通，有 prompt_split 和 verdicts；和不带 e7663a3 时的 prompt 逐字节相同 | 执行 2 | 回报提交号和证据 |
 | **14:25** | **D1** v7 主线开跑 | 总规划 | |
-| 14:25–15:05 | **第 2 轮：v7 在 L1（116）、L3（118）、L4（119）各 ×5** | 执行 1 | 按 §4 格式回报；第 1 个 run 结束先确认 prompt_split 和 verdicts.jsonl 都有 |
+| 14:15–15:00 | **第 2 轮 a：E-F 在 L1（116）** | 执行 1 | 按 §4 格式回报；第 1 个 run 结束先确认 prompt_split 和 verdicts.jsonl 都有 |
+| 14:25–15:05 | **第 2 轮 b：v7 在 L4（118）、L1（119）各 ×5；117 的 v3 跑完后（约 14:35）v7 L3** | 执行 1 | 按 §4 格式回报；第 1 个 run 结束先确认 prompt_split 和 verdicts.jsonl 都有 |
 | 14:30– | 115 的 v7 L2/L9 跑完后：拉日志，用我们的 nkibench 对 1.0 的 kernel 做 reaudit 和保留集检查 | 执行 1 | 这几次解出在审计后还算不算数 |
 | 15:00–15:30 | 117 的 E-v3 L4 跑完，reaudit | 执行 1 | 作为 v 系列在 L4 上的证据 |
 | **15:05** | **D2** v7 每个 level 对比 baseline，采用还是回滚；排第 3 轮 | 总规划 | |
@@ -70,9 +73,9 @@ baseline 回溯校准（b39989f）：3 次解出置信度 0.90，保留集 16/16
 
 **规程**
 1. 只改一处，一个 commit。v7 整体替换 v3 算一处。
-2. `--level X --rounds 8 --samples 4 --context 8192 --repeat 5 --log E编号_LX.jsonl`。vLLM 配置和 baseline 相同，**每个座位只有一个 agent 进程**，代码 ≥ e7663a3。
+2. `--level X --rounds 8 --samples 4 --context 8192 --repeat 5 --log E编号_LX.jsonl`。vLLM 配置和 baseline 相同，**每个座位只有一个 agent 进程**，代码 ≥ 735fa48。
 3. 反馈里新出现的 API 名，先在 pod 上用 `inspect` 核对，核对输出贴进回报。
-4. 1.0 的 kernel 全部跑 `scripts/reaudit.py`，再看 verdicts.jsonl 里保留测试集的结果。
+4. 1.0 的 kernel 全部跑 `scripts/reaudit.py`，再看 verdicts.jsonl 里保留测试集的结果。**c39c0ce 之前的代码跑出的日志，引用前要全部重新打分（不只是 1.0 的），因为路径缓存既会造成假解也会造成假失败。**
 5. 回报一行：`E-编号 | commit | level | 座位 | solved x/5 | 5 次分数 | 解出时用了几轮 | 前 3 种失败（次数，和 baseline 同 level 比）| reaudit | 保留集 | 建议`
 
 **判定规则**（事先定好，看到结果后不改）
@@ -91,7 +94,7 @@ baseline 回溯校准（b39989f）：3 次解出置信度 0.90，保留集 16/16
 | E-v3 | 换成 feedback_v3（MESSAGES=v3 REPAIR_PROMPT=restructure） | L4 | 跑了 1 次，1/1，第 6 轮解出，reaudit PASS（ded1ef2） | 被 v7 取代，跑完只当证据 |
 | **E-v7** | 换成 liuyq 的 feedback_v7（配置以 liuyq 给的为准） | L1、L3、L4，然后 L2 | 第 2 轮 | D2 决定 |
 | E-C | 「cannot reshape」改成一条指令：出错那一行用切片取 tile | L3 | 候选，看 v7 之后 L3 还剩不剩这一类 | |
-| E-F | 「tensor_scalar() 缺参数」改成一条指令，参数名先在 pod 上 inspect 核对 | L1 | 候选，看 v7 之后 L1 还剩不剩这一类 | |
+| E-F | 函数缺参数、多参数或参数名不对时，反馈给出：出错那一行、运行时 inspect.signature 取到的真实签名、一句「按签名改这一处」 | L1 | 116 上 14:15 开跑。参照 E-A：tensor_scalar 缺参数 40、拷贝大小不一致 60 | D2 决定 |
 | E-E | 「拷贝两边大小不一致」改成指出两边各自的 shape 和出错行 | 看情况 | 候选 | |
 
 可选：liuyq 自己加的保留题 L9–L11 不在官方 ladder 里，但可以作为泛化的证据。前提是在我们的 harness 上 reaudit 过；只在有空座位时跑。
@@ -152,7 +155,8 @@ L1 每次都跑满 8 轮，最慢，所以拆到两个座位。最坏耗时按�
 | Q1 | 按 liuyq 的做法（teoguo，14:00） |
 | Q2 Stage A | 不做（默认） |
 | Q3 API 卡片放进 prompt | 我们自己不加；v7 里如果有，按 liuyq 的配置 |
+| 117 的 (b) | 停掉（teoguo 问过组员，14:00） |
+| SBUF 上限 | 保留 192 KiB（NeuronCore-v2 的值；trn2 是 224 KiB）。比硬件严只会误拒，不会放过违规；CHECKER.md 写明。日志里出现落在 192–224 KiB 的拒绝时再改 |
 | Q4 | teoguo 提 PR |
 | Q5 | 仓库根目录放 SUBMISSION.md，README 顶部加一行链接 |
 | Q6 | v7 取代 v3 |
-| 待定 | 117 上来路不明的 `agent.py --all`（13:29 启动）是谁的？能不能停？ |
