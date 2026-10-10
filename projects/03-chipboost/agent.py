@@ -293,8 +293,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--arm", default="referee", choices=["referee"],
                     help="model_alone and random_search arrive in Phase 4")
-    ap.add_argument("--rounds", type=int, default=4)
-    ap.add_argument("--samples", type=int, default=2)
+    # Measured on seat-101: the samples of one round came back identical every time, so a second sample
+    # spent budget on a repeat. One sample, more rounds: every evaluation is a new attempt.
+    ap.add_argument("--rounds", type=int, default=8)
+    ap.add_argument("--samples", type=int, default=1)
     ap.add_argument("--budget", type=int, default=24, help="referee evaluations per run, every arm")
     ap.add_argument("--repeat", type=int, default=1)
     ap.add_argument("--give-up-after", type=int, default=4)

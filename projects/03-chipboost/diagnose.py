@@ -12,6 +12,7 @@ none matches, it returns None and the referee's own message stands.
 Known mistakes (output of the kernel == output of the mistake):
   first K tile only   lhsT[:128].T @ rhs[:128]             the contraction loop is missing
   last K tile only    lhsT[-128:].T @ rhs[-128:]           each k pass overwrites instead of adding
+  one rhs/lhsT tile   (sum of the other's K tiles).T @ one tile   hoisted loads overwrote one variable
   shared PSUM         running sum over output tiles        one accumulator for every (m, n) tile
 and combinations of the first two with the third. Only one change is named, the most basic first.
 
@@ -45,6 +46,10 @@ LAST_K = ("YOUR KERNEL KEEPS ONLY THE LAST 128 ROWS OF K: its output equals the 
           "alone, so each pass of the contraction loop replaces the partial sum instead of adding to it. "
           "Allocate the PSUM tile once per output tile, BEFORE the k loop, and nc_matmul every k tile into "
           "that same PSUM tile.")
+ONE_TILE = ("YOUR KERNEL KEEPS ONLY ONE {op} TILE: the loop that loads the {op} tiles writes each one into "
+            "the same variable, so only one survives and every k multiplies by that same {op} tile. Keep all "
+            "K // 128 {op} tiles: allocate ONE SBUF tensor with room for all of them (partition dimension "
+            "128 first), copy the k-th 128-row slice of {op} into slot k, and in the k loop use slot k.")
 SHARED_PSUM = ("YOUR OUTPUT TILES ARE RUNNING SUMS OF EACH OTHER: one PSUM accumulator is shared by every "
                "(m, n) output tile, so each tile also contains all the tiles computed before it. Allocate "
                "a fresh PSUM tile inside the n loop, one per output tile, before the k loop.")
@@ -72,7 +77,17 @@ def candidates(lhsT, rhs):
         last = a[-TK:].T @ b[-TK:]
         out += [(FIRST_K, first), (FIRST_K, _cumulative_over_tiles(first)),
                 (LAST_K, last), (LAST_K, _cumulative_over_tiles(last))]
-    return out + [(SHARED_PSUM, _cumulative_over_tiles(full))]
+        # Measured on seat-101: Qwen3 hoisted the rhs loads into a loop that overwrote one variable, so
+        # every k used the same rhs tile. Its output is (sum of lhsT's K tiles).T @ (that one rhs tile).
+        a_sum = a.reshape(-1, TK, a.shape[1]).sum(axis=0)
+        b_sum = b.reshape(-1, TK, b.shape[1]).sum(axis=0)
+        for one in (b[-TK:], b[:TK]):
+            out.append((ONE_TILE.format(op="rhs"), a_sum.T @ one))
+        for one in (a[-TK:], a[:TK]):
+            out.append((ONE_TILE.format(op="lhsT"), one.T @ b_sum))
+    if a.shape[1] > TM or b.shape[1] > TN:   # one output tile: a running sum IS the full product
+        out.append((SHARED_PSUM, _cumulative_over_tiles(full)))
+    return out
 
 
 def diagnose(path):
