@@ -1,0 +1,3 @@
+CHOICE: stack_stationary_operand
+REASON: The kernel fails with an assertion about the stationary operand's dimension exceeding the maximum allowed, indicating a need to stack the stationary operand again.
+CONFIDENCE: 5

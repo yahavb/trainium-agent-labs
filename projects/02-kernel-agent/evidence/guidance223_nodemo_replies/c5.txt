@@ -1,0 +1,3 @@
+CHOICE: stack_stationary_operand
+REASON: Numerical mismatches with stationary operand stuck on first k-chunk
+CONFIDENCE: 5

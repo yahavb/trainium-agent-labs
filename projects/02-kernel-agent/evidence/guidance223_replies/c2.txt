@@ -1,0 +1,3 @@
+CHOICE: stack_moving_operand_symmetrically
+REASON: The kernel is correct but moves more than the byte floor due to the rhs tile being re-read from HBM
+CONFIDENCE: 5

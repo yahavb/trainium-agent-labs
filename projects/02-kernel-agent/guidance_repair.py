@@ -137,6 +137,9 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--output", default="runs/traffic/guidance")
     ap.add_argument("--demo", default="demo.json")
+    ap.add_argument("--no-demo", action="store_true",
+                    help="drop the worked-example block from the applier prompt "
+                         "(simplification check)")
     ap.add_argument("--model", default=MODEL)
     ap.add_argument("--base", default=os.environ.get("KERNEL_AGENT_BASE_URL")
                     or os.environ.get("GPTOSS_BASE_URL"))
@@ -245,7 +248,10 @@ def main():
             continue
 
         entry = by_id.get(chosen) or by_id["continue_from_best"]
-        aprompt = applier_prompt(entry, src, a.demo, a.level)
+        # The worked-example block stays in the applier prompt: the --no-demo check
+        # (evidence/guidance223_nodemo_*, GUIDANCE-CLASSIFIER.md) failed to replicate the
+        # solve (botched geometry, six repeated choices), so its removal was rejected.
+        aprompt = applier_prompt(entry, src, "" if a.no_demo else a.demo, a.level)
         areply, ausage, atok = ask_budgeted(counter, a, aprompt)
         apath = os.path.join(a.output, "replies", f"a{rnd}.txt")
         with open(apath, "w") as f:
