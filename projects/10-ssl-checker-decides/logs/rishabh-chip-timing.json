@@ -1,0 +1,74 @@
+[
+ {
+  "kernel": "attention_seq128_dim64",
+  "pred_us": 8.84,
+  "device_correct": true,
+  "chip_us_mean": 20.45,
+  "chip_us_min_max_std": [
+   20.32,
+   20.67,
+   0.11
+  ],
+  "chip_over_pred": 2.31
+ },
+ {
+  "kernel": "attention_seq64_dim128",
+  "pred_us": 8.68,
+  "device_correct": true,
+  "chip_us_mean": 20.14,
+  "chip_us_min_max_std": [
+   19.96,
+   20.39,
+   0.1
+  ],
+  "chip_over_pred": 2.32
+ },
+ {
+  "kernel": "attention_seq96_dim32",
+  "pred_us": 8.36,
+  "device_correct": true,
+  "chip_us_mean": 19.58,
+  "chip_us_min_max_std": [
+   19.43,
+   19.77,
+   0.09
+  ],
+  "chip_over_pred": 2.34
+ },
+ {
+  "kernel": "matmul_slow_TILE_N128",
+  "pred_us": 183.92,
+  "device_correct": true,
+  "chip_us_mean": 345.79,
+  "chip_us_min_max_std": [
+   345.4,
+   346.31,
+   0.23
+  ],
+  "chip_over_pred": 1.88
+ },
+ {
+  "kernel": "matmul_tutorial_reference",
+  "pred_us": 65.94,
+  "device_correct": true,
+  "chip_us_mean": 127.78,
+  "chip_us_min_max_std": [
+   127.39,
+   128.15,
+   0.25
+  ],
+  "chip_over_pred": 1.94
+ },
+ {
+  "kernel": "matmul_qwen_109us",
+  "pred_us": 59.71,
+  "device_correct": true,
+  "chip_us_mean": 118.81,
+  "chip_us_min_max_std": [
+   118.13,
+   119.33,
+   0.42
+  ],
+  "chip_over_pred": 1.99
+ }
+]

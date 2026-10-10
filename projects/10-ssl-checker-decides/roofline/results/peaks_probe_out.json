@@ -1,0 +1,55 @@
+{
+ "dma_GBps_model": 367.9967244757699,
+ "dma_points": [
+  [
+   524288,
+   4024
+  ],
+  [
+   2097152,
+   8298
+  ],
+  [
+   8388608,
+   25394
+  ],
+  [
+   33554432,
+   93780
+  ]
+ ],
+ "vector_tt_fp32_Gelem_per_s": 59.935753072306376,
+ "vector_tt_fp32_ns_per_op": 17495.0,
+ "vector_tt_bf16_Gelem_per_s": 59.935753072306376,
+ "vector_tt_bf16_ns_per_op": 17495.0,
+ "vector_ts_fp32_Gelem_per_s": 117.00245480919438,
+ "vector_ts_fp32_ns_per_op": 8962.0,
+ "vector_ts_bf16_Gelem_per_s": 117.00245480919438,
+ "vector_ts_bf16_ns_per_op": 8962.0,
+ "scalar_exp_fp32_Gelem_per_s": 146.69501958589817,
+ "scalar_exp_fp32_ns_per_op": 7148.0,
+ "scalar_exp_bf16_Gelem_per_s": 146.69501958589817,
+ "scalar_exp_bf16_ns_per_op": 7148.0,
+ "vector_max_fp32_Gelem_per_s": 117.00245480919438,
+ "vector_max_fp32_ns_per_op": 8962.0,
+ "vector_max_bf16_Gelem_per_s": 117.00245480919438,
+ "vector_max_bf16_ns_per_op": 8962.0,
+ "matmul_fp32_TFLOPs": 37.786522522522525,
+ "matmul_fp32_ns_per_op": 444.0,
+ "matmul_bf16_TFLOPs": 37.786522522522525,
+ "matmul_bf16_ns_per_op": 444.0
+}{
+ "mm_K128_M128_N512_ns_per_matmul": 444.0,
+ "mm_K128_M128_N256_ns_per_matmul": 337.0,
+ "mm_K128_M128_N128_ns_per_matmul": 284.0,
+ "mm_K64_M128_N512_ns_per_matmul": 444.0,
+ "mm_K128_M64_N512_ns_per_matmul": 444.0,
+ "tiny_dma_128x1_ns": 2602,
+ "tiny_dma_128x64_ns": 2778,
+ "vector_ts_F64_ns_per_op": 495.0,
+ "scalar_exp_F64_ns_per_op": 375.0,
+ "vector_ts_F512_ns_per_op": 962.0,
+ "scalar_exp_F512_ns_per_op": 748.0,
+ "vector_ts_F2048_ns_per_op": 2562.0,
+ "scalar_exp_F2048_ns_per_op": 2028.0
+}
