@@ -53,3 +53,7 @@ run*.log
 .aws/
 *credentials*
 *.pem
+
+# Attempt logs kept in the repository as hand-in evidence (analysis/logs/README.md). Without this,
+# the attempts.jsonl and *.log rules above silently drop them from `git add`.
+!analysis/logs/**

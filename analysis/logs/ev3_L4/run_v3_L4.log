@@ -1,0 +1,120 @@
+feedback v3: MESSAGES=v3 REPAIR_PROMPT=restructure
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+################ run 1 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.62  best so far 0.62  (78.6s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: Line 15: `nisa.dma_copy(dst=sbuf_lhsT, src=lhsT)` raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 A tile may have at most 128 rows, and you asked for 256. Do not allocate one tile for the whole tensor: loop over the partition dimension in chunks of at most 128 with nl.affine_range, allocate the tile inside the loop with t
+round 1: this round 0.62  best so far 0.62  (87.9s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: Line 40: `nisa.nc_matmul(dst=psum, stationary=lhsT_tile, moving=rhs_tile)` raised AssertionError: Matmul stationary free dimension 256 exceeds gemm_stationary_fmax=128 `lhsT_tile` is 256 columns wide, but nc_matmul takes at most 128 there. Compute the output 128 rows at a time: put your K loop inside a loop over m, give each m its own `psum`, take a 128
+round 2: this round 0.62  best so far 0.62  (115.0s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: Line 41: `nisa.nc_matmul(dst=psum, stationary=lhsT_tile[:, m * 128:(m + 1) * 128], moving=rhs_tile)` raised AssertionError: Matmul moving free dimension 1024 exceeds max 512 for nc_version=nc_version.gen3 `rhs_tile` is 1024 columns wide, but nc_matmul takes at most 512 there. Split the output columns the same way as the rows: inside the loop that owns `
+round 3: this round 0.62  best so far 0.62  (178.1s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: ILLEGAL ON HARDWARE: the CPU simulator ran this kernel, but it does not check tile limits when a tile is allocated and the chip does. The kernel allocated a sbuf tile of shape (256, 256), whose partition dimension (the first) is 256 where the maximum is 128; and a sbuf tile of shape (256, 1024), whose partition dimension (the first) is 256 where the max
+round 4: same failure again (0.62, best so far 0.62)
+  same failure 2x — adding a ledger of 4 failed attempts to break the repeat
+round 5: this round 1.00  best so far 1.00  (175.2s)
+  Correct on every shape. MEMORY BOUND: 36.6 Flops/Byte against a ridge of 222, so 16% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 6.1x more reuse needed.
+  SOLVED on round 5. Correct on every shape. MEMORY BOUND: 36.6 Flops/Byte against a ridge of 222, so 16% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 6.1x more reuse needed.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_matmul_tiled_(lhsT, rhs):
+      # Allocate output buffer in shared HBM
+      out = nl.ndarray(shape=(lhsT.shape[1], rhs.shape[1]), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+    
+      # Allocate SBUF for lhsT and rhs
+      sbuf_lhsT = nl.ndarray(shape=(128, 128), dtype=lhsT.dtype, buffer=nl.sbuf)
+      sbuf_rhs = nl.ndarray(shape=(128, 512), dtype=rhs.dtype, buffer=nl.sbuf)
+    
+      # Tile dimensions
+      K = lhsT.shape[0]
+      M = lhsT.shape[1]
+      N = rhs.shape[1]
+    
+      # Compute number of tiles along K
+      num_tiles = (K + 127) // 128
+    
+      # Compute number of tiles along M (rows of lhsT)
+      num_m_tiles = (M + 127) // 128
+    
+      # Compute number of tiles along N (columns of rhs)
+      num_n_tiles = (N + 511) // 512
+    
+      # Loop over rows of output in chunks of 128
+      for m in nl.affine_range(num_m_tiles):
+          # Loop over columns of output in chunks of 512
+          for n in nl.affine_range(num_n_tiles):
+              # Allocate PSUM for this chunk of output
+              psum = nl.ndarray(shape=(128, 512), dtype=nl.float32, buffer=nl.psum)
+            
+              # Loop over tiles along K
+              for tile_idx in nl.affine_range(num_tiles):
+                  start_k = tile_idx * 128
+                  end_k = min(start_k + 128, K)
+                
+                  # Copy lhsT and rhs from HBM to SBUF in chunks
+                  nisa.dma_copy(dst=sbuf_lhsT, src=lhsT[start_k:end_k, m * 128:(m + 1) * 128])
+                  nisa.dma_copy(dst=sbuf_rhs, src=rhs[start_k:end_k, n * 512:(n + 1) * 512])
+                
+                  # Slice lhsT and rhs
+                  lhsT_tile = sbuf_lhsT
+                  rhs_tile = sbuf_rhs
+                
+                  # Perform NC matmul for this row and column chunk
+                  nisa.nc_matmul(dst=psum, stationary=lhsT_tile, moving=rhs_tile)
+            
+              # Copy result from PSUM to SBUF
+              sbuf_out = nl.ndarray(shape=(128, 512), dtype=out.dtype, buffer=nl.sbuf)
+              nisa.tensor_copy(dst=sbuf_out, src=psum)
+            
+              # Copy result from SBUF to HBM
+              nisa.dma_copy(dst=out[m * 128:(m + 1) * 128, n * 512:(n + 1) * 512], src=sbuf_out)
+    
+      return out
+  -------------------------------------------
+
+=========== summary ===========
+  level 4  reward 1.00 after 6 round(s)  SOLVED
+  solved 1/1
+
+################ run 2 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.62  best so far 0.62  (139.2s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: Line 19: `nisa.dma_copy(dst=sbuf_stationary, src=lhsT)` raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 `sbuf_stationary` and `sbuf_moving` hold the whole contraction dimension K = 256, but nc_matmul takes at most 128 rows of K at a time. Feed K in 128-row chunks that all add into `psum`: allocate `psum` once, before the 
+round 1: this round 0.75  best so far 0.75  (129.5s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: Line 30: `nisa.nc_matmul(dst=psum, stationary=sbuf_stationary, moving=sbuf_moving)` raised AssertionError: Matmul stationary free dimension 256 exceeds gemm_stationary_fmax=128 `sbuf_stationary` is 256 columns wide, but nc_matmul takes at most 128 there. Compute the output 128 rows at a time: put your K loop inside a loop over m, give each m its own `ps
+round 2: this round 0.62  best so far 0.75  (145.0s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: Line 24: `nisa.dma_copy(dst=sbuf_stationary, src=lhsT)` raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 A tile may have at most 128 rows, and you asked for 256. Do not allocate one tile for the whole tensor: loop over the partition dimension in chunks of at most 128 with nl.affine_range, allocate the tile inside the loop 
+round 3: this round 0.30  best so far 0.75  (143.9s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: Line 29: `nisa.dma_copy(dst=sbuf_moving, src=rhs[k * 128:(k + 1) * 128, :])` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=65536, dst=16384 `sbuf_moving` holds 16384 elements but `rhs[k * 128:(k + 1) * 128, :]` holds 65536. Allocate `sbuf_moving` with exactly the shape of what you copy into it, right be
+round 4: this round 0.30  best so far 0.75  (150.2s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: Line 23: `sbuf_moving = nl.ndarray(rhs[k * 128:(k + 1) * 128, :].shape, dtype=rhs.dtype, buffer=nl.sbuf)` raised UnboundLocalError: cannot access local variable 'k' where it is not associated with a value
+round 5: this round 0.62  best so far 0.75  (189.1s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: Line 28: `nisa.dma_copy(dst=sbuf_stationary, src=lhsT[k * 128:(k + 1) * 128, m * 128:(m + 1) * 128])` raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=16384, dst=32768 `sbuf_stationary` holds 32768 elements but `lhsT[k * 128:(k + 1) * 128, m * 128:(m + 1) * 128]` holds 16384. Allocate `sbuf_stationary` wi
+round 6: same failure again (0.62, best so far 0.75)
+  same failure 2x — adding a ledger of 6 failed attempts to break the repeat
+round 7: same failure again (0.62, best so far 0.75)
+  same failure 3x — adding a ledger of 6 failed attempts to break the repeat
+  not solved in 8 rounds; best reward 0.75
+
+=========== summary ===========
+  level 4  reward 0.75 after 8 round(s)
+  solved 0/1
+
+################ run 3 of 5 ################
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.62  best so far 0.62  (70.5s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: Line 19: `nisa.dma_copy(dst=sbuf_stationary, src=lhsT)` raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 `sbuf_stationary` and `sbuf_moving` hold the whole contraction dimension K = 256, but nc_matmul takes at most 128 rows of K at a time. Feed K in 128-row chunks that all add into `psum`: allocate `psum` once, before the 
+round 1: this round 0.75  best so far 0.75  (78.2s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: Line 30: `nisa.nc_matmul(dst=psum, stationary=sbuf_stationary, moving=sbuf_moving)` raised AssertionError: Matmul stationary free dimension 256 exceeds gemm_stationary_fmax=128 `sbuf_stationary` is 256 columns wide, but nc_matmul takes at most 128 there. Compute the output 128 rows at a time: put your K loop inside a loop over m, give each m its own `ps
+round 2: this round 0.62  best so far 0.75  (95.2s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: Line 24: `nisa.dma_copy(dst=sbuf_stationary, src=lhsT[:, m * 128:(m + 1) * 128])` raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 `sbuf_stationary` and `sbuf_moving` hold the whole contraction dimension K = 256, but nc_matmul takes at most 128 rows of K at a time. Feed K in 128-row chunks that all add into `psum`: allocat
+round 3: this round 0.62  best so far 0.75  (95.1s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: Line 32: `nisa.nc_matmul(dst=psum, stationary=sbuf_stationary, moving=sbuf_moving)` raised AssertionError: Matmul stationary free dimension 256 exceeds gemm_stationary_fmax=128 `sbuf_stationary` is 256 columns wide, but nc_matmul takes at most 128 there. Compute the output 128 rows at a time: put your K loop inside a loop over m, give each m its own `ps
