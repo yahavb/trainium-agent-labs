@@ -4,11 +4,12 @@
     python scripts/final_auto.py analysis/logs/final analysis/final [--l57 PREFIX] [--dry-run]
 
 Prefixes (the part of the name before `_L<level>`, e.g. v82_L1_s117 -> v82): v82 and v82x are 96a9fc9's
-runs, v83 is 5c3aba2's (L2CAT=1), final_all is 116's --all run, anything else (e.g. warm) is a
+runs, v83 is 5c3aba2's (L2CAT=1), v85 is 0eb2695's, final_all is 116's --all run, anything else (e.g. warm) is a
 level 5-7 configuration. Groups:
   final      L1, L3, L4 from v82 + v82x;  L2 from v83;  L5-L7 from --l57 (default: warm if present,
              else v83)
   v8.2_L2    L2 from v82 + v82x (the comparison)
+  v8.5_L2    L2 from v85 (0eb2695)
   final_all  116's --all run, by itself
   L9-L14     every file whose levels are all in 9-14 (e.g. final_L9_s116), whatever its prefix
   <prefix>   every other prefix that ran levels 5-7, by itself
@@ -40,11 +41,13 @@ def main():
     ap.add_argument("logs")
     ap.add_argument("out")
     ap.add_argument("--l57", default=None, help="prefix whose L5-L7 runs go into the final group")
+    ap.add_argument("--exclude", nargs="*", default=[], help="file names to leave out (e.g. runs stopped early)")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
     files, _ = report.find([a.logs], "")
     by_prefix = collections.defaultdict(list)
     levels = {}
+    files["attempts"] = [f for f in files["attempts"] if os.path.basename(f) not in a.exclude]
     for f in files["attempts"]:
         by_prefix[prefix_of(f)].append(f)
         levels[f] = sorted({json.loads(l)["level"] for l in open(f) if l.strip()})
@@ -54,10 +57,11 @@ def main():
     groups["final"] = (pick(["v82", "v82x"], (1, 3, 4)) + pick(["v83"], (2,))
                        + pick([l57], (5, 6, 7)))
     groups["v8.2_L2"] = pick(["v82", "v82x"], (2,))
+    groups["v8.5_L2"] = pick(["v85"], (2,))
     groups["final_all"] = by_prefix.get("final_all", [])
     groups["L9-L14"] = [f for fs in by_prefix.values() for f in fs if levels[f] and set(levels[f]) <= set(range(9, 15))]
     for p, fs in by_prefix.items():
-        if p not in ("v82", "v82x", "final_all", l57) and any(set(levels[f]) & {5, 6, 7} for f in fs):
+        if p not in ("v82", "v82x", "v85", "final_all", l57) and any(set(levels[f]) & {5, 6, 7} for f in fs):
             groups[p] = [f for f in fs if set(levels[f]) & {5, 6, 7}]
     print(f"prefixes found: {dict((p, len(fs)) for p, fs in by_prefix.items())}; L5-L7 for final from '{l57}'")
     unused = [f for f in files["attempts"] if not any(f in g for g in groups.values())]
