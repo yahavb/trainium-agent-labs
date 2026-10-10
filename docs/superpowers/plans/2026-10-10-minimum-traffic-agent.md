@@ -151,10 +151,10 @@ Do not introduce a general tracing framework, new UI, weight-updating reinforcem
 
 ## 6. Task 1 — establish a trustworthy baseline (hour 0–1)
 
-- [ ] Record git revision, installed SDK, simulator API, model ID, tokenizer availability, context limit, and assigned device/core information.
-- [ ] Minute-zero gate: `python -c "import nki; print(nki.__version__)"` succeeds and the served model answers a minimal request. Resolve either failure before any other work.
+- [x] Record git revision, installed SDK, simulator API, model ID, tokenizer availability, context limit, and assigned device/core information.
+- [x] Minute-zero gate: `python -c "import nki; print(nki.__version__)"` succeeds and the served model answers a minimal request. Resolve either failure before any other work.
 - [ ] Read hardware capacity constants with installed-version semantics. New SDKs expose `sbuf_size_bytes` and `sbuf_fmax_bytes`; older `total_available_sbuf_size` can mean per-partition capacity. Do not interpret the latter as total capacity.
-- [ ] Run the existing selftest and baseline in the seat environment:
+- [x] Run the existing selftest and baseline in the seat environment:
 
 ```bash
 cd /workspace/projects/02-kernel-agent
@@ -162,25 +162,25 @@ python nkibench.py --selftest
 python nkibench.py --level 4 --check reference_level4.py --seed 0
 ```
 
-- [ ] Compare each baseline byte count with the table above. Resolve discrepancies before model optimization.
+- [x] Compare each baseline byte count with the table above. Resolve discrepancies before model optimization.
 - [ ] Create separate baseline and agent artifact directories. Mark seed source as `provided_reference`.
-- [ ] Prepare evaluation cases before choosing an optimized winner. Optimization: the four shipped shapes and seeds 0,1. Additional aligned evaluation: `(K,M,N)=(384,256,512),(128,384,1024),(512,256,1536)`, seeds 17,29,43. Ragged correctness: `(1,1,1),(129,127,513),(257,131,519)`.
+- [x] Prepare evaluation cases before choosing an optimized winner. Optimization: the four shipped shapes and seeds 0,1. Additional aligned evaluation: `(K,M,N)=(384,256,512),(128,384,1024),(512,256,1536)`, seeds 17,29,43. Ragged correctness: `(1,1,1),(129,127,513),(257,131,519)`.
 - [ ] Include zero arrays, negative/mixed-sign inputs, repeated rows, alternating signs/cancellation, and moderate finite magnitudes that avoid reference overflow. Retain the existing tolerance definition; document maximum normalized error and dtype.
 
 **Exit condition:** baseline correctness and transfer accounting are understood. Hardware/environment failure is reported explicitly, not sent to the model as a kernel repair problem.
 
 ## 7. Task 2 — make all acceptance paths agree (hour 0–2, checker owner)
 
-- [ ] Add focused regression cases: zero/unmeasured traffic cannot pass an optimization level; above-threshold traffic fails; numerically wrong candidates fail; mutated inputs fail; unsupported transfer coverage produces `unverified_traffic`.
-- [ ] Treat `counted['unmeasured'] > 0` as `unverified_traffic`, not a warning, before any traffic claim counts.
-- [ ] Fix `check_traffic_bar()` so missing/zero/incomplete measurements cannot silently skip an optimization-level gate. Retain exact original thresholds.
-- [ ] Make `verify()` snapshot inputs and enforce the same mutation, traffic, and known hardware-warning checks as agent evaluation before counting a passing case.
-- [ ] Restrict generated candidates to the supported explicit HBM transfer API for this experiment. Detect aliases/unsupported memory operations conservatively and refuse a verified traffic claim for unknown coverage. Count HBM reads and writes; exclude on-chip copies. Unknown dtype or memory-space attribution is an accounting failure.
-- [ ] In `traffic_eval.py`, return independent fields: `rules_ok`, `numerics_ok`, `inputs_untouched`, `traffic_complete`, `resource_status`, `per_case`, `failure_kind`, `feedback`. Preserve bytes as integers.
+- [x] Add focused regression cases: zero/unmeasured traffic cannot pass an optimization level; above-threshold traffic fails; numerically wrong candidates fail; mutated inputs fail; unsupported transfer coverage produces `unverified_traffic`.
+- [x] Treat `counted['unmeasured'] > 0` as `unverified_traffic`, not a warning, before any traffic claim counts.
+- [x] Fix `check_traffic_bar()` so missing/zero/incomplete measurements cannot silently skip an optimization-level gate. Retain exact original thresholds.
+- [x] Make `verify()` snapshot inputs and enforce the same mutation, traffic, and known hardware-warning checks as agent evaluation before counting a passing case.
+- [x] Restrict generated candidates to the supported explicit HBM transfer API for this experiment. Detect aliases/unsupported memory operations conservatively and refuse a verified traffic claim for unknown coverage. Count HBM reads and writes; exclude on-chip copies. Unknown dtype or memory-space attribution is an accounting failure.
+- [x] In `traffic_eval.py`, return independent fields: `rules_ok`, `numerics_ok`, `inputs_ok`, `traffic_ok`, `hazards_ok`, `resource_status`, `per_case`, `failure_kind`, `feedback`. Preserve bytes as integers.
 - [ ] Record static resource estimates as estimates. Compiler/device results alone can upgrade hardware status.
-- [ ] Check that an unchanged level-4 source, adapted only to the required level-7 entry name, fails the original level-7 traffic bar on the multi-tile cases.
+- [x] Check that an unchanged level-4 source, adapted only to the required level-7 entry name, fails the original level-7 traffic bar on the multi-tile cases.
 - [ ] Add focused regression cases for the learning layer: an invalid candidate earns reward 0; the population never admits an invalid member; UCB tie-breaks are deterministic across reruns.
-- [ ] Run the focused regression checks and existing selftest once after the changes; repeat only after relevant edits/failures.
+- [x] Run the focused regression checks and existing selftest once after the changes; repeat only after relevant edits/failures.
 
 **Exit condition:** the CLI and loop cannot disagree about whether a numerically correct but traffic-heavy candidate passed.
 
