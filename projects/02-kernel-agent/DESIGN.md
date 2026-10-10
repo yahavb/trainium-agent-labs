@@ -1,9 +1,99 @@
 # Kernel agent v2: six roles
 
-Status: **proposal**, 2026-10-10 ~20:40 UTC, branch `31p`. Nothing below is built yet. Numbers marked
-*measured* come from runs on the seat pods today; everything else is an estimate to check.
+Status: **built, being tuned**, branch `31p`. The roles are in `agents2/`, run with `agent2.py`; this
+document started as the proposal (2026-10-10 ~20:40 UTC) and the sections below "Why change" are still
+that plan. Numbers marked *measured* come from runs on the seat pods today.
 
 The roles: **manager**, **planner**, **retriever**, **coder**, **debugger**, **reviewer**.
+
+## Implementation status (2026-10-10 ~21:55 UTC)
+
+`agent.py` is unchanged and stays the baseline.
+
+| piece | status |
+|---|---|
+| manager, planner, retriever, coder (write/apply/improve), debugger, reviewer | built |
+| checks: parse, lint, `check_rules`, simulate, compare; process pool with timeout | built |
+| **the agents pull documentation themselves** (`LOOKUP:`, `agents2/lookup.py`) | built |
+| retriever sources: checked cards (`nki_cheatsheet.md`, then `agents2/cards.md`), introspection, `third_party/` prose | built |
+| debugger examples from `nki_fix_examples.md`, matched by error and level | built |
+| prompt packer with the real Qwen3 tokenizer; per-role caps | built |
+| `events.jsonl` (every call from every role, with prompt and reply), `attempts.jsonl` in agent.py's schema | built |
+| zero-byte traffic bypass closed (levels 5–7) | built, in `agents2/checks.py` |
+| thread ends judged by stage reached as well as reward | built, `manager.progress()` |
+| `--classify`, `--dry-run`, `--no-lookup`, `--no-skeleton`, `--cards introspect`, `--hint` | built |
+| profiler layer 2 (bytes per operand), profiling as a tool, edit mode, LLM manager, device profiling | not built |
+
+**Pull, not push.** A first prompt is the problem statement as `agent.py` gives it (operation, entry
+point, NumPy reference, test shapes, the one-line hardware limits, the imports). Of `agent.py`'s API card
+the coder's first prompt keeps only the organisers' complete example kernel (`copy_kernel`: output in
+HBM, a tile in SBUF, `dma_copy` in and out). It computes nothing, so it gives no algorithm away, and
+without it the last level-1 runs still called `nl.mean` straight on the HBM input (`--no-skeleton` leaves
+it out). The card's list of functions is gone, and levels 1–2 get no matmul text.
+
+The planner's and coder's first prompts also carry an *index* of names (the nisa and nl functions, tile
+methods, the topic `rules`). Repairs and improvements carry no index: the change names what to use, and
+its documentation comes with it. Any role may answer `LOOKUP: a, b, c` to get documentation before
+answering:
+- planner: 2 rounds;
+- coder and debugger: 1 round each.
+
+The lookup is offered as one of two ways to reply, inside the reply format, which is always the last
+thing in the prompt. Before ~21:55 UTC it was a separate paragraph just above "Reply with ONE python
+code block", two competing formats; run 1 of the pull design made only 4 lookups, so that run did not
+really test pulling. After the last round the format says "answer now"; a lookup asked for anyway gets
+its documentation and one more call, and a reply that is still a lookup counts as no answer (the
+debugger falls back, the planner re-plans).
+
+What the planner pulled goes to the coder with the plan. A failed check pulls what the error names (the
+function's card, a checked fix example), as checker feedback does. Withheld cards are enforced in
+`Retriever.shown()` and `withhold.json` in `Retriever.allowed()`; the debugger's rules pass on no
+withheld name and restate no withheld card (the transpose rule defers to the model at level 2).
+
+**Open (the user's call):** level-2 withholding is inconsistent. Every level-2 test shape has at most
+128 rows, so any one transpose call does the whole job, yet only `t.permute` and `nisa.dma_transpose` are
+withheld there; `nisa.nc_transpose`'s card and `nl.transpose`'s docstring are served. Either withhold
+API facts for every transpose route at level 2, or withhold patterns only (the K-loop, the strided
+pooling view) and drop `withhold=2` from `agents2/cards.md`.
+
+Measured on seat-35:
+- 26/26 unit tests (laptop, ~21:55 UTC). The pod last ran 18/18, before the latest changes, none of
+  which has run on a seat yet.
+- Lint is clean on the reference kernels and the checked fragments.
+- `--offline --all` scores 4/4.
+- Our 4 cards are backed by 7 simulator checks, all holding. The cheat-sheet's 37 hold, and so do the 8
+  fix examples (checked before `nomatmul1` was trimmed).
+- `--classify` over 428 recorded agent.py failures:
+  - all 428 fall into an error kind, and a rule names the change for each;
+  - lint flags 166 before the simulator, with 0 false positives;
+  - 423 get a checked fix example.
+- Level 1, one run each:
+
+  | version | best |
+  |---|---|
+  | first agent2 | **0.50** (kernel ran, wrong values) |
+  | cards pushed into every prompt | 0.30 |
+  | pull design | 0.30 (4 lookups) |
+
+  No level-1 run has solved it. The baseline is 0.30 on every run, a wall, so 0.50 is a real change, but
+  the others are single runs.
+- **Not measured yet:** levels 2–4 with agent2. The README's warning applies (a worked example once took
+  level 2 from 4/5 to 0/5), so measure `--all` before claiming anything.
+
+## Lessons from the READMEs, and where agent2 stands
+
+| README lesson | agent2 |
+|---|---|
+| Constraints belong in the verifier, not the prompt | rules stay in the checks; prompts carry no rule lists |
+| A verdict is not an instruction: send one named change | the debugger always names one change; rules write it for 428/428 recorded failures |
+| The same error three rounds running means fix the message | new rules came from repeats in our logs (tile_size, HBM data, transpose, NkiTensor methods) |
+| Give the model a tool, not a hint | `LOOKUP`: the model aims the retriever itself |
+| Do not print the answer in your feedback | answer-like material is pulled, never pushed. `nomatmul1` no longer shows the `t.ap` view. `t.permute` and `dma_transpose` cards are withheld at level 2 |
+| Thinking off; capacity spent reasoning is not spent answering | thinking off, hard output caps per role |
+| Expect the failure to move rather than vanish | threads end on no *progress* (stage reached), not on no reward gain |
+| One run is not a result; levels 1, 3, 4 are walls | report rates over `--repeat`; a wall broken once is a signal |
+| A reasonable-looking prompt change made every level worse | measure all levels before claiming a gain (not yet done) |
+| Giving computed numbers is a hint, not a tool | to do: profiling for levels 5–7 as a tool the model calls, not pushed ratios |
 
 ## Why change
 
