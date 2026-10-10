@@ -142,7 +142,7 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--samples", type=int, default=4)
     ap.add_argument("--rounds", type=int, default=4)
-    # gpt-oss reasons before it answers and needs ~6000 on level 1.3; mseat pods set this.
+    # gpt-oss reasons before it answers and needs ~6000 on level 1.3.
     ap.add_argument("--max-tokens", type=int, default=int(os.environ.get("HEATROD_MAX_TOKENS", 1200)))
     ap.add_argument("--think", action="store_true")
     ap.add_argument("--tool-steps", type=int, default=1,

@@ -1,5 +1,5 @@
 # What the shared EKSExec credentials may do in the cluster: list pods, and exec into or read the
-# logs of seat-1 ... seat-105 and mseat-1 ... mseat-N only. Nothing else — no delete, no create, no other pods.
+# logs of seat-1 ... seat-105 only. Nothing else — no delete, no create, no other pods.
 # EKSExec is mapped to the group workshop-participants by an EKS access entry (see workshop/FACILITATOR.md).
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -28,8 +28,7 @@ rules:
       "seat-74", "seat-75", "seat-76", "seat-77", "seat-78", "seat-79", "seat-80", "seat-81", 
       "seat-82", "seat-83", "seat-84", "seat-85", "seat-86", "seat-87", "seat-88", "seat-89", 
       "seat-90", "seat-91", "seat-92", "seat-93", "seat-94", "seat-95", "seat-96", "seat-97", 
-      "seat-98", "seat-99", "seat-100", "seat-101", "seat-102", "seat-103", "seat-104", "seat-105",
-      "mseat-1"
+      "seat-98", "seat-99", "seat-100", "seat-101", "seat-102", "seat-103", "seat-104", "seat-105"
     ]
   # get as well as create: kubectl 1.30+ execs over WebSocket, which some servers authorize as get.
   - apiGroups: [""]
@@ -48,8 +47,7 @@ rules:
       "seat-74", "seat-75", "seat-76", "seat-77", "seat-78", "seat-79", "seat-80", "seat-81", 
       "seat-82", "seat-83", "seat-84", "seat-85", "seat-86", "seat-87", "seat-88", "seat-89", 
       "seat-90", "seat-91", "seat-92", "seat-93", "seat-94", "seat-95", "seat-96", "seat-97", 
-      "seat-98", "seat-99", "seat-100", "seat-101", "seat-102", "seat-103", "seat-104", "seat-105",
-      "mseat-1"
+      "seat-98", "seat-99", "seat-100", "seat-101", "seat-102", "seat-103", "seat-104", "seat-105"
     ]
 ---
 apiVersion: rbac.authorization.k8s.io/v1

@@ -48,7 +48,7 @@ last step of the loop with a trainer and the model improves instead of just retr
 
 ## Run it
 
-Your seat is a pod, `seat-<your number>` (or `mseat-<your number>`), and you work inside it — there is
+Your seat is a pod, `seat-<your number>`, and you work inside it — there is
 no container to enter. Seat 42 is the example; use your own number.
 
 **Terminal 1 — start the model.** Get a shell in your pod and **wait for the prompt**

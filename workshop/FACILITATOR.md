@@ -44,7 +44,7 @@ kubectl get pods -l app=seat -w
 Step 1 needs the cluster's authentication mode to be `API` or `API_AND_CONFIG_MAP`
 (`aws eks describe-cluster --name "$CLUSTER" --query cluster.accessConfig`).
 
-* **Capacity.** One seat = one chip (`s-lnc2`) + 11 CPU + 120 GiB RAM + 100 GiB disk; an `mseat` is two chips and double that. A `trn2.48xlarge` holds 16 seats, so 105
+* **Capacity.** One seat = one chip (`s-lnc2`) + 11 CPU + 120 GiB RAM + 100 GiB disk. A `trn2.48xlarge` holds 16 seats, so 105
   seats need 7 of them. Pods that stay `Pending` mean the nodegroup is short.
 * **The repo must be publicly cloneable** — the init container clones it without credentials. If it is
   still private, every seat sticks at `Init:Error`.

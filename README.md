@@ -196,8 +196,8 @@ tail -f run.log                         # reconnect: tail -f /workspace/projects
 Write-up: [`projects/02-kernel-agent/`](projects/02-kernel-agent/).
 
 > The pod sets `HEATROD_BASE_URL`, `KERNEL_AGENT_BASE_URL` and the model names for you, in every shell —
-> `env | grep -E 'HEATROD|KERNEL_AGENT'` shows them. Don't re-export them: `mseat` pods serve a different
-> model, and the pod's values are already right.
+> `env | grep -E 'HEATROD|KERNEL_AGENT'` shows them, so there is nothing to
+> export.
 
 **Organisers:** setting up the cluster, sharing the credentials and assigning seats is in
 [`workshop/FACILITATOR.md`](workshop/FACILITATOR.md). `serve.sh` runs inside a seat pod; it no longer starts a docker
