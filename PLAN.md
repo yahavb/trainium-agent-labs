@@ -74,10 +74,10 @@ baseline 回溯校准（b39989f）：3 次解出置信度 0.90，保留集 16/16
 | 16:40–17:00 | 冻结前检查，5 个座位逐个过 §5 清单 | 执行 1 | 5 行全绿 |
 | **17:00** | **冻结**：打 tag `final`，之后只改文档 | 执行 1 打 tag | |
 | 17:00–17:45 | 最终跑（分配见 §5） | 执行 1 | 每个 level 5 次。没跑完的按实际完成次数报 |
-| 17:45–18:00 | 拉日志（attempts、verdicts、nki_verdicts、usage）；reaudit 所有 1.0；日志拷进 analysis/final/（runs/ 不进 git）；最终日志里有更好的解就重跑 pick_nki.py（只编译，teoguo 跑） | 执行 1 | |
+| 17:45–18:00 | 拉日志（attempts、verdicts、nki_verdicts、usage）；reaudit 所有 1.0；日志拷进 analysis/logs/final/（runs/ 不进 git）；最终日志里有更好的解就重跑 pick_nki.py（只编译，teoguo 跑） | 执行 1 | |
 | 17:50–18:00 | 最终版失败分类、token 图、校准表 | 执行 2 | analysis/*_final.* |
 | 17:50–18:10 | 数字填进 SUBMISSION.md，每个数字都要能指到文件 | 总规划 | |
-| 18:05–18:10 | 提交前检查：全仓库扫凭证（AKIA、aws_secret、SESSION_TOKEN 等）；文档里的 [[TBD]] 全部填完；README 顶部加一行链接到 SUBMISSION.md | 总规划 | 扫描结果为空 |
+| 18:05–18:10 | 提交前检查：全仓库扫凭证（AKIA、aws_secret、SESSION_TOKEN 等）；文档里的 [[TBD]] 全部填完；README 顶部加一行链接到 SUBMISSION.md；**在全新 clone 里确认 analysis/logs/final/ 的日志都在**（.gitignore 会悄悄吞掉 attempts.jsonl 和 *.log，只有 analysis/logs/ 下面例外，见 a0af434） | 总规划 | 扫描结果为空，全新 clone 里文件齐 |
 | 18:10–18:15 | commit、push team/master、提 PR | teoguo | |
 | 18:15–18:30 | 缓冲 | | |
 
