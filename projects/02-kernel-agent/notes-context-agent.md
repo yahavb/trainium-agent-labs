@@ -359,6 +359,29 @@ Removed per-level docs selection from the initial prompt.
 The only level-specific content left in the initial prompt is the NumPy operation reference and
 entry point, which define the task.
 
+## Full generic docs mode
+
+Added `--prompt-style full-docs`.
+
+This keeps the same generic card set for every level, but appends a larger generic guide covering:
+
+- NKI memory model;
+- allocation, dtype, and memory-region rules;
+- DMA shape rules;
+- tile rank/limits;
+- reductions, access patterns, and scalar operations;
+- matmul PSUM rules;
+- verifier-driven repair strategy;
+- common invalid patterns to preserve across rounds.
+
+It still does not include shipped reference kernels or level-specific solution hints.
+
+Level 1 prompt audit:
+
+- `minimal`: about 188 accounted tokens;
+- `docs`: about 911 accounted tokens;
+- `full-docs`: about 1732 accounted tokens.
+
 ## Context manager improvements: keys, ledger, retrieval, report
 
 Added normalized failure keys and a compressed unique ledger.

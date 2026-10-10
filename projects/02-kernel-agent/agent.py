@@ -155,6 +155,62 @@ GENERIC_DOCS_CARDS = [
     "signatures",
 ]
 
+FULL_GENERIC_GUIDE = """
+Generic NKI kernel-writing guide.
+
+Mental model:
+- HBM tensors are the function inputs and returned output. SBUF/PSUM are on-chip tiles.
+- Load from HBM into SBUF with nisa.dma_copy, compute on SBUF/PSUM tiles, then copy final SBUF
+  tiles back to the returned shared_hbm output.
+- Memory regions are constants, not constructors: use buffer=nl.sbuf, buffer=nl.psum,
+  buffer=nl.shared_hbm. Never call nl.sbuf() or nl.shared_hbm().
+- Prefer tile operations and nl.affine_range loops. Avoid Python scalar loops that assign one
+  element at a time unless the verifier proves it is legal.
+
+Allocation and dtype:
+- nl.ndarray(shape, dtype=..., buffer=...) always needs dtype and buffer.
+- Use input.dtype when matching an input tensor. Use nl.float32 or nl.bfloat16 for explicit NKI
+  dtypes. Do not pass NumPy dtypes such as np.float32.
+- SBUF and PSUM tiles must have at least two dimensions: partition dimension first, free dimension
+  second or later. Represent a vector as (1, N) or (N, 1), not (N,).
+- Tile-size limits are maximums. If a dimension exceeds a limit, loop over chunks; final chunks
+  must use the remaining valid size.
+
+DMA and shape rules:
+- nisa.dma_copy(dst=tile_or_output_slice, src=tensor_or_slice) requires src and dst to have the
+  same number of elements and compatible shape. It does not reshape, broadcast, pad, or slice for
+  you.
+- Allocate an SBUF tile to match the exact HBM slice being copied. Copy final computed SBUF tiles
+  into the exact returned output slice.
+- If the verifier says src/dst element counts differ, fix the tile/slice shape first.
+
+Views, reductions, and scaling:
+- NKI tensors are not NumPy arrays: do not use .reshape(), .mean(), .copy_from(), Python / on
+  tiles, or .shape on instruction results.
+- Use access-pattern/strided views when logical grouping is needed without reshaping the tile.
+  Derive strides from the physical layout; do not invent zero strides.
+- Use nl.sum(view, axis=[...]) for reductions. It returns a tile/instruction; it does not take a
+  dst argument.
+- nl.sum can reduce only trailing contiguous dimensions of the tile/view. If logical reduction axes
+  are not trailing, form a view where the reduced dimensions are trailing and contiguous.
+- Scale or multiply a tile with nisa.tensor_scalar(dst=..., data=..., op0=nl.multiply,
+  operand0=constant). Write into a destination tile; do not rely on Python arithmetic.
+
+Matmul rules:
+- nisa.nc_matmul(dst=..., stationary=..., moving=...) writes into a PSUM dst tile.
+- stationary and moving operands must be SBUF tiles. The left/stationary operand often has the K
+  contraction dimension on the partition axis.
+- For tiled matmul, keep one PSUM tile for an output block across the K loop, accumulate all K
+  chunks into it, tensor_copy PSUM to SBUF, then dma_copy the final block to shared_hbm.
+
+Verifier-driven repair:
+- Treat the observed verifier result as evidence. The hint and docs may be imperfect.
+- Fix the first concrete API/shape/rule failure before optimizing.
+- Preserve fixes from previous failures: do not reintroduce missing dtype, called memory regions,
+  1D SBUF/PSUM tiles, nisa.sum, .mean(), Python tile arithmetic, or wrong dma_copy shapes.
+- If a new attempt lowers reward, return to the best-scoring kernel and make a smaller change.
+"""
+
 
 # ---------------------------------------------------------------- reward
 #
@@ -633,6 +689,20 @@ def invalid_patterns_text(failures):
         f"- {p}" for p in patterns)
 
 
+def history_text(failures, limit=8):
+    if not failures:
+        return ""
+    lines = ["Repair history, newest last:"]
+    seen = set()
+    for i, failure in enumerate(failures[-limit:], 1):
+        key = failure_key(failure)
+        line = ledger_line(failure)
+        marker = "repeat" if key in seen else "new"
+        seen.add(key)
+        lines.append(f"- attempt {i}: {marker} {line}")
+    return "\n".join(lines)
+
+
 def compact_feedback(feedback):
     fn = getattr(nkibench, "compact_message", None)
     return fn(feedback) if fn else " ".join(str(feedback).split())[:360]
@@ -719,7 +789,7 @@ def prompt_accounting(reference="", code="", feedback="", cards="", ledger="", i
 
 def start_card_names(level, style="minimal"):
     names = list(LEVEL_START_CARDS.get(level, []))
-    if style == "docs":
+    if style in {"docs", "full-docs"}:
         names += GENERIC_DOCS_CARDS
     deduped = []
     for name in names:
@@ -729,7 +799,10 @@ def start_card_names(level, style="minimal"):
 
 
 def start_context(level, style="minimal"):
-    return render_context_cards(start_card_names(level, style))
+    text = render_context_cards(start_card_names(level, style))
+    if style == "full-docs":
+        text = (text + "\n\n" if text else "") + FULL_GENERIC_GUIDE.strip()
+    return text
 
 
 def first_prompt(level, terse=0, style="minimal"):
@@ -776,7 +849,7 @@ def first_prompt(level, terse=0, style="minimal"):
         f"Reply with ONE python code block containing the imports and the function. No prose.")
 
 
-def repair_prompt(level, source, feedback, tried=None):
+def repair_prompt(level, source, feedback, tried=None, best_reward=None, current_reward=None):
     """Evidence-weighted repair prompt.
 
     The checker report is the primary evidence. The category only retrieves compact docs and helps
@@ -789,8 +862,15 @@ def repair_prompt(level, source, feedback, tried=None):
     cards = render_context_cards(card_names)
     ledger = compact_ledger(tried or [])
     ledger_text = f"\n\nPrevious unique failures to avoid repeating:\n{ledger}" if ledger else ""
+    hist = history_text(tried or [])
+    history = f"\n\n{hist}" if hist else ""
     invalid_text = invalid_patterns_text(tried or [])
     invalid_text = f"\n\n{invalid_text}" if invalid_text else ""
+    score_text = ""
+    if best_reward is not None or current_reward is not None:
+        score_text = (f"\n\nScore context: best_reward={best_reward if best_reward is not None else '?'}; "
+                      f"current_reward={current_reward if current_reward is not None else '?'}. "
+                      "Preserve changes that improved reward and avoid regressions.")
     return (
         f"This NKI kernel for {nkibench.LEVELS[level]['op']} is not right yet.\n\n"
         f"Candidate code:\n"
@@ -801,7 +881,7 @@ def repair_prompt(level, source, feedback, tried=None):
         f"Use the observed verifier result as the main evidence. The hint and docs are supporting "
         f"context, not commands to follow blindly. Make the smallest code change that best explains "
         f"and fixes the observed failure. Also fix known invalid NKI API patterns from earlier "
-        f"attempts. Keep unrelated logic unchanged.{invalid_text}{ledger_text}\n\n"
+        f"attempts. Keep unrelated logic unchanged.{score_text}{invalid_text}{ledger_text}{history}\n\n"
         f"Reply with ONE python code block.")
 
 
@@ -825,7 +905,7 @@ def audit_context(level):
     import inspect
     ref = inspect.getsource(nkibench.LEVELS[level]["ref"])
     print(f"level {level}: {nkibench.LEVELS[level]['op']}")
-    for style in ("minimal", "docs"):
+    for style in ("minimal", "docs", "full-docs"):
         first = first_prompt(level, style=style)
         first_budget = prompt_accounting(
             reference=ref, core=CORE_CARD, cards=start_context(level, style))
@@ -1094,7 +1174,8 @@ def solve(a, level, log):
             # answer. Measured: the same TypeError 19 rounds running. Changing the prompt is the
             # only thing that can change the answer, so say what has already been tried.
             ledger = "\n".join(f"- {t[:160]}" for t in dict.fromkeys(tried))
-            prompt = (repair_prompt(level, latest[0], latest[1], tried)
+            prompt = (repair_prompt(level, latest[0], latest[1], tried,
+                                    best_reward=best[0], current_reward=top[0])
                       + f"\n\nThese approaches have already failed, so do something different:\n"
                         f"{ledger}")
             cat, inst = distill_failure(latest[1])
@@ -1120,7 +1201,8 @@ def solve(a, level, log):
                 cards=start_context(level, a.prompt_style))
             print(f"  no code yet, so re-asking with a shorter prompt (terseness {terse})")
         else:
-            prompt = repair_prompt(level, latest[0], latest[1], tried)
+            prompt = repair_prompt(level, latest[0], latest[1], tried,
+                                   best_reward=best[0], current_reward=top[0])
             cat, inst = distill_failure(latest[1])
             prompt_cards = retrieved_card_names(level, cat, feedback=latest[1], source=latest[0])
             prompt_budget = prompt_accounting(
@@ -1157,8 +1239,9 @@ def main():
                          "Qwen3-8B is fine at 0.")
     ap.add_argument("--context", type=int, default=4096,
                     help="the server's max-model-len; prompt + answer must fit inside it")
-    ap.add_argument("--prompt-style", choices=("minimal", "docs"), default="minimal",
-                    help="initial prompt context: minimal cards or richer generic API docs")
+    ap.add_argument("--prompt-style", choices=("minimal", "docs", "full-docs"), default="minimal",
+                    help="initial prompt context: minimal cards, generic API docs, or expanded "
+                         "generic API/error-repair docs")
     ap.add_argument("--think", action="store_true",
                     help="let the model reason first; costs budget, and it ran out")
     ap.add_argument("--offline", action="store_true")
