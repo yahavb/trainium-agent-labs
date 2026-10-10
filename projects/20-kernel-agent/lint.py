@@ -355,6 +355,23 @@ def lint_kernel(source):
                 issues.append(f"{at(node)} -- nisa.{op} has no argument {', '.join(bad)}. Its real signature: "
                               f"nisa.{op}({', '.join(n for n in params if n != 'name')}).")
 
+    # A dtype called like a function, or a tile argument that is a computed value. Measured on level 11:
+    # three rounds on `nisa.tensor_scalar(dst=..., data=nl.float32(d), op0=nl.sqrt)` -- a scale such as
+    # 1/sqrt(d) is a Python number, not something to compute on the chip.
+    DTYPES = {"float32", "float16", "bfloat16", "int32", "int8", "uint8", "float8_e4m3", "float8_e5m2"}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in DTYPES \
+                and isinstance(node.func.value, ast.Name) and node.func.value.id == "nl":
+            issues.append(f"{at(node)} -- nl.{node.func.attr} is a dtype, not a function. A constant such as "
+                          f"1/sqrt(d) is plain Python: scale = 1.0 / (d ** 0.5), then pass operand0=scale "
+                          f"(or scale=scale in nisa.activation).")
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) \
+                and isinstance(node.func.value, ast.Name) and node.func.value.id == "nisa":
+            for kw in node.keywords:
+                if kw.arg in ("data", "src", "stationary", "moving") and isinstance(kw.value, ast.Constant):
+                    issues.append(f"{at(node)} -- {kw.arg}= must be a tile, not a computed value. Compute "
+                                  f"numbers in Python and pass them as operand0= / scale=.")
+
     # Read before write: a tile from nl.ndarray holds garbage until something writes it. Measured on level
     # 8: a repair moved an activation to dst=y while the next line still read e, which nothing wrote --
     # the simulator then fails far away, on numbers, not on the line that broke.
