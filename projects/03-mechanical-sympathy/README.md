@@ -281,3 +281,15 @@ forecast accuracy has not been evaluated.
 
 See the [spatial-parallel report](results/spatial-parallel-2026-10-10/README.md)
 for raw timing, hardware allocation, and reproduction commands.
+
+### Graph-cut follow-up
+
+The single-trajectory progress plots now include nine trials. Adding only an
+input-concat cut took **58.69 s**; adding the input cut and per-layer UNet
+segmentation took **14.08 s** on one logical core, or **34.88 simulated years
+per forward minute**. The earlier four-core spatial split took **35.22 s**.
+
+These are forward-only timings, with compilation and warmup excluded. Core
+counts and CPU-thread settings are labeled in both plots above. No completed
+trial combines segmentation with four-core spatial splitting; accuracy remains
+unverified. See the [updated reports and trial ledger](results/spatial-parallel-2026-10-10/README.md).
