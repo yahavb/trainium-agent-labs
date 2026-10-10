@@ -348,9 +348,9 @@ level(7, "matmul, M, N and K blocked", "nki_matmul_fully_optimized_",
 # ---------------------------------------------------------------- extending the ladder
 #
 # Level 8 is here as a WORKED EXAMPLE of adding an operation. Everything it needed: the reference
-# above, the _args_attention builder, and this one call. No other part of the harness knows it
-# exists -- the rule checker, the simulator, the numerics, the traffic measurement and the agent all
-# pick it up automatically.
+# above, the _args_attention builder, and this one call -- the rule checker, the simulator, the
+# numerics and the traffic measurement pick it up automatically. (Our agent.py adds level-specific
+# feedback for levels 8-11 on top.)
 
 level(8, "single-head attention", "nki_attention_",
       "composition: a matmul, a numerically stable softmax, and a second matmul, with the "

@@ -21,7 +21,7 @@ against the level's traffic bar on every new shape.
     python holdout_check.py --level 10      # one level, printed
     python holdout_check.py --level 10 --json out.json
 
-Nothing in the repo is modified. It needs the Neuron SDK (nki) to do anything useful; run it on
+It writes only holdout_out/ and holdout_results.md. It needs the Neuron SDK (nki) to do anything useful; run it on
 the pod.
 """
 
@@ -356,7 +356,7 @@ def summarize(results):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--level", type=int)
+    ap.add_argument("--level", type=int, choices=sorted(CASES))
     ap.add_argument("--json", help="write this level's results as JSON here")
     ap.add_argument("--out", default="holdout_results.md", help="markdown output (all-levels mode)")
     ap.add_argument("--workdir", default=os.path.join(HERE, "holdout_out"))

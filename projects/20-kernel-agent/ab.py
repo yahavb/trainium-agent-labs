@@ -60,7 +60,7 @@ def main():
             cmd = [sys.executable, os.path.join(HERE, "agent.py"), "--level", str(a.level), "--repeat", "1",
                    *shlex.split(a.budget), *shared, *extra, "--log", f"ab-{tag}-{arm}.jsonl"]
             print(f"pair {i + 1}/{a.pairs} arm {arm}", flush=True)
-            with open(f"ab-{tag}-{arm}.log", "a") as out:
+            with open(os.path.join(HERE, f"ab-{tag}-{arm}.log"), "a") as out:
                 rc = subprocess.run(cmd, stdout=out, stderr=subprocess.STDOUT, cwd=HERE).returncode
             if rc != 0:   # a crashed run is a result too: count it, do not let it vanish from the rate
                 crashed[arm] += 1

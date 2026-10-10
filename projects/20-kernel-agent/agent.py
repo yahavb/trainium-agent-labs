@@ -93,7 +93,8 @@ def wrong_variant(level, args, got):
 
 def lint_count(feedback):
     """How many static-check problems a grade's feedback reports (0 when the kernel passed the check)."""
-    m = re.match(r"A static check found (\d+) problem", feedback or "")
+    m = re.search(r"A static check found (\d+) problem", feedback or "")   # search: a cut-off reply's
+                                                                          # feedback starts with that notice
     return int(m.group(1)) if m else 0
 
 
@@ -134,7 +135,10 @@ def grade(source, level):
         # revealed the next. Measured on 108 logged level-8 attempts: a failing kernel had 3-6 such
         # mistakes at once; the static check found all of them (and flags none in any verified kernel).
         from lint import lint_kernel, doc_notes
-        issues = lint_kernel(source)
+        try:
+            issues = lint_kernel(source)
+        except Exception:   # a bug in the static check must never end a run; the simulator still checks
+            issues = []
         if issues:
             notes = doc_notes(issues)
             return (sum(WEIGHTS[k] for k, v in parts.items() if v), parts,
@@ -217,10 +221,12 @@ def grade(source, level):
             m = ("CORRECT ON CPU BUT WRONG ON HARDWARE: " + hazards[0]
                  + ". Fix that before anything else -- the simulator agrees with the reference here "
                    "and the device would not.")
-        if m and level in (8, 11) and "NUMERICAL MISMATCH" in m:
-            m += wrong_variant(level, args, got) or ""
         if m and LEVEL_HINTS and level in (5, 6, 7):
             m = level_hint(m, level) or m
+        if m and LEVEL_HINTS and level in (8, 9, 10, 11) and ("NUMERICAL MISMATCH" in m or "NON-FINITE" in m):
+            m = level_hint(m, level) or m
+            if level in (8, 11):
+                m += wrong_variant(level, args, got) or ""
         if m:
             failures.append((nkibench.label(case, level), m))
             continue
@@ -899,6 +905,10 @@ def ask(a, prompt, temperature=0.6):
     body = dict(model=a.model, messages=[{"role": "user", "content": prompt}],
                 max_tokens=budget, temperature=temperature, top_p=0.95,
                 chat_template_kwargs={"enable_thinking": a.think})
+    if temperature > 0:
+        # Measured: without a per-request seed the server's sampling is deterministic, so seats 95 and
+        # 98 produced byte-identical level-8 traces -- three seats were one experiment run three times.
+        body["seed"] = int.from_bytes(os.urandom(4), "little")
     t_start = time.perf_counter()
     r = httpx.post(f"{a.base.rstrip('/')}/chat/completions", json=body,
                    timeout=900, verify=False)
@@ -1029,7 +1039,7 @@ def solve(a, level, log):
                             "Last checker result: " + feedback)
             graded.append((reward, src, feedback, parts, k))
             records.append(dict(level=level, run=getattr(a, "_run", 0), round=rnd, sample=k,
-                                temperature=temps[k], framing=(k % len(FRAMINGS)) if getattr(a, "prompt_portfolio", False) else 0,
+                                temperature=temps[k], framing=(k % len(FRAMINGS)) if getattr(a, "prompt_portfolio", False) else None,
                                 reward=reward, parts=parts,
                                 prompt_chars=len(prompt), reply_chars=len(reply), dup=dup,
                                 **getattr(reply, "meta", {}), **getattr(a, "_provenance", {}),
@@ -1151,7 +1161,7 @@ def main():
     ap.add_argument("--offline", action="store_true")
     ap.add_argument("--seed-from", default=None,
                     help="start from a kernel the agent already verified at an earlier level (e.g. "
-                         "solved/level4_*.py for levels 5-7): its function is renamed to this level's "
+                         "solved/level04_*.py for levels 5-7): its function is renamed to this level's "
                          "entry point and the checker's verdict on it becomes round 0's repair prompt")
     ap.add_argument("--blocks", default="",
                     help="comma-separated kernels the agent already verified at other levels, shown in "
@@ -1168,7 +1178,7 @@ def main():
                     help="check every tile's memory and every operator BEFORE simulating, and report all "
                          "problems at once with line numbers (the simulator stops at the first)")
     ap.add_argument("--level-hints", action="store_true",
-                    help="name the structural change each stuck level needs (levels 1, 3, 4) "
+                    help="name the structural change each stuck level needs (levels 1-11; plus the real-API card on 8-11) "
                          "instead of the generic per-error message. Off by default, so baseline "
                          "runs stay comparable with the repo's measurements.")
     a = ap.parse_args()

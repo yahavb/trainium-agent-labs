@@ -100,10 +100,26 @@ def _name(node):
     return node.id if isinstance(node, ast.Name) else None
 
 
+def _dim(e):
+    """seq -> 'seq'; 128 -> '128'; q.shape[0] -> 'q.shape[0]'; anything else -> None."""
+    if isinstance(e, ast.Name):
+        return e.id
+    if isinstance(e, ast.Constant) and isinstance(e.value, int):
+        return str(e.value)
+    if isinstance(e, ast.Subscript) and isinstance(e.value, ast.Attribute) and e.value.attr == "shape" \
+            and isinstance(e.value.value, ast.Name) and isinstance(e.slice, ast.Constant):
+        return f"{e.value.value.id}.shape[{e.slice.value}]"
+    return None
+
+
 def _dims(node):
-    """(seq, d) / (128, 64) -> ('seq', 'd') / ('128', '64'); anything not written plainly -> None."""
-    if isinstance(node, ast.Tuple) and all(isinstance(e, (ast.Name, ast.Constant)) for e in node.elts):
-        return tuple(e.id if isinstance(e, ast.Name) else str(e.value) for e in node.elts)
+    """(seq, d) / (128, 64) / (q.shape[0], k.shape[0]) -> tuple of dimension names; x.shape -> 'x.shape'
+    marker resolved later; anything not written plainly -> None."""
+    if isinstance(node, ast.Tuple):
+        dims = tuple(_dim(e) for e in node.elts)
+        return dims if all(dims) else None
+    if isinstance(node, ast.Attribute) and node.attr == "shape" and isinstance(node.value, ast.Name):
+        return f"{node.value.id}.shape"
     return None
 
 
@@ -148,6 +164,10 @@ def lint_kernel(source):
             consts[node.targets[0].id] = str(node.value.value)
 
     def size(d):
+        if d.endswith("]") and ".shape[" in d:            # q.shape[0] -> seq when `seq, d = q.shape`
+            t, i = d[:-1].split(".shape[")
+            if t in shape and isinstance(shape[t], tuple) and i.isdecimal() and int(i) < len(shape[t]):
+                d = shape[t][int(i)]
         return consts.get(d, d)
 
     def differ(a, b):
@@ -156,9 +176,12 @@ def lint_kernel(source):
         a, b = size(a), size(b)
         if a == b:
             return False
-        if a.isdigit() and b.isdigit():
+        if a.isdecimal() and b.isdecimal():
             return True
         if "1" in (a, b):              # a (seq, 1) reduction tile is never a whole (seq, d) tile
+            return True
+        pa, pb = a.split(".shape["), b.split(".shape[")
+        if len(pa) == 2 == len(pb) and pa[0] == pb[0]:      # q.shape[0] vs q.shape[1]: two axes of q
             return True
         return sibling.get(a) is not None and sibling.get(a) == sibling.get(b)
 
@@ -167,12 +190,13 @@ def lint_kernel(source):
 
     def big(dims):
         """A dimension proven larger than 32 (the Vector engine's transpose limit)."""
-        return any(size(d).isdigit() and int(size(d)) > 32 for d in dims or ())
+        return any(size(d).isdecimal() and int(size(d)) > 32 for d in dims or ())
     for node in ast.walk(tree):        # first pass: where every tile lives
         if isinstance(node, ast.Assign) and isinstance(node.value, ast.Call):
             f = node.value.func
             mem = None
-            if isinstance(f, ast.Attribute) and f.attr in ("ndarray", "zeros", "ones", "full", "empty"):
+            if isinstance(f, ast.Attribute) and f.attr in ("ndarray", "zeros", "ones", "full", "empty") \
+                    and isinstance(f.value, ast.Name) and f.value.id == "nl":     # np.zeros is not a tile
                 mem = _buffer_of_call(node.value) or ("sbuf" if f.attr != "ndarray" else None)
             elif isinstance(f, ast.Attribute) and f.attr in RETURNS_SBUF and isinstance(f.value, ast.Name) \
                     and f.value.id == "nl":
@@ -199,6 +223,14 @@ def lint_kernel(source):
             dst = next((kw.value for kw in node.keywords if kw.arg == "dst"), node.args[0] if node.args else None)
             if _name(dst):
                 produced.setdefault(_name(dst), node.lineno)
+
+    for t, v in list(shape.items()):   # shape=q.shape: the tile takes q's (unpacked) shape
+        if isinstance(v, str):
+            base = shape.get(v[:-len(".shape")])
+            if isinstance(base, tuple):
+                shape[t] = base
+            else:
+                del shape[t]
 
     for node in ast.walk(tree):        # second pass: check every instruction and operator
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
@@ -321,10 +353,10 @@ def lint_kernel(source):
                 issues.append(f"{at(node)} -- {t} is 1-D; an sbuf/psum tile needs at least 2 dimensions "
                               f"(partition, free). For one value per row use shape (rows, 1); for a plain "
                               f"constant such as 1/sqrt(d), use a Python float (operand0=scale), not a tile.")
-            if dims and size(dims[0]).isdigit() and int(size(dims[0])) > 128:
+            if dims and size(dims[0]).isdecimal() and int(size(dims[0])) > 128:
                 issues.append(f"{at(node)} -- {t} has {size(dims[0])} rows; an on-chip tile has at most 128 "
                               f"(the first axis is the partition axis). Split it into 128-row tiles in a loop.")
-            if dims and where.get(t) == "psum" and len(dims) == 2 and size(dims[1]).isdigit() \
+            if dims and where.get(t) == "psum" and len(dims) == 2 and size(dims[1]).isdecimal() \
                     and int(size(dims[1])) > 512:
                 issues.append(f"{at(node)} -- psum tile {t} has {size(dims[1])} columns; one psum bank holds "
                               f"at most 512 fp32 per row. Split the free axis into blocks of 512.")
