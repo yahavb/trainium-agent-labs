@@ -52,6 +52,12 @@ REASONING_KEYS = ("reasoning", "reasoning_content")
 WEIGHTS = dict(parses=0.1, rules=0.2, runs=0.2, correct=0.5)
 
 
+def lint_count(feedback):
+    """How many static-check problems a grade's feedback reports (0 when the kernel passed the check)."""
+    m = re.match(r"A static check found (\d+) problem", feedback or "")
+    return int(m.group(1)) if m else 0
+
+
 def grade(source, level):
     """Returns (reward, parts, feedback). Feedback is an INSTRUCTION, never just a verdict."""
     parts = dict(parses=False, rules=False, runs=False, correct=False)
@@ -88,12 +94,14 @@ def grade(source, level):
         # --lint: the simulator stops at the FIRST error, so each round fixed one placement mistake and
         # revealed the next. Measured on 108 logged level-8 attempts: a failing kernel had 3-6 such
         # mistakes at once; the static check found all of them (and flags none in any verified kernel).
-        from lint import lint_kernel
+        from lint import lint_kernel, doc_notes
         issues = lint_kernel(source)
         if issues:
+            notes = doc_notes(issues)
             return (sum(WEIGHTS[k] for k, v in parts.items() if v), parts,
                     f"A static check found {len(issues)} problem(s) before running the kernel. Fix ALL "
-                    f"of them in this reply:\n" + "\n".join(f"- {i}" for i in issues))
+                    f"of them in this reply:\n" + "\n".join(f"- {i}" for i in issues)
+                    + ("\nThe rules, from the AWS NKI docs:\n" + "\n".join(f"- {n}" for n in notes) if notes else ""))
 
     spec = nkibench.LEVELS[level]
     path = f"/tmp/_agent_level{level}_{os.getpid()}.py"
@@ -976,7 +984,13 @@ def solve(a, level, log):
         # seats 95 and 98 ran byte-identical traces). Prefer a sample that changed the kernel, then one
         # whose error differs from last round's.
         prev_fb = tried[-1] if tried else None
-        if getattr(a, "portfolio", False) or getattr(a, "echo_check", False):
+        if LINT:
+            # Every failing level-8 round scores 0.30, so the reward cannot tell a kernel with one problem
+            # left from one with seven. Prefer fewer static-check problems (a kernel that passed the static
+            # check counts as zero), then a changed kernel, then a new error.
+            graded.sort(key=lambda g: (g[0], -lint_count(g[2]), (g[1] or '').strip() != (latest[0] or '').strip(),
+                                       g[2] != prev_fb), reverse=True)
+        elif getattr(a, "portfolio", False) or getattr(a, "echo_check", False):
             graded.sort(key=lambda g: (g[0], (g[1] or '').strip() != (latest[0] or '').strip(),
                                        g[2] != prev_fb), reverse=True)
         else:   # original behaviour, so baseline runs stay comparable
