@@ -1,0 +1,2 @@
+# Fake data (schema.py --fake) is for building the dashboard layout only; never commit it.
+fake_*
