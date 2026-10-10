@@ -128,6 +128,23 @@ def grade(source, level):
         return (sum(WEIGHTS[k] for k, v in parts.items() if v), parts,
                 "Rule violations, which score zero however fast the kernel is. Fix exactly "
                 "these: " + " ".join(violations) + extra)
+    # The entry point must take the reference's arguments. Measured on level 9: the model wrote
+    # `def nki_transpose_tile_():` with no input and spent four rounds on "takes 0 positional arguments
+    # but 1 was given" without connecting it to its own signature. Hand over the exact line.
+    import ast as _ast, inspect as _inspect
+    try:
+        want_args = list(_inspect.signature(nkibench.LEVELS[level]["ref"]).parameters)
+        entry = nkibench.LEVELS[level]["entry"]
+        fn = next((n for n in _ast.walk(_ast.parse(source)) if isinstance(n, _ast.FunctionDef) and n.name == entry), None)
+        got_args = [x.arg for x in fn.args.args] if fn else want_args
+    except Exception:
+        want_args = got_args = []
+    if len(got_args) != len(want_args):
+        return (sum(WEIGHTS[k] for k, v in parts.items() if v), parts,
+                f"`{entry}` takes {len(got_args)} argument(s) ({', '.join(got_args) or 'none'}), but the "
+                f"checker calls it with {len(want_args)}: the inputs arrive as arguments, in HBM. Start the "
+                f"function with exactly this line:  def {entry}({', '.join(want_args)}):  and read every "
+                f"size from the inputs' .shape.")
     parts["rules"] = True
 
     if LINT and level >= 3:
