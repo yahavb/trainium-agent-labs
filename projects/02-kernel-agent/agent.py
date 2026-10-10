@@ -126,7 +126,7 @@ def grade(source, level):
                     f"CANNOT SIMULATE: {e}")
         except Exception as e:
             failures.append((nkibench.label(case, level),
-                             enrich(f"raised {type(e).__name__}: {e}")))
+                             enrich(f"raised {type(e).__name__}: {e}", level=level)))
             continue
         parts["runs"] = True
         m = (nkibench.check_inputs_untouched(before, args)
@@ -204,6 +204,26 @@ def copy_kernel(a):
 """
 
 
+TRANSPOSE_METHOD = """Transpose the two free axes WITHIN each partition row. The input and output
+both have shape [P, F1*F2]; shape2D contains the Python integers (F1, F2).
+Keep partition rows in place. A row-major position (i, j) becomes position (j, i)
+in a flattened F2-by-F1 output row. Derive each flat offset using that row's width.
+"""
+
+TRANSPOSE_API_CARD = """NKI transpose primitives:
+  Allocate input and output SBUF tiles with shape (rows, F), where F=x.shape[1].
+  Use the actual partition count: rows=min(128, P-start), using Python min.
+  nisa.dma_copy(dst=input_tile, src=x[start:start+rows, :]) loads a matching tile.
+  For SBUF-to-SBUF element movement, use nisa.tensor_copy(dst=, src=).
+  tile[:, nl.ds(offset, 1)] selects one free-axis column and preserves a 2-D tile.
+  Iterate the F1 and F2 positions with nl.affine_range and derive source and
+    destination offsets separately. Write into a separate output SBUF tile.
+  nisa.dma_copy(dst=out[start:start+rows, :], src=output_tile) stores the tile.
+  out is nl.ndarray(x.shape, dtype=x.dtype, buffer=nl.shared_hbm).
+Shape sizes and offsets are Python integers; nl.min/nl.max reduce tensors.
+"""
+
+
 def available_names(dotted):
     """Turn 'no attribute X' into 'here are the real ones'.
 
@@ -245,7 +265,7 @@ def real_signature(func_name):
     return ""
 
 
-def enrich(error_text):
+def enrich(error_text, level=None):
     """Add the real names when the failure is an invented API call."""
     if "'MemoryRegion' object is not callable" in error_text:
         return (error_text + " nl.sbuf, nl.psum and nl.shared_hbm are memory regions, not "
@@ -342,6 +362,12 @@ def enrich(error_text):
         return error_text + available_names(f"{m.group(1)}.{m.group(2)}")
     m = re.search(r"'(\w+)' object has no attribute '(\w+)'", error_text)
     if m:
+        if level == 2 and m.groups() == ("int", "dtype"):
+            return (error_text + " Shape dimensions and offsets are Python integers. "
+                    "For a shape bound use Python min(128, P-start), not nl.min: "
+                    "nl.min reduces a tensor and tries to read its dtype. Allocate "
+                    "both SBUF tiles as (rows, F), load x[start:start+rows, :], and "
+                    "take the element dtype from x.dtype, not from a shape integer.")
         return (error_text + f" A {m.group(1)} is not a numpy array, so it has no "
                 f"`{m.group(2)}`. Use the nl/nisa functions instead.")
     return error_text
@@ -356,6 +382,19 @@ def first_prompt(level, terse=0):
     """
     s = nkibench.LEVELS[level]
     import inspect
+    if level == 2:
+        card = TRANSPOSE_API_CARD if terse == 0 else (
+            "Use shape-derived (rows, F) SBUF tiles and matching dma_copy slices. "
+            "Use nisa.tensor_copy with tile[:, nl.ds(offset, 1)] for column moves. "
+            "Use Python min for integer bounds; nl.min is a tensor reduction.\n")
+        if terse >= 2:
+            card = "Copy columns with nisa.tensor_copy and nl.ds(offset, 1); keep tile sizes equal to their slices.\n"
+        return (
+            f"Write an NKI kernel `{s['entry']}` decorated with @nki.jit.\n"
+            f"Match this NumPy reference:\n\n{inspect.getsource(s['ref'])}\n"
+            f"{TRANSPOSE_METHOD}\n{card}\n"
+            f"Import nki, nki.language as nl, and nki.isa as nisa. "
+            f"Reply with ONE complete python code block.")
     if terse >= 2:
         # Last resort. Measured on this endpoint: one-sentence prompts answered in 300-700
         # tokens while every structured, rule-carrying prompt spiralled.
@@ -398,6 +437,14 @@ def repair_prompt(level, source, feedback):
     The lesson this whole repo keeps re-learning: feeding a verifier's report back verbatim
     reproduces the same mistake, because a report says what is wrong and never what to do.
     """
+    if level == 2:
+        return (
+            f"Repair this NKI per-partition transpose:\n\n```python\n{source}\n```\n\n"
+            f"A checker reports:\n{feedback}\n\n"
+            f"{TRANSPOSE_METHOD}\n{TRANSPOSE_API_CARD}\n"
+            f"Fix the error and the index mapping while keeping the entry point, arguments, "
+            f"output shape and input dtype. You may replace incorrect allocations or loops. "
+            f"Reply with ONE complete python code block.")
     return (
         f"This NKI kernel for {nkibench.LEVELS[level]['op']} is not right yet.\n\n"
         f"```python\n{source}\n```\n\n"
