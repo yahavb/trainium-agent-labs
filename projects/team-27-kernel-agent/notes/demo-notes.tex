@@ -1,0 +1,160 @@
+\documentclass[11pt]{article}
+\usepackage[margin=2cm]{geometry}
+\usepackage{booktabs,graphicx,amsmath,amssymb,xcolor,enumitem,hyperref}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\hypersetup{colorlinks,linkcolor=blue!50!black,urlcolor=blue!50!black}
+\setlist{itemsep=1pt,topsep=3pt}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\ours}[1]{\textcolor{blue!60!black}{\textbf{#1}}}
+\newcommand{\naive}[1]{\textcolor{orange!70!black}{#1}}
+\setlength{\parindent}{0pt}\setlength{\parskip}{4pt}
+
+\title{\vspace{-1.2cm}A kernel-writing agent under an 8k-token budget\\[2pt]\large Demo notes, Team 27 (seat 130) \textbullet{} Project 02, Stage A}
+\date{2026-10-10 \textbullet{} \url{https://github.com/LiYou22/kernel-agent} \textbullet{} \href{https://github.com/yahavb/trainium-agent-labs/pull/20}{PR \#20}}
+\author{}
+
+\begin{document}
+\maketitle
+\vspace{-1cm}
+
+\section*{1. The problem and our claim}
+Qwen3-8B (vLLM on a Trainium seat pod, 8192 tokens per call including the answer) must write tiled
+NumPy kernels for a 10-level ladder (relu \dots\ conv1d) under chip-like rules: tiles of at most
+$128\times512$, explicit loops, no fancy indexing or broadcasting, no calling the op itself, partial
+tiles handled. The dilemma: rules in the prompt make the small model audit itself into silence; no
+rules and it writes confident violations (our first L1 kernel: 40/40 correct, but \code{np.asarray}
+on line 5, so zero).
+
+\textbf{Claim: the rules belong in the verifier, not the prompt; every verdict is translated into one
+concrete instruction.} The model writes freely from a one-sentence task; the harness finds what is
+wrong; the agent sends back the previous code, \emph{one} instruction and one line of evidence; a
+kernel counts only if it also passes held-out cases the model never saw.
+
+\section*{2. The verifier}
+\begin{itemize}
+\item \textbf{Two rule checks}: a static AST scan (covers branches the tests never reach) and a runtime
+  guard (numpy swapped for a monitored proxy that records each violation by line).
+\item \textbf{Numerical correctness} against a proven float32 error bound (\S5), on hostile dev cases
+  (huge magnitudes, large means, partial tiles) and a separate holdout set.
+\item \textbf{Diagnosis, not just a verdict}: cross-case patterns (``wrong exactly when there is more
+  than one column tile''), and level hypotheses checked numerically against the reference before they
+  are said (a wrong explanation is worse than none).
+\item \textbf{Cost ledger}: FLOPs, instructions, HBM bytes read/written for every run (\S6).
+\item \textbf{Final gate}: the organizers' \code{kernelbench.py}; its failures are translated too.
+\end{itemize}
+
+\section*{3. Key result: only the feedback differs}
+Same verifier, model, stopping rule and holdout; 5 runs per level; \ours{ours} translates the verdict
+into one instruction, \naive{naive} sends the verifier's report back verbatim (version \code{e22ccab872}).
+Reward per run = best attempt: 0.1 parses + 0.2 obeys rules + 0.2 runs + 0.5 $\times$ fraction of cases
+correct (the upstream NKI agent's formula).
+
+\begin{center}\small
+\begin{tabular}{@{}lcccc@{}}\toprule
+Level & solved (ours / naive) & per-run reward, ours & per-run reward, naive & mean reward \\\midrule
+L1 relu        & \ours{5/5} / \naive{3/5} & 1.00 1.00 1.00 1.00 1.00 & 0.80 0.80 1.00 1.00 1.00 & \ours{1.00} / \naive{0.92}\\
+L2 row sum     & \ours{4/5} / \naive{0/5} & 1.00 1.00 1.00 0.80 1.00 & 0.80 0.80 0.80 0.80 0.80 & \ours{0.96} / \naive{0.80}\\
+L3 row max     & \ours{5/5} / \naive{1/5} & 1.00 1.00 1.00 1.00 1.00 & 1.00 0.80 0.81 0.80 0.80 & \ours{1.00} / \naive{0.84}\\
+L4 RMSNorm     & \ours{1/5} / \naive{0/5} & 0.94 0.61 0.61 1.00 0.94 & 0.74 0.61 0.61 0.61 0.74 & \ours{0.82} / \naive{0.66}\\\midrule
+\textbf{Total} & \ours{15/20} / \naive{4/20} & & & \ours{0.95} / \naive{0.81}\\\bottomrule
+\end{tabular}\end{center}
+Naive's many 0.80s are numerically right but rule-breaking (e.g.\ \code{np.sum}): given the raw report,
+the model repeats the same mistake. Tokens per verified kernel: \ours{4.4k} vs \naive{17.5k}, about
+$4\times$ cheaper per success.
+
+\textbf{One failure and its recovery (L2, live log).} \#1 uses \code{np.sum}: 28/28 correct but illegal
+$\to$ ``accumulate column by column, \code{acc += x[i0:i1, j]}''. \#2 column loop, but indexes a 188-column
+partial tile with the global column: \code{IndexError: index 512 is out of bounds for axis 1 with size 188}
+(19/28 cases crash) $\to$ one instruction about the partial tile. \#3 dev 28/28, holdout 21/21.
+
+\textbf{One new diagnosis (L3).} The live bug \code{result[row] = acc} sat inside the column-tile loop,
+so each tile overwrote the last. The verifier now recomputes the reference per tile, sees the wrong
+outputs equal the last tile's result, and says ``keep one running value per row across all tiles;
+write it after the loop''. L3 went from stuck to 5/5.
+
+\section*{4. Iteration backed by data}
+\begin{itemize}
+\item \textbf{v3, pre-registered}: before any result we wrote ``$\ge 2/9$ on L4--L6 counts as better''.
+  v3 scored 3/9 vs v2's 1/25 (L6 0 $\to$ 2/3), so v3 was adopted. Caveat: six changes shipped together.
+\item \textbf{v4, aligned with the judges}: re-checking every kernel with the organizers'
+  \code{kernelbench.py} showed L4/L8 signature mismatches and float32 products failing its per-element
+  $10^{-4}$. v4 uses their signatures and makes their checker the final gate.
+\item \textbf{Final agent} (\code{f0c39f1e0f}, 74 self-tests) = v4 + a teammate's v3-rewrite: a draft
+  with $\ge 5$ violations gets one instruction to rewrite in the op's legal loop shape; ``stuck'' only
+  when nothing improves; a red-team fix (column slices longer than 128 rows were not caught).
+\end{itemize}
+
+\textbf{Final kernel per level}, each written by the agent and passing \emph{both} our checker (rules,
+dev, holdout) and the organizers' \code{kernelbench.py} (\code{FINAL.md}, \code{kernels/final/}):
+
+\begin{center}\small
+\begin{tabular}{@{}lcccccccccc@{}}\toprule
+ & L1 & L2 & L3 & L4 & L5 & L6 & L7 & L8 & L9 & L10\\\midrule
+both checkers & \checkmark & \checkmark & \checkmark & -- & \checkmark$^*$ & \checkmark & -- & \checkmark & \checkmark$^*$ & \checkmark\\
+roofline time & 1.00 & 1.00 & 1.00 & & 2.00 & 1.00 & & 2.00 & 61.2 & 12.2\\\bottomrule
+\end{tabular}\end{center}
+\vspace{-4pt}{\footnotesize $^*$ from a teammate's run still in progress (version \code{c5e98d5a75}); L8
+from the final agent, 1/3 runs. L4 and L7: no kernel passes both yet.}
+
+\section*{5. Numerical analysis: bound the error, don't guess a tolerance}
+An output passes iff $|y - y_\text{ref}| \le \gamma_k \cdot \text{scale}$ with
+$\gamma_k = ku/(1-ku)$, $u = 2^{-24}$ (Higham), $k$ the longest chain of roundings (row length for a
+sum, $K$ for matmul, the window for attention/conv), scale the op's natural magnitude (e.g.\
+$\sum|x|$ for a row sum). Any algorithm correct in float32 passes, whatever its order; bugs still
+fail by orders of magnitude.
+
+\begin{center}\includegraphics[width=0.92\linewidth]{fig-bounds.png}\end{center}
+\vspace{-6pt}Our first constant tolerance ($10^{-5}$) rejected a \emph{correct} float32 row sum
+(error $1.5\times10^{-5}$; proven bound $6.1\times10^{-5}$). All hand kernels use 0--47\% of their bound.
+
+\section*{6. Efficiency: count FLOPs, bytes and instructions}
+The runtime guard keeps books for every run: FLOPs, instructions (numpy calls, including scalar ops),
+HBM bytes read and written, each against the op's minimum. Cost is the roofline time
+$t=\max(\text{HBM bytes}, \text{FLOPs}/222)$ as a multiple of the minimum (222 FLOP/byte is the ridge).
+These ops run at 0.25--0.44 FLOP/byte, so they are memory-bound: the win is fewer passes and
+instructions, not fewer FLOPs.
+
+\begin{center}\includegraphics[width=0.78\linewidth]{fig-opt2.png}\end{center}
+\vspace{-6pt}8 of 15 verified model kernels were per-element loops ($\sim$135k instructions where
+column vectors need 2{,}068), all ``correct''. The optimiser gives one rule-safe instruction with a
+snippet and accepts a rewrite only if dev \emph{and} holdout still pass and it is cheaper:
+\textbf{65$\times$ / 79$\times$ fewer instructions}, L4 roofline $1.99\times \to 1.50\times$; no kernel
+was ever made wrong.
+
+\section*{7. Honest limits}
+\begin{itemize}
+\item L4 and up are still hard: two passes + no broadcasting + numeric traps; fixing one breaks another.
+  L4 and L7 have no kernel passing both checkers.
+\item v3's six changes were shipped together, so the gain cannot be attributed to one of them; samples
+  are small (3--5 runs) and the server is near-deterministic.
+\item The 8k budget never bound in Stage A (largest prompt 706 tokens); it would in Stage B (NKI).
+\end{itemize}
+
+\section*{8. Demo instructions (about 3 minutes, no model needed)}
+{\footnotesize
+\begin{verbatim}
+cd kernel-agent && uv sync
+export KERNELBENCH_DIR=/path/to/02-kernel-agent   # organizers' kernelbench.py (final gate)
+
+# (a) the verifier names the cause, not just "wrong"                          -> Sec. 3, L3
+uv run python -m kagent.harness 3 kernels/broken/l3_overwrite_per_tile.py --fixes
+# (b) a rule violation becomes ONE instruction                                -> Sec. 3, L2
+uv run python -m kagent.harness 2 kernels/broken/l2_np_sum.py --fixes
+# (c) error bound and cost ledger on a correct kernel                         -> Sec. 5, 6
+uv run python -m kagent.harness 4 kernels/hand/l4_rmsnorm.py
+# (d) the full repair loop, replaying recorded model replies                  -> Sec. 1, 3
+uv run python -m kagent.agent --levels 1 2 --scripted tests/scripts/demo.json --out /tmp/demo.jsonl
+# (e) the per-run rewards of the ablation table                               -> Sec. 3
+uv run python scripts/reward.py results/seat-130/ours-L1234-seat-130.jsonl \
+                                results/seat-130/naive-L1234-seat-130.jsonl
+\end{verbatim}
+}
+What to point at: (a) \code{0 rule violation(s), 15/24 cases correct} and
+\code{Pattern: \dots\ equals the result over the last column tile only}; (b) \code{28/28 cases correct}
+yet \code{np.sum [sum-like]}, then the \code{FIX line 12} instruction; (c) \code{worst uses 10\% of it}
+and the \code{Cost} line; (d) L2 \code{FAIL rule:sum-like} $\to$ \code{PASS dev; holdout 21/21} $\to$
+\code{verified (confidence 0.95)}, with \code{in=}/\code{out=} token counts per attempt.
+Reproduce everything: \code{uv run pytest -q} (74 passed); \code{README.md} has the commands for live runs.
+
+\end{document}
