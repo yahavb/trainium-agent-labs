@@ -1,0 +1,4 @@
+numpy
+torch
+pytest
+ml_dtypes  # only for scripts/sim_dtypes.py on a Neuron node
