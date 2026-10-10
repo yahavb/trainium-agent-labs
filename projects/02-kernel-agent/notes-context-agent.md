@@ -191,3 +191,13 @@ Observed Level 1 context sizes:
 - first prompt: about 122 tokens;
 - `.mean()` repair: about 315 tokens with `avgpool_reduction`, `reductions`, `signatures`;
 - DMA-shape repair: about 276 tokens.
+
+## Agent improvement: reduction axis routing
+
+Real Level 1 run found the next failure after `.mean()`:
+
+- `tensor_reduce axis must be the last contiguous dim(s) ... Got axis=(2, 4)`
+
+Updated `agent.py` so this maps to `reduction_axis` and sends a focused card explaining that
+`nl.sum` can only reduce trailing contiguous dimensions, so the avgpool access-pattern view must
+place pool dimensions last and reduce `axis=[3, 4]`.

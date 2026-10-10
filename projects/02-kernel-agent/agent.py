@@ -82,6 +82,12 @@ CONTEXT_CARDS = {
         "the pool axes with nl.sum(..., axis=[...]), then multiply by "
         "1.0 / (pool_size * pool_size). Do not call .mean() on an NKI tensor."
     ),
+    "reduction_axis": (
+        "NKI reduction axis rule: nl.sum can reduce only the last contiguous dimensions of a tile. "
+        "For a 5D avgpool access-pattern view shaped like output_h, pool_h, output_w, pool_w, the "
+        "pool axes are not both trailing. Build/reorder the access pattern so the two pool "
+        "dimensions are the final axes, then reduce axis=[3, 4]."
+    ),
     "access_patterns": (
         "Access-pattern views use strides and counts over an existing SBUF tile. The first stride "
         "for the partition axis must match the size of the free dimensions behind one partition "
@@ -106,6 +112,7 @@ CONTEXT_CARDS = {
 REPAIR_CARD_NAMES = {
     "scale": ["reductions", "signatures"],
     "reduction_api": ["reductions", "signatures"],
+    "reduction_axis": ["reduction_axis", "avgpool_reduction", "reductions"],
     "nonfinite": ["dma_copy_shape", "matmul_psum"],
     "rule": ["api_core", "signatures"],
     "dma_shape": ["dma_copy_shape", "tile_limits"],
@@ -487,7 +494,7 @@ def render_context_cards(names):
 
 def repair_card_names(level, category):
     names = list(REPAIR_CARD_NAMES.get(category, ["api_core"]))
-    if level == 1 and category in {"scale", "reduction_api"}:
+    if level == 1 and category in {"scale", "reduction_api", "reduction_axis"}:
         names.insert(0, "avgpool_reduction")
     deduped = []
     for name in names:
@@ -529,6 +536,11 @@ def distill_failure(feedback):
         return ("reduction_api",
                 "Fix only the reduction. NKI tensors do not have .mean(); use nl.sum over the "
                 "reduction axes, then nisa.tensor_scalar to divide by the full reduction area.")
+    if "tensor_reduce axis" in low or "last contiguous" in low:
+        return ("reduction_axis",
+                "Fix only the reduction view axes. nl.sum can reduce only trailing contiguous "
+                "dimensions, so make the pool dimensions the final axes of the access-pattern view "
+                "and reduce axis=[3, 4].")
     if "same number of elements" in low or "dma_copy requires" in low:
         return ("dma_shape",
                 "Fix only the dma_copy shape mismatch. Allocate the destination tile to exactly "
@@ -644,6 +656,7 @@ AUDIT_FAILURES = {
     "mean": "raised AttributeError: 'NkiTensor' object has no attribute 'mean'",
     "dma": "nisa.dma_copy requires src and dst to have the same number of elements",
     "scale": "CONSISTENT SCALE ERROR: output is about 2x the reference across most elements.",
+    "axis": "raised AssertionError: tensor_reduce axis must be the last contiguous dim(s) of the tile. Got axis=(2, 4)",
     "nonfinite": "NON-FINITE OUTPUT: output contains NaN/Inf. Check the final copy path.",
     "traffic": "traffic K=256 M=256 N=1024: 2.0x byte floor.",
 }
