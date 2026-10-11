@@ -1,0 +1,3 @@
+[submodule "projects/AWSHackathonSwordNet"]
+	path = projects/AWSHackathonSwordNet
+	url = git@github.com:dogketchup/AWSHackathonSwordNet.git
