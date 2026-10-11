@@ -1,0 +1,30 @@
+# python3 bench_dflash2.py --max-tokens 128 --runs 2
+# server: DFLASH_NUM_SPEC=8 bash serve_dflash2.sh  (Qwen/Qwen3-8B + z-lab/Qwen3-8B-DFlash-b16, 8 draft tokens)
+# seat-40, trn2 (1 chip, TP=2), 2026-10-10 22:17 UTC
+--- sample output (prompt 1) ---
+ A hash map, also known as a hash table, is a data structure that stores key-value pairs. It allows for efficient retrieval of values based on their associated keys. Here's a step-by-step explanation of how a hash map works:
+
+1. **Hash Function**: The hash map uses a hash function to convert the key into an index (or hash code) that points to a specific position in an underlying array. The hash function takes the key as input and returns an integer, which is then used to determine where the key-
+--------------------------------
+run 0 prompt 0: 128 tokens in 1.69s = 75.9 tok/s
+run 0 prompt 1: 128 tokens in 1.89s = 67.9 tok/s
+run 0 prompt 2: 128 tokens in 1.95s = 65.7 tok/s
+run 1 prompt 0: 128 tokens in 1.65s = 77.5 tok/s
+run 1 prompt 1: 128 tokens in 1.88s = 68.2 tok/s
+run 1 prompt 2: 128 tokens in 2.08s = 61.6 tok/s
+
+model: Qwen/Qwen3-8B
+overall: 768 tokens in 11.1s = 69.0 tok/s (per-request median 68.2 tok/s)
+speculative decoding counters (delta over benchmark):
+  vllm:spec_decode_num_accepted_tokens_per_pos_total{engine="0",model_name="Qwen/Qwen3-8B",position="0"} = 170
+  vllm:spec_decode_num_accepted_tokens_per_pos_total{engine="0",model_name="Qwen/Qwen3-8B",position="1"} = 82
+  vllm:spec_decode_num_accepted_tokens_per_pos_total{engine="0",model_name="Qwen/Qwen3-8B",position="2"} = 49
+  vllm:spec_decode_num_accepted_tokens_per_pos_total{engine="0",model_name="Qwen/Qwen3-8B",position="3"} = 27
+  vllm:spec_decode_num_accepted_tokens_per_pos_total{engine="0",model_name="Qwen/Qwen3-8B",position="4"} = 17
+  vllm:spec_decode_num_accepted_tokens_per_pos_total{engine="0",model_name="Qwen/Qwen3-8B",position="5"} = 9
+  vllm:spec_decode_num_accepted_tokens_per_pos_total{engine="0",model_name="Qwen/Qwen3-8B",position="6"} = 6
+  vllm:spec_decode_num_accepted_tokens_per_pos_total{engine="0",model_name="Qwen/Qwen3-8B",position="7"} = 2
+  vllm:spec_decode_num_accepted_tokens_total{engine="0",model_name="Qwen/Qwen3-8B"} = 362
+  vllm:spec_decode_num_draft_tokens_total{engine="0",model_name="Qwen/Qwen3-8B"} = 3272
+  vllm:spec_decode_num_drafts_total{engine="0",model_name="Qwen/Qwen3-8B"} = 409
+acceptance rate: 11.1% (362/3272 draft tokens)

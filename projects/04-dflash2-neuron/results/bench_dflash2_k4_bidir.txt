@@ -1,0 +1,26 @@
+# python3 bench_dflash2.py --max-tokens 128 --runs 2
+# server: DFLASH_NUM_SPEC=4 bash serve_dflash2.sh  (Qwen/Qwen3-8B + z-lab/Qwen3-8B-DFlash-b16, 4 draft tokens)
+# seat-40, trn2 (1 chip, TP=2), 2026-10-10 23:21 UTC
+--- sample output (prompt 1) ---
+ A hash map, also known as a hash table, is a data structure that stores key-value pairs. It allows for efficient retrieval of values based on their associated keys. Here's a step-by-step explanation of how a hash map works:
+
+1. **Hash Function**: The hash map uses a hash function to convert the key into an index (or hash code) that points to a specific position in an underlying array. The hash function takes the key as input and returns an integer, which is then mapped to an index within the ar
+--------------------------------
+run 0 prompt 0: 128 tokens in 1.23s = 104.1 tok/s
+run 0 prompt 1: 128 tokens in 1.49s = 85.9 tok/s
+run 0 prompt 2: 128 tokens in 1.63s = 78.7 tok/s
+run 1 prompt 0: 128 tokens in 1.24s = 103.2 tok/s
+run 1 prompt 1: 128 tokens in 1.50s = 85.2 tok/s
+run 1 prompt 2: 128 tokens in 1.63s = 78.4 tok/s
+
+model: Qwen/Qwen3-8B
+overall: 768 tokens in 8.7s = 88.1 tok/s (per-request median 85.9 tok/s)
+speculative decoding counters (delta over benchmark):
+  vllm:spec_decode_num_accepted_tokens_per_pos_total{engine="0",model_name="Qwen/Qwen3-8B",position="0"} = 218
+  vllm:spec_decode_num_accepted_tokens_per_pos_total{engine="0",model_name="Qwen/Qwen3-8B",position="1"} = 116
+  vllm:spec_decode_num_accepted_tokens_per_pos_total{engine="0",model_name="Qwen/Qwen3-8B",position="2"} = 66
+  vllm:spec_decode_num_accepted_tokens_per_pos_total{engine="0",model_name="Qwen/Qwen3-8B",position="3"} = 36
+  vllm:spec_decode_num_accepted_tokens_total{engine="0",model_name="Qwen/Qwen3-8B"} = 436
+  vllm:spec_decode_num_draft_tokens_total{engine="0",model_name="Qwen/Qwen3-8B"} = 1332
+  vllm:spec_decode_num_drafts_total{engine="0",model_name="Qwen/Qwen3-8B"} = 333
+acceptance rate: 32.7% (436/1332 draft tokens)
