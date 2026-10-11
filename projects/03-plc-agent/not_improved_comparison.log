@@ -1,0 +1,108 @@
+Probing compiler...
+Model Qwen/Qwen3-8B at http://localhost:8000/v1, mode=critic, logging to runs/compare_critic/
+
+=== run 1/2 ===
+  sample 0 [L4]: PID Loop | FOR Loop | Emergency Stop, High Pressure, Power Loss | Secure
+    round 0: best 0.30 of 4  [compiler: P0002 found 'END_FOR']
+    round 1: best 0.30 of 4  [compiler: P0002 found 'END_FOR']  (worse than 0.30; repairing that one)
+    round 2: best 0.30 of 4  [compiler: P0002 found 'END_FOR']  (worse than 0.30; repairing that one)
+    round 3: best 0.30 of 4  [compiler: P0002 found 'END_FOR']  (worse than 0.30; repairing that one)
+  -> NOT SOLVED  best 0.30  256.5s
+  sample 1 [L4]: Sequential Control | Function Block | SIL Logic, Low Pressure, High Pressure | Insecure
+    round 0: best 0.30 of 4  [compiler: P0002 found 'TYPE']
+    round 1: best 0.30 of 4  [compiler: P0002 found 'STRUCT']  (worse than 0.30; repairing that one)
+    round 2: best 0.30 of 4  [compiler: P0002 found 'STRUCT']  (worse than 0.30; repairing that one)
+    round 3: best 0.30 of 4  [compiler: P0002 found 'STRUCT']  (worse than 0.30; repairing that one)
+  -> NOT SOLVED  best 0.30  372.7s
+  sample 2 [L4]: Cascade Control | CASE Statement, Array Processing | Redundant Sensors, Power Loss, Sensor Failure | Secure
+    round 0: best 0.30 of 4  [compiler: P4035 target target_type value_type]
+    round 1: best 0.96 of 4  [checks failed: power_loss]
+    round 2: best 0.96 of 4  [checks failed: power_loss]  (worse than 0.96; repairing that one)
+    round 3: best 0.96 of 4  [checks failed: power_loss]  (worse than 0.96; repairing that one)
+  -> NOT SOLVED  best 0.96  375.4s
+  sample 3 [L4]: State Machine | WHILE Loop | Redundant Sensors, Tank Overflow | Insecure
+    round 0: best 1.00 of 4  [PASS]
+  -> SOLVED in 1 round(s)  best 1.00  54.3s
+
+=== run 2/2 ===
+  sample 0 [L4]: PID Loop | FOR Loop | Emergency Stop, High Pressure, Power Loss | Secure
+    round 0: best 0.30 of 4  [compiler: P0002 found 'END_FOR']
+    round 1: best 0.30 of 4  [compiler: P0002 found 'END_FOR']  (worse than 0.30; repairing that one)
+    round 2: best 0.30 of 4  [compiler: P0002 found 'END_FOR']  (worse than 0.30; repairing that one)
+    round 3: best 0.30 of 4  [compiler: P0002 found 'END_FOR']  (worse than 0.30; repairing that one)
+  -> NOT SOLVED  best 0.30  258.5s
+  sample 1 [L4]: Sequential Control | Function Block | SIL Logic, Low Pressure, High Pressure | Insecure
+    round 0: best 0.30 of 4  [compiler: P0002 found ')']
+    round 1: best 1.00 of 4  [PASS]
+  -> SOLVED in 2 round(s)  best 1.00  213.9s
+  sample 2 [L4]: Cascade Control | CASE Statement, Array Processing | Redundant Sensors, Power Loss, Sensor Failure | Secure
+    round 0: best 0.30 of 4  [compiler: P4035 target target_type value_type]
+    round 1: best 0.30 of 4  [compiler: P0002 found '(']  (worse than 0.30; repairing that one)
+    round 2: best 0.30 of 4  [compiler: P0002 found '(']  (worse than 0.30; repairing that one)
+    round 3: best 0.30 of 4  [compiler: P0002 found '(']  (worse than 0.30; repairing that one)
+  -> NOT SOLVED  best 0.30  419.4s
+  sample 3 [L4]: State Machine | WHILE Loop | Redundant Sensors, Tank Overflow | Insecure
+    round 0: best 1.00 of 4  [PASS]
+  -> SOLVED in 1 round(s)  best 1.00  57.1s
+
+=== summary ===
+mode critic: solved per run [1, 2]  rate 38% (min 25%, max 50%)
+solved on round 1: 25%   mean rounds when solved: 1.33   generator calls per solve: 32.0
+first half vs second half of the sequence: round-1 rate 0.0 -> 0.5, mean rounds 3.5 -> 2.5
+per spec across runs: #0:0/2  #1:1/2  #2:0/2  #3:2/2
+wrote runs/compare_critic/summary.json and learning_curve.csv
+Probing compiler...
+Model Qwen/Qwen3-8B at http://localhost:8000/v1, mode=critic-bootstrap, logging to runs/compare_bootstrap/
+
+=== run 1/2 ===
+  sample 0 [L4]: PID Loop | FOR Loop | Emergency Stop, High Pressure, Power Loss | Secure
+    round 0: best 0.30 of 4  [compiler: P0002 found 'END_FOR']
+    round 1: best 0.30 of 4  [compiler: P0002 found 'END_FOR']  (worse than 0.30; repairing that one)
+    round 2: best 0.30 of 4  [compiler: P0002 found 'END_FOR']  (worse than 0.30; repairing that one)
+    round 3: best 0.30 of 4  [compiler: P0002 found 'END_FOR']  (worse than 0.30; repairing that one)
+  -> NOT SOLVED  best 0.30  256.6s  memory {'exemplars': 0, 'known_fixes': 0, 'errors_seen': 1}
+  sample 1 [L4]: Sequential Control | Function Block | SIL Logic, Low Pressure, High Pressure | Insecure
+    round 0: best 0.30 of 4  [compiler: P0002 found 'TYPE']
+    round 1: best 0.30 of 4  [compiler: P0002 found 'STRUCT']  (worse than 0.30; repairing that one)
+    round 2: best 0.30 of 4  [compiler: P0002 found 'STRUCT']  (worse than 0.30; repairing that one)
+    round 3: best 0.30 of 4  [compiler: P0002 found 'STRUCT']  (worse than 0.30; repairing that one)
+  -> NOT SOLVED  best 0.30  350.9s  memory {'exemplars': 0, 'known_fixes': 1, 'errors_seen': 3}
+  sample 2 [L4]: Cascade Control | CASE Statement, Array Processing | Redundant Sensors, Power Loss, Sensor Failure | Secure
+    round 0: best 0.96 of 4  [checks failed: power_loss]
+    round 1: best 0.96 of 4  [checks failed: power_loss]  (worse than 0.96; repairing that one)
+    round 2: best 0.96 of 4  [checks failed: power_loss]  (worse than 0.96; repairing that one)
+    round 3: best 0.96 of 4  [checks failed: power_loss]  (worse than 0.96; repairing that one)
+  -> NOT SOLVED  best 0.96  455.3s  memory {'exemplars': 0, 'known_fixes': 1, 'errors_seen': 3}
+  sample 3 [L4]: State Machine | WHILE Loop | Redundant Sensors, Tank Overflow | Insecure
+    round 0: best 1.00 of 4  [PASS]
+  -> SOLVED in 1 round(s)  best 1.00  54.8s  memory {'exemplars': 1, 'known_fixes': 1, 'errors_seen': 3}
+
+=== run 2/2 ===
+  sample 0 [L4]: PID Loop | FOR Loop | Emergency Stop, High Pressure, Power Loss | Secure
+    round 0: best 0.30 of 4  [compiler: P0002 found 'END_FOR']
+    round 1: best 0.30 of 4  [compiler: P0002 found 'END_FOR']  (worse than 0.30; repairing that one)
+    round 2: best 0.30 of 4  [compiler: P0002 found 'END_FOR']  (worse than 0.30; repairing that one)
+    round 3: best 0.30 of 4  [compiler: P0002 found 'END_FOR']  (worse than 0.30; repairing that one)
+  -> NOT SOLVED  best 0.30  258.5s  memory {'exemplars': 0, 'known_fixes': 0, 'errors_seen': 1}
+  sample 1 [L4]: Sequential Control | Function Block | SIL Logic, Low Pressure, High Pressure | Insecure
+    round 0: best 0.30 of 4  [compiler: P0002 found 'TYPE']
+    round 1: best 0.30 of 4  [compiler: P0002 found 'AUTOMATIC']  (worse than 0.30; repairing that one)
+    round 2: best 0.30 of 4  [compiler: P0002 found 'AUTOMATIC']  (worse than 0.30; repairing that one)
+    round 3: best 0.30 of 4  [compiler: P0002 found 'AUTOMATIC']  (worse than 0.30; repairing that one)
+  -> NOT SOLVED  best 0.30  360.1s  memory {'exemplars': 0, 'known_fixes': 1, 'errors_seen': 3}
+  sample 2 [L4]: Cascade Control | CASE Statement, Array Processing | Redundant Sensors, Power Loss, Sensor Failure | Secure
+    round 0: best 0.30 of 4  [compiler: P4035 target target_type value_type]
+    round 1: best 0.96 of 4  [checks failed: power_loss]
+    round 2: best 0.96 of 4  [checks failed: power_loss]  (worse than 0.96; repairing that one)
+    round 3: best 0.96 of 4  [checks failed: power_loss]  (worse than 0.96; repairing that one)
+  -> NOT SOLVED  best 0.96  312.3s  memory {'exemplars': 0, 'known_fixes': 2, 'errors_seen': 4}
+  sample 3 [L4]: State Machine | WHILE Loop | Redundant Sensors, Tank Overflow | Insecure
+    round 0: best 1.00 of 4  [PASS]
+  -> SOLVED in 1 round(s)  best 1.00  60.9s  memory {'exemplars': 1, 'known_fixes': 2, 'errors_seen': 4}
+
+=== summary ===
+mode critic-bootstrap: solved per run [1, 1]  rate 25% (min 25%, max 25%)
+solved on round 1: 25%   mean rounds when solved: 1   generator calls per solve: 52.0
+first half vs second half of the sequence: round-1 rate 0.0 -> 0.5, mean rounds 4 -> 2.5
+per spec across runs: #0:0/2  #1:0/2  #2:0/2  #3:2/2
+wrote runs/compare_bootstrap/summary.json and learning_curve.csv

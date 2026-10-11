@@ -1,0 +1,134 @@
+Probing compiler...
+Model Qwen/Qwen3-8B at http://localhost:8000/v1, mode=critic, logging to runs/baseline/
+
+=== run 1/3 ===
+  sample 0 [L4]: PID Loop | FOR Loop | Emergency Stop, High Pressure, Power Loss | Secure
+    round 0: best 0.30 of 4  [compiler: P0002 found 'END_FOR']
+    round 1: best 0.30 of 4  [compiler: P0002 found 'END_FOR']  (worse than 0.30; repairing that one)
+    round 2: best 0.30 of 4  [compiler: P0002 found 'END_FOR']  (worse than 0.30; repairing that one)
+    round 3: best 0.30 of 4  [compiler: P0002 found 'END_FOR']  (worse than 0.30; repairing that one)
+  -> NOT SOLVED  best 0.30  256.9s
+  sample 1 [L4]: Sequential Control | Function Block | SIL Logic, Low Pressure, High Pressure | Insecure
+    round 0: best 0.30 of 4  [compiler: P0002 found 'TYPE']
+    round 1: best 0.30 of 4  [compiler: P0002 found 'STRUCT']  (worse than 0.30; repairing that one)
+    round 2: best 0.30 of 4  [compiler: P0002 found 'STRUCT']  (worse than 0.30; repairing that one)
+    round 3: best 0.30 of 4  [compiler: P0002 found 'STRUCT']  (worse than 0.30; repairing that one)
+  -> NOT SOLVED  best 0.30  344.4s
+  sample 2 [L4]: Cascade Control | CASE Statement, Array Processing | Redundant Sensors, Power Loss, Sensor Failure | Secure
+    round 0: best 0.30 of 4  [compiler: P4035 target target_type value_type]
+    round 1: best 0.96 of 4  [checks failed: power_loss]
+    round 2: best 0.96 of 4  [checks failed: power_loss]  (worse than 0.96; repairing that one)
+    round 3: best 0.96 of 4  [checks failed: power_loss]  (worse than 0.96; repairing that one)
+  -> NOT SOLVED  best 0.96  337.2s
+  sample 3 [L4]: State Machine | WHILE Loop | Redundant Sensors, Tank Overflow | Insecure
+    round 0: best 1.00 of 4  [PASS]
+  -> SOLVED in 1 round(s)  best 1.00  58.7s
+  sample 4 [L4]: Lead Lag Control | Structures | Watchdog Monitoring, Tank Overflow, Motor Overload | Secure
+    round 0: best 0.30 of 4  [compiler: P0002 found 'STRUCT']
+    round 1: best 0.30 of 4  [compiler: P0002 found ';']  (worse than 0.30; repairing that one)
+    round 2: best 0.30 of 4  [compiler: P0002 found 'STRUCT']  (worse than 0.30; repairing that one)
+    round 3: best 0.30 of 4  [compiler: P0002 found 'STRUCT']  (worse than 0.30; repairing that one)
+  -> NOT SOLVED  best 0.30  478.5s
+  sample 5 [L4]: Interlock Logic | CASE Statement | Redundant Sensors, Sensor Failure, Power Loss | Secure
+    round 0: best 1.00 of 4  [PASS]
+  -> SOLVED in 1 round(s)  best 1.00  91.2s
+  sample 6 [L4]: Interlock Logic | Function Block | Safety Shutdown, Motor Protection, Motor Overload, Sensor Failure | Insecure
+    round 0: best 0.30 of 4  [compiler: P2008 identifier]
+    round 1: best 0.85 of 4  [checks failed: function_block, safety_shutdown, sensor_failure]
+    round 2: best 0.30 of 4  [compiler: P4012 invocation]  (worse than 0.85; repairing that one)
+    round 3: best 0.30 of 4  [compiler: P4012 invocation]  (worse than 0.85; repairing that one)
+  -> NOT SOLVED  best 0.85  199.2s
+  sample 7 [L4]: Cascade Control | FOR Loop, WHILE Loop | Emergency Stop, Safety Shutdown, Tank Overflow | Insecure
+    round 0: best 0.96 of 4  [checks failed: safety_shutdown]
+    round 1: best 0.96 of 4  [checks failed: safety_shutdown]  (worse than 0.96; repairing that one)
+    round 2: best 0.96 of 4  [checks failed: safety_shutdown]  (worse than 0.96; repairing that one)
+    round 3: best 0.96 of 4  [checks failed: safety_shutdown]  (worse than 0.96; repairing that one)
+  -> NOT SOLVED  best 0.96  225.1s
+  sample 8 [L4]: Sequential Control | WHILE Loop | Safety Shutdown, Motor Overload, Low Pressure | Secure
+    round 0: best 0.90 of 4  [checks failed: safety_shutdown, low_pressure]
+    round 1: best 0.90 of 4  [checks failed: safety_shutdown, low_pressure]  (worse than 0.90; repairing that one)
+    round 2: best 0.95 of 4  [checks failed: safety_shutdown]
+    round 3: best 0.95 of 4  [checks failed: safety_shutdown]  (worse than 0.95; repairing that one)
+  -> NOT SOLVED  best 0.95  469.7s
+  sample 9 [L4]: Cascade Control | CASE Statement, WHILE Loop | Watchdog Monitoring, Tank Overflow | Secure
+    round 0: best 0.30 of 4  [compiler: P4035 target target_type value_type]
+    round 1: best 1.00 of 4  [PASS]
+  -> SOLVED in 2 round(s)  best 1.00  197.7s
+
+=== run 2/3 ===
+  sample 0 [L4]: PID Loop | FOR Loop | Emergency Stop, High Pressure, Power Loss | Secure
+    round 0: best 0.30 of 4  [compiler: P0002 found 'END_FOR']
+    round 1: best 0.30 of 4  [compiler: P0002 found 'END_FOR']  (worse than 0.30; repairing that one)
+    round 2: best 0.30 of 4  [compiler: P0002 found 'END_FOR']  (worse than 0.30; repairing that one)
+    round 3: best 0.30 of 4  [compiler: P0002 found 'END_FOR']  (worse than 0.30; repairing that one)
+  -> NOT SOLVED  best 0.30  256.6s
+  sample 1 [L4]: Sequential Control | Function Block | SIL Logic, Low Pressure, High Pressure | Insecure
+    round 0: best 0.30 of 4  [compiler: P0002 found 'TYPE']
+    round 1: best 0.30 of 4  [compiler: P0002 found ':=']  (worse than 0.30; repairing that one)
+    round 2: best 0.30 of 4  [compiler: P0002 found ':=']  (worse than 0.30; repairing that one)
+    round 3: best 0.30 of 4  [compiler: P0002 found ':=']  (worse than 0.30; repairing that one)
+  -> NOT SOLVED  best 0.30  318.0s
+  sample 2 [L4]: Cascade Control | CASE Statement, Array Processing | Redundant Sensors, Power Loss, Sensor Failure | Secure
+    round 0: best 0.30 of 4  [compiler: P4035 target target_type value_type]
+    round 1: best 0.96 of 4  [checks failed: power_loss]
+    round 2: best 0.96 of 4  [checks failed: power_loss]  (worse than 0.96; repairing that one)
+    round 3: best 0.96 of 4  [checks failed: power_loss]  (worse than 0.96; repairing that one)
+  -> NOT SOLVED  best 0.96  337.2s
+  sample 3 [L4]: State Machine | WHILE Loop | Redundant Sensors, Tank Overflow | Insecure
+    round 0: best 1.00 of 4  [PASS]
+  -> SOLVED in 1 round(s)  best 1.00  61.7s
+  sample 4 [L4]: Lead Lag Control | Structures | Watchdog Monitoring, Tank Overflow, Motor Overload | Secure
+    round 0: best 0.30 of 4  [compiler: P2008 identifier]
+    round 1: best 0.30 of 4  [compiler: P2008 identifier]  (worse than 0.30; repairing that one)
+    round 2: best 0.30 of 4  [compiler: P2008 identifier]  (worse than 0.30; repairing that one)
+    round 3: best 0.30 of 4  [compiler: P2008 identifier]  (worse than 0.30; repairing that one)
+  -> NOT SOLVED  best 0.30  520.8s
+  sample 5 [L4]: Interlock Logic | CASE Statement | Redundant Sensors, Sensor Failure, Power Loss | Secure
+    round 0: best 1.00 of 4  [PASS]
+  -> SOLVED in 1 round(s)  best 1.00  90.0s
+  sample 6 [L4]: Interlock Logic | Function Block | Safety Shutdown, Motor Protection, Motor Overload, Sensor Failure | Insecure
+    round 0: best 0.30 of 4  [compiler: P2008 identifier]
+    round 1: best 0.85 of 4  [checks failed: function_block, safety_shutdown, sensor_failure]
+    round 2: best 0.30 of 4  [compiler: P4012 invocation]  (worse than 0.85; repairing that one)
+    round 3: best 0.30 of 4  [compiler: P4012 invocation]  (worse than 0.85; repairing that one)
+  -> NOT SOLVED  best 0.85  204.1s
+  sample 7 [L4]: Cascade Control | FOR Loop, WHILE Loop | Emergency Stop, Safety Shutdown, Tank Overflow | Insecure
+    round 0: best 0.96 of 4  [checks failed: safety_shutdown]
+    round 1: best 0.96 of 4  [checks failed: safety_shutdown]  (worse than 0.96; repairing that one)
+    round 2: best 0.96 of 4  [checks failed: safety_shutdown]  (worse than 0.96; repairing that one)
+    round 3: best 0.96 of 4  [checks failed: safety_shutdown]  (worse than 0.96; repairing that one)
+  -> NOT SOLVED  best 0.96  220.9s
+  sample 8 [L4]: Sequential Control | WHILE Loop | Safety Shutdown, Motor Overload, Low Pressure | Secure
+    round 0: best 0.90 of 4  [checks failed: safety_shutdown, secure_inputs]
+    round 1: best 0.30 of 4  [compiler: P0002 found 'ShutdownActive']  (worse than 0.90; repairing that one)
+    round 2: best 0.30 of 4  [compiler: P0002 found 'ShutdownActive']  (worse than 0.90; repairing that one)
+    round 3: best 0.30 of 4  [compiler: P0002 found 'ShutdownActive']  (worse than 0.90; repairing that one)
+  -> NOT SOLVED  best 0.90  346.0s
+  sample 9 [L4]: Cascade Control | CASE Statement, WHILE Loop | Watchdog Monitoring, Tank Overflow | Secure
+    round 0: best 0.30 of 4  [compiler: P4035 target target_type value_type]
+    round 1: best 1.00 of 4  [PASS]
+  -> SOLVED in 2 round(s)  best 1.00  240.7s
+
+=== run 3/3 ===
+  sample 0 [L4]: PID Loop | FOR Loop | Emergency Stop, High Pressure, Power Loss | Secure
+    round 0: best 0.30 of 4  [compiler: P0002 found 'END_FOR']
+    round 1: best 0.30 of 4  [compiler: P0002 found 'END_FOR']  (worse than 0.30; repairing that one)
+    round 2: best 0.30 of 4  [compiler: P0002 found 'END_FOR']  (worse than 0.30; repairing that one)
+    round 3: best 0.30 of 4  [compiler: P0002 found 'END_FOR']  (worse than 0.30; repairing that one)
+  -> NOT SOLVED  best 0.30  515.6s
+  sample 1 [L4]: Sequential Control | Function Block | SIL Logic, Low Pressure, High Pressure | Insecure
+    round 0: best 0.30 of 4  [compiler: P0002 found 'TYPE']
+    round 1: best 0.30 of 4  [compiler: P0002 found 'STRUCT']  (worse than 0.30; repairing that one)
+    round 2: best 0.30 of 4  [compiler: P0002 found 'STRUCT']  (worse than 0.30; repairing that one)
+    round 3: best 0.30 of 4  [compiler: P0002 found 'STRUCT']  (worse than 0.30; repairing that one)
+  -> NOT SOLVED  best 0.30  653.4s
+  sample 2 [L4]: Cascade Control | CASE Statement, Array Processing | Redundant Sensors, Power Loss, Sensor Failure | Secure
+    round 0: best 0.30 of 4  [compiler: P4035 target target_type value_type]
+    round 1: best 0.96 of 4  [checks failed: power_loss]
+    round 2: best 0.96 of 4  [checks failed: power_loss]  (worse than 0.96; repairing that one)
+    round 3: best 0.96 of 4  [checks failed: power_loss]  (worse than 0.96; repairing that one)
+  -> NOT SOLVED  best 0.96  1440.5s
+  sample 3 [L4]: State Machine | WHILE Loop | Redundant Sensors, Tank Overflow | Insecure
+    round 0: best 1.00 of 4  [PASS]
+  -> SOLVED in 1 round(s)  best 1.00  277.4s
+  sample 4 [L4]: Lead Lag Control | Structures | Watchdog Monitoring, Tank Overflow, Motor Overload | Secure

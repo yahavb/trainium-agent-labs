@@ -1,0 +1,57 @@
+{
+ "exemplars": [
+  {
+   "reqs": [
+    "mode_maintenance",
+    "redundant_sensors",
+    "state_machine",
+    "structure",
+    "tank_overflow",
+    "vuln_marker",
+    "while_loop"
+   ],
+   "code": "PROGRAM Main\nVAR\n    State : INT;\n    SensorA : REAL := 0.0;\n    SensorB : REAL := 0.0;\n    MaxDeviation : REAL := 0.5;\n    SensorMismatch : BOOL;\n    LevelHighHigh : BOOL := FALSE;\n    InletValve : BOOL := TRUE;\n    MaintenanceMode : BOOL := FALSE;\n    n : INT := 0;\n    MaxLoop : INT := 10;\n    JogCommand : BOOL := FALSE;\n    SafetyOverride : BOOL := FALSE;\nEND_VAR\nCASE State OF\n    0:\n        (* VULN: Maintenance bypass skips interlock check *)\n        IF MaintenanceMode THEN\n            InletValve := FALSE;\n        ELSIF LevelHighHigh THEN\n            InletValve := FALSE;\n        ELSE\n            InletValve := TRUE;\n        END_IF;\n        State := 1;\n    1:\n        SensorMismatch := ABS(SensorA - SensorB) > MaxDeviation;\n        State := 2;\n    2:\n        State := 0;\nEND_CASE;\nWHILE n <= MaxLoop DO\n    n := n + 1;\nEND_WHILE;\nIF MaintenanceMode THEN\n    InletValve := FALSE;\n    IF JogCommand THEN\n        InletValve := TRUE;\n    END_IF;\nEND_IF;\nIF SafetyOverride THEN\n    InletValve := FALSE;\nEND_IF;\nEND_PROGRAM",
+   "origin": {
+    "run": 0,
+    "sample": 3,
+    "round": 0
+   }
+  }
+ ],
+ "fixes": {
+  "P0002 found 'TYPE'": "1. L1: Change 'TYPE MyBlock TYPE STRUCT' to 'TYPE MyBlock STRUCT' 2. L4: Add 'END_STRUCT' after 'END_TYPE' 3. L6: Add 'END_FUNCTION_BLOCK' after 'END_VAR' 4. L12: Add 'END_VAR' after 'Out1 : BOOL;' 5. L34: Change 'Ctl1(In1 := FALSE);' to 'Ctl1.In1 := FALSE;' 6. L66: Add 'END_IF' after 'MaintenanceMo"
+ },
+ "errors": {
+  "P0002 found 'END_FOR'": 4,
+  "P0002 found 'TYPE'": 1,
+  "P0002 found 'STRUCT'": 3
+ },
+ "missed": {
+  "power_loss": 1
+ },
+ "seen": {
+  "structure": 4,
+  "pid_loop": 1,
+  "for_loop": 1,
+  "emergency_stop": 1,
+  "high_pressure": 2,
+  "power_loss": 2,
+  "mode_manual": 1,
+  "secure_inputs": 2,
+  "sequential_control": 1,
+  "function_block": 1,
+  "sil_voting": 1,
+  "low_pressure": 1,
+  "mode_maintenance": 2,
+  "vuln_marker": 2,
+  "cascade": 1,
+  "case_statement": 1,
+  "array_processing": 1,
+  "redundant_sensors": 2,
+  "sensor_failure": 1,
+  "mode_auto": 1,
+  "state_machine": 1,
+  "while_loop": 1,
+  "tank_overflow": 1
+ }
+}
