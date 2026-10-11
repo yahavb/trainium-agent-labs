@@ -6,13 +6,14 @@ number is a **rate over n runs**, tagged **[sim]** (nki 0.6 CPU simulator) or **
 
 **Headline [sim]:** final C10 passed L1–L7 in **5/5 repeated runs per level** under our modified checker; L8 attention passed 0/5. The final NumPy checker accepted **9/10** levels, with A5 softmax unsolved; A7 bypassed the required tiling, so checker acceptance is not full rule compliance. Qwen's weights stayed fixed while feedback, templates, prompts, and the verification/repair pipeline changed. See [RESULTS.md](RESULTS.md) and the qualifications in [NOTE.md](NOTE.md).
 
-This submission contains only the twelve deliverable files listed below. The complete implementation and raw experiment archive are in [the source repository at the submitted snapshot](https://github.com/qz2930-crypto/hack-the-chip-seat73/tree/f2bda82f2fd406211cf6e9f3286b36e728b7177b). Historical seat-73 titles identify the experimental artifact; our team is **Team 15 — Syntax Error**, using seats 70–74. Code and raw-log paths in these reports are relative to that full source snapshot. The tables, attempt index, CSV, chart, and development log retain their historical records; the current scope explanations are here and in NOTE.md.
+This submission contains the twelve requested deliverable files plus README_en.md: thirteen files in total. The complete implementation and raw experiment archive are in [the source repository at the submitted snapshot](https://github.com/qz2930-crypto/hack-the-chip-seat73/tree/f2bda82f2fd406211cf6e9f3286b36e728b7177b). Historical seat-73 titles identify the experimental artifact; our team is **Team 15 — Syntax Error**, using seats 70–74. Code and raw-log paths in these reports are relative to that full source snapshot. The tables, attempt index, CSV, chart, and development log retain their historical records; the current scope explanations are here and in NOTE.md. README_en.md is the original English project guide; its historical claims should be read with those scope explanations.
 
 ## Deliverable files in this PR
 
 | File | Purpose |
 |---|---|
 | [SUBMISSION.md](SUBMISSION.md) | Submission index and agentic workflow |
+| [README_en.md](README_en.md) | Original English project guide; see NOTE.md for current qualifications |
 | [CHECKER.md](CHECKER.md) | Acceptance rules, rejection rules, and feedback rationale |
 | [ATTEMPTS.md](ATTEMPTS.md) + [attempts_all.csv](attempts_all.csv) | Attempt scores: 516 runs and 1,941 attempts |
 | [NOTE.md](NOTE.md) | Experiment summary, hardware, repeats, spread, and limits |

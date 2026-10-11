@@ -66,4 +66,4 @@ accumulation length (a correct float32 matmul passed 5/10 under the old bare 1e-
 
 The historical RESULTS.md row for unrestricted Stage-A v4 reports 8/10; its raw records show 7/10 (A3, A4, and A5 failed). That table is retained as a historical record. The final v4-smart 9/10 checker-acceptance figure is unchanged.
 
-**Reproduce:** [REPRODUCE.md](REPRODUCE.md). **Everything that happened, in order:** [LOG.md](LOG.md). This PR contains the twelve deliverable files; [SUBMISSION.md](SUBMISSION.md) links to the pinned full implementation and raw records. No experiments were rerun for this packaging step.
+**Reproduce:** [REPRODUCE.md](REPRODUCE.md). **Everything that happened, in order:** [LOG.md](LOG.md). This PR contains the twelve requested deliverable files plus [README_en.md](README_en.md), thirteen in total; [SUBMISSION.md](SUBMISSION.md) links to the pinned full implementation and raw records. No experiments were rerun for this packaging step.

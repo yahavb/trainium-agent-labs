@@ -1,6 +1,6 @@
 # REPRODUCE — from a fresh seat pod
 
-This Team 15 — Syntax Error PR contains the twelve deliverable files. Run the commands below from the **complete source repository**, not from this document-only submission directory. The implementation and raw records are pinned to [f2bda82f2fd406211cf6e9f3286b36e728b7177b](https://github.com/qz2930-crypto/hack-the-chip-seat73/tree/f2bda82f2fd406211cf6e9f3286b36e728b7177b). These commands document the historical experiment; they were not rerun while preparing this PR.
+This Team 15 — Syntax Error PR contains the twelve requested deliverable files plus README_en.md, thirteen in total. Run the commands below from the **complete source repository**, not from this document-only submission directory. The implementation and raw records are pinned to [f2bda82f2fd406211cf6e9f3286b36e728b7177b](https://github.com/qz2930-crypto/hack-the-chip-seat73/tree/f2bda82f2fd406211cf6e9f3286b36e728b7177b). These commands document the historical experiment; they were not rerun while preparing this PR.
 
 Everything here is **[sim]** (nki 0.6 CPU simulator) unless a line says **[device]**. Numbers come from
 `--repeat`/multi-run rates, never single runs.
