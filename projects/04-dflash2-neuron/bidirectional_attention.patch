@@ -1,0 +1,62 @@
+--- a/vllm_neuron/functional/attention/attention_decode_mask.py
++++ b/vllm_neuron/functional/attention/attention_decode_mask.py
+@@ -101,6 +101,7 @@
+     block_len: int = 0,
+     local_filled_slots: Optional[Tensor] = None,
+     dcp_active_mask: Optional[Tensor] = None,
++    bidirectional_active: bool = False,
+ ) -> Tensor:
+     """
+     Generate an attention mask for token-generation (TKG).
+@@ -201,10 +202,17 @@
+         )
+         return mask
+ 
+-    # Build causal mask over the two s_active dimensions (dim 0 and dim 3)
+-    causal = torch.triu(
+-        torch.ones(s_active, s_active, dtype=torch.float32, device=pos_ids.device)
+-    )
++    # Build causal mask over the two s_active dimensions (dim 0 and dim 3).
++    # DFlash2 draft query block is bidirectional: every active (draft) token
++    # attends to every other active token, so use an all-ones active mask.
++    if bidirectional_active:
++        causal = torch.ones(
++            s_active, s_active, dtype=torch.float32, device=pos_ids.device
++        )
++    else:
++        causal = torch.triu(
++            torch.ones(s_active, s_active, dtype=torch.float32, device=pos_ids.device)
++        )
+ 
+     # Broadcast to [s_active, bs, q_head, s_active]
+     active_mask = (
+--- a/vllm_neuron/model/qwen3/model.py
++++ b/vllm_neuron/model/qwen3/model.py
+@@ -421,6 +421,9 @@
+         block_size = attn_metadata[layer_name]["block_size"]
+         max_blocks_per_seq = attn_metadata[layer_name]["max_blocks_per_seq"]
+         block_table = attn_metadata[layer_name]["block_table_tensor"]
++        bidirectional_active = attn_metadata[layer_name].get(
++            "bidirectional_active", False
++        )
+ 
+         B = block_table.shape[0]
+         tokens, hidden = hidden_states.shape
+@@ -458,6 +461,7 @@
+             s_prior=S_ctx,
+             start_pos=None,
+             block_len=block_size,
++            bidirectional_active=bidirectional_active,
+         )
+ 
+         k_cache = (
+--- a/vllm_neuron/model/qwen3/dflash_draft.py
++++ b/vllm_neuron/model/qwen3/dflash_draft.py
+@@ -217,6 +217,7 @@
+                 "block_size": block_size,
+                 "max_blocks_per_seq": max_blocks,
+                 "decode_token_threshold": q_len,  # always the decode attention path
++                "bidirectional_active": True,  # DFlash2: non-causal within the draft query block
+             }
+ 
+         q_pos32 = q_pos.to(torch.int32)
