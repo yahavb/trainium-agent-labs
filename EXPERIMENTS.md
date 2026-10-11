@@ -20,8 +20,8 @@ Every change is behind a flag, so each one can be switched on or off as a single
 | **Task as words.** The model first describes the NumPy reference in its own words. The prompt then gets that description instead of the code. No hand-written text. | `--spec words` (code) | Tests whether the reference code helps or anchors the model. |
 | **History.** Earlier failed attempts (code + error only, no model-written diagnosis, deduplicated, capped at 6000 characters) go into the repair prompt. | `--history N` (0) | Stops the model returning to code that already failed. Diagnoses were left out because a wrong diagnosis would mislead it. |
 | **Readable transcript.** Every run writes `<log>.txt` with the prompt, thinking, summary, each distinct reply and its feedback, for every round. | automatic | To see what the model actually saw and did. |
-| **Persona** (added after the first submission). One role sentence goes in front of every request: "You are a senior AWS Neuron kernel engineer with years of experience writing correct NKI kernels for Trainium." It adds no NKI facts, so any difference comes from the role framing alone. | `--persona` (off) | A common prompting trick; we test it as one variable. |
-| **Decompose** (added after the first submission). The model writes NumPy steps `stage_1..stage_n`. The harness runs them on CPU on every test shape and accepts the plan only if the last stage equals the reference; a rejection shows each stage's output shape. The kernel is then built one step at a time: step *k* is graded against `stage_k`, and a passing step's kernel is the starting point of the next. | `--decompose` (off), `--plan-think` (1), `--plan-tries` (3), `--stage-rounds` | Targets regressions: fixing one thing kept breaking another. See §5 for the design. |
+| **Persona** (added after the presentation). One role sentence goes in front of every request: "You are a senior AWS Neuron kernel engineer with years of experience writing correct NKI kernels for Trainium." It adds no NKI facts, so any difference comes from the role framing alone. | `--persona` (off) | A common prompting trick; we test it as one variable. |
+| **Decompose** (added after the presentation). The model writes NumPy steps `stage_1..stage_n`. The harness runs them on CPU on every test shape and accepts the plan only if the last stage equals the reference; a rejection shows each stage's output shape. The kernel is then built one step at a time: step *k* is graded against `stage_k`, and a passing step's kernel is the starting point of the next. | `--decompose` (off), `--plan-think` (1), `--plan-tries` (3), `--stage-rounds` | Targets regressions: fixing one thing kept breaking another. See §5 for the design. |
 
 ## 2. The static checker
 
@@ -57,7 +57,7 @@ What it checks, and why:
 
 Time per round with `--plan-merge` and 4 thoughts was about 430–455 s. With 2 thoughts it was about 155 s. The seat is saturated: running 4 at once costs about as much as running them one after another.
 
-### After the first submission
+### After the presentation
 
 **Persona, level 1** (`persona`: `--plan-merge --persona`, static check on; compare with `merge_static`, `merge_tmix`, `merge_t10`). Best **0.50**, in rounds 2–3. Round by round:
 
@@ -121,7 +121,7 @@ The organisers' plain agent (no thinking) solved level 2 in 4 of 5 runs, so on t
 7. **Showing failed attempts was not enough to stop the model going back to them** (`merge_history`). An explicit, precise hint seems to matter more than memory.
 8. **Variance is large; n is small.** Two runs with identical settings (seats 182 and 184 before history takes effect) hit different first errors at round 0. Our only 0.50 (`merge_multi`) **did not replicate** in `merge_multi_rep`. The three runs with the static check on (`merge_static`, `merge_tmix`, `merge_t10`) all ended at the same `.ap` wall, whether the temperatures were mixed or all 1.0. So the walls in finding 3 are reproducible, while the score is not. With 1–2 runs per configuration we report behaviour, and we **do not** rank configurations by score.
 
-9. **(After the first submission) Rules stated with the tile's own numbers are followed immediately.** In `hints`, `keepdims=True` and the `.ap` stride unit were each applied in the round right after the hint. That run wrote the first correct `.ap` strides of the day, and it never went back to a wall it had already hit. The score stayed at 0.30 inside 5 rounds, so this is evidence about behaviour, not yet about outcome.
+9. **(After the presentation) Rules stated with the tile's own numbers are followed immediately.** In `hints`, `keepdims=True` and the `.ap` stride unit were each applied in the round right after the hint. That run wrote the first correct `.ap` strides of the day, and it never went back to a wall it had already hit. The score stayed at 0.30 inside 5 rounds, so this is evidence about behaviour, not yet about outcome.
 
 ### Failure taxonomy (counts)
 
