@@ -51,7 +51,7 @@ What it checks, and why:
 | `merge_words` | `--plan-merge --spec words` | 0.30 | Chose a per-window loop and hit the 2-dimension wall 4 rounds in a row (give-up). |
 | `merge_static` | `--plan-merge` + static check | 0.30 | API errors were all gone by round 3, then `.ap` partition stride for every remaining round. In rounds 1–4 all 4 samples were identical. |
 | `merge_history` | + `--history 3` | 0.30 | Chose a per-window loop. **All 6 rounds** hit the 2-dimension wall: `nl.sum(view, axis=[1])` returns a 1-D `(C,)` tile, and the model never used `keepdims=` even though the feedback listed it. In round 3 it went back to `nisa.multiply`, although the history block showed round 1's code with that exact error. History did not prevent going back. |
-| `merge_multi_rep` | same as `merge_multi` (replication) | 0.30 after 5 of 6 rounds | **The 0.50 did not replicate.** It hit a different wall almost every round: reduce axis `(2,4)` → 2-dimension wall → "partition dim must be preserved" → 2-dimension wall → `dma_copy` element count. *(round 5 running at deadline)* |
+| `merge_multi_rep` | same as `merge_multi` (replication) | 0.30 (the run ended after 5 rounds) | **The 0.50 did not replicate.** It hit a different wall almost every round: reduce axis `(2,4)` → 2-dimension wall → "partition dim must be preserved" → 2-dimension wall → `dma_copy` element count. |
 | `merge_t10` | static check, all temperatures 1.0 | 0.30 after 4 of 6 rounds | Same path as `merge_static`: rounds 0–2 fixing API errors flagged by the static check, then the `.ap` partition stride in round 3. *(running at deadline)* |
 | `merge_tmix` | static check, 0.6–1.0 (replicates `merge_static`) | 0.30 after 4 of 6 rounds | `.ap` partition stride in rounds 1–3, bouncing between `[[1,32],[2,16],[2,16]]` and `[[2,16],[2,16],[1,32]]`. *(running at deadline)* |
 
@@ -88,7 +88,22 @@ With one run, we do not credit the 0.50 to the persona: `merge_multi` reached 0.
 - **The best kernel came first and was never improved.** This is the regression pattern again and the strongest case for `--decompose`: on these levels "a single tile" is a step that already passes, and tiling is the next step.
 - None of these runs can pass level 7. Passing needs every shape correct *and* HBM traffic within 1.05× the floor, so "passing the static checker" there means only that the API was used correctly.
 
-**Still running when this was written:** `persona_l2` and `base_l2` (level 2, with and without `--persona`), and `dec_fast2` (`--decompose`, kernel rounds without thinking). The first `--decompose` run never produced a plan: three tries, the same `AxisError` each time. That led to the two changes in the table above: rejection feedback with every stage's output shape, and thinking on for the plan.
+**Layout hints** (`--layout-hints 1`; static check on). With a matching error, the hint adds the NKI rule with this tile's own numbers: the `.ap` stride unit (one step along each dimension in elements, so the first pair must be `[1024, n]`), "reductions only take the last dimensions; reshape only relabels, so reorder with `.ap`", and `keepdims=True` after a reduction. It never gives the finished pattern. The runs were stopped by the deadline:
+
+| Run | Mode | Rounds | Best | What happened |
+|---|---|---|---|---|
+| `hints` | `--plan-merge` (compare with `merge_static`, `merge_tmix`, `merge_t10`) | 5 | 0.30 | **Each hint was followed in the very next round.** R0: per-window loop, 2-D wall. R1: added `keepdims=True` (the hint), and met a new error, reducing the partition axis. R2: tried `.ap([[p, p], [1, 1]])` and got the stride hint. R3: **`tile.ap([[H*W, 1], [W, p], [1, p]])`, the first correct `.ap` strides in any run** (partition step H·W, row W, column 1), but then `tile / int`. R4: replaced `/` with `tensor_scalar`, then an index went out of bounds in its per-window loop. Still 0.30, but every round was a new error and none was a wall it had already hit. |
+| `hints_plan` | `--plan` (each sample plans alone) | 4 | 0.30 | The hints never triggered. All 4 rounds swapped `data=` and `operand0=` in `tensor_scalar`: the value-kind gap of the static checker (§2), the same A → B → A as in `merge_static`. |
+| `hints_think` | `--think --max-tokens 7000` | 1 | 0.30 | 3 of 4 samples used the whole budget thinking and returned no code (reward 0.0). Raw thinking does not fit an 8k context, as the organisers measured. |
+
+The first `--decompose` run (`dec_fast`) never produced a plan: three tries, the same `AxisError` each time. That led to two changes: a rejection now shows every stage's output shape, and the plan is written with thinking on. The rerun was not finished by the deadline.
+
+**Level 2 (2D transpose), with and without persona** (`persona_l2`, `base_l2`: `--plan-merge`, static check on). Both scored **0.30 after 6 rounds**. Both began with NumPy idioms (`nl.reshape`, `nl.transpose(axes=...)`):
+
+- Without persona, it was stuck 3 rounds on a `dma_copy` element count (12 into 1), then on out-of-bounds indices.
+- With persona, it invented `nisa.tile` and `nl.ndarray(ap=...)`, then tried to `dma_copy` an `.ap` view.
+
+The organisers' plain agent (no thinking) solved level 2 in 4 of 5 runs, so on this level our thinking-and-merging setup did *worse* than no thinking at all. Settings differ (8 rounds, no static check) and n is small, but the direction is clear: thinking pulls the model toward NumPy idioms on this level too.
 
 ## 4. What we learned
 
@@ -105,6 +120,8 @@ With one run, we do not credit the 0.50 to the persona: `merge_multi` reached 0.
 6. **The reference code carries useful structure.** Replacing it with the model's own description led to a worse algorithm.
 7. **Showing failed attempts was not enough to stop the model going back to them** (`merge_history`). An explicit, precise hint seems to matter more than memory.
 8. **Variance is large; n is small.** Two runs with identical settings (seats 182 and 184 before history takes effect) hit different first errors at round 0. Our only 0.50 (`merge_multi`) **did not replicate** in `merge_multi_rep`. The three runs with the static check on (`merge_static`, `merge_tmix`, `merge_t10`) all ended at the same `.ap` wall, whether the temperatures were mixed or all 1.0. So the walls in finding 3 are reproducible, while the score is not. With 1–2 runs per configuration we report behaviour, and we **do not** rank configurations by score.
+
+9. **(After the first submission) Rules stated with the tile's own numbers are followed immediately.** In `hints`, `keepdims=True` and the `.ap` stride unit were each applied in the round right after the hint. That run wrote the first correct `.ap` strides of the day, and it never went back to a wall it had already hit. The score stayed at 0.30 inside 5 rounds, so this is evidence about behaviour, not yet about outcome.
 
 ### Failure taxonomy (counts)
 
@@ -136,19 +153,25 @@ A repair prompt is roughly 40% API card, 40% the current kernel and 20% feedback
 
 ## 5. Future Plan
 
-- **Explain the `.ap` stride unit when that error appears.** Either attach the real NKI docstring, or restate the error with the numbers worked out for this tile ("one partition step = H·W = 1024 elements, one row = W, one column = 1"), in the style of finding 1.
-- **A hint for reductions over non-last axes, and for the 2-dimension wall after a reduction** ("`nl.sum(..., keepdims=True)` keeps the tile 2-D").
-- **A value-kind check in the static checker** (tile vs number).
-- **Keep diversity through the merge:** one summary per thought, or break ties toward the sample whose error is *new*.
-- **More replications per configuration** before comparing scores.
-- **Tile methods in the name checker.** `nl.reshape` gets "nothing similar exists" because only the `nl`, `nisa` and `nki` modules are searched; `reshape` and `ap` are methods of a tile and should be suggested as `tile.reshape(...)`.
-- **An enrichment rule for `'module' object is not callable`** that names the call and what it should be (level 6 stalled 3 rounds on it).
-- **Decompose, then build in checked stages** (now implemented as `--decompose`; first results in §3). This targets the regressions we saw (fixing one thing broke another, as in `merge_multi` rounds 4–5 and `merge_history` round 3):
-  1. The model writes its plan as a short sequence of NumPy steps (e.g. load `x` → window sums `(C, H/p, W/p)` → divide by p²).
-  2. The harness runs the steps on CPU and checks that together they equal the reference, so a wrong plan is rejected in milliseconds. No hand-written answers are needed.
-  3. The kernel is built in stages. Stage *k* must reproduce the output of the model's own NumPy step *k* before stage *k+1* may extend it. A stage that passes is frozen, so later fixes cannot break it, and the feedback always names the one stage that fails.
+In priority order, after the evening runs.
 
-  We build stages on top of each other rather than writing the parts separately and joining them, because intermediate results live in SBUF tiles and a join would be a new place to fail. This does not supply missing knowledge (the `.ap` stride unit, `keepdims`), so it should be paired with those hints. Each should still be tested as a separate variable.
+1. **Run `--layout-hints` to the end, and repeat it.** These hints (the `.ap` stride unit with the tile's numbers, last-dims reductions, `keepdims`) are now implemented. In `hints` each one was followed in the next round, but the run had only 5 rounds. Next: 8+ rounds, 2–3 runs, compared with `merge_static`, `merge_tmix` and `merge_t10`.
+2. **A value-kind check in the static checker** (a tile vs a number). This is now the most frequent wall where the hints do not apply: `merge_static` and `hints_plan` spent 4+ rounds swapping `data=` and `operand0=` in `nisa.tensor_scalar`. The check: `data=` must be a tile, and `operand0=` a number or a per-partition tile, possibly the same tile as `dst=`.
+3. **Expected vs actual output on a small block** when a kernel runs but is wrong. "98.7% of elements are wrong" is a verdict. In `persona` round 3 the model changed the wrong line (multiplied by p² instead of dividing) and the error grew from 5.6× to 64× the RMS. A 4×4 block of input, expected output and actual output would show that the wrong elements are being averaged.
+4. **Finish testing `--decompose`.** It is implemented, and the plan check now shows each stage's output shape and is written with thinking on. The rerun did not finish. The matmul levels are its best test case: there "a single tile" already passed in round 0 and was then broken by every attempt to tile.
+5. **Tile methods in the name checker.** `nl.reshape` gets "nothing similar exists" because only the `nl`, `nisa` and `nki` modules are searched; `reshape` and `ap` are methods of a tile and should be suggested as `tile.reshape(...)`.
+6. **An enrichment rule for `'module' object is not callable`** that names the call and what it should be (level 6 stalled 3 rounds on it).
+7. **Keep diversity through the merge:** one summary per thought, or break ties toward the sample whose error is *new*.
+8. **Level 2: thinking vs no thinking.** The organisers' plain agent solved it 4 times in 5; our `--plan-merge` runs scored 0.30 twice. Run both settings 3+ times each, to see whether thinking really hurts on simpler levels.
+9. **More replications per configuration** before comparing scores.
+
+**How `--decompose` works** (design notes for item 4). It targets the regressions we saw (fixing one thing broke another, as in `merge_multi` rounds 4–5, `merge_history` round 3 and levels 5–6):
+
+1. The model writes its plan as a short sequence of NumPy steps (e.g. load `x` → window sums `(C, H/p, W/p)` → divide by p²).
+2. The harness runs the steps on CPU and checks that the last one equals the reference, so a wrong plan is rejected in milliseconds. No hand-written answers are needed.
+3. The kernel is built in stages. Stage *k* must reproduce the output of the model's own NumPy step *k*, and its kernel is the starting point of stage *k+1*, so later fixes do not have to rediscover it.
+
+Stages are built on top of each other rather than written separately and joined, because intermediate results live in SBUF tiles and a join would be a new place to fail. Decomposition does not supply missing knowledge, so it should be paired with the layout hints, but each should first be tested as a separate variable.
 
 ## 6. Reproduce
 
