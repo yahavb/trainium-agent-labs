@@ -1,0 +1,195 @@
+
+=== verify mult8 ===
+  [tb] comb template attempt 1: accepted (2 of 3 reference models agree) (3s, 3/3 usable)
+  design: PASS  score=1.000  PASS
+  killed 1/1 mutants (100%)   [0 didn't compile, skipped]
+  ✓ PASSED -> ready for optimize: designs/mult8/for_optimize.json
+  -> designs/mult8/report.json
+
+=== verify mult8_bug ===
+  using existing tb.v
+  design: FAIL  score=0.498  2010 of 4000 checks failed. First mismatches:
+    MISMATCH a=36 b=129 expected p=4644 got p=36
+    MISMATCH a=13 b=141 expected p=1833 got p=169
+    MISMATCH a=237 b=140 expected p=33180 got p=2844
+    MISMATCH a=249 b=198 expected p=49302 got p=17430
+    MISMATCH a=197 b=170 expected p=33490 got p=8274
+  ✗ FAILED -> handed to feedback: designs/mult8_bug/for_feedback.json
+  -> designs/mult8_bug/report.json
+
+=== verify barrel8 ===
+  [tb] comb template attempt 1: rejected - it does not compile: tb.v:17: syntax error | tb.v:17: error: Malformed statement | tb.v:19: syntax error  -> broken code: line 17: `exp_y = {data[t-1:0], 8{1'b0}};`; line 19: `exp_y = {8{1'b0}, data[7 (12s, 0/3 usable)
+  [tb] comb template attempt 2: rejected - it does not compile: tb.v:17: syntax error | tb.v:17: error: Syntax error between internal '}' and closing '}' of repeat concatenation. | tb.v:19: syntax error  -> broken code: line 17: `exp_y = {8{1' (13s, 0/3 usable)
+  [tb] comb template attempt 3: rejected - it does not compile: tb.v:17: syntax error | tb.v:17: error: Malformed statement | tb.v:19: syntax error  -> broken code: line 17: `exp_y = {data[k2:0], 8{1'b0}};`; line 19: `exp_y = {8{1'b0}, data[7: (13s, 0/3 usable)
+  [tb] template route failed -> asking the AI for a whole testbench
+  [tb] attempt 1: accepted (27s, 1 candidate(s))
+  design: FAIL  score=0.833  684 of 4096 checks failed. First mismatches:
+    MISMATCH data=4 shamt=1 dir=1 expected=0 got=2
+    MISMATCH data=5 shamt=1 dir=1 expected=0 got=2
+    MISMATCH data=6 shamt=1 dir=1 expected=1 got=3
+    MISMATCH data=7 shamt=1 dir=1 expected=1 got=3
+    MISMATCH data=8 shamt=1 dir=1 expected=0 got=4
+  ✗ FAILED -> handed to feedback: designs/barrel8/for_feedback.json
+  -> designs/barrel8/report.json
+
+=== verify barrel8_bug ===
+  using existing tb.v
+  design: FAIL  score=0.170  3398 of 4096 checks failed. First mismatches:
+    MISMATCH data=1 shamt=1 dir=0 expected=2 got=0
+    MISMATCH data=1 shamt=1 dir=1 expected=0 got=2
+    MISMATCH data=1 shamt=2 dir=0 expected=4 got=0
+    MISMATCH data=1 shamt=2 dir=1 expected=0 got=4
+    MISMATCH data=1 shamt=3 dir=0 expected=8 got=0
+  ✗ FAILED -> handed to feedback: designs/barrel8_bug/for_feedback.json
+  -> designs/barrel8_bug/report.json
+
+=== verify add16 ===
+  [tb] comb template attempt 1: accepted (2 of 3 reference models agree) (6s, 3/3 usable)
+  design: FAIL  score=0.500  4000 of 8000 checks failed. First mismatches:
+    MISMATCH a=13604 b=24193 cin=1 expected cout=x got cout=0
+    MISMATCH a=22115 b=31501 cin=1 expected cout=x got cout=0
+    MISMATCH a=33893 b=21010 cin=1 expected cout=x got cout=0
+    MISMATCH a=52493 b=61814 cin=1 expected cout=x got cout=1
+    MISMATCH a=22509 b=63372 cin=1 expected cout=x got cout=1
+  ✗ FAILED -> handed to feedback: designs/add16/for_feedback.json
+  -> designs/add16/report.json
+
+=== verify add16_bug ===
+  using existing tb.v
+  design: FAIL  score=0.500  4000 of 8000 checks failed. First mismatches:
+    MISMATCH a=13604 b=24193 cin=1 expected cout=x got cout=0
+    MISMATCH a=22115 b=31501 cin=1 expected cout=x got cout=0
+    MISMATCH a=33893 b=21010 cin=1 expected cout=x got cout=0
+    MISMATCH a=52493 b=61814 cin=1 expected cout=x got cout=0
+    MISMATCH a=22509 b=63372 cin=1 expected cout=x got cout=0
+  ✗ FAILED -> handed to feedback: designs/add16_bug/for_feedback.json
+  -> designs/add16_bug/report.json
+
+=== verify prienc8 ===
+  [tb] comb template attempt 1: accepted (2 of 3 reference models agree) (18s, 3/3 usable)
+  design: PASS  score=1.000  PASS
+  killed 6/8 mutants (75%)   [0 didn't compile, skipped]
+    survived  line 6: number +1     -> for (i = 1; i < 8; i = i + 1)
+    survived  line 6: number +1     -> for (i = 0; i < 9; i = i + 1)
+  ✓ PASSED -> ready for optimize: designs/prienc8/for_optimize.json
+  -> designs/prienc8/report.json
+
+=== verify prienc8_bug ===
+  using existing tb.v
+  design: FAIL  score=0.518  247 of 512 checks failed. First mismatches:
+    MISMATCH req=3 expected idx=1 got idx=0
+    MISMATCH req=5 expected idx=2 got idx=0
+    MISMATCH req=6 expected idx=2 got idx=1
+    MISMATCH req=7 expected idx=2 got idx=0
+    MISMATCH req=9 expected idx=3 got idx=0
+  ✗ FAILED -> handed to feedback: designs/prienc8_bug/for_feedback.json
+  -> designs/prienc8_bug/report.json
+
+=== verify popcount8 ===
+  [tb] comb template attempt 1: accepted (2 of 3 reference models agree) (13s, 3/3 usable)
+  design: PASS  score=1.000  PASS
+  killed 14/14 mutants (100%)   [0 didn't compile, skipped]
+  ✓ PASSED -> ready for optimize: designs/popcount8/for_optimize.json
+  -> designs/popcount8/report.json
+
+=== verify popcount8_bug ===
+  using existing tb.v
+  design: FAIL  score=0.500  128 of 256 checks failed. First mismatches:
+    MISMATCH x=128 expected count=1 got count=0
+    MISMATCH x=129 expected count=2 got count=1
+    MISMATCH x=130 expected count=2 got count=1
+    MISMATCH x=131 expected count=3 got count=2
+    MISMATCH x=132 expected count=2 got count=1
+  ✗ FAILED -> handed to feedback: designs/popcount8_bug/for_feedback.json
+  -> designs/popcount8_bug/report.json
+
+=== verify bcd7seg ===
+  [tb] comb template attempt 1: accepted (2 of 3 reference models agree) (18s, 3/3 usable)
+  design: FAIL  score=0.000  16 of 16 checks failed. First mismatches:
+    MISMATCH bcd=0 expected seg=0 got seg=63
+    MISMATCH bcd=1 expected seg=0 got seg=6
+    MISMATCH bcd=2 expected seg=0 got seg=91
+    MISMATCH bcd=3 expected seg=0 got seg=79
+    MISMATCH bcd=4 expected seg=16 got seg=102
+  ✗ FAILED -> handed to feedback: designs/bcd7seg/for_feedback.json
+  -> designs/bcd7seg/report.json
+
+=== verify bcd7seg_bug ===
+  using existing tb.v
+  design: FAIL  score=0.000  16 of 16 checks failed. First mismatches:
+    MISMATCH bcd=0 expected seg=0 got seg=63
+    MISMATCH bcd=1 expected seg=0 got seg=6
+    MISMATCH bcd=2 expected seg=0 got seg=95
+    MISMATCH bcd=3 expected seg=0 got seg=79
+    MISMATCH bcd=4 expected seg=16 got seg=102
+  ✗ FAILED -> handed to feedback: designs/bcd7seg_bug/for_feedback.json
+  -> designs/bcd7seg_bug/report.json
+
+=== verify scmp4 ===
+  [tb] comb template attempt 1: accepted (2 of 3 reference models agree) (6s, 3/3 usable)
+  design: PASS  score=1.000  PASS
+  killed 1/1 mutants (100%)   [0 didn't compile, skipped]
+  ✓ PASSED -> ready for optimize: designs/scmp4/for_optimize.json
+  -> designs/scmp4/report.json
+
+=== verify scmp4_bug ===
+  using existing tb.v
+  design: FAIL  score=0.667  256 of 768 checks failed. First mismatches:
+    MISMATCH a=0 b=-8 expected lt=0 got lt=1
+    MISMATCH a=0 b=-8 expected gt=1 got gt=0
+    MISMATCH a=0 b=-7 expected lt=0 got lt=1
+    MISMATCH a=0 b=-7 expected gt=1 got gt=0
+    MISMATCH a=0 b=-6 expected lt=0 got lt=1
+  ✗ FAILED -> handed to feedback: designs/scmp4_bug/for_feedback.json
+  -> designs/scmp4_bug/report.json
+
+=== verify shreg8 ===
+  [tb] seq template attempt 1: accepted (2 of 3 reference models agree) (6s, 3/3 usable)
+  design: PASS  score=1.000  PASS
+  killed 2/2 mutants (100%)   [0 didn't compile, skipped]
+  ✓ PASSED -> ready for optimize: designs/shreg8/for_optimize.json
+  -> designs/shreg8/report.json
+
+=== verify shreg8_bug ===
+  using existing tb.v
+  design: FAIL  score=0.113  266 of 300 checks failed. First mismatches:
+    MISMATCH rst=0 sin=1 cycle=2 expected q=1 got q=128
+    MISMATCH rst=0 sin=1 cycle=3 expected q=3 got q=192
+    MISMATCH rst=0 sin=0 cycle=4 expected q=6 got q=96
+    MISMATCH rst=0 sin=1 cycle=5 expected q=13 got q=176
+    MISMATCH rst=0 sin=1 cycle=6 expected q=27 got q=216
+  ✗ FAILED -> handed to feedback: designs/shreg8_bug/for_feedback.json
+  -> designs/shreg8_bug/report.json
+
+=== verify det101 ===
+  [tb] seq template attempt 1: accepted (2 of 3 reference models agree) (22s, 3/3 usable)
+  design: PASS  score=1.000  PASS
+  killed 6/7 mutants (86%)   [0 didn't compile, skipped]
+    survived  line 4: constant +1   -> if (rst) begin s <= 2'd1; y <= 1'b0; end
+  ✓ PASSED -> ready for optimize: designs/det101/for_optimize.json
+  -> designs/det101/report.json
+
+=== verify det101_bug ===
+  using existing tb.v
+  design: FAIL  score=0.743  77 of 300 checks failed. First mismatches:
+    MISMATCH rst=0 x=1 cycle=5 expected y=1 got y=0
+    MISMATCH rst=0 x=0 cycle=8 expected y=0 got y=1
+    MISMATCH rst=0 x=1 cycle=13 expected y=1 got y=0
+    MISMATCH rst=0 x=0 cycle=17 expected y=0 got y=1
+    MISMATCH rst=0 x=1 cycle=23 expected y=1 got y=0
+  ✗ FAILED -> handed to feedback: designs/det101_bug/for_feedback.json
+  -> designs/det101_bug/report.json
+
+================ TESTBENCH SCORECARD ================
+circuit    level      testbench  correct  buggy        mutants
+mult8      2 big      built      PASS ✓   caught ✓     1/1
+barrel8    2 big      built      FAIL ✗   caught ✓     -
+add16      2 big      built      FAIL ✗   caught ✓     -
+prienc8    3 tricky   built      PASS ✓   caught ✓     6/8
+popcount8  3 tricky   built      PASS ✓   caught ✓     14/14
+bcd7seg    3 tricky   built      FAIL ✗   caught ✓     -
+scmp4      3 tricky   built      PASS ✓   caught ✓     1/1
+shreg8     4 clocked  built      PASS ✓   caught ✓     2/2
+det101     4 clocked  built      PASS ✓   caught ✓     6/7
+
+perfect (testbench built, correct passed, bug caught): 6/9

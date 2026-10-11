@@ -1,0 +1,180 @@
+
+=== verify mult8 ===
+  [tb] python comb model attempt 1: accepted (2 of 3 Python models agree) (5s, 3/3 ran)
+  design: PASS  score=1.000  PASS
+  killed 1/1 mutants (100%)   [0 didn't compile, skipped]
+  ✓ PASSED -> ready for optimize: designs/mult8/for_optimize.json
+  -> designs/mult8/report.json
+
+=== verify mult8_bug ===
+  using existing tb.v
+  design: FAIL  score=0.504  1983 of 4000 checks failed. First mismatches:
+    MISMATCH a=34 b=145 expected p=4930 got p=578
+    MISMATCH a=216 b=205 expected p=44280 got p=16632
+    MISMATCH a=126 b=194 expected p=24444 got p=8316
+    MISMATCH a=7 b=228 expected p=1596 got p=700
+    MISMATCH a=110 b=155 expected p=17050 got p=2970
+  ✗ FAILED -> handed to feedback: designs/mult8_bug/for_feedback.json
+  -> designs/mult8_bug/report.json
+
+=== verify barrel8 ===
+  [tb] python comb model attempt 1: accepted (2 of 3 Python models agree) (11s, 3/3 ran)
+  design: PASS  score=1.000  PASS
+  killed 2/2 mutants (100%)   [0 didn't compile, skipped]
+  ✓ PASSED -> ready for optimize: designs/barrel8/for_optimize.json
+  -> designs/barrel8/report.json
+
+=== verify barrel8_bug ===
+  using existing tb.v
+  design: FAIL  score=0.169  3402 of 4096 checks failed. First mismatches:
+    MISMATCH data=1 shamt=1 dir=0 expected y=2 got y=0
+    MISMATCH data=1 shamt=1 dir=1 expected y=0 got y=2
+    MISMATCH data=1 shamt=2 dir=0 expected y=4 got y=0
+    MISMATCH data=1 shamt=2 dir=1 expected y=0 got y=4
+    MISMATCH data=1 shamt=3 dir=0 expected y=8 got y=0
+  ✗ FAILED -> handed to feedback: designs/barrel8_bug/for_feedback.json
+  -> designs/barrel8_bug/report.json
+
+=== verify add16 ===
+  [tb] python comb model attempt 1: accepted (2 of 3 Python models agree) (11s, 3/3 ran)
+  design: PASS  score=1.000  PASS
+  killed 4/4 mutants (100%)   [0 didn't compile, skipped]
+  ✓ PASSED -> ready for optimize: designs/add16/for_optimize.json
+  -> designs/add16/report.json
+
+=== verify add16_bug ===
+  using existing tb.v
+  design: FAIL  score=0.755  1963 of 8000 checks failed. First mismatches:
+    MISMATCH a=52577 b=50054 cin=0 expected cout=1 got cout=0
+    MISMATCH a=49870 b=29457 cin=0 expected cout=1 got cout=0
+    MISMATCH a=42702 b=24878 cin=1 expected cout=1 got cout=0
+    MISMATCH a=49956 b=50276 cin=0 expected cout=1 got cout=0
+    MISMATCH a=45602 b=29188 cin=0 expected cout=1 got cout=0
+  ✗ FAILED -> handed to feedback: designs/add16_bug/for_feedback.json
+  -> designs/add16_bug/report.json
+
+=== verify prienc8 ===
+  [tb] python comb model attempt 1: accepted (2 of 3 Python models agree) (23s, 3/3 ran)
+  design: FAIL  score=0.506  253 of 512 checks failed. First mismatches:
+    MISMATCH req=1 expected idx=1 got idx=0
+    MISMATCH req=4 expected idx=1 got idx=2
+    MISMATCH req=5 expected idx=1 got idx=2
+    MISMATCH req=6 expected idx=1 got idx=2
+    MISMATCH req=7 expected idx=1 got idx=2
+  ✗ FAILED -> handed to feedback: designs/prienc8/for_feedback.json
+  -> designs/prienc8/report.json
+
+=== verify prienc8_bug ===
+  using existing tb.v
+  design: FAIL  score=0.627  191 of 512 checks failed. First mismatches:
+    MISMATCH req=1 expected idx=1 got idx=0
+    MISMATCH req=3 expected idx=1 got idx=0
+    MISMATCH req=4 expected idx=1 got idx=2
+    MISMATCH req=5 expected idx=1 got idx=0
+    MISMATCH req=7 expected idx=1 got idx=0
+  ✗ FAILED -> handed to feedback: designs/prienc8_bug/for_feedback.json
+  -> designs/prienc8_bug/report.json
+
+=== verify popcount8 ===
+  [tb] python comb model attempt 1: accepted (2 of 3 Python models agree) (4s, 3/3 ran)
+  design: PASS  score=1.000  PASS
+  killed 14/14 mutants (100%)   [0 didn't compile, skipped]
+  ✓ PASSED -> ready for optimize: designs/popcount8/for_optimize.json
+  -> designs/popcount8/report.json
+
+=== verify popcount8_bug ===
+  using existing tb.v
+  design: FAIL  score=0.500  128 of 256 checks failed. First mismatches:
+    MISMATCH x=128 expected count=1 got count=0
+    MISMATCH x=129 expected count=2 got count=1
+    MISMATCH x=130 expected count=2 got count=1
+    MISMATCH x=131 expected count=3 got count=2
+    MISMATCH x=132 expected count=2 got count=1
+  ✗ FAILED -> handed to feedback: designs/popcount8_bug/for_feedback.json
+  -> designs/popcount8_bug/report.json
+
+=== verify bcd7seg ===
+  [tb] python comb model attempt 1: accepted (2 of 3 Python models agree) (69s, 3/3 ran)
+  design: PASS  score=1.000  PASS
+  killed 21/21 mutants (100%)   [0 didn't compile, skipped]
+  ✓ PASSED -> ready for optimize: designs/bcd7seg/for_optimize.json
+  -> designs/bcd7seg/report.json
+
+=== verify bcd7seg_bug ===
+  using existing tb.v
+  design: FAIL  score=0.938  1 of 16 checks failed. First mismatches:
+    MISMATCH bcd=2 expected seg=91 got seg=95
+  ✗ FAILED -> handed to feedback: designs/bcd7seg_bug/for_feedback.json
+  -> designs/bcd7seg_bug/report.json
+
+=== verify scmp4 ===
+  [tb] python comb model attempt 1: accepted (2 of 3 Python models agree) (7s, 3/3 ran)
+  design: PASS  score=1.000  PASS
+  killed 1/1 mutants (100%)   [0 didn't compile, skipped]
+  ✓ PASSED -> ready for optimize: designs/scmp4/for_optimize.json
+  -> designs/scmp4/report.json
+
+=== verify scmp4_bug ===
+  using existing tb.v
+  design: FAIL  score=0.667  256 of 768 checks failed. First mismatches:
+    MISMATCH a=0 b=-8 expected lt=0 got lt=1
+    MISMATCH a=0 b=-8 expected gt=1 got gt=0
+    MISMATCH a=0 b=-7 expected lt=0 got lt=1
+    MISMATCH a=0 b=-7 expected gt=1 got gt=0
+    MISMATCH a=0 b=-6 expected lt=0 got lt=1
+  ✗ FAILED -> handed to feedback: designs/scmp4_bug/for_feedback.json
+  -> designs/scmp4_bug/report.json
+
+=== verify shreg8 ===
+  [tb] python seq model attempt 1: accepted (2 of 3 Python models agree) (12s, 3/3 ran)
+  design: PASS  score=1.000  PASS
+  killed 2/2 mutants (100%)   [0 didn't compile, skipped]
+  ✓ PASSED -> ready for optimize: designs/shreg8/for_optimize.json
+  -> designs/shreg8/report.json
+
+=== verify shreg8_bug ===
+  using existing tb.v
+  design: FAIL  score=0.143  257 of 300 checks failed. First mismatches:
+    MISMATCH rst=0 sin=1 cycle=2 expected q=1 got q=128
+    MISMATCH rst=0 sin=0 cycle=3 expected q=2 got q=64
+    MISMATCH rst=0 sin=0 cycle=4 expected q=4 got q=32
+    MISMATCH rst=0 sin=1 cycle=5 expected q=9 got q=144
+    MISMATCH rst=0 sin=0 cycle=6 expected q=18 got q=72
+  ✗ FAILED -> handed to feedback: designs/shreg8_bug/for_feedback.json
+  -> designs/shreg8_bug/report.json
+
+=== verify det101 ===
+  [tb] python seq model attempt 1: accepted (2 of 3 Python models agree) (18s, 3/3 ran)
+  design: FAIL  score=0.977  7 of 300 checks failed. First mismatches:
+    MISMATCH rst=0 x=1 cycle=16 expected y=1 got y=0
+    MISMATCH rst=0 x=1 cycle=21 expected y=1 got y=0
+    MISMATCH rst=0 x=1 cycle=71 expected y=1 got y=0
+    MISMATCH rst=0 x=1 cycle=148 expected y=1 got y=0
+    MISMATCH rst=0 x=1 cycle=151 expected y=1 got y=0
+  ✗ FAILED -> handed to feedback: designs/det101/for_feedback.json
+  -> designs/det101/report.json
+
+=== verify det101_bug ===
+  using existing tb.v
+  design: FAIL  score=0.750  75 of 300 checks failed. First mismatches:
+    MISMATCH rst=0 x=0 cycle=4 expected y=0 got y=1
+    MISMATCH rst=0 x=0 cycle=7 expected y=0 got y=1
+    MISMATCH rst=0 x=1 cycle=16 expected y=1 got y=0
+    MISMATCH rst=0 x=1 cycle=21 expected y=1 got y=0
+    MISMATCH rst=0 x=1 cycle=31 expected y=1 got y=0
+  ✗ FAILED -> handed to feedback: designs/det101_bug/for_feedback.json
+  -> designs/det101_bug/report.json
+
+================ TESTBENCH SCORECARD ================
+circuit    level      testbench  correct  buggy        mutants
+mult8      2 big      built      PASS ✓   caught ✓     1/1
+barrel8    2 big      built      PASS ✓   caught ✓     2/2
+add16      2 big      built      PASS ✓   caught ✓     4/4
+prienc8    3 tricky   built      FAIL ✗   caught ✓     -
+popcount8  3 tricky   built      PASS ✓   caught ✓     14/14
+bcd7seg    3 tricky   built      PASS ✓   caught ✓     21/21
+scmp4      3 tricky   built      PASS ✓   caught ✓     1/1
+shreg8     4 clocked  built      PASS ✓   caught ✓     2/2
+det101     4 clocked  built      FAIL ✗   caught ✓     -
+
+perfect (testbench built, correct passed, bug caught): 7/9

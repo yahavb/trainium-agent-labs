@@ -1,0 +1,89 @@
+
+=== verify mult8 ===
+  [tb] template attempt 1: accepted (2 of 3 reference models agree) (3s, 3/3 usable)
+  design: PASS  score=1.000  PASS
+  killed 0/0 mutants (-)   [0 didn't compile, skipped]
+  -> designs/mult8/report.json
+
+=== verify mult8_bug ===
+  using existing tb.v
+  design: FAIL  score=0.498  2010 of 4000 checks failed. First mismatches:
+    MISMATCH a=36 b=129 expected p=4644 got p=36
+    MISMATCH a=13 b=141 expected p=1833 got p=169
+    MISMATCH a=237 b=140 expected p=33180 got p=2844
+    MISMATCH a=249 b=198 expected p=49302 got p=17430
+    MISMATCH a=197 b=170 expected p=33490 got p=8274
+  ✗ FAILED -> handed to feedback: designs/mult8_bug/for_feedback.json
+  -> designs/mult8_bug/report.json
+
+=== verify barrel8 ===
+  [tb] template attempt 1: accepted (2 of 3 reference models agree) (31s, 3/3 usable)
+  design: FAIL  score=0.169  3402 of 4096 checks failed. First mismatches:
+    MISMATCH data=1 shamt=1 dir=0 expected y=0 got y=2
+    MISMATCH data=1 shamt=1 dir=1 expected y=2 got y=0
+    MISMATCH data=1 shamt=2 dir=0 expected y=0 got y=4
+    MISMATCH data=1 shamt=2 dir=1 expected y=4 got y=0
+    MISMATCH data=1 shamt=3 dir=0 expected y=0 got y=8
+  ✗ FAILED -> handed to feedback: designs/barrel8/for_feedback.json
+  -> designs/barrel8/report.json
+
+=== verify barrel8_bug ===
+  using existing tb.v
+  design: PASS  score=1.000  PASS
+  -> designs/barrel8_bug/report.json
+
+=== verify add16 ===
+  [tb] template attempt 1: accepted (2 of 3 reference models agree) (6s, 3/3 usable)
+  design: FAIL  score=0.752  1986 of 8000 checks failed. First mismatches:
+    MISMATCH a=52493 b=61814 cin=1 expected cout=0 got cout=1
+    MISMATCH a=22509 b=63372 cin=1 expected cout=0 got cout=1
+    MISMATCH a=63461 b=29303 cin=0 expected cout=0 got cout=1
+    MISMATCH a=56207 b=27122 cin=0 expected cout=0 got cout=1
+    MISMATCH a=54867 b=56683 cin=1 expected cout=0 got cout=1
+  ✗ FAILED -> handed to feedback: designs/add16/for_feedback.json
+  -> designs/add16/report.json
+
+=== verify add16_bug ===
+  using existing tb.v
+  design: PASS  score=1.000  PASS
+  -> designs/add16_bug/report.json
+
+=== verify prienc8 ===
+  [tb] template attempt 1: accepted (2 of 3 reference models agree) (16s, 3/3 usable)
+  design: PASS  score=1.000  PASS
+  killed 6/8 mutants (75%)   [0 didn't compile, skipped]
+    survived  line 6: number +1     -> for (i = 1; i < 8; i = i + 1)
+    survived  line 6: number +1     -> for (i = 0; i < 9; i = i + 1)
+  -> designs/prienc8/report.json
+
+=== verify prienc8_bug ===
+  using existing tb.v
+  design: FAIL  score=0.518  247 of 512 checks failed. First mismatches:
+    MISMATCH req=3 expected idx=1 got idx=0
+    MISMATCH req=5 expected idx=2 got idx=0
+    MISMATCH req=6 expected idx=2 got idx=1
+    MISMATCH req=7 expected idx=2 got idx=0
+    MISMATCH req=9 expected idx=3 got idx=0
+  ✗ FAILED -> handed to feedback: designs/prienc8_bug/for_feedback.json
+  -> designs/prienc8_bug/report.json
+
+=== verify popcount8 ===
+  [tb] template attempt 1: accepted (2 of 3 reference models agree) (11s, 3/3 usable)
+  design: PASS  score=1.000  PASS
+  killed 14/14 mutants (100%)   [0 didn't compile, skipped]
+  -> designs/popcount8/report.json
+
+=== verify popcount8_bug ===
+  using existing tb.v
+  design: FAIL  score=0.500  128 of 256 checks failed. First mismatches:
+    MISMATCH x=128 expected count=1 got count=0
+    MISMATCH x=129 expected count=2 got count=1
+    MISMATCH x=130 expected count=2 got count=1
+    MISMATCH x=131 expected count=3 got count=2
+    MISMATCH x=132 expected count=2 got count=1
+  ✗ FAILED -> handed to feedback: designs/popcount8_bug/for_feedback.json
+  -> designs/popcount8_bug/report.json
+
+=== verify bcd7seg ===
+  [tb] template attempt 1: rejected - the independent reference models DISAGREE (bcd=0 expected seg=126 other model says seg=70). Re-read the spec carefully (directions, signedness, bit order) and compute exactly what it says (39s, 3/3 usable)
+  [tb] template attempt 2: rejected - it does not compile: tb.v:13: error: Could not find variable ``g'' in ``tb'' | tb.v:13: error: Could not find variable ``f'' in ``tb'' | tb.v:13: error: Could not find variable ``e'' in ``tb''  -> bro (53s, 0/3 usable)
