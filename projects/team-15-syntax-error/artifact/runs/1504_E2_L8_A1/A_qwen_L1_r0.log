@@ -1,0 +1,9 @@
+
+=========== A1: elementwise relu(a*x+b)  (trap: none — your 'the loop works' checkpoint) ===========
+round 0: 1.00 [solved] (26.4s, finish=stop)
+  VERIFIED: 32/32 cases.
+  SOLVED on round 0, confidence 0.95 (clamped tile ends; every public case verified)
+
+=========== summary ===========
+  A1: solved 1/1, mean 1.00, all=[1.0]
+  uncached model calls this session: 1

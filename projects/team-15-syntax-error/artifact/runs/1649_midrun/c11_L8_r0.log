@@ -1,0 +1,7 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 8: single-head attention ===========
+round 0: this round 0.30  best so far 0.30  (181.9s)
+  0 of 3 shapes passed. On seq=128 dim=64: raised AttributeError: 'int' object has no attribute 'shape' A int is not a numpy array, so it has no `shape`. Use the nl/nisa functions instead.
+round 1: this round 0.30  best so far 0.30  (189.0s)
+  0 of 3 shapes passed. On seq=128 dim=64: raised AttributeError: module 'nki.language' has no attribute 'shape' `nki.language` has no `shape`. The closest real names are: square, shared_hbm, mish, transpose, where, store. Pick one of those or use a different approach.

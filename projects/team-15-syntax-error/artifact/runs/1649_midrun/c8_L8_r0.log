@@ -1,0 +1,26 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 8: single-head attention ===========
+round 0: this round 0.30  best so far 0.30  (140.2s)
+  0 of 3 shapes passed. On seq=128 dim=64: raised AssertionError: Matmul contraction dimension mismatch: stationary[0]=128 != moving[0]=64 nc_matmul contracts over the PARTITION (first) dimension, so stationary and moving must have the same first dimension; you passed 128 and 64. If this operation is not a matrix multiply, do not use nc_matmul at all: move data with nisa.dma_copy or nisa.tensor_copy
+round 1: this round 0.30  best so far 0.30  (147.0s)
+  0 of 3 shapes passed. On seq=128 dim=64: raised NameError: name 'np' is not defined
+round 2: this round 0.30  best so far 0.30  (147.9s)
+  0 of 3 shapes passed. On seq=128 dim=64: raised TypeError: tensor_scalar() missing 1 required positional argument: 'operand0'
+round 3: this round 0.30  best so far 0.30  (147.9s)
+  0 of 3 shapes passed. On seq=128 dim=64: raised TypeError: tensor_scalar() missing 1 required positional argument: 'op0'
+round 4: this round 0.30  best so far 0.30  (147.9s)
+  0 of 3 shapes passed. On seq=128 dim=64: raised TypeError: tensor_scalar() missing 1 required positional argument: 'operand0'
+round 5: this round 0.30  best so far 0.30  (147.9s)
+  0 of 3 shapes passed. On seq=128 dim=64: raised TypeError: tensor_scalar() missing 1 required positional argument: 'op0'
+round 6: this round 0.30  best so far 0.30  (147.9s)
+  0 of 3 shapes passed. On seq=128 dim=64: raised TypeError: tensor_scalar() missing 1 required positional argument: 'operand0'
+round 7: this round 0.30  best so far 0.30  (147.9s)
+  0 of 3 shapes passed. On seq=128 dim=64: raised TypeError: tensor_scalar() missing 1 required positional argument: 'op0'
+  not solved in 8 rounds; best reward 0.30. COULD NOT VERIFY a kernel for level 8: confidence 0.00
+
+=========== summary ===========
+  level 8  reward 0.30 after 8 round(s)
+  solved 0/1
+
+attempts logged to /workspace/s73/exp/runs/c8_L8_r0.jsonl

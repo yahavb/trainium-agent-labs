@@ -1,0 +1,27 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 8: single-head attention ===========
+round 0: this round 0.30  best so far 0.30  (166.6s)
+  0 of 3 shapes passed. On seq=128 dim=64: raised TypeError: nc_transpose() got an unexpected keyword argument 'src' Remove the `src=` argument. The real signature is isa.nc_transpose(dst: 'NkiTensor', data: 'NkiTensor', engine=<engine.unknown: 0>, name=None).
+round 1: this round 0.30  best so far 0.30  (165.3s)
+  0 of 3 shapes passed. On seq=128 dim=64: raised AssertionError: stationary must be in ['sbuf'], got psum Allocate the `stationary` tile with buffer=nl.sbuf instead of nl.psum. For nisa.nc_matmul: dst must be in nl.psum, and stationary and moving must both be in nl.sbuf. Copy between them with nisa.tensor_copy.
+round 2: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 2 failed attempts to break the repeat
+round 3: this round 0.30  best so far 0.30  (143.3s)
+  0 of 3 shapes passed. On seq=128 dim=64: raised AssertionError: Vector engine transpose requires shape <= [32, 32], got [128, 64]
+round 4: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 3 failed attempts to break the repeat
+round 5: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 3 failed attempts to break the repeat
+round 6: same failure again (0.30, best so far 0.30)
+  COULD NOT VERIFY level 8 (confidence 0.00).
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 3 shapes passed. On seq=128 dim=64: raised AssertionError: Vector engine transpose requires shape <= [32,
+    2x  0 of 3 shapes passed. On seq=128 dim=64: raised AssertionError: stationary must be in ['sbuf'], got psum Alloc
+    1x  0 of 3 shapes passed. On seq=128 dim=64: raised TypeError: nc_transpose() got an unexpected keyword argument '
+
+=========== summary ===========
+  level 8  reward 0.30 after 7 round(s)
+  solved 0/1
+
+attempts logged to /workspace/s73/exp/runs/c6_L8_r4.jsonl

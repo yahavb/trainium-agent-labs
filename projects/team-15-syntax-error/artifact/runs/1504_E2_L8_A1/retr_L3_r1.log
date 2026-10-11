@@ -1,0 +1,18 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 3: matmul, single tile ===========
+round 0: this round 0.30  best so far 0.30  (58.0s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=8192, dst=65536 The tile you allocated holds 65536 elements but you copied 8192 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a bigger tensor, wr
+round 1: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+round 2: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 1 failed attempts to break the repeat
+round 3: same failure again (0.30, best so far 0.30)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 1 shapes passed. On K=128 M=64 N=512: raised AssertionError: dma_copy requires src and dst to have the sa
+
+=========== summary ===========
+  level 3  reward 0.30 after 4 round(s)
+  solved 0/1
+
+attempts logged to /workspace/s73/exp/runs/retr_L3_r1.jsonl

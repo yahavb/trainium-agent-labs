@@ -1,0 +1,15 @@
+
+=========== A9: windowed attention (band w)  (trap: band edges, and w larger than the sequence) ===========
+round 0: 0.90 [assign_shape_mismatch] (63.8s, finish=stop)
+  4 of 5 cases pass. On n=129 d=33 w=7: It crashed:   File "<kernel>", line 30, in kernel | ValueError: operands could not be broadcast together with shapes (128,128) (128,129) (). The slice you write into and the value must have the same shape -- size the destination slice with the clamped tile ends.
+round 1: 0.90 [assign_shape_mismatch] (67.4s, finish=stop)
+  4 of 5 cases pass. On n=129 d=33 w=7: It crashed:   File "<kernel>", line 31, in kernel | ValueError: operands could not be broadcast together with shapes (128,128) (128,129) (). The slice you write into and the value must have the same shape -- size the destination slice with the clamped tile ends.
+round 2: 0.90 [assign_shape_mismatch] (72.0s, finish=stop)
+  4 of 5 cases pass. On n=129 d=33 w=7: It crashed:   File "<kernel>", line 31, in kernel | ValueError: operands could not be broadcast together with shapes (128,128) (128,129) (). The slice you write into and the value must have the same shape -- size the destination slice with the clamped tile ends.
+round 3: 0.90 [assign_shape_mismatch] (76.1s, finish=stop)
+  4 of 5 cases pass. On n=129 d=33 w=7: It crashed:   File "<kernel>", line 31, in kernel | ValueError: operands could not be broadcast together with shapes (128,128) (128,129) (). The slice you write into and the value must have the same shape -- size the destination slice with the clamped tile ends.
+  COULD NOT VERIFY A9 (confidence 0.00): the same failure 3x
+
+=========== summary ===========
+  A9: solved 0/1, mean 0.90, all=[0.9]
+  uncached model calls this session: 4

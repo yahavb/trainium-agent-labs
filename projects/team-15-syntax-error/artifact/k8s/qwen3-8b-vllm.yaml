@@ -1,0 +1,91 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: qwen3-8b
+  namespace: default
+spec:
+  selector:
+    app: qwen3-8b
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qwen3-8b
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: qwen3-8b
+  template:
+    metadata:
+      labels:
+        app: qwen3-8b
+    spec:
+      nodeSelector:
+        node-type: trn2
+      resourceClaims:
+        - name: neurons
+          resourceClaimTemplateName: s-lnc2
+      containers:
+        - name: app
+          image: public.ecr.aws/neuron/pytorch-inference-vllm-neuronx:0.24.0.1.1.0-neuronx-py313-sdk2.32.0-ubuntu24.04
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 120
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            claims:
+              - name: neurons
+            requests:
+              cpu: 10
+              memory: 100Gi
+            limits:
+              cpu: 10
+              memory: 100Gi
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: NEURON_SKIP_EFA_AFFINITY
+              value: "1"
+          command:
+            - /bin/bash
+            - -exc
+            - |
+              vllm serve \
+                --model "Qwen/Qwen3-8B" \
+                --tensor-parallel-size 2 \
+                --max-model-len 4096 \
+                --max-num-seqs 4 \
+                --block-size 32 \
+                --num-gpu-blocks-override 512 \
+                --no-enable-prefix-caching \
+                --port 8000
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Gi

@@ -1,0 +1,49 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 3: matmul, single tile ===========
+round 0: this round 0.30  best so far 0.30  (104.6s)
+  0 of 1 shapes passed. On K=128 M=64 N=512: raised AssertionError: Out-of-bound access for tensor `unnamed` on dimension 1: index range [0, 127] exceed dimension size of 64. The slice `lhsT[m0:m0 + m_sz, k0...` lists the axes in the wrong order. `lhsT` has shape [K, M], so its FIRST index must be the K range: write `lhsT[k0:k0 + k_sz, m0:m0 + m_sz]`. Change only that slice; everything else is right
+round 1: this round 1.00  best so far 1.00  (103.3s)
+  Correct on every shape. MEMORY BOUND: 19.7 Flops/Byte against a ridge of 222, so 9% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 11.3x more reuse needed.
+  SOLVED on round 1, confidence 0.95 (all public shapes pass; remainder handling present). Correct on every shape. MEMORY BOUND: 19.7 Flops/Byte against a ridge of 222, so 9% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 11.3x more reuse needed.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_matmul_basic_(lhsT, rhs):
+      K, M = lhsT.shape                         # left operand arrives TRANSPOSED: K is the partition dim
+      _, N = rhs.shape
+      result = nl.ndarray((M, N), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+      TM, TK, TN = 128, 128, 512                # hardware MAXIMA, not targets
+      for m in nl.affine_range((M + TM - 1) // TM):
+          m0 = m * TM
+          m_sz = min(TM, M - m0)                # the last tile may be partial
+          for n in nl.affine_range((N + TN - 1) // TN):
+              n0 = n * TN
+              n_sz = min(TN, N - n0)
+              acc = nl.ndarray((m_sz, n_sz), dtype=nl.float32, buffer=nl.psum)   # ONE accumulator
+              for k in nl.affine_range((K + TK - 1) // TK):
+                  k0 = k * TK
+                  k_sz = min(TK, K - k0)
+                  # TODO: SBUF tiles of exactly (k_sz, m_sz) and (k_sz, n_sz); dma_copy the matching
+                  #       slices of lhsT and rhs into them
+                  lhs_tile = nl.ndarray((k_sz, m_sz), dtype=lhsT.dtype, buffer=nl.sbuf)
+                  rhs_tile = nl.ndarray((k_sz, n_sz), dtype=rhs.dtype, buffer=nl.sbuf)
+                  nisa.dma_copy(dst=lhs_tile, src=lhsT[k0:k0 + k_sz, m0:m0 + m_sz])
+                  nisa.dma_copy(dst=rhs_tile, src=rhs[k0:k0 + k_sz, n0:n0 + n_sz])
+                  # TODO: nisa.nc_matmul into acc
+                  nisa.nc_matmul(dst=acc, stationary=lhs_tile, moving=rhs_tile)
+              # TODO: copy acc PSUM -> an SBUF tile, then dma_copy it to result[m0:m0 + m_sz, n0:n0 + n_sz]
+              out_tile = nl.ndarray((m_sz, n_sz), dtype=acc.dtype, buffer=nl.sbuf)
+              nisa.tensor_copy(dst=out_tile, src=acc)
+              nisa.dma_copy(dst=result[m0:m0 + m_sz, n0:n0 + n_sz], src=out_tile)
+      return result
+  -------------------------------------------
+
+=========== summary ===========
+  level 3  reward 1.00 after 2 round(s)  SOLVED
+  solved 1/1
+
+attempts logged to /workspace/projects/02-kernel-agent/runs/c9_L3_r0.jsonl

@@ -1,0 +1,74 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 6: matmul, M and N blocked ===========
+round 0: this round 0.62  best so far 0.62  (106.0s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: NUMERICAL MISMATCH: worst error 4.75 of the output's RMS (16.03), tolerance 0.02.
+  at index (115, 220): your value has the WRONG SIGN.
+  98.4% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+  CAUSE: the slice `lhsT[m0:m0 + m_sz, k0...` lists the axes in the wrong order
+round 1: this round 0.75  best so far 0.75  (105.1s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.56x the byte floor, and level 6 requires 1.30x or better. Correctness alone is level 4; this level is about the bytes. Block the M and N dimensions so more tiles stay resident in SBUF and are reused across iterations, rather than reloaded.
+  CAUSE: the same lhsT/rhs tiles are copied from HBM mor
+round 2: this round 0.50  best so far 0.75  (125.0s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: NON-FINITE OUTPUT: 65536 NaN and 0 Inf, first at (0, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.
+  CAUSE: `lhsT` and `rhs` is never copied into SBUF: the tiles are allocated with nl.ndarray but nothing writes them, so nc_matmul reads garbage. Right after allocating each tile, fill it: nisa.dma_copy(dst=tile, src
+round 3: this round 1.00  best so far 1.00  (122.3s)
+  Correct on every shape. MEMORY BOUND: 73.1 Flops/Byte against a ridge of 222, so 33% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 3.0x more reuse needed.
+  SOLVED on round 3, confidence 0.95 (all public shapes pass; remainder handling present). Correct on every shape. MEMORY BOUND: 73.1 Flops/Byte against a ridge of 222, so 33% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 3.0x more reuse needed.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_matmul_block_free_dimension_(lhsT, rhs):
+      K, M = lhsT.shape                         # left operand arrives TRANSPOSED: K is the partition dim
+      _, N = rhs.shape
+      result = nl.ndarray((M, N), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+      TM, TK, TN = 128, 128, 512                # hardware MAXIMA, not targets
+
+      # Pre-load all tiles into SBUF once
+      a = []  # a[k][m] = lhsT[k0:k0 + k_sz, m0:m0 + m_sz]
+      b = []  # b[k][n] = rhs[k0:k0 + k_sz, n0:n0 + n_sz]
+      for k in range((K + TK - 1) // TK):
+          k0 = k * TK
+          k_sz = min(TK, K - k0)
+          a_k = []
+          for m in range((M + TM - 1) // TM):
+              m0 = m * TM
+              m_sz = min(TM, M - m0)
+              a_k.append(nl.ndarray((k_sz, m_sz), dtype=lhsT.dtype, buffer=nl.sbuf))
+              nisa.dma_copy(dst=a_k[-1], src=lhsT[k0:k0 + k_sz, m0:m0 + m_sz])
+          a.append(a_k)
+        
+          b_k = []
+          for n in range((N + TN - 1) // TN):
+              n0 = n * TN
+              n_sz = min(TN, N - n0)
+              b_k.append(nl.ndarray((k_sz, n_sz), dtype=rhs.dtype, buffer=nl.sbuf))
+              nisa.dma_copy(dst=b_k[-1], src=rhs[k0:k0 + k_sz, n0:n0 + n_sz])
+          b.append(b_k)
+    
+      for m in range((M + TM - 1) // TM):
+          m0 = m * TM
+          m_sz = min(TM, M - m0)
+          for n in range((N + TN - 1) // TN):
+              n0 = n * TN
+              n_sz = min(TN, N - n0)
+              acc = nl.ndarray((m_sz, n_sz), dtype=nl.float32, buffer=nl.psum)
+              for k in range((K + TK - 1) // TK):
+                  k0 = k * TK
+                  k_sz = min(TK, K - k0)
+                  nisa.nc_matmul(dst=acc, stationary=a[k][m], moving=b[k][n])
+              out_tile = nl.ndarray((m_sz, n_sz), dtype=acc.dtype, buffer=nl.sbuf)
+              nisa.tensor_copy(dst=out_tile, src=acc)
+              nisa.dma_copy(dst=result[m0:m0 + m_sz, n0:n0 + n_sz], src=out_tile)
+      return result
+  -------------------------------------------
+
+=========== summary ===========
+  level 6  reward 1.00 after 4 round(s)  SOLVED
+  solved 1/1
+
+attempts logged to /workspace/s73/exp/runs/c8a_L6_r1.jsonl

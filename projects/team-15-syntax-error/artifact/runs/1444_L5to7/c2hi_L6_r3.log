@@ -1,0 +1,26 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 6: matmul, M and N blocked ===========
+round 0: this round 0.62  best so far 0.62  (105.8s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: NUMERICAL MISMATCH: worst error 4.75 of the output's RMS (16.03), tolerance 0.02.
+  at index (115, 220): your value has the WRONG SIGN.
+  98.4% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+  CAUSE: the slice `lhsT[m0:m0 + m_sz, k0...` lists the axes in the wrong order
+round 1: this round 0.75  best so far 0.75  (104.9s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.56x the byte floor, and level 6 requires 1.30x or better. Correctness alone is level 4; this level is about the bytes. Block the M and N dimensions so more tiles stay resident in SBUF and are reused across iterations, rather than reloaded.
+round 2: same failure again (0.75, best so far 0.75)
+  same failure 2x — adding a ledger of 2 failed attempts to break the repeat
+round 3: same failure again (0.75, best so far 0.75)
+  same failure 3x — adding a ledger of 2 failed attempts to break the repeat
+round 4: same failure again (0.75, best so far 0.75)
+  COULD NOT VERIFY level 6 (confidence 0.00).
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  2 of 4 shapes passed. On K=256 M=256 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.56x th
+    1x  1 of 4 shapes passed. On K=256 M=256 N=1024: NUMERICAL MISMATCH: worst error 4.75 of the output's RMS (16.03),
+
+=========== summary ===========
+  level 6  reward 0.75 after 5 round(s)
+  solved 0/1
+
+attempts logged to /workspace/projects/02-kernel-agent/runs/c2hi_L6_r3.jsonl

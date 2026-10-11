@@ -1,0 +1,18 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.62  best so far 0.62  (97.4s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: raised AssertionError: dma_copy dst partition dimension 256 exceeds maximum 128 A tile may have at most 128 rows, and you asked for 256. Do not allocate one tile for the whole tensor: loop over the partition dimension in chunks of at most 128 with nl.affine_range, allocate the tile inside the loop with the chunk's own size, and copy one chunk at a time,
+round 1: same failure again (0.62, best so far 0.62)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+round 2: same failure again (0.62, best so far 0.62)
+  same failure 3x — adding a ledger of 1 failed attempts to break the repeat
+round 3: same failure again (0.62, best so far 0.62)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  1 of 4 shapes passed. On K=256 M=256 N=1024: raised AssertionError: dma_copy dst partition dimension 256 excee
+
+=========== summary ===========
+  level 4  reward 0.62 after 4 round(s)
+  solved 0/1
+
+attempts logged to /workspace/s73/exp/runs/retr_L4_r3.jsonl

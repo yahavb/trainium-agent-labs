@@ -1,0 +1,39 @@
+
+=========== A8: layernorm (mean and variance)  (trap: E[x^2]-E[x]^2 catastrophically cancels at large means) ===========
+round 0: 0.10 [rule_framework_call] (71.7s, finish=stop)
+  Line 24 calls banned `mean`. Replace that call with exactly:
+V = xd
+s = np.zeros((V.shape[0], 1), dtype=np.float32)
+for c in range(V.shape[1]):
+    s += V[:, c:c+1]
+s = s / x.shape[1]   # divide by the FULL row length
+Use s where the `mean(..., keepdims=True)` result was; s has shape (rows, 1).
+Keep
+round 1: 0.10 [rule_framework_call] (80.5s, finish=stop)
+  Line 31 calls banned `mean`. Replace that call with exactly:
+V = (xd - s) ** 2
+s = np.zeros((V.shape[0], 1), dtype=np.float32)
+for c in range(V.shape[1]):
+    s += V[:, c:c+1]
+s = s / x.shape[1]   # divide by the FULL row length
+Use s where the `mean(..., keepdims=True)` result was; s has shape (row
+round 2: 0.10 [stat_overwritten] (89.3s, finish=stop)
+  The same variable is used as the mean and as the variance, so the mean is overwritten before you subtract it. Store the mean in `mu` and the variance in `var`; normalise with (x - mu) / np.sqrt(var + eps). Keep everything else identical.
+round 3: 0.10 [rule_framework_call] (52.3s, finish=stop)
+  Line 57 calls banned `mean`. Replace that call with exactly:
+V = xd
+s = np.zeros((V.shape[0], 1), dtype=np.float32)
+for c in range(V.shape[1]):
+    s += V[:, c:c+1]
+s = s / x.shape[1]   # divide by the FULL row length
+Use s where the `mean(..., keepdims=True)` result was; s has shape (rows, 1).
+Keep
+round 4: 0.62 [stat_overwritten] (44.3s, finish=stop)
+  The same variable is used as the mean and as the variance, so the mean is overwritten before you subtract it. Store the mean in `mu` and the variance in `var`; normalise with (x - mu) / np.sqrt(var + eps). Keep everything else identical.
+round 5: 0.62 [stat_overwritten] (44.3s, finish=stop)
+  The same variable is used as the mean and as the variance, so the mean is overwritten before you subtract it. Store the mean in `mu` and the variance in `var`; normalise with (x - mu) / np.sqrt(var + eps). Keep everything else identical.
+  COULD NOT VERIFY A8 (confidence 0.00): the same failure 3x
+
+=========== summary ===========
+  A8: solved 0/1, mean 0.62, all=[0.62]
+  uncached model calls this session: 6

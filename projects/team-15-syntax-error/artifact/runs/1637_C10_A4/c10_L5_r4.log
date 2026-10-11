@@ -1,0 +1,86 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 5: matmul, loads hoisted ===========
+round 0: this round 0.62  best so far 0.62  (102.6s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: NUMERICAL MISMATCH: worst error 5.15 of the output's RMS (15.98), tolerance 0.02.
+  at index (237, 185): your value has the WRONG SIGN.
+  98.4% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+  CAUSE: the slice `lhsT[m0:m0 + m_sz, k0...` lists the axes in the wrong order
+round 1: this round 0.88  best so far 0.88  (67.1s)
+  3 of 4 shapes passed. On K=256 M=512 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 2.00x the byte floor, and level 5 requires 1.90x or better. Correctness alone is level 4; this level is about the bytes. Hoist the operand loads out of the innermost loop; the same tiles are being re-read on every pass.
+  CAUSE: the same lhsT/rhs tiles are copied from HBM more than once. Load ever
+round 2: this round 0.10  best so far 0.88  (55.1s)
+  Rule violations, which score zero however fast the kernel is. Fix exactly these: line 12: a comprehension ([... for ... in ...]) is not supported by the Neuron device compiler (it passes the simulator, then fails on the chip). Build the list with a plain for loop and .append() instead. line 13: a comprehension ([... for ... in ...]) is not supported by the Neuron device compiler (it passes the sim
+round 3: this round 1.00  best so far 1.00  (59.0s)
+  Correct on every shape. MEMORY BOUND: 73.1 Flops/Byte against a ridge of 222, so 33% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 3.0x more reuse needed.
+  SOLVED on round 3, confidence 0.95 (all public shapes pass; remainder handling present). Correct on every shape. MEMORY BOUND: 73.1 Flops/Byte against a ridge of 222, so 33% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 3.0x more reuse needed.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_matmul_hoist_load_(lhsT, rhs):
+      K, M = lhsT.shape                         # left operand arrives TRANSPOSED: K is the partition dim
+      _, N = rhs.shape
+      result = nl.ndarray((M, N), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+      TM, TK, TN = 128, 128, 512                # hardware MAXIMA, not targets
+      # Precompute tile indices for lhs and rhs
+      k_tiles = []
+      for k in range((K + TK - 1) // TK):
+          k0 = k * TK
+          k_sz = min(TK, K - k0)
+          k_tiles.append((k0, k_sz))
+      m_tiles = []
+      for m in range((M + TM - 1) // TM):
+          m0 = m * TM
+          m_sz = min(TM, M - m0)
+          m_tiles.append((m0, m_sz))
+      n_tiles = []
+      for n in range((N + TN - 1) // TN):
+          n0 = n * TN
+          n_sz = min(TN, N - n0)
+          n_tiles.append((n0, n_sz))
+      # Preload all lhs and rhs tiles into SBUF
+      lhs_tiles = []
+      for k0, k_sz in k_tiles:
+          for m0, m_sz in m_tiles:
+              lhs_tile = nl.ndarray((k_sz, m_sz), dtype=lhsT.dtype, buffer=nl.sbuf)
+              nisa.dma_copy(dst=lhs_tile, src=lhsT[k0:k0 + k_sz, m0:m0 + m_sz])
+              lhs_tiles.append((k0, m0, k_sz, m_sz, lhs_tile))
+      rhs_tiles = []
+      for k0, k_sz in k_tiles:
+          for n0, n_sz in n_tiles:
+              rhs_tile = nl.ndarray((k_sz, n_sz), dtype=rhs.dtype, buffer=nl.sbuf)
+              nisa.dma_copy(dst=rhs_tile, src=rhs[k0:k0 + k_sz, n0:n0 + n_sz])
+              rhs_tiles.append((k0, n0, k_sz, n_sz, rhs_tile))
+      # Compute
+      for m0, m_sz in m_tiles:
+          for n0, n_sz in n_tiles:
+              acc = nl.ndarray((m_sz, n_sz), dtype=nl.float32, buffer=nl.psum)
+              for k0, k_sz in k_tiles:
+                  # Find the corresponding lhs and rhs tiles
+                  lhs_tile = None
+                  for k_tile in lhs_tiles:
+                      if k_tile[0] == k0 and k_tile[1] == m0:
+                          lhs_tile = k_tile[4]
+                          break
+                  rhs_tile = None
+                  for k_tile in rhs_tiles:
+                      if k_tile[0] == k0 and k_tile[1] == n0:
+                          rhs_tile = k_tile[4]
+                          break
+                  nisa.nc_matmul(dst=acc, stationary=lhs_tile, moving=rhs_tile)
+              # Copy result to HBM
+              out_tile = nl.ndarray((m_sz, n_sz), dtype=acc.dtype, buffer=nl.sbuf)
+              nisa.tensor_copy(dst=out_tile, src=acc)
+              nisa.dma_copy(dst=result[m0:m0 + m_sz, n0:n0 + n_sz], src=out_tile)
+      return result
+  -------------------------------------------
+
+=========== summary ===========
+  level 5  reward 1.00 after 4 round(s)  SOLVED
+  solved 1/1
+
+attempts logged to /workspace/s73/exp/runs/c10_L5_r4.jsonl

@@ -1,0 +1,11 @@
+
+=========== A9: windowed attention (band w)  (trap: band edges, and w larger than the sequence) ===========
+round 0: 0.90 [band_index] (63.9s, finish=stop)
+  The band mask compares the q tile's positions with themselves. Use absolute positions of both tiles: qi = np.arange(i, i + q_tile.shape[0]); kj = np.arange(j, j + k_tile.shape[0]); band = np.abs(qi[:, None] - kj[None, :]) <= w. Keep everything else identical.
+round 1: 1.00 [solved] (69.3s, finish=stop)
+  VERIFIED: 5/5 cases.
+  SOLVED on round 1, confidence 0.47 (no min() clamp on tile ends)
+
+=========== summary ===========
+  A9: solved 1/1, mean 1.00, all=[1.0]
+  uncached model calls this session: 2

@@ -1,0 +1,32 @@
+
+=========== A8: layernorm (mean and variance)  (trap: E[x^2]-E[x]^2 catastrophically cancels at large means) ===========
+round 0: 0.10 [rule_framework_call] (68.7s, finish=stop)
+  Line 24 calls banned `mean`. Replace that call with exactly:
+mu = np.zeros((xd.shape[0], 1), dtype=np.float32)
+for c in range(xd.shape[1]):
+    mu += xd[:, c:c+1]
+mu = mu / x.shape[1]   # divide by the FULL row length
+This stores the result in `mu` with shape (rows, 1); do not reuse the name `mu` fo
+round 1: 0.10 [rule_framework_call] (82.1s, finish=stop)
+  Line 30 calls banned `mean`. Replace that call with exactly:
+var = np.zeros((((xd - mu) ** 2).shape[0], 1), dtype=np.float32)
+for c in range(((xd - mu) ** 2).shape[1]):
+    var += ((xd - mu) ** 2)[:, c:c+1]
+var = var / x.shape[1]   # divide by the FULL row length
+This stores the result in `var` with
+round 2: 0.10 [rule_framework_call] (97.6s, finish=stop)
+  Line 52 calls banned `mean`. Replace that call with exactly:
+mu = np.zeros((xd.shape[0], 1), dtype=np.float32)
+for c in range(xd.shape[1]):
+    mu += xd[:, c:c+1]
+mu = mu / x.shape[1]   # divide by the FULL row length
+This stores the result in `mu` with shape (rows, 1); do not reuse the name `mu` fo
+round 3: 0.95 [per_tile_stat] (108.1s, finish=stop)
+  Only rows longer than 512 fail: each column tile is normalised by its OWN partial statistic. Per row tile, pass 1 loops over ALL column tiles accumulating one (rows, 1) statistic; only after that loop, pass 2 loops over the column tiles again and writes the output. Delete any other loop that re-norm
+round 4: 1.00 [solved] (62.6s, finish=stop)
+  VERIFIED: 32/32 cases.
+  SOLVED on round 4, confidence 0.95 (clamped tile ends; every public case verified)
+
+=========== summary ===========
+  A8: solved 1/1, mean 1.00, all=[1.0]
+  uncached model calls this session: 5

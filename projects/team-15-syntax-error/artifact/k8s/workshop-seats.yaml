@@ -1,0 +1,108 @@
+# One pod per participant seat: seat-1 ... seat-N, all in the default namespace.
+# Each pod holds one chip (s-lnc2) and has this repo cloned at /workspace. The participant runs
+# ./serve.sh in one `kubectl exec -it seat-N -- bash`, and the projects in a second one.
+#
+# 150 seats, one chip each; 15 trn2.48xlarge have 240 chips. Keep the top few numbers unassigned as spares. Changing the count? Update k8s/workshop-rbac.yaml too.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: seat
+  namespace: default
+spec:
+  clusterIP: None
+  selector:
+    app: seat
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: seat
+  namespace: default
+spec:
+  serviceName: seat
+  replicas: 150
+  # Seat numbers start at 1, so the pod name matches the number on the participant's card.
+  ordinals:
+    start: 1
+  # Without this, 100 pods start one at a time, each waiting ~5 minutes for the model.
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      app: seat
+  template:
+    metadata:
+      labels:
+        app: seat
+    spec:
+      nodeSelector:
+        node-type: trn2
+      resourceClaims:
+        - name: neurons
+          resourceClaimTemplateName: s-lnc2
+      initContainers:
+        - name: clone
+          image: alpine/git:latest
+          command: ["git", "clone", "--depth", "1", "https://github.com/yahavb/trainium-agent-labs.git", "/workspace"]
+          volumeMounts:
+            - name: workspace
+              mountPath: /workspace
+      containers:
+        - name: app
+          image: public.ecr.aws/neuron/pytorch-inference-vllm-neuronx:0.24.0.1.1.0-neuronx-py313-sdk2.32.0-ubuntu24.04
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          resources:
+            claims:
+              - name: neurons
+            # About 1/16 of a trn2.48xlarge (192 vCPU, 2 TiB RAM, 2000 GiB root disk), rounded down
+            # so 16 seats still fit after kubelet reservations, the DaemonSets, images and hf-cache.
+            requests:
+              cpu: 11
+              memory: 120Gi
+              ephemeral-storage: 100Gi
+            limits:
+              cpu: 11
+              memory: 120Gi
+              ephemeral-storage: 100Gi
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+            - name: workspace
+              mountPath: /workspace
+            - name: hf-cache
+              mountPath: /root/.cache/huggingface
+          workingDir: /workspace
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: NEURON_SKIP_EFA_AFFINITY
+              value: "1"
+            # Pre-set so the project commands work the moment a participant execs in.
+            - name: HEATROD_BASE_URL
+              value: http://localhost:8000/v1
+            - name: KERNEL_AGENT_BASE_URL
+              value: http://localhost:8000/v1
+            - name: KERNEL_AGENT_MODEL
+              value: Qwen/Qwen3-8B
+            # Read by ./serve.sh. Blocks = ceil(8192 / 32) * 4.
+            - name: MAX_MODEL_LEN
+              value: "8192"
+          # The pod only holds the chip. The participant starts the model with ./serve.sh from a
+          # first `kubectl exec`, then runs the projects from a second one against localhost:8000.
+          command: ["sleep", "infinity"]
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Gi
+        # Survives container restarts, not pod deletion. Participants' work lives here.
+        - name: workspace
+          emptyDir: {}
+        # Shared per node, so 16 pods on one trn2.48xlarge download the 16 GB of weights once.
+        - name: hf-cache
+          hostPath:
+            path: /opt/workshop/hf-cache
+            type: DirectoryOrCreate

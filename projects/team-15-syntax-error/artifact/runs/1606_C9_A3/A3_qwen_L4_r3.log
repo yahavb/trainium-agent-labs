@@ -1,0 +1,19 @@
+
+=========== A4: RMSNorm over last axis  (trap: accumulation order and dtype) ===========
+round 0: 0.10 [rule_framework_call] (38.6s, finish=stop)
+  Line 18 calls banned `mean`. Replace that call with exactly:
+V = tile.astype(np.float64) ** 2
+s = np.zeros((V.shape[0], 1), dtype=np.float32)
+for c in range(V.shape[1]):
+    s += V[:, c:c+1]
+s = s / x.shape[1]   # divide by the FULL row length
+Use s where the `mean(..., keepdims=True)` result was; s
+round 1: 0.95 [per_tile_stat] (46.6s, finish=stop)
+  Only rows longer than 512 fail: each column tile is normalised by its OWN partial statistic. Per row tile, pass 1 loops over ALL column tiles accumulating one (rows, 1) statistic; only after that loop, pass 2 loops over the column tiles again and writes the output. Delete any other loop that re-norm
+round 2: 1.00 [solved] (40.1s, finish=stop)
+  VERIFIED: 32/32 cases.
+  SOLVED on round 2, confidence 0.47 (no min() clamp on tile ends)
+
+=========== summary ===========
+  A4: solved 1/1, mean 1.00, all=[1.0]
+  uncached model calls this session: 3

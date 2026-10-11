@@ -1,0 +1,3 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 1: average pooling 2D ===========

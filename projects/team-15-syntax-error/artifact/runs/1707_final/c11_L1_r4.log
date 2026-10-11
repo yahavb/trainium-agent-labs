@@ -1,0 +1,22 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 1: average pooling 2D ===========
+round 0: this round 0.30  best so far 0.30  (78.8s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: SBUF and PSUM tensors must have at least 2 dimensions (partition-dim and free-dim) Each pooling window must be reduced into a TILE, not a scalar, and tiles are never assigned with `=`. For window (h, w): allocate s = nl.ndarray((C, 1), dtype=nl.float32, buffer=nl.sbuf), then nisa.tensor_reduce(dst=s, data=in_tile[:, h*p:(h+
+round 1: this round 0.30  best so far 0.30  (78.6s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: SBUF and PSUM tensors must have at least 2 dimensions (partition-dim and free-dim) Every SBUF and PSUM tile needs two dimensions: a partition dimension first, then a free dimension. A 1-D tile is not allowed, so write nl.ndarray((rows, cols), ...) and give a length-N vector the shape (1, N) or (N, 1) depending on which axis
+round 2: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 2 failed attempts to break the repeat
+round 3: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 2 failed attempts to break the repeat
+round 4: same failure again (0.30, best so far 0.30)
+  COULD NOT VERIFY level 1 (confidence 0.00).
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: SBUF and PSUM tensors must have at 
+    1x  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: SBUF and PSUM tensors must have at 
+
+=========== summary ===========
+  level 1  reward 0.30 after 5 round(s)
+  solved 0/1
+
+attempts logged to /workspace/s73/exp/runs/c11_L1_r4.jsonl

@@ -1,0 +1,45 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 1: average pooling 2D ===========
+round 0: this round 0.30  best so far 0.30  (76.0s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: SBUF and PSUM tensors must have at least 2 dimensions (partition-dim and free-dim) Each pooling window must be reduced into a TILE, not a scalar, and tiles are never assigned with `=`. For window (h, w): allocate s = nl.ndarray((C, 1), dtype=nl.float32, buffer=nl.sbuf), then nisa.tensor_reduce(dst=s, data=in_tile[:, h*p:(h+
+round 1: this round 1.00  best so far 1.00  (85.6s)
+  Correct on every shape.
+  SOLVED on round 1, confidence 0.95 (all public shapes pass; remainder handling present). Correct on every shape.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def tensor_avgpool_kernel(in_tensor, pool_size):
+      C, H, W = in_tensor.shape                 # 3-D input; C (<= 128) is the partition dimension
+      Ho, Wo = H // pool_size, W // pool_size
+      out_tensor = nl.ndarray((C, Ho, Wo), dtype=in_tensor.dtype, buffer=nl.shared_hbm)
+      in_tile = nl.ndarray((C, H, W), dtype=in_tensor.dtype, buffer=nl.sbuf)   # tiles are never 1-D
+      nisa.dma_copy(dst=in_tile, src=in_tensor)
+    
+      # Compute each window's sum into an SBUF tile of shape (C, Ho, Wo) -- slice in_tile
+      sum_tile = nl.ndarray((C, Ho, Wo), dtype=in_tensor.dtype, buffer=nl.sbuf)
+      for c in nl.affine_range(C):
+          for h in nl.affine_range(Ho):
+              for w in nl.affine_range(Wo):
+                  # Allocate a temporary tile for the window reduction
+                  s = nl.ndarray((1, 1), dtype=in_tensor.dtype, buffer=nl.sbuf)
+                  nisa.tensor_reduce(dst=s, data=in_tile[c, h*pool_size:(h+1)*pool_size, w*pool_size:(w+1)*pool_size], op=nl.add, axis=(1, 2))
+                  nisa.tensor_copy(dst=sum_tile[c, h, w], src=s)
+    
+      # Multiply by 1 / (pool_size * pool_size) into an SBUF tile of shape (C, Ho, Wo)
+      scale_tile = nl.ndarray((C, Ho, Wo), dtype=in_tensor.dtype, buffer=nl.sbuf)
+      nisa.tensor_scalar(dst=scale_tile, data=sum_tile, op0=nl.multiply, operand0=1.0 / (pool_size * pool_size))
+    
+      # nisa.dma_copy that tile into out_tensor
+      nisa.dma_copy(dst=out_tensor, src=scale_tile)
+      return out_tensor
+  -------------------------------------------
+
+=========== summary ===========
+  level 1  reward 1.00 after 2 round(s)  SOLVED
+  solved 1/1
+
+attempts logged to /workspace/projects/02-kernel-agent/runs/c2_L1_r4.jsonl

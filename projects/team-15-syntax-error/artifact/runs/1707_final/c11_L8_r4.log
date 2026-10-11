@@ -1,0 +1,30 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 8: single-head attention ===========
+round 0: this round 0.30  best so far 0.30  (188.2s)
+  0 of 3 shapes passed. On seq=128 dim=64: raised AssertionError: Matmul contraction dimension mismatch: stationary[0]=128 != moving[0]=64 nc_matmul contracts over the PARTITION (first) dimension, so stationary and moving must have the same first dimension; you passed 128 and 64. If this operation is not a matrix multiply, do not use nc_matmul at all: move data with nisa.dma_copy or nisa.tensor_copy
+round 1: this round 0.30  best so far 0.30  (186.3s)
+  0 of 3 shapes passed. On seq=128 dim=64: raised AttributeError: 'int' object has no attribute 'shape' A int is not a numpy array, so it has no `shape`. Use the nl/nisa functions instead.
+round 2: this round 0.30  best so far 0.30  (187.6s)
+  0 of 3 shapes passed. On seq=128 dim=64: raised AttributeError: module 'nki.language' has no attribute 'shape' `nki.language` has no `shape`. The closest real names are: square, shared_hbm, mish, transpose, where, store. Pick one of those or use a different approach.
+round 3: this round 0.30  best so far 0.30  (187.6s)
+  0 of 3 shapes passed. On seq=128 dim=64: raised AssertionError: activation data must be in ['sbuf', 'psum'], got private_hbm
+round 4: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 4 failed attempts to break the repeat
+round 5: this round 0.30  best so far 0.30  (129.2s)
+  0 of 3 shapes passed. On seq=128 dim=64: raised AttributeError: module 'nki.language' has no attribute 'shape' `nki.language` has no `shape`. The closest real names are: square, shared_hbm, mish, transpose, where, store. Pick one of those or use a different approach.
+round 6: this round 0.30  best so far 0.30  (75.1s)
+  0 of 3 shapes passed. On seq=128 dim=64: raised AssertionError: activation data must be in ['sbuf', 'psum'], got private_hbm
+round 7: same failure again (0.30, best so far 0.30)
+  COULD NOT VERIFY level 8 (confidence 0.00).
+  STOPPING this level: this failure for the 4th time, alternating with 3 other(s). The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 3 shapes passed. On seq=128 dim=64: raised AssertionError: activation data must be in ['sbuf', 'psum'], g
+    2x  0 of 3 shapes passed. On seq=128 dim=64: raised AttributeError: module 'nki.language' has no attribute 'shape'
+    1x  0 of 3 shapes passed. On seq=128 dim=64: raised AssertionError: Matmul contraction dimension mismatch: station
+    1x  0 of 3 shapes passed. On seq=128 dim=64: raised AttributeError: 'int' object has no attribute 'shape' A int is
+
+=========== summary ===========
+  level 8  reward 0.30 after 8 round(s)
+  solved 0/1
+
+attempts logged to /workspace/projects/02-kernel-agent/runs/c11_L8_r4.jsonl

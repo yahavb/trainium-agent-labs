@@ -1,0 +1,37 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 8: single-head attention ===========
+round 0: this round 0.30  best so far 0.30  (153.2s)
+  API misuse -- fix ALL of these calls in this one round, change nothing else:
+- line 30: nisa.tensor_scalar() is missing required argument(s) ['operand0']; its real signature is nisa.tensor_scalar(dst: 'NkiTensor', data: 'NkiTensor', op0, operand0: 'float | NkiTensor', reverse0=False, op1=None, operand1: 'float | NkiTensor | None' = None, reverse1=False, engine=<engine.unknown: 0>, name=None)
+- lin
+round 1: this round 0.30  best so far 0.30  (157.4s)
+  API misuse -- fix ALL of these calls in this one round, change nothing else:
+- line 30: tensor_scalar(data=...) must be the TILE being transformed, not a number or an operation; the number goes in operand0= and the nl operation in op0=
+round 2: this round 0.30  best so far 0.30  (159.4s)
+  0 of 3 shapes passed. On seq=128 dim=64: raised AssertionError: Matmul contraction dimension mismatch: stationary[0]=128 != moving[0]=64 nc_matmul contracts over the PARTITION (first) dimension, so stationary and moving must have the same first dimension; you passed 128 and 64. If this operation is not a matrix multiply, do not use nc_matmul at all: move data with nisa.dma_copy or nisa.tensor_copy
+round 3: this round 0.30  best so far 0.30  (158.1s)
+  0 of 3 shapes passed. On seq=128 dim=64: raised AttributeError: module 'nki.language' has no attribute 'tile' `nki.language` has no `tile`. The closest real names are: tile_size, silu, negative, multiply, less, ceil. Pick one of those or use a different approach.
+round 4: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 4 failed attempts to break the repeat
+round 5: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 4 failed attempts to break the repeat
+round 6: this round 0.30  best so far 0.30  (156.8s)
+  0 of 3 shapes passed. On seq=128 dim=64: raised TypeError: unsupported operand type(s) for /: 'float' and '_TileSize'
+round 7: this round 0.30  best so far 0.30  (133.2s)
+  0 of 3 shapes passed. On seq=128 dim=64: raised AttributeError: '_TileSize' object has no attribute 'shape' A _TileSize is not a numpy array, so it has no `shape`. Use the nl/nisa functions instead.
+round 8: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 6 failed attempts to break the repeat
+round 9: this round 0.30  best so far 0.30  (62.6s)
+  0 of 3 shapes passed. On seq=128 dim=64: raised TypeError: float() argument must be a string or a real number, not '_TileSize'
+round 10: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 7 failed attempts to break the repeat
+round 11: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 7 failed attempts to break the repeat
+  not solved in 12 rounds; best reward 0.30. COULD NOT VERIFY a kernel for level 8: confidence 0.00
+
+=========== summary ===========
+  level 8  reward 0.30 after 12 round(s)
+  solved 0/1
+
+attempts logged to /workspace/s73/exp/runs/c10_L8_r4.jsonl

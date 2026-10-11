@@ -1,0 +1,13 @@
+
+=========== A6: tiled transpose  (trap: tile boundaries on non-square non-divisible shapes) ===========
+round 0: 0.30 [raised_other] (38.2s, finish=stop)
+  0 of 32 cases pass. On normal: It crashed:   File "<kernel>", line 24, in kernel | ValueError: could not broadcast input array from shape (16,8) into shape (8,16). Fix that line.
+round 1: 0.30 [raised_other] (37.7s, finish=stop)
+  0 of 32 cases pass. On normal: It crashed:   File "<kernel>", line 24, in kernel | ValueError: could not broadcast input array from shape (16,8) into shape (8,16). Fix that line.
+round 2: 0.30 [raised_other] (37.9s, finish=stop)
+  0 of 32 cases pass. On normal: It crashed:   File "<kernel>", line 24, in kernel | ValueError: could not broadcast input array from shape (16,8) into shape (8,16). Fix that line.
+  COULD NOT VERIFY A6 (confidence 0.00): the same failure 3x
+
+=========== summary ===========
+  A6: solved 0/1, mean 0.30, all=[0.3]
+  uncached model calls this session: 3

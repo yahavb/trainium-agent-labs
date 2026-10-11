@@ -1,0 +1,46 @@
+# Written by Qwen3-8B (local, seat 73) in run c5_L7_r0, round 1, under --skeleton --v2..v5-verdicts --directional.
+# Verified [sim]: level 7 incl. the 1.05x traffic bar (1.00x on every shape). Not edited by hand.
+import nki
+import nki.isa as nisa
+import nki.language as nl
+
+@nki.jit
+def nki_matmul_fully_optimized_(lhsT, rhs):
+    K, M = lhsT.shape                         # left operand arrives TRANSPOSED: K is the partition dim
+    _, N = rhs.shape
+    result = nl.ndarray((M, N), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+    TM, TK, TN = 128, 128, 512                # hardware MAXIMA, not targets
+    # Pre-load all tiles into SBUF once
+    a = [[None for _ in range((M + TM - 1) // TM)] for _ in range((K + TK - 1) // TK)]
+    b = [[None for _ in range((N + TN - 1) // TN)] for _ in range((K + TK - 1) // TK)]
+    for k in range((K + TK - 1) // TK):
+        k0 = k * TK
+        k_sz = min(TK, K - k0)
+        for m in range((M + TM - 1) // TM):
+            m0 = m * TM
+            m_sz = min(TM, M - m0)
+            a[k][m] = nl.ndarray((k_sz, m_sz), dtype=lhsT.dtype, buffer=nl.sbuf)
+            nisa.dma_copy(dst=a[k][m], src=lhsT[k0:k0 + k_sz, m0:m0 + m_sz])
+    for k in range((K + TK - 1) // TK):
+        k0 = k * TK
+        k_sz = min(TK, K - k0)
+        for n in range((N + TN - 1) // TN):
+            n0 = n * TN
+            n_sz = min(TN, N - n0)
+            b[k][n] = nl.ndarray((k_sz, n_sz), dtype=rhs.dtype, buffer=nl.sbuf)
+            nisa.dma_copy(dst=b[k][n], src=rhs[k0:k0 + k_sz, n0:n0 + n_sz])
+    for m in range((M + TM - 1) // TM):
+        m0 = m * TM
+        m_sz = min(TM, M - m0)
+        for n in range((N + TN - 1) // TN):
+            n0 = n * TN
+            n_sz = min(TN, N - n0)
+            acc = nl.ndarray((m_sz, n_sz), dtype=nl.float32, buffer=nl.psum)
+            for k in range((K + TK - 1) // TK):
+                k0 = k * TK
+                k_sz = min(TK, K - k0)
+                nisa.nc_matmul(dst=acc, stationary=a[k][m], moving=b[k][n])
+            out_tile = nl.ndarray((m_sz, n_sz), dtype=acc.dtype, buffer=nl.sbuf)
+            nisa.tensor_copy(dst=out_tile, src=acc)
+            nisa.dma_copy(dst=result[m0:m0 + m_sz, n0:n0 + n_sz], src=out_tile)
+    return result

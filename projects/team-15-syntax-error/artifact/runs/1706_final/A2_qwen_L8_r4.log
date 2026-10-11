@@ -1,0 +1,42 @@
+
+=========== A8: layernorm (mean and variance)  (trap: E[x^2]-E[x]^2 catastrophically cancels at large means) ===========
+round 0: 0.10 [rule_framework_call] (71.6s, finish=stop)
+  line 24: calls banned `mean` for this level.. Delete that `mean` call and compute it with this loop instead (R rows, C columns, r0:r1 the current row tile):
+acc = np.zeros(R, dtype=np.float64)
+for c0 in range(0, C, 512):
+    c1 = min(c0 + 512, C)
+    for c in range(c0, c1):
+        acc[r0:r1] += x[r
+round 1: 0.10 [rule_framework_call] (83.7s, finish=stop)
+  line 34: calls banned `mean` for this level.. Delete that `mean` call and compute it with this loop instead (R rows, C columns, r0:r1 the current row tile):
+acc = np.zeros(R, dtype=np.float64)
+for c0 in range(0, C, 512):
+    c1 = min(c0 + 512, C)
+    for c in range(c0, c1):
+        acc[r0:r1] += x[r
+round 2: 0.10 [rule_framework_call] (88.0s, finish=stop)
+  line 36: calls banned `mean` for this level.. Delete that `mean` call and compute it with this loop instead (R rows, C columns, r0:r1 the current row tile):
+acc = np.zeros(R, dtype=np.float64)
+for c0 in range(0, C, 512):
+    c1 = min(c0 + 512, C)
+    for c in range(c0, c1):
+        acc[r0:r1] += x[r
+round 3: 0.10 [rule_framework_call] (93.1s, finish=stop)
+  line 36: calls banned `mean` for this level.. Delete that `mean` call and compute it with this loop instead (R rows, C columns, r0:r1 the current row tile):
+acc = np.zeros(R, dtype=np.float64)
+for c0 in range(0, C, 512):
+    c1 = min(c0 + 512, C)
+    for c in range(c0, c1):
+        acc[r0:r1] += x[r
+round 4: 0.10 [rule_framework_call] (43.4s, finish=stop)
+  line 36: calls banned `mean` for this level.. Delete that `mean` call and compute it with this loop instead (R rows, C columns, r0:r1 the current row tile):
+acc = np.zeros(R, dtype=np.float64)
+for c0 in range(0, C, 512):
+    c1 = min(c0 + 512, C)
+    for c in range(c0, c1):
+        acc[r0:r1] += x[r
+  COULD NOT VERIFY A8 (confidence 0.00): the same failure 3x
+
+=========== summary ===========
+  A8: solved 0/1, mean 0.10, all=[0.1]
+  uncached model calls this session: 5

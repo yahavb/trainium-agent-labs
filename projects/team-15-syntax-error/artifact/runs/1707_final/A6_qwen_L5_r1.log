@@ -1,0 +1,18 @@
+
+=========== A5: softmax over last axis  (trap: naive exp OVERFLOWS; needs max subtraction) ===========
+round 0: 0.10 [softmax_whole_row] (42.3s, finish=stop)
+  line 15: calls banned `max` for this level. Softmax needs the max and the sum of the WHOLE row, but your max/sum are taken per column tile. Restructure each row tile into THREE separate passes over ALL its column tiles: pass 1 keeps a running (rows, 1) maximum with np.maximum over every column; pass
+round 1: 0.62 [assign_shape_mismatch] (64.1s, finish=stop)
+  8 of 32 cases pass. On normal: It crashed:   File "<kernel>", line 17, in kernel | ValueError: operands could not be broadcast together with shapes (128,) (8,). The slice you write into and the value must have the same shape -- size the destination slice with the clamped tile ends.
+round 2: 0.30 [assign_shape_mismatch] (64.5s, finish=stop)
+  0 of 32 cases pass. On normal: It crashed:   File "<kernel>", line 17, in kernel | ValueError: operands could not be broadcast together with shapes (128,) (8,). The slice you write into and the value must have the same shape -- size the destination slice with the clamped tile ends.
+round 3: 0.30 [assign_shape_mismatch] (65.0s, finish=stop)
+  0 of 32 cases pass. On normal: It crashed:   File "<kernel>", line 17, in kernel | ValueError: operands could not be broadcast together with shapes (128,) (8,). The slice you write into and the value must have the same shape -- size the destination slice with the clamped tile ends.
+round 4: 0.10 [softmax_whole_row] (37.7s, finish=stop)
+  line 12: calls banned `max` for this level. Softmax needs the max and the sum of the WHOLE row, but your max/sum are taken per column tile. Restructure each row tile into THREE separate passes over ALL its column tiles: pass 1 keeps a running (rows, 1) maximum with np.maximum over every column; pass
+round 5: 0.10 [softmax_whole_row] (55.5s, finish=stop)
+  line 14: calls banned `max` for this level. Softmax needs the max and the sum of the WHOLE row, but your max/sum are taken per column tile. Restructure each row tile into THREE separate passes over ALL its column tiles: pass 1 keeps a running (rows, 1) maximum with np.maximum over every column; pass
+
+=========== summary ===========
+  A5: solved 0/1, mean 0.62, all=[0.62]
+  uncached model calls this session: 6

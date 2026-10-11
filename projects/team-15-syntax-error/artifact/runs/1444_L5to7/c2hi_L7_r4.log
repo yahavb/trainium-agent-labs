@@ -1,0 +1,15 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 7: matmul, M, N and K blocked ===========
+round 0: this round 0.75  best so far 0.75  (106.6s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.56x the byte floor, and level 7 requires 1.05x or better. Correctness alone is level 4; this level is about the bytes. Block K as well, and accumulate in one PSUM tile across the whole contraction so nothing partial is written out.
+round 1: this round 0.62  best so far 0.75  (104.8s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: NON-FINITE OUTPUT: 131072 NaN and 0 Inf, first at (0, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.
+round 2: same failure again (0.62, best so far 0.75)
+  same failure 2x — adding a ledger of 2 failed attempts to break the repeat
+round 3: this round 0.30  best so far 0.75  (101.2s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: raised AttributeError: 'NkiTensor' object has no attribute 'fill' A NkiTensor is not a numpy array, so it has no `fill`. Use the nl/nisa functions instead.
+round 4: this round 0.30  best so far 0.75  (102.1s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: raised AttributeError: module 'nki.isa' has no attribute 'fill' `nki.isa` has no `fill`, and nothing similar exists. Its real names include: NkiInstruction, NkiValidationError, VirtualRegister, activate2, activation, activation_reduce, affine_select, bn_aggr, bn_stats, core_barrier, dge_mode, dma_compute, dma_copy, dma_engine, dma_transpose, dropout, eng
+round 5: this round 0.30  best so far 0.75  (97.1s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: raised AttributeError: module 'nki.language' has no attribute 'local' `nki.language` has no `local`. The closest real names are: logical_or, load, logical_xor, logical_not, logical_and, reciprocal. Pick one of those or use a different approach.

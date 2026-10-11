@@ -1,0 +1,51 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+probe-results*.json
+transcript*.md
+LOCAL-NOTES.md
+# Facilitator ops doc — contains held-back judging answers. Never publish.
+RUN-OF-DAY.md
+# Generated artifacts from evalkit.py
+heldout*.json
+floor.lock.json
+levers.json
+# runs/ is the attempt-log deliverable (README Part 4): tracked. Only the live mirror is ignored;
+# it is snapshotted into runs/<HHMM>_<label>/ at each decision.
+runs/live/
+.DS_Store
+
+# editor swap/backup files — a vim session got one of these committed once
+*.swp
+*.swo
+*~
+.*.swp
+NYU_HACKATHON_BRIEFS.md
+NYU_REPLY_ADI.md
+Annapurna*.png
+*.whl
+attempts.jsonl
+
+# stray files from mistyped shell redirects
+configmap
+create
+delete
+generic
+gptoss-url
+kernel-agent-code
+secret
+attempts.jsonl
+projects/*/attempts.jsonl
+
+# minted participant credentials (mint-creds.sh writes outside the repo; this is a backstop)
+*creds*.txt
+
+# agent runs started with nohup ... > run.log (README pattern for surviving a dropped kubectl exec)
+run*.log
+# never commit credentials or local endpoint URLs
+.env*
+*.pem
+.aws/
+__pycache__/

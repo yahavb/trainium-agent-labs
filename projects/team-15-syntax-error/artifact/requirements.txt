@@ -1,0 +1,7 @@
+httpx>=0.27
+# numpy: projects/02-kernel-agent (the NKI harness) and gptoss/probe.py
+numpy>=1.26
+# sympy: projects/01-heat-rod-pde only -- the checker plugs an answer back into the equation
+sympy>=1.13
+# Optional, only if you prefer the OpenAI SDK over raw HTTP:
+# openai>=1.40

@@ -1,0 +1,26 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 2: 2D transpose ===========
+round 0: this round 0.30  best so far 0.30  (47.3s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=512 The tile you allocated holds 512 elements but you copied 384 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a bigger tensor, wri
+round 1: this round 0.30  best so far 0.30  (46.4s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=12 The tile you allocated holds 12 elements but you copied 384 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a bigger tensor, write
+round 2: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 2 failed attempts to break the repeat
+round 3: this round 0.30  best so far 0.30  (49.2s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised AssertionError: Out-of-bound access for tensor `unnamed` on dimension 0: index 3 exceed dimension size of 3.
+round 4: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 3 failed attempts to break the repeat
+round 5: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 3 failed attempts to break the repeat
+round 6: same failure again (0.30, best so far 0.30)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised AssertionError: Out-of-bound access for tensor `unnamed
+    2x  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised AssertionError: dma_copy requires src and dst to have t
+    1x  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised AssertionError: dma_copy requires src and dst to have t
+
+=========== summary ===========
+  level 2  reward 0.30 after 7 round(s)
+  solved 0/1
+
+attempts logged to /workspace/s73/exp/runs/retr_L2_r3.jsonl

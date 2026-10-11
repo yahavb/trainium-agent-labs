@@ -1,0 +1,17 @@
+
+=========== A4: RMSNorm over last axis  (trap: accumulation order and dtype) ===========
+round 0: 0.10 [rule_framework_call] (38.6s, finish=stop)
+  line 18: calls banned `mean` for this level. Replace the `mean` call with a running sum over the columns of each tile, divided by the row length at the end. Keep everything else identical.
+round 1: 0.10 [rule_framework_call] (41.2s, finish=stop)
+  line 18: calls banned `sum` for this level. Replace the `sum` call with a running sum over the columns of each tile, starting from 0.0. Keep everything else identical.
+round 2: 0.95 [wrong_arithmetic] (44.9s, finish=stop)
+  29 of 32 cases pass. On normal input(129, 513): The numbers are wrong. 63723 of 66177 elements (96.3%) are outside tolerance TILE NOT-EDGE: the errors are not concentrated in a partial tile (1% of the wrong elements are in the partial row tile (rows >= 128); 96.3% of the full-tile interior is wrong;
+round 3: 0.95 [wrong_arithmetic] (45.4s, finish=stop)
+  29 of 32 cases pass. On normal input(129, 513): The numbers are wrong. 63723 of 66177 elements (96.3%) are outside tolerance TILE NOT-EDGE: the errors are not concentrated in a partial tile (1% of the wrong elements are in the partial row tile (rows >= 128); 96.3% of the full-tile interior is wrong;
+round 4: 0.95 [wrong_arithmetic] (45.4s, finish=stop)
+  29 of 32 cases pass. On normal input(129, 513): The numbers are wrong. 63723 of 66177 elements (96.3%) are outside tolerance TILE NOT-EDGE: the errors are not concentrated in a partial tile (1% of the wrong elements are in the partial row tile (rows >= 128); 96.3% of the full-tile interior is wrong;
+  COULD NOT VERIFY A4 (confidence 0.00): the same failure 3x
+
+=========== summary ===========
+  A4: solved 0/1, mean 0.95, all=[0.95]
+  uncached model calls this session: 5

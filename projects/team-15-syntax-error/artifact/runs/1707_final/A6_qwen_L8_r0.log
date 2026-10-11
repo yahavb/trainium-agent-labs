@@ -1,0 +1,24 @@
+
+=========== A8: layernorm (mean and variance)  (trap: E[x^2]-E[x]^2 catastrophically cancels at large means) ===========
+round 0: 0.10 [rule_framework_call] (30.8s, finish=stop)
+  Line 21 calls banned `mean`. Replace that call with exactly:
+mu = np.zeros((tile.shape[0], 1), dtype=np.float32)
+for c in range(tile.shape[1]):
+    mu += tile[:, c:c+1]
+mu = mu / x.shape[1]   # divide by the FULL row length
+This stores the result in `mu` with shape (rows, 1); do not reuse the name `
+round 1: 0.10 [rule_framework_call] (48.2s, finish=stop)
+  Line 27 calls banned `mean`. Replace that call with exactly:
+V = (tile - mu) ** 2
+s = np.zeros((V.shape[0], 1), dtype=np.float32)
+for c in range(V.shape[1]):
+    s += V[:, c:c+1]
+s = s / x.shape[1]   # divide by the FULL row length
+Use s where the `mean(..., keepdims=True)` result was; s has shape (
+round 2: 1.00 [solved] (57.2s, finish=stop)
+  VERIFIED: 32/32 cases.
+  SOLVED on round 2, confidence 0.95 (clamped tile ends; every public case verified)
+
+=========== summary ===========
+  A8: solved 1/1, mean 1.00, all=[1.0]
+  uncached model calls this session: 3

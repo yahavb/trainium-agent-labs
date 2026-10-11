@@ -1,0 +1,10 @@
+[
+ {
+  "kernel": "reference_level4.py",
+  "ok": true,
+  "err": 1.0103185559273697e-06,
+  "first_call_s": 10.140214967002976,
+  "warm_call_s_min": 1.5916154790029395,
+  "warm_call_s_mean": 1.610643174999859
+ }
+]

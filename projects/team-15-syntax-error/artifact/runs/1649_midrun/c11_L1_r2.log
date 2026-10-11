@@ -1,0 +1,5 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 1: average pooling 2D ===========
+round 0: this round 0.30  best so far 0.30  (80.1s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: SBUF and PSUM tensors must have at least 2 dimensions (partition-dim and free-dim) Each pooling window must be reduced into a TILE, not a scalar, and tiles are never assigned with `=`. For window (h, w): allocate s = nl.ndarray((C, 1), dtype=nl.float32, buffer=nl.sbuf), then nisa.tensor_reduce(dst=s, data=in_tile[:, h*p:(h+

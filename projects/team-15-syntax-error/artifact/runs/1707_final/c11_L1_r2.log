@@ -1,0 +1,26 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 1: average pooling 2D ===========
+round 0: this round 0.30  best so far 0.30  (80.1s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: SBUF and PSUM tensors must have at least 2 dimensions (partition-dim and free-dim) Each pooling window must be reduced into a TILE, not a scalar, and tiles are never assigned with `=`. For window (h, w): allocate s = nl.ndarray((C, 1), dtype=nl.float32, buffer=nl.sbuf), then nisa.tensor_reduce(dst=s, data=in_tile[:, h*p:(h+
+round 1: this round 0.30  best so far 0.30  (92.1s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised ValueError: shape mismatch: value array of shape (4,) could not be broadcast to indexing result of shape (1,) You assigned 4 elements into a slice that holds 1. Assignment does not reshape or broadcast either: the slice on the left and the value on the right must have the SAME shape. If the value is bigger, you are writing a whole tile whe
+round 2: this round 0.50  best so far 0.50  (91.3s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised ValueError: shape mismatch: value array of shape (4,) could not be broadcast to indexing result of shape (16,) You assigned 4 elements into a slice that holds 16. Assignment does not reshape or broadcast either: the slice on the left and the value on the right must have the SAME shape. If the value is bigger, you are writing a whole tile w
+round 3: this round 0.30  best so far 0.50  (92.0s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised ValueError: shape mismatch: value array of shape (4,) could not be broadcast to indexing result of shape (1,) You assigned 4 elements into a slice that holds 1. Assignment does not reshape or broadcast either: the slice on the left and the value on the right must have the SAME shape. If the value is bigger, you are writing a whole tile whe
+round 4: same failure again (0.30, best so far 0.50)
+  same failure 2x — adding a ledger of 3 failed attempts to break the repeat
+round 5: this round 0.30  best so far 0.50  (91.2s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: tensor_reduce cannot reduce partition dimension (axis 0). Got axis=(0, 1)
+round 6: this round 0.30  best so far 0.50  (74.9s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: tensor_reduce cannot reduce partition dimension (axis 0). Got axis=(1, 0)
+round 7: this round 0.30  best so far 0.50  (39.5s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: tensor_reduce cannot reduce partition dimension (axis 0). Got axis=(0, 1)
+  not solved in 8 rounds; best reward 0.50. COULD NOT VERIFY a kernel for level 1: confidence 0.00
+
+=========== summary ===========
+  level 1  reward 0.50 after 8 round(s)
+  solved 0/1
+
+attempts logged to /workspace/s73/exp/runs/c11_L1_r2.jsonl

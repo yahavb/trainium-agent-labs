@@ -1,0 +1,19 @@
+
+=========== A8: layernorm (mean and variance)  (trap: E[x^2]-E[x]^2 catastrophically cancels at large means) ===========
+round 0: 0.10 [rule_framework_call] (71.7s, finish=stop)
+  line 24: calls banned `mean` for this level. Replace the `mean` call with a running sum over the columns of each tile, divided by the row length at the end. Keep everything else identical.
+round 1: 0.10 [rule_framework_call] (75.5s, finish=stop)
+  line 24: calls banned `sum` for this level. Replace the `sum` call with a running sum over the columns of each tile, starting from 0.0. Keep everything else identical.
+round 2: 0.10 [rule_framework_call] (90.3s, finish=stop)
+  line 31: calls banned `mean` for this level. Replace the `mean` call with a running sum over the columns of each tile, divided by the row length at the end. Keep everything else identical.
+round 3: 0.56 [assign_shape_mismatch] (103.8s, finish=stop)
+  4 of 32 cases pass. On normal: It crashed:   File "<kernel>", line 37, in kernel | ValueError: operands could not be broadcast together with shapes (8,16) (8,). The slice you write into and the value must have the same shape -- size the destination slice with the clamped tile ends.
+round 4: 0.56 [assign_shape_mismatch] (104.3s, finish=stop)
+  4 of 32 cases pass. On normal: It crashed:   File "<kernel>", line 37, in kernel | ValueError: operands could not be broadcast together with shapes (8,16) (8,). The slice you write into and the value must have the same shape -- size the destination slice with the clamped tile ends.
+round 5: 0.56 [assign_shape_mismatch] (91.4s, finish=stop)
+  4 of 32 cases pass. On normal: It crashed:   File "<kernel>", line 37, in kernel | ValueError: operands could not be broadcast together with shapes (8,16) (8,). The slice you write into and the value must have the same shape -- size the destination slice with the clamped tile ends.
+  COULD NOT VERIFY A8 (confidence 0.00): the same failure 3x
+
+=========== summary ===========
+  A8: solved 0/1, mean 0.56, all=[0.56]
+  uncached model calls this session: 6

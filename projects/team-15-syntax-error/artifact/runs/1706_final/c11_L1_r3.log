@@ -1,0 +1,39 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 1: average pooling 2D ===========
+round 0: this round 0.30  best so far 0.30  (69.4s)
+  API misuse -- fix ALL of these calls in this one round, change nothing else:
+- line 21: nisa.tensor_scalar() is missing required argument(s) ['operand0']; its real signature is nisa.tensor_scalar(dst: 'NkiTensor', data: 'NkiTensor', op0, operand0: 'float | NkiTensor', reverse0=False, op1=None, operand1: 'float | NkiTensor | None' = None, reverse1=False, engine=<engine.unknown: 0>, name=None)
+- lin
+round 1: this round 0.30  best so far 0.30  (69.9s)
+  API misuse -- fix ALL of these calls in this one round, change nothing else:
+- line 21: nisa.tensor_scalar() is missing required argument(s) ['data']; its real signature is nisa.tensor_scalar(dst: 'NkiTensor', data: 'NkiTensor', op0, operand0: 'float | NkiTensor', reverse0=False, op1=None, operand1: 'float | NkiTensor | None' = None, reverse1=False, engine=<engine.unknown: 0>, name=None)
+- line 18
+round 2: this round 0.30  best so far 0.30  (72.3s)
+  API misuse -- fix ALL of these calls in this one round, change nothing else:
+- line 21: tensor_scalar data= must be the NAME of an existing tile (normally data=sum_tile); never build a tile inline
+- line 18: nl.sum() has no argument(s) ['dst']; its real signature is nl.sum(x, axis, dtype=None, keepdims=False)
+round 3: this round 0.30  best so far 0.30  (70.0s)
+  API misuse -- fix ALL of these calls in this one round, change nothing else:
+- line 18: nl.sum() has no argument(s) ['dst']; its real signature is nl.sum(x, axis, dtype=None, keepdims=False)
+round 4: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 4 failed attempts to break the repeat
+round 5: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 4 failed attempts to break the repeat
+round 6: same failure again (0.30, best so far 0.30)
+  COULD NOT VERIFY level 1 (confidence 0.00).
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  API misuse -- fix ALL of these calls in this one round, change nothing else:
+- line 18: nl.sum() has no argume
+    1x  API misuse -- fix ALL of these calls in this one round, change nothing else:
+- line 21: nisa.tensor_scalar() i
+    1x  API misuse -- fix ALL of these calls in this one round, change nothing else:
+- line 21: nisa.tensor_scalar() i
+    1x  API misuse -- fix ALL of these calls in this one round, change nothing else:
+- line 21: tensor_scalar data= mu
+
+=========== summary ===========
+  level 1  reward 0.30 after 7 round(s)
+  solved 0/1
+
+attempts logged to /workspace/s73/exp/runs/c11_L1_r3.jsonl

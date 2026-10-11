@@ -1,0 +1,9 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 8: single-head attention ===========
+round 0: this round 0.30  best so far 0.30  (112.8s)
+  0 of 3 shapes passed. On seq=128 dim=64: raised AssertionError: stationary must be in ['sbuf'], got private_hbm Allocate the `stationary` tile with buffer=nl.sbuf instead of nl.private_hbm. For nisa.nc_matmul: dst must be in nl.psum, and stationary and moving must both be in nl.sbuf. Copy between them with nisa.tensor_copy.
+round 1: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+round 2: same failure again (0.30, best so far 0.30)
+  same failure 3x — adding a ledger of 1 failed attempts to break the repeat

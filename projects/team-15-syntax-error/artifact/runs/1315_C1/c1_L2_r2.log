@@ -1,0 +1,32 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 2: 2D transpose ===========
+round 0: this round 1.00  best so far 1.00  (49.8s)
+  Correct on every shape.
+  SOLVED on round 0, confidence 0.95 (all public shapes pass; remainder handling present). Correct on every shape.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def tensor_transpose2D_kernel_(in_tensor, shape2D):
+      P, F = in_tensor.shape                    # P (<= 128) is the partition dimension
+      F1, F2 = shape2D                          # each partition row holds an F1 x F2 matrix
+      out_tensor = nl.ndarray((P, F), dtype=in_tensor.dtype, buffer=nl.shared_hbm)
+      in_tile = nl.ndarray((P, F), dtype=in_tensor.dtype, buffer=nl.sbuf)
+      nisa.dma_copy(dst=in_tile, src=in_tensor)
+      out_tile = nl.ndarray((P, F), dtype=in_tensor.dtype, buffer=nl.sbuf)
+      # TODO: fill out_tile so that column (j * F1 + i) holds in_tile column (i * F2 + j)
+      for i in nl.affine_range(F1):
+          for j in nl.affine_range(F2):
+              out_tile[:, j * F1 + i] = in_tile[:, i * F2 + j]
+      nisa.dma_copy(dst=out_tensor, src=out_tile)
+      return out_tensor
+  -------------------------------------------
+
+=========== summary ===========
+  level 2  reward 1.00 after 1 round(s)  SOLVED
+  solved 1/1
+
+attempts logged to /workspace/projects/02-kernel-agent/runs/c1_L2_r2.jsonl

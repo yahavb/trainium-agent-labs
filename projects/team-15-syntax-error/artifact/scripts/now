@@ -1,0 +1,3 @@
+#!/bin/bash
+# the one clock: US Eastern (EDT, UTC-4) from the laptop's UTC
+python -c "from datetime import datetime,timezone,timedelta;print((datetime.now(timezone.utc)-timedelta(hours=4)).strftime('%H:%M'))"

@@ -1,0 +1,23 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 1: average pooling 2D ===========
+    (TRUNCATED: finish_reason=length after 9236 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 3141 chars; server context is the ceiling.)
+round 0: this round 0.50  best so far 0.50  (438.8s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: WRONG SHAPE: returned (), reference is (32, 16, 16). Check the output-size arithmetic, not the values.
+    (TRUNCATED: finish_reason=length after 9368 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 9582 chars; server context is the ceiling.)
+round 1: same failure again (0.50, best so far 0.50)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+    (TRUNCATED: finish_reason=length after 9378 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 9937 chars; server context is the ceiling.)
+round 2: same failure again (0.50, best so far 0.50)
+  same failure 3x — adding a ledger of 1 failed attempts to break the repeat
+    (TRUNCATED: finish_reason=length after 9378 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 9947 chars; server context is the ceiling.)
+round 3: same failure again (0.50, best so far 0.50)
+  COULD NOT VERIFY level 1 (confidence 0.00).
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: WRONG SHAPE: returned (), reference is (32, 16, 16). Check
+
+=========== summary ===========
+  level 1  reward 0.50 after 4 round(s)
+  solved 0/1
+
+attempts logged to /workspace/projects/02-kernel-agent/runs/c9_L1_r0.jsonl

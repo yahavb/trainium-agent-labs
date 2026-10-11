@@ -1,0 +1,19 @@
+
+=========== A5: softmax over last axis  (trap: naive exp OVERFLOWS; needs max subtraction) ===========
+round 0: 0.10 [rule_framework_call] (42.3s, finish=stop)
+  line 15: calls banned `max` for this level. Replace the `max` call with a running maximum over the columns of each tile, starting from -np.inf (not 0). Keep everything else identical.
+round 1: 0.10 [rule_framework_call] (47.7s, finish=stop)
+  line 23: calls banned `sum` for this level. Replace the `sum` call with a running sum over the columns of each tile, starting from 0.0. Keep everything else identical.
+round 2: 0.30 [raised_other] (57.4s, finish=stop)
+  0 of 32 cases pass. On normal: It crashed:   File "<kernel>", line 31, in kernel | ValueError: could not broadcast input array from shape (8,8,16) into shape (8,16). Fix that line.
+round 3: 0.62 [wrong_arithmetic] (56.9s, finish=stop)
+  8 of 32 cases pass. On normal input(8, 16): The numbers are wrong. 128 of 128 elements (100.0%) are outside tolerance TILE SUB-TILE-SHAPE: output shape (8, 16) is smaller than one 128x512 tile, so every element is in the single partial tile and tile position says nothing here; the ragged-edge hint d
+round 4: 0.62 [wrong_arithmetic] (56.7s, finish=stop)
+  8 of 32 cases pass. On normal input(8, 16): The numbers are wrong. 128 of 128 elements (100.0%) are outside tolerance TILE SUB-TILE-SHAPE: output shape (8, 16) is smaller than one 128x512 tile, so every element is in the single partial tile and tile position says nothing here; the ragged-edge hint d
+round 5: 0.62 [wrong_arithmetic] (58.6s, finish=stop)
+  8 of 32 cases pass. On normal input(8, 16): The numbers are wrong. 128 of 128 elements (100.0%) are outside tolerance TILE SUB-TILE-SHAPE: output shape (8, 16) is smaller than one 128x512 tile, so every element is in the single partial tile and tile position says nothing here; the ragged-edge hint d
+  COULD NOT VERIFY A5 (confidence 0.00): the same failure 3x
+
+=========== summary ===========
+  A5: solved 0/1, mean 0.62, all=[0.62]
+  uncached model calls this session: 6

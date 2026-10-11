@@ -1,0 +1,26 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 1: average pooling 2D ===========
+round 0: this round 0.30  best so far 0.30  (54.6s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=4, dst=16384 The tile you allocated holds 16384 elements but you copied 4 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a bigger tensor,
+round 1: this round 0.30  best so far 0.30  (52.0s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: nc_matmul() got an unexpected keyword argument 'transpose_moving' Remove the `transpose_moving=` argument. The real signature is isa.nc_matmul(dst: 'NkiTensor', stationary: 'NkiTensor', moving: 'NkiTensor', is_stationary_onezero=False, is_moving_onezero=False, is_transpose=False, accumulate=None, tile_position=(), tile_size=(), 
+round 2: this round 0.30  best so far 0.30  (51.4s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: dst must be in ['psum'], got sbuf Allocate the `dst` tile with buffer=nl.psum instead of nl.sbuf. For nisa.nc_matmul: dst must be in nl.psum, and stationary and moving must both be in nl.sbuf. Copy between them with nisa.tensor_copy.
+round 3: this round 0.30  best so far 0.30  (51.9s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AttributeError: module 'nki.isa' has no attribute 'multiply' `nki.isa` has no `multiply`, and nothing similar exists. Its real names include: NkiInstruction, NkiValidationError, VirtualRegister, activate2, activation, activation_reduce, affine_select, bn_aggr, bn_stats, core_barrier, dge_mode, dma_compute, dma_copy, dma_engine, dma_transpo
+round 4: this round 0.30  best so far 0.30  (51.7s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: tensor_scalar() missing 1 required positional argument: 'operand0'
+round 5: this round 0.30  best so far 0.30  (51.8s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: tensor_scalar() missing 1 required positional argument: 'data'
+round 6: this round 0.30  best so far 0.30  (52.8s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=4, dst=1 The tile you allocated holds 1 elements but you copied 4 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a bigger tensor, write t
+round 7: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 7 failed attempts to break the repeat
+  not solved in 8 rounds; best reward 0.30
+
+=========== summary ===========
+  level 1  reward 0.30 after 8 round(s)
+  solved 0/1
+
+attempts logged to /workspace/s73/exp/runs/retr_L1_r4.jsonl

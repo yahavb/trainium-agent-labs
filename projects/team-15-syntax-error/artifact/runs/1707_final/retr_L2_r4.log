@@ -1,0 +1,32 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 2: 2D transpose ===========
+round 0: this round 0.30  best so far 0.30  (52.4s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=384, dst=512 The tile you allocated holds 512 elements but you copied 384 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a bigger tensor, wri
+round 1: this round 0.30  best so far 0.30  (55.0s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised AssertionError: Out-of-bound access for tensor `unnamed` on dimension 0: index range [0, 127] exceed dimension size of 32. You indexed up to 127 on dimension 0, which is only 32 long. Tile limits are a MAXIMUM, not a target. Derive every bound from the tensor's own shape -- use min(limit, size) and let the final chunk be partial -- rather than
+round 2: this round 0.30  best so far 0.30  (53.6s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised AssertionError: dma_copy requires src and dst to have the same number of elements, got src=128, dst=512 The tile you allocated holds 512 elements but you copied 128 into it. nisa.dma_copy does not slice or broadcast: allocate the destination with EXACTLY the shape of the slice you are moving. If you want a 128x512 piece of a bigger tensor, wri
+round 3: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 3 failed attempts to break the repeat
+round 4: this round 0.50  best so far 0.50  (20.6s)
+  0 of 4 shapes passed. On shape=(32, 12) as 3x4: NUMERICAL MISMATCH: worst error 4.09 of the output's RMS (1.01), tolerance 0.02.
+  at index (23, 10): expected -2.6856, got +1.44849
+  82.6% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+round 5: same failure again (0.50, best so far 0.50)
+  same failure 2x — adding a ledger of 4 failed attempts to break the repeat
+round 6: same failure again (0.50, best so far 0.50)
+  same failure 3x — adding a ledger of 4 failed attempts to break the repeat
+round 7: same failure again (0.50, best so far 0.50)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 4 shapes passed. On shape=(32, 12) as 3x4: NUMERICAL MISMATCH: worst error 4.09 of the output's RMS (1.01
+    2x  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised AssertionError: dma_copy requires src and dst to have t
+    1x  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised AssertionError: dma_copy requires src and dst to have t
+    1x  0 of 4 shapes passed. On shape=(32, 12) as 3x4: raised AssertionError: Out-of-bound access for tensor `unnamed
+
+=========== summary ===========
+  level 2  reward 0.50 after 8 round(s)
+  solved 0/1
+
+attempts logged to /workspace/s73/exp/runs/retr_L2_r4.jsonl

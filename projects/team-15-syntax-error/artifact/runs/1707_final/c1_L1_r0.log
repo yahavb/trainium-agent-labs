@@ -1,0 +1,28 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 1: average pooling 2D ===========
+round 0: this round 0.30  best so far 0.30  (75.8s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: SBUF and PSUM tensors must have at least 2 dimensions (partition-dim and free-dim) Every SBUF and PSUM tile needs two dimensions: a partition dimension first, then a free dimension. A 1-D tile is not allowed, so write nl.ndarray((rows, cols), ...) and give a length-N vector the shape (1, N) or (N, 1) depending on which axis
+round 1: same failure again (0.30, best so far 0.30)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+round 2: this round 0.30  best so far 0.30  (82.8s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: Partition dim size must be preserved, got 1 -> 4 You indexed the PARTITION axis (the first one) with a single index, e.g. in_tile[c, ...], which collapses it. Never loop over the partition axis and never index it with one number: keep it whole with `:` and let the engine process every partition at once, e.g. in_tile[:, h*p:
+round 3: this round 0.30  best so far 0.30  (81.2s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: Partition dim size must be preserved, got 32 -> 4 You indexed the PARTITION axis (the first one) with a single index, e.g. in_tile[c, ...], which collapses it. Never loop over the partition axis and never index it with one number: keep it whole with `:` and let the engine process every partition at once, e.g. in_tile[:, h*p
+round 4: this round 0.30  best so far 0.30  (77.7s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: sum() missing 1 required positional argument: 'axis'
+round 5: this round 0.30  best so far 0.30  (80.2s)
+  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: SBUF and PSUM tensors must have at least 2 dimensions (partition-dim and free-dim) Every SBUF and PSUM tile needs two dimensions: a partition dimension first, then a free dimension. A 1-D tile is not allowed, so write nl.ndarray((rows, cols), ...) and give a length-N vector the shape (1, N) or (N, 1) depending on which axis
+round 6: same failure again (0.30, best so far 0.30)
+  COULD NOT VERIFY level 1 (confidence 0.00).
+  STOPPING this level: this failure for the 4th time, alternating with 3 other(s). The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: SBUF and PSUM tensors must have at 
+    1x  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: Partition dim size must be preserve
+    1x  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised AssertionError: Partition dim size must be preserve
+    1x  0 of 4 shapes passed. On C,H,W=(32, 32, 32) pool=2: raised TypeError: sum() missing 1 required positional argu
+
+=========== summary ===========
+  level 1  reward 0.30 after 7 round(s)
+  solved 0/1
+
+attempts logged to /workspace/projects/02-kernel-agent/runs/c1_L1_r0.jsonl

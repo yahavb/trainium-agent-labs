@@ -1,0 +1,22 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 7: matmul, M, N and K blocked ===========
+round 0: this round 0.75  best so far 0.75  (106.1s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.56x the byte floor, and level 7 requires 1.05x or better. Correctness alone is level 4; this level is about the bytes. Block K as well, and accumulate in one PSUM tile across the whole contraction so nothing partial is written out.
+round 1: this round 0.62  best so far 0.75  (104.8s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: NON-FINITE OUTPUT: 131072 NaN and 0 Inf, first at (0, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.
+round 2: same failure again (0.62, best so far 0.75)
+  same failure 2x — adding a ledger of 2 failed attempts to break the repeat
+round 3: same failure again (0.62, best so far 0.75)
+  same failure 3x — adding a ledger of 2 failed attempts to break the repeat
+round 4: same failure again (0.62, best so far 0.75)
+  COULD NOT VERIFY level 7 (confidence 0.00).
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  1 of 4 shapes passed. On K=256 M=256 N=1024: NON-FINITE OUTPUT: 131072 NaN and 0 Inf, first at (0, 0). Usually
+    1x  2 of 4 shapes passed. On K=256 M=256 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.56x th
+
+=========== summary ===========
+  level 7  reward 0.75 after 5 round(s)
+  solved 0/1
+
+attempts logged to /workspace/projects/02-kernel-agent/runs/c2hi_L7_r3.jsonl

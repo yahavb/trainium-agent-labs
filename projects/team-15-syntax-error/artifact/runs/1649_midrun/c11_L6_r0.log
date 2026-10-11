@@ -1,0 +1,14 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 6: matmul, M and N blocked ===========
+round 0: this round 0.62  best so far 0.62  (105.9s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: NUMERICAL MISMATCH: worst error 4.75 of the output's RMS (16.03), tolerance 0.02.
+  at index (115, 220): your value has the WRONG SIGN.
+  98.4% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+  CAUSE: the slice `lhsT[m0:m0 + m_sz, k0...` lists the axes in the wrong order
+round 1: this round 0.75  best so far 0.75  (104.9s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.56x the byte floor, and level 6 requires 1.30x or better. Correctness alone is level 4; this level is about the bytes. Block K as well, and accumulate in one PSUM tile across the whole contraction so nothing partial is written out.
+  CAUSE: the same lhsT/rhs tiles are copied from HBM more than o
+round 2: this round 0.10  best so far 0.75  (127.7s)
+  Rule violations, which score zero however fast the kernel is. Fix exactly these: line 12: a comprehension ([... for ... in ...]) is not supported by the Neuron device compiler (it passes the simulator, then fails on the chip). Build the list with a plain for loop and .append() instead. line 13: a comprehension ([... for ... in ...]) is not supported by the Neuron device compiler (it passes the sim

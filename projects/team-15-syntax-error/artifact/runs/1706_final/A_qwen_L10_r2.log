@@ -1,0 +1,11 @@
+
+=========== A10: 1D conv with stride and dilation  (trap: output-size off-by-one; dilation at the tail) ===========
+round 0: 0.50 [output_not_written] (47.9s, finish=stop)
+  0 of 4 cases pass. On C4->3 L16 K3 s1 d1 input(4, 16): The numbers are wrong. 42 of 42 elements (100.0%) are outside tolerance TILE SUB-TILE-SHAPE: output shape (3, 14) is smaller than one 128x512 tile, so every element is in the single partial tile and tile position says nothing here; the ragged-ed
+round 1: 1.00 [solved] (47.7s, finish=stop)
+  VERIFIED: 4/4 cases.
+  SOLVED on round 1, confidence 0.95 (clamped tile ends; every public case verified)
+
+=========== summary ===========
+  A10: solved 1/1, mean 1.00, all=[1.0]
+  uncached model calls this session: 2

@@ -1,0 +1,39 @@
+
+=========== A8: layernorm (mean and variance)  (trap: E[x^2]-E[x]^2 catastrophically cancels at large means) ===========
+round 0: 0.10 [rule_framework_call] (72.0s, finish=stop)
+  Line 24 calls banned `mean`. Replace that call with exactly:
+V = xd
+s = np.zeros((V.shape[0], 1), dtype=np.float32)
+for c in range(V.shape[1]):
+    s += V[:, c:c+1]
+s = s / x.shape[1]   # divide by the FULL row length
+Use s where the `mean(..., keepdims=True)` result was; s has shape (rows, 1).
+Keep
+round 1: 0.10 [rule_framework_call] (81.5s, finish=stop)
+  Line 31 calls banned `mean`. Replace that call with exactly:
+V = (xd - s) ** 2
+s = np.zeros((V.shape[0], 1), dtype=np.float32)
+for c in range(V.shape[1]):
+    s += V[:, c:c+1]
+s = s / x.shape[1]   # divide by the FULL row length
+Use s where the `mean(..., keepdims=True)` result was; s has shape (row
+round 2: 0.10 [rule_framework_call] (90.8s, finish=stop)
+  Line 53 calls banned `mean`. Replace that call with exactly:
+V = xd
+s = np.zeros((V.shape[0], 1), dtype=np.float32)
+for c in range(V.shape[1]):
+    s += V[:, c:c+1]
+s = s / x.shape[1]   # divide by the FULL row length
+Use s where the `mean(..., keepdims=True)` result was; s has shape (rows, 1).
+Keep
+round 3: 0.62 [wrong_arithmetic] (109.8s, finish=stop)
+  8 of 32 cases pass. On normal input(8, 16): The numbers are wrong. 128 of 128 elements (100.0%) are outside tolerance TILE SUB-TILE-SHAPE: output shape (8, 16) is smaller than one 128x512 tile, so every element is in the single partial tile and tile position says nothing here; the ragged-edge hint d
+round 4: 0.62 [wrong_arithmetic] (106.0s, finish=stop)
+  8 of 32 cases pass. On normal input(8, 16): The numbers are wrong. 128 of 128 elements (100.0%) are outside tolerance TILE SUB-TILE-SHAPE: output shape (8, 16) is smaller than one 128x512 tile, so every element is in the single partial tile and tile position says nothing here; the ragged-edge hint d
+round 5: 0.62 [wrong_arithmetic] (98.3s, finish=stop)
+  8 of 32 cases pass. On normal input(8, 16): The numbers are wrong. 128 of 128 elements (100.0%) are outside tolerance TILE SUB-TILE-SHAPE: output shape (8, 16) is smaller than one 128x512 tile, so every element is in the single partial tile and tile position says nothing here; the ragged-edge hint d
+  COULD NOT VERIFY A8 (confidence 0.00): the same failure 3x
+
+=========== summary ===========
+  A8: solved 0/1, mean 0.62, all=[0.62]
+  uncached model calls this session: 6

@@ -1,0 +1,21 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 1: average pooling 2D ===========
+    (TRUNCATED: finish_reason=length after 11971 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 3141 chars; server context is the ceiling.)
+round 0: this round 0.00  best so far 0.00  (448.9s)
+  The code does not parse: expected an indented block after 'for' statement on line 26 on line 205. Send one complete python code block.
+    (TRUNCATED: finish_reason=length after 11971 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 12297 chars; server context is the ceiling.)
+round 1: same failure again (0.00, best so far 0.00)
+    (TRUNCATED: finish_reason=length after 11971 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 12297 chars; server context is the ceiling.)
+round 2: same failure again (0.00, best so far 0.00)
+    (TRUNCATED: finish_reason=length after 11971 chars. The answer was cut off, so any parse error below is the budget, not the model. Prompt is 12297 chars; server context is the ceiling.)
+round 3: same failure again (0.00, best so far 0.00)
+  COULD NOT VERIFY level 1 (confidence 0.00).
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  The code does not parse: expected an indented block after 'for' statement on line 26 on line 205. Send one com
+
+=========== summary ===========
+  level 1  reward 0.00 after 4 round(s)
+  solved 0/1
+
+attempts logged to /workspace/projects/02-kernel-agent/runs/c9_L1_r3.jsonl

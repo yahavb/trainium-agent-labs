@@ -1,0 +1,21 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 4: matmul, tiled ===========
+round 0: this round 0.62  best so far 0.62  (105.3s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: NUMERICAL MISMATCH: worst error 5.01 of the output's RMS (15.94), tolerance 0.02.
+  at index (148, 208): expected -48.7859, got +31.0985
+  98.4% of elements are outside tolerance
+  most elements are wrong, so this is the core arithmetic or the operand layout, not an edge case
+round 1: same failure again (0.62, best so far 0.62)
+  same failure 2x — adding a ledger of 1 failed attempts to break the repeat
+round 2: same failure again (0.62, best so far 0.62)
+  same failure 3x — adding a ledger of 1 failed attempts to break the repeat
+round 3: same failure again (0.62, best so far 0.62)
+  STOPPING this level: the identical failure 4 rounds running. The agent is cycling between a fixed set of mistakes rather than converging, so more rounds will not help. Failures seen:
+    4x  1 of 4 shapes passed. On K=256 M=256 N=1024: NUMERICAL MISMATCH: worst error 5.01 of the output's RMS (15.94),
+
+=========== summary ===========
+  level 4  reward 0.62 after 4 round(s)
+  solved 0/1
+
+attempts logged to runs/skel_L4_r0.jsonl

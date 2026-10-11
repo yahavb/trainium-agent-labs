@@ -1,0 +1,26 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 7: matmul, M, N and K blocked ===========
+round 0: this round 0.75  best so far 0.75  (106.4s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.56x the byte floor, and level 7 requires 1.05x or better. Correctness alone is level 4; this level is about the bytes. Block K as well, and accumulate in one PSUM tile across the whole contraction so nothing partial is written out.
+round 1: this round 0.62  best so far 0.75  (104.9s)
+  1 of 4 shapes passed. On K=256 M=256 N=1024: NON-FINITE OUTPUT: 131072 NaN and 0 Inf, first at (0, 0). Usually an uninitialised PSUM or SBUF tile being read before anything wrote to it.
+round 2: same failure again (0.62, best so far 0.75)
+  same failure 2x — adding a ledger of 2 failed attempts to break the repeat
+round 3: this round 0.30  best so far 0.75  (106.4s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: raised AttributeError: 'NkiTensor' object has no attribute 'fill' A NkiTensor is not a numpy array, so it has no `fill`. Use the nl/nisa functions instead.
+round 4: this round 0.30  best so far 0.75  (107.9s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: raised AttributeError: module 'nki.isa' has no attribute 'tensor_fill' `nki.isa` has no `tensor_fill`. The closest real names are: tensor_scalar, tensor_engine, tensor_copy, tensor_tensor, tensor_reduce, tensor_scalar_reduce. Pick one of those or use a different approach.
+round 5: this round 0.30  best so far 0.75  (107.8s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: raised TypeError: tensor_scalar() missing 2 required positional arguments: 'op0' and 'operand0'
+round 6: this round 0.30  best so far 0.75  (109.7s)
+  0 of 4 shapes passed. On K=128 M=128 N=512: raised AttributeError: 'float' object has no attribute 'shape' A float is not a numpy array, so it has no `shape`. Use the nl/nisa functions instead.
+round 7: same failure again (0.30, best so far 0.75)
+  same failure 2x — adding a ledger of 6 failed attempts to break the repeat
+  not solved in 8 rounds; best reward 0.75. COULD NOT VERIFY a kernel for level 7: confidence 0.00
+
+=========== summary ===========
+  level 7  reward 0.75 after 8 round(s)
+  solved 0/1
+
+attempts logged to /workspace/projects/02-kernel-agent/runs/c2hi_L7_r1.jsonl

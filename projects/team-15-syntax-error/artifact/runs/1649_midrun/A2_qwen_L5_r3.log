@@ -1,0 +1,42 @@
+
+=========== A5: softmax over last axis  (trap: naive exp OVERFLOWS; needs max subtraction) ===========
+round 0: 0.10 [rule_framework_call] (42.4s, finish=stop)
+  line 15: calls banned `max` for this level.. Delete that `max` call and compute it with this loop instead (R rows, C columns, r0:r1 the current row tile):
+acc = np.full(R, -np.inf)
+for c0 in range(0, C, 512):
+    c1 = min(c0 + 512, C)
+    for c in range(c0, c1):
+        acc[r0:r1] = np.maximum(acc[r
+round 1: 0.10 [rule_framework_call] (47.5s, finish=stop)
+  line 21: calls banned `sum` for this level.. Delete that `sum` call and compute it with this loop instead (R rows, C columns, r0:r1 the current row tile):
+acc = np.zeros(R, dtype=np.float64)
+for c0 in range(0, C, 512):
+    c1 = min(c0 + 512, C)
+    for c in range(c0, c1):
+        acc[r0:r1] += x[r0:
+<kernel>:29: RuntimeWarning: divide by zero encountered in divide
+<kernel>:29: RuntimeWarning: invalid value encountered in divide
+round 2: 0.50 [wrong_arithmetic] (64.6s, finish=stop)
+  0 of 32 cases pass. On normal input(8, 16): The numbers are wrong. 128 of 128 elements (100.0%) are outside tolerance TILE SUB-TILE-SHAPE: output shape (8, 16) is smaller than one 128x512 tile, so every element is in the single partial tile and tile position says nothing here; the ragged-edge hint d
+round 3: 0.10 [rule_framework_call] (64.5s, finish=stop)
+  line 27: calls banned `sum` for this level.. Delete that `sum` call and compute it with this loop instead (R rows, C columns, r0:r1 the current row tile):
+acc = np.zeros(R, dtype=np.float64)
+for c0 in range(0, C, 512):
+    c1 = min(c0 + 512, C)
+    for c in range(c0, c1):
+        acc[r0:r1] += x[r0:
+<kernel>:29: RuntimeWarning: divide by zero encountered in divide
+<kernel>:29: RuntimeWarning: invalid value encountered in divide
+round 4: 0.50 [wrong_arithmetic] (64.0s, finish=stop)
+  0 of 32 cases pass. On normal input(8, 16): The numbers are wrong. 128 of 128 elements (100.0%) are outside tolerance TILE SUB-TILE-SHAPE: output shape (8, 16) is smaller than one 128x512 tile, so every element is in the single partial tile and tile position says nothing here; the ragged-edge hint d
+round 5: 0.10 [rule_framework_call] (64.1s, finish=stop)
+  line 27: calls banned `sum` for this level.. Delete that `sum` call and compute it with this loop instead (R rows, C columns, r0:r1 the current row tile):
+acc = np.zeros(R, dtype=np.float64)
+for c0 in range(0, C, 512):
+    c1 = min(c0 + 512, C)
+    for c in range(c0, c1):
+        acc[r0:r1] += x[r0:
+
+=========== summary ===========
+  A5: solved 0/1, mean 0.50, all=[0.5]
+  uncached model calls this session: 6

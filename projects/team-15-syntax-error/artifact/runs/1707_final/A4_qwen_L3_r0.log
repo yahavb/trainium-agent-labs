@@ -1,0 +1,30 @@
+
+=========== A3: row-wise max  (trap: partial tile, and the identity is -inf not 0) ===========
+round 0: 0.10 [rule_framework_call] (16.3s, finish=stop)
+  Line 9 calls banned `max`. Replace that call with exactly:
+max_acc = np.full((tile.shape[0], 1), -np.inf, dtype=np.float32)
+for c in range(tile.shape[1]):
+    max_acc = np.maximum(max_acc, tile[:, c:c+1])
+This stores the result in `max_acc` with shape (rows, 1); do not reuse the name `max_acc` for a
+round 1: 0.50 [wrong_output_shape] (25.4s, finish=stop)
+  0 of 32 cases pass. On normal input(8, 16): The numbers are wrong. WRONG SHAPE: returned (8, 1), reference is (8,). Check the output-size formula, not the arithmetic. Change only what that points at; keep everything else identical.
+round 2: 0.88 [wrong_output_shape] (25.5s, finish=stop)
+  24 of 32 cases pass. On normal input(129, 513): The numbers are wrong. WRONG SHAPE: returned (258,), reference is (129,). Check the output-size formula, not the arithmetic. You produce one result PER COLUMN TILE and concatenate them. A row reduction must COMBINE all column tiles of a row into ONE va
+round 3: 0.10 [rule_framework_call] (24.1s, finish=stop)
+  Line 11 calls banned `max`. Replace that call with exactly:
+max_acc = np.full(((output[i + r]).shape[0], 1), -np.inf, dtype=np.float32)
+for c in range((output[i + r]).shape[1]):
+    max_acc = np.maximum(max_acc, (output[i + r])[:, c:c+1])
+This stores the result in `max_acc` with shape (rows, 1); do 
+round 4: 0.30 [out_of_bounds] (34.6s, finish=stop)
+  0 of 32 cases pass. On normal: It crashed:   File "<kernel>", line 11, in kernel | IndexError: tuple index out of range. Clamp every tile end to the array: r1 = min(r0 + 128, R), c1 = min(c0 + 512, C).
+round 5: 0.10 [rule_framework_call] (31.1s, finish=stop)
+  Line 14 calls banned `max`. Replace that call with exactly:
+max_acc = np.full((max_acc.shape[0], 1), -np.inf, dtype=np.float32)
+for c in range(max_acc.shape[1]):
+    max_acc = np.maximum(max_acc, max_acc[:, c:c+1])
+This stores the result in `max_acc` with shape (rows, 1); do not reuse the name `max_
+
+=========== summary ===========
+  A3: solved 0/1, mean 0.88, all=[0.88]
+  uncached model calls this session: 6

@@ -1,0 +1,6 @@
+
+=========== A8: layernorm (mean and variance)  (trap: E[x^2]-E[x]^2 catastrophically cancels at large means) ===========
+round 0: 0.10 [rule_framework_call] (72.1s, finish=stop)
+  line 24: calls banned `mean` for this level. Replace the `mean` call with a running sum over the columns of each tile, divided by the row length at the end. Keep everything else identical.
+round 1: 0.10 [rule_framework_call] (76.2s, finish=stop)
+  line 24: calls banned `sum` for this level. Replace the `sum` call with a running sum over the columns of each tile, starting from 0.0. Keep everything else identical.

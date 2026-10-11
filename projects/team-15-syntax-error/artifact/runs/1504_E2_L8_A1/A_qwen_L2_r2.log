@@ -1,0 +1,11 @@
+
+=========== A2: row-wise sum  (trap: the partial final tile) ===========
+round 0: 0.10 [rule_framework_call] (32.7s, finish=stop)
+  line 19: calls banned `sum` for this level. Replace the `sum` call with a running sum over the columns of each tile, starting from 0.0. Keep everything else identical.
+round 1: 1.00 [solved] (44.2s, finish=stop)
+  VERIFIED: 32/32 cases.
+  SOLVED on round 1, confidence 0.95 (clamped tile ends; every public case verified)
+
+=========== summary ===========
+  A2: solved 1/1, mean 1.00, all=[1.0]
+  uncached model calls this session: 2

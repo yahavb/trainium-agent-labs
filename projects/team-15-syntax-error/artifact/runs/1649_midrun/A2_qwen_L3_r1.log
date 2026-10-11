@@ -1,0 +1,16 @@
+
+=========== A3: row-wise max  (trap: partial tile, and the identity is -inf not 0) ===========
+round 0: 0.10 [rule_framework_call] (16.8s, finish=stop)
+  line 9: calls banned `max` for this level.. Delete that `max` call and compute it with this loop instead (R rows, C columns, r0:r1 the current row tile):
+acc = np.full(R, -np.inf)
+for c0 in range(0, C, 512):
+    c1 = min(c0 + 512, C)
+    for c in range(c0, c1):
+        acc[r0:r1] = np.maximum(acc[r0
+round 1: 1.00 [solved] (27.2s, finish=stop)
+  VERIFIED: 32/32 cases.
+  SOLVED on round 1, confidence 0.95 (clamped tile ends; every public case verified)
+
+=========== summary ===========
+  A3: solved 1/1, mean 1.00, all=[1.0]
+  uncached model calls this session: 2

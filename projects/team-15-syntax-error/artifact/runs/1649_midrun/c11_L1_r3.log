@@ -1,0 +1,7 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 1: average pooling 2D ===========
+round 0: this round 0.30  best so far 0.30  (69.4s)
+  API misuse -- fix ALL of these calls in this one round, change nothing else:
+- line 21: nisa.tensor_scalar() is missing required argument(s) ['operand0']; its real signature is nisa.tensor_scalar(dst: 'NkiTensor', data: 'NkiTensor', op0, operand0: 'float | NkiTensor', reverse0=False, op1=None, operand1: 'float | NkiTensor | None' = None, reverse1=False, engine=<engine.unknown: 0>, name=None)
+- lin

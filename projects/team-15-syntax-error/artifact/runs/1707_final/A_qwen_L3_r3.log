@@ -1,0 +1,15 @@
+
+=========== A3: row-wise max  (trap: partial tile, and the identity is -inf not 0) ===========
+round 0: 0.10 [rule_framework_call] (16.3s, finish=stop)
+  line 9: calls banned `max` for this level. Replace the `max` call with a running maximum over the columns of each tile, starting from -np.inf (not 0). Keep everything else identical.
+round 1: 0.94 [wrong_output_shape] (25.5s, finish=stop)
+  28 of 32 cases pass. On normal input(129, 513): The numbers are wrong. WRONG SHAPE: returned (258,), reference is (129,). Check the output-size formula, not the arithmetic. Change only what that points at; keep everything else identical.
+round 2: 0.94 [wrong_output_shape] (13.8s, finish=stop)
+  28 of 32 cases pass. On normal input(129, 513): The numbers are wrong. WRONG SHAPE: returned (258,), reference is (129,). Check the output-size formula, not the arithmetic. Change only what that points at; keep everything else identical.
+round 3: 0.94 [wrong_output_shape] (25.7s, finish=stop)
+  28 of 32 cases pass. On normal input(129, 513): The numbers are wrong. WRONG SHAPE: returned (258,), reference is (129,). Check the output-size formula, not the arithmetic. Change only what that points at; keep everything else identical.
+  COULD NOT VERIFY A3 (confidence 0.00): the same failure 3x
+
+=========== summary ===========
+  A3: solved 0/1, mean 0.94, all=[0.94]
+  uncached model calls this session: 4

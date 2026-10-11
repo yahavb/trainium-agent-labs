@@ -1,0 +1,71 @@
+endpoint http://localhost:8000/v1  model Qwen/Qwen3-8B
+
+=========== level 7: matmul, M, N and K blocked ===========
+round 0: this round 0.75  best so far 0.75  (106.1s)
+  2 of 4 shapes passed. On K=256 M=256 N=1024: CORRECT, BUT TOO MUCH HBM TRAFFIC FOR THIS LEVEL: moving 1.56x the byte floor, and level 7 requires 1.05x or better. Correctness alone is level 4; this level is about the bytes. Block K as well, and accumulate in one PSUM tile across the whole contraction so nothing partial is written out.
+  CAUSE: the same lhsT/rhs tiles are copied from HBM more than o
+round 1: this round 0.10  best so far 0.75  (126.0s)
+  Rule violations, which score zero however fast the kernel is. Fix exactly these: line 12: a comprehension ([... for ... in ...]) is not supported by the Neuron device compiler (it passes the simulator, then fails on the chip). Build the list with a plain for loop and .append() instead. line 13: a comprehension ([... for ... in ...]) is not supported by the Neuron device compiler (it passes the sim
+round 2: this round 1.00  best so far 1.00  (131.5s)
+  Correct on every shape. MEMORY BOUND: 73.1 Flops/Byte against a ridge of 222, so 33% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 3.0x more reuse needed.
+  SOLVED on round 2, confidence 0.95 (all public shapes pass; remainder handling present). Correct on every shape. MEMORY BOUND: 73.1 Flops/Byte against a ridge of 222, so 33% of what the engine could sustain. The engine is idle waiting for data. Find reuse -- make the same bytes do more work -- rather than tuning the arithmetic. 3.0x more reuse needed.
+  ---------------- the kernel ----------------
+  import nki
+  import nki.isa as nisa
+  import nki.language as nl
+
+  @nki.jit
+  def nki_matmul_fully_optimized_(lhsT, rhs):
+      K, M = lhsT.shape                         # left operand arrives TRANSPOSED: K is the partition dim
+      _, N = rhs.shape
+      result = nl.ndarray((M, N), dtype=lhsT.dtype, buffer=nl.shared_hbm)
+      TM, TK, TN = 128, 128, 512                # hardware MAXIMA, not targets
+      # Pre-load all tiles into SBUF once
+      a = []
+      for _ in range((K + TK - 1) // TK):
+          a.append([])
+          for _ in range((M + TM - 1) // TM):
+              a[-1].append(None)
+      b = []
+      for _ in range((K + TK - 1) // TK):
+          b.append([])
+          for _ in range((N + TN - 1) // TN):
+              b[-1].append(None)
+      for k in range((K + TK - 1) // TK):
+          k0 = k * TK
+          k_sz = min(TK, K - k0)
+          for m in range((M + TM - 1) // TM):
+              m0 = m * TM
+              m_sz = min(TM, M - m0)
+              a[k][m] = nl.ndarray((k_sz, m_sz), dtype=lhsT.dtype, buffer=nl.sbuf)
+              nisa.dma_copy(dst=a[k][m], src=lhsT[k0:k0 + k_sz, m0:m0 + m_sz])
+      for k in range((K + TK - 1) // TK):
+          k0 = k * TK
+          k_sz = min(TK, K - k0)
+          for n in range((N + TN - 1) // TN):
+              n0 = n * TN
+              n_sz = min(TN, N - n0)
+              b[k][n] = nl.ndarray((k_sz, n_sz), dtype=rhs.dtype, buffer=nl.sbuf)
+              nisa.dma_copy(dst=b[k][n], src=rhs[k0:k0 + k_sz, n0:n0 + n_sz])
+      for m in range((M + TM - 1) // TM):
+          m0 = m * TM
+          m_sz = min(TM, M - m0)
+          for n in range((N + TN - 1) // TN):
+              n0 = n * TN
+              n_sz = min(TN, N - n0)
+              acc = nl.ndarray((m_sz, n_sz), dtype=nl.float32, buffer=nl.psum)
+              for k in range((K + TK - 1) // TK):
+                  k0 = k * TK
+                  k_sz = min(TK, K - k0)
+                  nisa.nc_matmul(dst=acc, stationary=a[k][m], moving=b[k][n])
+              out_tile = nl.ndarray((m_sz, n_sz), dtype=acc.dtype, buffer=nl.sbuf)
+              nisa.tensor_copy(dst=out_tile, src=acc)
+              nisa.dma_copy(dst=result[m0:m0 + m_sz, n0:n0 + n_sz], src=out_tile)
+      return result
+  -------------------------------------------
+
+=========== summary ===========
+  level 7  reward 1.00 after 3 round(s)  SOLVED
+  solved 1/1
+
+attempts logged to /workspace/s73/exp/runs/c10_L7_r2.jsonl
