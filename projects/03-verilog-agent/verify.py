@@ -25,6 +25,19 @@ JUDGE = True   # --no-judge to switch the design-vs-golden-model judge off
 from vagent import P, simulate, auto_tb, header
 import mutate
 
+def optimize_check(vprev, vnew, testbench):
+    """The optimize step's checker: a smaller circuit is only accepted if it passes the SAME verified
+    testbench the original passed (exhaustive for <= 12 input bits, else 4000 vectors / 300 cycles)."""
+    tb = open(testbench).read()
+    score, det, _ = simulate(open(vnew).read(), tb)
+    ok = score == 1.0
+    print(f"  [check] smaller circuit vs the verified testbench: "
+          f"{'PASS -> accepted' if ok else 'FAIL -> rejected (' + det.splitlines()[0] + ')'}", flush=True)
+    if not ok:
+        for l in [l for l in det.splitlines() if l.startswith("MISMATCH")][:3]:
+            print(f"    {l}", flush=True)
+    return ok
+
 def show(title, text, limit=80):
     lines = text.rstrip().splitlines()
     print(f"\n----- {title} ({len(lines)} lines) -----")

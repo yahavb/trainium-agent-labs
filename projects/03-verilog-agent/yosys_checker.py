@@ -16,7 +16,9 @@ import tempfile
 # Paths are quoted so folders with spaces work.
 # -flatten gives one total count for the whole design.
 # "tee -o" writes the stat report to its own file, so we don't depend on the full log.
-YOSYS_SCRIPT = 'read_verilog "{path}"; synth {top_opt} -flatten; tee -q -o "{stats}" stat'
+# NOTE: no quotes around the stats path - Yosys 0.33 (Ubuntu 24.04) keeps them as part of the file name
+# for "tee -o" and then can't create the file. The stats file lives in the temp dir, which has no spaces.
+YOSYS_SCRIPT = 'read_verilog "{path}"; synth {top_opt} -flatten; tee -q -o {stats} stat'
 
 
 def synthesize(verilog_path, top=None):
@@ -26,7 +28,7 @@ def synthesize(verilog_path, top=None):
     top="name" forces that module as top (use this for every Vnew).
     """
     top_opt = f"-top {top}" if top else "-auto-top"
-    fd, stats_path = tempfile.mkstemp(suffix="_stat.txt", dir=os.path.dirname(verilog_path) or ".")
+    fd, stats_path = tempfile.mkstemp(suffix="_stat.txt")
     os.close(fd)
     try:
         script = YOSYS_SCRIPT.format(path=verilog_path, top_opt=top_opt, stats=stats_path)

@@ -1197,7 +1197,11 @@ def menu(a):
         print(f"\n[hand-off] {path}", flush=True)
         d = V.json_to_folder(path)
         outcome, history = R.check_and_fix(d, a.rounds, a.log, fix=fix)
-        R.summary(d, outcome, history, t0)
+        opt = None
+        if outcome == "PASS" and input("\nIt passes. Try to shrink it (fewer gates, same behaviour)? [Y/n] ").strip().lower() not in ("n", "no"):
+            print("\n[optimize] the AI shrinks the circuit; Yosys counts cells; your testbench re-checks it", flush=True)
+            opt = R.optimize(d)
+        R.summary(d, outcome, history, t0, opt)
 
 def main():
     ap = argparse.ArgumentParser()
