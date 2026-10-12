@@ -42,3 +42,6 @@ projects/*/attempts.jsonl
 
 # agent runs started with nohup ... > run.log (README pattern for surviving a dropped kubectl exec)
 run*.log
+
+# nested clone of the Neuron agentic development repo (has its own .git)
+neuron-agentic-development/

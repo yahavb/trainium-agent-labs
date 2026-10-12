@@ -1,0 +1,149 @@
+"""Generate images with FLUX.1 on this seat pod's Trainium chip, using AWS's NxD Inference Flux code.
+
+Compiles once per (model, size, tensor parallel degree) into /workspace/flux-compiled/ and reuses it after.
+
+    python generate.py --prompt "A robot named trn2"
+"""
+
+import argparse
+import json
+import os
+import statistics
+import sys
+import shutil
+import time
+from pathlib import Path
+
+import torch
+from huggingface_hub import snapshot_download
+from neuronx_distributed_inference.models.diffusers.flux.modeling_flux import NeuronFluxBackboneApplication
+from neuronx_distributed_inference.models.diffusers.flux.application import (
+    NeuronFluxApplication,
+    create_flux_config,
+    get_flux_parallelism_config,
+)
+
+# Only the diffusers-format folders; the repo also holds a single-file copy of the weights we don't need.
+DIFFUSERS_FILES = ["model_index.json", "scheduler/*", "text_encoder/*", "text_encoder_2/*",
+                   "tokenizer/*", "tokenizer_2/*", "transformer/*", "vae/*"]
+
+
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument("--prompt", default="A cat holding a sign that says hello world")
+    p.add_argument("--model", default=os.environ.get("MODEL", "black-forest-labs/FLUX.1-dev"))
+    p.add_argument("--size", type=int, default=1024, help="square image side; changing it recompiles")
+    p.add_argument("--steps", type=int, default=25)
+    p.add_argument("--guidance", type=float, default=3.5)
+    p.add_argument("--tp", type=int, default=int(os.environ.get("TP", 4)), help="NeuronCores to use; changing it recompiles")
+    p.add_argument("--cp", action="store_true", help="context parallel: shard the sequence over 2 groups of --tp cores (needs 2 x --tp cores)")
+    p.add_argument("--cc-opt", type=int, default=1, help="neuronx-cc -O level for the transformer; changing it recompiles")
+    p.add_argument("--nki", action="store_true",
+                   help="fused NKI QK-RMSNorm + RoPE + flash attention in the transformer (nki_kernels/); recompiles "
+                        "the transformer into a separate folder. Ignored (stock path) with --cp.")
+    p.add_argument("--warmup", type=int, default=0,
+                   help="untimed generations (2 steps each) before the timed ones, so even --num 1 reports steady state")
+    p.add_argument("--num", type=int, default=1, help="images to generate")
+    p.add_argument("--out", default="out")
+    p.add_argument("--metrics", default="out/metrics.json", help="write timing metrics here ('' to skip)")
+    args = p.parse_args()
+
+    t_start = time.perf_counter()
+    print(f"Downloading {args.model} (about 34 GB the first time) ...", flush=True)
+    ckpt = snapshot_download(args.model, allow_patterns=DIFFUSERS_FILES)
+
+    t_download = time.perf_counter()
+    if args.cc_opt != 1:
+        get_args = NeuronFluxBackboneApplication.get_compiler_args
+        NeuronFluxBackboneApplication.get_compiler_args = lambda self: get_args(self).replace("-O1", f"-O{args.cc_opt}", 1)
+    if args.nki:
+        sys.path.insert(0, str(Path(__file__).resolve().parent / "nki_kernels"))
+        import flux_nki_patch
+        flux_nki_patch.enable()
+        if args.cp:
+            print("[nki] --cp: the fused kernel does not cover context-parallel attention; every block uses the stock path.")
+    world_size = get_flux_parallelism_config(args.tp, context_parallel_enabled=args.cp)
+    clip, t5, backbone, decoder = create_flux_config(ckpt, world_size, args.tp, torch.bfloat16, args.size, args.size,
+                                                     context_parallel_enabled=args.cp)
+    app = NeuronFluxApplication(
+        model_path=ckpt,
+        text_encoder_config=clip,
+        text_encoder2_config=t5,
+        backbone_config=backbone,
+        decoder_config=decoder,
+        height=args.size,
+        width=args.size,
+    )
+
+    # NxDI skips any part whose folder exists, even one left half-written by a failed compile.
+    # Treat a part as compiled only if its model.pt is there, so a failure gets retried.
+    base = Path(f"/workspace/flux-compiled/{args.model.split('/')[-1]}-{args.size}-tp{args.tp}" + ("-cp" if args.cp else ""))
+    compiled = Path(str(base) + (f"-O{args.cc_opt}" if args.cc_opt != 1 else "") + ("-nki" if args.nki else ""))
+    for part in ["text_encoder", "text_encoder_2", "transformer", "decoder"]:
+        if not (compiled / part / "model.pt").exists():
+            if (compiled / part).is_symlink():
+                (compiled / part).unlink()
+            shutil.rmtree(compiled / part, ignore_errors=True)
+            # --cc-opt / --nki only change the transformer: reuse the other parts from the stock build if present.
+            if part != "transformer" and compiled != base and (base / part / "model.pt").exists():
+                compiled.mkdir(parents=True, exist_ok=True)
+                (compiled / part).symlink_to(base / part, target_is_directory=True)
+    print(f"Compiling into {compiled} (parts already there are skipped).", flush=True)
+    app.compile(str(compiled))
+    if args.nki:
+        st = flux_nki_patch.stats()
+        print(f"[nki] attention calls traced this run: {st}" + (" (transformer came from the cache)" if not any(st.values())
+              else " (fused = 0: kernel NOT used, see flux_nki_patch._eligible)" if not st["fused"] else ""), flush=True)
+    t_compiled = time.perf_counter()
+    app.load(str(compiled))
+    t_loaded = time.perf_counter()
+
+    Path(args.out).mkdir(exist_ok=True)
+    for _ in range(args.warmup):
+        app(args.prompt, height=args.size, width=args.size, guidance_scale=args.guidance, num_inference_steps=2)
+    latencies = []
+    for i in range(args.num):
+        start = time.perf_counter()
+        image = app(
+            args.prompt,
+            height=args.size,
+            width=args.size,
+            guidance_scale=args.guidance,
+            num_inference_steps=args.steps,
+        ).images[0]
+        latencies.append(time.perf_counter() - start)
+        path = f"{args.out}/image_{int(time.time())}_{i + 1}.png"
+        image.save(path)
+        print(f"Wrote {path} in {latencies[-1]:.2f} s ({latencies[-1] / args.steps * 1000:.0f} ms/step)")
+
+    # The first image can include one-off warmup; with several images, report steady state without it.
+    steady = latencies[1:] if len(latencies) > 1 and not args.warmup else latencies
+    mean = statistics.mean(steady)
+    metrics = {
+        "model": args.model, "size": args.size, "steps": args.steps, "tp": args.tp, "cp": args.cp, "cc_opt": args.cc_opt, "nki": args.nki, "warmup": args.warmup,
+        "num_images": args.num,
+        "download_s": t_download - t_start,
+        "compile_s": t_compiled - t_download,
+        "load_s": t_loaded - t_compiled,
+        "latency_s": latencies,
+        "first_image_s": latencies[0],
+        "latency_mean_s": mean,
+        "latency_p50_s": statistics.median(steady),
+        "latency_max_s": max(steady),
+        "ms_per_step": mean / args.steps * 1000,
+        "images_per_s": 1 / mean,
+        "images_per_min": 60 / mean,
+        "steady_state_excludes_first": len(latencies) > 1 and not args.warmup,
+    }
+    print("\nMetrics" + (" (steady state excludes the first image)" if metrics["steady_state_excludes_first"] else ""))
+    print(f"  compile {metrics['compile_s']:.1f} s, load {metrics['load_s']:.1f} s")
+    print(f"  latency  mean {mean:.2f} s  p50 {metrics['latency_p50_s']:.2f} s  max {metrics['latency_max_s']:.2f} s"
+          f"  (first {latencies[0]:.2f} s)")
+    print(f"  {metrics['ms_per_step']:.0f} ms/step, {metrics['images_per_s']:.3f} images/s ({metrics['images_per_min']:.1f}/min)")
+    if args.metrics:
+        Path(args.metrics).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.metrics).write_text(json.dumps(metrics, indent=2))
+        print(f"  wrote {args.metrics}")
+
+if __name__ == "__main__":
+    main()
