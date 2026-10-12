@@ -1,0 +1,110 @@
+
+=========== level0.1 ===========
+Solve the heat equation on a rod.
+
+  u_t = 1 * u_xx,   for 0 < x < 1, t > 0
+  u(0, t) = 0 and u(1, t) = 0
+  u(x, 0) = sin(3*pi*x)
+
+Allowed modes: sin(n*pi*x/(1)) for n=1,2,3,... . 
+Work in this order: choose the boundary-compatible basis; compute each coefficient; record that term's actual frequency omega, including /L; compute its rate k*omega**2; pair that rate with the same wave. Check u(x,0) first, then the PDE and both boundaries. If u(x,0) already passes together with both boundaries, preserve its coefficients and basis while correcting decay rates. If a boundary fails, preserve the initial shape but reproject coefficients when changing basis. Recheck all conditions. Give a finite answer, not the derivation.
+
+On the last line write exactly
+  u(x, t) = <expression>
+Write every term out with its numbers filled in, in Python syntax, like this:
+  u(x, t) = 3*exp(-2*pi**2*t)*sin(pi*x) - 0.5*exp(-8*pi**2*t)*sin(2*pi*x)
+Use exp, sin, cos, pi and ** for powers. Finite LaTeX with explicit exp/sin/cos arguments, pi, braced fractions and powers is also accepted. No unevaluated sums, integrals or unknown coefficients.
+
+Construction phases:
+1. Use the stated boundary conditions: phi_n=sin(n*pi*x/L), omega_n=n*pi/L, n>=1. Substitute the stated L.
+2. For each mode use c_n=Integral(f(x)*phi_n,(x,0,L))/Integral(phi_n**2,(x,0,L)); substitute the stated f and L before asking for any calculation. This normalization also handles the constant mode.
+3. Send concrete projection integrals on COMPUTE: lines, within the allowed tool exchange. Fill in numerical or exact numeric coefficients; do not leave Integral or c_n unresolved.
+4. For each individual mode write omega, then rate=k*omega**2. Pair that rate with the same mode. The constant mode has rate zero.
+5. Assemble explicit terms c*exp(-rate*t)*phi. Check the equation, each boundary and u(x,0); finish with one u(x,t)=expression line. No unevaluated sums or unknown constants.
+  launched 4 parallel samples; mode=first-pass early stop; checking each completion immediately
+  completed sample 0: reward=1.0
+  full checker pass: stopping unfinished local workers; server-side cancellation is unconfirmed
+
+round 0: rewards [1.0]  graded mean 1.00  history best 1.0  3 tool call(s)  (24.7s)
+  shared calculator: requests=3 calculations=2 cache_hits=0 in_flight_reuse=1 rejected=0; individually verified modes do not replace final grading.
+  samples: launched=4 graded=1 cancelled=[1, 2, 3] errors=[]; tool count covers graded samples only; server token cost is unmeasured.
+  historical anchor: 1*exp(-9*pi**2*t)*sin(3*pi*x)
+  checker: Passed: PDE, left boundary, right boundary, initial shape. Solved.
+stop_reason=solved; rounds=1; historical best reward=1.000
+SOLVED: u(x, t) = 1*exp(-9*pi**2*t)*sin(3*pi*x)
+
+=========== level0.2 ===========
+Solve the heat equation on a rod.
+
+  u_t = 1/2 * u_xx,   for 0 < x < 2, t > 0
+  u(0, t) = 0 and u(2, t) = 0
+  u(x, 0) = sin(pi*x)
+
+Allowed modes: sin(n*pi*x/(2)) for n=1,2,3,... . 
+Work in this order: choose the boundary-compatible basis; compute each coefficient; record that term's actual frequency omega, including /L; compute its rate k*omega**2; pair that rate with the same wave. Check u(x,0) first, then the PDE and both boundaries. If u(x,0) already passes together with both boundaries, preserve its coefficients and basis while correcting decay rates. If a boundary fails, preserve the initial shape but reproject coefficients when changing basis. Recheck all conditions. Give a finite answer, not the derivation.
+
+On the last line write exactly
+  u(x, t) = <expression>
+Write every term out with its numbers filled in, in Python syntax, like this:
+  u(x, t) = 3*exp(-2*pi**2*t)*sin(pi*x) - 0.5*exp(-8*pi**2*t)*sin(2*pi*x)
+Use exp, sin, cos, pi and ** for powers. Finite LaTeX with explicit exp/sin/cos arguments, pi, braced fractions and powers is also accepted. No unevaluated sums, integrals or unknown coefficients.
+
+Construction phases:
+1. Use the stated boundary conditions: phi_n=sin(n*pi*x/L), omega_n=n*pi/L, n>=1. Substitute the stated L.
+2. For each mode use c_n=Integral(f(x)*phi_n,(x,0,L))/Integral(phi_n**2,(x,0,L)); substitute the stated f and L before asking for any calculation. This normalization also handles the constant mode.
+3. Send concrete projection integrals on COMPUTE: lines, within the allowed tool exchange. Fill in numerical or exact numeric coefficients; do not leave Integral or c_n unresolved.
+4. For each individual mode write omega, then rate=k*omega**2. Pair that rate with the same mode. The constant mode has rate zero.
+5. Assemble explicit terms c*exp(-rate*t)*phi. Check the equation, each boundary and u(x,0); finish with one u(x,t)=expression line. No unevaluated sums or unknown constants.
+  launched 4 parallel samples; mode=first-pass early stop; checking each completion immediately
+  completed sample 1: reward=1.0
+  full checker pass: stopping unfinished local workers; server-side cancellation is unconfirmed
+
+round 0: rewards [1.0]  graded mean 1.00  history best 1.0  8 tool call(s)  (38.7s)
+  shared calculator: requests=32 calculations=4 cache_hits=0 in_flight_reuse=28 rejected=0; individually verified modes do not replace final grading.
+  samples: launched=4 graded=1 cancelled=[0, 2, 3] errors=[]; tool count covers graded samples only; server token cost is unmeasured.
+  historical anchor: 1*exp(-pi**2*t/2)*sin(pi*x)
+  checker: Passed: PDE, left boundary, right boundary, initial shape. Solved.
+stop_reason=solved; rounds=1; historical best reward=1.000
+SOLVED: u(x, t) = 1*exp(-pi**2*t/2)*sin(pi*x)
+
+=========== level0.3 ===========
+Solve the heat equation on a rod.
+
+  u_t = 1/2 * u_xx,   for 0 < x < 1, t > 0
+  u(0, t) = 0 and u(1, t) = 0
+  u(x, 0) = sin(pi*x) - sin(3*pi*x) + 3*sin(5*pi*x)
+
+Allowed modes: sin(n*pi*x/(1)) for n=1,2,3,... . 
+Work in this order: choose the boundary-compatible basis; compute each coefficient; record that term's actual frequency omega, including /L; compute its rate k*omega**2; pair that rate with the same wave. Check u(x,0) first, then the PDE and both boundaries. If u(x,0) already passes together with both boundaries, preserve its coefficients and basis while correcting decay rates. If a boundary fails, preserve the initial shape but reproject coefficients when changing basis. Recheck all conditions. Give a finite answer, not the derivation.
+
+On the last line write exactly
+  u(x, t) = <expression>
+Write every term out with its numbers filled in, in Python syntax, like this:
+  u(x, t) = 3*exp(-2*pi**2*t)*sin(pi*x) - 0.5*exp(-8*pi**2*t)*sin(2*pi*x)
+Use exp, sin, cos, pi and ** for powers. Finite LaTeX with explicit exp/sin/cos arguments, pi, braced fractions and powers is also accepted. No unevaluated sums, integrals or unknown coefficients.
+
+Construction phases:
+1. Use the stated boundary conditions: phi_n=sin(n*pi*x/L), omega_n=n*pi/L, n>=1. Substitute the stated L.
+2. For each mode use c_n=Integral(f(x)*phi_n,(x,0,L))/Integral(phi_n**2,(x,0,L)); substitute the stated f and L before asking for any calculation. This normalization also handles the constant mode.
+3. Send concrete projection integrals on COMPUTE: lines, within the allowed tool exchange. Fill in numerical or exact numeric coefficients; do not leave Integral or c_n unresolved.
+4. For each individual mode write omega, then rate=k*omega**2. Pair that rate with the same mode. The constant mode has rate zero.
+5. Assemble explicit terms c*exp(-rate*t)*phi. Check the equation, each boundary and u(x,0); finish with one u(x,t)=expression line. No unevaluated sums or unknown constants.
+  launched 4 parallel samples; mode=first-pass early stop; checking each completion immediately
+  completed sample 0: reward=1.0
+  full checker pass: stopping unfinished local workers; server-side cancellation is unconfirmed
+
+round 0: rewards [1.0]  graded mean 1.00  history best 1.0  8 tool call(s)  (81.4s)
+  shared calculator: requests=32 calculations=9 cache_hits=4 in_flight_reuse=16 rejected=3; individually verified modes do not replace final grading.
+  samples: launched=4 graded=1 cancelled=[1, 2, 3] errors=[]; tool count covers graded samples only; server token cost is unmeasured.
+  historical anchor: 1*exp(-0.5*pi**2*t)*sin(pi*x) - 1*exp(-4.5*pi**2*t)*sin(3*pi*x) + 3*exp(-12.5*pi**2*t)*sin(5*pi*x)
+  checker: Passed: PDE, left boundary, right boundary, initial shape. Solved.
+stop_reason=solved; rounds=1; historical best reward=1.000
+SOLVED: u(x, t) = 1*exp(-0.5*pi**2*t)*sin(pi*x) - 1*exp(-4.5*pi**2*t)*sin(3*pi*x) + 3*exp(-12.5*pi**2*t)*sin(5*pi*x)
+
+=========== summary: level 0 ===========
+  level0.1     reward 1.0 after 1 round(s)  SOLVED
+  level0.2     reward 1.0 after 1 round(s)  SOLVED
+  level0.3     reward 1.0 after 1 round(s)  SOLVED
+  solved 3/3
+
+attempts logged to /workspace/projects/heat_shared_fastest/logs/retest_Pvl6cW/level0.jsonl
