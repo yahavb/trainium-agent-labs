@@ -1,0 +1,44 @@
+run A rep 1: 40 problems (0 already done), budget 1, feedback none, model Qwen/Qwen3-8B, seats seat-93, code 0d4fe8d -> /workspace/projects/19-verified-rtl-agent/runs/A-1.jsonl
+Prob007_wire                       A  r1  seat-93   L2 1.00  PASS
+Prob010_mt2015_q4a                 A  r1  seat-93   L2 1.00  PASS
+Prob024_hadd                       A  r1  seat-93   L2 1.00  PASS
+Prob015_vector1                    A  r1  seat-93   L2 1.00  PASS
+Prob031_dff                        A  r1  seat-93   L2 0.51  ''
+Prob029_m2014_q4g                  A  r1  seat-93   L2 1.00  PASS
+Prob033_ece241_2014_q1c            A  r1  seat-93   L2 1.00  PASS
+Prob037_review2015_count1k         A  r1  seat-93   L2 1.00  PASS
+Prob038_count15                    A  r1  seat-93   L2 1.00  PASS
+Prob041_dff8r                      A  r1  seat-93   L0 0.10  ''
+Prob051_gates4                     A  r1  seat-93   L2 1.00  PASS
+Prob044_vectorgates                A  r1  seat-93   L2 0.50  ''
+Prob058_alwaysblock2               A  r1  seat-93   L0 0.10  ''
+Prob034_dff8                       A  r1  seat-93   L0 0.10  ''
+Prob061_2014_q4a                   A  r1  seat-93   L0 0.10  ''
+Prob063_review2015_shiftcount      A  r1  seat-93   L2 0.54  ''
+Prob075_counter_2bc                A  r1  seat-93   L2 1.00  PASS
+Prob064_vector3                    A  r1  seat-93   L3 0.50  ''
+Prob076_always_case                A  r1  seat-93   L2 1.00  PASS
+Prob080_timer                      A  r1  seat-93   L2 0.99  ''
+Prob081_7458                       A  r1  seat-93   L2 1.00  PASS
+Prob083_mt2015_q4b                 A  r1  seat-93   L0 0.10  ''
+Prob070_ece241_2013_q2             A  r1  seat-93   L3 0.59  ''
+Prob102_circuit3                   A  r1  seat-93   L3 0.93  ''
+Prob079_fsm3onehot                 A  r1  seat-93   L0 0.10  ''
+Prob090_circuit1                   A  r1  seat-93   L2 0.89  ''
+Prob105_rotate100                  A  r1  seat-93   L2 0.50  ''
+Prob107_fsm1s                      A  r1  seat-93   L0 0.10  ''
+Prob110_fsm2                       A  r1  seat-93   L0 0.10  ''
+Prob125_kmap3                      A  r1  seat-93   L2 0.84  ''
+Prob119_fsm3                       A  r1  seat-93   L0 0.10  ''
+Prob132_always_if2                 A  r1  seat-93   L2 1.00  PASS
+Prob121_2014_q3bfsm                A  r1  seat-93   L0 0.10  ''
+Prob130_circuit5                   A  r1  seat-93   L0 0.10  ''
+Prob133_2014_q3fsm                 A  r1  seat-93   L0 0.10  ''
+Prob145_circuit8                   A  r1  seat-93   L2 0.51  ''
+Prob144_conwaylife                 A  r1  seat-93   L0 0.10  ''
+Prob135_m2014_q6b                  A  r1  seat-93   L0 0.10  ''
+Prob152_lemmings3                  A  r1  seat-93   L0 0.10  ''
+Prob149_ece241_2013_q4             A  r1  seat-93   L2 0.53  ''
+
+=========== run A rep 1 ===========
+  solved 13/40   unverified 0   wall 424s   -> /workspace/projects/19-verified-rtl-agent/runs/A-1.jsonl

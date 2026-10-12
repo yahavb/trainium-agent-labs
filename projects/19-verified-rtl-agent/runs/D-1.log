@@ -1,0 +1,187 @@
+run D rep 1: 40 problems (0 already done), budget 6, feedback located, model Qwen/Qwen3-8B, seats seat-90, seat-90, seat-90, code 0aaab14 -> /workspace/projects/19-verified-rtl-agent/runs/D-1.jsonl
+Prob007_wire                       D  r1  seat-90   L2 1.00  PASS
+Prob007_wire                       D  r1  seat-90   L2 1.00  PASS
+Prob007_wire                       D  r1  seat-90   L2 1.00  PASS
+Prob010_mt2015_q4a                 D  r1  seat-90   L2 1.00  PASS
+Prob010_mt2015_q4a                 D  r1  seat-90   L2 1.00  PASS
+Prob010_mt2015_q4a                 D  r1  seat-90   L2 1.00  PASS
+Prob024_hadd                       D  r1  seat-90   L2 1.00  PASS
+Prob024_hadd                       D  r1  seat-90   L2 1.00  PASS
+Prob024_hadd                       D  r1  seat-90   L2 1.00  PASS
+Prob015_vector1                    D  r1  seat-90   L2 1.00  PASS
+Prob015_vector1                    D  r1  seat-90   L2 1.00  PASS
+Prob015_vector1                    D  r1  seat-90   L2 1.00  PASS
+Prob029_m2014_q4g                  D  r1  seat-90   L2 1.00  PASS
+Prob029_m2014_q4g                  D  r1  seat-90   L2 1.00  PASS
+Prob029_m2014_q4g                  D  r1  seat-90   L2 1.00  PASS
+Prob031_dff                        D  r1  seat-90   L2 0.51  'Output `q` is x at clock cycle 2: X means it has no value. A register '
+Prob031_dff                        D  r1  seat-90   L2 0.51  'Output `q` is x at clock cycle 2: X means it has no value. A register '
+Prob031_dff                        D  r1  seat-90   L2 0.51  'Output `q` is x at clock cycle 2: X means it has no value. A register '
+Prob031_dff                        D  r2  seat-90   L2 1.00  PASS
+Prob031_dff                        D  r2  seat-90   L2 0.51  'Output `q` is x at clock cycle 2: X means it has no value. A register '
+Prob031_dff                        D  r2  seat-90   L2 0.51  'Output `q` is x at clock cycle 2: X means it has no value. A register '
+Prob033_ece241_2014_q1c            D  r1  seat-90   L2 1.00  PASS
+Prob033_ece241_2014_q1c            D  r1  seat-90   L2 1.00  PASS
+Prob033_ece241_2014_q1c            D  r1  seat-90   L3 0.52  "When a=8'b00000001, b=8'b00000000, your `overflow` is 1, which is wron"
+Prob034_dff8                       D  r1  seat-90   L2 0.52  "Output `q` is 8'b0000000x at clock cycle 0: X means it has no value. A"
+Prob034_dff8                       D  r1  seat-90   L0 0.10  '`q` is declared twice. Keep one declaration, `output reg [7:0] q` in t'
+Prob034_dff8                       D  r1  seat-90   L2 0.52  "Output `q` is 8'b0000000x at clock cycle 0: X means it has no value. A"
+Prob037_review2015_count1k         D  r1  seat-90   L2 1.00  PASS
+Prob037_review2015_count1k         D  r1  seat-90   L2 0.86  'Output `q` first goes wrong at clock cycle 1007. At that cycle the inp'
+Prob037_review2015_count1k         D  r1  seat-90   L2 1.00  PASS
+Prob034_dff8                       D  r2  seat-90   L2 0.52  "Output `q` is 8'b0000000x at clock cycle 0: X means it has no value. A"
+Prob034_dff8                       D  r2  seat-90   L0 0.10  '`q` is declared twice. Keep one declaration, `output reg [7:0] q` in t'
+Prob034_dff8                       D  r2  seat-90   L2 0.52  "Output `q` is 8'b0000000x at clock cycle 0: X means it has no value. A"
+Prob041_dff8r                      D  r1  seat-90   L0 0.10  '`q` is assigned inside an always block, so declare it as `output reg ['
+Prob041_dff8r                      D  r1  seat-90   L0 0.10  '`q` is declared twice. Keep one declaration, `output reg [7:0] q` in t'
+Prob041_dff8r                      D  r1  seat-90   L0 0.10  '`q` is declared twice. Keep one declaration, `output reg [7:0] q` in t'
+Prob041_dff8r                      D  r2  seat-90   L0 0.10  '`q` is assigned inside an always block, so declare it as `output reg ['
+Prob041_dff8r                      D  r2  seat-90   L0 0.10  '`q` is declared twice. Keep one declaration, `output reg [7:0] q` in t'
+Prob041_dff8r                      D  r2  seat-90   L2 1.00  PASS
+Prob038_count15                    D  r1  seat-90   L2 1.00  PASS
+Prob038_count15                    D  r1  seat-90   L2 1.00  PASS
+Prob038_count15                    D  r1  seat-90   L2 1.00  PASS
+Prob051_gates4                     D  r1  seat-90   L2 1.00  PASS
+Prob051_gates4                     D  r1  seat-90   L2 1.00  PASS
+Prob051_gates4                     D  r1  seat-90   L0 0.10  '`in` is declared as a single bit, but the code selects bits of it. Dec'
+Prob044_vectorgates                D  r1  seat-90   L2 0.50  "When a=3'b000, b=3'b000, your `out_not` is 6'b000001, which is wrong. "
+Prob044_vectorgates                D  r1  seat-90   L2 1.00  PASS
+Prob044_vectorgates                D  r1  seat-90   L2 0.50  "When a=3'b000, b=3'b000, your `out_not` is 6'b000001, which is wrong. "
+Prob058_alwaysblock2               D  r1  seat-90   L0 0.10  '`out_always_comb` is assigned inside an always block, so declare it as'
+Prob058_alwaysblock2               D  r1  seat-90   L0 0.10  '`out_always_comb` is assigned inside an always block, so declare it as'
+Prob058_alwaysblock2               D  r1  seat-90   L0 0.10  '`out_always_comb` is assigned inside an always block, so declare it as'
+Prob058_alwaysblock2               D  r2  seat-90   L0 0.10  '`out_always_comb` is assigned inside an always block, so declare it as'
+Prob058_alwaysblock2               D  r2  seat-90   L0 0.10  '`out_always_comb` is assigned inside an always block, so declare it as'
+Prob058_alwaysblock2               D  r2  seat-90   L0 0.10  '`out_always_comb` is assigned inside an always block, so declare it as'
+Prob061_2014_q4a                   D  r1  seat-90   L0 0.10  '`Q` is assigned inside an always block, so declare it as `output reg Q'
+Prob061_2014_q4a                   D  r1  seat-90   L0 0.10  '`Q` is declared twice. Keep one declaration, `output reg Q` in the por'
+Prob061_2014_q4a                   D  r1  seat-90   L0 0.10  '`Q` is assigned inside an always block, so declare it as `output reg Q'
+Prob063_review2015_shiftcount      D  r1  seat-90   L2 0.54  "Output `q` is 4'b0xxx at clock cycle 1: X means it has no value. A reg"
+Prob063_review2015_shiftcount      D  r1  seat-90   L2 0.50  "Output `q` is 4'b0xxx at clock cycle 1: X means it has no value. A reg"
+Prob063_review2015_shiftcount      D  r1  seat-90   L2 0.54  "Output `q` is 4'b0xxx at clock cycle 1: X means it has no value. A reg"
+Prob061_2014_q4a                   D  r2  seat-90   L0 0.10  '`Q` is declared twice. Keep one declaration, `output reg Q` in the por'
+Prob061_2014_q4a                   D  r2  seat-90   L2 1.00  PASS
+Prob061_2014_q4a                   D  r2  seat-90   L0 0.10  '`Q` is declared twice. Keep one declaration, `output reg Q` in the por'
+Prob063_review2015_shiftcount      D  r2  seat-90   L2 0.55  'Output `q` first goes wrong at clock cycle 8. At that cycle the inputs'
+Prob063_review2015_shiftcount      D  r2  seat-90   L2 0.54  'Output `q` first goes wrong at clock cycle 8. At that cycle the inputs'
+Prob063_review2015_shiftcount      D  r2  seat-90   L2 0.55  'Output `q` first goes wrong at clock cycle 8. At that cycle the inputs'
+Prob064_vector3                    D  r1  seat-90   L3 0.50  "In simulation, when a=5'bxxxxx, b=5'bxxxxx, c=5'bxxxxx, d=5'bxxxxx, e="
+Prob064_vector3                    D  r1  seat-90   L2 1.00  PASS
+Prob064_vector3                    D  r1  seat-90   L2 0.50  "When a=5'bxxxxx, b=5'bxxxxx, c=5'bxxxxx, d=5'bxxxxx, e=5'bxxxxx, f=5'b"
+Prob075_counter_2bc                D  r1  seat-90   L2 1.00  'Make the reset asynchronous: use `always @(posedge clk, posedge areset'
+Prob075_counter_2bc                D  r1  seat-90   L2 1.00  'Make the reset asynchronous: use `always @(posedge clk, posedge areset'
+Prob075_counter_2bc                D  r1  seat-90   L2 1.00  PASS
+Prob070_ece241_2013_q2             D  r1  seat-90   L3 0.64  'When a=1, b=0, c=1, d=1, your `out_pos` is 1, which is wrong. Re-deriv'
+Prob070_ece241_2013_q2             D  r1  seat-90   L3 0.58  'When a=1, b=0, c=1, d=1, your `out_pos` is 1, which is wrong. Re-deriv'
+Prob070_ece241_2013_q2             D  r1  seat-90   L3 0.77  'When a=1, b=0, c=1, d=1, your `out_pos` is 1, which is wrong. Re-deriv'
+Prob076_always_case                D  r1  seat-90   L2 1.00  PASS
+Prob076_always_case                D  r1  seat-90   L2 1.00  PASS
+Prob076_always_case                D  r1  seat-90   L2 1.00  PASS
+Prob070_ece241_2013_q2             D  r2  seat-90   L3 0.86  'When a=1, b=0, c=1, d=1, your `out_sop` is 0, which is wrong. Re-deriv'
+Prob070_ece241_2013_q2             D  r2  seat-90   L3 0.63  'When a=1, b=0, c=1, d=1, your `out_pos` is 1, which is wrong. Re-deriv'
+Prob070_ece241_2013_q2             D  r2  seat-90   L3 0.69  'When a=1, b=0, c=1, d=1, your `out_pos` is 1, which is wrong. Re-deriv'
+Prob079_fsm3onehot                 D  r1  seat-90   L0 0.10  '`next_state` is assigned inside an always block, so declare it as `out'
+Prob079_fsm3onehot                 D  r1  seat-90   L2 0.56  "When in=1, state=4'b0001, your `next_state` is 4'b0000, which is wrong"
+Prob079_fsm3onehot                 D  r1  seat-90   L2 1.00  PASS
+Prob080_timer                      D  r1  seat-90   L2 0.99  'Output `tc` first goes wrong at clock cycle 5. At that cycle the input'
+Prob080_timer                      D  r1  seat-90   L2 0.82  'Output `tc` is x at clock cycle 2: X means it has no value. A register'
+Prob080_timer                      D  r1  seat-90   L2 0.99  'Output `tc` first goes wrong at clock cycle 5. At that cycle the input'
+Prob081_7458                       D  r1  seat-90   L2 1.00  PASS
+Prob081_7458                       D  r1  seat-90   L2 1.00  PASS
+Prob081_7458                       D  r1  seat-90   L2 1.00  PASS
+Prob080_timer                      D  r2  seat-90   L2 0.99  'Output `tc` first goes wrong at clock cycle 23. At that cycle the inpu'
+Prob080_timer                      D  r2  seat-90   L2 0.65  'Output `tc` first goes wrong at clock cycle 2. At that cycle the input'
+Prob080_timer                      D  r2  seat-90   L2 0.99  'Output `tc` first goes wrong at clock cycle 23. At that cycle the inpu'
+Prob083_mt2015_q4b                 D  r1  seat-90   L0 0.10  '`z` is declared twice. Keep one declaration, `output reg z` in the por'
+Prob083_mt2015_q4b                 D  r1  seat-90   L2 1.00  PASS
+Prob083_mt2015_q4b                 D  r1  seat-90   L0 0.10  '`z` is assigned inside an always block, so declare it as `output reg z'
+Prob090_circuit1                   D  r1  seat-90   L2 0.89  'When a=1, b=1, your `q` is 0, which is wrong. Re-derive `q` for that i'
+Prob090_circuit1                   D  r1  seat-90   L2 1.00  PASS
+Prob090_circuit1                   D  r1  seat-90   L3 0.89  'When a=1, b=1, your `q` is 0, which is wrong. Re-derive `q` for that i'
+Prob102_circuit3                   D  r1  seat-90   L3 0.76  'When a=0, b=1, c=0, d=1, your `q` is 0, which is wrong. Re-derive `q` '
+Prob102_circuit3                   D  r1  seat-90   L3 0.75  'When a=0, b=1, c=1, d=0, your `q` is 0, which is wrong. Re-derive `q` '
+Prob102_circuit3                   D  r1  seat-90   L3 0.80  'When a=1, b=1, c=0, d=0, your `q` is 1, which is wrong. Re-derive `q` '
+Prob105_rotate100                  D  r1  seat-90   L2 0.50  'Output `q` first goes wrong at clock cycle 2. At that cycle the inputs'
+Prob105_rotate100                  D  r1  seat-90   L2 0.50  'Output `q` first goes wrong at clock cycle 2. At that cycle the inputs'
+Prob105_rotate100                  D  r1  seat-90   L0 0.10  '`q` is declared twice. Keep one declaration, `output reg [99:0] q` in '
+Prob105_rotate100                  D  r2  seat-90   L0 0.10  'Line 14 does not compile: `Array data needs an array index here.`. The'
+Prob105_rotate100                  D  r2  seat-90   L2 0.59  'Output `q` first goes wrong at clock cycle 6. At that cycle the inputs'
+Prob105_rotate100                  D  r2  seat-90   L2 0.50  'Output `q` first goes wrong at clock cycle 2. At that cycle the inputs'
+Prob102_circuit3                   D  r2  seat-90   L3 0.76  'When a=1, b=0, c=0, d=1, your `q` is 0, which is wrong. Re-derive `q` '
+Prob102_circuit3                   D  r2  seat-90   L3 0.79  'When a=1, b=1, c=1, d=0, your `q` is 0, which is wrong. Re-derive `q` '
+Prob102_circuit3                   D  r2  seat-90   L3 0.76  'When a=1, b=1, c=0, d=0, your `q` is 1, which is wrong. Re-derive `q` '
+Prob107_fsm1s                      D  r1  seat-90   L0 0.10  '`out` is assigned inside an always block, so declare it as `output reg'
+Prob107_fsm1s                      D  r1  seat-90   L0 0.10  '`out` is assigned inside an always block, so declare it as `output reg'
+Prob107_fsm1s                      D  r1  seat-90   L0 0.10  '`out` is assigned inside an always block, so declare it as `output reg'
+Prob110_fsm2                       D  r1  seat-90   L0 0.10  '`out` is assigned inside an always block, so declare it as `output reg'
+Prob110_fsm2                       D  r1  seat-90   L0 0.10  '`out` is assigned inside an always block, so declare it as `output reg'
+Prob110_fsm2                       D  r1  seat-90   L2 1.00  PASS
+Prob107_fsm1s                      D  r2  seat-90   L0 0.10  '`out` is assigned inside an always block, so declare it as `output reg'
+Prob107_fsm1s                      D  r2  seat-90   L0 0.10  '`out` is declared twice. Keep one declaration, `output reg out` in the'
+Prob107_fsm1s                      D  r2  seat-90   L0 0.10  '`out` is assigned inside an always block, so declare it as `output reg'
+Prob119_fsm3                       D  r1  seat-90   L0 0.10  '`out` is assigned inside an always block, so declare it as `output reg'
+Prob119_fsm3                       D  r1  seat-90   L0 0.10  '`out` is assigned inside an always block, so declare it as `output reg'
+Prob119_fsm3                       D  r1  seat-90   L0 0.10  '`out` is assigned inside an always block, so declare it as `output reg'
+Prob121_2014_q3bfsm                D  r1  seat-90   L0 0.10  "Assigning to an enum needs a cast, e.g. `state <= state_t'(next);`, or"
+Prob121_2014_q3bfsm                D  r1  seat-90   L0 0.10  '`z` is assigned inside an always block, so declare it as `output reg z'
+Prob121_2014_q3bfsm                D  r1  seat-90   L0 0.10  '`next_y` is assigned inside an always block, so declare it as `reg` (o'
+Prob119_fsm3                       D  r2  seat-90   L0 0.10  '`out` is assigned inside an always block, so declare it as `output reg'
+Prob119_fsm3                       D  r2  seat-90   L0 0.10  '`out` is assigned inside an always block, so declare it as `output reg'
+Prob119_fsm3                       D  r2  seat-90   L0 0.10  '`out` is assigned inside an always block, so declare it as `output reg'
+Prob121_2014_q3bfsm                D  r2  seat-90   L0 0.10  '`z` is assigned inside an always block, so declare it as `output reg z'
+Prob121_2014_q3bfsm                D  r2  seat-90   L0 0.10  '`z` is declared twice. Keep one declaration, `output reg z` in the por'
+Prob121_2014_q3bfsm                D  r2  seat-90   L2 0.83  'Output `z` first goes wrong at clock cycle 6. At that cycle the inputs'
+Prob125_kmap3                      D  r1  seat-90   L2 0.84  'When a=0, b=0, c=1, d=0, your `out` is 0, which is wrong. Re-derive `o'
+Prob125_kmap3                      D  r1  seat-90   L2 0.86  'When a=0, b=1, c=0, d=1, your `out` is 1, which is wrong. Re-derive `o'
+Prob125_kmap3                      D  r1  seat-90   L2 0.84  'When a=0, b=0, c=1, d=0, your `out` is 0, which is wrong. Re-derive `o'
+Prob130_circuit5                   D  r1  seat-90   L0 0.10  '`q` is assigned inside an always block, so declare it as `output reg ['
+Prob130_circuit5                   D  r1  seat-90   L0 0.10  '`q` is assigned inside an always block, so declare it as `output reg ['
+Prob130_circuit5                   D  r1  seat-90   L0 0.10  "Line 23 does not compile: `syntax error`. The line is `4'da: q = e;`. "
+Prob130_circuit5                   D  r2  seat-90   L0 0.10  '`q` is assigned inside an always block, so declare it as `output reg ['
+Prob130_circuit5                   D  r2  seat-90   L0 0.10  '`q` is assigned inside an always block, so declare it as `output reg ['
+Prob130_circuit5                   D  r2  seat-90   L0 0.10  '`q` is assigned inside an always block, so declare it as `output reg ['
+Prob125_kmap3                      D  r2  seat-90   L2 0.89  'When a=0, b=0, c=1, d=0, your `out` is 0, which is wrong. Re-derive `o'
+Prob125_kmap3                      D  r2  seat-90   L2 0.90  'When a=0, b=0, c=1, d=0, your `out` is 0, which is wrong. Re-derive `o'
+Prob125_kmap3                      D  r2  seat-90   L2 0.84  'When a=0, b=0, c=1, d=0, your `out` is 0, which is wrong. Re-derive `o'
+Prob132_always_if2                 D  r1  seat-90   L2 1.00  PASS
+Prob132_always_if2                 D  r1  seat-90   L2 1.00  PASS
+Prob132_always_if2                 D  r1  seat-90   L3 0.77  'When arrived=1, cpu_overheated=0, gas_tank_empty=1, your `keep_driving'
+Prob133_2014_q3fsm                 D  r1  seat-90   L0 0.10  'Line 9 does not compile: `Enumeration name E has an inferred value tha'
+Prob133_2014_q3fsm                 D  r1  seat-90   L0 0.10  '`z` is assigned inside an always block, so declare it as `output reg z'
+Prob133_2014_q3fsm                 D  r1  seat-90   L0 0.10  'Line 9 does not compile: `Enumeration name E has an inferred value tha'
+Prob135_m2014_q6b                  D  r1  seat-90   L2 0.78  "When y=3'b010, w=0, your `Y1` is 1, which is wrong. Re-derive `Y1` for"
+Prob135_m2014_q6b                  D  r1  seat-90   L0 0.10  '`next_y1` is assigned inside an always block, so declare it as `reg` ('
+Prob135_m2014_q6b                  D  r1  seat-90   L0 0.10  "Line 42 does not compile: `syntax error`. The line is `(y == 3'b101 &&"
+Prob133_2014_q3fsm                 D  r2  seat-90   L0 0.10  '`z` is assigned inside an always block, so declare it as `output reg z'
+Prob133_2014_q3fsm                 D  r2  seat-90   L2 0.94  'Output `z` first goes wrong at clock cycle 11. At that cycle the input'
+Prob133_2014_q3fsm                 D  r2  seat-90   L0 0.10  'Line 9 does not compile: `Enumeration name E and A have the same value'
+Prob135_m2014_q6b                  D  r2  seat-90   L2 0.78  "When y=3'b010, w=0, your `Y1` is 1, which is wrong. Re-derive `Y1` for"
+Prob135_m2014_q6b                  D  r2  seat-90   L2 0.78  "When y=3'b010, w=0, your `Y1` is 1, which is wrong. Re-derive `Y1` for"
+Prob135_m2014_q6b                  D  r2  seat-90   L0 0.10  "Line 31 does not compile: `syntax error`. The line is `(y == 3'b101 &&"
+Prob144_conwaylife                 D  r1  seat-90   L0 0.10  'Icarus rejects the declaration `integer dx, dy;` at this point. Declar'
+Prob144_conwaylife                 D  r1  seat-90   L0 0.10  'Line 30 does not compile: `syntax error`. The line is `if (di == 0 && '
+Prob144_conwaylife                 D  r1  seat-90   L0 0.10  'Line 28 does not compile: `syntax error`. The line is `if (i == 0 && j'
+Prob145_circuit8                   D  r1  seat-90   L2 0.51  'In simulation, when clock=1, a=0, your `p` is x: X means it has no val'
+Prob145_circuit8                   D  r1  seat-90   L0 0.10  '`p` is declared twice. Keep one declaration, `output reg p` in the por'
+Prob145_circuit8                   D  r1  seat-90   L2 0.62  'When clock=1, a=0, your `p` is 1, which is wrong. Re-derive `p` for th'
+Prob144_conwaylife                 D  r2  seat-90   L0 0.10  'Line 26 does not compile: `syntax error`. The line is `if (dx == 0 && '
+Prob144_conwaylife                 D  r2  seat-90   L0 0.10  'Line 22 does not compile: `syntax error`. The line is `if (di == 0 && '
+Prob144_conwaylife                 D  r2  seat-90   L0 0.10  'Line 28 does not compile: `syntax error`. The line is `if (i == 0 && j'
+Prob145_circuit8                   D  r2  seat-90   L2 0.51  'In simulation, when clock=1, a=0, your `p` is x: X means it has no val'
+Prob145_circuit8                   D  r2  seat-90   L2 0.51  'In simulation, when clock=1, a=0, your `p` is x: X means it has no val'
+Prob145_circuit8                   D  r2  seat-90   L2 0.62  'When clock=1, a=0, your `p` is 1, which is wrong. Re-derive `p` for th'
+Prob149_ece241_2013_q4             D  r1  seat-90   L2 0.53  'Output `dfr` first goes wrong at clock cycle 3. At that cycle the inpu'
+Prob149_ece241_2013_q4             D  r1  seat-90   L0 0.10  'The testbench cannot use TopModule: `timescale directive cannot be ins'
+Prob149_ece241_2013_q4             D  r1  seat-90   L2 0.51  'When `reset` is high, the outputs do not take their reset values. Test'
+Prob152_lemmings3                  D  r1  seat-90   L2 0.76  'Output `digging` first goes wrong at clock cycle 13. At that cycle the'
+Prob152_lemmings3                  D  r1  seat-90   L2 0.86  'Output `digging` first goes wrong at clock cycle 12. At that cycle the'
+Prob152_lemmings3                  D  r1  seat-90   L2 0.65  'Output `walk_left` first goes wrong at clock cycle 12. At that cycle t'
+Prob149_ece241_2013_q4             D  r2  seat-90   L2 0.53  'Output `dfr` first goes wrong at clock cycle 3. At that cycle the inpu'
+Prob149_ece241_2013_q4             D  r2  seat-90   L2 0.56  'Output `fr0` first goes wrong at clock cycle 3. At that cycle the inpu'
+Prob149_ece241_2013_q4             D  r2  seat-90   L2 0.51  'When `reset` is high, the outputs do not take their reset values. Test'
+Prob152_lemmings3                  D  r2  seat-90   L0 0.10  "Assigning to an enum needs a cast, e.g. `state <= state_t'(next);`, or"
+Prob152_lemmings3                  D  r2  seat-90   L2 0.86  'Output `digging` first goes wrong at clock cycle 12. At that cycle the'
+Prob152_lemmings3                  D  r2  seat-90   L2 0.65  'Output `walk_left` first goes wrong at clock cycle 12. At that cycle t'
+
+=========== run D rep 1 ===========
+  solved 22/40   unverified 0   wall 2540s   -> /workspace/projects/19-verified-rtl-agent/runs/D-1.jsonl

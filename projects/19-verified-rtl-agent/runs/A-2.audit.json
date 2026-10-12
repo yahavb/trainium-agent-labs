@@ -1,0 +1,26 @@
+{
+  "run": "A",
+  "rep": "2",
+  "file": "A-2.jsonl",
+  "results": {
+    "Prob007_wire": "equivalent",
+    "Prob010_mt2015_q4a": "equivalent",
+    "Prob015_vector1": "equivalent",
+    "Prob024_hadd": "equivalent",
+    "Prob029_m2014_q4g": "equivalent",
+    "Prob033_ece241_2014_q1c": "equivalent",
+    "Prob037_review2015_count1k": "not_run",
+    "Prob038_count15": "not_run",
+    "Prob051_gates4": "equivalent",
+    "Prob075_counter_2bc": "not_run",
+    "Prob076_always_case": "equivalent",
+    "Prob081_7458": "equivalent",
+    "Prob132_always_if2": "equivalent"
+  },
+  "counts": {
+    "equivalent": 10,
+    "not_equivalent": 0,
+    "unsupported": 0,
+    "not_run": 3
+  }
+}

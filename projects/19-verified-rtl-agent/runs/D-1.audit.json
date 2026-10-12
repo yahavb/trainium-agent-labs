@@ -1,0 +1,49 @@
+{
+  "run": "D",
+  "rep": "1",
+  "file": "D-1.jsonl",
+  "results": {
+    "Prob007_wire": "equivalent",
+    "Prob010_mt2015_q4a": "equivalent",
+    "Prob015_vector1": "equivalent",
+    "Prob024_hadd": "equivalent",
+    "Prob029_m2014_q4g": "equivalent",
+    "Prob031_dff": "not_run",
+    "Prob033_ece241_2014_q1c": "equivalent",
+    "Prob037_review2015_count1k": "not_run",
+    "Prob038_count15": "not_run",
+    "Prob041_dff8r": "not_run",
+    "Prob044_vectorgates": "equivalent",
+    "Prob051_gates4": "equivalent",
+    "Prob061_2014_q4a": "not_run",
+    "Prob064_vector3": "equivalent",
+    "Prob075_counter_2bc": "not_run",
+    "Prob076_always_case": "equivalent",
+    "Prob079_fsm3onehot": "not_equivalent",
+    "Prob079_fsm3onehot:counterexample": {
+      "inputs": {
+        "in": "1",
+        "state": "4'b1100"
+      },
+      "gold": {
+        "next_state": "4'b1010",
+        "out": "1"
+      },
+      "gate": {
+        "next_state": "4'b0000",
+        "out": "0"
+      }
+    },
+    "Prob081_7458": "equivalent",
+    "Prob083_mt2015_q4b": "equivalent",
+    "Prob090_circuit1": "equivalent",
+    "Prob110_fsm2": "not_run",
+    "Prob132_always_if2": "equivalent"
+  },
+  "counts": {
+    "equivalent": 14,
+    "not_equivalent": 1,
+    "unsupported": 0,
+    "not_run": 7
+  }
+}

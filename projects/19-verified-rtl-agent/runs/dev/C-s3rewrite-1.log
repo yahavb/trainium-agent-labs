@@ -1,0 +1,19 @@
+run C rep 1: 8 problems (0 already done), budget 6, feedback located, model Qwen/Qwen3-8B, seats seat-93, code 3722668+dirty -> runs/dev/C-s3rewrite-1.jsonl
+Prob001_zero                       C  r1  seat-93   L0 0.10  'This always block has no trigger. Use `always @(*)` (or `always_comb`)'
+Prob001_zero                       C  r2  seat-93   L2 1.00  PASS
+Prob021_mux256to1v                 C  r1  seat-93   L0 0.10  "Line 12 does not compile: `A reference to a wire or reg (`index') is n"
+Prob021_mux256to1v                 C  r2  seat-93   L0 0.10  "Line 12 does not compile: `A reference to a wire or reg (`index') is n"
+Prob021_mux256to1v                 C  r3  seat-93   L0 0.10  "Line 12 does not compile: `A reference to a wire or reg (`index') is n"
+Prob050_kmap1                      C  r1  seat-93   L3 0.82  'When a=1, b=0, c=0, your `out` is 0, which is wrong. Re-derive `out` f'
+Prob050_kmap1                      C  r2  seat-93   L3 0.88  'When a=0, b=0, c=1, your `out` is 0, which is wrong. Re-derive `out` f'
+Prob050_kmap1                      C  r3  seat-93   L3 0.93  'When a=0, b=1, c=0, your `out` is 0, which is wrong. Re-derive `out` f'
+Prob050_kmap1                      C  r4  seat-93   L3 0.87  'When a=0, b=0, c=0, your `out` is 1, which is wrong. Re-derive `out` f'
+Prob050_kmap1                      C  r5  seat-93   L3 0.82  'When a=1, b=0, c=0, your `out` is 0, which is wrong. Re-derive `out` f'
+Prob050_kmap1                      C  r6  seat-93   L3 0.88  'When a=0, b=0, c=1, your `out` is 0, which is wrong. Re-derive `out` f'
+Prob054_edgedetect                 C  r1  seat-93   L2 0.58  'Output `pedge` first goes wrong at clock cycle 4. At that cycle the in'
+Prob054_edgedetect                 C  r2  seat-93   L2 0.54  'Output `pedge` first goes wrong at clock cycle 3. At that cycle the in'
+Prob054_edgedetect                 C  r3  seat-93   L2 0.55  'Output `pedge` first goes wrong at clock cycle 3. At that cycle the in'
+Prob054_edgedetect                 C  r4  seat-93   L2 0.55  'Output `pedge` first goes wrong at clock cycle 3. At that cycle the in'
+Prob066_edgecapture                C  r1  seat-93   L2 0.57  'Output `out` first goes wrong at clock cycle 10. At that cycle the inp'
+Prob066_edgecapture                C  r2  seat-93   L2 0.74  'Output `out` first goes wrong at clock cycle 4. At that cycle the inpu'
+Prob066_edgecapture                C  r3  seat-93   L2 0.73  'Output `out` first goes wrong at clock cycle 5. At that cycle the inpu'

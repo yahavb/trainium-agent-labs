@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" width="640" height="300" font-family="system-ui, -apple-system, Segoe UI, sans-serif" role="img" aria-label="Pass rate by run">
+<style>.bg{fill:#fcfcfb}.grid{stroke:#e1e0d9;stroke-width:1}.ax{fill:#898781;font-size:11px}.lab{fill:#52514e;font-size:12px}.ttl{fill:#0b0b0b;font-size:14px;font-weight:600}.dot{fill:#2a78d6;stroke:#fcfcfb;stroke-width:2}.mean{stroke:#52514e;stroke-width:2}@media (prefers-color-scheme: dark){.bg{fill:#1a1a19}.grid{stroke:#2c2c2a}.lab{fill:#c3c2b7}.ttl{fill:#ffffff}.dot{fill:#3987e5;stroke:#1a1a19}.mean{stroke:#c3c2b7}}</style>
+<rect class="bg" width="640" height="300"/>
+<text class="ttl" x="56" y="24">Pass rate by run</text>
+<line class="grid" x1="56" x2="624" y1="244.0" y2="244.0"/>
+<text class="ax" x="48" y="248.0" text-anchor="end">0%</text>
+<line class="grid" x1="56" x2="624" y1="194.0" y2="194.0"/>
+<text class="ax" x="48" y="198.0" text-anchor="end">25%</text>
+<line class="grid" x1="56" x2="624" y1="144.0" y2="144.0"/>
+<text class="ax" x="48" y="148.0" text-anchor="end">50%</text>
+<line class="grid" x1="56" x2="624" y1="94.0" y2="94.0"/>
+<text class="ax" x="48" y="98.0" text-anchor="end">75%</text>
+<line class="grid" x1="56" x2="624" y1="44.0" y2="44.0"/>
+<text class="ax" x="48" y="48.0" text-anchor="end">100%</text>
+<line class="mean" x1="85.3" x2="121.3" y1="175.7" y2="175.7"/>
+<circle class="dot" cx="91.3" cy="174.0" r="5"><title>A rep 1: 14/40 (35%)</title></circle>
+<circle class="dot" cx="103.3" cy="179.0" r="5"><title>A rep 2: 13/40 (32%)</title></circle>
+<circle class="dot" cx="115.3" cy="174.0" r="5"><title>A rep 3: 14/40 (35%)</title></circle>
+<text class="lab" x="103.3" y="264" text-anchor="middle" font-weight="600">A</text>
+<text class="ax" x="103.3" y="279" text-anchor="middle">one-shot</text>
+<line class="mean" x1="180.0" x2="216.0" y1="175.7" y2="175.7"/>
+<circle class="dot" cx="186.0" cy="174.0" r="5"><title>R rep 1: 14/40 (35%)</title></circle>
+<circle class="dot" cx="198.0" cy="179.0" r="5"><title>R rep 2: 13/40 (32%)</title></circle>
+<circle class="dot" cx="210.0" cy="174.0" r="5"><title>R rep 3: 14/40 (35%)</title></circle>
+<text class="lab" x="198.0" y="264" text-anchor="middle" font-weight="600">R</text>
+<text class="ax" x="198.0" y="279" text-anchor="middle">retry, no feedback</text>
+<line class="mean" x1="274.7" x2="310.7" y1="150.2" y2="150.2"/>
+<circle class="dot" cx="274.7" cy="149.0" r="5"><title>Q rep 1: 19/40 (48%)</title></circle>
+<circle class="dot" cx="286.7" cy="144.0" r="5"><title>Q rep 2: 20/40 (50%)</title></circle>
+<circle class="dot" cx="298.7" cy="154.0" r="5"><title>Q rep 3: 18/40 (45%)</title></circle>
+<circle class="dot" cx="310.7" cy="154.0" r="5"><title>Q rep 4: 18/40 (45%)</title></circle>
+<text class="lab" x="292.7" y="264" text-anchor="middle" font-weight="600">Q</text>
+<text class="ax" x="292.7" y="279" text-anchor="middle">retry, rotating prompts</text>
+<line class="mean" x1="369.3" x2="405.3" y1="144.0" y2="144.0"/>
+<circle class="dot" cx="375.3" cy="144.0" r="5"><title>B rep 1: 20/40 (50%)</title></circle>
+<circle class="dot" cx="387.3" cy="154.0" r="5"><title>B rep 2: 18/40 (45%)</title></circle>
+<circle class="dot" cx="399.3" cy="134.0" r="5"><title>B rep 3: 22/40 (55%)</title></circle>
+<text class="lab" x="387.3" y="264" text-anchor="middle" font-weight="600">B</text>
+<text class="ax" x="387.3" y="279" text-anchor="middle">raw feedback</text>
+<line class="mean" x1="464.0" x2="500.0" y1="142.3" y2="142.3"/>
+<circle class="dot" cx="470.0" cy="144.0" r="5"><title>C rep 1: 20/40 (50%)</title></circle>
+<circle class="dot" cx="482.0" cy="144.0" r="5"><title>C rep 2: 20/40 (50%)</title></circle>
+<circle class="dot" cx="494.0" cy="139.0" r="5"><title>C rep 3: 21/40 (52%)</title></circle>
+<text class="lab" x="482.0" y="264" text-anchor="middle" font-weight="600">C</text>
+<text class="ax" x="482.0" y="279" text-anchor="middle">located feedback</text>
+<line class="mean" x1="558.7" x2="594.7" y1="134.0" y2="134.0"/>
+<circle class="dot" cx="564.7" cy="134.0" r="5"><title>D rep 1: 22/40 (55%)</title></circle>
+<circle class="dot" cx="576.7" cy="134.0" r="5"><title>D rep 2: 22/40 (55%)</title></circle>
+<circle class="dot" cx="588.7" cy="134.0" r="5"><title>D rep 3: 22/40 (55%)</title></circle>
+<text class="lab" x="576.7" y="264" text-anchor="middle" font-weight="600">D</text>
+<text class="ax" x="576.7" y="279" text-anchor="middle">3 seats, breadth</text>
+<text class="ax" x="56" y="294">Each dot is one rep; the bar is their mean. Pass = 0 mismatches in the VerilogEval testbench.</text>
+</svg>
