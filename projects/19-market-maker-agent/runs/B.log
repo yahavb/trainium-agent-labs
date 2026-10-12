@@ -1,0 +1,152 @@
+
+=========== level 1: calm (raw feedback, rep 1) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.20 rules CROSSED lcb +0  (51s)
+   feedback: rate": 0.0, "worst": 0.0, "fills": 0.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": 0.0, "markout": 0.0, "against_n": 0.0, "against_markout": 0.0, "with_markout": 0.0, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.0, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.0, "hot_half": NaN, "calm_half": NaN, "obligation": 0.0, "both_sides": 0.0, "skew_inv": 0.0, "skew_imb": 0.0, "widen_vol": 0.0, "max_drawdown": 0.0}}
+round 1 [repair] s0 0.20 rules CROSSED lcb +0 | s1 0.71 profit LOSS lcb -5  (55s)
+   feedback: ills": 597.188, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": -1.75, "markout": 0.0, "against_n": 127.875, "against_markout": 0.021, "with_markout": -0.006, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.708, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.5, "hot_half": NaN, "calm_half": 0.796, "obligation": 1.0, "both_sides": 1.0, "skew_inv": -0.883, "skew_imb": 0.002, "widen_vol": -0.023, "max_drawdown": 10.0}}
+round 2 [repair] s0 0.71 profit LOSS lcb -5 | s1 0.71 profit LOSS lcb -5  (69s)
+   feedback: ills": 597.188, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": -1.75, "markout": 0.0, "against_n": 127.875, "against_markout": 0.021, "with_markout": -0.006, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.708, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.5, "hot_half": NaN, "calm_half": 0.796, "obligation": 1.0, "both_sides": 1.0, "skew_inv": -0.883, "skew_imb": 0.002, "widen_vol": -0.023, "max_drawdown": 10.0}}
+round 3 [repair] s0 0.71 profit LOSS lcb -5 | s1 0.71 profit LOSS lcb -5  (65s)
+   feedback: ills": 597.188, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": -1.75, "markout": 0.0, "against_n": 127.875, "against_markout": 0.021, "with_markout": -0.006, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.708, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.5, "hot_half": NaN, "calm_half": 0.796, "obligation": 1.0, "both_sides": 1.0, "skew_inv": -0.883, "skew_imb": 0.002, "widen_vol": -0.023, "max_drawdown": 10.0}}
+round 4 [restart] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (45s)
+   feedback: {"error": {"step": 0, "type": "TypeError", "message": "unsupported operand type(s) for +: 'int' and 'str'", "line": 8, "inventory": 0, "best_bid": 999, "best_ask": 1001, "history_len": 1, "seed": 0}, "violation": null, "violation_counts": {}, "metrics": {}}
+round 5 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (44s)
+   feedback: {"error": {"step": 0, "type": "TypeError", "message": "unsupported operand type(s) for +: 'int' and 'str'", "line": 8, "inventory": 0, "best_bid": 999, "best_ask": 1001, "history_len": 1, "seed": 0}, "violation": null, "violation_counts": {}, "metrics": {}}
+=> level 1: NOT VERIFIED, best score 0.71; held-out fail (lcb -4); 13742 tokens, 330s
+
+=========== level 2: trend (raw feedback, rep 1) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (46s)
+   feedback: {"error": {"step": 0, "type": "TypeError", "message": "unsupported operand type(s) for //: 'str' and 'int'", "line": 6, "inventory": 0, "best_bid": 999, "best_ask": 1001, "history_len": 1, "seed": 0}, "violation": null, "violation_counts": {}, "metrics": {}}
+round 1 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (56s)
+   feedback: {"error": {"step": 0, "type": "TypeError", "message": "unsupported operand type(s) for //: 'str' and 'int'", "line": 6, "inventory": 0, "best_bid": 999, "best_ask": 1001, "history_len": 1, "seed": 0}, "violation": null, "violation_counts": {}, "metrics": {}}
+round 2 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (51s)
+   feedback: {"error": {"step": 0, "type": "TypeError", "message": "unsupported operand type(s) for //: 'str' and 'int'", "line": 6, "inventory": 0, "best_bid": 999, "best_ask": 1001, "history_len": 1, "seed": 0}, "violation": null, "violation_counts": {}, "metrics": {}}
+round 3 [restart] s0 0.60 profit LOSS lcb +0 | s1 0.10 runs EXCEPTION  (60s)
+   feedback: rate": 0.0, "worst": 0.0, "fills": 0.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": 0.0, "markout": 0.0, "against_n": 0.0, "against_markout": 0.0, "with_markout": 0.0, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.0, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.0, "hot_half": NaN, "calm_half": 2.0, "obligation": 1.0, "both_sides": 1.0, "skew_inv": 0.0, "skew_imb": 0.0, "widen_vol": 0.0, "max_drawdown": 0.0}}
+round 4 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (44s)
+   feedback: rate": 0.0, "worst": 0.0, "fills": 0.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": 0.0, "markout": 0.0, "against_n": 0.0, "against_markout": 0.0, "with_markout": 0.0, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.0, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.0, "hot_half": NaN, "calm_half": 2.0, "obligation": 1.0, "both_sides": 1.0, "skew_inv": 0.0, "skew_imb": 0.0, "widen_vol": 0.0, "max_drawdown": 0.0}}
+round 5 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (46s)
+   feedback: rate": 0.0, "worst": 0.0, "fills": 0.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": 0.0, "markout": 0.0, "against_n": 0.0, "against_markout": 0.0, "with_markout": 0.0, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.0, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.0, "hot_half": NaN, "calm_half": 2.0, "obligation": 1.0, "both_sides": 1.0, "skew_inv": 0.0, "skew_imb": 0.0, "widen_vol": 0.0, "max_drawdown": 0.0}}
+=> level 2: NOT VERIFIED, best score 0.60; held-out fail (lcb +0); 13022 tokens, 304s
+
+=========== level 3: informed (raw feedback, rep 1) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.20 rules CROSSED lcb +0  (58s)
+   feedback: rate": 0.0, "worst": 0.0, "fills": 0.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": 0.0, "markout": 0.0, "against_n": 0.0, "against_markout": 0.0, "with_markout": 0.0, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.0, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.0, "hot_half": NaN, "calm_half": NaN, "obligation": 0.0, "both_sides": 0.0, "skew_inv": 0.0, "skew_imb": 0.0, "widen_vol": 0.0, "max_drawdown": 0.0}}
+round 1 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS_ADVERSE lcb -365  (51s)
+   feedback: rate": 0.0, "worst": 0.0, "fills": 0.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": 0.0, "markout": 0.0, "against_n": 0.0, "against_markout": 0.0, "with_markout": 0.0, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.0, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.0, "hot_half": NaN, "calm_half": 3.0, "obligation": 1.0, "both_sides": 1.0, "skew_inv": 0.0, "skew_imb": 0.0, "widen_vol": 0.0, "max_drawdown": 0.0}}
+round 2 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (65s)
+   feedback: rate": 0.0, "worst": 0.0, "fills": 0.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": 0.0, "markout": 0.0, "against_n": 0.0, "against_markout": 0.0, "with_markout": 0.0, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.0, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.0, "hot_half": NaN, "calm_half": 3.0, "obligation": 1.0, "both_sides": 1.0, "skew_inv": 0.0, "skew_imb": 0.0, "widen_vol": 0.0, "max_drawdown": 0.0}}
+round 3 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (68s)
+   feedback: rate": 0.0, "worst": 0.0, "fills": 0.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": 0.0, "markout": 0.0, "against_n": 0.0, "against_markout": 0.0, "with_markout": 0.0, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.0, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.0, "hot_half": NaN, "calm_half": 3.0, "obligation": 1.0, "both_sides": 1.0, "skew_inv": 0.0, "skew_imb": 0.0, "widen_vol": 0.0, "max_drawdown": 0.0}}
+round 4 [restart] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (50s)
+   feedback: {"error": {"step": 0, "type": "TypeError", "message": "unsupported operand type(s) for //: 'str' and 'int'", "line": 5, "inventory": 0, "best_bid": 999, "best_ask": 1001, "history_len": 1, "seed": 0}, "violation": null, "violation_counts": {}, "metrics": {}}
+round 5 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (52s)
+   feedback: {"error": {"step": 0, "type": "TypeError", "message": "unsupported operand type(s) for //: 'str' and 'int'", "line": 5, "inventory": 0, "best_bid": 999, "best_ask": 1001, "history_len": 1, "seed": 0}, "violation": null, "violation_counts": {}, "metrics": {}}
+=> level 3: NOT VERIFIED, best score 0.60; held-out fail (lcb +0); 14050 tokens, 346s
+
+log: /workspace/projects/market-maker-agent/runs/B-1.jsonl
+
+=========== level 1: calm (raw feedback, rep 2) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (57s)
+   feedback: {"error": {"step": 0, "type": "TypeError", "message": "unsupported operand type(s) for //: 'str' and 'int'", "line": 6, "inventory": 0, "best_bid": 999, "best_ask": 1001, "history_len": 1, "seed": 0}, "violation": null, "violation_counts": {}, "metrics": {}}
+round 1 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (57s)
+   feedback: {"error": {"step": 0, "type": "TypeError", "message": "unsupported operand type(s) for //: 'str' and 'int'", "line": 6, "inventory": 0, "best_bid": 999, "best_ask": 1001, "history_len": 1, "seed": 0}, "violation": null, "violation_counts": {}, "metrics": {}}
+round 2 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (51s)
+   feedback: {"error": {"step": 0, "type": "TypeError", "message": "unsupported operand type(s) for //: 'str' and 'int'", "line": 6, "inventory": 0, "best_bid": 999, "best_ask": 1001, "history_len": 1, "seed": 0}, "violation": null, "violation_counts": {}, "metrics": {}}
+round 3 [restart] s0 0.60 profit LOSS lcb +0 | s1 0.10 runs EXCEPTION  (60s)
+   feedback: rate": 0.0, "worst": 0.0, "fills": 0.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": 0.0, "markout": 0.0, "against_n": 0.0, "against_markout": 0.0, "with_markout": 0.0, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.0, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.0, "hot_half": NaN, "calm_half": 2.0, "obligation": 1.0, "both_sides": 1.0, "skew_inv": 0.0, "skew_imb": 0.0, "widen_vol": 0.0, "max_drawdown": 0.0}}
+round 4 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (43s)
+   feedback: rate": 0.0, "worst": 0.0, "fills": 0.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": 0.0, "markout": 0.0, "against_n": 0.0, "against_markout": 0.0, "with_markout": 0.0, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.0, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.0, "hot_half": NaN, "calm_half": 2.0, "obligation": 1.0, "both_sides": 1.0, "skew_inv": 0.0, "skew_imb": 0.0, "widen_vol": 0.0, "max_drawdown": 0.0}}
+round 5 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (46s)
+   feedback: rate": 0.0, "worst": 0.0, "fills": 0.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": 0.0, "markout": 0.0, "against_n": 0.0, "against_markout": 0.0, "with_markout": 0.0, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.0, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.0, "hot_half": NaN, "calm_half": 2.0, "obligation": 1.0, "both_sides": 1.0, "skew_inv": 0.0, "skew_imb": 0.0, "widen_vol": 0.0, "max_drawdown": 0.0}}
+=> level 1: NOT VERIFIED, best score 0.60; held-out fail (lcb +0); 13022 tokens, 316s
+
+=========== level 2: trend (raw feedback, rep 2) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.20 rules CROSSED lcb +0  (57s)
+   feedback: rate": 0.0, "worst": 0.0, "fills": 0.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": 0.0, "markout": 0.0, "against_n": 0.0, "against_markout": 0.0, "with_markout": 0.0, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.0, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.0, "hot_half": NaN, "calm_half": NaN, "obligation": 0.0, "both_sides": 0.0, "skew_inv": 0.0, "skew_imb": 0.0, "widen_vol": 0.0, "max_drawdown": 0.0}}
+round 1 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.71 profit LOSS_ADVERSE lcb -28  (51s)
+   feedback: : 600.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": -4.312, "markout": -0.003, "against_n": 133.562, "against_markout": -0.015, "with_markout": 0.001, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.695, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": -7.5, "hot_half": NaN, "calm_half": 0.792, "obligation": 1.0, "both_sides": 1.0, "skew_inv": -0.882, "skew_imb": -0.001, "widen_vol": -0.013, "max_drawdown": 25.25}}
+round 2 [repair] s0 0.20 rules OFF_TICK lcb -27 | s1 0.71 profit LOSS_ADVERSE lcb -28  (67s)
+   feedback: : 600.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": -4.312, "markout": -0.003, "against_n": 133.562, "against_markout": -0.015, "with_markout": 0.001, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.695, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": -7.5, "hot_half": NaN, "calm_half": 0.792, "obligation": 1.0, "both_sides": 1.0, "skew_inv": -0.882, "skew_imb": -0.001, "widen_vol": -0.013, "max_drawdown": 25.25}}
+round 3 [repair] s0 0.71 profit LOSS_ADVERSE lcb -28 | s1 0.71 profit LOSS_ADVERSE lcb -28  (74s)
+   feedback: : 600.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": -4.312, "markout": -0.003, "against_n": 133.562, "against_markout": -0.015, "with_markout": 0.001, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.695, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": -7.5, "hot_half": NaN, "calm_half": 0.792, "obligation": 1.0, "both_sides": 1.0, "skew_inv": -0.882, "skew_imb": -0.001, "widen_vol": -0.013, "max_drawdown": 25.25}}
+round 4 [restart] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (54s)
+   feedback: {"error": {"step": 0, "type": "TypeError", "message": "unsupported operand type(s) for //: 'str' and 'int'", "line": 5, "inventory": 0, "best_bid": 999, "best_ask": 1001, "history_len": 1, "seed": 0}, "violation": null, "violation_counts": {}, "metrics": {}}
+round 5 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (56s)
+   feedback: {"error": {"step": 0, "type": "TypeError", "message": "unsupported operand type(s) for //: 'str' and 'int'", "line": 5, "inventory": 0, "best_bid": 999, "best_ask": 1001, "history_len": 1, "seed": 0}, "violation": null, "violation_counts": {}, "metrics": {}}
+=> level 2: NOT VERIFIED, best score 0.71; held-out fail (lcb -30); 14376 tokens, 361s
+
+=========== level 3: informed (raw feedback, rep 2) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (55s)
+   feedback: {"error": {"step": 0, "type": "TypeError", "message": "unsupported operand type(s) for //: 'str' and 'int'", "line": 6, "inventory": 0, "best_bid": 999, "best_ask": 1001, "history_len": 1, "seed": 0}, "violation": null, "violation_counts": {}, "metrics": {}}
+round 1 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (57s)
+   feedback: {"error": {"step": 0, "type": "TypeError", "message": "unsupported operand type(s) for //: 'str' and 'int'", "line": 6, "inventory": 0, "best_bid": 999, "best_ask": 1001, "history_len": 1, "seed": 0}, "violation": null, "violation_counts": {}, "metrics": {}}
+round 2 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (49s)
+   feedback: {"error": {"step": 0, "type": "TypeError", "message": "unsupported operand type(s) for //: 'str' and 'int'", "line": 6, "inventory": 0, "best_bid": 999, "best_ask": 1001, "history_len": 1, "seed": 0}, "violation": null, "violation_counts": {}, "metrics": {}}
+round 3 [restart] s0 0.60 profit LOSS lcb +0 | s1 0.10 runs EXCEPTION  (61s)
+   feedback: rate": 0.0, "worst": 0.0, "fills": 0.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": 0.0, "markout": 0.0, "against_n": 0.0, "against_markout": 0.0, "with_markout": 0.0, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.0, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.0, "hot_half": NaN, "calm_half": 2.0, "obligation": 1.0, "both_sides": 1.0, "skew_inv": 0.0, "skew_imb": 0.0, "widen_vol": 0.0, "max_drawdown": 0.0}}
+round 4 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (53s)
+   feedback: rate": 0.0, "worst": 0.0, "fills": 0.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": 0.0, "markout": 0.0, "against_n": 0.0, "against_markout": 0.0, "with_markout": 0.0, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.0, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.0, "hot_half": NaN, "calm_half": 2.0, "obligation": 1.0, "both_sides": 1.0, "skew_inv": 0.0, "skew_imb": 0.0, "widen_vol": 0.0, "max_drawdown": 0.0}}
+round 5 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (53s)
+   feedback: rate": 0.0, "worst": 0.0, "fills": 0.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": 0.0, "markout": 0.0, "against_n": 0.0, "against_markout": 0.0, "with_markout": 0.0, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.0, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.0, "hot_half": NaN, "calm_half": 2.0, "obligation": 1.0, "both_sides": 1.0, "skew_inv": 0.0, "skew_imb": 0.0, "widen_vol": 0.0, "max_drawdown": 0.0}}
+=> level 3: NOT VERIFIED, best score 0.60; held-out fail (lcb +0); 13254 tokens, 330s
+
+log: /workspace/projects/market-maker-agent/runs/B-2.jsonl
+
+=========== level 1: calm (raw feedback, rep 3) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (57s)
+   feedback: {"error": {"step": 0, "type": "TypeError", "message": "unsupported operand type(s) for //: 'str' and 'int'", "line": 6, "inventory": 0, "best_bid": 999, "best_ask": 1001, "history_len": 1, "seed": 0}, "violation": null, "violation_counts": {}, "metrics": {}}
+round 1 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (56s)
+   feedback: {"error": {"step": 0, "type": "TypeError", "message": "unsupported operand type(s) for //: 'str' and 'int'", "line": 6, "inventory": 0, "best_bid": 999, "best_ask": 1001, "history_len": 1, "seed": 0}, "violation": null, "violation_counts": {}, "metrics": {}}
+round 2 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (23s)
+   feedback: {"error": {"step": 0, "type": "TypeError", "message": "unsupported operand type(s) for //: 'str' and 'int'", "line": 6, "inventory": 0, "best_bid": 999, "best_ask": 1001, "history_len": 1, "seed": 0}, "violation": null, "violation_counts": {}, "metrics": {}}
+round 3 [restart] s0 0.60 profit LOSS lcb +0 | s1 0.10 runs EXCEPTION  (27s)
+   feedback: rate": 0.0, "worst": 0.0, "fills": 0.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": 0.0, "markout": 0.0, "against_n": 0.0, "against_markout": 0.0, "with_markout": 0.0, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.0, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.0, "hot_half": NaN, "calm_half": 2.0, "obligation": 1.0, "both_sides": 1.0, "skew_inv": 0.0, "skew_imb": 0.0, "widen_vol": 0.0, "max_drawdown": 0.0}}
+round 4 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (24s)
+   feedback: rate": 0.0, "worst": 0.0, "fills": 0.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": 0.0, "markout": 0.0, "against_n": 0.0, "against_markout": 0.0, "with_markout": 0.0, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.0, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.0, "hot_half": NaN, "calm_half": 2.0, "obligation": 1.0, "both_sides": 1.0, "skew_inv": 0.0, "skew_imb": 0.0, "widen_vol": 0.0, "max_drawdown": 0.0}}
+round 5 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (24s)
+   feedback: rate": 0.0, "worst": 0.0, "fills": 0.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": 0.0, "markout": 0.0, "against_n": 0.0, "against_markout": 0.0, "with_markout": 0.0, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.0, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.0, "hot_half": NaN, "calm_half": 2.0, "obligation": 1.0, "both_sides": 1.0, "skew_inv": 0.0, "skew_imb": 0.0, "widen_vol": 0.0, "max_drawdown": 0.0}}
+=> level 1: NOT VERIFIED, best score 0.60; held-out fail (lcb +0); 13256 tokens, 211s
+
+=========== level 2: trend (raw feedback, rep 3) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.20 rules CROSSED lcb +0  (25s)
+   feedback: rate": 0.0, "worst": 0.0, "fills": 0.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": 0.0, "markout": 0.0, "against_n": 0.0, "against_markout": 0.0, "with_markout": 0.0, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.0, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.0, "hot_half": NaN, "calm_half": NaN, "obligation": 0.0, "both_sides": 0.0, "skew_inv": 0.0, "skew_imb": 0.0, "widen_vol": 0.0, "max_drawdown": 0.0}}
+round 1 [repair] s0 0.20 rules CROSSED lcb +0 | s1 0.71 profit LOSS_ADVERSE lcb -28  (25s)
+   feedback: : 600.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": -4.312, "markout": -0.003, "against_n": 133.562, "against_markout": -0.015, "with_markout": 0.001, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.695, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": -7.5, "hot_half": NaN, "calm_half": 0.792, "obligation": 1.0, "both_sides": 1.0, "skew_inv": -0.882, "skew_imb": -0.001, "widen_vol": -0.013, "max_drawdown": 25.25}}
+round 2 [repair] s0 0.20 rules OFF_TICK lcb -27 | s1 0.71 profit LOSS_ADVERSE lcb -28  (31s)
+   feedback: : 600.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": -4.312, "markout": -0.003, "against_n": 133.562, "against_markout": -0.015, "with_markout": 0.001, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.695, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": -7.5, "hot_half": NaN, "calm_half": 0.792, "obligation": 1.0, "both_sides": 1.0, "skew_inv": -0.882, "skew_imb": -0.001, "widen_vol": -0.013, "max_drawdown": 25.25}}
+round 3 [repair] s0 0.71 profit LOSS_ADVERSE lcb -28 | s1 0.71 profit LOSS lcb -156  (32s)
+   feedback: : 600.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": -4.312, "markout": -0.003, "against_n": 133.562, "against_markout": -0.015, "with_markout": 0.001, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.695, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": -7.5, "hot_half": NaN, "calm_half": 0.792, "obligation": 1.0, "both_sides": 1.0, "skew_inv": -0.882, "skew_imb": -0.001, "widen_vol": -0.013, "max_drawdown": 25.25}}
+round 4 [restart] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (39s)
+   feedback: {"error": {"step": 0, "type": "TypeError", "message": "unsupported operand type(s) for //: 'str' and 'int'", "line": 5, "inventory": 0, "best_bid": 999, "best_ask": 1001, "history_len": 1, "seed": 0}, "violation": null, "violation_counts": {}, "metrics": {}}
+round 5 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (45s)
+   feedback: {"error": {"step": 0, "type": "TypeError", "message": "unsupported operand type(s) for //: 'str' and 'int'", "line": 5, "inventory": 0, "best_bid": 999, "best_ask": 1001, "history_len": 1, "seed": 0}, "violation": null, "violation_counts": {}, "metrics": {}}
+=> level 2: NOT VERIFIED, best score 0.71; held-out fail (lcb -30); 14106 tokens, 198s
+
+=========== level 3: informed (raw feedback, rep 3) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.20 rules CROSSED lcb +0  (58s)
+   feedback: rate": 0.0, "worst": 0.0, "fills": 0.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": 0.0, "markout": 0.0, "against_n": 0.0, "against_markout": 0.0, "with_markout": 0.0, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.0, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.0, "hot_half": NaN, "calm_half": NaN, "obligation": 0.0, "both_sides": 0.0, "skew_inv": 0.0, "skew_imb": 0.0, "widen_vol": 0.0, "max_drawdown": 0.0}}
+round 1 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS_ADVERSE lcb -365  (73s)
+   feedback: rate": 0.0, "worst": 0.0, "fills": 0.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": 0.0, "markout": 0.0, "against_n": 0.0, "against_markout": 0.0, "with_markout": 0.0, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.0, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.0, "hot_half": NaN, "calm_half": 3.0, "obligation": 1.0, "both_sides": 1.0, "skew_inv": 0.0, "skew_imb": 0.0, "widen_vol": 0.0, "max_drawdown": 0.0}}
+round 2 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (85s)
+   feedback: rate": 0.0, "worst": 0.0, "fills": 0.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": 0.0, "markout": 0.0, "against_n": 0.0, "against_markout": 0.0, "with_markout": 0.0, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.0, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.0, "hot_half": NaN, "calm_half": 3.0, "obligation": 1.0, "both_sides": 1.0, "skew_inv": 0.0, "skew_imb": 0.0, "widen_vol": 0.0, "max_drawdown": 0.0}}
+round 3 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (106s)
+   feedback: rate": 0.0, "worst": 0.0, "fills": 0.0, "swept": 0.0, "edge_pnl": 0.0, "hold_pnl": 0.0, "markout": 0.0, "against_n": 0.0, "against_markout": 0.0, "with_markout": 0.0, "heavy_pnl": 0.0, "at_limit": 0.0, "mean_abs_inv": 0.0, "hot_steps": 0.0, "hot_pnl": 0.0, "calm_pnl": 0.0, "hot_half": NaN, "calm_half": 3.0, "obligation": 1.0, "both_sides": 1.0, "skew_inv": 0.0, "skew_imb": 0.0, "widen_vol": 0.0, "max_drawdown": 0.0}}
+round 4 [restart] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (78s)
+   feedback: {"error": {"step": 0, "type": "TypeError", "message": "unsupported operand type(s) for //: 'str' and 'int'", "line": 5, "inventory": 0, "best_bid": 999, "best_ask": 1001, "history_len": 1, "seed": 0}, "violation": null, "violation_counts": {}, "metrics": {}}
+round 5 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (75s)
+   feedback: {"error": {"step": 0, "type": "TypeError", "message": "unsupported operand type(s) for //: 'str' and 'int'", "line": 5, "inventory": 0, "best_bid": 999, "best_ask": 1001, "history_len": 1, "seed": 0}, "violation": null, "violation_counts": {}, "metrics": {}}
+=> level 3: NOT VERIFIED, best score 0.60; held-out fail (lcb +0); 14057 tokens, 476s
+
+log: /workspace/projects/market-maker-agent/runs/B-3.jsonl
+
+rep level claim              held-out
+  1     1 NOT VERIFIED       fail
+  1     2 NOT VERIFIED       fail
+  1     3 NOT VERIFIED       fail
+  2     1 NOT VERIFIED       fail
+  2     2 NOT VERIFIED       fail
+  2     3 NOT VERIFIED       fail
+  3     1 NOT VERIFIED       fail
+  3     2 NOT VERIFIED       fail
+  3     3 NOT VERIFIED       fail

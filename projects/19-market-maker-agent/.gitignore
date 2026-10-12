@@ -1,0 +1,4 @@
+real/
+__pycache__/
+# the attempt logs are a deliverable; the root .gitignore excludes runs/ everywhere
+!runs/

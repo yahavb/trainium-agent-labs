@@ -1,0 +1,152 @@
+
+=========== level 1: calm (none feedback, rep 1) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.20 rules CROSSED lcb +0  (80s)
+   feedback: Checker: score 0.20 of 1.00, stage reached: rules. Not solved.
+round 1 [repair] s0 0.20 rules CROSSED lcb +0 | s1 0.60 profit LOSS lcb +0  (97s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+round 2 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (87s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+round 3 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (81s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+round 4 [restart] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (87s)
+   feedback: Checker: score 0.10 of 1.00, stage reached: runs. Not solved.
+round 5 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (101s)
+   feedback: Checker: score 0.10 of 1.00, stage reached: runs. Not solved.
+=> level 1: NOT VERIFIED, best score 0.60; held-out fail (lcb +0); 12436 tokens, 534s
+
+=========== level 2: trend (none feedback, rep 1) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.20 rules CROSSED lcb +0  (106s)
+   feedback: Checker: score 0.20 of 1.00, stage reached: rules. Not solved.
+round 1 [repair] s0 0.20 rules CROSSED lcb +0 | s1 0.60 profit LOSS lcb +0  (117s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+round 2 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (124s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+round 3 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (118s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+round 4 [restart] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (106s)
+   feedback: Checker: score 0.10 of 1.00, stage reached: runs. Not solved.
+round 5 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (97s)
+   feedback: Checker: score 0.10 of 1.00, stage reached: runs. Not solved.
+=> level 2: NOT VERIFIED, best score 0.60; held-out fail (lcb +0); 12833 tokens, 670s
+
+=========== level 3: informed (none feedback, rep 1) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.20 rules CROSSED lcb +0  (94s)
+   feedback: Checker: score 0.20 of 1.00, stage reached: rules. Not solved.
+round 1 [repair] s0 0.20 rules CROSSED lcb +0 | s1 0.60 profit LOSS lcb +0  (128s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+round 2 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (121s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+round 3 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (129s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+round 4 [restart] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (120s)
+   feedback: Checker: score 0.10 of 1.00, stage reached: runs. Not solved.
+round 5 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (93s)
+   feedback: Checker: score 0.10 of 1.00, stage reached: runs. Not solved.
+=> level 3: NOT VERIFIED, best score 0.60; held-out fail (lcb +0); 12574 tokens, 687s
+
+log: /workspace/projects/market-maker-agent/runs/A-1.jsonl
+
+=========== level 1: calm (none feedback, rep 2) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.20 rules CROSSED lcb +0  (105s)
+   feedback: Checker: score 0.20 of 1.00, stage reached: rules. Not solved.
+round 1 [repair] s0 0.20 rules CROSSED lcb +0 | s1 0.60 profit LOSS lcb +0  (119s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+round 2 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (105s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+round 3 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (121s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+round 4 [restart] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (120s)
+   feedback: Checker: score 0.10 of 1.00, stage reached: runs. Not solved.
+round 5 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (109s)
+   feedback: Checker: score 0.10 of 1.00, stage reached: runs. Not solved.
+=> level 1: NOT VERIFIED, best score 0.60; held-out fail (lcb +0); 12436 tokens, 680s
+
+=========== level 2: trend (none feedback, rep 2) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (94s)
+   feedback: Checker: score 0.10 of 1.00, stage reached: runs. Not solved.
+round 1 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (99s)
+   feedback: Checker: score 0.10 of 1.00, stage reached: runs. Not solved.
+round 2 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (52s)
+   feedback: Checker: score 0.10 of 1.00, stage reached: runs. Not solved.
+round 3 [restart] s0 0.60 profit LOSS lcb +0 | s1 0.10 runs EXCEPTION  (59s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+round 4 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (47s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+round 5 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (48s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+=> level 2: NOT VERIFIED, best score 0.60; held-out fail (lcb +0); 11672 tokens, 401s
+
+=========== level 3: informed (none feedback, rep 2) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (56s)
+   feedback: Checker: score 0.10 of 1.00, stage reached: runs. Not solved.
+round 1 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (64s)
+   feedback: Checker: score 0.10 of 1.00, stage reached: runs. Not solved.
+round 2 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (56s)
+   feedback: Checker: score 0.10 of 1.00, stage reached: runs. Not solved.
+round 3 [restart] s0 0.60 profit LOSS lcb +0 | s1 0.10 runs EXCEPTION  (58s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+round 4 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (47s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+round 5 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (46s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+=> level 3: NOT VERIFIED, best score 0.60; held-out fail (lcb +0); 11671 tokens, 329s
+
+log: /workspace/projects/market-maker-agent/runs/A-2.jsonl
+
+=========== level 1: calm (none feedback, rep 3) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.20 rules CROSSED lcb +0  (51s)
+   feedback: Checker: score 0.20 of 1.00, stage reached: rules. Not solved.
+round 1 [repair] s0 0.20 rules CROSSED lcb +0 | s1 0.60 profit LOSS lcb +0  (64s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+round 2 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (71s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+round 3 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (67s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+round 4 [restart] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (45s)
+   feedback: Checker: score 0.10 of 1.00, stage reached: runs. Not solved.
+round 5 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (44s)
+   feedback: Checker: score 0.10 of 1.00, stage reached: runs. Not solved.
+=> level 1: NOT VERIFIED, best score 0.60; held-out fail (lcb +0); 12404 tokens, 342s
+
+=========== level 2: trend (none feedback, rep 3) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.20 rules CROSSED lcb +0  (57s)
+   feedback: Checker: score 0.20 of 1.00, stage reached: rules. Not solved.
+round 1 [repair] s0 0.20 rules CROSSED lcb +0 | s1 0.60 profit LOSS lcb +0  (61s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+round 2 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (73s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+round 3 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (69s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+round 4 [restart] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (27s)
+   feedback: Checker: score 0.10 of 1.00, stage reached: runs. Not solved.
+round 5 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (27s)
+   feedback: Checker: score 0.10 of 1.00, stage reached: runs. Not solved.
+=> level 2: NOT VERIFIED, best score 0.60; held-out fail (lcb +0); 12804 tokens, 314s
+
+=========== level 3: informed (none feedback, rep 3) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (24s)
+   feedback: Checker: score 0.10 of 1.00, stage reached: runs. Not solved.
+round 1 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (28s)
+   feedback: Checker: score 0.10 of 1.00, stage reached: runs. Not solved.
+round 2 [repair] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (25s)
+   feedback: Checker: score 0.10 of 1.00, stage reached: runs. Not solved.
+round 3 [restart] s0 0.60 profit LOSS lcb +0 | s1 0.10 runs EXCEPTION  (28s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+round 4 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (21s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+round 5 [repair] s0 0.60 profit LOSS lcb +0 | s1 0.60 profit LOSS lcb +0  (21s)
+   feedback: Checker: score 0.60 of 1.00, stage reached: profit. Not solved.
+=> level 3: NOT VERIFIED, best score 0.60; held-out fail (lcb +0); 11573 tokens, 147s
+
+log: /workspace/projects/market-maker-agent/runs/A-3.jsonl
+
+rep level claim              held-out
+  1     1 NOT VERIFIED       fail
+  1     2 NOT VERIFIED       fail
+  1     3 NOT VERIFIED       fail
+  2     1 NOT VERIFIED       fail
+  2     2 NOT VERIFIED       fail
+  2     3 NOT VERIFIED       fail
+  3     1 NOT VERIFIED       fail
+  3     2 NOT VERIFIED       fail
+  3     3 NOT VERIFIED       fail

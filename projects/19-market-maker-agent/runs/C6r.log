@@ -1,0 +1,67 @@
+
+=========== level 1: calm (located feedback, rep 1) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (61s)
+   feedback: TypeError: unsupported operand type(s) for +: 'int' and 'str' on line 8 of your code, at step 0. The cause is line 4: state is a dict, and `a, b, ... = state` assigns its KEYS (the strings 't', 'T', 'best_bid', ...), not its values. Read each field by name: best_bid = state['best_bid'].
+round 1 [repair] s0 0.90 robust SPREAD1 lcb +208 | s1 0.90 robust SPREAD1 lcb +208  (75s)
+   feedback: Passes at a 2-tick spread, but the same markets at a 1-tick spread (where real stocks trade most of the day) fail: profit lower bound +0. Make every quote valid for any spread of 1 tick or more: clamp bid <= best_ask - 1 and ask >= best_bid + 1, and if bid >= ask after your adjustments, fall back to bid = best_bid, ask = best_ask. Prices must be whole ticks even when the mid is a half tick.
+round 2 [repair] s0 0.10 runs EXCEPTION | s1 0.90 robust SPREAD1 lcb +208  (82s)
+   feedback: Passes at a 2-tick spread, but the same markets at a 1-tick spread (where real stocks trade most of the day) fail: profit lower bound +0. Make every quote valid for any spread of 1 tick or more: clamp bid <= best_ask - 1 and ask >= best_bid + 1, and if bid >= ask after your adjustments, fall back to bid = best_bid, ask = best_ask. Prices must be whole ticks even when the mid is a half tick.
+round 3 [repair] s0 0.90 robust SPREAD1 lcb +208 | s1 0.90 robust SPREAD1 lcb +208  (87s)
+   feedback: Passes at a 2-tick spread, but the same markets at a 1-tick spread (where real stocks trade most of the day) fail: profit lower bound +0. Make every quote valid for any spread of 1 tick or more: clamp bid <= best_ask - 1 and ask >= best_bid + 1, and if bid >= ask after your adjustments, fall back to bid = best_bid, ask = best_ask. Prices must be whole ticks even when the mid is a half tick.
+round 4 [restart] s0 0.10 runs EXCEPTION | s1 0.20 rules INVENTORY_LIMIT lcb -36  (65s)
+   feedback: Rule broken: INVENTORY_LIMIT, 22011 times; 22011 in total. First at step 128: inventory -8 with ask_size 3 could reach -11, under the limit -10. Any violation zeroes the profit score. Fix: cap bid_size at max_inventory - inventory and ask_size at max_inventory + inventory (0 means that side is not quoted).
+round 5 [repair] s0 0.69 profit LOSS_INVENTORY lcb -36 | s1 0.69 profit LOSS_INVENTORY lcb -36  (63s)
+   feedback:  either way, and you sat at the limit on 91% of steps. The price drifts in one direction for long stretches and the order flow leans the same way, so you keep selling into a rise (or buying into a fall). Your quote centre barely moves with your inventory (correlation +0.01). Lean against your position: when long, move both quotes down; when short, move both up; and take into account which way the mid has been moving.
+=> level 1: NOT VERIFIED, best score 0.90; held-out fail (lcb +247); 16732 tokens, 435s
+
+=========== level 2: trend (located feedback, rep 1) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (59s)
+   feedback: TypeError: unsupported operand type(s) for +: 'int' and 'str' on line 8 of your code, at step 0. The cause is line 4: state is a dict, and `a, b, ... = state` assigns its KEYS (the strings 't', 'T', 'best_bid', ...), not its values. Read each field by name: best_bid = state['best_bid'].
+round 1 [repair] s0 0.62 profit LOSS_INVENTORY lcb -267 | s1 0.62 profit LOSS_INVENTORY lcb -267  (74s)
+   feedback:  either way, and you sat at the limit on 10% of steps. The price drifts in one direction for long stretches and the order flow leans the same way, so you keep selling into a rise (or buying into a fall). Your quote centre barely moves with your inventory (correlation +0.00). Lean against your position: when long, move both quotes down; when short, move both up; and take into account which way the mid has been moving.
+round 2 [repair] s0 0.90 robust SPREAD1 lcb +85 | s1 0.10 runs EXCEPTION  (76s)
+   feedback: Passes at a 2-tick spread, but the same markets at a 1-tick spread (where real stocks trade most of the day) fail: profit lower bound +0. Make every quote valid for any spread of 1 tick or more: clamp bid <= best_ask - 1 and ask >= best_bid + 1, and if bid >= ask after your adjustments, fall back to bid = best_bid, ask = best_ask. Prices must be whole ticks even when the mid is a half tick.
+round 3 [repair] s0 0.90 robust SPREAD1 lcb +85 | s1 0.90 robust SPREAD1 lcb +85  (88s)
+   feedback: Passes at a 2-tick spread, but the same markets at a 1-tick spread (where real stocks trade most of the day) fail: profit lower bound +0. Make every quote valid for any spread of 1 tick or more: clamp bid <= best_ask - 1 and ask >= best_bid + 1, and if bid >= ask after your adjustments, fall back to bid = best_bid, ask = best_ask. Prices must be whole ticks even when the mid is a half tick.
+round 4 [repair] s0 0.90 robust SPREAD1 lcb +85 | s1 0.90 robust SPREAD1 lcb +85  (73s)
+   feedback: Passes at a 2-tick spread, but the same markets at a 1-tick spread (where real stocks trade most of the day) fail: profit lower bound +0. Make every quote valid for any spread of 1 tick or more: clamp bid <= best_ask - 1 and ask >= best_bid + 1, and if bid >= ask after your adjustments, fall back to bid = best_bid, ask = best_ask. Prices must be whole ticks even when the mid is a half tick.
+round 5 [restart] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (67s)
+   feedback: TypeError: unsupported operand type(s) for +: 'int' and 'str' on line 8 of your code, at step 0. The cause is line 4: state is a dict, and `a, b, ... = state` assigns its KEYS (the strings 't', 'T', 'best_bid', ...), not its values. Read each field by name: best_bid = state['best_bid'].
+=> level 2: NOT VERIFIED, best score 0.90; held-out fail (lcb +81); 17016 tokens, 439s
+
+log: /workspace/projects/market-maker-agent/runs/C6r-1.jsonl
+
+=========== level 1: calm (located feedback, rep 2) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (66s)
+   feedback: TypeError: unsupported operand type(s) for +: 'int' and 'str' on line 8 of your code, at step 0. The cause is line 4: state is a dict, and `a, b, ... = state` assigns its KEYS (the strings 't', 'T', 'best_bid', ...), not its values. Read each field by name: best_bid = state['best_bid'].
+round 1 [repair] s0 0.20 rules INVENTORY_LIMIT lcb -12 | s1 0.20 rules INVENTORY_LIMIT lcb -12  (75s)
+   feedback: Rule broken: INVENTORY_LIMIT, 528 times; 528 in total. First at step 111: inventory 10 with bid_size 5 could reach 15, over the limit 10. Any violation zeroes the profit score. Fix: cap bid_size at max_inventory - inventory and ask_size at max_inventory + inventory (0 means that side is not quoted).
+round 2 [repair] s0 0.20 rules INVENTORY_LIMIT lcb +277 | s1 0.20 rules INVENTORY_LIMIT lcb +277  (80s)
+   feedback: Rule broken: INVENTORY_LIMIT, 202 times; 202 in total. First at step 179: inventory 7 with bid_size 5 could reach 12, over the limit 10. Any violation zeroes the profit score. Fix: cap bid_size at max_inventory - inventory and ask_size at max_inventory + inventory (0 means that side is not quoted).
+round 3 [repair] s0 0.90 robust SPREAD1 lcb +276 | s1 0.20 rules INVENTORY_LIMIT lcb +277  (83s)
+   feedback: Passes at a 2-tick spread, but the same markets at a 1-tick spread (where real stocks trade most of the day) fail: profit lower bound +0. Make every quote valid for any spread of 1 tick or more: clamp bid <= best_ask - 1 and ask >= best_bid + 1, and if bid >= ask after your adjustments, fall back to bid = best_bid, ask = best_ask. Prices must be whole ticks even when the mid is a half tick.
+round 4 [repair] s0 0.90 robust SPREAD1 lcb +276 | s1 SOLVED  (81s)
+=> level 1: VERIFIED on dev after 10 attempts; held-out PASS (lcb +564); 15163 tokens, 387s
+
+=========== level 2: trend (located feedback, rep 2) ===========
+round 0 [first] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (59s)
+   feedback: TypeError: unsupported operand type(s) for +: 'int' and 'str' on line 8 of your code, at step 0. The cause is line 4: state is a dict, and `a, b, ... = state` assigns its KEYS (the strings 't', 'T', 'best_bid', ...), not its values. Read each field by name: best_bid = state['best_bid'].
+round 1 [repair] s0 0.62 profit LOSS_INVENTORY lcb -267 | s1 0.62 profit LOSS_INVENTORY lcb -267  (74s)
+   feedback:  either way, and you sat at the limit on 10% of steps. The price drifts in one direction for long stretches and the order flow leans the same way, so you keep selling into a rise (or buying into a fall). Your quote centre barely moves with your inventory (correlation +0.00). Lean against your position: when long, move both quotes down; when short, move both up; and take into account which way the mid has been moving.
+round 2 [repair] s0 0.90 robust SPREAD1 lcb +85 | s1 0.10 runs EXCEPTION  (76s)
+   feedback: Passes at a 2-tick spread, but the same markets at a 1-tick spread (where real stocks trade most of the day) fail: profit lower bound +0. Make every quote valid for any spread of 1 tick or more: clamp bid <= best_ask - 1 and ask >= best_bid + 1, and if bid >= ask after your adjustments, fall back to bid = best_bid, ask = best_ask. Prices must be whole ticks even when the mid is a half tick.
+round 3 [repair] s0 0.90 robust SPREAD1 lcb +85 | s1 0.90 robust SPREAD1 lcb +85  (90s)
+   feedback: Passes at a 2-tick spread, but the same markets at a 1-tick spread (where real stocks trade most of the day) fail: profit lower bound +0. Make every quote valid for any spread of 1 tick or more: clamp bid <= best_ask - 1 and ask >= best_bid + 1, and if bid >= ask after your adjustments, fall back to bid = best_bid, ask = best_ask. Prices must be whole ticks even when the mid is a half tick.
+round 4 [repair] s0 0.90 robust SPREAD1 lcb +85 | s1 0.90 robust SPREAD1 lcb +85  (76s)
+   feedback: Passes at a 2-tick spread, but the same markets at a 1-tick spread (where real stocks trade most of the day) fail: profit lower bound +0. Make every quote valid for any spread of 1 tick or more: clamp bid <= best_ask - 1 and ask >= best_bid + 1, and if bid >= ask after your adjustments, fall back to bid = best_bid, ask = best_ask. Prices must be whole ticks even when the mid is a half tick.
+round 5 [restart] s0 0.10 runs EXCEPTION | s1 0.10 runs EXCEPTION  (71s)
+   feedback: TypeError: unsupported operand type(s) for +: 'int' and 'str' on line 8 of your code, at step 0. The cause is line 4: state is a dict, and `a, b, ... = state` assigns its KEYS (the strings 't', 'T', 'best_bid', ...), not its values. Read each field by name: best_bid = state['best_bid'].
+=> level 2: NOT VERIFIED, best score 0.90; held-out fail (lcb +81); 16998 tokens, 448s
+
+log: /workspace/projects/market-maker-agent/runs/C6r-2.jsonl
+
+rep level claim              held-out
+  1     1 NOT VERIFIED       fail
+  1     2 NOT VERIFIED       fail
+  2     1 VERIFIED on dev    PASS
+  2     2 NOT VERIFIED       fail
